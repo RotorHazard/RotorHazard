@@ -246,3 +246,26 @@ def hslToHex(h, s, l):
         b = int(round(hue2rgb(p, q, h - 1 / 3) * 255))
 
     return '#{0:02x}{1:02x}{2:02x}'.format(r, g, b)
+
+def launchBrowser(hostStr, httpPortNum=0, pageNameStr=None, launchCmdStr=None):
+    try:
+        urlStr = hostStr
+        if httpPortNum:
+            urlStr += ':' + str(httpPortNum)
+        if pageNameStr and len(pageNameStr) > 0:
+            if pageNameStr.startswith('/'):
+                urlStr += pageNameStr
+            else:
+                urlStr += '/' +  pageNameStr
+        if launchCmdStr and len(launchCmdStr) > 0:
+            logger.info("Launching browser via command: \"{}\" {}".format(launchCmdStr, urlStr))
+            if sys.platform.startswith('win'):
+                os.spawnl(os.P_NOWAIT, launchCmdStr, ('"' + launchCmdStr + '"'), urlStr)
+            else:
+                os.spawnl(os.P_NOWAIT, launchCmdStr, launchCmdStr, urlStr)
+        else:
+            import webbrowser
+            logger.info("Launching browser to view URL: " + urlStr)
+            webbrowser.open(urlStr)
+    except Exception:
+        logger.exception("Error launching browser")

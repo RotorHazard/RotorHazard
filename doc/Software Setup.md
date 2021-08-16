@@ -346,6 +346,33 @@ To view the web-GUI interface, open up a web browser and enter into the address 
 
 ----------------------------------------------------------------------------
 
+<a id="viewdb"></a>
+## Viewing Database Files
+
+A "snapshot" copy of the database file used by the RotorHazard server may be downloaded using the `Backup Database` button in the 'Database' section on the 'Settings' page in the RotorHazard web GUI. A tool like [DB Browser for SQLite](https://sqlitebrowser.org) may be used to view the raw data in the file.
+
+A database file may be loaded into the RotorHazard server via the "--viewdb" command-line argument:
+```
+python server.py --viewdb dbFileName.db [pagename] [browsercmd]
+```
+The current server database is backed up and the specified one is loaded. If a 'pagename' value (i.e., "results") is given then a web browser is launched showing the RotorHazard web GUI at the specified page. If a 'browsercmd' value is given then that command is used to launch the web browser (for instance, a value of "C:\Program Files\Mozilla Firefox\firefox.exe" could be specified to launch the Firefox browser on a PC where is it installed but is not the default browser).
+
+The "--launchb" command-line argument can be specified to launch a web browser after the server starts up:
+```
+python server.py --launchb [pagename] [browsercmd]
+```
+
+----------------------------------------------------------------------------
+
+<a id="portable"></a>
+## RotorHazard Portable
+
+A "portable" version of the RotorHazard server, which can be useful for viewing database files on a Windows PC, may be found [here](http://www.rotorhazard.com/portable). To use it, download the "rhPortable...zip" file, unpack it into a local directory, and then drag-and-drop a database file onto the 'runRotorHazard' batch file. This will launch a local copy of the RotorHazard server, load the database file, and launch a web browser for viewing the GUI. Sample RotorHazard database files may be found [here](http://www.rotorhazard.com/dbsamples). The server can be terminated by entering Ctrl-C on its console window.
+
+(The "rhPortable...zip" file includes the needed Python support. The the 'runRotorHazardFF' batch file will attempt to launch the Firefox browser.)
+
+----------------------------------------------------------------------------
+
 <a id="logging"></a>
 ## Logging
 
