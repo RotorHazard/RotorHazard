@@ -1284,9 +1284,12 @@ def on_alter_heat(data):
 @catchLogExceptionsWrapper
 def on_delete_heat(data):
     '''Delete heat.'''
+    global LAST_RACE
     heat_id = data['heat']
     result = RHData.delete_heat(heat_id)
     if result is not None:
+        if LAST_RACE and LAST_RACE.current_heat == result:
+            LAST_RACE = None  # if last-race heat deleted then clear last race
         if RACE.current_heat == result:  # if current heat was deleted then load new heat data
             heat_id = RHData.get_first_heat().id
             if RACE.current_heat != heat_id:
@@ -3470,7 +3473,7 @@ def emit_race_list(**params):
     heats = {}
     for heat in RHData.get_heats():
         if RHData.savedRaceMetas_has_heat(heat.id):
-            heatnote = RHData.get_heat(heat.id).note
+            heatnote = RHData.get_heat_note(heat.id)
             rounds = {}
             for race in RHData.get_savedRaceMetas_by_heat(heat.id):
                 pilotraces = []
@@ -3558,7 +3561,7 @@ def emit_current_leaderboard(**params):
 
     # current
     emit_payload['current']['heat'] = RACE.current_heat
-    emit_payload['current']['heat_note'] = RHData.get_heat(RACE.current_heat).note
+    emit_payload['current']['heat_note'] = RHData.get_heat_note(RACE.current_heat)
     emit_payload['current']['status_msg'] = RACE.status_message
 
     if RACE.cacheStatus == Results.CacheStatus.VALID:
@@ -3586,7 +3589,7 @@ def emit_current_leaderboard(**params):
         if LAST_RACE.cacheStatus == Results.CacheStatus.VALID:
             emit_payload['last_race']['leaderboard'] = LAST_RACE.results
             emit_payload['last_race']['heat'] = LAST_RACE.current_heat
-            emit_payload['last_race']['heat_note'] = RHData.get_heat(LAST_RACE.current_heat).note
+            emit_payload['last_race']['heat_note'] = RHData.get_heat_note(LAST_RACE.current_heat)
 
         if LAST_RACE.team_cacheStatus == Results.CacheStatus.VALID and LAST_RACE.format.team_racing_mode:
             emit_payload['last_race']['team_leaderboard'] = LAST_RACE.team_results

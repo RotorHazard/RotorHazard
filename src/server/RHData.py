@@ -643,6 +643,10 @@ class RHData():
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
 
+    def get_heat_note(self, heat_id):
+        heat_data = self._Database.Heat.query.get(heat_id)
+        return heat_data.note if heat_data else None
+
     def get_heats(self):
         return self._Database.Heat.query.all()
 
