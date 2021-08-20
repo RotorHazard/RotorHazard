@@ -24,11 +24,10 @@ class I2CNodeManager(rhi.RHNodeManager):
         self.i2c_bus.with_i2c(_write)
 
 
-def discover(idxOffset, i2c_helper, *args, **kwargs):
+def discover(idxOffset, i2c_helper, i2c_addrs=[8, 10, 12, 14, 16, 18, 20, 22], *args, **kwargs):
     logger.info("Searching for I2C nodes...")
     node_managers = []
-    # Scans all i2c_addrs to populate nodes array
-    i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
+    # Scans provided i2c_addrs to populate nodes array
     next_index = idxOffset
     for i2c_bus in i2c_helper:
         for i2c_addr in i2c_addrs:

@@ -13,10 +13,23 @@ from interface import RHInterface, MockInterface
 def scan(port, socket):
     if port == 'MOCK':
         INTERFACE = MockInterface.get_hardware_interface()
-    else:
+    elif port.startswith('COM'):
         config = Config()
         config.SERIAL_PORTS = [port]
         INTERFACE = RHInterface.get_hardware_interface(config=config)
+    elif port.startswith('i2c:'):
+        from helpers import parse_i2c_url
+        from helpers.i2c_helper import I2CBus
+
+        bus_addr = parse_i2c_url(port)
+        params = {}
+        params['idxOffset'] = 0
+        params['i2c_helper'] = [I2CBus(bus_addr[0])]
+        params['i2c_addrs'] = [bus_addr[1]]
+        INTERFACE = RHInterface.get_hardware_interface(**params)
+    else:
+        print("Invalid port: {}".format(port))
+        exit(1)
     print("Nodes detected: {}".format(len(INTERFACE.nodes)))
     
     for node in INTERFACE.nodes:
@@ -63,7 +76,7 @@ if __name__ == '__main__':
     logging.getLogger('engineio').setLevel(logging.WARN)
     logging.getLogger('geventwebsocket').setLevel(logging.WARN)
     if len(sys.argv) < 2:
-        print('Please specify serial port, e.g. COM12.')
+        print('Please specify serial port, e.g. COM12 (or I2C address, e.g. i2c:1/0x08).')
         exit()
     port = sys.argv[1]
     start(port)

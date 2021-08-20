@@ -42,5 +42,5 @@ def discover(config, i2c_helper, *args, **kwargs):
                     sensors.append(BME280Sensor(name, addr, i2c_bus))
                 except IOError:
                     lvl = logging.INFO if sensor_config else logging.DEBUG
-                    logger.log(lvl, "No BME280 found on bus {} at address 0x{:#02x}".format(i2c_bus.id, addr))
+                    logger.log(lvl, "No BME280 found on bus {} at address 0x{:#04x}".format(i2c_bus.id, addr))
     return sensors

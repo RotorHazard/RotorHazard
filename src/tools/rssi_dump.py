@@ -9,10 +9,23 @@ from interface import RHInterface, MockInterface
 def start(port, freq, write_buffer):
     if port == 'MOCK':
         INTERFACE = MockInterface.get_hardware_interface()
-    else:
+    elif port.startswith('COM'):
         config = Config()
         config.SERIAL_PORTS = [port]
         INTERFACE = RHInterface.get_hardware_interface(config=config)
+    elif port.startswith('i2c:'):
+        from helpers import parse_i2c_url
+        from helpers.i2c_helper import I2CBus
+
+        bus_addr = parse_i2c_url(port)
+        params = {}
+        params['idxOffset'] = 0
+        params['i2c_helper'] = [I2CBus(bus_addr[0])]
+        params['i2c_addrs'] = [bus_addr[1]]
+        INTERFACE = RHInterface.get_hardware_interface(**params)
+    else:
+        print("Invalid port: {}".format(port))
+        exit(1)
     print("Nodes detected: {}".format(len(INTERFACE.nodes)))
 
     for node in INTERFACE.nodes:
@@ -52,7 +65,7 @@ def write_buffer(filename, buf):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     if len(sys.argv) < 3:
-        print('Please specify serial port, e.g. COM12, and a frequency.')
+        print('Please specify a serial port, e.g. COM12 (or I2C address, e.g. i2c:1/0x08), and a frequency.')
         exit()
     port = sys.argv[1]
     freq = int(sys.argv[2])

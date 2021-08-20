@@ -35,9 +35,9 @@ class CommandsWithRetry:
             nonlocal retry_count
             retry_count += 1
             if retry_count <= max_retries:
-                logger.warning('Retry ({4}) in read_command: addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+                logger.warning('Retry ({4}) in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
             else:
-                logger.warning('Retry ({4}) limit reached in read_command: addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+                logger.warning('Retry ({4}) limit reached in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
             self.read_error_count += 1
             gevent.sleep(0.025)
 
@@ -72,9 +72,9 @@ class CommandsWithRetry:
             nonlocal retry_count
             retry_count += 1
             if retry_count <= max_retries:
-                logger.debug('Retry ({4}) in write_command: addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+                logger.debug('Retry ({4}) in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             else:
-                logger.warning('Retry ({4}) limit reached in write_command: addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+                logger.warning('Retry ({4}) limit reached in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             self.write_error_count += 1
             gevent.sleep(0.025)
 
@@ -121,7 +121,7 @@ class CommandsWithRetry:
                 success = True
             else:
                 retry_count += 1
-                logger.info('Value not set (retry={0}): cmd={1:#02x}, set={2}, get={3}, node={4}'.\
+                logger.info('Value not set (retry={0}): cmd={1:#04x}, set={2}, get={3}, node={4}'.\
                          format(retry_count, write_command, in_value, out_value, self))
         return out_value if out_value is not None else in_value
 
