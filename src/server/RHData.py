@@ -1198,8 +1198,8 @@ class RHData():
                 race_format.name = init['format_name']
             if 'race_mode' in init:
                 race_format.race_mode = init['race_mode']
-            if 'race_time' in init:
-                race_format.race_time_sec = init['race_time']
+            if 'race_time_sec' in init:
+                race_format.race_time_sec = init['race_time_sec']
             if 'start_delay_min' in init:
                 race_format.start_delay_min = init['start_delay_min']
             if 'start_delay_max' in init:
@@ -1261,8 +1261,8 @@ class RHData():
             race_format.name = data['format_name']
         if 'race_mode' in data:
             race_format.race_mode = data['race_mode']
-        if 'race_time' in data:
-            race_format.race_time_sec = data['race_time']
+        if 'race_time_sec' in data:
+            race_format.race_time_sec = data['race_time_sec']
         if 'start_delay_min' in data:
             race_format.start_delay_min = data['start_delay_min']
         if 'start_delay_max' in data:

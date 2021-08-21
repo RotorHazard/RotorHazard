@@ -1530,7 +1530,7 @@
 
 		$('#set_fix_race_time').change(function (event) {
 			var data = {
-				race_time: parseInt($(this).val())
+				race_time_sec: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})

@@ -138,7 +138,7 @@ class ServerTest(unittest.TestCase):
         data = {
             'format_name': 'Test ' + str(datetime.now()),
             'race_mode': 0,
-            'race_time': 30,
+            'race_time_sec': 33,
             'start_delay_min': 1,
             'start_delay_max': 4,
             'number_laps_win': 5,
@@ -149,7 +149,7 @@ class ServerTest(unittest.TestCase):
         resp = self.get_response('race_format')
         self.assertEqual(resp['format_name'], data['format_name'])
         self.assertEqual(resp['race_mode'], data['race_mode'])
-        self.assertEqual(resp['race_time_sec'], data['race_time'])
+        self.assertEqual(resp['race_time_sec'], data['race_time_sec'])
         self.assertEqual(resp['start_delay_min'], data['start_delay_min'])
         self.assertEqual(resp['start_delay_max'], data['start_delay_max'])
         self.assertEqual(resp['number_laps_win'], data['number_laps_win'])
