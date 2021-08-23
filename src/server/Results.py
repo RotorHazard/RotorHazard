@@ -1152,7 +1152,7 @@ def check_win_fastest_consecutive(raceObj, **kwargs):
         if len(leaderboard) > 1:
             fast_consecutives = leaderboard[0]['consecutives_raw']
 
-            if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
+            if fast_consecutives and fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
                 max_node_consideration = 0
                 for node in raceObj.node_laps:
                     laps = raceObj.node_laps[node]
@@ -1506,7 +1506,7 @@ def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
             fast_consecutives = team_leaderboard[0]['average_consecutives_raw']
-            if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
+            if fast_consecutives and fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
                 team_laps = {}
                 for line in team_leaderboard:
                     team = line['name']
