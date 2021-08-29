@@ -340,18 +340,20 @@ def authenticate():
         {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
 def requires_auth(f):
-    @wraps(f)
-    def decorated_auth(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
+    if Config.GENERAL.get('ADMIN_USERNAME') != "" or \
+                            Config.GENERAL.get('ADMIN_PASSWORD') != "":
+        @wraps(f)
+        def decorated_auth(*args, **kwargs):
+            auth = request.authorization
+            if not auth or not check_auth(auth.username, auth.password):
+                return authenticate()
+            return f(*args, **kwargs)
+        return decorated_auth
+    # allow open access if both ADMIN fields set to empty string:
     @wraps(f)
     def decorated_noauth(*args, **kwargs):
         return f(*args, **kwargs)
-    # (allow open access if both ADMIN fields set to empty string)
-    return decorated_auth if Config.GENERAL.get('ADMIN_USERNAME') != "" or \
-                        Config.GENERAL.get('ADMIN_PASSWORD') != "" else decorated_noauth
+    return decorated_noauth
 
 # Flask template render with exception catch, so exception
 # details are sent to the log file (instead of 'stderr').
