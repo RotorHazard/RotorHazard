@@ -62,6 +62,12 @@ try:
 
     GENERAL.update(ExternalConfig['GENERAL'])
 
+    # if auth fields set to empty strings then allow open access to all pages
+    if ExternalConfig['GENERAL'].get('ADMIN_USERNAME') == "" and \
+                ExternalConfig['GENERAL'].get('ADMIN_PASSWORD') == "":
+        GENERAL['ADMIN_USERNAME'] = ''
+        GENERAL['ADMIN_PASSWORD'] = ''
+
     if 'HARDWARE' in ExternalConfig:
         HARDWARE.update(ExternalConfig['HARDWARE'])
     if 'LOGGING' in ExternalConfig:

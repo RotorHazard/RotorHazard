@@ -1,6 +1,6 @@
 *.db
 *.pyc
-config.json
+/src/server/config.json
 db_bkp
 /src/libraries
 logs

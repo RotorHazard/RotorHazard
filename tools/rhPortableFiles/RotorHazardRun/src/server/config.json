@@ -1,0 +1,29 @@
+{
+	"GENERAL": {
+		"HTTP_PORT": 5500,
+		"SECRET_KEY": "secret!",
+		"ADMIN_USERNAME": "",
+		"ADMIN_PASSWORD": "",
+		"DEBUG": true,
+		"CORS_ALLOWED_HOSTS": "*",
+		"DB_AUTOBKP_NUM_KEEP": 30
+	},
+	"SENSORS": {
+	},
+	"SERIAL_PORTS": [],
+	"LED": {
+		"LED_COUNT": 0,
+		"LED_PIN": 10,
+		"LED_FREQ_HZ": 800000,
+		"LED_DMA": 10,
+		"LED_INVERT": false,
+		"LED_CHANNEL": 0
+	},
+	"LOGGING": {
+		"CONSOLE_LEVEL": "INFO",
+		"SYSLOG_LEVEL": "NONE",
+		"FILELOG_LEVEL": "INFO",
+		"FILELOG_NUM_KEEP": 30,
+		"CONSOLE_STREAM": "stdout"
+	}
+}
