@@ -79,20 +79,25 @@ class RHRace():
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
 
 
-class StartBehavior():
+class RaceMode:
+    FIXED_TIME = 0
+    NO_TIME_LIMIT = 1
+
+
+class StartBehavior:
     HOLESHOT = 0
     FIRST_LAP = 1
     STAGGERED = 2
 
 
-class StagingTones():
+class StagingTones:
     TONES_NONE = 0
     TONES_ONE = 1
     TONES_ALL = 2
     TONES_3_2_1 = 3
 
 
-class WinCondition():
+class WinCondition:
     NONE = 0
     MOST_PROGRESS = 1 # most laps in fastest time
     FIRST_TO_LAP_X = 2
@@ -102,7 +107,7 @@ class WinCondition():
     MOST_LAPS_OVERTIME = 6 # lap count only, laps and time after T=0
 
 
-class WinStatus():
+class WinStatus:
     NONE = 0
     TIE = 1
     PENDING_CROSSING = 2
@@ -110,7 +115,7 @@ class WinStatus():
     OVERTIME = 4
 
 
-class RaceStatus():
+class RaceStatus:
     READY = BaseHardwareInterface.RACE_STATUS_READY
     STAGING = BaseHardwareInterface.RACE_STATUS_STAGING
     RACING = BaseHardwareInterface.RACE_STATUS_RACING

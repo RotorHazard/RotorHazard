@@ -147,13 +147,6 @@ class SavedRaceLap(DB.Model):
         return '<SavedRaceLap %r>' % self.id
 
 
-class LapSource:
-    REALTIME = 0
-    MANUAL = 1
-    RECALC = 2
-    AUTOMATIC = 3
-
-
 class Profiles(DB.Model):
     __tablename__ = 'profiles'
     id = DB.Column(DB.Integer, primary_key=True)

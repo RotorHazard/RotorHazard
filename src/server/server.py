@@ -2307,7 +2307,7 @@ def race_start_thread(start_token):
 
         # kick off race expire processing
         race_format = getCurrentRaceFormat()
-        if race_format and race_format.race_mode == 0: # count down
+        if race_format and race_format.race_mode == RHRace.RaceMode.FIXED_TIME: # count down
             gevent.spawn(race_expire_thread, start_token)
 
         emit_race_status() # Race page, to set race button states
@@ -2317,7 +2317,7 @@ def race_start_thread(start_token):
 @catchLogExceptionsWrapper
 def race_expire_thread(start_token):
     race_format = getCurrentRaceFormat()
-    if race_format and race_format.race_mode == 0: # count down
+    if race_format and race_format.race_mode == RHRace.RaceMode.FIXED_TIME: # count down
         gevent.sleep(race_format.race_time_sec)
         # if race still in progress and is still same race
         if RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token:
@@ -5197,7 +5197,7 @@ except Exception:
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
 SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
-                         race_mode=1,
+                         race_mode=RHRace.RaceMode.NO_TIME_LIMIT,
                          race_time_sec=0,
                          start_delay_min=0,
                          start_delay_max=0,
@@ -5205,7 +5205,7 @@ SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
                          number_laps_win=0,
                          win_condition=RHRace.WinCondition.NONE,
                          team_racing_mode=False,
-                         start_behavior=0)
+                         start_behavior=RHRace.StartBehavior.HOLESHOT)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
