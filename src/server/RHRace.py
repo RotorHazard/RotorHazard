@@ -82,11 +82,16 @@ class RHRace():
     def check_all_nodes_finished(self):
         return False not in self.node_has_finished.values()
 
-    def get_active_laps(self):
+    def get_active_laps(self, late_lap_flag=False):
         # return active (non-deleted) laps objects
         filtered = {}
-        for node_index in self.node_laps:
-            filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
+        if not late_lap_flag:
+            for node_index in self.node_laps:
+                filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
+        else:
+            for node_index in self.node_laps:
+                filtered[node_index] = list(filter(lambda lap : \
+                                (lap['deleted'] == False or lap.get('late_lap', False)), self.node_laps[node_index]))
         return filtered
 
     def any_laps_recorded(self):

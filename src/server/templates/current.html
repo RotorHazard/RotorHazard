@@ -240,16 +240,20 @@
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
-					var $tr = $('<tr>')
-					if (lap.lap_number == 0) {
+					var $tr = $('<tr>');
+					var lap_num = lap.lap_number;
+					if (lap_num == 0) {
 						$tr.addClass('lap_0');
 					}
 
 					var local_colspan = 2;
 					if(rotorhazard.display_lap_id) {
 						local_colspan = 1;
+						if(lap_num < 0) {
+							lap_num = ' ';
+						}
 						$tr.append(
-							$('<td class="display_lap_number">').text(lap.lap_number)
+							$('<td class="display_lap_number">').text(lap_num)
 						);
 					}
 					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');

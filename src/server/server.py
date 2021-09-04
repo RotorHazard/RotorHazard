@@ -4344,6 +4344,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
 
                     lap_ok_flag = True
+                    lap_late_flag = False
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
@@ -4351,6 +4352,10 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                                        .format(node.index+1, lap_number, lap_time_fmtstr, min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
+                        elif RACE.format.team_racing_mode and RACE.win_status == RHRace.WinStatus.DECLARED:
+                            lap_late_flag = True  # "late" lap pass (after team race winner declared)
+                            logger.info('Ignoring lap after team race winner declared: Node={}, lap={}, lapTime={}' \
+                                       .format(node.index+1, lap_number, lap_time_fmtstr))
 
                     if lap_ok_flag:
 
@@ -4364,7 +4369,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                             'lap_time': lap_time,
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
-                            'deleted': False
+                            'deleted': lap_late_flag
                         }
                         RACE.node_laps[node.index].append(lap_data)
 
@@ -4382,8 +4387,8 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                             'results': RACE.results
                             })
 
-                        logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                            .format(node.index+1, lap_number, lap_time_fmtstr))
+                        logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}, Late: {3}' \
+                            .format(node.index+1, lap_number, lap_time_fmtstr, lap_late_flag))
                         emit_current_laps() # update all laps on the race page
                         emit_current_leaderboard() # generate and update leaderboard
 
@@ -4404,6 +4409,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                             if RACE.format.team_racing_mode:
                                 team = RHData.get_pilot(pilot_id).team
                                 team_laps = RACE.team_results['meta']['teams'][team]['laps']
+                                logger.debug('Team {} lap {}'.format(team, team_laps))
                                 # if winning team has been declared then don't announce team lap number
                                 if race_format.win_condition != RHRace.WinCondition.NONE and \
                                                        RACE.win_status == RHRace.WinStatus.DECLARED:

@@ -499,21 +499,29 @@
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
-					var tr = $('<tr>')
-					if (lap.lap_number == 0) {
+					var tr = $('<tr>');
+					var lap_num = lap.lap_number;
+					if (lap_num == 0) {
 						tr.addClass('lap_0');
 					}
 
 					var local_colspan = 2;
 					if(rotorhazard.display_lap_id) {
 						local_colspan = 1;
+						if(lap_num < 0) {
+							lap_num = ' ';
+						}
 						tr.append(
-							$('<td class="display_lap_number">').text(lap.lap_number)
+							$('<td class="display_lap_number">').text(lap_num)
 						);
 					}
-					time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
+					time_td = $('<td colspan="'+local_colspan+'">').text(' ' + lap.lap_time + ' ').append(
 							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
 							);
+					if(lap.late_lap) {
+						time_td.prepend(
+								$('<button class="restore_deleted_lap" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">+</button>'));
+					}
 					local_prepend = $('<span class="from_start">');
 
 					if(rotorhazard.display_time_first_pass) {
@@ -882,6 +890,15 @@
 				lap_index: parseInt($(this).data('lap-index')),
 			};
 			socket.emit('delete_lap', data);
+			return false;
+		});
+
+		$(document).on("click", ".restore_deleted_lap", function (event) { // Needed for buttons added after document load
+			var data = {
+				node: parseInt($(this).data('node')),
+				lap_index: parseInt($(this).data('lap-index')),
+			};
+			socket.emit('restore_deleted_lap', data);
 			return false;
 		});
 
