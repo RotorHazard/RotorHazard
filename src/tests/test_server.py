@@ -23,7 +23,7 @@ class ServerTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        server.shutdown()
+        server.shutdown('Tear down')
         log.close_logging()
 
     def get_response(self, event):

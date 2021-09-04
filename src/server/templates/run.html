@@ -593,14 +593,14 @@
 				}
 
 				if (rotorhazard.voice_lap_count == 1 ||
-							(rotorhazard.voice_lap_count == 2 && (!msg.team_laps))) {
+							(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += __l('Lap') + " " + msg.lap;
 				}
 
 				if (rotorhazard.voice_lap_time == 1 ||
-							(rotorhazard.voice_lap_time == 2 && (!msg.team_laps))) {
+							(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += msg.phonetic;

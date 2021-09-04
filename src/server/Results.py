@@ -857,8 +857,7 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
     # if racing is stopped, all pilots have completed last lap after time expired,
     # or a forced determination condition, make a final call
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs:
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs:
         leaderboard = raceObj.results['by_race_time']
         if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
@@ -919,7 +918,7 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
                         # pilot is on lead lap
                         node_index = line['node']
 
-                        if raceObj.node_has_finished[node_index] == False:
+                        if raceObj.get_node_finished_flag(node_index) == False:
                             pilots_can_pass += 1
                     else:
                         # lower results no longer need checked
@@ -934,8 +933,7 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
 
 def check_win_most_laps(raceObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         leaderboard = raceObj.results['by_race_time']
         if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
@@ -996,10 +994,10 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
                     node_index = line['node']
                     if line['laps'] >= lead_lap: # pilot is on lead lap
                         pilots_tied += 1
-                        if raceObj.node_has_finished[node_index] == False:
+                        if raceObj.get_node_finished_flag(node_index) == False:
                             pilots_can_pass += 1
                     elif line['laps'] >= lead_lap - 1: # pilot can reach lead lap
-                        if raceObj.node_has_finished[node_index] == False:
+                        if raceObj.get_node_finished_flag(node_index) == False:
                             pilots_can_tie += 1
                     else:
                         # lower results no longer need checked
@@ -1011,7 +1009,7 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
                         return check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
                     elif pilots_tied > 0: # add "and pilots_can_tie == 0" to wait for 3+-way?
                         node_index = leaderboard[0]['node']
-                        if raceObj.node_has_finished[node_index] == True:
+                        if raceObj.get_node_finished_flag(node_index) == True:
                             return check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
 
     return {
@@ -1090,8 +1088,7 @@ def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
 
 def check_win_fastest_lap(raceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         leaderboard = raceObj.results['by_fastest_lap']
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['fastest_lap_raw']
@@ -1135,8 +1132,7 @@ def check_win_fastest_lap(raceObj, **kwargs):
 
 def check_win_fastest_consecutive(raceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         leaderboard = raceObj.results['by_consecutives']
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['consecutives_raw']
@@ -1177,8 +1173,7 @@ def check_win_fastest_consecutive(raceObj, **kwargs):
 
 def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_info = calc_team_leaderboard(raceObj, rhDataObj)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = raceObj.results['by_race_time']
@@ -1242,7 +1237,7 @@ def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
                     if team not in team_members_finished:
                         team_members_finished[team] = 0
 
-                    if raceObj.node_has_finished[node_index]:
+                    if raceObj.get_node_finished_flag(node_index):
                         team_members_finished[team] += 1
 
                 leader_has_finished = team_members_finished[team_leaderboard[0]['name']] == team_leaderboard[0]['members']
@@ -1274,8 +1269,7 @@ def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
 
 def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_info = calc_team_leaderboard(raceObj, rhDataObj)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = raceObj.results['by_race_time']
@@ -1334,7 +1328,7 @@ def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
                     if team not in team_members_finished:
                         team_members_finished[team] = 0
 
-                    if raceObj.node_has_finished[node_index]:
+                    if raceObj.get_node_finished_flag(node_index):
                         team_members_finished[team] += 1
 
                 teams_can_pass = 0
@@ -1430,8 +1424,7 @@ def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
 
 def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_avg_fastest_lap']
         if len(team_leaderboard) > 1:
             if team_leaderboard[0]['laps'] > 0: # must have at least one lap
@@ -1491,8 +1484,7 @@ def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
 
 def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
             race_format = raceObj.format
