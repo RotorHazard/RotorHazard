@@ -864,18 +864,20 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap > 0: # must have at least one lap
-                # prevent win declaration if there are active crossings coming onto lead lap
-                for line in leaderboard[1:]:
-                    if line['laps'] >= lead_lap - 1:
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
-                    else:
-                        # lower results no longer need checked
-                        break
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings coming onto lead lap
+                    for line in leaderboard[1:]:
+                        if line['laps'] >= lead_lap - 1:
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
+                        else:
+                            # lower results no longer need checked
+                            break
 
                 # check for tie
                 if leaderboard[1]['laps'] == lead_lap:
@@ -939,19 +941,21 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap > 0: # must have at least one lap
-                # check if there are active crossings coming onto lead lap
-                for line in leaderboard[1:]:
-                    if line['laps'] >= lead_lap - 1:
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
-                    else:
-                        # lower results no longer need checked
-                        break
-
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # check if there are active crossings coming onto lead lap
+                    for line in leaderboard[1:]:
+                        if line['laps'] >= lead_lap - 1:
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
+                        else:
+                            # lower results no longer need checked
+                            break
+    
                 # check for tie
                 if leaderboard[1]['laps'] == lead_lap:
                     logger.info('Race tied at %d laps', leaderboard[1]['laps'])
@@ -1052,18 +1056,20 @@ def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap >= race_format.number_laps_win: # lead lap passes win threshold
-                # prevent win declaration if there are active crossings coming onto lead lap
-                for line in leaderboard[1:]: # check lower position
-                    if line['laps'] >= lead_lap - 1:
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
-                    else:
-                        # lower results no longer need checked
-                        break
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings coming onto lead lap
+                    for line in leaderboard[1:]: # check lower position
+                        if line['laps'] >= lead_lap - 1:
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
+                        else:
+                            # lower results no longer need checked
+                            break
 
                 # check for tie
                 if leaderboard[1]['laps'] == lead_lap:
@@ -1181,15 +1187,17 @@ def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
             lead_lap_time = team_leaderboard[0]['total_time_raw']
 
             if lead_laps > 0: # must have at least one lap
-                # prevent win declaration if there are active crossings
-                for line in individual_leaderboard:
-                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings
+                    for line in individual_leaderboard:
+                        if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_laps:
@@ -1275,15 +1283,17 @@ def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
             lead_laps = team_leaderboard[0]['laps']
 
             if lead_laps > 0: # must have at least one lap
-                # prevent win declaration if there are active crossings
-                for line in individual_leaderboard:
-                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings
+                    for line in individual_leaderboard:
+                        if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_laps:
@@ -1391,14 +1401,16 @@ def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
             lead_lap = team_leaderboard[0]['laps']
 
             if lead_lap >= race_format.number_laps_win: # lead lap passes win threshold
-                # prevent win declaration if there are active crossings
-                for line in individual_leaderboard:
-                    node = interfaceObj.nodes[line['node']]
-                    if node.pass_crossing_flag:
-                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                        return {
-                            'status': WinStatus.PENDING_CROSSING
-                        }
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings
+                    for line in individual_leaderboard:
+                        node = interfaceObj.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_lap:

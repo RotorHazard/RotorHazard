@@ -2347,9 +2347,24 @@ def race_expire_thread(start_token):
 @catchLogExceptionsWrapper
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
-
     if CLUSTER:
         CLUSTER.emitToSplits('stop_race')
+    # clear any crossings still in progress
+    any_forced_flag = False
+    for node in INTERFACE.nodes:
+        if node.crossing_flag and node.frequency > 0 and \
+                        node.current_pilot_id != RHUtils.PILOT_ID_NONE:
+            logger.info("Forcing end crossing for node {} at race stop (rssi={}, enterAt={}, exitAt={})".\
+                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+            INTERFACE.force_end_crossing(node.index)
+            any_forced_flag = True
+    if any_forced_flag:  # give forced end-crossings a chance to complete before stopping race
+        gevent.spawn_later(0.5, do_stop_race_actions)
+    else:
+        do_stop_race_actions()
+
+@catchLogExceptionsWrapper
+def do_stop_race_actions():
     if RACE.race_status == RHRace.RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
@@ -4381,9 +4396,9 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                                                 (check_leader and \
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)))
 
-                            check_win_condition() # check for and announce winner
-                            if RACE.win_status == RHRace.WinStatus.DECLARED:
-                                emit_current_leaderboard()  # show declared winner on leaderboard
+                            check_win_condition() # check for and announce possible winner
+                            if RACE.win_status != RHRace.WinStatus.NONE:
+                                emit_current_leaderboard()  # show current race status on leaderboard
 
                     else:
                         # record lap as 'deleted'
