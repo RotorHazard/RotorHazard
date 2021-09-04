@@ -820,37 +820,35 @@ def calc_team_leaderboard(raceObj, rhDataObj):
         return leaderboard_output
     return None
 
-def check_win_condition(raceObj, rhDataObj, interfaceObj, **kwargs):
-    if raceObj.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING, WinStatus.OVERTIME]:
-        race_format = raceObj.format
-        if race_format:
-            if race_format.team_racing_mode:
-                if race_format.win_condition == WinCondition.MOST_PROGRESS:
-                    return check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS:
-                    return check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                    return check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                    return check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    return check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
-                    return check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
-            else:
-                if race_format.win_condition == WinCondition.MOST_PROGRESS:
-                    return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS:
-                    return check_win_most_laps(raceObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                    return check_win_first_to_x(raceObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                    return check_win_fastest_lap(raceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    return check_win_fastest_consecutive(raceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
-                    return check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs)
-
+def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
+    race_format = raceObj.format
+    if race_format:
+        if race_format.team_racing_mode:
+            if race_format.win_condition == WinCondition.MOST_PROGRESS:
+                return check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS:
+                return check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                return check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_LAP:
+                return check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                return check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
+                return check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
+        else:
+            if race_format.win_condition == WinCondition.MOST_PROGRESS:
+                return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS:
+                return check_win_most_laps(raceObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                return check_win_first_to_x(raceObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_LAP:
+                return check_win_fastest_lap(raceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                return check_win_fastest_consecutive(raceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
+                return check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs)
     return None
 
 def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
