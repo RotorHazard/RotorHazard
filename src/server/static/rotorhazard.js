@@ -7,6 +7,17 @@ const SPLMSK_PILOT_NAME = 0x01
 const SPLMSK_SPLIT_ID = 0x02
 const SPLMSK_SPLIT_TIME = 0x04
 
+// minimum value in logarithmic volume range and limit value for "zero" volume
+const MIN_LOG_VOLUME = 0.01;
+const MIN_LOG_VOL_LIM = MIN_LOG_VOLUME + MIN_LOG_VOLUME/1000.0;
+const MAX_LOG_VOLUME = 1.0;
+
+const LEADER_FLAG_CHAR = 'L';
+const WINNER_FLAG_CHAR = 'W';
+
+var speakObjsQueue = [];
+var checkSpeakQueueFlag = true;
+
 /* global functions */
 function supportsLocalStorage() {
 	try {
@@ -435,41 +446,115 @@ var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 //callback to use on end of tone
 /* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 function play_beep(duration, frequency, volume, type, fadetime, callback) {
-	var oscillator = globalAudioCtx.createOscillator();
-	var gainNode = globalAudioCtx.createGain();
-
-	oscillator.connect(gainNode);
-	gainNode.connect(globalAudioCtx.destination);
-
-	if (!duration)
-		duration = 500;
-
-	if (volume) {
+	if (volume && volume > MIN_LOG_VOL_LIM) {
+		var oscillator = globalAudioCtx.createOscillator();
+		var gainNode = globalAudioCtx.createGain();
+	
+		oscillator.connect(gainNode);
+		gainNode.connect(globalAudioCtx.destination);
+	
+		if (!duration)
+			duration = 500;
+	
 		gainNode.gain.value = volume;
-	} else {
-		gainNode.gain.value = 1;
+	
+		if (frequency)
+			oscillator.frequency.value = frequency;
+		if (type)
+			oscillator.type = type;
+		if (!fadetime)
+			fadetime = 1;
+		if (callback)
+			oscillator.onended = callback;
+	
+		if(isFirefox)
+			fadetime = 0;
+	
+		oscillator.start();
+		setTimeout(function(fade){
+			gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
+		}, duration, fadetime);
+		/*
+		setTimeout(function(){
+			oscillator.stop();
+		}, duration + (fadetime * 1000));*/
 	}
+};
 
-	if (frequency)
-		oscillator.frequency.value = frequency;
-	if (type)
-		oscillator.type = type;
-	if (!fadetime)
-		fadetime = 1;
-	if (callback)
-		oscillator.onended = callback;
+function play_mp3_beep(audio_obj, volume) {
+	if (volume && volume > MIN_LOG_VOL_LIM) {
+		audio_obj.volume = volume;
+		audio_obj.play();
+	}
+};
 
-	if(isFirefox)
-		fadetime = 0;
+function playLeaderTone() {
+	if (rotorhazard.use_mp3_tones) {
+		play_mp3_beep(sound_leader, rotorhazard.indicator_beep_volume);
+	}
+	else {
+		play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
+		setTimeout(function(tone){
+			play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 75, 0);
+	}
+};
 
-	oscillator.start();
-	setTimeout(function(fade){
-		gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
-	}, duration, fadetime);
-	/*
-	setTimeout(function(){
-		oscillator.stop();
-	}, duration + (fadetime * 1000));*/
+function playWinnerTone() {
+	if (rotorhazard.use_mp3_tones) {
+		play_mp3_beep(sound_winner, rotorhazard.indicator_beep_volume);
+	}
+	else {
+		play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+		setTimeout(function(tone) {
+			play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 50, 0);
+		setTimeout(function(tone) {
+			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+		}, 125, 0);
+		setTimeout(function(tone) {
+			play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 175, 0);
+		setTimeout(function(tone) {
+			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+		}, 250, 0);
+		setTimeout(function(tone) {
+			play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 300, 0);
+	}
+};
+
+function doSpeak(obj) {
+	if (obj.startsWith(LEADER_FLAG_CHAR)) {
+		obj = obj.substring(1);
+		if (rotorhazard.beep_race_leader_lap) {
+			playLeaderTone();
+		}
+	}
+	else if (obj.startsWith(WINNER_FLAG_CHAR)) {
+		obj = obj.substring(1);
+		if (rotorhazard.beep_race_winner_declared) {
+			playWinnerTone();
+		}
+	}
+	if (rotorhazard.voice_volume && rotorhazard.voice_volume > MIN_LOG_VOL_LIM) {
+		if (obj.length > 0) {
+			$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
+			return true;
+		}
+	}
+	return false;
+};
+
+function speak(obj, priority) {
+	if (typeof(priority)=='undefined')
+		priority = false;
+
+	if (priority) {
+		speakObjsQueue.unshift(obj);
+	} else {
+		speakObjsQueue.push(obj);
+	}
 };
 
 function __(text) {
@@ -1094,8 +1179,8 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 	if (timer.staging_tones == TONES_ONE
 		&& timer.max_delay >= 1) {
 		// beep on start if single staging tone
-		if( rotorhazard.use_mp3_tones){
-			sound_stage.play();
+		if (rotorhazard.use_mp3_tones) {
+			play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 		}
 		else {
 			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
@@ -1105,8 +1190,8 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 
 function playStageToneOnSecond(time_s){
 	if (time_s * 10 % 10 == 0) {
-		if( rotorhazard.use_mp3_tones){
-			sound_stage.play();
+		if (rotorhazard.use_mp3_tones) {
+			play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 		} else {
 			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 		}
@@ -1140,8 +1225,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		(!timer.count_up && timer.time_s == timer.duration)
 		) {
 		// play start tone
-		if( rotorhazard.use_mp3_tones){
-			sound_buzzer.play();
+		if (rotorhazard.use_mp3_tones) {
+			play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
 		}
 		else {
 			play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
@@ -1179,8 +1264,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
-	if( rotorhazard.use_mp3_tones){
-		sound_buzzer.play();
+	if (rotorhazard.use_mp3_tones) {
+		play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
 	}
 	else {
 		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);

@@ -28,8 +28,7 @@
 		'exporter_list',
 	];
 
-	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
-	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 	var heat_to_unlock = null;
 	var class_to_unlock = null;
@@ -1216,7 +1215,7 @@
 			if (phonetic)
 				ttstext = phonetic;
 
-			speak('<div class="speech">' + ttstext + '</div>');
+			doSpeak('<div class="speech">' + ttstext + '</div>');
 			return false;
 		});
 
@@ -1389,7 +1388,7 @@
 		});
 
 		$('#play_voice_test').click(function (event) {
-			speak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
+			doSpeak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
 			return false;
 		});
 
@@ -1759,8 +1758,8 @@
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
 				if (rotorhazard.beep_crossing_entered) {
-					if( rotorhazard.use_mp3_tones){
-						sound_enter.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_enter, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
@@ -1769,8 +1768,8 @@
 			}
 			else {
 				if (rotorhazard.beep_crossing_exited) {
-					if( rotorhazard.use_mp3_tones){
-						sound_exit.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_exit, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -1785,8 +1784,8 @@
 		socket.on('cluster_connect_change', function (msg) {
 			if (rotorhazard.beep_cluster_connect) {
 				if (msg.connect_flag) {
-					if( rotorhazard.use_mp3_tones){
-						sound_cconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(120, 225, rotorhazard.indicator_beep_volume, 'square');
@@ -1796,8 +1795,8 @@
 					}
 				}
 				else {
-					if( rotorhazard.use_mp3_tones){
-						sound_cdisconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cdisconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(80, 200, rotorhazard.indicator_beep_volume, 'square');
@@ -2171,9 +2170,6 @@
 		});
 	});
 
-	function speak(obj) {
-		$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
-	};
 </script>
 {% endblock %} {% block content %}
 <main class="page-settings">
@@ -2644,7 +2640,7 @@
 					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_voice_volume" min="1" max="100">
+				<input type="range" id="set_voice_volume" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2665,7 +2661,7 @@
 					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_tone_volume" min="1" max="100">
+				<input type="range" id="set_tone_volume" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2689,7 +2685,7 @@
 					<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_indicator_volume" min="1" max="100">
+				<input type="range" id="set_indicator_volume" min="0" max="100">
 			</li>
 		</ol>
 	</div>
