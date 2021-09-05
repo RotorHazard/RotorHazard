@@ -974,6 +974,7 @@ var rotorhazard = {
 	display_lap_id: false, //enables the display of the lap id
 	display_time_start: false, //shows the timestamp of the lap since the race was started
 	display_time_first_pass: false, //shows the timestamp of the lap since the first pass was recorded
+	display_laps_reversed: false, //shows race laps in reverse order
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
@@ -1034,6 +1035,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
 		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
 		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
+		localStorage['rotorhazard.display_laps_reversed'] = JSON.stringify(this.display_laps_reversed);
 		return true;
 	},
 	restoreData: function(dataType) {
@@ -1127,6 +1129,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.display_time_first_pass']) {
 				this.display_time_first_pass = JSON.parse(localStorage['rotorhazard.display_time_first_pass']);
+			}
+			if (localStorage['rotorhazard.display_laps_reversed']) {
+				this.display_laps_reversed = JSON.parse(localStorage['rotorhazard.display_laps_reversed']);
 			}
 			return true;
 		}
