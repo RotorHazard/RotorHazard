@@ -102,7 +102,9 @@ The status of connected secondary timers may be viewed on the *Settings* page in
  * *Availability* - Availability rating (as a percentage) for the secondary timer
  * *Last Contact* - Time (in seconds) since last contact with the timer, or a status message
 
-Doing normal operation, lap history-data will not be saved on the secondary timer(s). To view lap history-data and perform marshaling on a secondary timer, hit the '*Save Laps*' button on the secondary timer before the race is saved or discarded on the primary, and then go to the *Marshal* page on the secondary timer.
+The web-GUI for the secondary timer may be accessed by clicking on the *Address* value on the status display on the primary timer. From there, lap history may be viewed, marshaling performed and settings adjusted.
+
+When a secondary timer operating in 'split' mode establishes a connection (aka joins the cluster), the database on the timer is backed up and then any existing race data are cleared. The filenames on these backups will have the form "autoBkp_database_YYYYMMDD_HHMMSS.db". The number of these "autoBkp" files retained is limited by the DB_AUTOBKP_NUM_KEEP setting (in "config.json" under GENERAL), with the default value of 30.
 
 A secondary can also be a primary, but sub-splits are not propagated upwards.
 

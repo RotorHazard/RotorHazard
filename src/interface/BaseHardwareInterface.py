@@ -75,6 +75,9 @@ class BaseHardwareInterface:
             node.crossing_flag = cross_flag
             if cross_flag:
                 node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
+                node.enter_at_timestamp = monotonic()
+            else:
+                node.exit_at_timestamp = monotonic()
             if callable(self.node_crossing_callback):
                 cross_list.append(node)
 
@@ -171,6 +174,7 @@ class BaseHardwareInterface:
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
         lap_timestamp = monotonic() - (ms_val / 1000.0)
+        node.enter_at_timestamp = node.exit_at_timestamp = 0
         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
     def set_race_status(self, race_status):

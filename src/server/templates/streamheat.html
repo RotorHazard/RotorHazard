@@ -121,12 +121,8 @@
 
 		socket.on('current_heat', function (msg) {
 			if (!{{ heat_id }}) {
-				if (msg.heat_class) {
-					streamheat = msg.current_heat;
-					display_heat_data(heat_data);
-				} else {
-					display_nothing()
-				}
+				streamheat = msg.current_heat;
+				display_heat_data(heat_data);
 			}
 		});
 	});

@@ -241,7 +241,7 @@ def calc_leaderboard(rhDataObj, **params):
             node_index = 0
             laps = []
             for node_index in raceObj.node_pilots:
-                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes:
+                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
                     laps = raceObj.get_active_laps()[node_index]
                     found_pilot = True
                     break
@@ -341,7 +341,7 @@ def calc_leaderboard(rhDataObj, **params):
             laps_total = 0
             for lap in result_pilot['current_laps']:
                 race_total += lap['lap_time']
-                if lap['lap_number'] > 0:
+                if lap['lap_number']:
                     laps_total += lap['lap_time']
 
             result_pilot['total_time'] = race_total
@@ -392,7 +392,7 @@ def calc_leaderboard(rhDataObj, **params):
                 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
                     timed_laps = result_pilot['current_laps']
                 else:
-                    timed_laps = filter(lambda x : x['lap_number'] > 0, result_pilot['current_laps'])
+                    timed_laps = filter(lambda x : x['lap_number'], result_pilot['current_laps'])
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 result_pilot['fastest_lap'] = fast_lap
@@ -411,7 +411,7 @@ def calc_leaderboard(rhDataObj, **params):
                     result_pilot['fastest_lap_source'] = None
                 else:
                     for race in selected_races:
-                        if race.id == lap.race_id:
+                        if race.id == fast_lap.race_id:
                             result_pilot['fastest_lap_source'] = {
                                 'round': race.round_id,
                                 'heat': race.heat_id,
@@ -820,62 +820,61 @@ def calc_team_leaderboard(raceObj, rhDataObj):
         return leaderboard_output
     return None
 
-def check_win_condition(raceObj, rhDataObj, interfaceObj, **kwargs):
-    if raceObj.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING, WinStatus.OVERTIME]:
-        race_format = raceObj.format
-        if race_format:
-            if race_format.team_racing_mode:
-                if race_format.win_condition == WinCondition.MOST_PROGRESS:
-                    return check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS:
-                    return check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                    return check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                    return check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    return check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
-                    return check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
-            else:
-                if race_format.win_condition == WinCondition.MOST_PROGRESS:
-                    return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS:
-                    return check_win_most_laps(raceObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                    return check_win_first_to_x(raceObj, interfaceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                    return check_win_fastest_lap(raceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    return check_win_fastest_consecutive(raceObj, **kwargs)
-                elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
-                    return check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs)
-
+def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
+    race_format = raceObj.format
+    if race_format:
+        if race_format.team_racing_mode:
+            if race_format.win_condition == WinCondition.MOST_PROGRESS:
+                return check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS:
+                return check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                return check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_LAP:
+                return check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                return check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
+                return check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
+        else:
+            if race_format.win_condition == WinCondition.MOST_PROGRESS:
+                return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS:
+                return check_win_most_laps(raceObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                return check_win_first_to_x(raceObj, interfaceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_LAP:
+                return check_win_fastest_lap(raceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                return check_win_fastest_consecutive(raceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
+                return check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs)
     return None
 
 def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
     # if racing is stopped, all pilots have completed last lap after time expired,
     # or a forced determination condition, make a final call
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs:
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs:
         leaderboard = raceObj.results['by_race_time']
         if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap > 0: # must have at least one lap
-                # prevent win declaration if there are active crossings coming onto lead lap
-                for line in leaderboard[1:]:
-                    if line['laps'] >= lead_lap - 1:
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
-                    else:
-                        # lower results no longer need checked
-                        break
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings coming onto lead lap
+                    for line in leaderboard[1:]:
+                        if line['laps'] >= lead_lap - 1:
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
+                        else:
+                            # lower results no longer need checked
+                            break
 
                 # check for tie
                 if leaderboard[1]['laps'] == lead_lap:
@@ -917,7 +916,7 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
                         # pilot is on lead lap
                         node_index = line['node']
 
-                        if raceObj.node_has_finished[node_index] == False:
+                        if raceObj.get_node_finished_flag(node_index) == False:
                             pilots_can_pass += 1
                     else:
                         # lower results no longer need checked
@@ -932,26 +931,27 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
 
 def check_win_most_laps(raceObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         leaderboard = raceObj.results['by_race_time']
         if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap > 0: # must have at least one lap
-                # check if there are active crossings coming onto lead lap
-                for line in leaderboard[1:]:
-                    if line['laps'] >= lead_lap - 1:
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
-                    else:
-                        # lower results no longer need checked
-                        break
-
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # check if there are active crossings coming onto lead lap
+                    for line in leaderboard[1:]:
+                        if line['laps'] >= lead_lap - 1:
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
+                        else:
+                            # lower results no longer need checked
+                            break
+    
                 # check for tie
                 if leaderboard[1]['laps'] == lead_lap:
                     logger.info('Race tied at %d laps', leaderboard[1]['laps'])
@@ -992,10 +992,10 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
                     node_index = line['node']
                     if line['laps'] >= lead_lap: # pilot is on lead lap
                         pilots_tied += 1
-                        if raceObj.node_has_finished[node_index] == False:
+                        if raceObj.get_node_finished_flag(node_index) == False:
                             pilots_can_pass += 1
                     elif line['laps'] >= lead_lap - 1: # pilot can reach lead lap
-                        if raceObj.node_has_finished[node_index] == False:
+                        if raceObj.get_node_finished_flag(node_index) == False:
                             pilots_can_tie += 1
                     else:
                         # lower results no longer need checked
@@ -1007,7 +1007,7 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
                         return check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
                     elif pilots_tied > 0: # add "and pilots_can_tie == 0" to wait for 3+-way?
                         node_index = leaderboard[0]['node']
-                        if raceObj.node_has_finished[node_index] == True:
+                        if raceObj.get_node_finished_flag(node_index) == True:
                             return check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
 
     return {
@@ -1052,18 +1052,20 @@ def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap >= race_format.number_laps_win: # lead lap passes win threshold
-                # prevent win declaration if there are active crossings coming onto lead lap
-                for line in leaderboard[1:]: # check lower position
-                    if line['laps'] >= lead_lap - 1:
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
-                    else:
-                        # lower results no longer need checked
-                        break
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings coming onto lead lap
+                    for line in leaderboard[1:]: # check lower position
+                        if line['laps'] >= lead_lap - 1:
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
+                        else:
+                            # lower results no longer need checked
+                            break
 
                 # check for tie
                 if leaderboard[1]['laps'] == lead_lap:
@@ -1084,8 +1086,7 @@ def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
 
 def check_win_fastest_lap(raceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         leaderboard = raceObj.results['by_fastest_lap']
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['fastest_lap_raw']
@@ -1129,8 +1130,7 @@ def check_win_fastest_lap(raceObj, **kwargs):
 
 def check_win_fastest_consecutive(raceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         leaderboard = raceObj.results['by_consecutives']
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['consecutives_raw']
@@ -1152,7 +1152,7 @@ def check_win_fastest_consecutive(raceObj, **kwargs):
         if len(leaderboard) > 1:
             fast_consecutives = leaderboard[0]['consecutives_raw']
 
-            if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
+            if fast_consecutives and fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
                 max_node_consideration = 0
                 for node in raceObj.node_laps:
                     laps = raceObj.node_laps[node]
@@ -1171,8 +1171,7 @@ def check_win_fastest_consecutive(raceObj, **kwargs):
 
 def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_info = calc_team_leaderboard(raceObj, rhDataObj)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = raceObj.results['by_race_time']
@@ -1181,15 +1180,17 @@ def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
             lead_lap_time = team_leaderboard[0]['total_time_raw']
 
             if lead_laps > 0: # must have at least one lap
-                # prevent win declaration if there are active crossings
-                for line in individual_leaderboard:
-                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings
+                    for line in individual_leaderboard:
+                        if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_laps:
@@ -1234,7 +1235,7 @@ def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
                     if team not in team_members_finished:
                         team_members_finished[team] = 0
 
-                    if raceObj.node_has_finished[node_index]:
+                    if raceObj.get_node_finished_flag(node_index):
                         team_members_finished[team] += 1
 
                 leader_has_finished = team_members_finished[team_leaderboard[0]['name']] == team_leaderboard[0]['members']
@@ -1266,8 +1267,7 @@ def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
 
 def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_info = calc_team_leaderboard(raceObj, rhDataObj)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = raceObj.results['by_race_time']
@@ -1275,15 +1275,17 @@ def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
             lead_laps = team_leaderboard[0]['laps']
 
             if lead_laps > 0: # must have at least one lap
-                # prevent win declaration if there are active crossings
-                for line in individual_leaderboard:
-                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
-                        node = interfaceObj.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings
+                    for line in individual_leaderboard:
+                        if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                                return {
+                                    'status': WinStatus.PENDING_CROSSING
+                                }
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_laps:
@@ -1324,7 +1326,7 @@ def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
                     if team not in team_members_finished:
                         team_members_finished[team] = 0
 
-                    if raceObj.node_has_finished[node_index]:
+                    if raceObj.get_node_finished_flag(node_index):
                         team_members_finished[team] += 1
 
                 teams_can_pass = 0
@@ -1391,14 +1393,16 @@ def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
             lead_lap = team_leaderboard[0]['laps']
 
             if lead_lap >= race_format.number_laps_win: # lead lap passes win threshold
-                # prevent win declaration if there are active crossings
-                for line in individual_leaderboard:
-                    node = interfaceObj.nodes[line['node']]
-                    if node.pass_crossing_flag:
-                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                        return {
-                            'status': WinStatus.PENDING_CROSSING
-                        }
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # prevent win declaration if there are active crossings
+                    for line in individual_leaderboard:
+                        node = interfaceObj.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_lap:
@@ -1418,8 +1422,7 @@ def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
 
 def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_avg_fastest_lap']
         if len(team_leaderboard) > 1:
             if team_leaderboard[0]['laps'] > 0: # must have at least one lap
@@ -1479,8 +1482,7 @@ def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
 
 def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
-        False not in raceObj.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+                raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
             race_format = raceObj.format
@@ -1504,7 +1506,7 @@ def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
             fast_consecutives = team_leaderboard[0]['average_consecutives_raw']
-            if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
+            if fast_consecutives and fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
                 team_laps = {}
                 for line in team_leaderboard:
                     team = line['name']
@@ -1554,4 +1556,29 @@ def get_leading_team_name(results):
             return results_list[0]['name']
     except Exception:
         logger.exception("Error in Results 'get_leading_team_name()'")
+    return ''
+
+def get_pilot_lap_counts_str(results):
+    try:
+        primary_leaderboard = results['meta']['primary_leaderboard']
+        results_list = results[primary_leaderboard]
+        lap_strs_list = []
+        for res_obj in results_list:
+            lap_strs_list.append("{}={}".format(res_obj['callsign'], res_obj['laps']))
+        return ", ".join(lap_strs_list)
+    except Exception:
+        logger.exception("Error in Results 'get_pilot_lap_totals_str()'")
+    return ''
+
+def get_team_lap_totals_str(results):
+    try:
+        primary_leaderboard = results['meta']['primary_leaderboard']
+        results_list = results[primary_leaderboard]
+        lap_strs_list = []
+        for res_obj in results_list:
+            lap_strs_list.append("{}={}".format(res_obj['name'], res_obj['laps']))
+        lap_strs_list.sort()
+        return ", ".join(lap_strs_list)
+    except Exception:
+        logger.exception("Error in Results 'get_team_lap_totals_str()'")
     return ''

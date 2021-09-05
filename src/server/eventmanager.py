@@ -160,6 +160,7 @@ class Evt:
     LAPS_CLEAR = 'lapsClear'
     LAPS_RESAVE = 'lapsResave'
     LAP_DELETE = 'lapDelete'
+    LAP_RESTORE_DELETED = 'lapRestoreDeleted'
     # Results cache
     CACHE_CLEAR = 'cacheClear'
     CACHE_READY = 'cacheReady'

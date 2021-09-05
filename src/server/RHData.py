@@ -12,6 +12,7 @@ import os
 import traceback
 import shutil
 import json
+import glob
 from types import MappingProxyType
 from . import RHUtils
 from .eventmanager import Evt
@@ -112,7 +113,7 @@ class RHData():
 
     # File Handling
 
-    def backup_db_file(self, copy_flag):
+    def backup_db_file(self, copy_flag, prefix_str=''):
         self.close()
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
@@ -120,6 +121,7 @@ class RHData():
             time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         try:
             (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+            dbname = prefix_str + dbname
             bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
             if not os.path.exists(self._DB_BKP_DIR_NAME):
                 os.makedirs(self._DB_BKP_DIR_NAME)
@@ -134,9 +136,27 @@ class RHData():
                 os.renames(self._DB_FILE_NAME, bkp_name)
                 logger.info('Moved old database file to:  ' + bkp_name)
             RHUtils.checkSetFileOwnerPi(bkp_name)
-        except Exception:
-            logger.exception('Error backing up database file')
+        except Exception as ex:
+            logger.exception("Error backing up database file: {}".format(ex))
         return bkp_name
+
+    def delete_old_db_autoBkp_files(self, num_keep_val, prefix_str=''):
+        try:
+            if num_keep_val > 0:
+                (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+                dbname = prefix_str + dbname
+                file_list = list(filter(os.path.isfile, glob.glob(self._DB_BKP_DIR_NAME + \
+                                                        '/' + dbname + '*' + dbext)))
+                file_list.sort(key=os.path.getmtime)  # sort by last-modified time
+                num_del = 0
+                if len(file_list) > num_keep_val:
+                    for del_path in file_list[:(-num_keep_val)]:
+                        os.remove(del_path)
+                        num_del += 1
+
+                logger.info("Removed {} old DB-autoBkp file(s)".format(num_del))
+        except Exception as ex:
+            logger.error("Error removing old DB-autoBkp files: {}".format(ex))
 
     # Migration
 
@@ -623,6 +643,10 @@ class RHData():
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
 
+    def get_heat_note(self, heat_id):
+        heat_data = self._Database.Heat.query.get(heat_id)
+        return heat_data.note if heat_data else None
+
     def get_heats(self):
         return self._Database.Heat.query.all()
 
@@ -785,7 +809,7 @@ class RHData():
         return heat, race_list
 
     def delete_heat(self, heat_id):
-        # Deletes heat. Returns True/False success
+        # Deletes heat. Returns heat-ID if successful, None if not
         heat_count = self._Database.Heat.query.count()
         heat = self._Database.Heat.query.get(heat_id)
         if heat and heat_count > 1: # keep at least one heat
@@ -795,7 +819,7 @@ class RHData():
 
             if has_race or (self._RACE.current_heat == heat.id and self._RACE.race_status != RaceStatus.READY):
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
-                return False
+                return None
             else:
                 self._Database.DB.session.delete(heat)
                 for heatnode in heatnodes:
@@ -822,16 +846,16 @@ class RHData():
                                     heatnode.heat_id = heat_obj.id
                                 self.commit()
                                 self._RACE.current_heat = 1
-                                heat_id = 1  # set value so heat data is updated below
+                                heat_id = 1  # set value so heat data is updated
                             else:
                                 logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                     except Exception as ex:
                         logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
-                return True
+                return heat_id
         else:
             logger.info('Refusing to delete only heat')
-            return False
+            return None
 
     def set_results_heat(self, heat_id, data):
         heat = self._Database.Heat.query.get(heat_id)
@@ -1898,7 +1922,7 @@ class RHData():
     # Event Results (Options)
     def set_results_event(self, data):
         if 'results' in data:
-            self.set_option("eventResults_cacheStatus", data['results'])
+            self.set_option("eventResults", data['results'])
         if 'cacheStatus' in data:
             self.set_option("eventResults_cacheStatus", data['cacheStatus'])
 

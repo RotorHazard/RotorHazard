@@ -50,3 +50,9 @@ If a PR is modifying functionality, try to avoid unnecessary whitespace changes 
 ## Eclipse PyDev Project
 
 The [Eclipse IDE](https://www.eclipse.org/eclipseide/) (with the [PyDev](https://www.pydev.org) extension) may be used to edit the Python source code -- the ".project" and ".pydevproject" files define the project, which may be loaded via "File | Open Projects from File System..." in Eclipse.
+
+The [PyLint](https://www.pylint.org) code analyzer is used to improve and reduce bugs in the code. All Python code in the project should be able to pass PyLint analysis with minimal errors and warnings. See the [PyLint install](https://www.pylint.org/#install) page for instructions on installation; on Windows the package may be installed via the command:  `python -m pip install pylint`
+
+See [here](https://www.pydev.org/manual_adv_pylint.html) for enabling PyLint code analysis on Eclipse with PyDev. With its default settings PyLint will flag more warnings than we want to deal with, so we disable some of them by navigating (in Eclipse) to "Preferences | PyDev | Editor | Code Analysis | PyLint" and entering the following into the box under "Arguments to pass to the pylint command":  `--disable=broad-except,bare-except,logging-not-lazy,logging-format-interpolation,global-statement,try-except-raise,unused-argument`
+
+The batch/script files in the 'tools' directory may be used to run the PyLint analysis from the command line: 'pylintchk' checks for errors only, 'pylintchkw' checks for errors and warnings.

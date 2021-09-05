@@ -243,7 +243,7 @@ class RHNodeManager(NodeManager):
                 logger.info("Multi-node (with {} modules) found at {}: {}".format(multi_count, self.addr, ', '.join(info_strs)))
                 for _ in range(multi_count):
                     node = self.add_node(next_index)
-                    logger.debug("Node {} (slot={}) added at {}".format(next_index+1, node.multi_node_slot_index+1, node.addr))
+                    logger.info("Node {} (slot={}) added at {}".format(next_index+1, node.multi_node_slot_index+1, node.addr))
                     next_index += 1
             return True
         else:

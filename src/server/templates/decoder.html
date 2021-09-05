@@ -82,8 +82,7 @@
 			'cluster_status'
 		];
 
-		var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
-		var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+		var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
 		var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 		$(document).ready(function () {
@@ -553,8 +552,8 @@
 			socket.on('node_crossing_change', function (msg) {
 				if (msg.crossing_flag) {
 					if (rotorhazard.beep_crossing_entered) {
-						if( rotorhazard.use_mp3_tones){
-							sound_enter.play();
+						if (rotorhazard.use_mp3_tones) {
+							play_mp3_beep(sound_enter, rotorhazard.indicator_beep_volume);
 						}
 						else {
 							play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
@@ -563,8 +562,8 @@
 				}
 				else {
 					if (rotorhazard.beep_crossing_exited) {
-						if( rotorhazard.use_mp3_tones){
-							sound_exit.play();
+						if (rotorhazard.use_mp3_tones) {
+							play_mp3_beep(sound_exit, rotorhazard.indicator_beep_volume);
 						}
 						else {
 							play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -869,7 +868,7 @@
 							<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
 							<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
 						</div>
-						<input type="range" id="set_indicator_volume" min="1" max="100">
+						<input type="range" id="set_indicator_volume" min="0" max="100">
 					</li>
 				</ol>
 			</div>

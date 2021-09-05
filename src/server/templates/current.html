@@ -12,16 +12,11 @@
 		'race_status',
 	];
 
-	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
 
 	var request_time;
 	var request_pi_time;
 	var resume_check = true;
-
-	var speakObjsQueue = [];
-	var checkSpeakQueueFlag = true;
-	const LEADER_FLAG_CHAR = 'L';
-	const WINNER_FLAG_CHAR = 'W';
 
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
@@ -122,6 +117,9 @@
 			rotorhazard.nodes[i] = new nodeModel();
 		}
 
+		var current_laps = {};
+		var current_laps_reversed = false;
+
 		// populate voice controls
 		$('#voice-calls').val(parseInt(rotorhazard.primaryPilot));
 
@@ -141,9 +139,10 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
-		$('#display_lap_number').prop("checked", rotorhazard.display_lap_number);
+		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
+		$('#display_laps_reversed').prop("checked", rotorhazard.display_laps_reversed);
 		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
 		$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
@@ -240,67 +239,131 @@
 		});
 
 		function show_current_laps() {
-			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
-				$('#recent .callsign_' + i).html('callsign' in node_index.pilot ? node_index.pilot.callsign : __('-None-'));
+			$.each(current_laps.node_index, function (i, curnode_data) { // i is loop num, curnode_data is json object
+				$('#recent .callsign_' + i).html(curnode_data.pilot && 'callsign' in curnode_data.pilot ? curnode_data.pilot.callsign : __('-None-'));
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
-				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
-					var $tr = $('<tr>')
-					if (lap.lap_number == 0) {
-						$tr.addClass('lap_0');
+				if(rotorhazard.display_laps_reversed) {
+					if(!current_laps_reversed) {
+						curnode_data.laps.reverse();
 					}
+				}
+				else if(current_laps_reversed) {
+					curnode_data.laps.reverse();
+				}
 
-					var local_colspan = 2;
-					if(rotorhazard.display_lap_number) {
-						local_colspan = 1;
-						$tr.append(
-							$('<td class="display_lap_number">').text(lap.lap_number)
-						);
-					}
-					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
-					$local_prepend = $('<span class="from_start">');
-
-					if(rotorhazard.display_time_first_pass) {
-						$local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
-						if(rotorhazard.display_time_start){
-							$local_prepend.append(" / ");
-						}
-					}
-
-					if(rotorhazard.display_time_start){
-						$local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
-					}
-					$time_td.prepend($local_prepend);
-					$tr.append($time_td);
-
-					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
-						$tr.addClass('min-lap-warning');
-					}
-					if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
-						$tr.addClass('after-time-expired');
-					}
-					$tr.appendTo('#current_laps_' + i);
-
-					$.each(lap.splits, function(k, split) {
-						var split_display = split.split_time + ' ';
-						if (split.split_speed) {
-							split_display += '(' + split.split_speed + ')';
-						}
-						var split_tr = $('<tr>');
-						split_tr.addClass('lap_split');
-						if (rotorhazard.display_lap_id) {
-							var split_id = 'split ';
-							if (lap.splits.length > 1) {
-								split_id += (k+1);
+				$.each(curnode_data.laps, function (j, lap) { // j is loop num, lap is json object
+					if(!lap.late_lap) {
+						if(lap.splits) {
+							if(rotorhazard.display_laps_reversed) {
+								if(!current_laps_reversed && lap.splits.length > 1) {
+									lap.splits.laps.reverse();
+								}
+								$.each(lap.splits, function(k, split) {
+									if (j > 0 || (split.split_time && split.split_time != '-') ||
+													split.split_speed) {  // don't show last split if empty
+										var split_display = split.split_time + ' ';
+										if (split.split_speed) {
+											split_display += '(' + split.split_speed + ')';
+										}
+										var split_tr = $('<tr>');
+										split_tr.addClass('lap_split');
+										if (rotorhazard.display_lap_id) {
+											var split_id = 'split ';
+											if (lap.splits.length > 1) {
+												split_id += (k+1);
+											}
+											split_tr.append($('<td>').text(split_id));
+										}
+										var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+										split_tr.append(split_time_td);
+										split_tr.appendTo('#current_laps_' + i);
+									}
+								});
 							}
-							split_tr.append($('<td>').text(split_id));
+							else if(current_laps_reversed && lap.splits.length > 1) {
+								lap.splits.laps.reverse();
+							}
 						}
-						var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
-						split_tr.append(split_time_td);
-						split_tr.appendTo('#current_laps_' + i);
-					});
+	
+						var $tr = $('<tr>');
+						var lap_num = lap.lap_number;
+						if (lap_num == 0) {
+							$tr.addClass('lap_0');
+						}
+	
+						var local_colspan = 2;
+						if(rotorhazard.display_lap_id) {
+							local_colspan = 1;
+							if(lap_num < 0) {
+								lap_num = ' ';
+							}
+							$tr.append(
+								$('<td class="display_lap_number">').text(lap_num)
+							);
+						}
+						$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
+						$local_prepend = $('<span class="from_start">');
+	
+						if(rotorhazard.display_time_first_pass) {
+							if(rotorhazard.display_laps_reversed) {
+								if(curnode_data.laps.length > 0) {
+									ts_val = lap.lap_time_stamp - curnode_data.laps[curnode_data.laps.length-1].lap_time_stamp;
+								}
+								else {
+									ts_val = 0;
+								}
+							}
+							else {
+								ts_val = lap.lap_time_stamp - curnode_data.laps[0].lap_time_stamp;
+							}
+							$local_prepend.text(formatTimeMillis(ts_val, {{ getOption('timeFormat')|tojson }}));
+							if(rotorhazard.display_time_start){
+								$local_prepend.append(" / ");
+							}
+						}
+	
+						if(rotorhazard.display_time_start){
+							$local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
+						}
+						$time_td.prepend($local_prepend);
+						$tr.append($time_td);
+	
+						if (lap.lap_number && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+							$tr.addClass('min-lap-warning');
+						}
+						if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
+							$tr.addClass('after-time-expired');
+						}
+						$tr.appendTo('#current_laps_' + i);
+	
+						if(!rotorhazard.display_laps_reversed) {
+							$.each(lap.splits, function(k, split) {
+								if (j < curnode_data.laps.length-1 || (split.split_time && split.split_time != '-') ||
+																	split.split_speed) {  // don't show last split if empty
+									var split_display = split.split_time + ' ';
+									if (split.split_speed) {
+										split_display += '(' + split.split_speed + ')';
+									}
+									var split_tr = $('<tr>');
+									split_tr.addClass('lap_split');
+									if (rotorhazard.display_lap_id) {
+										var split_id = 'split ';
+										if (lap.splits.length > 1) {
+											split_id += (k+1);
+										}
+										split_tr.append($('<td>').text(split_id));
+									}
+									var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+									split_tr.append(split_time_td);
+									split_tr.appendTo('#current_laps_' + i);
+								}
+							});
+						}
+					}
 				});
 			});
+			current_laps_reversed = rotorhazard.display_laps_reversed;
 		}
 
 		socket.on('leaderboard', function (msg) {
@@ -349,14 +412,14 @@
 				}
 
 				if (rotorhazard.voice_lap_count == 1 ||
-							(rotorhazard.voice_lap_count == 2 && (!msg.team_laps))) {
+							(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += __l('Lap') + " " + msg.lap;
 				}
 
 				if (rotorhazard.voice_lap_time == 1 ||
-							(rotorhazard.voice_lap_time == 2 && (!msg.team_laps))) {
+							(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += msg.phonetic;
@@ -544,8 +607,8 @@
 			rotorhazard.saveData();
 		});
 
-		$('#display_lap_number').change(function (event) {
-			rotorhazard.display_lap_number = $(this).prop('checked');
+		$('#display_lap_id').change(function (event) {
+			rotorhazard.display_lap_id = $(this).prop('checked');
 			rotorhazard.saveData();
 			show_current_laps();
 		});
@@ -558,6 +621,12 @@
 
 		$('#display_time_first_pass').change(function (event) {
 			rotorhazard.display_time_first_pass = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_laps_reversed').change(function (event) {
+			rotorhazard.display_laps_reversed = $(this).prop('checked');
 			rotorhazard.saveData();
 			show_current_laps();
 		});
@@ -580,73 +649,6 @@
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
 		});
 	});
-
-	function playLeaderTone() {
-		if (rotorhazard.use_mp3_tones) {
-			sound_leader.play();
-		}
-		else {
-			play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
-			setTimeout(function(tone){
-				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 75, 0);
-		}
-	}
-
-	function playWinnerTone() {
-		if (rotorhazard.use_mp3_tones) {
-			sound_winner.play();
-		}
-		else {
-			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			setTimeout(function(tone) {
-				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 50, 0);
-			setTimeout(function(tone) {
-				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			}, 125, 0);
-			setTimeout(function(tone) {
-				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 175, 0);
-			setTimeout(function(tone) {
-				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			}, 250, 0);
-			setTimeout(function(tone) {
-				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 300, 0);
-		}
-	}
-
-	function doSpeak(obj) {
-		if (obj.startsWith(LEADER_FLAG_CHAR)) {
-			obj = obj.substring(1);
-			if (rotorhazard.beep_race_leader_lap) {
-				playLeaderTone();
-			}
-		}
-		else if (obj.startsWith(WINNER_FLAG_CHAR)) {
-			obj = obj.substring(1);
-			if (rotorhazard.beep_race_winner_declared) {
-				playWinnerTone();
-			}
-		}
-		if (obj.length > 0) {
-			$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
-			return true;
-		}
-		return false;
-	};
-
-	function speak(obj, priority) {
-		if (typeof(priority)=='undefined')
-			priority = false;
-
-		if (priority) {
-			speakObjsQueue.unshift(obj);
-		} else {
-			speakObjsQueue.push(obj);
-		}
-	};
 
 </script>
 {% endblock %} {% block content %}
@@ -857,9 +859,10 @@
 					{{ __('Lap Information') }}
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="display_lap_number"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap number') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
+					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
 				</ul>
 			</li>
 		</ol>
