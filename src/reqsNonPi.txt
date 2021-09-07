@@ -17,9 +17,10 @@ pyserial==3.4.*
 paho-mqtt==1.5.*
 websocket-client==0.57.*
 requests==2.25.*
+jsonschema==3.*
 cffi==1.14.*
-fake-rpi==0.7.*
 Pillow==8.2.*
+jenkspy==0.2.*
 psutil==5.8.*
 numpy==1.20.*
-jenkspy==0.2.*
+fake-rpi==0.7.*

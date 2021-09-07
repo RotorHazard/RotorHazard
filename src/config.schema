@@ -1,0 +1,99 @@
+{
+	"type": "object",
+	"properties": {
+		"GENERAL": {
+			"type": "object",
+			"properties": {
+				"HTTP_PORT": { "$ref": "#/$defs/sport" },
+				"SERIAL_PORT": { "$ref": "#/$defs/cport" },
+				"SECRET_KEY": { "type": "string" },
+				"ADMIN_USERNAME": { "type": "string" },
+				"ADMIN_PASSWORD": { "type": "string" },
+				"DB_AUTOBKP_NUM_KEEP": { "type": "integer",
+											"minimum": 0},
+				"SECONDARIES": {},
+				"SECONDARY_TIMEOUT": { "type": "integer" },
+				"SLAVES": {},
+				"SLAVE_TIMEOUT": { "type": "integer" }
+			}
+		},
+		"HARDWARE": {
+			"type": "object",
+			"properties": {
+				"I2C_BUSES": {
+					"type": "array",
+					"items": {
+						"type": "integer"
+					}
+				}
+			}
+		},
+		"LOGGING": {
+			"type": "object"
+		},
+		"LED": {
+			"type": "object"
+		},
+		"AUDIO": {
+			"type": "object",
+			"properties": {
+				"PLAYER": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"TTS": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"VRX_CONTROL": {
+			"type": "object"
+		},
+		"LAPRF": {
+			"type": "object",
+			"properties": {
+				"ADDRESS": { "type": "string" }
+			}
+		},
+		"CHORUS": {
+			"type": "object",
+			"properties": {
+				"HARDWARE_PORT": { "$ref": "#/$defs/cport" },
+				"API_PORT": { "$ref": "#/$defs/cport" }
+			}
+		},
+		"SENSORS": {
+			"type": "object"
+		},
+		"SERIAL_PORTS": {
+			"type": "array",
+			"items": {
+			"$ref": "#/$defs/cport"
+			}
+		},
+		"SOCKET_PORTS": {
+			"type": "array",
+			"items": {
+			"$ref": "#/$defs/sport"
+			}
+		}
+	},
+
+	"$defs": {
+		"sport": {
+			"title": "socket port",
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 65535
+		},
+		"cport": {
+			"title": "com port",
+			"type": "string"
+		}
+	}
+}

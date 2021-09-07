@@ -1,11 +1,13 @@
 import logging
 import random
 import json
+import jsonschema
 
 logger = logging.getLogger(__name__)
 
 class Config:
     FILE_NAME = 'config.json'
+    SCHEMA_FILE_NAME = 'config.schema'
     DB_FILE_NAME = 'database.db'
 
     def __init__(self):
@@ -21,6 +23,8 @@ class Config:
         self.LAPRF = {}
         self.CHORUS = {}
         self.apply_defaults()
+        with open(Config.SCHEMA_FILE_NAME, 'r') as f:
+            self.schema = json.load(f)
 
     def apply_defaults(self):
         # LED strip configuration:
@@ -64,7 +68,9 @@ class Config:
         try:
             with open(file, 'r') as f:
                 externalConfig = json.load(f)
-        
+
+            jsonschema.validate(instance=externalConfig, schema=self.schema)
+
             self.GENERAL.update(externalConfig['GENERAL'])
         
             if 'HARDWARE' in externalConfig:
@@ -102,6 +108,14 @@ class Config:
                 self.SERIAL_PORTS.extend(externalConfig['SERIAL_PORTS'])
             if 'SOCKET_PORTS' in externalConfig:
                 self.SOCKET_PORTS.extend(externalConfig['SOCKET_PORTS'])
+
+            # Apply legacy config options for backward compatibility
+            if not self.GENERAL['SECONDARIES'] and 'SLAVES' in self.GENERAL and self.GENERAL['SLAVES']:
+                    self.GENERAL['SECONDARIES'] = self.GENERAL['SLAVES']
+
+            if not self.GENERAL['SECONDARY_TIMEOUT'] and 'SLAVE_TIMEOUT' in self.GENERAL and self.GENERAL['SLAVE_TIMEOUT']:
+                    self.GENERAL['SECONDARY_TIMEOUT'] = self.GENERAL['SLAVE_TIMEOUT']
+
             self.GENERAL['configFile'] = 'loaded'
             logger.info("Using configuration file '{0}'".format(file))
         except IOError:
@@ -110,12 +124,3 @@ class Config:
         except ValueError as ex:
             self.GENERAL['configFile'] = 'error'
             logger.error("Configuration file invalid, using defaults; error is: {}".format(ex))
-
-        # Apply legacy config options for backward compatibility
-        if not self.GENERAL['SECONDARIES']:
-            if 'SLAVES' in self.GENERAL and self.GENERAL['SLAVES']:
-                self.GENERAL['SECONDARIES'] = self.GENERAL['SLAVES']
-        
-        if not self.GENERAL['SECONDARY_TIMEOUT']:
-            if 'SLAVE_TIMEOUT' in self.GENERAL and self.GENERAL['SLAVE_TIMEOUT']:
-                self.GENERAL['SECONDARY_TIMEOUT'] = self.GENERAL['SLAVE_TIMEOUT']
