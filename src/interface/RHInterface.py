@@ -174,7 +174,7 @@ class RHNodeManager(NodeManager):
         except Exception:
             logger.exception('Error fetching READ_FW_PROCTYPE from {}'.format(self.addr))
         return self.firmware_proctype_str
-    
+
     def read_firmware_timestamp(self):
         '''Reads firmware build date/time strings'''
         self.firmware_timestamp_str = None
@@ -514,23 +514,28 @@ class RHInterface(BaseHardwareInterface):
                 ccs = ph.calculatePeakPersistentHomology(node.history_values)
                 lo, hi = ph.findBreak(ccs)
                 diff = hi - lo
-                # cap changes to 20%
-                learning_rate = 0.2
-                enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
-                # set exit a bit lower to register a pass sooner
-                exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
-                logger.info('AI calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
-                self.set_enter_at_level(node.index, enter_level)
-                self.set_exit_at_level(node.index, exit_level)
+                if diff > 1:
+                    # cap changes to 20%
+                    learning_rate = 0.2
+                    enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
+                    # set exit a bit lower to register a pass sooner
+                    exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
+                    logger.info('AI calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
+                    self.set_enter_at_level(node.index, enter_level)
+                    self.set_exit_at_level(node.index, exit_level)
+                else:
+                    logger.info('AI calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 
-    def calibrate_nodes(self, start_time, race_laps):
-        for i, node in enumerate(self.nodes):
-            if node.calibrate and (node.manager.rhfeature_flags&RHFEAT_PH) and node.history_values:
-                lap_ts = [start_time + lap['lap_time_stamp']/1000 for lap in race_laps[i] if not lap['deleted']]
+    def calibrate_nodes(self, start_time, race_laps_history):
+        for node_idx, node_laps_history in race_laps_history.items():
+            node = self.nodes[node_idx]
+            node_laps, history_values, history_times = node_laps_history
+            if node.calibrate and (node.manager.rhfeature_flags&RHFEAT_PH) and history_values:
+                lap_ts = [start_time + lap['lap_time_stamp']/1000 for lap in node_laps if not lap['deleted']]
                 if lap_ts:
-                    ccs = ph.calculatePeakPersistentHomology(node.history_values)
-                    ccs.sort(key=lambda cc: node.history_times[cc.birth[0]])
-                    birth_ts = [node.history_times[cc.birth[0]] for cc in ccs]
+                    ccs = ph.calculatePeakPersistentHomology(history_values)
+                    ccs.sort(key=lambda cc: history_times[cc.birth[0]])
+                    birth_ts = [history_times[cc.birth[0]] for cc in ccs]
                     pass_idxs = []
                     for lap_timestamp in lap_ts:
                         idx = bisect.bisect_left(birth_ts, lap_timestamp)
@@ -543,11 +548,14 @@ class RHInterface(BaseHardwareInterface):
                     hi = min([ccs[j].lifetime() for j in pass_idxs])
                     lo = max([cc.lifetime() for cc in ccs if cc.lifetime()<hi]+[0])
                     diff = hi - lo
-                    enter_level = lo + diff//2
-                    exit_level = lo + diff//4
-                    logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
-                    self.set_enter_at_level(node.index, enter_level)
-                    self.set_exit_at_level(node.index, exit_level)
+                    if diff > 1:
+                        enter_level = lo + diff//2
+                        exit_level = lo + diff//4
+                        logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
+                        self.set_enter_at_level(node.index, enter_level)
+                        self.set_exit_at_level(node.index, exit_level)
+                    else:
+                        logger.info('Calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 
     #
     # Internal helper functions for setting single values

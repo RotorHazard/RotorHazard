@@ -2476,7 +2476,9 @@ def on_save_laps():
     }
     gevent.spawn(build_atomic_result_caches, cache_params)
 
-    gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_monotonic, RACE.node_laps)
+    gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_monotonic,
+                 {node_idx: (laps, INTERFACE.nodes[node_index].history_values, INTERFACE.nodes[node_index].history_times) for node_idx,laps in RACE.node_laps.items()}
+                 )
 
     Events.trigger(Evt.LAPS_SAVE, {
         'race_id': new_race.id,
@@ -2501,7 +2503,7 @@ def on_resave_laps(data):
 
     race_id = data['race_id']
     pilotrace_id = data['pilotrace_id']
-    node = data['node']
+    node_idx = data['node']
     pilot_id = data['pilot_id']
     laps = data['laps']
     enter_at = data['enter_at']
@@ -2519,7 +2521,7 @@ def on_resave_laps(data):
     new_racedata = {
             'race_id': race_id,
             'pilotrace_id': pilotrace_id,
-            'node_index': node,
+            'node_index': node_idx,
             'pilot_id': pilot_id,
             'laps': new_laps
         }
@@ -2551,7 +2553,13 @@ def on_resave_laps(data):
     }
     gevent.spawn(build_atomic_result_caches, cache_params)
 
-    gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_monotonic, new_laps)
+    race_meta = RHData.get_savedRaceMeta(race_id)
+    pilotrace_obj = RHData.get_savedPilotRace(pilotrace_id)
+    history_values = json.loads(pilotrace_obj.history_values)
+    history_times = json.loads(pilotrace_obj.history_times)
+    gevent.spawn(INTERFACE.calibrate_nodes, race_meta.start_time,
+                 {node_idx: (new_laps, history_values, history_times)}
+                 )
 
     Events.trigger(Evt.LAPS_RESAVE, {
         'race_id': race_id,

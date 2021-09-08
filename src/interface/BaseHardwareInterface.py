@@ -90,6 +90,8 @@ class BaseHardwareInterface:
 
         # if new lap detected for node then append item to updates list
         if lap_id != node.node_lap_id:
+            if lap_id != node.node_lap_id + 1:
+                logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(node.node_lap_id, lap_id))
             upd_list.append((node, lap_id, lap_timestamp))
 
         # check if capturing enter-at level for node
@@ -164,7 +166,7 @@ class BaseHardwareInterface:
                         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
                     node.node_lap_id = lap_id
 
-    def calibrate_nodes(self, race_laps):
+    def calibrate_nodes(self, start_time, race_laps_history):
         pass
 
     #

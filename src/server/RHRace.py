@@ -58,9 +58,7 @@ class RHRace():
         self.reset()
 
     def reset(self):
-        self.node_laps = {}
-        for idx in range(self._num_nodes):
-            self.node_laps[idx] = []
+        self.node_laps = {idx: [] for idx in range(self._num_nodes)}
         self.cacheStatus = CacheStatus.INVALID
         self.team_cacheStatus = CacheStatus.INVALID
 

@@ -1526,8 +1526,8 @@ class RHData():
         return True
 
     # Race Meta
-    def get_savedRaceMeta(self, raceMeta_id):
-        return self._Database.SavedRaceMeta.query.get(raceMeta_id)
+    def get_savedRaceMeta(self, race_id):
+        return self._Database.SavedRaceMeta.query.get(race_id)
 
     def get_savedRaceMeta_by_heat_round(self, heat_id, round_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
@@ -1680,8 +1680,8 @@ class RHData():
             )).filter_by(heat_id=heat_id).scalar()
 
     # Pilot-Races
-    def get_savedPilotRace(self, race_id):
-        return self._Database.SavedPilotRace.query.get(race_id)
+    def get_savedPilotRace(self, pilotrace_id):
+        return self._Database.SavedPilotRace.query.get(pilotrace_id)
 
     def get_savedPilotRaces(self):
         return self._Database.SavedPilotRace.query.all()
