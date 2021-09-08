@@ -19,7 +19,7 @@ websocket-client==0.57.*
 requests==2.25.*
 jsonschema==3.*
 cffi==1.14.*
-Pillow==8.2.*
+Pillow>=8.3.2
 jenkspy==0.2.*
 smbus2==0.4.*
 RPi.GPIO==0.7.*
