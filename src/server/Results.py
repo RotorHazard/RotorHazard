@@ -1015,14 +1015,11 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
     }
 
 def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
-    if raceObj.race_status == RaceStatus.DONE:
-        # manually stopping race always most laps only
-        return check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
-
-    elif (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
-        'at_finish' in kwargs:
+    if (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
+                    raceObj.race_status == RaceStatus.DONE or 'at_finish' in kwargs:
         race_format = raceObj.format
         leaderboard = raceObj.results['by_race_time']
+
         if len(leaderboard):
             pilot_crossed_after_time = False
             for line in leaderboard:
@@ -1034,7 +1031,7 @@ def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
                 return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
             else:
                 win_status = check_win_most_laps(raceObj, interfaceObj, forced=True, **kwargs)
-                if win_status['status'] == WinStatus.TIE:
+                if win_status['status'] == WinStatus.TIE and raceObj.race_status == RaceStatus.RACING:
                     # ties here change status to overtime
                     win_status['status'] = WinStatus.OVERTIME
 
@@ -1355,14 +1352,11 @@ def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
     }
 
 def check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs):
-    if raceObj.race_status == RaceStatus.DONE:
-        # manually stopping race always most laps only
-        return check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, forced=True, **kwargs)
-
-    elif (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
-        'at_finish' in kwargs:
+    if (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
+                    raceObj.race_status == RaceStatus.DONE or 'at_finish' in kwargs:
         race_format = raceObj.format
         leaderboard = raceObj.results['by_race_time']
+
         if len(leaderboard):
             pilot_crossed_after_time = False
             for line in leaderboard:
@@ -1374,7 +1368,7 @@ def check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
                 return check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, overtime=True, **kwargs)
             else:
                 win_status = check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, forced=True, **kwargs)
-                if win_status['status'] == WinStatus.TIE:
+                if win_status['status'] == WinStatus.TIE and raceObj.race_status == RaceStatus.RACING:
                     # ties here change status to overtime
                     win_status['status'] = WinStatus.OVERTIME
 
