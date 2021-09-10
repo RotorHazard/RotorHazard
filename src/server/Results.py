@@ -1021,9 +1021,10 @@ def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
         leaderboard = raceObj.results['by_race_time']
 
         if len(leaderboard):
+            race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
             pilot_crossed_after_time = False
             for line in leaderboard:
-                if line['total_time_raw'] > (race_format.race_time_sec * 1000):
+                if line['total_time_raw'] > race_duration_ms:
                     pilot_crossed_after_time = True
                     break
 
@@ -1109,10 +1110,11 @@ def check_win_fastest_lap(raceObj, **kwargs):
             if fast_lap > 0: # must have at least one lap
                 max_ttc = 0
 
+                race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
                 for node in raceObj.node_laps:
                     if len(raceObj.node_laps[node]) > 0:
                         most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
-                        time_to_complete = fast_lap - ((race_format.race_time_sec * 1000) - most_recent_lap)
+                        time_to_complete = fast_lap - (race_duration_ms - most_recent_lap)
                         max_ttc = max(max_ttc, time_to_complete)
 
                 max_consideration = min(fast_lap, max_ttc)
@@ -1358,9 +1360,10 @@ def check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
         leaderboard = raceObj.results['by_race_time']
 
         if len(leaderboard):
+            race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
             pilot_crossed_after_time = False
             for line in leaderboard:
-                if line['total_time_raw'] > (race_format.race_time_sec * 1000):
+                if line['total_time_raw'] > race_duration_ms:
                     pilot_crossed_after_time = True
                     break
 
@@ -1451,12 +1454,13 @@ def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
                             'members': line['members'],
                         }
 
+                    race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
                     for node in raceObj.node_laps:
                         if len(raceObj.node_laps[node]) > 0:
                             team = raceObj.node_teams[node]
                             if team is not None:
                                 most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
-                                spent_time = ((race_format.race_time_sec * 1000) - most_recent_lap)
+                                spent_time = race_duration_ms - most_recent_lap
                                 team_laps[team]['spent_time'] += spent_time
 
                     max_consideration = 0

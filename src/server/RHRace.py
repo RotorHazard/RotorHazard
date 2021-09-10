@@ -27,7 +27,6 @@ class RHRace():
         self.node_has_finished = {}
         self.any_races_started = False
         # concluded
-        self.duration_ms = 0 # Duration in seconds, calculated when race is stopped
         self.end_time = 0 # Monotonic, updated when race is stopped
         # leaderboard/cache
         self.results = None # current race results
