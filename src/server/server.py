@@ -182,7 +182,13 @@ SECONDARY_RACE_FORMAT = None
 RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
-__ = Language.__ # Shortcut to translation function
+
+def __web(text):
+    lang = request.accept_languages.best_match(Language.getLanguageTags())
+    return Language.__(text, lang)
+
+__sys = Language.__
+__ = __web # Shortcut to translation function
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
 APP.rhserver = vars()
@@ -192,7 +198,7 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
     item = {}
     item['message'] = message
     if header:
-        item['header'] = __(header)
+        item['header'] = header
     if subclass:
         item['subclass'] = subclass
     ui_server_messages[mainclass] = item
@@ -462,8 +468,8 @@ def render_settings():
                 message += ' ' + item['header'].lower()
             message += '">'
             if 'header' in item and item['header']:
-                message += '<strong>' + item['header'] + ':</strong> '
-            message += item['message']
+                message += '<strong>' + __(item['header']) + ':</strong> '
+            message += __(item['message'])
             message += '</li>'
             server_messages_formatted += message
     if rhconfig.GENERAL['configFile'] == 'error':
@@ -4142,7 +4148,7 @@ def do_bpillfw_update(data):
         logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
         set_ui_message(
             'node',
-            __("No receiver nodes found"),
+            "No receiver nodes found",
             header='Warning',
             subclass='none'
             )
@@ -4989,7 +4995,7 @@ def initialize_hardware_interface():
                                    "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
                     set_ui_message(
                         'i2c',
-                        __("Unable to import libraries for I2C nodes. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
+                        "Unable to import libraries for I2C nodes. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>",
                         header='Warning',
                         subclass='no-library'
                         )
@@ -5011,7 +5017,7 @@ def initialize_hardware_interface():
                     node_manager.api_level = NODE_API_BEST
                 set_ui_message(
                     'mock',
-                    __("Server is using simulated (mock) nodes"),
+                    "Server is using simulated (mock) nodes",
                     header='Notice',
                     subclass='in-use'
                     )
@@ -5025,10 +5031,10 @@ def initialize_hardware_interface():
                         if hasattr(INTERFACE, "fwupd_serial_port"):
                             INTERFACE.fwupd_serial_port = rhconfig.SERIAL_PORTS[0]
                             set_ui_message('stm32', \
-                                 __("Server is unable to communicate with node processor") + ". " + \
-                                      __("If an S32_BPill board is connected, you may attempt to") + \
-                                      " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                      __("its processor."), \
+                                 "Server is unable to communicate with node processor. " + \
+                                      "If an S32_BPill board is connected, you may attempt to" + \
+                                      " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
+                                      "its processor.", \
                                 header='Warning', subclass='no-comms')
                     else:
                         return False  # unable to open serial port
@@ -5057,11 +5063,11 @@ def buildServerInfo():
 
         # Release Version
         serverInfo['release_version'] = RELEASE_VERSION
-        serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
+        serverInfo['about_html'] += "<li>" + __sys("Version") + ": " + str(RELEASE_VERSION) + "</li>"
 
         # Server API
         serverInfo['server_api'] = SERVER_API
-        serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+        serverInfo['about_html'] += "<li>" + __sys("Server API") + ": " + str(SERVER_API) + "</li>"
 
         # Server API
         serverInfo['json_api'] = JSON_API
@@ -5089,7 +5095,7 @@ def buildServerInfo():
                     if serverInfo['node_api_match'] and INTERFACE.node_managers[0].is_multi_node():
                         serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
     
-            serverInfo['about_html'] += "<li>" + __("Node API") + ": "
+            serverInfo['about_html'] += "<li>" + __sys("Node API") + ": "
             if node_api_level:
                 if serverInfo['node_api_match']:
                     serverInfo['about_html'] += str(node_api_level)
@@ -5120,7 +5126,7 @@ def buildServerInfo():
                     if serverInfo['node_version_match'] and INTERFACE.node_managers[0].is_multi_node():
                         serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
             if node_fw_version:
-                serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
+                serverInfo['about_html'] += "<li>" + __sys("Node Version") + ": "
                 if serverInfo['node_version_match']:
                     serverInfo['about_html'] += str(node_fw_version)
                 else:
@@ -5133,7 +5139,7 @@ def buildServerInfo():
             serverInfo['node_api_best'] = NODE_API_BEST
             if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
                 # Show Recommended API notice
-                serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+                serverInfo['about_html'] += "<li><strong>" + __sys("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
     
             serverInfo['about_html'] += "</ul>"
 
@@ -5154,28 +5160,28 @@ def reportServerInfo():
     if 'node_api_match' in serverInfo and serverInfo['node_api_match'] is False:
         logger.info('** WARNING: Node API mismatch **')
         set_ui_message('node-match',
-            __("Node versions do not match and may not function similarly"), header='Warning')
+            "Node versions do not match and may not function similarly", header='Warning')
     if 'node_api_lowest' in serverInfo and RACE.num_nodes > 0:
         if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
             logger.info('** WARNING: Node firmware is out of date and may not function properly **')
-            msgStr = __("Node firmware is out of date and may not function properly")
+            msgStr = "Node firmware is out of date and may not function properly."
             if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
+                msgStr += " " + "If an S32_BPill board is connected, you should" + \
+                          " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
+                          "its processor."
             set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
         elif serverInfo['node_api_lowest'] < NODE_API_BEST:
             logger.info('** NOTICE: Node firmware update is available **')
-            msgStr = __("Node firmware update is available")
+            msgStr = "Node firmware update is available."
             if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
+                msgStr += " " + "If an S32_BPill board is connected, you should" + \
+                          " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
+                          "its processor."
             set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
         elif serverInfo['node_api_lowest'] > NODE_API_BEST:
             logger.warning('** WARNING: Node firmware is newer than this server version supports **')
             set_ui_message('node-newer',
-                __("Node firmware is newer than this server version and may not function properly"),
+                "Node firmware is newer than this server version and may not function properly",
                 header='Warning', subclass='api-high')
 
 #
@@ -5189,10 +5195,10 @@ RHUtils.idAndLogSystemInfo()
 if RHUtils.isVersionPython2():
     logger.warning("Python version is obsolete: " + RHUtils.getPythonVersionStr())
     set_ui_message('python',
-        (__("Python version") + " (" + RHUtils.getPythonVersionStr() + ") " + \
-         __("is obsolete and no longer supported; see") + \
+        ("Python version" + " (" + RHUtils.getPythonVersionStr() + ") " + \
+         "is obsolete and no longer supported; see" + \
          " <a href=\"docs?d=Software Setup.md#python\">Software Settings</a> " + \
-         __("doc for upgrade instructions")),
+         "doc for upgrade instructions"),
         header='Warning', subclass='old-python')
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
@@ -5207,7 +5213,7 @@ if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
     logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
     set_ui_message(
         'gpio',
-        __("Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>"),
+        "Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>",
         header='Warning',
         subclass='no-access'
         )
@@ -5283,7 +5289,7 @@ try:
             logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
             set_ui_message(
                 'secondary',
-                __("Mirror secondaries must be last; ignoring part of secondary configuration"),
+                "Mirror secondaries must be last; ignoring part of secondary configuration",
                 header='Notice',
                 subclass='mirror'
                 )
@@ -5296,7 +5302,7 @@ except:
     logger.exception("Error adding secondary to cluster")
     set_ui_message(
         'secondary',
-        __('Secondary configuration is invalid.'),
+        'Secondary configuration is invalid.',
         header='Error',
         subclass='error'
         )
@@ -5364,7 +5370,7 @@ except Exception:
     sys.exit(1)
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
-SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
+SECONDARY_RACE_FORMAT = RHRaceFormat(name="Secondary",
                          race_mode=RHRace.RaceMode.NO_TIME_LIMIT,
                          race_time_sec=0,
                          lap_grace_sec=0,
