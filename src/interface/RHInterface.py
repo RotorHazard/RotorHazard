@@ -89,7 +89,6 @@ class RHNodeManager(NodeManager):
         super().__init__()
         self.curr_multi_node_index = None
         self.api_level = 0
-        self.api_valid_flag = False
         self.max_rssi_value = 255
         self.rhfeature_flags = 0
         self.firmware_version_str = None
@@ -199,10 +198,8 @@ class RHNodeManager(NodeManager):
 
     def discover_nodes(self, next_index):
         self.read_revision_code()
-        if self.api_level > 0:
-            if self.api_level >= 10:
-                self.api_valid_flag = True  # set flag for newer API functions supported
-            if self.api_valid_flag and self.api_level >= 18:
+        if self.api_level >= 10:
+            if self.api_level >= 18:
                 self.max_rssi_value = 255
             else:
                 self.max_rssi_value = 999
@@ -243,6 +240,9 @@ class RHNodeManager(NodeManager):
                     logger.info("Node {} (slot={}) added at {}".format(next_index+1, node.multi_node_slot_index+1, node.addr))
                     next_index += 1
             return True
+        elif self.api_level > 0:
+            logger.error('Unsupported API level {} - please upgrade'.format(self.api_level))
+            return False
         else:
             logger.error('Unable to fetch revision code from {}'.format(self.addr))
             return False
@@ -327,7 +327,7 @@ class RHInterface(BaseHardwareInterface):
                 for freq, rssi in zip(freqs, rssis):
                     node.scan_data[freq] = rssi
             elif node.frequency:
-                if node.manager.api_valid_flag or node.manager.api_level >= 5:
+                if node.manager.api_level >= 10:
                     if node.manager.api_level >= 21:
                         data = node.read_command(READ_LAP_STATS, 16)
                     elif node.manager.api_level >= 18:
@@ -393,76 +393,70 @@ class RHInterface(BaseHardwareInterface):
 
                         cross_flag = None
                         pn_history = None
-                        if node.manager.api_valid_flag:  # if newer API functions supported
-                            if node.manager.api_level >= 18:
-                                ms_val = unpack_16(data[1:])
-                                pn_history = PeakNadirHistory(node.index)
-                                if node.manager.api_level >= 21:
-                                    if data[offset_lapStatsFlags] & LAPSTATS_FLAG_PEAK:
-                                        rssi_val = unpack_rssi(node, data[offset_peakRssi:])
-                                        if node.is_valid_rssi(rssi_val):
-                                            pn_history.peakRssi = rssi_val
-                                            pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                                            if node.manager.api_level >= 33:
-                                                pn_history.peakLastTime = pn_history.peakFirstTime - unpack_16(data[offset_peakDuration:])   # ms *since* the last peak time
-                                            else:
-                                                pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
-                                        elif rssi_val > 0:
-                                            logger.info('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
-                                    else:
-                                        rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
-                                        if node.is_valid_rssi(rssi_val):
-                                            pn_history.nadirRssi = rssi_val
-                                            pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                            if node.manager.api_level >= 33:
-                                                pn_history.nadirLastTime = pn_history.nadirFirstTime - unpack_16(data[offset_nadirDuration:])
-                                            else:
-                                                pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
-                                        elif rssi_val > 0:
-                                            logger.info('History nadir RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
-                                else:
+                        if node.manager.api_level >= 18:
+                            ms_val = unpack_16(data[1:])
+                            pn_history = PeakNadirHistory(node.index)
+                            if node.manager.api_level >= 21:
+                                if data[offset_lapStatsFlags] & LAPSTATS_FLAG_PEAK:
                                     rssi_val = unpack_rssi(node, data[offset_peakRssi:])
                                     if node.is_valid_rssi(rssi_val):
                                         pn_history.peakRssi = rssi_val
                                         pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                                        pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                        if node.manager.api_level >= 33:
+                                            pn_history.peakLastTime = pn_history.peakFirstTime - unpack_16(data[offset_peakDuration:])   # ms *since* the last peak time
+                                        else:
+                                            pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                    elif rssi_val > 0:
+                                        logger.info('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
+                                else:
                                     rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
                                     if node.is_valid_rssi(rssi_val):
                                         pn_history.nadirRssi = rssi_val
                                         pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                        pn_history.nadirLastTime = pn_history.nadirFirstTime
+                                        if node.manager.api_level >= 33:
+                                            pn_history.nadirLastTime = pn_history.nadirFirstTime - unpack_16(data[offset_nadirDuration:])
+                                        else:
+                                            pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
+                                    elif rssi_val > 0:
+                                        logger.info('History nadir RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
                             else:
-                                ms_val = unpack_32(data[1:])
-
-                            rssi_val = unpack_rssi(node, data[offset_nodePeakRssi:])
-                            if node.is_valid_rssi(rssi_val):
-                                node.node_peak_rssi = rssi_val
-                            rssi_val = unpack_rssi(node, data[offset_passPeakRssi:])
-                            if node.is_valid_rssi(rssi_val):
-                                node.pass_peak_rssi = rssi_val
-                            node.loop_time = unpack_16(data[offset_loopTime:])
-                            if data[offset_lapStatsFlags] & LAPSTATS_FLAG_CROSSING:
-                                cross_flag = True
-                            else:
-                                cross_flag = False
-                            rssi_val = unpack_rssi(node, data[offset_passNadirRssi:])
-                            if node.is_valid_rssi(rssi_val):
-                                node.pass_nadir_rssi = rssi_val
-
-                            if node.manager.api_level >= 13:
-                                rssi_val = unpack_rssi(node, data[offset_nodeNadirRssi:])
+                                rssi_val = unpack_rssi(node, data[offset_peakRssi:])
                                 if node.is_valid_rssi(rssi_val):
-                                    node.node_nadir_rssi = rssi_val
-
-                            if node.manager.api_level >= 18:
-                                data_logger = self.data_loggers[node.index]
-                                if data_logger:
-                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,lap_id, int(ms_val), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
-
-                        else:  # if newer API functions not supported
+                                    pn_history.peakRssi = rssi_val
+                                    pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                                    pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
+                                if node.is_valid_rssi(rssi_val):
+                                    pn_history.nadirRssi = rssi_val
+                                    pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
+                                    pn_history.nadirLastTime = pn_history.nadirFirstTime
+                        else:
                             ms_val = unpack_32(data[1:])
-                            node.pass_peak_rssi = unpack_rssi(node, data[11:])
-                            node.loop_time = unpack_32(data[13:])
+
+                        rssi_val = unpack_rssi(node, data[offset_nodePeakRssi:])
+                        if node.is_valid_rssi(rssi_val):
+                            node.node_peak_rssi = rssi_val
+                        rssi_val = unpack_rssi(node, data[offset_passPeakRssi:])
+                        if node.is_valid_rssi(rssi_val):
+                            node.pass_peak_rssi = rssi_val
+                        node.loop_time = unpack_16(data[offset_loopTime:])
+                        if data[offset_lapStatsFlags] & LAPSTATS_FLAG_CROSSING:
+                            cross_flag = True
+                        else:
+                            cross_flag = False
+                        rssi_val = unpack_rssi(node, data[offset_passNadirRssi:])
+                        if node.is_valid_rssi(rssi_val):
+                            node.pass_nadir_rssi = rssi_val
+
+                        if node.manager.api_level >= 13:
+                            rssi_val = unpack_rssi(node, data[offset_nodeNadirRssi:])
+                            if node.is_valid_rssi(rssi_val):
+                                node.node_nadir_rssi = rssi_val
+
+                        if node.manager.api_level >= 18:
+                            data_logger = self.data_loggers[node.index]
+                            if data_logger:
+                                data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,lap_id, int(ms_val), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
 
                         self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
 

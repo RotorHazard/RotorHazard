@@ -19,7 +19,6 @@ class MockNodeManager(NodeManager):
     def __init__(self, index):
         super().__init__()
         self.api_level = 0
-        self.api_valid_flag = True
         self.max_rssi_value = 255
         self.addr = 'mock:'+str(index)
         self.firmware_version_str = 'Mock'

@@ -2251,7 +2251,7 @@ def race_start_thread(start_token):
                     if diff_val > 0:
                         new_enter_at = node.enter_at_level - diff_val
                         new_exit_at = max(node.exit_at_level - diff_val, 0)
-                        if node.manager.api_valid_flag and node.is_valid_rssi(new_enter_at):
+                        if node.is_valid_rssi(new_enter_at):
                             logger.info("For node {0} lowering EnterAt from {1} to {2} and ExitAt from {3} to {4}"\
                                     .format(node.index+1, node.enter_at_level, new_enter_at, node.exit_at_level, new_exit_at))
                             node.start_thresh_lower_time = lower_end_time  # set time when values will be restored

@@ -17,7 +17,6 @@ class ChorusNodeManager(NodeManager):
     def __init__(self, serial_io):
         super().__init__()
         self.serial_io = serial_io
-        self.api_valid_flag = True
         self.max_rssi_value = 2700
         self.addr = 'serial:'+self.serial_io.port
         self.voltage = None

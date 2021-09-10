@@ -239,19 +239,19 @@ class BaseHardwareInterface:
 
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.manager.api_valid_flag and node.is_valid_rssi(level):
+        if node.is_valid_rssi(level):
             if self.transmit_enter_at_level(node, level):
                 node.enter_at_level = level
 
     def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.manager.api_valid_flag and node.is_valid_rssi(level):
+        if node.is_valid_rssi(level):
             if self.transmit_exit_at_level(node, level):
                 node.exit_at_level = level
 
     def start_capture_enter_at_level(self, node_index):
         node = self.nodes[node_index]
-        if node.cap_enter_at_flag is False and node.manager.api_valid_flag:
+        if node.cap_enter_at_flag is False:
             node.cap_enter_at_total = 0
             node.cap_enter_at_count = 0
             # set end time for capture of RSSI level:
@@ -262,7 +262,7 @@ class BaseHardwareInterface:
 
     def start_capture_exit_at_level(self, node_index):
         node = self.nodes[node_index]
-        if node.cap_exit_at_flag is False and node.manager.api_valid_flag:
+        if node.cap_exit_at_flag is False:
             node.cap_exit_at_total = 0
             node.cap_exit_at_count = 0
             # set end time for capture of RSSI level:

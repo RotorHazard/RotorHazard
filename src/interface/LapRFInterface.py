@@ -17,7 +17,6 @@ WRITE_CHILL_TIME = 0.010
 class LapRFNodeManager(NodeManager):
     def __init__(self, addr, io_stream):
         super().__init__()
-        self.api_valid_flag = True
         self.max_rssi_value = 3500
         self.addr = addr
         self.io_stream = io_stream
