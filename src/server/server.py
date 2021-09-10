@@ -184,7 +184,7 @@ PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 
 def __web(text):
-    lang = request.accept_languages.best_match(Language.getLanguageTags())
+    lang = request.accept_languages.best_match(Language.getLanguageTags()) if request else None
     return Language.__(text, lang)
 
 __sys = Language.__
@@ -2337,7 +2337,13 @@ def race_expire_thread(start_token):
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == RHRace.RaceMode.FIXED_TIME: # count down
         race_duration_sec = race_format.race_time_sec + race_format.lap_grace_sec
-        gevent.sleep(race_duration_sec)
+        race_end_time = RACE.start_time_monotonic + race_duration_sec
+        race_tick_time = RACE.start_time_monotonic
+        while RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token and race_tick_time < race_end_time:
+            race_tick_time += 1
+            gevent.sleep(race_tick_time - monotonic())
+            Events.trigger(Evt.RACE_TICK, {'timer_sec': int(race_tick_time - RACE.start_time_monotonic)})
+
         # if race still in progress and is still same race
         if RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token:
             logger.info("Race count-down timer reached expiration")
@@ -3841,9 +3847,8 @@ def emit_race_status_message(**params):
         SOCKET_IO.emit('race_status_message', emit_payload)
 
 
-def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, **params):
+def emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, leader_flag=False, **params):
     '''Emits phonetic data.'''
-    raw_time = lap_time
     phonetic_time = RHUtils.phonetictime_format(lap_time, RHData.get_option('timeFormatPhonetic'))
     pilot = RHData.get_pilot(pilot_id)
     emit_payload = {
@@ -3851,7 +3856,8 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
         'callsign': pilot.callsign,
         'pilot_id': pilot.id,
         'lap': lap_id,
-        'raw_time': raw_time,
+        'raw_time': lap_time,
+        'raw_time_stamp': lap_time_stamp,
         'phonetic': phonetic_time,
         'team_name' : team_name,
         'team_laps' : team_laps,
@@ -4444,8 +4450,8 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
 
                         if RACE.win_status == RHRace.WinStatus.DECLARED and (race_format.team_racing_mode or \
                                                                         node_finished_flag):
-                            lap_late_flag = True  # "late" lap pass (after team race winner declared)
-                            logger.info('Ignoring lap after team race winner declared: Node={}, lap={}, lapTime={}' \
+                            lap_late_flag = True  # "late" lap pass (after race winner declared)
+                            logger.info('Ignoring lap after race winner declared: Node={}, lap={}, lapTime={}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr))
 
                         # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
@@ -4502,11 +4508,11 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                                 # if winning team has been declared then don't announce team lap number
                                 if RACE.win_status == RHRace.WinStatus.DECLARED:
                                     team_laps = None
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, \
                                                 (check_leader and \
                                                  team_name == Results.get_leading_team_name(RACE.team_results)))
                             else:
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, None, None, \
                                                 (check_leader and \
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)))
 
