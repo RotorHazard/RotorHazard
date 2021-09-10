@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.0-dev.10" # Public release version code
-SERVER_API = 32+1 # Server API version
+SERVER_API = 32+2 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -311,10 +311,11 @@ def setCurrentRaceFormat(race_format, **kwargs):
 
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
+    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
         self.name = name
         self.race_mode = race_mode
         self.race_time_sec = race_time_sec
+        self.lap_grace_sec = lap_grace_sec
         self.start_delay_min = start_delay_min
         self.start_delay_max = start_delay_max
         self.staging_tones = staging_tones
@@ -328,6 +329,7 @@ class RHRaceFormat():
         return RHRaceFormat(name=race_format.name,
                             race_mode=race_format.race_mode,
                             race_time_sec=race_format.race_time_sec,
+                            lap_grace_sec=race_format.lap_grace_sec,
                             start_delay_min=race_format.start_delay_min,
                             start_delay_max=race_format.start_delay_max,
                             staging_tones=race_format.staging_tones,
@@ -3325,6 +3327,7 @@ def emit_race_format(**params):
         'format_name': race_format.name,
         'race_mode': race_format.race_mode,
         'race_time_sec': race_format.race_time_sec,
+        'lap_grace_sec': race_format.lap_grace_sec,
         'start_delay_min': race_format.start_delay_min,
         'start_delay_max': race_format.start_delay_max,
         'staging_tones': race_format.staging_tones,
@@ -3350,6 +3353,7 @@ def emit_race_formats(**params):
             'format_name': race_format.name,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
+            'lap_grace_sec': race_format.lap_grace_sec,
             'start_delay_min': race_format.start_delay_min,
             'start_delay_max': race_format.start_delay_max,
             'staging_tones': race_format.staging_tones,
@@ -3691,6 +3695,7 @@ def emit_class_data(**params):
         raceformat['name'] = race_format.name
         raceformat['race_mode'] = race_format.race_mode
         raceformat['race_time_sec'] = race_format.race_time_sec
+        raceformat['lap_grace_sec'] = race_format.lap_grace_sec
         raceformat['start_delay_min'] = race_format.start_delay_min
         raceformat['start_delay_max'] = race_format.start_delay_max
         raceformat['staging_tones'] = race_format.staging_tones
@@ -5355,6 +5360,7 @@ except Exception:
 SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
                          race_mode=RHRace.RaceMode.NO_TIME_LIMIT,
                          race_time_sec=0,
+                         lap_grace_sec=0,
                          start_delay_min=0,
                          start_delay_max=0,
                          staging_tones=0,

@@ -164,6 +164,7 @@ class RaceFormat(DB.Model):
     name = DB.Column(DB.String(80), nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
+    lap_grace_sec = DB.Column(DB.Integer, nullable=False, default=0)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
     staging_tones = DB.Column(DB.Integer, nullable=False)

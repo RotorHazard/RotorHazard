@@ -407,6 +407,7 @@ class RHData():
                         'name': self.__("Migrated Format"),
                         'race_mode': RaceMode.FIXED_TIME,
                         'race_time_sec': 120,
+                        'lap_grace_sec': 0,
                         'start_delay_min': 2,
                         'start_delay_max': 5,
                         'staging_tones': StagingTones.TONES_ALL,
@@ -1209,6 +1210,7 @@ class RHData():
             name='',
             race_mode=RaceMode.FIXED_TIME,
             race_time_sec=0,
+            lap_grace_sec=0,
             start_delay_min=0,
             start_delay_max=0,
             staging_tones=StagingTones.TONES_NONE,
@@ -1224,6 +1226,8 @@ class RHData():
                 race_format.race_mode = init['race_mode']
             if 'race_time_sec' in init:
                 race_format.race_time_sec = init['race_time_sec']
+            if 'lap_grace_sec' in init:
+                race_format.lap_grace_sec = init['lap_grace_sec']
             if 'start_delay_min' in init:
                 race_format.start_delay_min = init['start_delay_min']
             if 'start_delay_max' in init:
@@ -1255,7 +1259,8 @@ class RHData():
         new_format = self._Database.RaceFormat(
             name=new_format_name,
             race_mode=source_format.race_mode,
-            race_time_sec=source_format.race_time_sec ,
+            race_time_sec=source_format.race_time_sec,
+            lap_grace_sec=source_format.lap_grace_sec,
             start_delay_min=source_format.start_delay_min,
             start_delay_max=source_format.start_delay_max,
             staging_tones=source_format.staging_tones,
@@ -1287,6 +1292,8 @@ class RHData():
             race_format.race_mode = data['race_mode']
         if 'race_time_sec' in data:
             race_format.race_time_sec = data['race_time_sec']
+        if 'lap_grace_sec' in data:
+            race_format.lap_grace_sec = data['lap_grace_sec']
         if 'start_delay_min' in data:
             race_format.start_delay_min = data['start_delay_min']
         if 'start_delay_max' in data:
@@ -1380,6 +1387,7 @@ class RHData():
             'format_name': self.__("2:00 Standard Race"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ONE,
@@ -1392,6 +1400,7 @@ class RHData():
             'format_name': self.__("1:30 Whoop Sprint"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 90,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ALL,
@@ -1404,6 +1413,7 @@ class RHData():
             'format_name': self.__("3:00 Extended Race"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 210,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ALL,
@@ -1416,6 +1426,7 @@ class RHData():
             'format_name': self.__("First to 3 Laps"),
             'race_mode': RaceMode.NO_TIME_LIMIT,
             'race_time_sec': 0,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ALL,
@@ -1428,6 +1439,7 @@ class RHData():
             'format_name': self.__("Open Practice"),
             'race_mode': RaceMode.NO_TIME_LIMIT,
             'race_time_sec': 0,
+            'lap_grace_sec': 0,
             'start_delay_min': 0,
             'start_delay_max': 0,
             'staging_tones': StagingTones.TONES_NONE,
@@ -1440,6 +1452,7 @@ class RHData():
             'format_name': self.__("Fastest Lap Qualifier"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ONE,
@@ -1452,6 +1465,7 @@ class RHData():
             'format_name': self.__("Fastest 3 Laps Qualifier"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ONE,
@@ -1464,6 +1478,7 @@ class RHData():
             'format_name': self.__("Lap Count Only"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ONE,
@@ -1476,6 +1491,7 @@ class RHData():
             'format_name': self.__("Team / Most Laps Wins"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ALL,
@@ -1488,6 +1504,7 @@ class RHData():
             'format_name': self.__("Team / First to 7 Laps"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ALL,
@@ -1500,6 +1517,7 @@ class RHData():
             'format_name': self.__("Team / Fastest Lap Average"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ALL,
@@ -1512,6 +1530,7 @@ class RHData():
             'format_name': self.__("Team / Fastest 3 Consecutive Average"),
             'race_mode': RaceMode.FIXED_TIME,
             'race_time_sec': 120,
+            'lap_grace_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
             'staging_tones': StagingTones.TONES_ALL,
