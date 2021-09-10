@@ -1852,7 +1852,7 @@ def on_alter_race_format(data):
 
         if len(race_list):
             emit_result_data()
-            message = __('Alterations made to race format: {0}').format(race_format.name)
+            message = __('Alterations made to race format: {0}').format(__(race_format.name))
             emit_priority_message(message, False)
     else:
         emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
@@ -3322,9 +3322,9 @@ def emit_race_format(**params):
 
     emit_payload = {
         'format_ids': [raceformat.id for raceformat in raceFormats],
-        'format_names': [raceformat.name for raceformat in raceFormats],
+        'format_names': [__(raceformat.name) for raceformat in raceFormats],
         'current_format': race_format.id if is_db_race_format else None,
-        'format_name': race_format.name,
+        'format_name': __(race_format.name),
         'race_mode': race_format.race_mode,
         'race_time_sec': race_format.race_time_sec,
         'lap_grace_sec': race_format.lap_grace_sec,
@@ -3350,7 +3350,7 @@ def emit_race_formats(**params):
     emit_payload = {}
     for race_format in formats:
         format_copy = {
-            'format_name': race_format.name,
+            'format_name': __(race_format.name),
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'lap_grace_sec': race_format.lap_grace_sec,

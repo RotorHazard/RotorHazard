@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class Config:
     FILE_NAME = 'config.json'
-    SCHEMA_FILE_NAME = 'config.schema'
+    SCHEMA_FILE_NAME = 'config.schema.json'
     DB_FILE_NAME = 'database.db'
 
     def __init__(self):

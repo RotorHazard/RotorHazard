@@ -1,5 +1,6 @@
 '''Class to hold race management variables.'''
 
+from enum import IntEnum
 from . import RHUtils
 from interface.BaseHardwareInterface import BaseHardwareInterface
 
@@ -101,25 +102,25 @@ class RHRace():
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
 
 
-class RaceMode:
+class RaceMode(IntEnum):
     FIXED_TIME = 0
     NO_TIME_LIMIT = 1
 
 
-class StartBehavior:
+class StartBehavior(IntEnum):
     HOLESHOT = 0
     FIRST_LAP = 1
     STAGGERED = 2
 
 
-class StagingTones:
+class StagingTones(IntEnum):
     TONES_NONE = 0
     TONES_ONE = 1
     TONES_ALL = 2
     TONES_3_2_1 = 3
 
 
-class WinCondition:
+class WinCondition(IntEnum):
     NONE = 0
     MOST_PROGRESS = 1 # most laps in fastest time
     FIRST_TO_LAP_X = 2

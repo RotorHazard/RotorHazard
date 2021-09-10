@@ -1,0 +1,19 @@
+{
+	"type": "array",
+	"items": {
+		"type": "object",
+		"properties": {
+		    "format_name": { "type": "string" },
+		    "race_mode": { "type": "string" },
+	    	"race_time_sec": { "type": "integer", "minimum": 0 },
+	    	"lap_grace_sec": { "type": "integer", "minimum": 0 },
+	    	"start_delay_min": { "type": "integer", "minimum": 0 },
+	    	"start_delay_max": { "type": "integer", "minimum": 0 },
+	    	"staging_tones": { "type": "string" },
+	    	"number_laps_win": { "type": "integer", "minimum": 0 },
+	    	"win_condition": { "type": "string" },
+	    	"team_racing_mode": { "type": "boolean"},
+	    	"start_behavior": { "type": "string" }
+	    }
+	}
+}

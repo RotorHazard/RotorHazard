@@ -38,6 +38,7 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 * Support for server (e.g. Raspberry Pi) audio output (e.g. bluetooth speaker).
 * Link pilots with their MultiGP or iFPV accounts.
 * Sync events with iFPV.
+* BDRA race formats.
 * Sensor alarms (for INA219, BME280, etc).
 * More host sensors for Linux/Windows systems.
 * Command line option to specify configuration file.
