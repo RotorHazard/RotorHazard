@@ -81,6 +81,7 @@
 			for (var i = 0; i < msg.enter_at_levels.length; i++) {
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
+				rotorhazard.nodes[i].level_type = msg.level_type[i];
 			}
 		});
 
@@ -163,6 +164,18 @@
 			}
 		});
 
+		socket.on('node_enter_at_level', function (msg) {
+			$('#enterat').val(msg.level);
+			$('#enterat').toggleClass('proposed-value', true);
+			rotorhazard.nodes[msg.node_index].enter_at_level = msg.level;
+		});
+
+		socket.on('node_exit_at_level', function (msg) {
+			$('#exitat').val(msg.level);
+			$('#exitat').toggleClass('proposed-value', true);
+			rotorhazard.nodes[msg.node_index].exit_at_level = msg.level;
+		});
+
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
@@ -230,7 +243,6 @@
 		});
 
 		function load_race() {
-			race_loaded = true;
 			precalc_laps = {};
 
 			var heat = parseInt($('#selected_heat').val());
@@ -291,6 +303,15 @@
 			displayLaps(current_race_data.laps);
 
 			enableUI();
+
+			// TODO: temp until recalc works with ph
+			if (rotorhazard.nodes[current_race_data.node_index].level_type == 'lifetime') {
+				$('#recalc').prop('disabled', true);
+			} else {
+				$('#recalc').prop('disabled', false);
+			}
+
+			race_loaded = true;
 			return false;
 		}
 
@@ -458,6 +479,8 @@
 		}
 
 		$('#recalc').click(function(){
+			$('#enterat').toggleClass('proposed-value', false);
+			$('#exitat').toggleClass('proposed-value', false);
 			precalc_laps = precalc_rx_data();
 			if (race_loaded) {
 				var laps = recalc_rx_data();

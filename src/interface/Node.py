@@ -234,7 +234,7 @@ class Node(CommandsWithRetry):
 
         self.history_values = []
         self.history_times = []
-        self.history_count = 0
+        self.used_history_count = 0
         self.empty_history_count = 0
 
         self.scan_enabled = False
@@ -243,7 +243,7 @@ class Node(CommandsWithRetry):
     def reset(self):
         self.history_values = [] # clear race history
         self.history_times = []
-        self.history_count = 0
+        self.used_history_count = 0
         self.empty_history_count = 0
         self.node_lap_id = -1
         self.under_min_lap_count = 0

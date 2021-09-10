@@ -599,6 +599,7 @@ function nodeModel() {
 	this.graphing = false;
 	this.enter_at_level = false;
 	this.exit_at_level = false;
+	this.level_type = 'rssi';
 
 	this.canvas = false;
 	this.graph = new SmoothieChart({

@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-from interface.RHInterface import RHInterface
+from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.0-dev.10" # Public release version code
 SERVER_API = 32+1 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -3215,6 +3215,7 @@ def emit_enter_and_exit_at_levels(**params):
     emit_payload = {
         'enter_at_levels': profile_enter_ats["v"][:RACE.num_nodes],
         'exit_at_levels': profile_exit_ats["v"][:RACE.num_nodes],
+        'level_type': ['lifetime' if hasattr(node.manager, 'rhfeature_flags') and node.manager.rhfeature_flags&RHFEAT_PH else 'rssi' for node in INTERFACE.nodes],
         'ai_calibrate': [node.ai_calibrate for node in INTERFACE.nodes],
         'calibrate': [node.calibrate for node in INTERFACE.nodes]
     }
@@ -4601,20 +4602,19 @@ def check_win_condition(**kwargs):
 
 
 @catchLogExcDBCloseWrapper
-def new_enter_or_exit_at_callback(node, is_enter_at_flag):
+def new_enter_or_exit_at_callback(node_idx, enter_at_level=None, exit_at_level=None):
     gevent.sleep(0.025)  # delay to avoid potential I/O error
-    if is_enter_at_flag:
-        logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
+    node = INTERFACE.nodes[node_idx]
+    if enter_at_level:
         on_set_enter_at_level({
-            'node': node.index,
-            'enter_at_level': node.enter_at_level
+            'node': node_idx,
+            'enter_at_level': enter_at_level
         })
         emit_enter_at_level(node)
-    else:
-        logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
+    if exit_at_level:
         on_set_exit_at_level({
-            'node': node.index,
-            'exit_at_level': node.exit_at_level
+            'node': node_idx,
+            'exit_at_level': exit_at_level
         })
         emit_exit_at_level(node)
 

@@ -220,6 +220,11 @@ input[type="radio"] {
 	padding: 0;
 }
 
+input.proposed-value {
+	font-style: italic;
+	color: grey;
+}
+
 select {
 	width: 100%;
 }

@@ -2,6 +2,8 @@ import os
 import gevent
 import logging
 from monotonic import monotonic
+from interface import persistent_homology as ph
+import bisect
 
 FREQUENCY_NONE = 0
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
@@ -104,8 +106,9 @@ class BaseHardwareInterface:
                 # if too close node peak then set a bit below node-peak RSSI value:
                 if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
                     node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
+                logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
                 if callable(self.new_enter_or_exit_at_callback):
-                    gevent.spawn(self.new_enter_or_exit_at_callback, node, True)
+                    gevent.spawn(self.new_enter_or_exit_at_callback, node.index, enter_at_level=node.enter_at_level)
 
         # check if capturing exit-at level for node
         if node.cap_exit_at_flag:
@@ -114,8 +117,9 @@ class BaseHardwareInterface:
             if self.milliseconds() >= node.cap_exit_at_millis:
                 node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
                 node.cap_exit_at_flag = False
+                logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
                 if callable(self.new_enter_or_exit_at_callback):
-                    gevent.spawn(self.new_enter_or_exit_at_callback, node, False)
+                    gevent.spawn(self.new_enter_or_exit_at_callback, node.index, exit_at_level=node.exit_at_level)
 
         # prune history data if race is not running (keep last 60s)
         if self.race_status is BaseHardwareInterface.RACE_STATUS_READY:
@@ -130,7 +134,7 @@ class BaseHardwareInterface:
         if pn_history and self.race_status != BaseHardwareInterface.RACE_STATUS_DONE:
             if not pn_history.isEmpty():
                 pn_history.addTo(readtime, node.history_values, node.history_times)
-                node.history_count += 1
+                node.used_history_count += 1
             else:
                 node.empty_history_count += 1
 
@@ -166,8 +170,52 @@ class BaseHardwareInterface:
                         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
                     node.node_lap_id = lap_id
 
+    def ai_calibrate_nodes(self):
+        for node in self.nodes:
+            if node.ai_calibrate and node.first_cross_flag and node.history_values:
+                ccs = ph.calculatePeakPersistentHomology(node.history_values)
+                lo, hi = ph.findBreak(ccs)
+                diff = hi - lo
+                if diff > 1:
+                    # cap changes to 20%
+                    learning_rate = 0.2
+                    enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
+                    # set exit a bit lower to register a pass sooner
+                    exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
+                    logger.info('AI calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
+                    self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
+                else:
+                    logger.info('AI calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
+
     def calibrate_nodes(self, start_time, race_laps_history):
-        pass
+        for node_idx, node_laps_history in race_laps_history.items():
+            node = self.nodes[node_idx]
+            node_laps, history_values, history_times = node_laps_history
+            if node.calibrate and history_values:
+                lap_ts = [start_time + lap['lap_time_stamp']/1000 for lap in node_laps if not lap['deleted']]
+                if lap_ts:
+                    ccs = ph.calculatePeakPersistentHomology(history_values)
+                    ccs.sort(key=lambda cc: history_times[cc.birth[0]])
+                    birth_ts = [history_times[cc.birth[0]] for cc in ccs]
+                    pass_idxs = []
+                    for lap_timestamp in lap_ts:
+                        idx = bisect.bisect_left(birth_ts, lap_timestamp)
+                        if idx == 0 or birth_ts[idx] == lap_timestamp:
+                            pass_idxs.append(idx)
+                        elif ccs[idx].lifetime() > ccs[idx-1].lifetime():
+                            pass_idxs.append(idx)
+                        else:
+                            pass_idxs.append(idx-1)
+                    hi = min([ccs[j].lifetime() for j in pass_idxs])
+                    lo = max([cc.lifetime() for cc in ccs if cc.lifetime()<hi]+[0])
+                    diff = hi - lo
+                    if diff > 1:
+                        enter_level = lo + diff//2
+                        exit_level = lo + diff//4
+                        logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
+                        self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
+                    else:
+                        logger.info('Calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 
     #
     # External functions for setting data
@@ -182,10 +230,11 @@ class BaseHardwareInterface:
     def set_race_status(self, race_status):
         self.race_status = race_status
         if race_status == BaseHardwareInterface.RACE_STATUS_DONE:
+            gevent.spawn(self.ai_calibrate_nodes)
             msg = ['RSSI history buffering utilisation:']
             for node in self.nodes:
-                total_count = node.history_count + node.empty_history_count
-                msg.append("\tNode {} {:.2%}".format(node, node.history_count/total_count if total_count > 0 else 0))
+                total_count = node.used_history_count + node.empty_history_count
+                msg.append("\tNode {} {:.2%}".format(node, node.used_history_count/total_count if total_count > 0 else 0))
             logger.debug('\n'.join(msg))
 
     def set_enter_at_level(self, node_index, level):
