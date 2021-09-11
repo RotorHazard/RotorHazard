@@ -66,6 +66,16 @@ class LapRFNode(Node):
         super().__init__(index=index, multi_node_index=multi_node_index, manager=manager)
         self.is_configured = False
 
+    @property
+    def threshold(self):
+        return self._threshold
+
+    @threshold.setter
+    def threshold(self, value):
+        self._threshold = value
+        self.enter_at_level = value
+        self.exit_at_level = value
+
 
 class LapRFInterface(BaseHardwareInterface):
     def __init__(self, addr, io_stream):
@@ -126,8 +136,8 @@ class LapRFInterface(BaseHardwareInterface):
         elif isinstance(record, laprf.RFSetupEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
-            node.band = record.band
-            node.channel = record.channel
+            node.band_idx = record.band
+            node.channel_idx = record.channel
             node.frequency = record.frequency if record.enabled else 0
             node.threshold = record.threshold
             node.gain = record.gain
@@ -155,22 +165,29 @@ class LapRFInterface(BaseHardwareInterface):
         super().set_race_status(race_status)
 
     def set_enter_at_level(self, node_index, level):
-        pass
+        self.set_threshold(node_index, level)
 
     def set_exit_at_level(self, node_index, level):
-        pass
+        self.set_threshold(node_index, level)
+
+    def set_threshold(self, node_index, threshold):
+        node = self.nodes[node_index]
+        self.set_rf_setup(node, node.frequency, node.band_idx, node.channel_idx, node.gain, threshold)
 
     def set_frequency(self, node_index, frequency, band='', channel=0):
         node = self.nodes[node_index]
-        node_manager = node.manager
-        slot_index = node.multi_node_index + 1
-        enabled = True if frequency else False
         try:
             band_idx = laprf.LIVE_TIME_BANDS.index(band) + 1
         except ValueError:
             band_idx = 0
         channel_idx = channel if channel else 0
-        node_manager.write(laprf.encode_set_rf_setup_record(slot_index, enabled, band_idx, channel_idx, frequency if frequency else 0, node.gain, node.threshold))
+        self.set_rf_setup(node, frequency, band_idx, channel_idx, node.gain, node.threshold)
+
+    def set_rf_setup(self, node, frequency, band_idx, channel_idx, gain, threshold):
+        node_manager = node.manager
+        slot_index = node.multi_node_index + 1
+        enabled = True if frequency else False
+        node_manager.write(laprf.encode_set_rf_setup_record(slot_index, enabled, band_idx, channel_idx, frequency if frequency else 0, gain, threshold))
         node.is_configured = False
         node_manager.write(laprf.encode_get_rf_setup_record(slot_index))
         config_start_ts = monotonic()
@@ -183,6 +200,8 @@ class LapRFInterface(BaseHardwareInterface):
             logger.error("LapRF did not respond with RF setup information for node {}".format(node))
         if node.frequency != frequency:
             logger.error("LapRF ignored our request to change the frequency of node {} (requested {}, is {})".format(node, frequency, node.frequency))
+        if node.threshold != threshold:
+            logger.error("LapRF ignored our request to change the threshold of node {} (requested {}, is {})".format(node, threshold, node.threshold))
 
 
 class SocketStream:
