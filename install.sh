@@ -1,6 +1,6 @@
 #!/bin/sh
 cd src
-python3 -m pip install -r requirements.txt
+python3 -m pip install --upgrade -r requirements.txt
 sudo apt-get install python3-numpy
 
 # TTS
