@@ -5,6 +5,7 @@
 #include "util/persistent-homology.h"
 #include "util/filter.h"
 #include "util/median-filter.h"
+#include "util/lowpass10hz-filter.h"
 #include "util/lowpass15hz-filter.h"
 #include "util/lowpass20hz-filter.h"
 #include "util/lowpass50hz-filter.h"

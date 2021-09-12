@@ -1,4 +1,5 @@
 #include <ArduinoUnitTests.h>
+#include "../util/lowpass10hz-filter.h"
 #include "../util/lowpass15hz-filter.h"
 #include "../util/lowpass20hz-filter.h"
 #include "../util/lowpass50hz-filter.h"
@@ -70,6 +71,16 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
     } \
     assertEqual((int)expectedMax, (int)maxVal); \
     assertEqual((int)expectedMin, (int)zero); \
+}
+
+unittest(lpf10_with_5hz_signal)
+{
+  LowPassFilter10Hz lpf;
+  assertFalse(lpf.isFilled());
+  double freq = 5;
+  rssi_t output[N];
+  int offset = filter("lpf10_with_5hz_signal.csv", lpf, freq, output);
+  assertMaxMin(output, offset, freq);
 }
 
 unittest(lpf15_with_8hz_signal)
