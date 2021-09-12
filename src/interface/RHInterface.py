@@ -339,13 +339,14 @@ class RHInterface(BaseHardwareInterface):
                         data = node.read_command(READ_LAP_STATS, 20, max_retries=0)
                     else:
                         data = node.read_command(READ_LAP_STATS, 18, max_retries=0)
-                    server_roundtrip = node.io_response - node.io_request
-                    server_oneway = server_roundtrip / 2
-                    readtime = node.io_response - server_oneway
                 else:
                     data = node.read_command(READ_LAP_STATS, 17, max_retries=0)
 
-                if data != None and len(data) > 0:
+                if data is not None and len(data) > 0:
+                    server_roundtrip = node.io_response - node.io_request
+                    server_oneway = server_roundtrip / 2
+                    readtime = node.io_response - server_oneway
+
                     lap_id = data[0]
 
                     if node.manager.api_level >= 18:

@@ -33,11 +33,11 @@ class CommandsWithRetry:
 
         def log_io_error(msg):
             nonlocal retry_count
-            retry_count += 1
-            if retry_count <= max_retries:
+            if retry_count < max_retries:
                 logger.warning('Retry ({4}) in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
             else:
                 logger.warning('Retry ({4}) limit reached in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+            retry_count += 1
             self.read_error_count += 1
             gevent.sleep(0.025)
 
@@ -70,11 +70,11 @@ class CommandsWithRetry:
 
         def log_io_error(msg):
             nonlocal retry_count
-            retry_count += 1
             if retry_count <= max_retries:
                 logger.debug('Retry ({4}) in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             else:
                 logger.warning('Retry ({4}) limit reached in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+            retry_count += 1
             self.write_error_count += 1
             gevent.sleep(0.025)
 
