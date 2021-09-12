@@ -233,6 +233,7 @@ class Node(CommandsWithRetry):
         self.under_min_lap_count = 0
 
         self.history_values = []
+        # monotonic timestamps (secs)
         self.history_times = []
         self.used_history_count = 0
         self.empty_history_count = 0

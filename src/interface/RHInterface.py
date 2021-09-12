@@ -327,22 +327,23 @@ class RHInterface(BaseHardwareInterface):
                 for freq, rssi in zip(freqs, rssis):
                     node.scan_data[freq] = rssi
             elif node.frequency:
+                # as we are continually polling, no need to retry command
                 if node.manager.api_level >= 10:
                     if node.manager.api_level >= 21:
-                        data = node.read_command(READ_LAP_STATS, 16)
+                        data = node.read_command(READ_LAP_STATS, 16, max_retries=0)
                     elif node.manager.api_level >= 18:
-                        data = node.read_command(READ_LAP_STATS, 19)
+                        data = node.read_command(READ_LAP_STATS, 19, max_retries=0)
                     elif node.manager.api_level >= 17:
-                        data = node.read_command(READ_LAP_STATS, 28)
+                        data = node.read_command(READ_LAP_STATS, 28, max_retries=0)
                     elif node.manager.api_level >= 13:
-                        data = node.read_command(READ_LAP_STATS, 20)
+                        data = node.read_command(READ_LAP_STATS, 20, max_retries=0)
                     else:
-                        data = node.read_command(READ_LAP_STATS, 18)
+                        data = node.read_command(READ_LAP_STATS, 18, max_retries=0)
                     server_roundtrip = node.io_response - node.io_request
                     server_oneway = server_roundtrip / 2
                     readtime = node.io_response - server_oneway
                 else:
-                    data = node.read_command(READ_LAP_STATS, 17)
+                    data = node.read_command(READ_LAP_STATS, 17, max_retries=0)
 
                 if data != None and len(data) > 0:
                     lap_id = data[0]
