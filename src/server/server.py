@@ -2491,7 +2491,7 @@ def on_save_laps():
     gevent.spawn(build_atomic_result_caches, cache_params)
 
     gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_monotonic,
-                 {node_idx: (laps, INTERFACE.nodes[node_index].history_values, INTERFACE.nodes[node_index].history_times) for node_idx,laps in RACE.node_laps.items()}
+                 {node_idx: (laps, INTERFACE.nodes[node_index].history_times, INTERFACE.nodes[node_index].history_values) for node_idx,laps in RACE.node_laps.items()}
                  )
 
     Events.trigger(Evt.LAPS_SAVE, {
@@ -2572,7 +2572,7 @@ def on_resave_laps(data):
     history_values = json.loads(pilotrace_obj.history_values)
     history_times = json.loads(pilotrace_obj.history_times)
     gevent.spawn(INTERFACE.calibrate_nodes, race_meta.start_time,
-                 {node_idx: (new_laps, history_values, history_times)}
+                 {node_idx: (new_laps, history_times, history_values)}
                  )
 
     Events.trigger(Evt.LAPS_RESAVE, {

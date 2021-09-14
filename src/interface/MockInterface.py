@@ -27,24 +27,35 @@ class MockNodeManager(NodeManager):
 
 
 class MockInterface(BaseHardwareInterface):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, num_nodes=8, use_datafiles=False, *args, **kwargs):
         super().__init__(update_sleep=0.5)
 
-        self.data = []
-        for index in range(int(os.environ.get('RH_NODES', '8'))):
+        self.data_files = [] if use_datafiles else None
+        for index in range(num_nodes):
             manager = MockNodeManager(index)
             node = manager.add_node(index) # New node instance
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.node_managers.append(manager)
             self.nodes.append(node)
-            try:
-                f = open("mock_data_{0}.csv".format(node.index+1))
-                logger.info("Loaded mock_data_{0}.csv".format(node.index+1))
-            except IOError:
-                f = None
-            self.data.append(f)
 
+    def start(self):
+        if self.data_files is not None:
+            for node in self.nodes:
+                try:
+                    f = open("mock_data_{0}.csv".format(node.index+1))
+                    logger.info("Loaded mock_data_{0}.csv".format(node.index+1))
+                except IOError:
+                    f = None
+                self.data_files.append(f)
+        super().start()
+
+    def stop(self):
+        super().stop()
+        if self.data_files is not None:
+            for f in self.data_files:
+                if f is not None:
+                    f.close()
 
     #
     # Update Loop
@@ -62,12 +73,12 @@ class MockInterface(BaseHardwareInterface):
             elif node.frequency:
                 readtime = monotonic()
 
-                node_data = self.data[index]
-                if node_data:
-                    data_line = node_data.readline()
+                data_file = self.data_files[index] if self.data_files is not None else None
+                if data_file:
+                    data_line = data_file.readline()
                     if data_line == '':
-                        node_data.seek(0)
-                        data_line = node_data.readline()
+                        data_file.seek(0)
+                        data_line = data_file.readline()
                     data_columns = data_line.split(',')
                     lap_id = int(data_columns[1])
                     ms_val = int(data_columns[2])
@@ -177,4 +188,5 @@ class MockInterface(BaseHardwareInterface):
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
     logger.info('Using mock hardware interface')
-    return MockInterface(*args, **kwargs)
+    num_nodes = int(os.environ.get('RH_NODES', '8'))
+    return MockInterface(num_nodes=num_nodes, use_datafiles=True, *args, **kwargs)

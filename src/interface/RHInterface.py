@@ -291,7 +291,7 @@ class RHInterface(BaseHardwareInterface):
                              node, node.frequency, node.enter_at_level, node.exit_at_level))
 
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                    self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
+                    self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w', buffering=10*1024*1024))
                     logger.info("Data logging enabled for node {0}".format(node))
                 else:
                     self.data_loggers.append(None)

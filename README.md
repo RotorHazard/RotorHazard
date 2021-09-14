@@ -84,6 +84,18 @@ cd src
 python3 -m unittest discover
 ```
 
+## Node tuning/calibration
+
+In the Settings page:
+ - turn-off AI calibration,
+ - turn-on auto-calibration,
+ - turn-off adaptive calibration.
+
+Run a race, marshal the laps so they are correct,
+hit Commit Changes.
+The enter/exit levels should now have been adjusted.
+
+
 ## Documentation
 For instructions on how to build and operate the current version of RotorHazard, follow the [Documentation](https://github.com/pulquero/BetaHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/pulquero/BetaHazard/releases/latest).
 

@@ -94,6 +94,8 @@ class BaseHardwareInterface:
         if lap_id != node.node_lap_id:
             if node.node_lap_id != -1 and lap_id != node.node_lap_id + 1:
                 logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(node.node_lap_id, lap_id))
+            if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
+                node.pass_history.append((lap_timestamp, node.pass_peak_rssi))
             upd_list.append((node, lap_id, lap_timestamp))
 
         # check if capturing enter-at level for node
@@ -122,7 +124,7 @@ class BaseHardwareInterface:
                     gevent.spawn(self.new_enter_or_exit_at_callback, node.index, exit_at_level=node.exit_at_level)
 
         # prune history data if race is not running (keep last 60s)
-        if self.race_status is BaseHardwareInterface.RACE_STATUS_READY:
+        if self.race_status == BaseHardwareInterface.RACE_STATUS_READY:
             if len(node.history_times):
                 while node.history_times[0] < (monotonic() - 60):
                     node.history_values.pop(0)
@@ -177,20 +179,22 @@ class BaseHardwareInterface:
                 lo, hi = ph.findBreak(ccs)
                 diff = hi - lo
                 if diff > 1:
-                    # cap changes to 20%
-                    learning_rate = 0.2
+                    # cap changes to 50%
+                    learning_rate = 0.5
                     enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
                     # set exit a bit lower to register a pass sooner
                     exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
                     logger.info('AI calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
-                    self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
+                    if callable(self.new_enter_or_exit_at_callback):
+                        self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
                 else:
                     logger.info('AI calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 
     def calibrate_nodes(self, start_time, race_laps_history):
         for node_idx, node_laps_history in race_laps_history.items():
             node = self.nodes[node_idx]
-            node_laps, history_values, history_times = node_laps_history
+            node_laps, history_times, history_values = node_laps_history
+            assert len(history_times) == len(history_values)
             if node.calibrate and history_values:
                 lap_ts = [start_time + lap['lap_time_stamp']/1000 for lap in node_laps if not lap['deleted']]
                 if lap_ts:
@@ -213,7 +217,8 @@ class BaseHardwareInterface:
                         enter_level = lo + diff//2
                         exit_level = lo + diff//4
                         logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
-                        self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
+                        if callable(self.new_enter_or_exit_at_callback):
+                            self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
                     else:
                         logger.info('Calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 
@@ -230,6 +235,8 @@ class BaseHardwareInterface:
     def set_race_status(self, race_status):
         self.race_status = race_status
         if race_status == BaseHardwareInterface.RACE_STATUS_DONE:
+            for node in self.nodes:
+                node.consolidate_history()
             gevent.spawn(self.ai_calibrate_nodes)
             msg = ['RSSI history buffering utilisation:']
             for node in self.nodes:
