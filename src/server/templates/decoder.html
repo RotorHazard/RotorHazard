@@ -121,11 +121,6 @@
 				$('#led_brightness_value').html($('#set_led_brightness').val());
 			}
 
-			// populate frequency selects
-			$('.frequency_table').each(function(){
-				$(this).html(freq.buildSelect());
-			});
-
 			// set up node local store
 			for (var i = 0; i < {{ num_nodes }}; i++) {
 				rotorhazard.nodes[i] = new nodeModel();
@@ -278,17 +273,7 @@
 			})
 
 			/* Frequency Setup */
-			socket.on('frequency_data', function (msg) {
-				if (msg.fdata.length) {
-					for (var i in msg.fdata) {
-						var fObj = freq.getFObjbyFData(msg.fdata[i]);
-						rotorhazard.nodes[i].fObj = fObj;
-						$('#s_channel_' + i).val(fObj.frequency);
-						$('#f_table_' + i).val(fObj.fString);
-						freq.updateBlock(fObj, i);
-					}
-				}
-			});
+			socket.on('frequency_data', frequency_data_handler);
 
 			function show_imd_rating(val) {
 				$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +

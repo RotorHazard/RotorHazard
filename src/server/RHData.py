@@ -1384,9 +1384,9 @@ class RHData():
 
     def reset_raceFormats(self):
         self.clear_raceFormats()
-        with open('race-formats.schema.json', 'r') as f:
+        with open('race_formats.schema.json', 'r') as f:
             schema = json.load(f)
-        with open('race-formats.json', 'r') as f:
+        with open('race_formats.json', 'r') as f:
             default_race_formats = json.load(f)
         jsonschema.validate(instance=default_race_formats, schema=schema)
         for race_format in default_race_formats:

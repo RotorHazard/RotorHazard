@@ -11,6 +11,8 @@ import subprocess
 import glob
 import socket
 import random
+import json
+import jsonschema
 from interface.BaseHardwareInterface import FREQUENCY_NONE
 
 logger = logging.getLogger(__name__)
@@ -23,85 +25,26 @@ FORMAT_ID_NONE = 0  # indicator value for unformatted class
 FREQUENCY_ID_NONE = FREQUENCY_NONE  # indicator value for node disabled
 IS_SYS_RASPBERRY_PI = True  # set by 'idAndLogSystemInfo()'
 
-FREQS = {
-    'R1': 5658,
-    'R2': 5695,
-    'R3': 5732,
-    'R4': 5769,
-    'R5': 5806,
-    'R6': 5843,
-    'R7': 5880,
-    'R8': 5917,
-    'F1': 5740,
-    'F2': 5760,
-    'F3': 5780,
-    'F4': 5800,
-    'F5': 5820,
-    'F6': 5840,
-    'F7': 5860,
-    'F8': 5880,
-    'E1': 5705,
-    'E2': 5685,
-    'E3': 5665,
-    'E4': 5645,
-    'E5': 5885,
-    'E6': 5905,
-    'E7': 5925,
-    'E8': 5945,
-    'B1': 5733,
-    'B2': 5752,
-    'B3': 5771,
-    'B4': 5790,
-    'B5': 5809,
-    'B6': 5828,
-    'B7': 5847,
-    'B8': 5866,
-    'A1': 5865,
-    'A2': 5845,
-    'A3': 5825,
-    'A4': 5805,
-    'A5': 5785,
-    'A6': 5765,
-    'A7': 5745,
-    'A8': 5725,
-    'L1': 5362,
-    'L2': 5399,
-    'L3': 5436,
-    'L4': 5473,
-    'L5': 5510,
-    'L6': 5547,
-    'L7': 5584,
-    'L8': 5621,
-    'U0': 5300,
-    'U1': 5325,
-    'U2': 5348,
-    'U3': 5366,
-    'U4': 5384,
-    'U5': 5402,
-    'U6': 5420,
-    'U7': 5438,
-    'U8': 5456,
-    'U9': 5985,
-    'D1': 5660,
-    'D2': 5695,
-    'D3': 5735,
-    'D4': 5770,
-    'D5': 5805,
-    'D6': 5880,
-    'D7': 5914,
-    'D8': 5839,
-    'J1': 5695,
-    'J2': 5770,
-    'J3': 5880,
-    'S1': 5660,
-    'S2': 5695,
-    'S3': 5735,
-    'S4': 5770,
-    'S5': 5805,
-    'S6': 5839,
-    'S7': 5878,
-    'S8': 5914,
-}
+VTX_TABLE = {}
+FREQS = {}
+
+
+def load_vtx_table():
+    global VTX_TABLE, FREQS
+    with open('vtxconfig_schema-1.0.json', 'r') as f:
+        schema = json.load(f)
+    with open('vtx_table.json', 'r') as f:
+        vtx_table = json.load(f)
+    jsonschema.validate(instance=vtx_table, schema=schema)
+    # validated
+    VTX_TABLE = vtx_table
+    for band in vtx_table['vtx_table']['bands_list']:
+        for idx, freq in enumerate(band['frequencies']):
+            FREQS[band['letter']+str(idx+1)] = freq
+
+
+load_vtx_table();
+
 
 def time_format(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000'''
@@ -119,6 +62,7 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
         timeformat = '{m}:{s}.{d}'
 
     return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
+
 
 def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     '''Convert milliseconds to phonetic'''
@@ -140,11 +84,14 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     else:
         return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
+
 def isVersionPython2():
     return sys.version.startswith("2.")
 
+
 def getPythonVersionStr():
     return sys.version.split()[0]
+
 
 def idAndLogSystemInfo():
     global IS_SYS_RASPBERRY_PI
@@ -165,8 +112,10 @@ def idAndLogSystemInfo():
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
 
+
 def isSysRaspberryPi():
     return IS_SYS_RASPBERRY_PI
+
 
 # Returns "primary" IP address for local host.  Based on:
 #  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
@@ -193,6 +142,7 @@ def getLocalIPAddress():
             if IP.find('.') > 0 and not IP.startswith("127."):
                 return IP
     raise RuntimeError("Unable to determine IP address via 'hostname' command")
+
 
 # Substitutes asterisks in the IP address 'destAddrStr' with values from the IP address
 #  fetched via the given 'determineHostAddressFn' function.
@@ -221,6 +171,7 @@ def substituteAddrWildcards(determineHostAddressFn, destAddrStr):
         logger.exception("Error in 'substituteAddrWildcards()'")
     return destAddrStr
 
+
 # Checks if given file or directory is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if owner changed to 'pi' user; False if not.
 def checkSetFileOwnerPi(fileNameStr):
@@ -240,6 +191,7 @@ def checkSetFileOwnerPi(fileNameStr):
         logger.exception("Error in 'checkSetFileOwnerPi()'")
     return False
 
+
 # Scans the given binary-data string for a "prefixed" substring and returns the substring.
 #  dataStr format:  b'PREFIXSTR: substr\0'
 def findPrefixedSubstring(dataStr, prefixStr, maxTextSize):
@@ -253,6 +205,7 @@ def findPrefixedSubstring(dataStr, prefixStr, maxTextSize):
             return dataStr[sPos:ePos].decode()
     return None
 
+
 # Wrapper to be used as a decorator on thread functions, etc, so their exception
 # details are sent to the log file (instead of 'stderr').
 def catchLogExceptionsWrapper(func):
@@ -262,6 +215,7 @@ def catchLogExceptionsWrapper(func):
         except Exception:
             logger.exception("Exception via catchLogExceptionsWrapper")
     return wrapper
+
 
 # Modifies a name with a human-readable suffix (name 2, name 3, etc.)
 # guaranteed to be unique within supplied list of selections
@@ -280,6 +234,7 @@ def uniqueName(desiredName, otherNames):
     else:
         return desiredName
 
+
 # Appends the given string to the "base" part of the given filename.
 def appendToBaseFilename(fileNameStr, addStr):
     sList = fileNameStr.rsplit('.', 1)
@@ -287,6 +242,7 @@ def appendToBaseFilename(fileNameStr, addStr):
     if len(sList) > 1:
         retStr += '.' + sList[1]
     return retStr
+
 
 def hslToHex(h, s, l):
     if not h:

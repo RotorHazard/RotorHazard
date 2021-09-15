@@ -1,0 +1,205 @@
+{
+    "description": "RotorHazard frequency table",
+    "version": "1.0",
+    "vtx_table": {
+        "bands_list": [
+            {
+                "name": "RACEBAND",
+                "letter": "R",
+                "is_factory_band": false,
+                "frequencies": [
+                    5658,
+                    5695,
+                    5732,
+                    5769,
+                    5806,
+                    5843,
+                    5880,
+                    5917
+                ]
+            },
+            {
+                "name": "FATSHARK",
+                "letter": "F",
+                "is_factory_band": false,
+                "frequencies": [
+                    5740,
+                    5760,
+                    5780,
+                    5800,
+                    5820,
+                    5840,
+                    5860,
+                    5880
+                ]
+            },
+            {
+                "name": "IMD6",
+                "letter": "I",
+                "is_factory_band": false,
+                "frequencies": [
+                    5732,
+                    5765,
+                    5828,
+                    5840,
+                    5866,
+                    5740,
+                    0,
+                    0
+                ]
+            },
+            {
+                "name": "BOSCAM_E",
+                "letter": "E",
+                "is_factory_band": false,
+                "frequencies": [
+                    5705,
+                    5685,
+                    5665,
+                    5645,
+                    5885,
+                    5905,
+                    5925,
+                    5945
+                ]
+            },
+            {
+                "name": "BOSCAM_B",
+                "letter": "B",
+                "is_factory_band": false,
+                "frequencies": [
+                    5733,
+                    5752,
+                    5771,
+                    5790,
+                    5809,
+                    5828,
+                    5847,
+                    5866
+                ]
+            },
+            {
+                "name": "BOSCAM_A",
+                "letter": "A",
+                "is_factory_band": false,
+                "frequencies": [
+                    5865,
+                    5845,
+                    5825,
+                    5805,
+                    5785,
+                    5765,
+                    5745,
+                    5725
+                ]
+            },
+            {
+                "name": "SHARK_BYTE_US",
+                "letter": "S",
+                "is_factory_band": false,
+                "frequencies": [
+                    5660,
+                    5695,
+                    5735,
+                    5770,
+                    5805,
+                    5839,
+                    5878,
+                    5914
+                ]
+            },
+            {
+                "name": "SHARK_BYTE_EU",
+                "letter": "Z",
+                "is_factory_band": false,
+                "frequencies": [
+                    5735,
+                    5770,
+                    5805,
+                    5839,
+                    0,
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "name": "DJI_US",
+                "letter": "D",
+                "is_factory_band": false,
+                "frequencies": [
+                    5660,
+                    5695,
+                    5735,
+                    5770,
+                    5805,
+                    5880,
+                    5914,
+                    5839
+                ]
+            },
+            {
+                "name": "DJI_EU",
+                "letter": "Q",
+                "is_factory_band": false,
+                "frequencies": [
+                    5735,
+                    5770,
+                    5805,
+                    0,
+                    0,
+                    0,
+                    0,
+                    5839
+                ]
+            },
+            {
+                "name": "DJI_50",
+                "letter": "J",
+                "is_factory_band": false,
+                "frequencies": [
+                    5695,
+                    5770,
+                    5880,
+                    0,
+                    0,
+                    0,
+                    0,
+                    5839
+                ]
+            },
+            {
+                "name": "LOW_BAND",
+                "letter": "L",
+                "is_factory_band": false,
+                "frequencies": [
+                    5362,
+                    5399,
+                    5436,
+                    5473,
+                    5510,
+                    5547,
+                    5584,
+                    5621
+                ]
+            },
+            {
+                "name": "U_BAND",
+                "letter": "U",
+                "is_factory_band": false,
+                "frequencies": [
+                    5325,
+                    5348,
+                    5366,
+                    5384,
+                    5402,
+                    5420,
+                    5438,
+                    5456
+                ]
+            }
+        ],
+        "powerlevels_list": [
+        ]
+    }
+}

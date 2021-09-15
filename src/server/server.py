@@ -3149,8 +3149,9 @@ def emit_frequency_data(**params):
             })
 
     emit_payload = {
-            'fdata': fdata
-        }
+        'vtx_table': RHUtils.VTX_TABLE,
+        'fdata': fdata
+    }
 
     if ('nobroadcast' in params):
         emit('frequency_data', emit_payload)
