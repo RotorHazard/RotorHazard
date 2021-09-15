@@ -4983,7 +4983,14 @@ def shutdown_button_long_press():
 def initialize_hardware_interface():
     try:
         global INTERFACE
-        rh_interface_name ='interface.' + os.environ.get('RH_INTERFACE', 'RH') + "Interface"
+        if 'RH_INTERFACE' in os.environ:
+            rh_interface_name = 'interface.' + os.environ.get('RH_INTERFACE') + "Interface"
+        elif 'ADDRESS' in rhconfig.LAPRF and rhconfig.LAPRF['ADDRESS']:
+            rh_interface_name = 'interface.LapRFInterface'
+        elif 'HARDWARE_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['HARDWARE_PORT']:
+            rh_interface_name = 'interface.ChorusInterface'
+        else:
+            rh_interface_name = 'interface.RHInterface'
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
@@ -5013,7 +5020,8 @@ def initialize_hardware_interface():
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
-            if 'RH_INTERFACE' in os.environ:
+            # if interface was explicitly configured
+            if 'RH_INTERFACE' in os.environ or rh_interface_name != 'interface.RHInterface':
                 return False
 
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
