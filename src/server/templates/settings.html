@@ -142,6 +142,7 @@
 					$('#set_format_name').prop('disabled', true);
 					$('#set_race_mode').prop('disabled', true);
 					$('#set_fix_race_time').prop('disabled', true);
+					$('#set_lap_grace_time').prop('disabled', true);
 					$('#set_start_delay_min').prop('disabled', true);
 					$('#set_start_delay_max').prop('disabled', true);
 					$('#set_staging_tones').prop('disabled', true);
@@ -158,6 +159,7 @@
 					$('#set_format_name').prop('disabled', false);
 					$('#set_race_mode').prop('disabled', false);
 					$('#set_fix_race_time').prop('disabled', false);
+					$('#set_lap_grace_time').prop('disabled', false);
 					$('#set_start_delay_min').prop('disabled', false);
 					$('#set_start_delay_max').prop('disabled', false);
 					$('#set_staging_tones').prop('disabled', false);
@@ -1431,7 +1433,7 @@
 		function update_race_format_ui() {
 			var rf = rotorhazard.race_format;
 
-			$('#format-race-duration-field').toggle(rf.race_mode == 0);
+			$('.format-race-duration-fields').toggle(rf.race_mode == 0);
 			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
 
 			var issues = []
@@ -1479,6 +1481,8 @@
 			$('#set_race_mode').prop('disabled', msg.locked);
 			$('#set_fix_race_time').val(msg.race_time_sec);
 			$('#set_fix_race_time').prop('disabled', msg.locked);
+			$('#set_lap_grace_time').val(msg.lap_grace_sec);
+			$('#set_lap_grace_time').prop('disabled', msg.locked);
 			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
 			$('#set_hide_stage_timer').prop('disabled', msg.locked);
 			$('#set_start_delay_min').val(msg.start_delay_min);
@@ -1541,6 +1545,13 @@
 		$('#set_fix_race_time').change(function (event) {
 			var data = {
 				race_time_sec: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_lap_grace_time').change(function (event) {
+			var data = {
+				lap_grace_sec: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})
@@ -2744,11 +2755,17 @@
 					<!-- <option value="2">{{ __('Fixed Time / End Immediately') }}</option> -->
 				</select>
 			</li>
-			<li id="format-race-duration-field">
+			<li class="format-race-duration-fields">
 				<div class="label-block">
-					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
+					<label for="set_fix_race_time">{{ __('Race Duration (seconds)') }}</label>
 				</div>
 				<input type="number" id="set_fix_race_time" min="0" max="99999">
+			</li>
+			<li class="format-race-duration-fields">
+				<div class="label-block">
+					<label for="set_lap_grace_time">{{ __('Lap Grace Period (seconds)') }}</label>
+				</div>
+				<input type="number" id="set_lap_grace_time" min="0" max="99999">
 			</li>
 			<li>
 				<div class="label-block">

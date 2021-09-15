@@ -95,7 +95,7 @@
 				if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
 					tr.addClass('min-lap-warning');
 				}
-				if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
+				if (!rotorhazard.race_format.race_mode && lap.lap_time_stamp > (rotorhazard.race_format.race_time_sec * 1000)) {
 					tr.addClass('after-time-expired');
 				}
 				tr.appendTo('#current_laps');
@@ -145,7 +145,7 @@
 		});
 
 		socket.on('race_format', function (msg) {
-			rotorhazard.race_formats = msg;
+			rotorhazard.race_format = msg;
 		});
 	});
 

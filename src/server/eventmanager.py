@@ -147,6 +147,7 @@ class Evt:
     RACE_STAGE = 'raceStage'
     RACE_START_COUNTDOWN = 'raceStartCountdown'
     RACE_START = 'raceStart'
+    RACE_TICK = 'raceTick'
     RACE_FINISH = 'raceFinish'
     RACE_STOP = 'raceStop'
     RACE_WIN = 'raceWin'

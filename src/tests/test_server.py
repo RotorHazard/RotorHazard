@@ -10,7 +10,7 @@ if os.path.isfile(TEST_DB):
 os.environ['RH_DATABASE'] = TEST_DB
 os.environ['RH_INTERFACE'] = 'Mock'
 
-from server import server, log
+from server import server, log, RHRace
 from interface.Node import NodeManager
 import tests as tests_pkg
 
@@ -137,12 +137,12 @@ class ServerTest(unittest.TestCase):
     def test_alter_race_format(self):
         data = {
             'format_name': 'Test ' + str(datetime.now()),
-            'race_mode': 0,
+            'race_mode': RHRace.RaceMode.FIXED_TIME,
             'race_time_sec': 33,
             'start_delay_min': 1,
             'start_delay_max': 4,
             'number_laps_win': 5,
-            'win_condition': 0,
+            'win_condition': RHRace.WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': True
         }
         self.client.emit('alter_race_format', data)

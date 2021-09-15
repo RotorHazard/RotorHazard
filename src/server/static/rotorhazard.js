@@ -821,15 +821,15 @@ function timerModel() {
 		}
 	}
 
-	this.start = function(remote_time_zero, local_remote_diiferential){
+	this.start = function(remote_time_zero, local_remote_differential){
 		// reset simplified time and drift history
 		rotorhazard.timer.race.time_s = false;
 		this.drift_history = [];
 		this.drift_correction = 0;
 
 		// get sync if needed
-		if (typeof remote_time_zero !== "undefined" && typeof local_remote_diiferential !== "undefined") {
-			this.sync(remote_time_zero, local_remote_diiferential);
+		if (typeof remote_time_zero !== "undefined" && typeof local_remote_differential !== "undefined") {
+			this.sync(remote_time_zero, local_remote_differential);
 		}
 
 		// start timing loop
@@ -854,11 +854,11 @@ function timerModel() {
 		this.running = true;
 	}
 
-	this.sync = function(remote_time_zero, local_remote_diiferential) {
+	this.sync = function(remote_time_zero, local_remote_differential) {
 		// set local timer zero based on remote zero and calculated differential
-		if (local_remote_diiferential && remote_time_zero) {
+		if (local_remote_differential && remote_time_zero) {
 			// only valid with both components
-			this.zero_time = remote_time_zero - local_remote_diiferential;
+			this.zero_time = remote_time_zero - local_remote_differential;
 		} else {
 			// otherwise don't consider valid
 			this.zero_time = null;
@@ -997,9 +997,11 @@ var rotorhazard = {
 	timer: {
 		deferred: new timerModel(),
 		race: new timerModel(),
+		grace: new timerModel(),
 		stopAll: function() {
 			this.deferred.stop();
 			this.race.stop();
+			this.grace.stop();
 		}
 	},
 	saveData: function() {
@@ -1276,9 +1278,32 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 	else {
 		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	}
+	race_format = rotorhazard.race_format;
+	if (race_format.lap_grace_sec) {
+		speak('<div>Pilots, finish your lap</div>');
+	}
 	$('.time-display').html(timer.renderHTML());
+	if (race_format.lap_grace_sec) {
+		rotorhazard.timer.grace.duration = race_format.lap_grace_sec;
+		$('.timing-clock').addClass('lap-grace-time');
+		rotorhazard.timer.grace.start(rotorhazard.race_start_pi + race_format.race_time_sec*1000, rotorhazard.pi_time_diff);
+	}
 }
 rotorhazard.timer.race.callbacks.self_resync = function(timer){
+	// display resync warning
+	timer.warn_until = window.performance.now() + 3000;
+	$('.timing-clock .warning').show();
+}
+
+rotorhazard.timer.grace.callbacks.step = function(timer){
+	$('.time-display').html(timer.renderHTML());
+}
+rotorhazard.timer.grace.callbacks.expire = function(timer){
+	speak('<div>The race has finished</div>');
+	$('.timing-clock').removeClass('lap-grace-time');
+	$('.time-display').html(timer.renderHTML());
+}
+rotorhazard.timer.grace.callbacks.self_resync = function(timer){
 	// display resync warning
 	timer.warn_until = window.performance.now() + 3000;
 	$('.timing-clock .warning').show();
@@ -1340,6 +1365,84 @@ function init_popup_generics() {
 		type:'inline',
 		midClick: true,
 	});
+}
+
+
+function race_kickoff(msg) {
+	rotorhazard.timer.stopAll();
+
+	rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
+
+	rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
+	rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
+	rotorhazard.timer.race.duration = msg.race_time_sec;
+
+	rotorhazard.timer.race.max_delay = msg.delay;
+
+	rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+}
+
+function phonetic_data_handler(msg) {
+	if (rotorhazard.min_lap * 1000 < msg.raw_time) {
+		var ttstext = '';
+	
+		if (rotorhazard.voice_callsign == 1 ||
+					(rotorhazard.voice_callsign == 2 && (!msg.team_name))) {
+			ttstext = msg.callsign;
+			if (msg.pilot)
+				ttstext = msg.pilot;
+		}
+
+		if (rotorhazard.race_format.lap_grace_sec && msg.raw_time_stamp > rotorhazard.race_format.race_time_sec*1000 && msg.raw_time_stamp <= (rotorhazard.race_format.race_time_sec + rotorhazard.race_format.lap_grace_sec)*1000) {
+			ttstext += " done";
+		}
+
+		if (rotorhazard.voice_lap_count == 1 ||
+					(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
+			if (ttstext.length > 0)
+				ttstext += ", ";
+			ttstext += __l('Lap') + " " + msg.lap;
+		}
+	
+		if (rotorhazard.voice_lap_time == 1 ||
+					(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
+			if (ttstext.length > 0)
+				ttstext += ", ";
+			ttstext += msg.phonetic;
+		}
+	
+		if (msg.team_name && msg.team_laps && rotorhazard.voice_team_lap_count != 0) {
+			if (ttstext.length > 0)
+				ttstext += ", ";
+			ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
+		}
+	
+		if (ttstext.length > 0) {
+			if (msg.leader_flag) {
+				speak(LEADER_FLAG_CHAR);
+			}
+			speak('<div class="speech">' + ttstext + '</div>');
+		}
+	}
+}
+
+function phonetic_split_call_handler(msg) {
+	var ttstext = '';
+	if (rotorhazard.voice_split_timer) {
+		if ((rotorhazard.voice_split_timer & SPLMSK_PILOT_NAME) && msg.pilot_name) {
+			ttstext = msg.pilot_name
+		}
+		ttstext += ' ' + __l('split');
+		var sepstr = ' '
+		if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) {
+			ttstext += ' ' + msg.split_id
+			sepstr = ', '
+		}
+		if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time) {
+			ttstext += sepstr + msg.split_time
+		}
+		speak('<div class="speech">' + ttstext + '</div>');
+	}
 }
 
 // restore local settings
@@ -1670,6 +1773,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 	twrap.append(table);
 	return twrap;
 }
+
 function build_team_leaderboard(leaderboard, display_type, meta) {
 	if (typeof(display_type) === 'undefined')
 		display_type = 'by_race_time';
@@ -1736,6 +1840,7 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 	twrap.append(table);
 	return twrap;
 }
+
 /* Frequency Table */
 var freq = {
 	frequencies: {

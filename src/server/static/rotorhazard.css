@@ -813,6 +813,11 @@ main.page-home {
 	color: #000;
 }
 
+.timing-clock.lap-grace-time {
+	background: hsl(25, 30%, 20%);
+	color: #F00;
+}
+
 .timing-clock .warning {
 	position: absolute;
 	left: 0.25em;

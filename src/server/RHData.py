@@ -12,6 +12,7 @@ import os
 import traceback
 import shutil
 import json
+import jsonschema
 import glob
 from types import MappingProxyType
 from . import RHUtils
@@ -407,6 +408,7 @@ class RHData():
                         'name': self.__("Migrated Format"),
                         'race_mode': RaceMode.FIXED_TIME,
                         'race_time_sec': 120,
+                        'lap_grace_sec': 0,
                         'start_delay_min': 2,
                         'start_delay_max': 5,
                         'staging_tones': StagingTones.TONES_ALL,
@@ -1209,6 +1211,7 @@ class RHData():
             name='',
             race_mode=RaceMode.FIXED_TIME,
             race_time_sec=0,
+            lap_grace_sec=0,
             start_delay_min=0,
             start_delay_max=0,
             staging_tones=StagingTones.TONES_NONE,
@@ -1224,6 +1227,8 @@ class RHData():
                 race_format.race_mode = init['race_mode']
             if 'race_time_sec' in init:
                 race_format.race_time_sec = init['race_time_sec']
+            if 'lap_grace_sec' in init:
+                race_format.lap_grace_sec = init['lap_grace_sec']
             if 'start_delay_min' in init:
                 race_format.start_delay_min = init['start_delay_min']
             if 'start_delay_max' in init:
@@ -1255,7 +1260,8 @@ class RHData():
         new_format = self._Database.RaceFormat(
             name=new_format_name,
             race_mode=source_format.race_mode,
-            race_time_sec=source_format.race_time_sec ,
+            race_time_sec=source_format.race_time_sec,
+            lap_grace_sec=source_format.lap_grace_sec,
             start_delay_min=source_format.start_delay_min,
             start_delay_max=source_format.start_delay_max,
             staging_tones=source_format.staging_tones,
@@ -1287,6 +1293,8 @@ class RHData():
             race_format.race_mode = data['race_mode']
         if 'race_time_sec' in data:
             race_format.race_time_sec = data['race_time_sec']
+        if 'lap_grace_sec' in data:
+            race_format.lap_grace_sec = data['lap_grace_sec']
         if 'start_delay_min' in data:
             race_format.start_delay_min = data['start_delay_min']
         if 'start_delay_max' in data:
@@ -1376,150 +1384,25 @@ class RHData():
 
     def reset_raceFormats(self):
         self.clear_raceFormats()
-        self.add_format({
-            'format_name': self.__("2:00 Standard Race"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ONE,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("1:30 Whoop Sprint"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 90,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ALL,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("3:00 Extended Race"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 210,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ALL,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("First to 3 Laps"),
-            'race_mode': RaceMode.NO_TIME_LIMIT,
-            'race_time_sec': 0,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ALL,
-            'number_laps_win': 3,
-            'win_condition': WinCondition.FIRST_TO_LAP_X,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Open Practice"),
-            'race_mode': RaceMode.NO_TIME_LIMIT,
-            'race_time_sec': 0,
-            'start_delay_min': 0,
-            'start_delay_max': 0,
-            'staging_tones': StagingTones.TONES_NONE,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.NONE,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Fastest Lap Qualifier"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ONE,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.FASTEST_LAP,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Fastest 3 Laps Qualifier"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ONE,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Lap Count Only"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ONE,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.MOST_LAPS,
-            'team_racing_mode': False,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Team / Most Laps Wins"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ALL,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': True,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Team / First to 7 Laps"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ALL,
-            'number_laps_win': 7,
-            'win_condition': WinCondition.FIRST_TO_LAP_X,
-            'team_racing_mode': True,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Team / Fastest Lap Average"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ALL,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.FASTEST_LAP,
-            'team_racing_mode': True,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
-        self.add_format({
-            'format_name': self.__("Team / Fastest 3 Consecutive Average"),
-            'race_mode': RaceMode.FIXED_TIME,
-            'race_time_sec': 120,
-            'start_delay_min': 2,
-            'start_delay_max': 5,
-            'staging_tones': StagingTones.TONES_ALL,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
-            'team_racing_mode': True,
-            'start_behavior': StartBehavior.HOLESHOT
-            })
+        with open('race-formats.schema.json', 'r') as f:
+            schema = json.load(f)
+        with open('race-formats.json', 'r') as f:
+            default_race_formats = json.load(f)
+        jsonschema.validate(instance=default_race_formats, schema=schema)
+        for race_format in default_race_formats:
+            self.add_format({
+                'format_name': race_format['format_name'],
+                'race_mode': RaceMode[race_format['race_mode']].value,
+                'race_time_sec': race_format['race_time_sec'],
+                'lap_grace_sec': race_format['lap_grace_sec'],
+                'start_delay_min': race_format['start_delay_min'],
+                'start_delay_max': race_format['start_delay_max'],
+                'staging_tones': StagingTones[race_format['staging_tones']].value,
+                'number_laps_win': race_format['number_laps_win'],
+                'win_condition': WinCondition[race_format['win_condition']].value,
+                'team_racing_mode': race_format['team_racing_mode'],
+                'start_behavior': StartBehavior[race_format['start_behavior']].value
+                })
 
         self.commit()
         logger.info("Database reset race formats")

@@ -92,7 +92,7 @@ class BaseHardwareInterface:
 
         # if new lap detected for node then append item to updates list
         if lap_id != node.node_lap_id:
-            if lap_id != node.node_lap_id + 1:
+            if node.node_lap_id != -1 and lap_id != node.node_lap_id + 1:
                 logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(node.node_lap_id, lap_id))
             upd_list.append((node, lap_id, lap_timestamp))
 

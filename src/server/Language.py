@@ -10,10 +10,9 @@ logger = logging.getLogger(__name__)
 class Language():
     LANGUAGE_FILE_NAME = 'server/language.json'
 
-    Languages = {}
-
 
     def __init__(self, RHData):
+        self._Languages = {}
         self._RHData = RHData
 
         # Load language file
@@ -26,16 +25,15 @@ class Language():
         except ValueError:
             logger.error('Language file invalid, using defaults')
 
-    def __(self, text, domain=''):
+    def __(self, text, lang=None):
         # return translated string
-        if not domain:
+        if not lang:
             lang = self._RHData.get_option('currentLanguage')
 
-        if lang:
-            if lang in self._Languages:
-                if text in self._Languages[lang]['values']:
-                    return self._Languages[lang]['values'][text]
-        return text
+        if lang in self._Languages:
+            return self._Languages[lang]['values'].get(text, text)
+        else:
+            return text
 
     def getLanguages(self):
         # get list of available languages
@@ -46,6 +44,9 @@ class Language():
             l['name'] = self._Languages[lang]['name']
             langs.append(l)
         return langs
+
+    def getLanguageTags(self):
+        return [lang for lang in self._Languages]
 
     def getAllLanguages(self):
         # return full language dictionary

@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.0-dev.10" # Public release version code
-SERVER_API = 32+1 # Server API version
+SERVER_API = 32+2 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -182,7 +182,13 @@ SECONDARY_RACE_FORMAT = None
 RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
-__ = Language.__ # Shortcut to translation function
+
+def __web(text):
+    lang = request.accept_languages.best_match(Language.getLanguageTags()) if request else None
+    return Language.__(text, lang)
+
+__sys = Language.__
+__ = __web # Shortcut to translation function
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
 APP.rhserver = vars()
@@ -192,7 +198,7 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
     item = {}
     item['message'] = message
     if header:
-        item['header'] = __(header)
+        item['header'] = header
     if subclass:
         item['subclass'] = subclass
     ui_server_messages[mainclass] = item
@@ -311,10 +317,11 @@ def setCurrentRaceFormat(race_format, **kwargs):
 
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
+    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
         self.name = name
         self.race_mode = race_mode
         self.race_time_sec = race_time_sec
+        self.lap_grace_sec = lap_grace_sec
         self.start_delay_min = start_delay_min
         self.start_delay_max = start_delay_max
         self.staging_tones = staging_tones
@@ -328,6 +335,7 @@ class RHRaceFormat():
         return RHRaceFormat(name=race_format.name,
                             race_mode=race_format.race_mode,
                             race_time_sec=race_format.race_time_sec,
+                            lap_grace_sec=race_format.lap_grace_sec,
                             start_delay_min=race_format.start_delay_min,
                             start_delay_max=race_format.start_delay_max,
                             staging_tones=race_format.staging_tones,
@@ -460,8 +468,8 @@ def render_settings():
                 message += ' ' + item['header'].lower()
             message += '">'
             if 'header' in item and item['header']:
-                message += '<strong>' + item['header'] + ':</strong> '
-            message += item['message']
+                message += '<strong>' + __(item['header']) + ':</strong> '
+            message += __(item['message'])
             message += '</li>'
             server_messages_formatted += message
     if rhconfig.GENERAL['configFile'] == 'error':
@@ -1850,7 +1858,7 @@ def on_alter_race_format(data):
 
         if len(race_list):
             emit_result_data()
-            message = __('Alterations made to race format: {0}').format(race_format.name)
+            message = __('Alterations made to race format: {0}').format(__(race_format.name))
             emit_priority_message(message, False)
     else:
         emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
@@ -2328,7 +2336,14 @@ def race_start_thread(start_token):
 def race_expire_thread(start_token):
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == RHRace.RaceMode.FIXED_TIME: # count down
-        gevent.sleep(race_format.race_time_sec)
+        race_duration_sec = race_format.race_time_sec + race_format.lap_grace_sec
+        race_end_time = RACE.start_time_monotonic + race_duration_sec
+        race_tick_time = RACE.start_time_monotonic
+        while RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token and race_tick_time < race_end_time:
+            race_tick_time += 1
+            gevent.sleep(race_tick_time - monotonic())
+            Events.trigger(Evt.RACE_TICK, {'timer_sec': int(race_tick_time - RACE.start_time_monotonic)})
+
         # if race still in progress and is still same race
         if RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token:
             logger.info("Race count-down timer reached expiration")
@@ -2365,10 +2380,9 @@ def do_stop_race_actions():
     if RACE.race_status == RHRace.RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
-        milli_sec = delta_time * 1000.0
-        RACE.duration_ms = milli_sec
+        duration_ms = delta_time * 1000.0
 
-        logger.info('Race stopped at {0:.3f} ({1:.0f}), duration {2:.0f}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {0:.3f} ({1:.0f}), duration {2:.0f}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -3320,11 +3334,12 @@ def emit_race_format(**params):
 
     emit_payload = {
         'format_ids': [raceformat.id for raceformat in raceFormats],
-        'format_names': [raceformat.name for raceformat in raceFormats],
+        'format_names': [__(raceformat.name) for raceformat in raceFormats],
         'current_format': race_format.id if is_db_race_format else None,
-        'format_name': race_format.name,
+        'format_name': __(race_format.name),
         'race_mode': race_format.race_mode,
         'race_time_sec': race_format.race_time_sec,
+        'lap_grace_sec': race_format.lap_grace_sec,
         'start_delay_min': race_format.start_delay_min,
         'start_delay_max': race_format.start_delay_max,
         'staging_tones': race_format.staging_tones,
@@ -3347,9 +3362,10 @@ def emit_race_formats(**params):
     emit_payload = {}
     for race_format in formats:
         format_copy = {
-            'format_name': race_format.name,
+            'format_name': __(race_format.name),
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
+            'lap_grace_sec': race_format.lap_grace_sec,
             'start_delay_min': race_format.start_delay_min,
             'start_delay_max': race_format.start_delay_max,
             'staging_tones': race_format.staging_tones,
@@ -3691,6 +3707,7 @@ def emit_class_data(**params):
         raceformat['name'] = race_format.name
         raceformat['race_mode'] = race_format.race_mode
         raceformat['race_time_sec'] = race_format.race_time_sec
+        raceformat['lap_grace_sec'] = race_format.lap_grace_sec
         raceformat['start_delay_min'] = race_format.start_delay_min
         raceformat['start_delay_max'] = race_format.start_delay_max
         raceformat['staging_tones'] = race_format.staging_tones
@@ -3830,9 +3847,8 @@ def emit_race_status_message(**params):
         SOCKET_IO.emit('race_status_message', emit_payload)
 
 
-def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, **params):
+def emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, leader_flag=False, **params):
     '''Emits phonetic data.'''
-    raw_time = lap_time
     phonetic_time = RHUtils.phonetictime_format(lap_time, RHData.get_option('timeFormatPhonetic'))
     pilot = RHData.get_pilot(pilot_id)
     emit_payload = {
@@ -3840,7 +3856,8 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
         'callsign': pilot.callsign,
         'pilot_id': pilot.id,
         'lap': lap_id,
-        'raw_time': raw_time,
+        'raw_time': lap_time,
+        'raw_time_stamp': lap_time_stamp,
         'phonetic': phonetic_time,
         'team_name' : team_name,
         'team_laps' : team_laps,
@@ -4137,7 +4154,7 @@ def do_bpillfw_update(data):
         logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
         set_ui_message(
             'node',
-            __("No receiver nodes found"),
+            "No receiver nodes found",
             header='Warning',
             subclass='none'
             )
@@ -4364,7 +4381,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
 
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
-        # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
+        # always count laps if race is running, otherwise test if lap should have counted before race end
         if RACE.race_status is RHRace.RaceStatus.RACING \
             or (RACE.race_status is RHRace.RaceStatus.DONE and \
                 lap_timestamp_absolute < RACE.end_time):
@@ -4406,7 +4423,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                     # set next node race status as 'finished' if winner has been declared
                     #  or timer mode is count-down race and race-time has expired
                     if RACE.win_status == RHRace.WinStatus.DECLARED or \
-                                    (race_format.race_mode == 0 and RACE.timer_running is False):
+                                    (race_format.race_mode == RHRace.RaceMode.FIXED_TIME and RACE.timer_running is False):
                         RACE.set_node_finished_flag(node.index)
 
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
@@ -4422,12 +4439,19 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
+                        if race_format.lap_grace_sec and lap_time_stamp > race_format.race_time_sec*1000 and lap_time_stamp <= (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
+                            if not node_finished_flag:
+                                RACE.set_node_finished_flag(node.index)
+                                logger.info('Pilot {} done'.format(pilot_obj.callsign))
+                            else:
+                                lap_ok_flag = False
+
                     if lap_ok_flag:
 
-                        if RACE.win_status == RHRace.WinStatus.DECLARED and (RACE.format.team_racing_mode or \
+                        if RACE.win_status == RHRace.WinStatus.DECLARED and (race_format.team_racing_mode or \
                                                                         node_finished_flag):
-                            lap_late_flag = True  # "late" lap pass (after team race winner declared)
-                            logger.info('Ignoring lap after team race winner declared: Node={}, lap={}, lapTime={}' \
+                            lap_late_flag = True  # "late" lap pass (after race winner declared)
+                            logger.info('Ignoring lap after race winner declared: Node={}, lap={}, lapTime={}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr))
 
                         # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
@@ -4448,7 +4472,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                         RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
-                        if RACE.format.team_racing_mode:
+                        if race_format.team_racing_mode:
                             RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
                             RACE.team_cacheStatus = Results.CacheStatus.VALID
 
@@ -4467,7 +4491,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                         if lap_number == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
 
-                        if race_format and race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP:
+                        if race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP:
                             lap_number += 1
 
                         # announce lap
@@ -4477,18 +4501,18 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                             # announce pilot lap number unless winner declared and pilot has finished final lap
                             lap_id = lap_number if RACE.win_status != RHRace.WinStatus.DECLARED or \
                                                    (not node_finished_flag) else None
-                            if RACE.format.team_racing_mode:
+                            if race_format.team_racing_mode:
                                 team_name = pilot_obj.team if pilot_obj else ""
                                 team_laps = RACE.team_results['meta']['teams'][team_name]['laps']
                                 logger.debug('Team {} lap {}'.format(team_name, team_laps))
                                 # if winning team has been declared then don't announce team lap number
                                 if RACE.win_status == RHRace.WinStatus.DECLARED:
                                     team_laps = None
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, \
                                                 (check_leader and \
                                                  team_name == Results.get_leading_team_name(RACE.team_results)))
                             else:
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, None, None, \
                                                 (check_leader and \
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)))
 
@@ -4977,7 +5001,7 @@ def initialize_hardware_interface():
                                    "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
                     set_ui_message(
                         'i2c',
-                        __("Unable to import libraries for I2C nodes. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
+                        "Unable to import libraries for I2C nodes. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>",
                         header='Warning',
                         subclass='no-library'
                         )
@@ -4999,7 +5023,7 @@ def initialize_hardware_interface():
                     node_manager.api_level = NODE_API_BEST
                 set_ui_message(
                     'mock',
-                    __("Server is using simulated (mock) nodes"),
+                    "Server is using simulated (mock) nodes",
                     header='Notice',
                     subclass='in-use'
                     )
@@ -5013,10 +5037,10 @@ def initialize_hardware_interface():
                         if hasattr(INTERFACE, "fwupd_serial_port"):
                             INTERFACE.fwupd_serial_port = rhconfig.SERIAL_PORTS[0]
                             set_ui_message('stm32', \
-                                 __("Server is unable to communicate with node processor") + ". " + \
-                                      __("If an S32_BPill board is connected, you may attempt to") + \
-                                      " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                      __("its processor."), \
+                                 "Server is unable to communicate with node processor. " + \
+                                      "If an S32_BPill board is connected, you may attempt to" + \
+                                      " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
+                                      "its processor.", \
                                 header='Warning', subclass='no-comms')
                     else:
                         return False  # unable to open serial port
@@ -5045,11 +5069,11 @@ def buildServerInfo():
 
         # Release Version
         serverInfo['release_version'] = RELEASE_VERSION
-        serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
+        serverInfo['about_html'] += "<li>" + __sys("Version") + ": " + str(RELEASE_VERSION) + "</li>"
 
         # Server API
         serverInfo['server_api'] = SERVER_API
-        serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+        serverInfo['about_html'] += "<li>" + __sys("Server API") + ": " + str(SERVER_API) + "</li>"
 
         # Server API
         serverInfo['json_api'] = JSON_API
@@ -5077,7 +5101,7 @@ def buildServerInfo():
                     if serverInfo['node_api_match'] and INTERFACE.node_managers[0].is_multi_node():
                         serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
     
-            serverInfo['about_html'] += "<li>" + __("Node API") + ": "
+            serverInfo['about_html'] += "<li>" + __sys("Node API") + ": "
             if node_api_level:
                 if serverInfo['node_api_match']:
                     serverInfo['about_html'] += str(node_api_level)
@@ -5108,7 +5132,7 @@ def buildServerInfo():
                     if serverInfo['node_version_match'] and INTERFACE.node_managers[0].is_multi_node():
                         serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
             if node_fw_version:
-                serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
+                serverInfo['about_html'] += "<li>" + __sys("Node Version") + ": "
                 if serverInfo['node_version_match']:
                     serverInfo['about_html'] += str(node_fw_version)
                 else:
@@ -5121,7 +5145,7 @@ def buildServerInfo():
             serverInfo['node_api_best'] = NODE_API_BEST
             if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
                 # Show Recommended API notice
-                serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+                serverInfo['about_html'] += "<li><strong>" + __sys("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
     
             serverInfo['about_html'] += "</ul>"
 
@@ -5142,28 +5166,28 @@ def reportServerInfo():
     if 'node_api_match' in serverInfo and serverInfo['node_api_match'] is False:
         logger.info('** WARNING: Node API mismatch **')
         set_ui_message('node-match',
-            __("Node versions do not match and may not function similarly"), header='Warning')
+            "Node versions do not match and may not function similarly", header='Warning')
     if 'node_api_lowest' in serverInfo and RACE.num_nodes > 0:
         if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
             logger.info('** WARNING: Node firmware is out of date and may not function properly **')
-            msgStr = __("Node firmware is out of date and may not function properly")
+            msgStr = "Node firmware is out of date and may not function properly."
             if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
+                msgStr += " " + "If an S32_BPill board is connected, you should" + \
+                          " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
+                          "its processor."
             set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
         elif serverInfo['node_api_lowest'] < NODE_API_BEST:
             logger.info('** NOTICE: Node firmware update is available **')
-            msgStr = __("Node firmware update is available")
+            msgStr = "Node firmware update is available."
             if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
+                msgStr += " " + "If an S32_BPill board is connected, you should" + \
+                          " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
+                          "its processor."
             set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
         elif serverInfo['node_api_lowest'] > NODE_API_BEST:
             logger.warning('** WARNING: Node firmware is newer than this server version supports **')
             set_ui_message('node-newer',
-                __("Node firmware is newer than this server version and may not function properly"),
+                "Node firmware is newer than this server version and may not function properly",
                 header='Warning', subclass='api-high')
 
 #
@@ -5177,10 +5201,10 @@ RHUtils.idAndLogSystemInfo()
 if RHUtils.isVersionPython2():
     logger.warning("Python version is obsolete: " + RHUtils.getPythonVersionStr())
     set_ui_message('python',
-        (__("Python version") + " (" + RHUtils.getPythonVersionStr() + ") " + \
-         __("is obsolete and no longer supported; see") + \
+        ("Python version" + " (" + RHUtils.getPythonVersionStr() + ") " + \
+         "is obsolete and no longer supported; see" + \
          " <a href=\"docs?d=Software Setup.md#python\">Software Settings</a> " + \
-         __("doc for upgrade instructions")),
+         "doc for upgrade instructions"),
         header='Warning', subclass='old-python')
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
@@ -5195,7 +5219,7 @@ if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
     logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
     set_ui_message(
         'gpio',
-        __("Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>"),
+        "Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>",
         header='Warning',
         subclass='no-access'
         )
@@ -5271,7 +5295,7 @@ try:
             logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
             set_ui_message(
                 'secondary',
-                __("Mirror secondaries must be last; ignoring part of secondary configuration"),
+                "Mirror secondaries must be last; ignoring part of secondary configuration",
                 header='Notice',
                 subclass='mirror'
                 )
@@ -5284,7 +5308,7 @@ except:
     logger.exception("Error adding secondary to cluster")
     set_ui_message(
         'secondary',
-        __('Secondary configuration is invalid.'),
+        'Secondary configuration is invalid.',
         header='Error',
         subclass='error'
         )
@@ -5352,9 +5376,10 @@ except Exception:
     sys.exit(1)
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
-SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
+SECONDARY_RACE_FORMAT = RHRaceFormat(name="Secondary",
                          race_mode=RHRace.RaceMode.NO_TIME_LIMIT,
                          race_time_sec=0,
+                         lap_grace_sec=0,
                          start_delay_min=0,
                          start_delay_max=0,
                          staging_tones=0,
