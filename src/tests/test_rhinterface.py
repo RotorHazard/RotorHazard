@@ -18,7 +18,7 @@ class RHInterfaceTest(unittest.TestCase):
         self.node_proc = subprocess.Popen(["node/build_ci/rhnode1", "COUNTER", "127.0.0.1:7881"])
         try:
             laps = 0
-            def on_pass(node, lap_ts_ref, source, race_start_ts_ref=None):
+            def on_pass(node, lap_ts, source):
                 nonlocal laps
                 laps += 1
     
@@ -64,7 +64,7 @@ class RHInterfaceTest(unittest.TestCase):
         self.node_proc = subprocess.Popen(["node/build_ci/rhnode4", "COUNTER", "127.0.0.1:7884"])
         try:
             laps = 0
-            def on_pass(node, lap_ts_ref, source, race_start_ts_ref=None):
+            def on_pass(node, lap_ts, source):
                 nonlocal laps
                 laps += 1
     
@@ -129,6 +129,7 @@ class RHInterfaceTest(unittest.TestCase):
     def gcov(self, testname):
         subprocess.run("gcov -b -c *.cpp", cwd='node', shell=True)
         subprocess.run("mkdir -p {0}; mv *.gcov {0}; rm *.gcda; rm *.gcno".format(testname), cwd='node', shell=True)
+
 
 if __name__ == '__main__':
     unittest.main() 

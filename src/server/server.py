@@ -2107,6 +2107,7 @@ def on_stage_race():
         RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
 
         RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
+        INTERFACE.race_start_time = RACE.start_time_monotonic
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
@@ -4358,14 +4359,12 @@ def ms_from_program_start():
 
 
 @catchLogExcDBCloseWrapper
-def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
+def pass_record_callback(node, lap_race_time, source):
     '''Handles pass records from the nodes.'''
 
-    if race_start_ts_ref is None:
-        race_start_ts_ref = RACE.start_time_monotonic
-    lap_timestamp_secs = lap_ts_ref - race_start_ts_ref
-    lap_timestamp_absolute = lap_timestamp_secs + RACE.start_time_monotonic
-    lap_time_stamp = lap_timestamp_secs * 1000 # store as milliseconds
+    # lap_race_time is lap timestamp relative to start time
+    lap_timestamp_absolute = lap_race_time + RACE.start_time_monotonic
+    lap_time_stamp = lap_race_time * 1000 # store as milliseconds
 
     if logger.getEffectiveLevel() <= logging.DEBUG:
         enter_fmtstr = RHUtils.time_format((node.enter_at_timestamp-RACE.start_time_monotonic)*1000, \

@@ -23,7 +23,7 @@ class LapRFNodeManager(NodeManager):
         self.stream_buffer = bytearray()
         self.voltage = None
         self.min_lap_time = None
-        self.race_start_rtc_time = None # usecs
+        self.race_start_rtc_time = 0 # usecs
         self.race_start_time_request_ts = None
         self.last_write_ts = 0
 
@@ -130,9 +130,8 @@ class LapRFInterface(BaseHardwareInterface):
             node = node_manager.nodes[node_idx]
             node.pass_peak_rssi = record.peak_height
             node.node_peak_rssi = max(record.peak_height, node.node_peak_rssi)
-            start_time_secs = node_manager.race_start_rtc_time/1000000 if node_manager.race_start_rtc_time is not None else 0
-            pass_time_secs = record.rtc_time/1000000
-            gevent.spawn(self.pass_record_callback, node, pass_time_secs, BaseHardwareInterface.LAP_SOURCE_REALTIME, start_time_secs)
+            lap_ts = (record.rtc_time - node_manager.race_start_rtc_time)/1000000
+            gevent.spawn(self.pass_record_callback, node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
         elif isinstance(record, laprf.RFSetupEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
@@ -159,9 +158,6 @@ class LapRFInterface(BaseHardwareInterface):
             for node_manager in self.node_managers:
                 node_manager.race_start_time_request_ts = monotonic()
                 node_manager.write(data)
-        elif race_status == BaseHardwareInterface.RACE_STATUS_DONE:
-            for node_manager in self.node_managers:
-                node_manager.race_start_rtc_time = None
         super().set_race_status(race_status)
 
     def set_enter_at_level(self, node_index, level):

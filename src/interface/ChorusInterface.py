@@ -117,8 +117,8 @@ class ChorusInterface(BaseHardwareInterface):
             cmd = data[2]
             if cmd == 'L':
                 _lap_id = int(data[3:5], 16)
-                lap_ts = int(data[5:13], 16)
-                gevent.spawn(self.pass_record_callback, node.index, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, 0)
+                lap_ts = int(data[5:13], 16) # relative to start time
+                gevent.spawn(self.pass_record_callback, node.index, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
             elif cmd == 'r':
                 node.current_rssi = int(data[3:7], 16)
             elif cmd == 'v':
@@ -129,6 +129,7 @@ class ChorusInterface(BaseHardwareInterface):
             # reset timers to zero
             for node_manager in self.node_managers:
                 with node_manager:
+                    # mode = lap times relative to start time
                     node_manager.write('R*R2\n')
                     node_manager.read()
         elif race_status == BaseHardwareInterface.RACE_STATUS_DONE:

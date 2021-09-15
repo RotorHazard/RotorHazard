@@ -31,6 +31,7 @@ class BaseHardwareInterface:
         self.update_thread = None # Thread for running the main update loop
         self.start_time = 1000*monotonic() # millis
         self.environmental_data_update_tracker = 0
+        self.race_start_time = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
         self.pass_record_callback = None # Function added in server.py
         self.new_enter_or_exit_at_callback = None # Function added in server.py
@@ -157,7 +158,7 @@ class BaseHardwareInterface:
                 item = upd_list[0]
                 node = item[0]
                 lap_id = item[1]
-                lap_timestamp = item[2]
+                lap_timestamp = item[2] - self.race_start_time # relative to start time
                 if node.node_lap_id != -1 and callable(self.pass_record_callback):
                     gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
                 node.node_lap_id = lap_id
@@ -167,7 +168,7 @@ class BaseHardwareInterface:
                 for item in upd_list:
                     node = item[0]
                     lap_id = item[1]
-                    lap_timestamp = item[2]
+                    lap_timestamp = item[2] - self.race_start_time # relative to start time
                     if node.node_lap_id != -1 and callable(self.pass_record_callback):
                         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
                     node.node_lap_id = lap_id
@@ -228,7 +229,7 @@ class BaseHardwareInterface:
 
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
-        lap_timestamp = monotonic() - (ms_val / 1000.0)
+        lap_timestamp = monotonic() - (ms_val / 1000.0) - self.race_start_time # relative to start time
         node.enter_at_timestamp = node.exit_at_timestamp = 0
         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
