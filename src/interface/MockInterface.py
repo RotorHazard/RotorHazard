@@ -30,7 +30,7 @@ class MockInterface(BaseHardwareInterface):
     def __init__(self, num_nodes=8, use_datafiles=False, *args, **kwargs):
         super().__init__(update_sleep=0.5)
 
-        self.data_files = [] if use_datafiles else None
+        self.data_files = [None]*num_nodes if use_datafiles else None
         for index in range(num_nodes):
             manager = MockNodeManager(index)
             node = manager.add_node(index) # New node instance
@@ -42,20 +42,23 @@ class MockInterface(BaseHardwareInterface):
     def start(self):
         if self.data_files is not None:
             for node in self.nodes:
-                try:
-                    f = open("mock_data_{0}.csv".format(node.index+1))
-                    logger.info("Loaded mock_data_{0}.csv".format(node.index+1))
-                except IOError:
-                    f = None
-                self.data_files.append(f)
+                if not self.data_files[node.index]:
+                    try:
+                        f = open("mock_data_{0}.csv".format(node.index+1))
+                        logger.info("Loaded {}".format(f.name))
+                    except IOError:
+                        f = None
+                    self.data_files[node.index] = f
         super().start()
 
     def stop(self):
         super().stop()
         if self.data_files is not None:
-            for f in self.data_files:
+            for i,f in enumerate(self.data_files):
                 if f is not None:
                     f.close()
+                    logger.info("Closed {}".format(f.name))
+                    self.data_files[i] = None
 
     #
     # Update Loop

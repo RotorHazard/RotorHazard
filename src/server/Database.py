@@ -2,12 +2,24 @@
 Database module
 '''
 
+from pathlib import Path
 from . import RHUtils
 from flask_sqlalchemy import SQLAlchemy
 
 #pylint: disable=no-member
 
 DB = SQLAlchemy()
+
+
+def db_uri(basedir, dbname):
+    if '://' in dbname:
+        return dbname
+    else:
+        file_uri = (Path(basedir)/dbname).as_uri()
+        path_part = file_uri[file_uri.index(':///')+4:]
+        extra_slash = '/' if ':/' not in path_part else ''
+        return 'sqlite:///' + extra_slash + path_part
+
 
 #
 # Database Models

@@ -149,7 +149,7 @@ logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
 BASEDIR = os.getcwd()
-APP.config['SQLALCHEMY_DATABASE_URI'] = DB_FILE_NAME if '://' in DB_FILE_NAME else 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
+APP.config['SQLALCHEMY_DATABASE_URI'] = Database.db_uri(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 Database.DB.init_app(APP)
 Database.DB.app = APP
@@ -1569,7 +1569,7 @@ def on_restore_database(data):
             RACE = RHRace.RHRace() # Reset all RACE values
             LAST_RACE = RACE
             try:
-                RHData.recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+                RHData.recover_database(Database.db_uri(BASEDIR, DB_BKP_DIR_NAME + '/' + backup_file))
                 clean_results_cache()
                 expand_heats()
                 raceformat_id = RHData.get_optionInt('currentFormat')
@@ -5360,7 +5360,7 @@ if not db_inited_flag:
         RHData.primeCache() # Ready the Options cache
 
         if not RHData.check_integrity():
-            RHData.recover_database(DB_FILE_NAME, startup=True)
+            RHData.recover_database(Database.db_uri(BASEDIR, DB_FILE_NAME), startup=True)
             clean_results_cache()
 
     except Exception as ex:

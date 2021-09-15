@@ -220,7 +220,7 @@ class RHData():
         else:
             logger.debug('Error restoring "{0}" table: no data'.format(class_type.__name__))
 
-    def recover_database(self, dbfile, **kwargs):
+    def recover_database(self, db_uri, **kwargs):
         recover_status = {
             'stage_0': False,
             'stage_1': False,
@@ -232,7 +232,7 @@ class RHData():
             logger.info('Recovering data from previous database')
 
             # load file directly
-            engine = create_engine('sqlite:///%s' % dbfile, convert_unicode=True)
+            engine = create_engine(db_uri, convert_unicode=True)
             metadata = MetaData(bind=engine)
 
             options_query_data = self.get_legacy_table_data(metadata, 'global_settings')
