@@ -3,10 +3,12 @@
 import logging
 import gevent
 import serial
+from monotonic import monotonic
 
 from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from sensors import Sensor, Reading
+from interface import ExtremumFilter
 
 RETRY_COUNT=5
 
@@ -51,6 +53,7 @@ class ChorusSensor(Sensor):
 class ChorusNode(Node):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index=index, multi_node_index=multi_node_index, manager=manager)
+        self.history_filter = ExtremumFilter()
 
     def send_command(self, command, in_value):
         with self.manager:
@@ -120,7 +123,15 @@ class ChorusInterface(BaseHardwareInterface):
                 lap_ts = int(data[5:13], 16) # relative to start time
                 gevent.spawn(self.pass_record_callback, node.index, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
             elif cmd == 'r':
-                node.current_rssi = int(data[3:7], 16)
+                rssi = int(data[3:7], 16)
+                node.current_rssi = rssi
+                node.node_peak_rssi = max(rssi, node.node_peak_rssi)
+                node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
+                filtered_rssi = node.history_filter.filter(rssi)
+                if filtered_rssi is not None:
+                    self.prune_history(node)
+                    node.history_values.append(filtered_rssi)
+                    node.history_times.append(monotonic())
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 

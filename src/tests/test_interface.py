@@ -1,5 +1,5 @@
 import unittest
-from interface import calculate_checksum
+from interface import calculate_checksum, ExtremumFilter
 from interface.MockInterface import MockInterface
 from interface.Node import NodeManager
 
@@ -8,6 +8,14 @@ class InterfaceTest(unittest.TestCase):
         data = bytearray([200, 145])
         checksum = calculate_checksum(data)
         self.assertEqual(89, checksum)
+
+    def test_extremum_filter(self):
+        f = ExtremumFilter()
+        input_data = [2, 5, 5, 5, 4, 8, 9, 7, 7, 1, 3]
+        # NB: includes inflexion points
+        expected =   [0, None, 5, None, 5, 4, None, 9, 7, 7, 1]
+        actual = [f.filter(x) for x in input_data]
+        self.assertListEqual(expected, actual)
 
     def test_node_consolidate_history(self):
         nm = NodeManager()

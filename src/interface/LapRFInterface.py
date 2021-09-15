@@ -8,6 +8,7 @@ from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from sensors import Sensor, Reading
 import interface.laprf_protocol as laprf
+from interface import ExtremumFilter
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ class LapRFNode(Node):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index=index, multi_node_index=multi_node_index, manager=manager)
         self.is_configured = False
+        self.history_filter = ExtremumFilter()
 
     @property
     def threshold(self):
@@ -119,18 +121,26 @@ class LapRFInterface(BaseHardwareInterface):
     def _process_message(self, node_manager, record):
         if isinstance(record, laprf.StatusEvent):
             node_manager.voltage = record.battery_voltage/1000
+            rssi_ts = monotonic()
             for idx, rssi in enumerate(record.last_rssi):
                 if rssi is not None:
                     node = node_manager.nodes[idx]
                     node.current_rssi = rssi
                     node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                     node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
+                    filtered_rssi = node.history_filter.filter(rssi)
+                    if filtered_rssi is not None:
+                        self.prune_history(node)
+                        node.history_values.append(filtered_rssi)
+                        node.history_times.append(rssi_ts)
         elif isinstance(record, laprf.PassingEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
             node.pass_peak_rssi = record.peak_height
             node.node_peak_rssi = max(record.peak_height, node.node_peak_rssi)
             lap_ts = (record.rtc_time - node_manager.race_start_rtc_time)/1000000
+            if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
+                node.pass_history.append((lap_ts + self.race_start_time, node.pass_peak_rssi))
             gevent.spawn(self.pass_record_callback, node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
         elif isinstance(record, laprf.RFSetupEvent):
             node_idx = record.slot_index - 1

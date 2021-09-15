@@ -2,8 +2,10 @@
 def unpack_8(data):
     return data[0]
 
+
 def pack_8(data):
     return [int(data & 0xFF)]
+
 
 def unpack_16(data):
     '''Returns the full variable from 2 bytes input.'''
@@ -11,11 +13,13 @@ def unpack_16(data):
     result = (result << 8) | data[1]
     return result
 
+
 def pack_16(data):
     '''Returns a 2 part array from the full variable.'''
     part_a = (data >> 8) & 0xFF
     part_b = (data & 0xFF)
     return [int(part_a), int(part_b)]
+
 
 def unpack_32(data):
     '''Returns the full variable from 4 bytes input.'''
@@ -24,6 +28,7 @@ def unpack_32(data):
     result = (result << 8) | data[2]
     result = (result << 8) | data[3]
     return result
+
 
 def pack_32(data):
     '''Returns a 4 part array from the full variable.'''
@@ -37,3 +42,25 @@ def pack_32(data):
 def calculate_checksum(data: bytearray):
     checksum = sum(data) & 0xFF
     return checksum
+
+
+class ExtremumFilter:
+    def __init__(self):
+        self.previous = 0
+        self.delta = 0
+
+    def filter(self, x):
+        '''Includes inflexion points'''
+        new_delta = x - self.previous
+        if self.delta > 0 and new_delta <= 0:
+            y = self.previous
+        elif self.delta < 0 and new_delta >= 0:
+            y = self.previous
+        elif self.delta == 0 and new_delta != 0:
+            y = self.previous
+        else:
+            y = None
+        self.previous = x
+        self.delta = new_delta
+        return y
+

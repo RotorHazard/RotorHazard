@@ -124,14 +124,7 @@ class BaseHardwareInterface:
                 if callable(self.new_enter_or_exit_at_callback):
                     gevent.spawn(self.new_enter_or_exit_at_callback, node.index, exit_at_level=node.exit_at_level)
 
-        # prune history data if race is not running (keep last 60s)
-        if self.race_status == BaseHardwareInterface.RACE_STATUS_READY:
-            if len(node.history_times):
-                while node.history_times[0] < (monotonic() - 60):
-                    node.history_values.pop(0)
-                    node.history_times.pop(0)
-                    if not len(node.history_times): #prevent while from destroying itself
-                        break
+        self.prune_history(node)
 
         # get and process history data (except when race is over)
         if pn_history and self.race_status != BaseHardwareInterface.RACE_STATUS_DONE:
@@ -140,6 +133,13 @@ class BaseHardwareInterface:
                 node.used_history_count += 1
             else:
                 node.empty_history_count += 1
+
+    def prune_history(self, node):
+        # prune history data if race is not running (keep last 60s)
+        if self.race_status == BaseHardwareInterface.RACE_STATUS_READY:
+            prune_idx = bisect.bisect_left(node.history_times, monotonic()-60)
+            del node.history_values[:prune_idx]
+            del node.history_times[:prune_idx]
 
     def process_crossings(self, cross_list):
         '''
