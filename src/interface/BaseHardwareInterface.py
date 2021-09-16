@@ -92,12 +92,16 @@ class BaseHardwareInterface:
             lap_timestamp = readtime - (ms_val / 1000.0)
 
         # if new lap detected for node then append item to updates list
-        if lap_id != node.node_lap_id:
-            if node.node_lap_id != -1 and lap_id != node.node_lap_id + 1:
-                logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(node.node_lap_id, lap_id))
-            if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
-                node.pass_history.append((lap_timestamp, node.pass_peak_rssi))
-            upd_list.append((node, lap_id, lap_timestamp))
+        prev_lap_id = node.node_lap_id
+        if lap_id != prev_lap_id:
+            node.node_lap_id = lap_id
+            if prev_lap_id != -1: # if -1 then just initialising node_lap_id
+                if lap_id != prev_lap_id + 1:
+                    logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_lap_id, lap_id))
+                if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
+                    node.pass_history.append((lap_timestamp, node.pass_peak_rssi))
+                # NB: update lap timestamps are relative to start time
+                upd_list.append((node, lap_timestamp - self.race_start_time))
 
         # check if capturing enter-at level for node
         if node.cap_enter_at_flag:
@@ -145,33 +149,33 @@ class BaseHardwareInterface:
         '''
         cross_list - list of node objects
         '''
-        if len(cross_list) > 0:
-            for node in cross_list:
-                gevent.spawn(self.node_crossing_callback, node)
+        if len(cross_list) > 0 and callable(self.node_crossing_callback):
+            gevent.spawn(self._process_crossings, cross_list)
+
+    def _process_crossings(self, cross_list):
+        for node in cross_list:
+            self.node_crossing_callback(node)
 
     def process_updates(self, upd_list):
         '''
-        upd_list - list of (node, lap_id, lap_timestamp) tuples
+        upd_list - list of (node, lap_timestamp) tuples
         '''
-        if len(upd_list) > 0:
-            if len(upd_list) == 1:  # list contains single item
-                item = upd_list[0]
-                node = item[0]
-                lap_id = item[1]
-                lap_timestamp = item[2] - self.race_start_time # relative to start time
-                if node.node_lap_id != -1 and callable(self.pass_record_callback):
-                    gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
-                node.node_lap_id = lap_id
+        if len(upd_list) > 0 and callable(self.pass_record_callback):
+            gevent.spawn(self._process_updates, upd_list)
 
-            else:  # list contains multiple items; sort so processed in order by lap time
-                upd_list.sort(key = lambda i: i[2])
-                for item in upd_list:
-                    node = item[0]
-                    lap_id = item[1]
-                    lap_timestamp = item[2] - self.race_start_time # relative to start time
-                    if node.node_lap_id != -1 and callable(self.pass_record_callback):
-                        gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
-                    node.node_lap_id = lap_id
+    def _process_updates(self, upd_list):
+        if len(upd_list) == 1:  # list contains single item
+            item = upd_list[0]
+            node = item[0]
+            lap_timestamp = item[1]
+            self.pass_record_callback(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+
+        elif len(upd_list) > 1:  # list contains multiple items; sort so processed in order by lap time
+            upd_list.sort(key = lambda i: i[1])
+            for item in upd_list:
+                node = item[0]
+                lap_timestamp = item[1]
+                self.pass_record_callback(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
 
     def ai_calibrate_nodes(self):
         for node in self.nodes:
