@@ -1,3 +1,5 @@
+import gevent
+import bisect
 
 def unpack_8(data):
     return data[0]
@@ -42,6 +44,56 @@ def pack_32(data):
 def calculate_checksum(data: bytearray):
     checksum = sum(data) & 0xFF
     return checksum
+
+
+class RssiHistory:
+    def __init__(self):
+        # monotonic timestamps (secs)
+        self._times = []
+        self._values = []
+        self.lock = gevent.lock.RLock()
+
+    def __len__(self):
+        assert len(self._times) == len(self._values)
+        return len(self._times)
+
+    def append(self, ts, rssi):
+        with self.lock:
+            n = len(self._times)
+            # if previous two entries have same value then just extend time on last entry
+            if n >= 2 and self._values[n-1] == rssi and self._values[n-2] == rssi:
+                self._times[n-1] = ts
+            else:
+                self._times.append(ts)
+                self._values.append(rssi)
+
+    def merge(self, new_entries):
+        with self.lock:
+            for ts_rssi in new_entries:
+                idx = bisect.bisect_left(self._times, ts_rssi[0])
+                if idx < len(self._times) and ts_rssi[0] == self._times[idx]:
+                    # replace existing value
+                    self._values[idx] = ts_rssi[1]
+                else:
+                    self._times.insert(idx, ts_rssi[0])
+                    self._values.insert(idx, ts_rssi[1])
+            
+    def set(self, times, values):
+        if len(times) != len(values):
+            raise ValueError("History time and value lists must have the same length")
+        with self.lock:
+            self._times = times
+            self._values = values
+
+    def get(self):
+        with self.lock:
+            return self._times.copy(), self._values.copy()
+
+    def prune(self, keep_after):
+        with self.lock:
+            prune_idx = bisect.bisect_left(self._times, keep_after)
+            del self._values[:prune_idx]
+            del self._times[:prune_idx]
 
 
 class ExtremumFilter:

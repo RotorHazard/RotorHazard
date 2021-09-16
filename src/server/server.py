@@ -2471,11 +2471,12 @@ def on_save_laps():
         if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
             pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
 
+            history_times, history_values = INTERFACE.nodes[node_index].history.get()
             race_data[node_index] = {
                 'race_id': new_race.id,
                 'pilot_id': pilot_id,
-                'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
-                'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
+                'history_values': json.dumps(history_values),
+                'history_times': json.dumps(history_times),
                 'enter_at': INTERFACE.nodes[node_index].enter_at_level,
                 'exit_at': INTERFACE.nodes[node_index].exit_at_level,
                 'laps': RACE.node_laps[node_index]
@@ -2491,8 +2492,9 @@ def on_save_laps():
     }
     gevent.spawn(build_atomic_result_caches, cache_params)
 
+    history_times, history_values = INTERFACE.nodes[node_index].history.get()
     gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_monotonic,
-                 {node_idx: (laps, INTERFACE.nodes[node_index].history_times, INTERFACE.nodes[node_index].history_values) for node_idx,laps in RACE.node_laps.items()}
+                 {node_idx: (laps, history_times, history_values) for node_idx,laps in RACE.node_laps.items()}
                  )
 
     Events.trigger(Evt.LAPS_SAVE, {

@@ -7,7 +7,7 @@ import logging
 from monotonic import monotonic
 import gevent.lock
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
-                        calculate_checksum
+                        calculate_checksum, RssiHistory
 import bisect
 
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
@@ -234,9 +234,7 @@ class Node(CommandsWithRetry):
         self.under_min_lap_count = 0
 
         self.pass_history = []
-        self.history_values = []
-        # monotonic timestamps (secs)
-        self.history_times = []
+        self.history = RssiHistory()
         self.used_history_count = 0
         self.empty_history_count = 0
 
@@ -245,8 +243,7 @@ class Node(CommandsWithRetry):
 
     def reset(self):
         self.pass_history = []
-        self.history_values = [] # clear race history
-        self.history_times = []
+        self.history = RssiHistory() # clear race history
         self.used_history_count = 0
         self.empty_history_count = 0
         self.node_lap_id = -1
@@ -254,16 +251,6 @@ class Node(CommandsWithRetry):
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.manager.max_rssi_value
-
-    def consolidate_history(self):
-        for lap_pass in self.pass_history:
-            idx = bisect.bisect_left(self.history_times, lap_pass[0])
-            if idx < len(self.history_times) and lap_pass[0] == self.history_times[idx]:
-                # replace existing value
-                self.history_values[idx] = lap_pass[1]
-            else:
-                self.history_times.insert(idx, lap_pass[0])
-                self.history_values.insert(idx, lap_pass[1])
 
     def get_read_error_report_str(self):
         return "Node {0}: {1}/{2} ({3:.2%})".format(self, self.read_error_count, \

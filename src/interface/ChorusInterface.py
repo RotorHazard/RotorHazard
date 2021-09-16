@@ -130,8 +130,7 @@ class ChorusInterface(BaseHardwareInterface):
                 filtered_rssi = node.history_filter.filter(rssi)
                 if filtered_rssi is not None:
                     self.prune_history(node)
-                    node.history_values.append(filtered_rssi)
-                    node.history_times.append(monotonic())
+                    node.history.append(monotonic(), filtered_rssi)
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 

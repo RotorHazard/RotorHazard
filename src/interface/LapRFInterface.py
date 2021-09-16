@@ -131,8 +131,7 @@ class LapRFInterface(BaseHardwareInterface):
                     filtered_rssi = node.history_filter.filter(rssi)
                     if filtered_rssi is not None:
                         self.prune_history(node)
-                        node.history_values.append(filtered_rssi)
-                        node.history_times.append(rssi_ts)
+                        node.history.append(rssi_ts, filtered_rssi)
         elif isinstance(record, laprf.PassingEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
