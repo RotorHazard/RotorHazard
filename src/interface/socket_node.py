@@ -21,7 +21,7 @@ class SocketNodeManager(rhi.RHNodeManager):
         data = bytearray()
         remaining = size + 1
         while remaining > 0:
-            partial = self.socket_io.recv(size + 1, socket.MSG_WAITALL)
+            partial = self.socket_io.recv(remaining)
             remaining -= len(partial)
             data.extend(partial)
         return data

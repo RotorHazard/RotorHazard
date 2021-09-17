@@ -113,14 +113,6 @@ void Stream::copyToBuffer(const uint8_t data[], size_t size) {
 #ifdef _WIN32
 static HANDLE hCom = 0;
 
-size_t Stream::write(const uint8_t* buffer, size_t size) {
-    DWORD dwBytesWritten;
-    if (!WriteFile(hCom, buffer, size, &dwBytesWritten, NULL)) {
-        fprintf(stderr, "Serial write failed\n");
-    }
-    return dwBytesWritten;
-}
-
 void closeSerial() {
     if (hCom > 0) {
         CloseHandle(hCom);
@@ -161,6 +153,85 @@ void initSerial(const char* comPort) {
     fprintf(stderr, "Opened %s\n", comPort);
 }
 
+static SOCKET hSock = INVALID_SOCKET;
+
+void closeSocket() {
+    if (hSock != INVALID_SOCKET) {
+        closesocket(hSock);
+        hSock = INVALID_SOCKET;
+    }
+    WSACleanup();
+}
+
+void initSocket(const char* host, int port) {
+    WSADATA wsaData;
+    int rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (rc != 0) {
+        fprintf(stderr, "WSAStartup failed: %d\n", rc);
+        return;
+    }
+
+    struct addrinfo hints, *result = nullptr;
+    SecureZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    char szPort[6];
+    itoa(port, szPort, 10);
+    rc = getaddrinfo(host, szPort, &hints, &result);
+    if (rc != 0) {
+        fprintf(stderr, "Unknown host %s: %d\n", host, rc);
+        closeSocket();
+        return;
+    }
+
+    hSock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (hSock == INVALID_SOCKET) {
+        fprintf(stderr, "Failed to create socket: %d\n", WSAGetLastError());
+        closeSocket();
+        return;
+    }
+
+    int numRetries = 30;
+    for (int i=0; i<numRetries; i++) {
+        rc = connect(hSock, result->ai_addr, (int)result->ai_addrlen);
+        if (rc != SOCKET_ERROR) {
+            break;
+        }
+        Sleep(1000);
+    }
+    freeaddrinfo(result);
+    if (rc == SOCKET_ERROR) {
+        fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
+        closeSocket();
+        return;
+    }
+
+    fprintf(stderr, "Connected to %s:%d\n", host, port);
+}
+
+size_t Stream::write(const uint8_t* buffer, size_t size) {
+    if (hCom) {
+        DWORD dwBytesWritten;
+        if (WriteFile(hCom, buffer, size, &dwBytesWritten, NULL)) {
+            return dwBytesWritten;
+        } else {
+            fprintf(stderr, "Serial write failed\n");
+            return 0;
+        }
+    }
+    if (hSock != INVALID_SOCKET) {
+        int bytesWritten = send(hSock, (char*)buffer, size, 0);
+        if (bytesWritten != SOCKET_ERROR) {
+            return bytesWritten;
+        } else {
+            fprintf(stderr, "Socket write failed: %d\n", WSAGetLastError());
+            return 0;
+        }
+    }
+    return 0;
+}
+
 void perform_io() {
     if (hCom) {
         uint8_t buffer[128];
@@ -174,6 +245,24 @@ void perform_io() {
         Serial.copyToBuffer(buffer, dwBytesRead);
         for (int i=0; i<dwBytesRead; i++) {
             serialEvent();
+        }
+    }
+    if (hSock != INVALID_SOCKET) {
+        uint8_t buffer[128];
+        int bytesRead = recv(hSock, (char*)buffer, sizeof(buffer), 0);
+        if (bytesRead > 0) {
+            if (bytesRead == sizeof(buffer)) {
+                fprintf(stderr, "Socket read buffer overflow\n");
+            }
+            Serial.copyToBuffer(buffer, bytesRead);
+            for (int i=0; i<bytesRead; i++) {
+                serialEvent();
+            }
+        } else if (bytesRead == 0) {
+            fprintf(stderr, "Socket connection closed\n");
+            closeSocket();
+        } else {
+            fprintf(stderr, "Socket read failed: %d\n", WSAGetLastError());
         }
     }
 }
@@ -299,22 +388,31 @@ int main(int argc, const char* argv[])
     fprintf(stderr, "Timer resolution %lds %ldns\n", timerResolution.tv_sec, timerResolution.tv_nsec);
 
     if (addr) {
-#ifdef _WIN32
-        initSerial(addr);
-#else
         const char* sep = strchr(addr, ':');
-        static char host[64];
-        int len = sep-addr;
-        if (len+1 > sizeof(host)) {
-            fprintf(stderr, "Host name too long: %s\n", addr);
-            return -1;
-        }
-        strncpy(host, addr, len);
-        host[len] = '\0';
-        int port = atoi(sep+1);
-        initSocket(host, port);
+        if (sep) {
+            static char host[64];
+            int len = sep-addr;
+            if (len+1 > sizeof(host)) {
+                fprintf(stderr, "Host name too long: %s\n", addr);
+                return -1;
+            }
+            strncpy(host, addr, len);
+            host[len] = '\0';
+            int port = atoi(sep+1);
+#ifdef _WIN32
+            initSocket(host, port);
+#else
+            initSocket(host, port);
 #endif
+        } else {
+#ifdef _WIN32
+            initSerial(addr);
+#else
+            fprintf(stderr, "Serial ports not supported\n");
+#endif
+        }
     }
+
     if (rssiFile) {
         loadRssiFile(rssiFile);
     }
@@ -335,11 +433,11 @@ int main(int argc, const char* argv[])
     }
 
     fprintf(stderr, "\nTerminating...\n");
+
 #ifdef _WIN32
     closeSerial();
-#else
-    closeSocket();
 #endif
+    closeSocket();
 
     return 0;
 }
