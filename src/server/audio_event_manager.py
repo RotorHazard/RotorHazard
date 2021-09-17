@@ -22,6 +22,9 @@ class AudioEventManager:
             self.addEvent(Evt.RACE_STAGE, play_stage_beep)
             self.addEvent(Evt.RACE_START_COUNTDOWN, play_start_countdown_beeps)
             self.addEvent(Evt.RACE_START, play_start_beep)
+            self.addEvent(Evt.RACE_FIRST_PASS, play_first_pass_beep)
+            self.addEvent(Evt.CROSSING_ENTER, play_crossing_enter_beep)
+            self.addEvent(Evt.CROSSING_EXIT, play_crossing_exit_beep)
         if 'TTS' in self.config:
             self.addEvent(Evt.RACE_START_COUNTDOWN, say_start_countdown)
             self.addEvent(Evt.RACE_TICK, say_race_times)
@@ -76,6 +79,18 @@ def say_start_countdown(time_remaining, countdown_time, RACE, say, **kwargs):
 
 def play_start_beep(play, **kwargs):
     play('server/static/audio/buzzer.wav')
+
+
+def play_first_pass_beep(play, **kwargs):
+    play('server/static/audio/beep.wav')
+
+
+def play_crossing_enter_beep(play, **kwargs):
+    play('server/static/audio/enter.wav')
+
+
+def play_crossing_exit_beep(play, **kwargs):
+    play('server/static/audio/exit.wav')
 
 
 def say_race_times(timer_sec, RACE, say, **kwargs):
