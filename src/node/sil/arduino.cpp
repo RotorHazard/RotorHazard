@@ -238,6 +238,7 @@ void perform_io() {
         DWORD dwBytesRead;
         if (!ReadFile(hCom, buffer, sizeof(buffer), &dwBytesRead, NULL)) {
             fprintf(stderr, "Serial read failed\n");
+            closeSocket();
         }
         if (dwBytesRead == sizeof(buffer)) {
             fprintf(stderr, "Serial read buffer overflow\n");
@@ -263,24 +264,28 @@ void perform_io() {
             closeSocket();
         } else {
             fprintf(stderr, "Socket read failed: %d\n", WSAGetLastError());
+            closeSocket();
         }
     }
 }
 #else
 static int sockfd = 0;
 
-size_t Stream::write(const uint8_t* buffer, size_t size) {
-    ssize_t bytesWritten = ::write(sockfd, buffer, size);
-    if (bytesWritten < 0) {
-        fprintf(stderr, "Socket write failed\n");
-    }
-    return bytesWritten;
-}
-
 void closeSocket() {
     if (sockfd > 0) {
         close(sockfd);
         sockfd = 0;
+    }
+}
+
+size_t Stream::write(const uint8_t* buffer, size_t size) {
+    ssize_t bytesWritten = ::write(sockfd, buffer, size);
+    if (bytesWritten >= 0) {
+        return bytesWritten;
+    } else {
+        fprintf(stderr, "Socket write failed: %d\n", errno);
+        closeSocket();
+        return 0;
     }
 }
 
@@ -323,16 +328,21 @@ void initSocket(const char* host, int port) {
 void perform_io() {
     if (sockfd > 0) {
         uint8_t buffer[128];
-        ssize_t bytesRead = read(sockfd, buffer, sizeof(buffer));
-        if (bytesRead < 0) {
-            fprintf(stderr, "Socket read failed\n");
-        }
-        if (bytesRead == sizeof(buffer)) {
-            fprintf(stderr, "Socket read buffer overflow\n");
-        }
-        Serial.copyToBuffer(buffer, bytesRead);
-        for (int i=0; i<bytesRead; i++) {
-            serialEvent();
+        ssize_t bytesRead = recv(sockfd, buffer, sizeof(buffer), MSG_DONTWAIT);
+        if (bytesRead > 0) {
+            if (bytesRead == sizeof(buffer)) {
+                fprintf(stderr, "Socket read buffer overflow\n");
+            }
+            Serial.copyToBuffer(buffer, bytesRead);
+            for (int i=0; i<bytesRead; i++) {
+                serialEvent();
+            }
+        } else if (bytesRead == 0) {
+            fprintf(stderr, "Socket connection closed\n");
+            closeSocket();
+        } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            fprintf(stderr, "Socket read failed: %d\n", errno);
+            closeSocket();
         }
     }
 }
