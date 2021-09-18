@@ -57,6 +57,13 @@ public:
     {
         Hardware::init();
 
+        // turn-off all SPI chip selects
+        for (uint_fast8_t i=0; i<RX5808_SEL_PIN_COUNT; i++) {
+            uint8_t selPin = rx5808SelPinForNodeIndex(i);
+            pinMode(selPin, OUTPUT);
+            digitalWrite(selPin, HIGH);
+        }
+
         analogReadResolution(10);
         analogSetAttenuation(ADC_6db);
 

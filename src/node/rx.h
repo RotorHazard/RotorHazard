@@ -42,7 +42,6 @@ class BitBangRxModule final : public RxModule {
 private:
     template <typename T> const void bitBang(T bits, uint_fast8_t size);
     inline const void serialSendBit(bool b);
-    inline const void serialEnable(bool f);
 
 protected:
     void spiInit();

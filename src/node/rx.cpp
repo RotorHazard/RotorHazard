@@ -122,23 +122,19 @@ rssi_t RxModule::readRssi()
 
 void BitBangRxModule::spiInit()
 {
-    pinMode(dataPin, OUTPUT);
-    pinMode(selPin, OUTPUT);
     pinMode(clkPin, OUTPUT);
-    serialEnable(false);
+    pinMode(dataPin, OUTPUT);
     digitalWrite(clkPin, LOW);
     digitalWrite(dataPin, LOW);
 }
 
 void BitBangRxModule::spiWrite(uint8_t addr, uint32_t data)
 {
-    serialEnable(false);
-    serialEnable(true);
+    digitalWrite(selPin, LOW); // Enable chip select
     bitBang(addr, 4);
     serialSendBit(true);  // Write to register
     bitBang(data, 20);
-    serialEnable(false);  // Finished clocking data in
-    digitalWrite(clkPin, LOW);
+    digitalWrite(selPin, HIGH);  // Finished clocking data in
     digitalWrite(dataPin, LOW);
 }
 
@@ -151,23 +147,19 @@ template <typename T> const void BitBangRxModule::bitBang(T bits, const uint_fas
     }
 }
 
+// numbers chosen to give approx 4us clock period (2us high + 2us low)
+#define DATA_CLOCK_DELAY 1
+#define CLOCK_HIGH_PERIOD 2
+#define CLOCK_DATA_DELAY 1
+
 inline const void BitBangRxModule::serialSendBit(const bool b)
 {
-    digitalWrite(clkPin, LOW);
-    delayMicroseconds(1);
     digitalWrite(dataPin, b ? HIGH : LOW);
-    delayMicroseconds(300);
+    delayMicroseconds(DATA_CLOCK_DELAY);
     digitalWrite(clkPin, HIGH);
-    delayMicroseconds(300);
+    delayMicroseconds(CLOCK_HIGH_PERIOD);
     digitalWrite(clkPin, LOW);
-    delayMicroseconds(300);
-}
-
-inline const void BitBangRxModule::serialEnable(const bool f)
-{
-    // pull low to enable
-    digitalWrite(selPin, f ? LOW : HIGH);
-    delayMicroseconds(200);
+    delayMicroseconds(CLOCK_DATA_DELAY);
 }
 
 
@@ -176,8 +168,6 @@ inline const void BitBangRxModule::serialEnable(const bool f)
 
 void NativeRxModule::spiInit()
 {
-    pinMode(selPin, OUTPUT);
-    digitalWrite(selPin, HIGH);
     SPI.begin(clkPin, -1, dataPin);
 }
 

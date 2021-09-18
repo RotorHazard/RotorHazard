@@ -11,6 +11,7 @@
 #define AVR_TARGET 1
 #define STM32_TARGET 2
 #define ESP32_TARGET 3
+#define ESP8266_TARGET 4
 #define SIL_TARGET 5
 #define TEST_TARGET 0
 
@@ -28,6 +29,8 @@
 #else
 #define VARIANT STM32F1_VARIANT
 #endif
+#elif defined(ESP8266)
+#define TARGET ESP8266_TARGET
 #elif defined(ESP_PLATFORM)
 #define TARGET ESP32_TARGET
 #elif defined(__TEST__)
@@ -175,6 +178,10 @@
     #define RSSI_INPUT3_PIN A7
     #define RSSI_INPUT4_PIN A4
     #define RSSI_INPUT5_PIN A5
+
+#elif TARGET == ESP8266_TARGET
+    #define RX5808_SEL_PIN 15
+    #define RSSI_INPUT_PIN A0
 
 #elif TARGET == STM32_TARGET
     #define RX5808_SEL_PIN_COUNT 8

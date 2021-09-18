@@ -72,6 +72,13 @@ public:
     {
         Hardware::init();
 
+        // turn-off all SPI chip selects
+        for (uint_fast8_t i=0; i<RX5808_SEL_PIN_COUNT; i++) {
+            uint8_t selPin = rx5808SelPinForNodeIndex(i);
+            pinMode(selPin, OUTPUT);
+            digitalWrite(selPin, HIGH);
+        }
+
         SERIALCOM.begin(SERIAL_BAUD_RATE);  // Start serial interface
         while (!SERIALCOM) {
             delay(1);  // Wait for the Serial port to initialize

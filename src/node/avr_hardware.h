@@ -95,6 +95,10 @@ public:
     {
         Hardware::init();
 
+        // turn-off all SPI chip selects
+        pinMode(RX5808_SEL_PIN, OUTPUT);
+        digitalWrite(RX5808_SEL_PIN, HIGH);
+
         // init pin used to reset paired Arduino via RESET_PAIRED_NODE command
         pinMode(NODE_RESET_PIN, INPUT_PULLUP);
 

@@ -155,7 +155,7 @@ unittest(command_scan)
     assertEqual(1, rssiRxs.getRssiNode(0).getSettings().mode);
     assertEqual(MIN_SCAN_FREQ, rssiRxs.getRssiNode(0).getSettings().vtxFreq);
     // wait for some frequency changes
-    for (int i=0; i<100; i++) {
+    for (int i=0; i<200; i++) {
         loop();
         nano->micros += 1000;
     }
