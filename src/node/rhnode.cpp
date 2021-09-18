@@ -29,21 +29,11 @@
 #include "microclock.h"
 #include "rssi.h"
 #include "commands.h"
-
-// Note: Configure Arduino NODE_NUMBER value in 'config.h'
+#include "wifi.h"
+#include "hardware.h"
 
 // dummy macro
 #define LOG_ERROR(...)
-
-#if TARGET == STM32_TARGET
-#include "stm32_hardware.h"
-#elif TARGET == AVR_TARGET
-#include "avr_hardware.h"
-#elif TARGET == TEST_TARGET
-#include "test_hardware.h"
-#elif TARGET == SIL_TARGET
-#include "sil/sil_hardware.h"
-#endif
 
 #define TICK_FOR(expr)  usclock.tickMicros();expr
 
@@ -53,6 +43,10 @@ static void processPendingOps(mtime_t ms);
 void setup()
 {
     hardware.init();
+
+#ifdef USE_WIFI
+        wifiInit();
+#endif
 
     // if EEPROM-check value matches then read stored values
     for (int i=0; i<rssiRxs.getCount(); i++) {
@@ -143,6 +137,10 @@ void loop()
             }
         }
     }
+
+#ifdef USE_WIFI
+    wifiEventRun();
+#endif
 }
 
 void processPendingOps(mtime_t ms) {

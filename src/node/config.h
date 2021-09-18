@@ -14,6 +14,11 @@
 #define SIL_TARGET 5
 #define TEST_TARGET 0
 
+// set TARGET manually here if necessary
+//#define TARGET XXX_TARGET
+
+// TARGET auto-detection
+#ifndef TARGET
 #if defined(STM32_CORE_VERSION)
 #define TARGET STM32_TARGET
 #define STM32F1_VARIANT 1
@@ -32,17 +37,25 @@
 #else
 #define TARGET AVR_TARGET
 #endif
+#endif
 
 #if TARGET == AVR_TARGET
+#include <util/atomic.h>
+#else
+#define ATOMIC_BLOCK(x)
+#define ATOMIC_RESTORESTATE
+#endif
 
+// ******************************************************************** //
+// * Configuration
+// ******************************************************************** //
+
+#if TARGET == AVR_TARGET
 // Set to 1-8 for manual selection of Arduino node ID/address.
 // Set to 0 for automatic selection via hardware pin.
 // See https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing
 #define NODE_NUMBER 0
-
 #endif
-
-// ******************************************************************** //
 
 #if TARGET == STM32_TARGET
     // currently, STM32F1 is not fast enough to support more than 4 nodes at 1ms loop time
@@ -63,12 +76,43 @@
 // multi-freq reads
 #define READS_PER_FREQ 64
 
-#if TARGET == AVR_TARGET
-#include <util/atomic.h>
+// use persistent homology detection
+#define USE_PH
+
+#if TARGET == ESP32_TARGET
+#define RX_IMPL NativeRxModule
 #else
-#define ATOMIC_BLOCK(x)
-#define ATOMIC_RESTORESTATE
+#define RX_IMPL BitBangRxModule
 #endif
+
+#if TARGET != AVR_TARGET || MULTI_RHNODE_MAX == 1
+#define SCAN_HISTORY
+#else
+// uncomment to activate scanner mode
+//#define SCAN_HISTORY
+#endif
+// uncomment to activate raw mode
+//#define RSSI_HISTORY
+
+#ifdef __TEST__
+#undef USE_PH
+#define SCAN_HISTORY
+#define RSSI_HISTORY
+#endif
+
+#ifndef USE_WIFI
+//#define USE_WIFI
+#endif
+
+// local hostname
+#define WIFI_HOSTNAME "wifi-node-1"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD "something secure"
+// remote server and port
+#define WIFI_SERVER "timer"
+#define WIFI_PORT 5005
+
+// Pins
 
 #if TARGET == AVR_TARGET
     #define RH_WIRING 0
@@ -112,33 +156,8 @@
     #define LEGACY_HARDWARE_SELECT_PIN_4 7
     #define LEGACY_HARDWARE_SELECT_PIN_5 8
 
-#endif
-
-// use persistent homology detection
-#define USE_PH
-
-#if TARGET == ESP32_TARGET
-#define RX_IMPL NativeRxModule
-#else
-#define RX_IMPL BitBangRxModule
-#endif
-
-#if TARGET != AVR_TARGET || MULTI_RHNODE_MAX == 1
-#define SCAN_HISTORY
-#else
-// uncomment to activate scanner mode
-//#define SCAN_HISTORY
-#endif
-// uncomment to activate raw mode
-//#define RSSI_HISTORY
-
-#ifdef __TEST__
-#undef USE_PH
-#define SCAN_HISTORY
-#define RSSI_HISTORY
-#endif
-
-#if TARGET == ESP32_TARGET
+#elif TARGET == ESP32_TARGET
+    #define RX5808_SEL_PIN_COUNT 6
     #define RX5808_SEL0_PIN 16
     #define RX5808_SEL1_PIN 5
     #define RX5808_SEL2_PIN 4
@@ -152,7 +171,9 @@
     #define RSSI_INPUT3_PIN A7
     #define RSSI_INPUT4_PIN A4
     #define RSSI_INPUT5_PIN A5
+
 #elif TARGET == STM32_TARGET
+    #define RX5808_SEL_PIN_COUNT 8
     #define RX5808_SEL0_PIN PB6
     #define RX5808_SEL1_PIN PB7
     #define RX5808_SEL2_PIN PB8

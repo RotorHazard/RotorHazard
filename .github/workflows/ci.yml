@@ -86,6 +86,7 @@ jobs:
           - board: "esp32:esp32:esp32:PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none"
             platform: "esp32:esp32"
             opts: "--additional-urls https://dl.espressif.com/dl/package_esp32_index.json"
+            flags: "-DUSE_WIFI"
 
     steps:
     - uses: actions/checkout@v2
@@ -93,5 +94,5 @@ jobs:
     - run: |
         arduino-cli update ${{ matrix.opts }}
         arduino-cli core install ${{ matrix.platform }} ${{ matrix.opts }}
-        arduino-cli compile -b ${{ matrix.board }} src/node
+        arduino-cli compile -b ${{ matrix.board }} --build-property "compiler.cpp.extra_flags=${{ matrix.flags }}" src/node
   

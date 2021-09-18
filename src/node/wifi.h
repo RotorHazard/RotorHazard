@@ -1,0 +1,3 @@
+
+void wifiInit();
+void wifiEventRun();
