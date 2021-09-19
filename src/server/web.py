@@ -98,9 +98,11 @@ def on_sync_event():
         url = pilot['pilot_url']
         heat = pilot['heat']-1
         node = pilot['car']-1
-        if url not in pilots_by_url:
+        if url in pilots_by_url:
+            rhpilot = pilots_by_url[url]
+        else:
             # add new pilot
-            rhdata.add_pilot({'url': url})
+            rhpilot = rhdata.add_pilot({'url': url})
 
         if heat not in heats:
             heats[heat] = {}

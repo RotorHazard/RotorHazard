@@ -3770,6 +3770,14 @@ def emit_pilot_data(**params):
             gevent.wait([web_gs[pilot.id]])
             pilot_web_data = web_gs[pilot.id].value
             pilot_data.update(pilot_web_data)
+            changed_pilot_data = {}
+            if 'name' in pilot_web_data and pilot_web_data['name'] != pilot_data['name']:
+                changed_pilot_data['name'] = pilot_web_data['name']
+            if 'callsign' in pilot_web_data and pilot_web_data['callsign'] != pilot_data['callsign']:
+                changed_pilot_data['callsign'] = pilot_web_data['callsign']
+            if changed_pilot_data:
+                changed_pilot_data['pilot_id'] = pilot.id
+                RHData.alter_pilot(changed_pilot_data)
 
         # local overrides
         if not pilot.name.startswith('~'):
