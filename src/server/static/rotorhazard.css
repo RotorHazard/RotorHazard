@@ -1552,6 +1552,10 @@ main.page-home {
 	}
 }
 
+.late-lap {
+	text-decoration: line-through;
+}
+
 .lap-deleted {
 	background: #d1d3d4;
 }
@@ -1562,11 +1566,14 @@ main.page-home {
 	}
 }
 
-
 @media (prefers-color-scheme: dark) {
 	.lap_split {
 		color: #999;
 	}
+}
+
+.restore_deleted_lap {
+	float: left;
 }
 
 .btn-danger {

@@ -543,7 +543,6 @@
 						}
 					}
 
-
 					var tr = $('<tr>');
 					var lap_num = lap.lap_number;
 					if (lap_num == 0) {
@@ -564,6 +563,7 @@
 							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
 							);
 					if(lap.late_lap) {
+						tr.addClass('late-lap');
 						time_td.prepend(
 								$('<button class="restore_deleted_lap" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">+</button>'));
 					}
