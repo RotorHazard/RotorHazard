@@ -352,7 +352,7 @@ void Message::handleReadCommand(CommSource src)
             break;
 
         case READ_FW_VERSION:
-            buffer.writeText("B1.3");
+            buffer.writeText(FIRMWARE_VERSION);
             break;
 
         case READ_FW_BUILDDATE:

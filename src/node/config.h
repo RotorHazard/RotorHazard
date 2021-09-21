@@ -8,6 +8,7 @@
 #endif
 #include "util/rhtypes.h"
 
+#define FIRMWARE_VERSION "B1.3"
 #define AVR_TARGET 1
 #define STM32_TARGET 2
 #define ESP32_TARGET 3
@@ -116,8 +117,9 @@
 #define WIFI_SSID ""
 #define WIFI_PASSWORD "something secure"
 // remote server and port
-#define WIFI_SERVER "timer"
+#define WIFI_SERVER "timer.local"
 #define WIFI_PORT 5005
+#define OTA_URL "http://timer.local:5000/ota/esp8266"
 
 // Pins
 

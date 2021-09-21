@@ -19,6 +19,6 @@ set RH_BUILD_WORKDIR=
 set RH_BUILD_PROJNAME=rhnode
 
 echo on
-"%ARDUINO_CMD%" --verify --board esp8266:esp8266:generic:xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,ResetMethod=nodemcu,CrystalFreq=26,FlashFreq=40,FlashMode=dout,eesz=1M64,led=2,sdk=nonosdk_190703,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=115200 --pref "build.path=%RH_BUILD_WORKDIR%build_esp8266" --pref build.project_name=%RH_BUILD_PROJNAME% "%RH_BUILD_WORKDIR%rhnode.cpp" %1 %2 %3 %4 %5 %6 %7 %8 %9
+"%ARDUINO_CMD%" --verify --board esp32:esp32:esp32:PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none --pref "build.path=%RH_BUILD_WORKDIR%build_esp32" --pref build.project_name=%RH_BUILD_PROJNAME% "%RH_BUILD_WORKDIR%rhnode.cpp" %1 %2 %3 %4 %5 %6 %7 %8 %9
 @echo off
 :ex

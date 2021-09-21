@@ -4,8 +4,10 @@
 #ifdef USE_WIFI
 #if TARGET == ESP32_TARGET
 #include <WiFi.h>
+#include <HTTPUpdate.h>
 #elif TARGET == ESP8266_TARGET
 #include <ESP8266WiFi.h>
+#include <ESP8266httpUpdate.h>
 #endif
 
 static WiFiClient wifiClient;
@@ -16,6 +18,13 @@ void wifiInit() {
     WiFi.enableSTA(true);
     WiFi.setAutoReconnect(true);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.waitForConnectResult();
+    WiFiClient otaClient;
+#if TARGET == ESP32_TARGET
+    httpUpdate.update(otaClient, OTA_URL, FIRMWARE_VERSION);
+#elif TARGET == ESP8266_TARGET
+    ESPhttpUpdate.update(otaClient, OTA_URL, FIRMWARE_VERSION);
+#endif
 }
 
 void wifiEvent() {

@@ -46,7 +46,7 @@ void setup()
     hardware.init();
 
 #ifdef USE_WIFI
-        wifiInit();
+    wifiInit();
 #endif
 
     // if EEPROM-check value matches then read stored values
