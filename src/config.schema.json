@@ -5,7 +5,6 @@
 			"type": "object",
 			"properties": {
 				"HTTP_PORT": { "$ref": "#/$defs/sport" },
-				"SERIAL_PORT": { "$ref": "#/$defs/cport" },
 				"SECRET_KEY": { "type": "string" },
 				"ADMIN_USERNAME": { "type": "string" },
 				"ADMIN_PASSWORD": { "type": "string" },
@@ -21,6 +20,7 @@
 			"type": "object",
 			"properties": {
 				"I2C_BUSES": {
+					"description": "Array of I2C bus IDs to search for nodes.",
 					"type": "array",
 					"items": {
 						"type": "integer"
@@ -71,12 +71,14 @@
 			"type": "object"
 		},
 		"SERIAL_PORTS": {
+			"description": "Array of serial ports to search for nodes.",
 			"type": "array",
 			"items": {
 			"$ref": "#/$defs/cport"
 			}
 		},
 		"SOCKET_PORTS": {
+			"description": "Array of socket ports to listen for nodes.",
 			"type": "array",
 			"items": {
 			"$ref": "#/$defs/sport"

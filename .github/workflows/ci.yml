@@ -26,6 +26,14 @@ jobs:
         python3 -m pip install -r reqsNonPi.txt
         cd ..
 
+    - name: Build schema docs
+      run: |
+        python3 -m pip install json-schema-for-humans
+        mkdir -p doc/schemas
+        python3 -m json_schema_for_humans.generate src/config.schema.json doc/schemas/config.html
+        python3 -m json_schema_for_humans.generate src/race_formats.schema.json doc/schemas/race_formats.html
+        python3 -m json_schema_for_humans.generate src/vtxconfig_schema-1.0.json doc/schemas/vtxconfig.html
+
     - name: Lint with flake8
       run: |
         cd src
