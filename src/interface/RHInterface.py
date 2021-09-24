@@ -275,7 +275,7 @@ class RHInterface(BaseHardwareInterface):
         self.node_managers = Plugins(suffix='node')
         self.discover_nodes(*args, **kwargs)
 
-        self.data_loggers = []
+        self.data_loggers = [None]*len(self.nodes)
         for node in self.nodes:
             node.frequency = node.get_value_16(READ_FREQUENCY)
             if not node.frequency:
@@ -289,12 +289,6 @@ class RHInterface(BaseHardwareInterface):
                 node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
                 logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
                              node, node.frequency, node.enter_at_level, node.exit_at_level))
-
-                if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                    self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w', buffering=10*1024*1024))
-                    logger.info("Data logging enabled for node {0}".format(node))
-                else:
-                    self.data_loggers.append(None)
             else:
                 logger.warning("Node {} has obsolete API_level ({})".format(node, node.manager.api_level))
 
@@ -306,12 +300,27 @@ class RHInterface(BaseHardwareInterface):
                     self.fwupd_serial_port = node_manager.serial_io.name
                     break
 
-
     def discover_nodes(self, *args, **kwargs):
         self.node_managers.discover(node_pkg, includeOffset=True, *args, **kwargs)
         for manager in self.node_managers:
             self.nodes.extend(manager.nodes)
 
+    def start(self):
+        for node in self.nodes:
+            if node.manager.api_level >= 18 and not self.data_loggers[node.index]:
+                if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
+                    f = open("data_{0}.csv".format(node.index+1), 'a')
+                    logger.info("Data logging enabled for node {0} ({1})".format(node, f.name))
+                    self.data_loggers[node.index] = f
+        super().start()
+
+    def stop(self):
+        super().stop()
+        for i,f in enumerate(self.data_loggers):
+            if f is not None:
+                f.close()
+                logger.info("Stopped data logging for node {0} ({1})".format(self.nodes[i], f.name))
+                self.data_loggers[i] = None
 
     #
     # Update Loop
