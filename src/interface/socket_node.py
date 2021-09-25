@@ -4,6 +4,7 @@ gevent.monkey.patch_all()
 import logging
 import socket
 
+from helpers import socket_url
 from . import RHInterface as rhi
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ class SocketNodeManager(rhi.RHNodeManager):
         super().__init__()
         self.socket_io = socket_obj
         sock_addr = self.socket_io.getsockname()
-        self.addr = "socket://{}:{}/".format(sock_addr[0], sock_addr[1])
+        self.addr = socket_url(sock_addr[0], sock_addr[1])
 
     def _read_command(self, command, size):
         self.socket_io.sendall(bytearray([command]))

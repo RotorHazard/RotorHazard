@@ -409,11 +409,7 @@ int main(int argc, const char* argv[])
             strncpy(host, addr, len);
             host[len] = '\0';
             int port = atoi(sep+1);
-#ifdef _WIN32
             initSocket(host, port);
-#else
-            initSocket(host, port);
-#endif
         } else {
 #ifdef _WIN32
             initSerial(addr);

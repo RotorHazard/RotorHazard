@@ -23,6 +23,10 @@ def start(port, freq, write_buffer):
         params['i2c_helper'] = [I2CBus(bus_addr[0])]
         params['i2c_addrs'] = [bus_addr[1]]
         INTERFACE = RHInterface.get_hardware_interface(**params)
+    elif port.startswith(':'):
+        config = Config()
+        config.SOCKET_PORTS = [int(port[1:])]
+        INTERFACE = RHInterface.get_hardware_interface(config=config)
     else:
         print("Invalid port: {}".format(port))
         exit(1)
@@ -65,7 +69,7 @@ def write_buffer(filename, buf):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     if len(sys.argv) < 3:
-        print('Please specify a serial port, e.g. COM12 (or I2C address, e.g. i2c:1/0x08), and a frequency.')
+        print('Please specify a serial port, e.g. COM12 (or I2C address, e.g. i2c:1/0x08, or socket port, e.g. :5005), and a frequency.')
         exit()
     port = sys.argv[1]
     freq = int(sys.argv[2])

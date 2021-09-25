@@ -27,6 +27,10 @@ def scan(port, socket):
         params['i2c_helper'] = [I2CBus(bus_addr[0])]
         params['i2c_addrs'] = [bus_addr[1]]
         INTERFACE = RHInterface.get_hardware_interface(**params)
+    elif port.startswith(':'):
+        config = Config()
+        config.SOCKET_PORTS = [int(port[1:])]
+        INTERFACE = RHInterface.get_hardware_interface(config=config)
     else:
         print("Invalid port: {}".format(port))
         exit(1)
@@ -76,7 +80,7 @@ if __name__ == '__main__':
     logging.getLogger('engineio').setLevel(logging.WARN)
     logging.getLogger('geventwebsocket').setLevel(logging.WARN)
     if len(sys.argv) < 2:
-        print('Please specify serial port, e.g. COM12 (or I2C address, e.g. i2c:1/0x08).')
+        print('Please specify serial port, e.g. COM12 (or I2C address, e.g. i2c:1/0x08, or socket port, e.g. :5005).')
         exit()
     port = sys.argv[1]
     start(port)
