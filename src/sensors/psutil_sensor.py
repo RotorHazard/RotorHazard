@@ -6,8 +6,10 @@ from . import Sensor, Reading
 def psutil_sensor_url(unit_name, sub_label):
     return "psutil:{}/{}".format(unit_name, sub_label)
 
+
 def psutil_sensor_name(unit_name, sub_label):
     return "{} ({})".format(unit_name, sub_label) if sub_label else unit_name
+
 
 class PsUtilSensor(Sensor):
     def __init__(self, name, unit_name, sub_label):
@@ -16,6 +18,7 @@ class PsUtilSensor(Sensor):
         self.sub_label = sub_label
         self.update()
 
+
 class TemperatureSensor(PsUtilSensor):
     def __init__(self, name, unit_name, sub_label):
         super().__init__(name=name, unit_name=unit_name, sub_label=sub_label)
@@ -23,11 +26,13 @@ class TemperatureSensor(PsUtilSensor):
 
     def update(self):
         temps = psutil.sensors_temperatures()
-        self._temp = next(filter(lambda s: s.label==self.sub_label, temps[self.unit_name]), None).current
+        if self.unit_name in temps:
+            self._temp = next(filter(lambda s: s.label==self.sub_label, temps[self.unit_name]), None).current
 
     @Reading(units='°C')
     def temperature(self):
         return self._temp
+
 
 class FanSensor(PsUtilSensor):
     def __init__(self, name, unit_name, sub_label):
@@ -36,11 +41,13 @@ class FanSensor(PsUtilSensor):
 
     def update(self):
         fans = psutil.sensors_fans()
-        self._rpm = next(filter(lambda s: s.label==self.sub_label, fans[self.unit_name]), None).current
+        if self.unit_name in fans:
+            self._rpm = next(filter(lambda s: s.label==self.sub_label, fans[self.unit_name]), None).current
 
     @Reading(units='rpm')
     def speed(self):
         return self._rpm
+
 
 class BatterySensor(PsUtilSensor):
     def __init__(self, name, unit_name, sub_label):
