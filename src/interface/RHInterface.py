@@ -488,7 +488,7 @@ class RHInterface(BaseHardwareInterface):
                             startThreshLowerNode = node
 
             if node.loop_time > self.warn_loop_time:
-                logger.warning("Abnormal node loop time: {}us".format(node.loop_time))
+                logger.warning("Abnormal loop time for node {}: {}us (min {}us, max {}us)".format(node.index+1, node.loop_time, node.min_loop_time, node.max_loop_time))
 
         # process any nodes with crossing-flag changes
         self.process_crossings(cross_list)

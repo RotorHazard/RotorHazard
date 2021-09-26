@@ -5,7 +5,7 @@
 
 // semantic types
 typedef uint32_t mtime_t; // milliseconds
-typedef uint32_t utime_t; // micros
+typedef uint32_t utime_t; // microseconds
 typedef uint8_t rssi_t;
 typedef uint16_t freq_t; // MHz
 
@@ -17,9 +17,9 @@ enum ExtremumType {
 
 struct Extremum
 {
-  rssi_t volatile rssi;
-  mtime_t volatile firstTime;
-  uint16_t volatile duration;
+  rssi_t rssi;
+  mtime_t firstTime;
+  uint16_t duration;
 };
 
 struct FreqRssi
@@ -29,10 +29,11 @@ struct FreqRssi
 };
 
 constexpr rssi_t MAX_RSSI = 0xFF;
-inline bool isPeakValid(const Extremum& x) { return x.rssi != 0; }
-inline bool isNadirValid(const Extremum& x) { return x.rssi != MAX_RSSI; }
+constexpr bool isPeakValid(const Extremum& x) { return x.rssi != 0; }
+constexpr bool isNadirValid(const Extremum& x) { return x.rssi != MAX_RSSI; }
 inline void invalidatePeak(Extremum& x) { x.rssi = 0; }
 inline void invalidateNadir(Extremum& x) { x.rssi = MAX_RSSI; }
-inline mtime_t endTime(const Extremum& x) { return x.firstTime + x.duration; }
+constexpr rssi_t rssiValue(const Extremum& x) { return x.rssi; }
+constexpr mtime_t endTime(const Extremum& x) { return x.firstTime + x.duration; }
 
 #endif

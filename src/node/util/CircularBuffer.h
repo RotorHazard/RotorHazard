@@ -54,12 +54,12 @@ public:
 	/**
 	 * Adds an element to the beginning of buffer: the operation returns `false` if the addition caused overwriting an existing element.
 	 */
-	bool unshift(T value);
+	bool unshift(const T& value);
 
 	/**
 	 * Adds an element to the end of buffer: the operation returns `false` if the addition caused overwriting an existing element.
 	 */
-	bool push(T value);
+	bool push(const T& value);
 
 	/**
 	 * Removes an element from the beginning of the buffer.
@@ -114,6 +114,12 @@ public:
 	 * Resets the buffer to a clean status, making all buffer positions available.
 	 */
 	void inline clear();
+
+	/**
+	 * Copies the contents of this buffer into the given array.
+	 */
+	void inline copyTo(T* out) const;
+    template<typename R> void inline copyTo(R* out, R (&convert)(const T&)) const;
 
 	#ifdef CIRCULAR_BUFFER_DEBUG
 	void inline debug(Print* out);

@@ -22,7 +22,7 @@ constexpr uint16_t MAX_DURATION = 0xFFFF;
 inline uint16_t toDuration(uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
 
 #if TARGET == AVR_TARGET
-constexpr uint8_t HISTORY_SIZE = 14;
+constexpr uint8_t HISTORY_SIZE = 12;
 #else
 constexpr uint8_t HISTORY_SIZE = 6;
 #endif
@@ -233,7 +233,7 @@ private:
 public:
 #endif
     bool checkForCrossing_ph(ExtremumType t, uint8_t enterThreshold, uint8_t exitThreshold);
-    void preparePhData(rssi_t currentValue);
+    int_fast8_t preparePhData(rssi_t currentValue);
 #ifdef __TEST__
 private:
 #endif

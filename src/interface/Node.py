@@ -205,7 +205,9 @@ class Node(CommandsWithRetry):
         self.current_pilot_id = 0
         self.first_cross_flag = False
         self.show_crossing_flag = False
-        self.loop_time = 10 # microseconds
+        self._loop_time = 0 # microseconds
+        self.min_loop_time = float('inf')
+        self.max_loop_time = 0
         self.crossing_flag = False
         self.pass_crossing_flag = False
         self.enter_at_timestamp = 0
@@ -239,6 +241,16 @@ class Node(CommandsWithRetry):
 
         self.scan_enabled = False
         self.scan_data = {}
+
+    @property
+    def loop_time(self):
+        return self._loop_time
+
+    @loop_time.setter
+    def loop_time(self, v):
+        self._loop_time = v
+        self.min_loop_time = min(v, self.min_loop_time)
+        self.max_loop_time = max(v, self.max_loop_time)
 
     def reset(self):
         self.pass_history = []

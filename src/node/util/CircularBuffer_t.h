@@ -22,7 +22,7 @@ constexpr CircularBuffer<T,S,IT>::CircularBuffer() :
 }
 
 template<typename T, size_t S, typename IT>
-bool CircularBuffer<T,S,IT>::unshift(T value) {
+bool CircularBuffer<T,S,IT>::unshift(const T& value) {
 	if (head == buffer) {
 		head = buffer + capacity;
 	}
@@ -41,7 +41,7 @@ bool CircularBuffer<T,S,IT>::unshift(T value) {
 }
 
 template<typename T, size_t S, typename IT>
-bool CircularBuffer<T,S,IT>::push(T value) {
+bool CircularBuffer<T,S,IT>::push(const T& value) {
 	if (++tail == buffer + capacity) {
 		tail = buffer;
 	}
@@ -94,7 +94,11 @@ T inline CircularBuffer<T,S,IT>::last() const {
 template<typename T, size_t S, typename IT>
 T CircularBuffer<T,S,IT>::operator [](IT index) const {
 	if (index >= count) return *tail;
-	return *(buffer + ((head - buffer + index) % capacity));
+	IT offset = head - buffer + index;
+	if (offset >= capacity) {
+	    offset -= capacity;
+	}
+	return *(buffer + offset);
 }
 
 template<typename T, size_t S, typename IT>
@@ -121,6 +125,31 @@ template<typename T, size_t S, typename IT>
 void inline CircularBuffer<T,S,IT>::clear() {
 	head = tail = buffer;
 	count = 0;
+}
+
+template<typename T, size_t S, typename IT>
+void inline CircularBuffer<T,S,IT>::copyTo(T* out) const {
+    const T* bufEnd = buffer + capacity;
+    const T* outEnd = out + count;
+    for (const T* t = head; t < bufEnd && out < outEnd; t++, out++) {
+        *out = *t;
+    }
+    for (const T* t = buffer; t <= tail && out < outEnd; t++, out++) {
+        *out = *t;
+    }
+}
+
+template<typename T, size_t S, typename IT>
+template<typename R>
+void inline CircularBuffer<T,S,IT>::copyTo(R* out, R (&convert)(const T&)) const {
+    const T* bufEnd = buffer + capacity;
+    const R* outEnd = out + count;
+    for (const T* t = head; t < bufEnd && out < outEnd; t++, out++) {
+        *out = convert(*t);
+    }
+    for (const T* t = buffer; t <= tail && out < outEnd; t++, out++) {
+        *out = convert(*t);
+    }
 }
 
 #ifdef CIRCULAR_BUFFER_DEBUG

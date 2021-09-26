@@ -41,6 +41,7 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
         if (inputSize > 0) {
             x = inputSignal[t];
         } else {
+            // (0,0), (MAX_RSSI/2, 1/4f), (MAX_RSSI, 1/2f), (MAX_RSSI/2, 3/4f), (0, 1/f)
             x = MAX_RSSI/2.0*(1.0+sin(TWO_PI*testFreq*toSecs(t)-HALF_PI));
         }
         lpf.addRawValue(t, x);
@@ -69,6 +70,8 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
         expectedMax = max(output[i], expectedMax); \
         expectedMin = min(output[i], expectedMin); \
     } \
+    assertMoreOrEqual((int)maxVal, (int)zero); \
+    assertMoreOrEqual((int)expectedMax, (int)expectedMin); \
     assertEqual((int)expectedMax, (int)maxVal); \
     assertEqual((int)expectedMin, (int)zero); \
 }

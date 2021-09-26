@@ -188,8 +188,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
 
     const ExtremumType prevType = sendBuffer.typeAt(sendBuffer.size()-1);
     if (state.crossing && prevType == PEAK && currentType == NADIR) {
-        preparePhData(history.nadir.rssi);
-        int_fast8_t lastIdx = sendBuffer.size();
+        int_fast8_t lastIdx = preparePhData(history.nadir.rssi);
         calculateNadirPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, phSortedIdxs, lastIdx+1, ccs, &lastIdx);
 
         // find lifetime of last value when a nadir
@@ -201,8 +200,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
             }
         }
     } else if (!state.crossing && prevType == NADIR && currentType == PEAK) {
-        preparePhData(history.peak.rssi);
-        int_fast8_t lastIdx = sendBuffer.size();
+        int_fast8_t lastIdx = preparePhData(history.peak.rssi);
         calculatePeakPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, phSortedIdxs, lastIdx+1, ccs, &lastIdx);
 
         // find lifetime of last value when a peak
@@ -218,24 +216,27 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
     return state.crossing;
 }
 
-void RssiNode::preparePhData(const rssi_t currentValue)
+int_fast8_t RssiNode::preparePhData(const rssi_t currentValue)
 {
     const SENDBUFFER& sendBuffer = *((SENDBUFFER*)(history.sendBuffer));
 
-    // copy history
+    // copy history to fast array
+    sendBuffer.copyRssi(phData);
     const int_fast8_t lastIdx = sendBuffer.size();
-    for (int_fast8_t i=lastIdx-1; i>=0; i--) {
-        phData[i] = sendBuffer[i].rssi;
-        phSortedIdxs[i] = sendBuffer.sortedIdxs[i];
-    }
-
     // insert current value
     phData[lastIdx] = currentValue;
+
+    // sort phData
     int_fast8_t j = lastIdx-1;
-    for (; j>=0 && phData[phSortedIdxs[j]] > currentValue; j--) {
-        phSortedIdxs[j+1] = phSortedIdxs[j];
+    for (; j>=0 && phData[sendBuffer.sortedIdxs[j]] > currentValue; j--) {
+        phSortedIdxs[j+1] = sendBuffer.sortedIdxs[j];
     }
     phSortedIdxs[j+1] = lastIdx;
+    for (; j>=0; j--) {
+        phSortedIdxs[j] = sendBuffer.sortedIdxs[j];
+    }
+
+    return lastIdx;
 }
 #endif
 
@@ -295,9 +296,9 @@ void RssiNode::updateScanHistory(freq_t f)
     if (!scanHistory.isFull())
     {
         FreqRssi f_r = {f, state.rssi};
-        scanHistory.push(f_r);
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
+            scanHistory.push(f_r);
             settings.vtxFreq += SCAN_FREQ_INCR;
             if (settings.vtxFreq > MAX_SCAN_FREQ) {
                 settings.vtxFreq = MIN_SCAN_FREQ;
@@ -321,7 +322,9 @@ void RssiNode::updateRssiHistory()
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             if (!rssiHistory.isFull()) {
-                rssiHistory.push(state.rssi);
+                // non-volatile copy
+                rssi_t currentRssi = state.rssi;
+                rssiHistory.push(currentRssi);
             } else {
                 rssiHistoryComplete = true;
             }

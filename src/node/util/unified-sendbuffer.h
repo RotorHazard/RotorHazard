@@ -87,7 +87,7 @@ public:
             return remainingToSend() > 0 ? typeAt(nextToSendIndex) : NONE;
         }
         const T popNext() {
-            T next = buffer[nextToSendIndex];
+            const T& next = buffer[nextToSendIndex];
             if (nextToSendIndex < buffer.size()) {
                 nextToSendIndex++;
             }
@@ -140,6 +140,9 @@ template <uint8_t N> class SortedUnifiedSendBuffer : public UnifiedSendBuffer<Ex
         }
 
     public:
+        void copyRssi(rssi_t* out) const {
+            UnifiedSendBuffer<Extremum,N>::buffer.copyTo(out, rssiValue);
+        }
         void removeLast() {
             UnifiedSendBuffer<Extremum,N>::removeLast();
             const int_fast8_t lastIdx = UnifiedSendBuffer<Extremum,N>::buffer.size();

@@ -41,7 +41,7 @@ class DualSendBuffer: public SendBuffer<Extremum> {
     private:
         ExtremumSendBuffer *peakBuffer;
         ExtremumSendBuffer *nadirBuffer;
-        ExtremumType lastType() {
+        ExtremumType lastType() const {
             if (!peakBuffer->isEmpty() && (nadirBuffer->isEmpty() || (peakBuffer->last().firstTime > nadirBuffer->last().firstTime)))
             {
                 return PEAK;

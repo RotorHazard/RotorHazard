@@ -14,6 +14,6 @@ For S32_BPill nodes, see '[readme_S32_BPill.md](readme_S32_BPill.md)'
 Setup as per <https://github.com/Arduino-CI/arduino_ci>, then
 
 ```
-set path=c:\Ruby25-x64\msys64\mingw64\bin;%path%
+set path=c:\msys64\mingw64\bin;%path%
 bundle exec arduino_ci.rb --skip-examples-compilation
 ```
