@@ -1,6 +1,7 @@
 import sys
 import os
 import glob
+import json
 import logging
 import platform
 import time
@@ -39,6 +40,7 @@ FILELOG_NUM_KEEP_STR = "FILELOG_NUM_KEEP"
 CONSOLE_STREAM_STR = "CONSOLE_STREAM"
 LEVEL_NONE_STR = "NONE"
 LEVEL_NONE_VALUE = 9999
+CONFIG_FILE_STR = "CONFIG_FILE"
 
 socket_handler_obj = None
 queued_handler_obj = None
@@ -258,6 +260,11 @@ def later_stage_setup(config, socket):
 
     if num_old_del > 0:
         logging.debug("Deleted {0} old log file(s)".format(num_old_del))
+
+    if CONFIG_FILE_STR in config:
+        with open(config[CONFIG_FILE_STR], 'r') as f:
+            py_logging_config = json.loads(f)
+        logging.config.dictConfig(py_logging_config)
 
     return log_path_name
 

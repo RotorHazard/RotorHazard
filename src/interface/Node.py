@@ -8,7 +8,6 @@ from monotonic import monotonic
 import gevent.lock
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
                         calculate_checksum, RssiHistory
-import bisect
 
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
@@ -27,7 +26,7 @@ class CommandsWithRetry:
         self.write_error_count = 0
         self.read_error_count = 0
 
-    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT):
+    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT, log_level=logging.WARNING):
         self.read_command_count += 1
         success = False
         retry_count = 0
@@ -35,9 +34,9 @@ class CommandsWithRetry:
         def log_io_error(msg):
             nonlocal retry_count
             if retry_count < max_retries:
-                logger.warning('Retry ({4}) in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+                logger.debug('Retry ({4}) in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
             else:
-                logger.warning('Retry ({4}) limit reached in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+                logger.log(log_level, 'Retry ({4}) limit reached in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
             retry_count += 1
             self.read_error_count += 1
             gevent.sleep(0.025)
@@ -64,7 +63,7 @@ class CommandsWithRetry:
                 log_io_error(err)
         return data if success else None
 
-    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT):
+    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT, log_level=logging.WARNING):
         self.write_command_count += 1
         success = False
         retry_count = 0
@@ -74,7 +73,7 @@ class CommandsWithRetry:
             if retry_count <= max_retries:
                 logger.debug('Retry ({4}) in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             else:
-                logger.warning('Retry ({4}) limit reached in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+                logger.log(log_level, 'Retry ({4}) limit reached in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             retry_count += 1
             self.write_error_count += 1
             gevent.sleep(0.025)
@@ -153,19 +152,19 @@ class NodeManager(CommandsWithRetry):
     def _create_node(self, index, multi_node_index):
         return Node(index, multi_node_index, self)
 
-    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT):
+    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT, log_level=logging.WARNING):
         '''
         Read data given command, and data size.
         '''
         with self:  # only allow one greenlet at a time
-            return super().read_command(command, size, max_retries)
+            return super().read_command(command, size, max_retries, log_level)
 
-    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT):
+    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT, log_level=logging.WARNING):
         '''
         Write data given command, and data.
         '''
         with self:  # only allow one greenlet at a time
-            return super().write_command(command, data, max_retries)
+            return super().write_command(command, data, max_retries, log_level)
 
     def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, max_retries=MAX_RETRY_COUNT):
         with self:  # only allow one greenlet at a time
@@ -256,21 +255,21 @@ class Node(CommandsWithRetry):
         return "Node {0}: {1}/{2} ({3:.2%})".format(self, self.read_error_count, \
                 self.read_command_count, (float(self.read_error_count) / float(self.read_command_count)))
 
-    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT):
+    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT, log_level=logging.WARNING):
         '''
         Read data given command, and data size.
         '''
         with self.manager:  # only allow one greenlet at a time
             if self.manager.select(self):
-                return super().read_command(command, size, max_retries)
+                return super().read_command(command, size, max_retries, log_level)
 
-    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT):
+    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT, log_level=logging.WARNING):
         '''
         Write data given command, and data.
         '''
         with self.manager:  # only allow one greenlet at a time
             if self.manager.select(self):
-                return super().write_command(command, data, max_retries)
+                return super().write_command(command, data, max_retries, log_level)
 
     def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, max_retries=MAX_RETRY_COUNT):
         with self.manager:  # only allow one greenlet at a time

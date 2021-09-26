@@ -29,7 +29,13 @@
 			}
 		},
 		"LOGGING": {
-			"type": "object"
+			"type": "object",
+			"properties": {
+				"CONFIG_FILE": {
+					"type": "string",
+					"description": "Python logging config file to apply"
+				}
+			}
 		},
 		"LED": {
 			"type": "object"
