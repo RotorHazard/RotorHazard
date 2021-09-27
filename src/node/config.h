@@ -100,6 +100,10 @@
 #define RSSI_HISTORY
 #endif
 
+#if TARGET == AVR_TARGET
+#define USE_I2C
+#endif
+
 #ifndef USE_WIFI
 //#define USE_WIFI
 #endif

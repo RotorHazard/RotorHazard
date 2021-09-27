@@ -11,28 +11,6 @@
 // API level for node; increment when commands are modified
 constexpr uint16_t NODE_API_LEVEL = 35;
 
-constexpr uint8_t MESSAGE_BUFFER_SIZE = 18;
-constexpr uint8_t TEXT_SIZE = 16;
-
-class Message
-{
-private:
-    void handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal);
-    void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
-    void handleReadRssiHistory(RssiNode& rssiNode);
-    void handleReadScanHistory(RssiNode& rssiNode);
-    void setMode(RssiNode& rssiNode, Mode mode);
-public:
-    uint8_t command;  // code to identify messages
-    Buffer<MESSAGE_BUFFER_SIZE,TEXT_SIZE> buffer;  // request/response payload
-
-    uint8_t getPayloadSize();
-    void handleWriteCommand(bool serialFlag);
-    void handleReadCommand(bool serialFlag);
-};
-
-void handleStreamEvent(Stream& stream, Message& msg);
-
 constexpr freq_t MIN_FREQ = 100;
 constexpr freq_t MAX_FREQ = 9999;
 
@@ -69,6 +47,37 @@ constexpr freq_t MAX_FREQ = 9999;
 #define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 #define RESET_PAIRED_NODE 0x79  // command to reset node for ISP
 #define JUMP_TO_BOOTLOADER 0x7E    // jump to bootloader for flash update
+#define INVALID_COMMAND 0xFF
+
+// maximum possible message size is limited to 32 bytes by I2C
+constexpr uint8_t MESSAGE_BUFFER_SIZE = 18;
+// maximum possible text size is MESSAGE_BUFFER_SIZE-2 (command byte + checksum byte)
+// text is inclusive of a null-terminator
+constexpr uint8_t TEXT_SIZE = 16;
+
+constexpr bool isWriteCommand(uint8_t cmd) { return cmd > 0x50; };
+
+class Message
+{
+private:
+    void handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal);
+    void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
+    void handleReadRssiHistory(RssiNode& rssiNode);
+    void handleReadScanHistory(RssiNode& rssiNode);
+    void setMode(RssiNode& rssiNode, Mode mode);
+public:
+    uint8_t command = INVALID_COMMAND;  // code to identify messages
+    Buffer<MESSAGE_BUFFER_SIZE,TEXT_SIZE> buffer;  // request/response payload
+
+    inline bool isWriteCommand() { return ::isWriteCommand(command); };
+    int_fast8_t getPayloadSize();
+    void handleWriteCommand(bool serialFlag);
+    void handleReadCommand(bool serialFlag);
+};
+
+void handleStreamEvent(Stream& stream, Message& msg);
+void sendReadCommandResponse(Stream& stream, Message& msg);
+void validateAndProcessWriteCommand(Message& msg, bool serialFlag);
 
 enum StatusFlag
 {

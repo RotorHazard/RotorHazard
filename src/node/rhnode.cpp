@@ -29,6 +29,7 @@
 #include "microclock.h"
 #include "rssi.h"
 #include "commands.h"
+#include "i2c.h"
 #include "wifi.h"
 #include "hardware.h"
 
@@ -138,6 +139,9 @@ void loop()
         }
     }
 
+#ifdef USE_I2C
+    i2cEventRun();
+#endif
 #ifdef USE_WIFI
     wifiEventRun();
 #endif

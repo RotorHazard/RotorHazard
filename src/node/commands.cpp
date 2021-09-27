@@ -12,9 +12,9 @@ constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*si
 uint8_t volatile cmdStatusFlags = 0;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
-uint8_t Message::getPayloadSize()
+int_fast8_t Message::getPayloadSize()
 {
-    uint8_t size;
+    int_fast8_t size;
     switch (command)
     {
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
@@ -151,7 +151,7 @@ void Message::handleWriteCommand(bool serialFlag)
         }
     }
 
-    command = 0;  // Clear previous command
+    command = INVALID_COMMAND;  // Clear previous command
 }
 
 template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const Extremum& e, mtime_t now)
@@ -349,7 +349,7 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_FW_VERSION:
-            buffer.writeText("B1.2");
+            buffer.writeText("B1.3");
             break;
 
         case READ_FW_BUILDDATE:
@@ -383,7 +383,7 @@ void Message::handleReadCommand(bool serialFlag)
         buffer.writeChecksum();
     }
 
-    command = 0;  // Clear previous command
+    command = INVALID_COMMAND;  // Clear previous command
 }
 
 void Message::handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal)
@@ -473,9 +473,9 @@ void handleStreamEvent(Stream& stream, Message& msg)
     {
         // new command
         msg.command = nextByte;
-        if (msg.command > 0x50)
+        if (msg.isWriteCommand())
         {  // Commands > 0x50 are writes TO this slave
-            uint8_t expectedSize = msg.getPayloadSize();
+            int_fast8_t expectedSize = msg.getPayloadSize();
             if (expectedSize > 0)
             {
                 msg.buffer.index = 0;
@@ -485,30 +485,37 @@ void handleStreamEvent(Stream& stream, Message& msg)
         else
         {
             msg.handleReadCommand(true);
-
-            if (msg.buffer.size > 0)
-            {  // If there is pending data, send it
-                stream.write(msg.buffer.data, msg.buffer.size);
-                msg.buffer.size = 0;
-            }
+            sendReadCommandResponse(stream, msg);
         }
     }
     else
     {
         // existing command
         msg.buffer.data[msg.buffer.index++] = nextByte;
-        if (msg.buffer.index == msg.buffer.size)
+        validateAndProcessWriteCommand(msg, true);
+    }
+}
+
+void sendReadCommandResponse(Stream& stream, Message& msg) {
+    // if there is pending data, send it
+    if (msg.buffer.size > 0) {
+        stream.write(msg.buffer.data, msg.buffer.size);
+        msg.buffer.size = 0;
+    }
+}
+
+void validateAndProcessWriteCommand(Message& msg, bool serialFlag) {
+    if (msg.buffer.index == msg.buffer.size)
+    {
+        uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
+        if (msg.buffer.data[msg.buffer.size - 1] == checksum)
         {
-            uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
-            if (msg.buffer.data[msg.buffer.size - 1] == checksum)
-            {
-                msg.handleWriteCommand(true);
-            }
-            else
-            {
-                LOG_ERROR("Invalid checksum", checksum);
-            }
-            msg.buffer.size = 0;
+            msg.handleWriteCommand(serialFlag);
         }
+        else
+        {
+            LOG_ERROR("Invalid checksum", checksum, HEX);
+        }
+        msg.buffer.size = 0;
     }
 }

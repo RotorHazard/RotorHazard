@@ -1,7 +1,7 @@
 #include "config.h"
 #include "hardware.h"
 #include "commands.h"
-#include <Wire.h>
+#include "i2c.h"
 #include "rheeprom.h"
 
 #define SERIAL_BAUD_RATE 115200
@@ -20,20 +20,14 @@
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
-void i2cReceive(int byteCount);
-bool i2cReadAndValidateIoBuffer(byte expectedSize);
-void i2cTransmit();
-
 class AvrHardware : public Hardware {
 private:
     // i2c address for node
     // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
     // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
     uint8_t i2cAddress = 6 + (NODE_NUMBER * 2);
-    bool i2cMonitorEnabledFlag = false;
-    mtime_t i2cMonitorLastResetTime = 0;
 
-#if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+#if defined(USE_I2C) && (!defined(NODE_NUMBER) || !NODE_NUMBER)
     // Configure the I2C address based on input-pin level.
     void configI2cAddress()
     {
@@ -92,22 +86,7 @@ private:
             i2cAddress = 8 + (i2cAddress * 2);
         }
     }
-#endif  // (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
-
-    void i2cInitialize(bool delayFlag)
-    {
-        setStatusLed(true);
-        Wire.end();  // release I2C pins (SDA & SCL), in case they are "stuck"
-        if (delayFlag)   // do delay if called via comms monitor
-            delay(250);  //  to help bus reset and show longer LED flash
-        setStatusLed(false);
-
-        Wire.begin(i2cAddress);  // I2C address setup
-        Wire.onReceive(i2cReceive);   // Trigger 'i2cReceive' function on incoming data
-        Wire.onRequest(i2cTransmit);  // Trigger 'i2cTransmit' function for outgoing data, on master request
-
-        TWAR = (i2cAddress << 1) | 1;  // enable broadcasts to be received
-    }
+#endif
 
 public:
     AvrHardware() : Hardware(HIGH,LOW) {
@@ -122,7 +101,7 @@ public:
         // init pin that can be pulled low (to GND) to disable serial port
         pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
 
-    #if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+    #if defined(USE_I2C) && (!defined(NODE_NUMBER) || !NODE_NUMBER)
         configI2cAddress();
     #else
         delay(100);  // delay a bit a let pin level settle before reading input
@@ -136,7 +115,9 @@ public:
             }
         }
 
-        i2cInitialize(false);  // setup I2C slave address and callbacks
+#ifdef USE_I2C
+        i2cInit(i2cAddress);
+#endif
 
         // set ADC prescaler to 16 to speedup ADC readings
         sbi(ADCSRA, ADPS2);
@@ -171,7 +152,11 @@ public:
         rx.init(dataPin, clkPin, selPin, rssiPin);
     }
 
+#ifdef USE_I2C
     void processStatusFlags(const mtime_t ms, const uint8_t statusFlags) {
+        static bool i2cMonitorEnabledFlag = false;
+        static mtime_t i2cMonitorLastResetTime = 0;
+
         bool anyNodeActive = false;
         for (int_fast8_t i=rssiRxs.getCount()-1; i>=0; i--) {
             RssiNode& node = rssiRxs.getRssiNode(i);
@@ -193,7 +178,7 @@ public:
                 {  //too long since last communications activity detected
                     i2cMonitorEnabledFlag = false;
                     // redo init, which should release I2C pins (SDA & SCL) if "stuck"
-                    i2cInitialize(true);
+                    i2cInit(i2cAddress, true);
                 }
             }
             else if ((statusFlags & POLLING) &&
@@ -208,6 +193,7 @@ public:
             i2cMonitorEnabledFlag = false;
         }
     }
+#endif
 
     // Node reset for ISP; resets other node wired to this node's reset pin
     void resetPairedNode(bool pinState)
@@ -224,7 +210,7 @@ public:
     }
 
     const char* getProcessorType() {
-      return "Arduino";
+        return "Arduino";
     }
 
     uint8_t getAddress()

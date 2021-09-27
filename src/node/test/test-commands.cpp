@@ -40,6 +40,12 @@ void sendData(GodmodeState* state, const char data[], int len, Message& msg) {
     }
 }
 
+unittest(command_getPayloadSize)
+{
+    Message serialMessage;
+    assertEqual(-1, serialMessage.getPayloadSize());
+}
+
 unittest(command_enterAtLevel)
 {
     GodmodeState* nano = GODMODE();
