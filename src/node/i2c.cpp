@@ -40,7 +40,7 @@ void i2cEventRun() {
         i2cCommand = INVALID_COMMAND;
         i2cPayloadSize = 0;
         i2cReadyForReceive = true;
-        validateAndProcessWriteCommand(msg, false);
+        validateAndProcessWriteCommand(msg, I2C_SOURCE);
     }
 }
 
@@ -60,7 +60,7 @@ void i2cOnReceive(int bytesAvailable) {
 void i2cOnRequest() {
     Message msg;
     msg.command = i2cCommand;
-    msg.handleReadCommand(false);
+    msg.handleReadCommand(I2C_SOURCE);
     sendReadCommandResponse(Wire, msg);
     i2cCommand = INVALID_COMMAND;
 }

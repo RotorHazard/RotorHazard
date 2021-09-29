@@ -36,7 +36,7 @@ void sendData(GodmodeState* state, const char data[], int len, Message& msg) {
     szData[len] = '\0';
     state->serialPort[0].dataIn = String(szData);
     for (int i=0; i<len; i++) {
-        handleStreamEvent(Serial, msg);
+        handleStreamEvent(Serial, msg, SERIAL_SOURCE);
     }
 }
 

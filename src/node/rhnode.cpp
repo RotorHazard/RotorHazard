@@ -95,7 +95,7 @@ void loop()
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             currentStatusFlags |= cmdStatusFlags;
-            cmdStatusFlags = 0;
+            cmdStatusFlags = NO_STATUS;
         }
 
         // allow READ_LAP_STATS command to activate operations

@@ -14,6 +14,13 @@ constexpr uint16_t NODE_API_LEVEL = 35;
 constexpr freq_t MIN_FREQ = 100;
 constexpr freq_t MAX_FREQ = 9999;
 
+enum CommSource
+{
+    I2C_SOURCE = 1,
+    SERIAL_SOURCE = 2,
+    WIFI_SOURCE = 3
+};
+
 #define READ_ADDRESS 0x00
 #define READ_MODE 0x02
 #define READ_FREQUENCY 0x03
@@ -71,16 +78,17 @@ public:
 
     inline bool isWriteCommand() { return ::isWriteCommand(command); };
     int_fast8_t getPayloadSize();
-    void handleWriteCommand(bool serialFlag);
-    void handleReadCommand(bool serialFlag);
+    void handleWriteCommand(CommSource src);
+    void handleReadCommand(CommSource src);
 };
 
-void handleStreamEvent(Stream& stream, Message& msg);
+void handleStreamEvent(Stream& stream, Message& msg, CommSource src);
 void sendReadCommandResponse(Stream& stream, Message& msg);
-void validateAndProcessWriteCommand(Message& msg, bool serialFlag);
+void validateAndProcessWriteCommand(Message& msg, CommSource src);
 
 enum StatusFlag
 {
+    NO_STATUS       = 0x0,
     COMM_ACTIVITY   = 0x1,
     POLLING         = 0x2,
     SERIAL_CMD_MSG  = 0x4

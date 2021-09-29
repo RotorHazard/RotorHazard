@@ -19,7 +19,7 @@ void wifiInit() {
 }
 
 void wifiEvent() {
-    handleStreamEvent(wifiClient, wifiMessage);
+    handleStreamEvent(wifiClient, wifiMessage, WIFI_SOURCE);
 }
 
 void wifiEventRun() {

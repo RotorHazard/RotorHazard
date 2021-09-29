@@ -188,6 +188,7 @@ struct LastPass
 
 enum PendingOperations
 {
+    NO_OPS          = 0x00,
     FREQ_SET        = 0x01,
     FREQ_CHANGED    = 0x02
 };
@@ -251,7 +252,7 @@ public:
 #endif
 
     bool active = false; // Set true after initial frequency is set
-    uint8_t pendingOps;
+    uint8_t pendingOps = NO_OPS;
 
     RssiNode();
     RssiNode(const RssiNode&) = delete;

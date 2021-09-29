@@ -9,6 +9,6 @@ static Message serialMessage;
 
 void serialEvent()
 {
-    handleStreamEvent(SERIALCOM, serialMessage);
+    handleStreamEvent(SERIALCOM, serialMessage, SERIAL_SOURCE);
 }
 #endif

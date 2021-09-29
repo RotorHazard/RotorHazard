@@ -9,7 +9,7 @@ constexpr uint_fast16_t RSSI_HISTORY_PAYLOAD_SIZE = 16;
 constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_COUNT = 3;
 constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*sizeof(FreqRssi);
 
-uint8_t volatile cmdStatusFlags = 0;
+uint8_t volatile cmdStatusFlags = NO_STATUS;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
 int_fast8_t Message::getPayloadSize()
@@ -40,7 +40,7 @@ int_fast8_t Message::getPayloadSize()
 }
 
 // Generic IO write command handler
-void Message::handleWriteCommand(bool serialFlag)
+void Message::handleWriteCommand(CommSource src)
 {
     buffer.flipForRead();
     bool activityFlag = true;
@@ -147,7 +147,7 @@ void Message::handleWriteCommand(bool serialFlag)
     if (activityFlag)
     {
         statusFlags |= COMM_ACTIVITY;
-        if (serialFlag) {
+        if (src == SERIAL_SOURCE) {
             statusFlags |= SERIAL_CMD_MSG;
         }
     }
@@ -193,7 +193,7 @@ void Message::setMode(RssiNode& rssiNode, Mode mode)
 }
 
 // Generic IO read command handler
-void Message::handleReadCommand(bool serialFlag)
+void Message::handleReadCommand(CommSource src)
 {
     buffer.flipForWrite();
     bool activityFlag = true;
@@ -376,7 +376,7 @@ void Message::handleReadCommand(bool serialFlag)
     if (activityFlag)
     {
         statusFlags |= COMM_ACTIVITY;
-        if (serialFlag) {
+        if (src == SERIAL_SOURCE) {
             statusFlags |= SERIAL_CMD_MSG;
         }
     }
@@ -470,7 +470,7 @@ void Message::handleReadScanHistory(RssiNode& rssiNode)
     }
 }
 
-void handleStreamEvent(Stream& stream, Message& msg)
+void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
 {
     uint8_t nextByte = stream.read();
     if (msg.buffer.size == 0)
@@ -488,7 +488,7 @@ void handleStreamEvent(Stream& stream, Message& msg)
         }
         else
         {
-            msg.handleReadCommand(true);
+            msg.handleReadCommand(src);
             sendReadCommandResponse(stream, msg);
         }
     }
@@ -496,7 +496,7 @@ void handleStreamEvent(Stream& stream, Message& msg)
     {
         // existing command
         msg.buffer.data[msg.buffer.index++] = nextByte;
-        validateAndProcessWriteCommand(msg, true);
+        validateAndProcessWriteCommand(msg, src);
     }
 }
 
@@ -508,13 +508,13 @@ void sendReadCommandResponse(Stream& stream, Message& msg) {
     }
 }
 
-void validateAndProcessWriteCommand(Message& msg, bool serialFlag) {
+void validateAndProcessWriteCommand(Message& msg, CommSource src) {
     if (msg.buffer.index == msg.buffer.size)
     {
         uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
         if (msg.buffer.data[msg.buffer.size - 1] == checksum)
         {
-            msg.handleWriteCommand(serialFlag);
+            msg.handleWriteCommand(src);
         }
         else
         {

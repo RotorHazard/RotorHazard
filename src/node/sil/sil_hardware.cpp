@@ -9,6 +9,6 @@ Hardware& hardware = silHardware;
 static Message serialMessage;
 
 void serialEvent() {
-    handleStreamEvent(Serial, serialMessage);
+    handleStreamEvent(Serial, serialMessage, SERIAL_SOURCE);
 }
 #endif
