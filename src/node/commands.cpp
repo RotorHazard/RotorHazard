@@ -44,6 +44,7 @@ void Message::handleWriteCommand(bool serialFlag)
 {
     buffer.flipForRead();
     bool activityFlag = true;
+    uint8_t statusFlags = cmdStatusFlags; // non-volatile copy
 
     switch (command)
     {
@@ -58,9 +59,9 @@ void Message::handleWriteCommand(bool serialFlag)
                     if (freq != settings.vtxFreq)
                     {
                         settings.vtxFreq = freq;
-                        rssiNode.cmdPendingOps |= FREQ_CHANGED;
+                        rssiNode.pendingOps |= FREQ_CHANGED;
                     }
-                    rssiNode.cmdPendingOps |= FREQ_SET;
+                    rssiNode.pendingOps |= FREQ_SET;
                 }
             }
             break;
@@ -83,7 +84,7 @@ void Message::handleWriteCommand(bool serialFlag)
                 if (rssiVal != settings.enterAtLevel)
                 {
                     settings.enterAtLevel = rssiVal;
-                    rssiNode.cmdPendingOps |= ENTERAT_CHANGED;
+                    hardware.storeEnterAtLevel(settings.enterAtLevel);
                 }
             }
             break;
@@ -97,7 +98,7 @@ void Message::handleWriteCommand(bool serialFlag)
                 if (rssiVal != settings.exitAtLevel)
                 {
                     settings.exitAtLevel = rssiVal;
-                    rssiNode.cmdPendingOps |= EXITAT_CHANGED;
+                    hardware.storeExitAtLevel(settings.exitAtLevel);
                 }
             }
             break;
@@ -145,11 +146,12 @@ void Message::handleWriteCommand(bool serialFlag)
     // indicate communications activity detected
     if (activityFlag)
     {
-        cmdStatusFlags |= COMM_ACTIVITY;
+        statusFlags |= COMM_ACTIVITY;
         if (serialFlag) {
-            cmdStatusFlags |= SERIAL_CMD_MSG;
+            statusFlags |= SERIAL_CMD_MSG;
         }
     }
+    cmdStatusFlags = statusFlags; // update volatile
 
     command = INVALID_COMMAND;  // Clear previous command
 }
@@ -174,8 +176,8 @@ void Message::setMode(RssiNode& rssiNode, Mode mode)
             rssiNode.scanHistory.clear();
             rssiNode.setFilter(&(rssiNode.medianFilter));
             settings.vtxFreq = MIN_SCAN_FREQ;
-            cmdStatusFlags |= FREQ_CHANGED;
-            cmdStatusFlags |= FREQ_SET;
+            rssiNode.pendingOps |= FREQ_CHANGED;
+            rssiNode.pendingOps |= FREQ_SET;
             settings.mode = mode;
 #endif
             break;
@@ -195,6 +197,7 @@ void Message::handleReadCommand(bool serialFlag)
 {
     buffer.flipForWrite();
     bool activityFlag = true;
+    uint8_t statusFlags = cmdStatusFlags; // non-volatile copy
 
     switch (command)
     {
@@ -231,7 +234,7 @@ void Message::handleReadCommand(bool serialFlag)
                 mtime_t timeNowVal = usclock.millis();
                 handleReadLapPassStats(rssiNode, timeNowVal);
                 handleReadLapExtremums(rssiNode, timeNowVal);
-                cmdStatusFlags |= POLLING;
+                statusFlags |= POLLING;
             }
             break;
 
@@ -240,7 +243,7 @@ void Message::handleReadCommand(bool serialFlag)
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 handleReadLapPassStats(rssiNode, usclock.millis());
-                cmdStatusFlags |= POLLING;
+                statusFlags |= POLLING;
             }
             break;
 
@@ -305,7 +308,7 @@ void Message::handleReadCommand(bool serialFlag)
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 handleReadRssiHistory(rssiNode);
-                cmdStatusFlags |= POLLING;
+                statusFlags |= POLLING;
             }
             break;
 
@@ -314,7 +317,7 @@ void Message::handleReadCommand(bool serialFlag)
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 handleReadScanHistory(rssiNode);
-                cmdStatusFlags |= POLLING;
+                statusFlags |= POLLING;
             }
             break;
 
@@ -372,11 +375,12 @@ void Message::handleReadCommand(bool serialFlag)
     // indicate communications activity detected
     if (activityFlag)
     {
-        cmdStatusFlags |= COMM_ACTIVITY;
+        statusFlags |= COMM_ACTIVITY;
         if (serialFlag) {
-            cmdStatusFlags |= SERIAL_CMD_MSG;
+            statusFlags |= SERIAL_CMD_MSG;
         }
     }
+    cmdStatusFlags = statusFlags; // update volatile
 
     if (!buffer.isEmpty())
     {

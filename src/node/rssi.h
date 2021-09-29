@@ -189,9 +189,7 @@ struct LastPass
 enum PendingOperations
 {
     FREQ_SET        = 0x01,
-    FREQ_CHANGED    = 0x02,
-    ENTERAT_CHANGED = 0x04,
-    EXITAT_CHANGED  = 0x08
+    FREQ_CHANGED    = 0x02
 };
 
 class RssiNode
@@ -252,9 +250,8 @@ public:
     bool volatile rssiHistoryComplete = false;
 #endif
 
-    bool volatile active = false; // Set true after initial WRITE_FREQUENCY command received
+    bool active = false; // Set true after initial frequency is set
     uint8_t pendingOps;
-    uint8_t volatile cmdPendingOps;
 
     RssiNode();
     RssiNode(const RssiNode&) = delete;

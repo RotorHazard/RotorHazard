@@ -103,7 +103,7 @@ public:
     //  https://stm32f4-discovery.net/2017/04/tutorial-jump-system-memory-software-stm32
     void doJumpToBootloader()
     {
-        volatile uint32_t addr = BOOTLOADER_ADDRESS;  // STM32 built-in bootloader address
+        uint32_t addr = BOOTLOADER_ADDRESS;  // STM32 built-in bootloader address
         void (*SysMemBootJump)(void);
 
         SERIALCOM.flush();  // flush and close down serial port

@@ -151,12 +151,6 @@ void processPendingOps(mtime_t ms) {
     for (int_fast8_t i=rssiRxs.getCount()-1; i>=0; i--) {
         RssiNode& node = rssiRxs.getRssiNode(i);
 
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            node.pendingOps |= node.cmdPendingOps;
-            node.cmdPendingOps = 0;
-        }
-
         // update settings
 
         Settings& settings = node.getSettings();
@@ -192,16 +186,6 @@ void processPendingOps(mtime_t ms) {
                 node.resetState(ms);  // restart rssi peak tracking for node
                 node.pendingOps &= ~FREQ_CHANGED;
             }
-        }
-
-        if (node.pendingOps & ENTERAT_CHANGED) {
-            hardware.storeEnterAtLevel(settings.enterAtLevel);
-            node.pendingOps &= ~ENTERAT_CHANGED;
-        }
-
-        if (node.pendingOps & EXITAT_CHANGED) {
-            hardware.storeExitAtLevel(settings.exitAtLevel);
-            node.pendingOps &= ~EXITAT_CHANGED;
         }
     }
 }
