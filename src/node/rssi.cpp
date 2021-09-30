@@ -322,9 +322,7 @@ void RssiNode::updateRssiHistory()
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             if (!rssiHistory.isFull()) {
-                // non-volatile copy
-                rssi_t currentRssi = state.rssi;
-                rssiHistory.push(currentRssi);
+                rssiHistory.push(state.rssi);
             } else {
                 rssiHistoryComplete = true;
             }

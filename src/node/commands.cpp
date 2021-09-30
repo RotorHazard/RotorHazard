@@ -438,7 +438,7 @@ void Message::handleReadRssiHistory(RssiNode& rssiNode)
 {
     int i = 0;
 #ifdef RSSI_HISTORY
-    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE>& rssiHistory = rssiNode.rssiHistory;
+    CircularBuffer<volatile rssi_t,RSSI_HISTORY_SIZE>& rssiHistory = rssiNode.rssiHistory;
     const uint_fast16_t n = min(rssiHistory.size(), RSSI_HISTORY_PAYLOAD_SIZE);
     for (; i<n; i++) {
         ioBufferWriteRssi(buffer, rssiHistory.shift());

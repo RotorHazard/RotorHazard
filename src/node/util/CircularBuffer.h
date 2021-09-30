@@ -128,11 +128,13 @@ public:
 
 private:
 	T buffer[S];
-	T *head;
-	T *tail;
 #ifndef CIRCULAR_BUFFER_INT_SAFE
+    T *head;
+    T *tail;
 	IT count;
 #else
+    T *volatile head;
+    T *volatile tail;
 	volatile IT count;
 #endif
 };

@@ -17,23 +17,23 @@ enum ExtremumType: int8_t {
 
 struct Extremum
 {
-  rssi_t rssi;
-  mtime_t firstTime;
-  uint16_t duration;
+  rssi_t volatile rssi;
+  mtime_t volatile firstTime;
+  uint16_t volatile duration;
 };
 
 struct FreqRssi
 {
-    freq_t freq;
-    rssi_t rssi;
+    freq_t volatile freq;
+    rssi_t volatile rssi;
 };
 
 constexpr rssi_t MAX_RSSI = 0xFF;
-constexpr bool isPeakValid(const Extremum& x) { return x.rssi != 0; }
-constexpr bool isNadirValid(const Extremum& x) { return x.rssi != MAX_RSSI; }
-inline void invalidatePeak(Extremum& x) { x.rssi = 0; }
-inline void invalidateNadir(Extremum& x) { x.rssi = MAX_RSSI; }
-constexpr rssi_t rssiValue(const Extremum& x) { return x.rssi; }
-constexpr mtime_t endTime(const Extremum& x) { return x.firstTime + x.duration; }
+bool isPeakValid(const Extremum& x);
+bool isNadirValid(const Extremum& x);
+void invalidatePeak(Extremum& x);
+void invalidateNadir(Extremum& x);
+rssi_t rssiValue(const Extremum& x);
+mtime_t endTime(const Extremum& x);
 
 #endif

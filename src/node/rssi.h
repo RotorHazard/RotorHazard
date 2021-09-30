@@ -247,7 +247,7 @@ public:
     CircularBuffer<FreqRssi,SCAN_HISTORY_SIZE> scanHistory;
 #endif
 #ifdef RSSI_HISTORY
-    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE> rssiHistory;
+    CircularBuffer<volatile rssi_t,RSSI_HISTORY_SIZE> rssiHistory;
     bool volatile rssiHistoryComplete = false;
 #endif
 
