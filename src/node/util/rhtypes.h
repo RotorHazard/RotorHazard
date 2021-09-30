@@ -9,7 +9,7 @@ typedef uint32_t utime_t; // microseconds
 typedef uint8_t rssi_t;
 typedef uint16_t freq_t; // MHz
 
-enum ExtremumType {
+enum ExtremumType: int8_t {
     PEAK = 1,
     NADIR = -1,
     NONE = 0

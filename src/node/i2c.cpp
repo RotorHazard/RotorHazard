@@ -9,7 +9,7 @@ static void i2cOnReceive(int byteCount);
 static void i2cOnRequest();
 
 static volatile bool i2cReadyForReceive;
-static volatile uint8_t i2cCommand = INVALID_COMMAND;
+static volatile Command i2cCommand = INVALID_COMMAND;
 static volatile uint8_t i2cPayload[BUFFER_LENGTH-1]; // BUFFER_LENGTH declared in Wire.h
 static volatile uint8_t i2cPayloadSize;
 

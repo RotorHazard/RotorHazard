@@ -12,7 +12,7 @@ constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*si
 uint8_t volatile cmdStatusFlags = NO_STATUS;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
-int_fast8_t Message::getPayloadSize()
+int_fast8_t Message::getPayloadSize() const
 {
     int_fast8_t size;
     switch (command)
@@ -163,7 +163,7 @@ template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const 
     buf.write16(e.duration);
 }
 
-void Message::setMode(RssiNode& rssiNode, Mode mode)
+void Message::setMode(RssiNode& rssiNode, Mode mode) const
 {
     Settings& settings = rssiNode.getSettings();
     switch (mode) {
@@ -476,7 +476,7 @@ void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
     if (msg.buffer.size == 0)
     {
         // new command
-        msg.command = nextByte;
+        msg.command = (Command) nextByte;
         if (msg.isWriteCommand())
         {  // Commands > 0x50 are writes TO this slave
             int_fast8_t expectedSize = msg.getPayloadSize();

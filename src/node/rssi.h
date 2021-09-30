@@ -186,7 +186,7 @@ struct LastPass
     uint8_t volatile lap = 0;
 };
 
-enum PendingOperations
+enum PendingOperations: uint8_t
 {
     NO_OPS          = 0x00,
     FREQ_SET        = 0x01,
