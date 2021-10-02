@@ -82,6 +82,16 @@ rssi_t RxModule::readRssi()
 
 
 
+/*
+ * Bit-bang SPI implementation.
+ */
+
+#define SPI_CHILL_TIME 5
+// SPI clock speed should be about 100KHz (10us clock period)
+#define SPI_DATA_CLOCK_DELAY 2
+#define SPI_CLOCK_HIGH_PERIOD 5
+#define SPI_CLOCK_DATA_DELAY 2
+
 void BitBangRxModule::spiInit()
 {
     pinMode(clkPin, OUTPUT);
@@ -92,7 +102,7 @@ void BitBangRxModule::spiInit()
 
 void BitBangRxModule::spiWrite(uint8_t addr, uint32_t data)
 {
-    delayMicroseconds(5); // Delay between writes
+    delayMicroseconds(SPI_CHILL_TIME); // Delay between writes
     digitalWrite(selPin, LOW); // Enable chip select
     bitBang(addr, 4);
     serialSendBit(true);  // Write to register
@@ -110,21 +120,21 @@ template <typename T> const void BitBangRxModule::bitBang(T bits, const uint_fas
     }
 }
 
-// SPI clock speed should be about 100KHz (10us clock period)
-#define DATA_CLOCK_DELAY 2
-#define CLOCK_HIGH_PERIOD 5
-#define CLOCK_DATA_DELAY 2
-
 inline const void BitBangRxModule::serialSendBit(const bool b)
 {
     digitalWrite(dataPin, b ? HIGH : LOW);
-    delayMicroseconds(DATA_CLOCK_DELAY);
+    delayMicroseconds(SPI_DATA_CLOCK_DELAY);
     digitalWrite(clkPin, HIGH);
-    delayMicroseconds(CLOCK_HIGH_PERIOD);
+    delayMicroseconds(SPI_CLOCK_HIGH_PERIOD);
     digitalWrite(clkPin, LOW);
-    delayMicroseconds(CLOCK_DATA_DELAY);
+    delayMicroseconds(SPI_CLOCK_DATA_DELAY);
 }
 
+
+
+/*
+ * Native SPI implementation.
+ */
 
 #if TARGET == ESP32_TARGET
 #include <SPI.h>

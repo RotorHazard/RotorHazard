@@ -92,6 +92,10 @@ jobs:
             platform: "esp8266:esp8266"
             opts: "--additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json"
             flags: "-DUSE_WIFI"
+          - board: "m5stack:esp32:stamp-pico"
+            platform: "m5stack:esp32"
+            opts: "--additional-urls https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_index.json"
+            flags: "-DUSE_WIFI"
 
     steps:
     - uses: actions/checkout@v2

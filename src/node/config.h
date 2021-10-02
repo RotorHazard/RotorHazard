@@ -30,6 +30,13 @@
 #define TARGET ESP8266_TARGET
 #elif defined(ESP_PLATFORM)
 #define TARGET ESP32_TARGET
+#define ESP32_VARIANT 1
+#define M5STACK_VARIANT 2
+#if defined(ARDUINO_STAMP_PICO)
+#define VARIANT M5STACK_VARIANT
+#else
+#define VARIANT ESP32_VARIANT
+#endif
 #elif defined(__TEST__)
 #define TARGET TEST_TARGET
 #elif defined(_WIN32) || defined(__linux__)
@@ -38,6 +45,9 @@
 #define TARGET AVR_TARGET
 #endif
 #endif
+
+// set VARIANT manually here if necessary
+//#define VARIANT XXX_VARIANT
 
 #if TARGET == AVR_TARGET
 #include <util/atomic.h>
@@ -65,7 +75,11 @@
     // use USB support "CDC (generic Serial)" to use serial over USB port
     // i.e. -DUSBCON -DUSBD_USE_CDC
 #elif TARGET == ESP32_TARGET
+#if VARIANT == ESP32_VARIANT
     #define MULTI_RHNODE_MAX 6
+#else
+    #define MULTI_RHNODE_MAX 1
+#endif
 #else
     #ifndef MULTI_RHNODE_MAX
         // Set greater than 1 to support multiple freqs per node
@@ -192,8 +206,13 @@
     #define RSSI_INPUT4_PIN A4
     #define RSSI_INPUT5_PIN A5
 #else
+#if VARIANT == M5STACK_VARIANT
+    #define RX5808_SEL_PIN G21
+    #define RSSI_INPUT_PIN G25
+#else
     #define RX5808_SEL_PIN SS
     #define RSSI_INPUT_PIN A6
+#endif
 #endif
 
 #elif TARGET == ESP8266_TARGET
