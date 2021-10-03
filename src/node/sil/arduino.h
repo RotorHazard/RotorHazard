@@ -21,7 +21,10 @@
 #define INPUT 0
 #define OUTPUT 1
 
-#define LED_BUILTIN 0
+// pin definitions
+#define LED_BUILTIN 1
+#define MOSI 26
+#define SCK  18
 
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))

@@ -12,8 +12,30 @@ void pinMode(uint8_t pin, uint8_t mode) {
 
 }
 
-void digitalWrite(uint8_t pin, uint8_t val) {
+constexpr size_t PINOUT_BUFFER_SIZE = 4096;
 
+static FILE* pinOutFile = nullptr;
+static int pinOutBufferIndex = 0;
+static uint32_t pinOutTimeBuffer[PINOUT_BUFFER_SIZE];
+static uint8_t pinOutPinBuffer[PINOUT_BUFFER_SIZE], pinOutValueBuffer[PINOUT_BUFFER_SIZE];
+
+static void flushPinOutBuffers() {
+    for (int i=0; i<pinOutBufferIndex; i++) {
+        fprintf(pinOutFile, "%lu, %u, %u\n", pinOutTimeBuffer[i], pinOutPinBuffer[i], pinOutValueBuffer[i]);
+    }
+    pinOutBufferIndex = 0;
+}
+
+void digitalWrite(uint8_t pin, uint8_t val) {
+    if (pinOutFile) {
+        pinOutTimeBuffer[pinOutBufferIndex] = micros();
+        pinOutPinBuffer[pinOutBufferIndex] = pin;
+        pinOutValueBuffer[pinOutBufferIndex] = val;
+        pinOutBufferIndex++;
+        if (pinOutBufferIndex == PINOUT_BUFFER_SIZE) {
+            flushPinOutBuffers();
+        }
+    }
 }
 
 enum ClockType {REALTIME, COUNTER};
@@ -113,14 +135,14 @@ void Stream::copyToBuffer(const uint8_t data[], size_t size) {
 #ifdef _WIN32
 static HANDLE hCom = 0;
 
-void closeSerial() {
+static void closeSerial() {
     if (hCom > 0) {
         CloseHandle(hCom);
         hCom = 0;
     }
 }
 
-void initSerial(const char* comPort) {
+static void initSerial(const char* comPort) {
     hCom = CreateFileA(comPort, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hCom == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Error opening %s (maybe you meant \\\\.\\%s): %d\n", comPort, comPort, GetLastError());
@@ -155,7 +177,7 @@ void initSerial(const char* comPort) {
 
 static SOCKET hSock = INVALID_SOCKET;
 
-void closeSocket() {
+static void closeSocket() {
     if (hSock != INVALID_SOCKET) {
         closesocket(hSock);
         hSock = INVALID_SOCKET;
@@ -163,7 +185,7 @@ void closeSocket() {
     WSACleanup();
 }
 
-void initSocket(const char* host, int port) {
+static void initSocket(const char* host, int port) {
     WSADATA wsaData;
     int rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (rc != 0) {
@@ -232,7 +254,7 @@ size_t Stream::write(const uint8_t* buffer, size_t size) {
     return 0;
 }
 
-void perform_io() {
+static void perform_io() {
     if (hCom) {
         uint8_t buffer[128];
         DWORD dwBytesRead;
@@ -271,7 +293,7 @@ void perform_io() {
 #else
 static int sockfd = 0;
 
-void closeSocket() {
+static void closeSocket() {
     if (sockfd > 0) {
         close(sockfd);
         sockfd = 0;
@@ -289,7 +311,7 @@ size_t Stream::write(const uint8_t* buffer, size_t size) {
     }
 }
 
-void initSocket(const char* host, int port) {
+static void initSocket(const char* host, int port) {
     struct hostent* hostinfo = gethostbyname(host);
     if (hostinfo == nullptr) {
         fprintf(stderr, "Unknown host %s\n", host);
@@ -325,7 +347,7 @@ void initSocket(const char* host, int port) {
     fprintf(stderr, "Connected to %s:%d\n", host, port);
 }
 
-void perform_io() {
+static void perform_io() {
     if (sockfd > 0) {
         uint8_t buffer[128];
         ssize_t bytesRead = recv(sockfd, buffer, sizeof(buffer), MSG_DONTWAIT);
@@ -348,7 +370,7 @@ void perform_io() {
 }
 #endif
 
-void loadRssiFile(const char* filename) {
+static void loadRssiFile(const char* filename) {
     unsigned int t;
     unsigned int rssi;
     FILE* fp = fopen(filename, "r");
@@ -358,6 +380,18 @@ void loadRssiFile(const char* filename) {
     }
     fclose(fp);
     adcDataIndex = 0;
+}
+
+static void openPinOutFile(const char* filename) {
+    pinOutFile = fopen(filename, "w");
+    fprintf(pinOutFile, "time, pin, value\n");
+}
+
+static void closePinOutFile() {
+    if (pinOutFile) {
+        flushPinOutBuffers();
+        fclose(pinOutFile);
+    }
 }
 
 static volatile sig_atomic_t keepRunning = 1;
@@ -373,23 +407,36 @@ int main(int argc, const char* argv[])
     signal(SIGTERM, onTerminate);
 
     const char* addr = nullptr;
-    const char* rssiFile = nullptr;
+    const char* rssiFileName = nullptr;
+    const char* pinOutFileName = nullptr;
     int argIdx = 1;
     if (argIdx < argc) {
-        if (strcmp(argv[argIdx], "REALTIME") == 0) {
+        if (strcmp(argv[argIdx], "adcClock=REALTIME") == 0) {
             adcSignalClock = REALTIME;
             argIdx++;
-        } else if (strcmp(argv[argIdx], "COUNTER") == 0) {
+        } else if (strcmp(argv[argIdx], "adcClock=COUNTER") == 0) {
             adcSignalClock = COUNTER;
             argIdx++;
         }
     }
     if (argIdx < argc) {
-        addr = argv[argIdx];
-        argIdx++;
+        const char* const option = "rssi=";
+        int n = strlen(option);
+        if (strncmp(argv[argIdx], option, n) == 0) {
+            rssiFileName = argv[argIdx] + n;
+            argIdx++;
+        }
     }
     if (argIdx < argc) {
-        rssiFile = argv[argIdx];
+        const char* const option = "pinOut=";
+        int n = strlen(option);
+        if (strncmp(argv[argIdx], option, n) == 0) {
+            pinOutFileName = argv[argIdx] + n;
+            argIdx++;
+        }
+    }
+    if (argIdx < argc) {
+        addr = argv[argIdx];
         argIdx++;
     }
 
@@ -417,10 +464,15 @@ int main(int argc, const char* argv[])
             fprintf(stderr, "Serial ports not supported\n");
 #endif
         }
+    } else {
+        fprintf(stderr, "No comm link specified - won't attempt connection\n");
     }
 
-    if (rssiFile) {
-        loadRssiFile(rssiFile);
+    if (rssiFileName) {
+        loadRssiFile(rssiFileName);
+    }
+    if (pinOutFileName) {
+        openPinOutFile(pinOutFileName);
     }
 
     startTime = millis();
@@ -444,6 +496,7 @@ int main(int argc, const char* argv[])
     closeSerial();
 #endif
     closeSocket();
+    closePinOutFile();
 
     return 0;
 }

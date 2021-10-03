@@ -1,7 +1,7 @@
 @echo off
 
 setlocal
-set PATH=C:\Ruby25-x64\msys64\mingw64\bin
+set PATH=C:\msys64\mingw64\bin
 set RH_BUILD_WORKDIR=..\
 if exist %RH_BUILD_WORKDIR%*.cpp goto doRunCmd
 set RH_BUILD_WORKDIR=

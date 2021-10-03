@@ -15,7 +15,7 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 class RHInterfaceTest(unittest.TestCase):
     def test_node(self):
         subprocess.run("./scripts/build_ci.sh 1", cwd='node', shell=True)
-        self.node_proc = subprocess.Popen(["node/build_ci/rhnode1", "COUNTER", "127.0.0.1:7881"])
+        self.node_proc = subprocess.Popen(["node/build_ci/rhnode1", "adcClock=COUNTER", "127.0.0.1:7881"])
         try:
             laps = 0
             def on_pass(node, lap_ts, source):
@@ -61,7 +61,7 @@ class RHInterfaceTest(unittest.TestCase):
 
     def test_multinode(self):
         subprocess.run("./scripts/build_ci.sh 4", cwd='node', shell=True)
-        self.node_proc = subprocess.Popen(["node/build_ci/rhnode4", "COUNTER", "127.0.0.1:7884"])
+        self.node_proc = subprocess.Popen(["node/build_ci/rhnode4", "adcClock=COUNTER", "127.0.0.1:7884"])
         try:
             laps = 0
             def on_pass(node, lap_ts, source):
@@ -96,7 +96,7 @@ class RHInterfaceTest(unittest.TestCase):
 
     def test_no_nodes(self):
         subprocess.run("./scripts/build_ci.sh 0", cwd='node', shell=True)
-        self.node_proc = subprocess.Popen(["node/build_ci/rhnode0", "COUNTER", "127.0.0.1:7880"])
+        self.node_proc = subprocess.Popen(["node/build_ci/rhnode0", "adcClock=COUNTER", "127.0.0.1:7880"])
         try:
             config = Config()
             config.SERIAL_PORTS = []
