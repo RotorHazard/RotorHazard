@@ -4511,20 +4511,21 @@ def pass_record_callback(node, lap_race_time, source):
                             # announce pilot lap number unless winner declared and pilot has finished final lap
                             lap_id = lap_number if RACE.win_status != RHRace.WinStatus.DECLARED or \
                                                    (not node_finished_flag) else None
-                            if race_format.team_racing_mode:
-                                team_name = pilot_obj.team if pilot_obj else ""
-                                team_laps = RACE.team_results['meta']['teams'][team_name]['laps']
-                                logger.debug('Team {} lap {}'.format(team_name, team_laps))
-                                # if winning team has been declared then don't announce team lap number
-                                if RACE.win_status == RHRace.WinStatus.DECLARED:
-                                    team_laps = None
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, \
-                                                (check_leader and \
-                                                 team_name == Results.get_leading_team_name(RACE.team_results)))
-                            else:
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, None, None, \
-                                                (check_leader and \
-                                                 pilot_id == Results.get_leading_pilot_id(RACE.results)))
+                            if lap_id:
+                                if race_format.team_racing_mode:
+                                    team_name = pilot_obj.team if pilot_obj else ""
+                                    team_laps = RACE.team_results['meta']['teams'][team_name]['laps']
+                                    logger.debug('Team {} lap {}'.format(team_name, team_laps))
+                                    # if winning team has been declared then don't announce team lap number
+                                    if RACE.win_status == RHRace.WinStatus.DECLARED:
+                                        team_laps = None
+                                    emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, \
+                                                    (check_leader and \
+                                                     team_name == Results.get_leading_team_name(RACE.team_results)))
+                                else:
+                                    emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, None, None, \
+                                                    (check_leader and \
+                                                     pilot_id == Results.get_leading_pilot_id(RACE.results)))
 
                             check_win_condition() # check for and announce possible winner
                             if RACE.win_status != RHRace.WinStatus.NONE:
