@@ -33,9 +33,6 @@
 #include "wifi.h"
 #include "hardware.h"
 
-// dummy macro
-#define LOG_ERROR(...)
-
 #define TICK_FOR(expr)  usclock.tickMicros();expr
 
 static void processPendingOps(mtime_t ms);

@@ -147,10 +147,10 @@ template <typename T> const void BitBangRxModule::bitBang(T bits, const uint_fas
     }
 }
 
-// numbers chosen to give approx 4us clock period (2us high + 2us low)
-#define DATA_CLOCK_DELAY 1
-#define CLOCK_HIGH_PERIOD 2
-#define CLOCK_DATA_DELAY 1
+// SPI clock speed should be about 100KHz (10us clock period)
+#define DATA_CLOCK_DELAY 2
+#define CLOCK_HIGH_PERIOD 5
+#define CLOCK_DATA_DELAY 2
 
 inline const void BitBangRxModule::serialSendBit(const bool b)
 {
@@ -174,7 +174,8 @@ void NativeRxModule::spiInit()
 void NativeRxModule::spiWrite(uint8_t addr, uint32_t data)
 {
     uint32_t payload = addr | (1 << 4) | (data << 5);
-    SPI.beginTransaction(SPISettings(1000000, LSBFIRST, SPI_MODE0));
+    // SPI clock speed should be 100KHz
+    SPI.beginTransaction(SPISettings(100000, LSBFIRST, SPI_MODE0));
     digitalWrite(selPin, LOW);
     SPI.transferBits(payload, NULL, 25);
     digitalWrite(selPin, HIGH);

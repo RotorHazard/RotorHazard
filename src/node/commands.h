@@ -106,7 +106,4 @@ enum LapStatsFlag: uint8_t
 extern uint8_t volatile cmdStatusFlags;
 extern uint_fast8_t volatile cmdRssiNodeIndex;
 
-// dummy macro
-#define LOG_ERROR(...)
-
 #endif

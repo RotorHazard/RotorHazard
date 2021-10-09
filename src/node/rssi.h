@@ -71,7 +71,7 @@ enum Mode
 
 struct Settings
 {
-    freq_t volatile vtxFreq = 5800;
+    freq_t volatile vtxFreq = DEFAULT_VTX_FREQ;
     // lap pass begins when RSSI is at or above this level
     rssi_t volatile enterAtLevel = DEFAULT_ENTER_AT_LEVEL;
     // lap pass ends when RSSI goes below this level
@@ -251,7 +251,7 @@ public:
     bool volatile rssiHistoryComplete = false;
 #endif
 
-    bool active = false; // Set true after initial frequency is set
+    bool active = DEFAULT_NODE_ACTIVE; // Set true after initial frequency is set
     uint8_t pendingOps = NO_OPS;
 
     RssiNode();

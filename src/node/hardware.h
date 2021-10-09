@@ -11,9 +11,6 @@
 #define RHFEAT_PH ((uint16_t)0x0100)    // in-application programming of firmware supported
 #define RHFEAT_NONE ((uint16_t)0)
 
-// dummy macro
-#define LOG_ERROR(...)
-
 class Hardware {
 private:
     const uint8_t ledOnValue, ledOffValue;

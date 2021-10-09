@@ -75,12 +75,12 @@
         // Set greater than 1 to support multiple freqs per node
         #define MULTI_RHNODE_MAX 1
     #endif
-#endif  // STM32_MODE_FLAG
+#endif
 
 // multi-freq reads
 #define READS_PER_FREQ 64
 
-// use persistent homology detection
+// use persistent homology peak detection
 #define USE_PH
 
 #if TARGET == ESP32_TARGET
@@ -109,6 +109,7 @@
 #endif
 
 #ifndef USE_WIFI
+// uncomment to activate wifi
 //#define USE_WIFI
 #endif
 
@@ -166,6 +167,7 @@
     #define LEGACY_HARDWARE_SELECT_PIN_5 8
 
 #elif TARGET == ESP32_TARGET
+#if MULTI_RHNODE_MAX > 1
     #define RX5808_SEL_PIN_COUNT 6
     #define RX5808_SEL0_PIN 16
     #define RX5808_SEL1_PIN 5
@@ -180,6 +182,10 @@
     #define RSSI_INPUT3_PIN A7
     #define RSSI_INPUT4_PIN A4
     #define RSSI_INPUT5_PIN A5
+#else
+    #define RX5808_SEL_PIN SS
+    #define RSSI_INPUT_PIN A6
+#endif
 
 #elif TARGET == ESP8266_TARGET
     #define RX5808_SEL_PIN 15
@@ -215,6 +221,19 @@
     #define RSSI_INPUT6_PIN A5
     #define RSSI_INPUT7_PIN A6
     #endif
+#endif
+
+#define DEFAULT_VTX_FREQ 5800
+#define DEFAULT_NODE_ACTIVE false
+
+#ifdef DEBUG
+#define DEFAULT_NODE_ACTIVE true
+#define LOG_ERROR(msg, value, format) Serial.print(msg);Serial.println(value, format)
+#define LOG_DEBUG(msg, value, format) Serial.print(msg);Serial.println(value, format)
+#else
+// dummy macro
+#define LOG_ERROR(msg, value, format)
+#define LOG_DEBUG(msg, value, format)
 #endif
 
 #endif  // config_h
