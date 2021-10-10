@@ -1461,9 +1461,11 @@ def restore_database_file(db_file_name):
     global LAST_RACE
     RHData.close()
     RACE = RHRace.RHRace() # Reset all RACE values
+    RACE.num_nodes = len(INTERFACE.nodes)  # restore number of nodes
     LAST_RACE = RACE
     try:
         RHData.recover_database(db_file_name)
+        reset_current_laps()
         clean_results_cache()
         expand_heats()
         raceformat_id = RHData.get_optionInt('currentFormat')
@@ -4979,8 +4981,8 @@ for helper in search_modules(suffix='helper'):
     except Exception as ex:
         logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
-resultFlag = initialize_rh_interface()
-if not resultFlag:
+initRhResultFlag = initialize_rh_interface()
+if not initRhResultFlag:
     log.wait_for_queue_empty()
     sys.exit(1)
 
@@ -5003,11 +5005,11 @@ if len(sys.argv) > 0:
             viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
             RHData.backup_db_file(True)
             logger.info("Loading given database file: {}".format(sys.argv[viewdbArgIdx]))
-            success = restore_database_file(sys.argv[viewdbArgIdx])
+            restoreDbResultFlag = restore_database_file(sys.argv[viewdbArgIdx])
         except Exception as ex:
             logger.error("Error loading database file: {}".format(ex))
-            success = False
-        if not success:
+            restoreDbResultFlag = False
+        if not restoreDbResultFlag:
             sys.exit(1)
 
 CLUSTER = ClusterNodeSet(Language, Events)

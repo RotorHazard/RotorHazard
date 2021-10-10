@@ -40,26 +40,31 @@ class RHData():
 
     # Integrity Checking
     def check_integrity(self):
-        if self.get_optionInt('server_api') < self._SERVER_API:
-            logger.info('Old server API version; recovering database')
-            return False
-        if not self._Database.Heat.query.count():
-            logger.info('Heats are empty; recovering database')
-            return False
-        if not self._Database.Profiles.query.count():
-            logger.info('Profiles are empty; recovering database')
-            return False
-        if not self._Database.RaceFormat.query.count():
-            logger.info('Formats are empty; recovering database')
-            return False
-
-        try:  # make sure no problems reading 'Heat' table data
-            self._Database.Heat.query.all()
+        try:
+            if self.get_optionInt('server_api') < self._SERVER_API:
+                logger.info('Old server API version; recovering database')
+                return False
+            if not self._Database.Heat.query.count():
+                logger.info('Heats are empty; recovering database')
+                return False
+            if not self._Database.Profiles.query.count():
+                logger.info('Profiles are empty; recovering database')
+                return False
+            if not self._Database.RaceFormat.query.count():
+                logger.info('Formats are empty; recovering database')
+                return False
+            try:  # make sure no problems reading 'Heat' table data
+                self._Database.Heat.query.all()
+            except Exception as ex:
+                logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
+                return False
+            if self.get_optionInt('server_api') > self._SERVER_API:
+                logger.warning('Database API version ({}) is newer than server version ({})'.\
+                               format(self.get_optionInt('server_api'), self._SERVER_API))
+            return True
         except Exception as ex:
-            logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
+            logger.error('Error checking database integrity; err: ' + str(ex))
             return False
-
-        return True
 
     # Caching
     def primeCache(self):
