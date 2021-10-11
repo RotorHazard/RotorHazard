@@ -34,7 +34,10 @@ Support for STM32 processors in the Arduino IDE is provided by the [STM32duino p
 7. Click on the 'Verify' button to confirm that the code can be built successfully.
 
 <a id="s32ftdi"></a>
-8. The code may be uploaded to the processor on the RotorHazard S32_BPill board by connecting an FTDI to the 6-pin J4 ("BPill Serial FTDI Link") connector on the board. (The other end of the FTDI is connected to the USB port on a PC.) The Raspberry Pi must not be powered on during programming. In the Arduino IDE the serial port (under "Tools | Port") will need to be set to match the connected FTDI.  (If you view the "Tools | Port" selections before and after connecting the FTDI, you should see its serial-port name appear.) In the "Tools" menu, set the "Upload method" to "STM32CubeProgrammer (Serial)". Clicking on the 'Upload' button should flash the code onto the S32_BPill processor.
+8a. The code may be uploaded to the processor on the RotorHazard S32_BPill board by connecting an FTDI to the 6-pin J4 ("BPill Serial FTDI Link") connector on the board. (The other end of the FTDI is connected to the USB port on a PC.) The Raspberry Pi must not be powered on during programming. In the Arduino IDE the serial port (under "Tools | Port") will need to be set to match the connected FTDI.  (If you view the "Tools | Port" selections before and after connecting the FTDI, you should see its serial-port name appear.) In the "Tools" menu, set the "Upload method" to "STM32CubeProgrammer (Serial)". Clicking on the 'Upload' button should flash the code onto the S32_BPill processor.
+
+<a id="s32stlink"></a>
+8b. If other methods are unsuccessful, the code may be uploaded to the BPill processor using an [ST-Link](https://www.ebay.com/sch/i.html?_nkw=ST-Link) USB programming adapter. It should be wired to the 4 pins of the programming connector on the BPill processor (SWCLK, SWDIO, GND, 3.3V as shown [here](https://alexbirkett.github.io/microcontroller/2019/03/30/flash_bluepill_using_ST_link.html)). In the "Tools" menu, set the "Upload method" to "STM32CubeProgrammer (SWD)". Clicking on the 'Upload' button should flash the code onto the S32_BPill processor.
 
 ## Command-line Compiling and Uploading (S32_BPill Nodes)
 
@@ -66,7 +69,7 @@ The node code may also be edited and built using the [Sloeber-Eclipse IDE](http:
 `https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/master/STM32/package_stm_index.json`
 
 3. In "Arduino | Preferences | Platforms and Boards" select 'STM32 Core' version 1.7.0 <br>
-  Note:  There are newer version availble, but it seems like if version >= 1.8.0 is used then the builds fail
+  Note:  There are newer version available, but it seems like if version >= 1.8.0 is used then the builds fail
 
 
 S32_BPill-node project files for Sloeber-Eclipse may be found in the `src/node/project_files/eclipse_sloeber` directory -- copy these files to the `src/node` directory. Then, in Sloeber-Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."

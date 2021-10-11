@@ -92,6 +92,8 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 * The recommended method for installing the node firmware onto the BPill processor is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file on the RPi for the flash-update to succeed (see instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)').
 
+* If the initial programming of the BPill processor is unsuccessful, it may be necessary to use an [ST-Link](https://www.ebay.com/sch/i.html?_nkw=ST-Link) USB programming adapter. See the instructions in the first section of the '[src/node/readme_S32_BPill.md](../../src/node/readme_S32_BPill.md)' file and use step "[8b](../../src/node/readme_S32_BPill.md#s32stlink)" to do the flash-update.
+
 * The recommended enclosure is the [RotorHazard S32_BPill Case](../S32_BPill_case/README.md), which features mounting holes for a power button, [shutdown button](../../doc/Shutdown%20Button.md), and status LED.
 
 <a name="aboutblue"></a>
