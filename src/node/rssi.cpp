@@ -41,9 +41,9 @@ void RssiNode::resetState(const mtime_t ms)
     lastResetTimeMs = ms;
 }
 
-bool RssiNode::process(rssi_t rssi, mtime_t ms)
+RssiResult RssiNode::process(rssi_t rssi, mtime_t ms)
 {
-    bool crossing = false;
+    RssiResult result;
 
     filter->addRawValue(ms, rssi);
     if (filter->isFilled()) {
@@ -54,15 +54,16 @@ bool RssiNode::process(rssi_t rssi, mtime_t ms)
         {  //don't start operations until after first WRITE_FREQUENCY command is received
 
             state.updateRssiStats();
+            result.mode = settings.mode;
             switch (settings.mode) {
                 case TIMER:
-                    crossing = timerHandler(rssiChange);
+                    result = timerHandler(rssiChange);
                     break;
                 case SCANNER:
-                    crossing = scannerHandler(rssiChange);
+                    result = scannerHandler(rssiChange);
                     break;
                 case RAW:
-                    crossing = rawHandler(rssiChange);
+                    result = rawHandler(rssiChange);
                     break;
             }
         }
@@ -74,10 +75,10 @@ bool RssiNode::process(rssi_t rssi, mtime_t ms)
         }
     }
 
-    return crossing;
+    return result;
 }
 
-bool RssiNode::timerHandler(const int rssiChange) {
+RssiResult RssiNode::timerHandler(const int rssiChange) {
     const ExtremumType currentType = updateHistory(rssiChange);
     const bool crossing = checkForCrossing(currentType, rssiChange);
 
@@ -104,7 +105,9 @@ bool RssiNode::timerHandler(const int rssiChange) {
         state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
     }
 
-    return crossing;
+    RssiResult result;
+    result.crossing = crossing;
+    return result;
 }
 
 ExtremumType RssiNode::updateHistory(const int rssiChange)
@@ -285,34 +288,41 @@ void RssiNode::endCrossing()
     state.resetPass();
 }
 
-bool RssiNode::scannerHandler(const int rssiChange) {
-    updateScanHistory(settings.vtxFreq);
-    return false;
+RssiResult RssiNode::scannerHandler(const int rssiChange) {
+    freq_t nextFreq = updateScanHistory(settings.vtxFreq);
+    settings.vtxFreq = nextFreq;
+    RssiResult result;
+    result.nextFreq = nextFreq;
+    return result;
 }
 
-void RssiNode::updateScanHistory(freq_t f)
+freq_t RssiNode::updateScanHistory(const freq_t freq)
 {
 #ifdef SCAN_HISTORY
     if (!scanHistory.isFull())
     {
-        FreqRssi f_r = {f, state.rssi};
+        FreqRssi f_r = {freq, state.rssi};
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             scanHistory.push(f_r);
-            settings.vtxFreq += SCAN_FREQ_INCR;
-            if (settings.vtxFreq > MAX_SCAN_FREQ) {
-                settings.vtxFreq = MIN_SCAN_FREQ;
-            }
         }
-        pendingOps |= FREQ_SET;
-        pendingOps |= FREQ_CHANGED;
+
+        freq_t nextFreq = freq + SCAN_FREQ_INCR;
+        if (nextFreq > MAX_SCAN_FREQ) {
+            nextFreq = MIN_SCAN_FREQ;
+        }
+        return nextFreq;
+    } else {
+        return 0;
     }
 #endif
 }
 
-bool RssiNode::rawHandler(const int rssiChange) {
+RssiResult RssiNode::rawHandler(const int rssiChange) {
     updateRssiHistory();
-    return false;
+    RssiResult result;
+    result.none = 0;
+    return result;
 }
 
 void RssiNode::updateRssiHistory()

@@ -10,8 +10,6 @@
 class RxModule {
 private:
     bool rxPoweredDown = false;
-    static mtime_t lastBusTimeMs;
-    static const bool checkBusAvailable();
 
 protected:
     uint8_t dataPin = 0;
@@ -29,13 +27,13 @@ public:
     RxModule& operator=(RxModule&&) = delete;
 
     void init(uint8_t dataPin, uint8_t clkPin, uint8_t selPin, uint8_t rssiPin);
-    bool setFrequency(freq_t frequency);
-    bool setPower(uint32_t options);
+    void setFrequency(freq_t frequency);
+    void setPower(uint32_t options);
     rssi_t readRssi();
-    bool powerUp();
-    bool powerDown();
+    void powerUp();
+    void powerDown();
     const bool isPoweredDown() { return rxPoweredDown; }
-    bool reset();
+    void reset();
 };
 
 class BitBangRxModule final : public RxModule {

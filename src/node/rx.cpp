@@ -16,10 +16,6 @@ constexpr uint8_t RECEIVER_CONTROL_REGISTER_2 = 0x09;
 constexpr uint8_t POWER_DOWN_CONTROL_REGISTER = 0x0A;
 constexpr uint8_t STATE_REGISTER = 0x0F;
 
-constexpr mtime_t RX5808_MIN_BUSTIME = 30;  // after set freq need to wait this long before setting again
-
-mtime_t RxModule::lastBusTimeMs = 0;
-
 // Calculate rx5808 register hex value for given frequency in MHz
 static uint16_t freqMhzToRegVal(freq_t freqInMhz)
 {
@@ -28,12 +24,6 @@ static uint16_t freqMhzToRegVal(freq_t freqInMhz)
     N = tf / 32;
     A = tf % 32;
     return (N << 7) + A;
-}
-
-const bool RxModule::checkBusAvailable()
-{
-    mtime_t timeVal = usclock.millis() - lastBusTimeMs;
-    return timeVal >= RX5808_MIN_BUSTIME;
 }
 
 void RxModule::init(uint8_t dataPin, uint8_t clkPin, uint8_t selPin, uint8_t rssiPin)
@@ -47,69 +37,41 @@ void RxModule::init(uint8_t dataPin, uint8_t clkPin, uint8_t selPin, uint8_t rss
 }
 
 // Reset rx5808 module to wake up from power down
-bool RxModule::reset()
+void RxModule::reset()
 {  
-    bool avail = checkBusAvailable();
-    if (!avail) {
-        return false;
-    }
-
     spiWrite(STATE_REGISTER, 0x00);
-
-    return powerUp();
+    powerUp();
 }
 
 // Set the frequency given on the rx5808 module
-bool RxModule::setFrequency(freq_t frequency)
+void RxModule::setFrequency(freq_t frequency)
 {
-    bool avail = checkBusAvailable();
-    if (!avail) {
-        return false;
-    }
-
     // Get the hex value to send to the rx module
     uint16_t vtxHex = freqMhzToRegVal(frequency);
 
     //Channel data from the lookup table, 20 bytes of register data are sent, but the MSB 4 bits are zeros.
     // register address = 0x1, write, data0-15=vtxHex data15-19=0x0
     spiWrite(SYNTHESIZER_REGISTER_B, vtxHex);
-
-    lastBusTimeMs = usclock.millis();  // mark time of last tune of RX5808 to freq
-    return true;
 }
 
 // Set power options on the rx5808 module
-bool RxModule::setPower(uint32_t options)
+void RxModule::setPower(uint32_t options)
 {
-    bool avail = checkBusAvailable();
-    if (!avail) {
-        return false;
-    }
-
     spiWrite(POWER_DOWN_CONTROL_REGISTER, options);
-
-    lastBusTimeMs = usclock.millis();
-    return true;
 }
 
 // Set up rx5808 module (disabling unused features to save some power)
-bool RxModule::powerUp()
+void RxModule::powerUp()
 {
-    bool rc = setPower(0b11010000110111110011);
-    if (rc) {
-        rxPoweredDown = false;
-    }
-    return rc;
+    setPower(0b11010000110111110011);
+    rxPoweredDown = false;
 }
 
 // Power down rx5808 module
-bool RxModule::powerDown()
+void RxModule::powerDown()
 {   
-    bool rc = setPower(0b11111111111111111111);
-    if (rc) {
-        rxPoweredDown = true;
-    }
-    return rc;
+    setPower(0b11111111111111111111);
+    rxPoweredDown = true;
 }
 
 // Read the RSSI value for the current channel
@@ -130,6 +92,7 @@ void BitBangRxModule::spiInit()
 
 void BitBangRxModule::spiWrite(uint8_t addr, uint32_t data)
 {
+    delayMicroseconds(5); // Delay between writes
     digitalWrite(selPin, LOW); // Enable chip select
     bitBang(addr, 4);
     serialSendBit(true);  // Write to register

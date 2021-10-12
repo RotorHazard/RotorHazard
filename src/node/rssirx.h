@@ -27,6 +27,21 @@ public:
 };
 
 
+inline bool handleResult(RxModule& rx, const RssiResult result) {
+    bool crossing = false;
+    switch (result.mode) {
+        case TIMER:
+            crossing = result.crossing;
+            break;
+        case SCANNER:
+            if (result.nextFreq > 0) {
+                rx.setFrequency(result.nextFreq);
+            }
+            break;
+    }
+    return crossing;
+}
+
 template <typename RX> class SingleRssiReceiver final : public RssiReceivers {
 private:
     RssiNode node;
@@ -41,7 +56,11 @@ public:
         node.start(ms, uclock.tickMicros());
     }
     inline bool readRssi(const mtime_t ms, MicroClock& uclock) {
-        bool crossing = node.active && node.process(rx.readRssi(), ms);
+        bool crossing = false;
+        if (node.active) {
+            RssiResult result = node.process(rx.readRssi(), ms);
+            crossing = handleResult(rx, result);
+        }
         node.getState().updateLoopTime(uclock.tickMicros());
         return crossing;
     }
@@ -81,7 +100,11 @@ public:
                 idx = 0;
             }
             RssiNode& node = nodes[idx];
-            bool crossing = node.active && node.process(rx.readRssi(), ms);
+            bool crossing = false;
+            if (node.active) {
+                RssiResult result = node.process(rx.readRssi(), ms);
+                crossing = handleResult(rx, result);
+            }
             node.getState().updateLoopTime(uclock.tickMicros());
             return crossing;
         } else {
@@ -131,9 +154,12 @@ public:
         // preserve order on read
         for (uint_fast8_t i=0; i<getCount(); i++) {
             RssiNode& node = getRssiNode(i);
-            bool nodeCrossing = node.active && node.process(getRxModule(i).readRssi(), ms);
-            if (nodeCrossing) {
-                anyCrossing = true;
+            if (node.active) {
+                RxModule& rx = getRxModule(i);
+                RssiResult result = node.process(rx.readRssi(), ms);
+                if (handleResult(rx, result)) {
+                    anyCrossing = true;
+                }
             }
             node.getState().updateLoopTime(uclock.tickMicros());
         }

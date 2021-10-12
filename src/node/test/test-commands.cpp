@@ -100,6 +100,31 @@ unittest(command_freq)
     sendData(nano, freqCmd, sizeof(freqCmd), serialMessage);
     Settings& settings = rssiRxs.getSettings(0);
     assertEqual(newFreq, settings.vtxFreq);
+    assertTrue(rssiRxs.getRssiNode(0).active);
+    assertFalse(rssiRxs.getRxModule(0).isPoweredDown());
+
+    const char readCmd[] = {READ_FREQUENCY};
+    sendData(nano, readCmd, sizeof(readCmd), serialMessage);
+    assertEqual(3, nano->serialPort[0].dataOut.length());
+    assertEqual(newFreq, read16(nano->serialPort[0].dataOut, 0));
+}
+
+unittest(command_freq_off)
+{
+    GodmodeState* nano = GODMODE();
+    nano->reset();
+    Message serialMessage;
+    setup();
+    freq_t newFreq = POWER_OFF_FREQ;
+
+    char freqCmd[] = {WRITE_FREQUENCY, 0, 0, 0};
+    write16(freqCmd, 1, newFreq);
+    setChecksum(freqCmd, sizeof(freqCmd));
+    sendData(nano, freqCmd, sizeof(freqCmd), serialMessage);
+    Settings& settings = rssiRxs.getSettings(0);
+    assertEqual(newFreq, settings.vtxFreq);
+    assertFalse(rssiRxs.getRssiNode(0).active);
+    assertTrue(rssiRxs.getRxModule(0).isPoweredDown());
 
     const char readCmd[] = {READ_FREQUENCY};
     sendData(nano, readCmd, sizeof(readCmd), serialMessage);
@@ -146,7 +171,7 @@ unittest(command_scan)
     nano->reset();
     Message serialMessage;
     setup();
-    assertEqual(false, rssiRxs.getRssiNode(0).active);
+    assertFalse(rssiRxs.getRssiNode(0).active);
     assertEqual(0, rssiRxs.getRssiNode(0).getSettings().mode);
 
     char modeCmd[] = {WRITE_MODE, 1, 0};
@@ -159,7 +184,7 @@ unittest(command_scan)
         loop();
         nano->micros += 1000;
     }
-    assertEqual(true, rssiRxs.getRssiNode(0).active);
+    assertTrue(rssiRxs.getRssiNode(0).active);
     assertEqual(4, (int)rssiRxs.getRssiNode(0).scanHistory.size());
 
     const char readCmd[] = {READ_NODE_SCAN_HISTORY};

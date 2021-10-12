@@ -50,6 +50,8 @@ constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_MULTI
 #define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_MULTI
 
+constexpr freq_t POWER_OFF_FREQ = 1111; // frequency value to power down rx module
+
 constexpr freq_t MIN_SCAN_FREQ = 5645;
 constexpr freq_t MAX_SCAN_FREQ = 5945;
 constexpr uint16_t SCAN_FREQ_INCR = 5;
@@ -186,11 +188,14 @@ struct LastPass
     uint8_t volatile lap = 0;
 };
 
-enum PendingOperations: uint8_t
+struct RssiResult
 {
-    NO_OPS          = 0x00,
-    FREQ_SET        = 0x01,
-    FREQ_CHANGED    = 0x02
+    Mode mode;
+    union {
+        bool crossing;
+        freq_t nextFreq;
+        bool none;
+    };
 };
 
 class RssiNode
@@ -220,11 +225,11 @@ private:
 
     Filter<rssi_t> *filter;
 
-    inline bool timerHandler(const int rssiChange);
-    inline bool scannerHandler(const int rssiChange);
-    inline bool rawHandler(const int rssiChange);
+    inline RssiResult timerHandler(const int rssiChange);
+    inline RssiResult scannerHandler(const int rssiChange);
+    inline RssiResult rawHandler(const int rssiChange);
     inline ExtremumType updateHistory(int rssiChange);
-    inline void updateScanHistory(freq_t f);
+    inline freq_t updateScanHistory(freq_t freq);
     inline void updateRssiHistory();
     bool checkForCrossing(ExtremumType t, int rssiChange);
 #if defined(USE_PH) || defined(__TEST__)
@@ -252,7 +257,6 @@ public:
 #endif
 
     bool active = DEFAULT_NODE_ACTIVE; // Set true after initial frequency is set
-    uint8_t pendingOps = NO_OPS;
 
     RssiNode();
     RssiNode(const RssiNode&) = delete;
@@ -267,7 +271,7 @@ public:
      * Restarts rssi peak tracking for node.
      */
     void resetState(mtime_t ms);
-    bool process(rssi_t rssi, mtime_t ms);
+    RssiResult process(rssi_t rssi, mtime_t ms);
     bool isCrossing();
     void startCrossing();
     void endCrossing();

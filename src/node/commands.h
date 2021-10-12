@@ -74,7 +74,7 @@ private:
     void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
     void handleReadRssiHistory(RssiNode& rssiNode);
     void handleReadScanHistory(RssiNode& rssiNode);
-    void setMode(RssiNode& rssiNode, Mode mode) const;
+    void setMode(Mode mode) const;
 public:
     Command command = INVALID_COMMAND;  // code to identify messages
     Buffer<MESSAGE_BUFFER_SIZE,TEXT_SIZE> buffer;  // request/response payload

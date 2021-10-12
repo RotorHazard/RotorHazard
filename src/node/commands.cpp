@@ -12,6 +12,19 @@ constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*si
 uint8_t volatile cmdStatusFlags = NO_STATUS;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
+inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
+    if (freq == POWER_OFF_FREQ) {
+        rx.powerDown();
+        rssiNode.active = false;
+    } else if (freq > 0) {
+        if (rx.isPoweredDown()) {
+            rx.reset(); // reset and power-up
+        }
+        rx.setFrequency(freq);
+        rssiNode.active = true;
+    }
+}
+
 int_fast8_t Message::getPayloadSize() const
 {
     int_fast8_t size;
@@ -59,9 +72,14 @@ void Message::handleWriteCommand(CommSource src)
                     if (freq != settings.vtxFreq)
                     {
                         settings.vtxFreq = freq;
-                        rssiNode.pendingOps |= FREQ_CHANGED;
+                        if (settings.mode != SCANNER) {
+                            hardware.storeFrequency(freq);
+                        }
+                        rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
                     }
-                    rssiNode.pendingOps |= FREQ_SET;
+
+                    RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
+                    setFrequency(rssiNode, rx, freq);
                 }
             }
             break;
@@ -70,8 +88,7 @@ void Message::handleWriteCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 uint8_t mode = buffer.read8();
-                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                setMode(rssiNode, (Mode)mode);
+                setMode((Mode)mode);
             }
             break;
 
@@ -163,8 +180,9 @@ template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const 
     buf.write16(e.duration);
 }
 
-void Message::setMode(RssiNode& rssiNode, Mode mode) const
+void Message::setMode(Mode mode) const
 {
+    RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
     Settings& settings = rssiNode.getSettings();
     switch (mode) {
         case TIMER:
@@ -176,8 +194,10 @@ void Message::setMode(RssiNode& rssiNode, Mode mode) const
             rssiNode.scanHistory.clear();
             rssiNode.setFilter(&(rssiNode.medianFilter));
             settings.vtxFreq = MIN_SCAN_FREQ;
-            rssiNode.pendingOps |= FREQ_CHANGED;
-            rssiNode.pendingOps |= FREQ_SET;
+            {
+                RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
+                setFrequency(rssiNode, rx, settings.vtxFreq);
+            }
             settings.mode = mode;
 #endif
             break;
