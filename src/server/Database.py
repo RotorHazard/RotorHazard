@@ -15,9 +15,9 @@ def db_uri(basedir, dbname):
     if '://' in dbname:
         return dbname
     else:
-        file_uri = (Path(basedir)/dbname).as_uri()
-        path_part = file_uri[file_uri.index(':///')+4:]
-        extra_slash = '/' if ':/' not in path_part else ''
+        # NB: sqlite does not use a proper URL
+        path_part = str(Path(basedir)/dbname).replace('\\', '/')
+        extra_slash = '/' if ':/' not in path_part and not path_part.startswith('/') else ''
         return 'sqlite:///' + extra_slash + path_part
 
 
