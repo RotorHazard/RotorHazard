@@ -27,7 +27,11 @@ constexpr uint8_t HISTORY_SIZE = 12;
 constexpr uint8_t HISTORY_SIZE = 6;
 #endif
 constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd, +1 to allow for current value
+#if TARGET == ESP32_TARGET && MULTI_RHNODE_MAX == 1
+constexpr uint16_t RSSI_HISTORY_SIZE = 65535;
+#else
 constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
+#endif
 constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 
 #define USE_UNIFIED_SENDBUFFER
