@@ -13,6 +13,9 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include "WString.h"
+#include "Stream.h"
+#include "Client.h"
 #include "../util/CircularBuffer.h"
 
 #define HIGH 1
@@ -38,13 +41,34 @@ unsigned long micros();
 void delay(unsigned long ms);
 void delayMicroseconds(unsigned int us);
 
-class Stream {
+class IOStream : public Stream {
 private:
     CircularBuffer<uint8_t,128> buffer;
 public:
     void copyToBuffer(const uint8_t data[], size_t size);
     int read();
     size_t write(const uint8_t* buffer, size_t size);
+    int available();
 };
 
-extern Stream Serial;
+extern IOStream Serial;
+
+class WiFiClass {
+public:
+    void setHostname(const char* hostname);
+    void enableSTA(bool flag);
+    void setAutoReconnect(bool flag);
+    void begin(const char* ssid, const char* password);
+    void waitForConnectResult();
+};
+
+class WiFiClient : public Stream {
+public:
+    bool connected();
+    void connect(const char* server, uint16_t port);
+    int available();
+    int read();
+    size_t write(const uint8_t* buffer, size_t size);
+};
+
+extern WiFiClass WiFi;

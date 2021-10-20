@@ -1,4 +1,4 @@
-#include "arduino.h"
+#include "Arduino.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -117,13 +117,17 @@ extern void setup();
 extern void loop();
 extern void serialEvent();
 
-Stream Serial;
+IOStream Serial;
 
-int Stream::read() {
+int IOStream::read() {
     return buffer.shift();
 }
 
-void Stream::copyToBuffer(const uint8_t data[], size_t size) {
+int IOStream::available() {
+    return buffer.size();
+}
+
+void IOStream::copyToBuffer(const uint8_t data[], size_t size) {
     if (size > buffer.available()) {
         fprintf(stderr, "Stream read buffer overflow\n");
     }
@@ -232,7 +236,7 @@ static void initSocket(const char* host, int port) {
     fprintf(stderr, "Connected to %s:%d\n", host, port);
 }
 
-size_t Stream::write(const uint8_t* buffer, size_t size) {
+size_t IOStream::write(const uint8_t* buffer, size_t size) {
     if (hCom) {
         DWORD dwBytesWritten;
         if (WriteFile(hCom, buffer, size, &dwBytesWritten, NULL)) {
@@ -300,7 +304,7 @@ static void closeSocket() {
     }
 }
 
-size_t Stream::write(const uint8_t* buffer, size_t size) {
+size_t IOStream::write(const uint8_t* buffer, size_t size) {
     ssize_t bytesWritten = ::write(sockfd, buffer, size);
     if (bytesWritten >= 0) {
         return bytesWritten;
@@ -369,6 +373,29 @@ static void perform_io() {
     }
 }
 #endif
+
+WiFiClass WiFi;
+
+bool WiFiClient::connected() {
+    return false;
+}
+
+void WiFiClient::connect(const char* server, uint16_t port) {
+
+}
+
+int WiFiClient::available() {
+    return 0;
+}
+
+int WiFiClient::read() {
+    return 0;
+}
+
+size_t WiFiClient::write(const uint8_t* buffer, size_t size) {
+    return 0;
+}
+
 
 static void loadRssiFile(const char* filename) {
     unsigned int t;

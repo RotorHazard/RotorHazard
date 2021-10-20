@@ -1,11 +1,7 @@
 #ifndef config_h
 #define config_h
 
-#if !defined(__TEST__) && (defined(_WIN32) || defined(__linux__))
-#include "sil/arduino.h"
-#else
 #include <Arduino.h>
-#endif
 #include "util/rhtypes.h"
 
 #define FIRMWARE_VERSION "B1.3"
