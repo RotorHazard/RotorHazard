@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "util/rhtypes.h"
 
-#define FIRMWARE_VERSION "B1.3"
+#define FIRMWARE_VERSION "B1.4"
 #define AVR_TARGET 1
 #define STM32_TARGET 2
 #define ESP32_TARGET 3
@@ -116,7 +116,20 @@
 // remote server and port
 #define WIFI_SERVER "timer.local"
 #define WIFI_PORT 5005
-#define OTA_URL "http://timer.local:5000/ota/esp8266"
+#define OTA_URL "http://timer.local:5000/ota/"
+
+#ifndef USE_MQTT
+// uncomment to activate mqtt
+//#define USE_MQTT
+#endif
+
+#define MQTT_BROKER "timer.local"
+#define MQTT_PORT 1883
+#define MQTT_USERNAME "test"
+#define MQTT_PASSWORD "test"
+#define MQTT_SAMPLE_INTERVAL 100
+#define MQTT_TOPIC "timer/node_manager"
+
 
 // Pins
 

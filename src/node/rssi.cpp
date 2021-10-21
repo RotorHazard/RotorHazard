@@ -1,6 +1,10 @@
 #include "config.h"
 #include "rssi.h"
 #include "util/persistent-homology.h"
+#ifdef USE_MQTT
+#include "mqtt.h"
+#include <stdio.h>
+#endif
 
 constexpr uint16_t MIN_TUNETIME = 35;  // after set freq need to wait this long before read RSSI
 
@@ -189,6 +193,10 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         return state.crossing;
     }
 
+#ifdef USE_MQTT
+    int_fast16_t lifetimeSample = 0;
+    bool triggered = false;
+#endif
     const ExtremumType prevType = sendBuffer.typeAt(sendBuffer.size()-1);
     if (state.crossing && prevType == PEAK && currentType == NADIR) {
         int_fast8_t lastIdx = preparePhData(history.nadir.rssi);
@@ -197,9 +205,15 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         // find lifetime of last value when a nadir
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
-            const uint_fast8_t lastLife = phData[cc.death] - phData[cc.birth];
-            if (lastLife > exitThreshold) {
-                endCrossing();
+            const uint_fast8_t lastLifetime = phData[cc.death] - phData[cc.birth];
+#ifdef USE_MQTT
+            lifetimeSample = -lastLifetime;
+#endif
+            if (lastLifetime > exitThreshold) {
+                endCrossing(lastLifetime);
+#ifdef USE_MQTT
+                triggered = true;
+#endif
             }
         }
     } else if (!state.crossing && prevType == NADIR && currentType == PEAK) {
@@ -209,12 +223,27 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         // find lifetime of last value when a peak
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
-            const uint_fast8_t lastLife = phData[cc.birth] - phData[cc.death];
-            if (lastLife > enterThreshold) {
-                startCrossing();
+            const uint_fast8_t lastLifetime = phData[cc.birth] - phData[cc.death];
+#ifdef USE_MQTT
+            lifetimeSample = lastLifetime;
+#endif
+            if (lastLifetime > enterThreshold) {
+                startCrossing(lastLifetime);
+#ifdef USE_MQTT
+                triggered = true;
+#endif
             }
         }
     }
+
+#ifdef USE_MQTT
+    if (!triggered && lifetimeSample != 0 && state.rssiTimestamp % MQTT_SAMPLE_INTERVAL == 0)
+    {
+        char json[64] = "";
+        int n = sprintf(json, "{\"rssi\": %u, \"timestamp\": \"%u\", \"lifetime\": %u}", state.rssi, state.rssiTimestamp, lifetimeSample);
+        mqttPublish(*this, "sample", json, n);
+    }
+#endif
 
     return state.crossing;
 }
@@ -250,13 +279,21 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
     if ((!state.crossing) && state.rssi >= enterThreshold)
     {
         // quad is going through the gate (lap pass starting)
-        startCrossing();
+        startCrossing(state.rssi);
     }
     else if (state.crossing && state.rssi < exitThreshold)
     {
         // quad has left the gate
-        endCrossing();
+        endCrossing(state.rssi);
     }
+#ifdef USE_MQTT
+    else if (state.rssiTimestamp % MQTT_SAMPLE_INTERVAL == 0)
+    {
+        char json[64] = "";
+        int n = sprintf(json, "{\"rssi\": %u, \"timestamp\": \"%u\"}", state.rssi, state.rssiTimestamp);
+        mqttPublish(*this, "sample", json, n);
+    }
+#endif
 
     return state.crossing;
 }
@@ -266,13 +303,22 @@ bool RssiNode::isCrossing()
     return state.crossing;
 }
 
-void RssiNode::startCrossing()
+void RssiNode::startCrossing(uint8_t trigger)
 {
     state.crossing = true;
+#ifdef USE_MQTT
+    char json[64] = "";
+#if defined(USE_PH)
+    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\", \"lifetime\": %u}", lastPass.lap+1, state.rssi, state.rssiTimestamp, trigger);
+#else
+    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\"}", lastPass.lap+1, state.rssi, state.rssiTimestamp);
+#endif
+    mqttPublish(*this, "enter", json, n);
+#endif
 }
 
 /*** Function called when crossing ends (by RSSI or I2C command). */
-void RssiNode::endCrossing()
+void RssiNode::endCrossing(uint8_t trigger)
 {
     // save values for lap pass
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -283,9 +329,21 @@ void RssiNode::endCrossing()
         lastPass.rssiNadir = state.passRssiNadir;
         lastPass.lap = lastPass.lap + 1;
     }
-
     // reset lap-pass variables
     state.resetPass();
+
+#ifdef USE_MQTT
+    char json[64] = "";
+#if defined(USE_PH)
+    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\", \"lifetime\": -%u}", lastPass.lap, state.rssi, state.rssiTimestamp, trigger);
+#else
+    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\"}", lastPass.lap, state.rssi, state.rssiTimestamp);
+#endif
+    mqttPublish(*this, "exit", json, n);
+
+    n = sprintf(json, "{\"rssi\": %u, \"lap\": %u, \"timestamp\": \"%u\"}", lastPass.rssiPeak, lastPass.lap, lastPass.timestamp);
+    mqttPublish(*this, "pass", json, n);
+#endif
 }
 
 RssiResult RssiNode::scannerHandler(const int rssiChange) {

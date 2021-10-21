@@ -18,6 +18,7 @@ platforms:
         - -O0
         - --coverage
         - -D__TEST__
+        - -DUSE_MQTT
 
 unittest:
   platforms:

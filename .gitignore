@@ -1,4 +1,5 @@
 *.db
+*.o
 *.pyc
 config.json
 db_bkp

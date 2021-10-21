@@ -79,9 +79,9 @@ struct Settings
 {
     freq_t volatile vtxFreq = DEFAULT_VTX_FREQ;
     // lap pass begins when RSSI is at or above this level
-    rssi_t volatile enterAtLevel = DEFAULT_ENTER_AT_LEVEL;
+    uint8_t volatile enterAtLevel = DEFAULT_ENTER_AT_LEVEL;
     // lap pass ends when RSSI goes below this level
-    rssi_t volatile exitAtLevel = DEFAULT_EXIT_AT_LEVEL;
+    uint8_t volatile exitAtLevel = DEFAULT_EXIT_AT_LEVEL;
     Mode volatile mode = TIMER;
 #ifdef __TEST__
     bool volatile usePh = false;
@@ -277,8 +277,8 @@ public:
     void resetState(mtime_t ms);
     RssiResult process(rssi_t rssi, mtime_t ms);
     bool isCrossing();
-    void startCrossing();
-    void endCrossing();
+    void startCrossing(uint8_t trigger);
+    void endCrossing(uint8_t trigger);
 
     Settings& getSettings() { return settings; }
     State& getState() { return state; }

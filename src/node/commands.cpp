@@ -72,9 +72,7 @@ void Message::handleWriteCommand(CommSource src)
                     if (freq != settings.vtxFreq)
                     {
                         settings.vtxFreq = freq;
-                        if (settings.mode != SCANNER) {
-                            hardware.storeFrequency(freq);
-                        }
+                        hardware.storeFrequency(freq);
                         rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
                     }
 
@@ -140,7 +138,7 @@ void Message::handleWriteCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                rssiNode.endCrossing();
+                rssiNode.endCrossing(0);
             }
             break;
 
