@@ -21,7 +21,7 @@ static uint8_t pinOutPinBuffer[PINOUT_BUFFER_SIZE], pinOutValueBuffer[PINOUT_BUF
 
 static void flushPinOutBuffers() {
     for (int i=0; i<pinOutBufferIndex; i++) {
-        fprintf(pinOutFile, "%lu, %u, %u\n", pinOutTimeBuffer[i], pinOutPinBuffer[i], pinOutValueBuffer[i]);
+        fprintf(pinOutFile, "%u, %u, %u\n", pinOutTimeBuffer[i], pinOutPinBuffer[i], pinOutValueBuffer[i]);
     }
     pinOutBufferIndex = 0;
 }
@@ -117,17 +117,25 @@ extern void setup();
 extern void loop();
 extern void serialEvent();
 
-IOStream Serial;
+_StreamWrapper Serial;
 
-int IOStream::read() {
+int _BufferedStream::read() {
     return buffer.shift();
 }
 
-int IOStream::available() {
+int _BufferedStream::read(uint8_t* buf, size_t size) {
+    int i=0;
+    for (; i<size && i<buffer.size(); i++) {
+        buf[i] = read();
+    }
+    return i;
+}
+
+int _BufferedStream::available() {
     return buffer.size();
 }
 
-void IOStream::copyToBuffer(const uint8_t data[], size_t size) {
+void _BufferedStream::_copyToBuffer(const uint8_t data[], size_t size) {
     if (size > buffer.available()) {
         fprintf(stderr, "Stream read buffer overflow\n");
     }
@@ -137,16 +145,7 @@ void IOStream::copyToBuffer(const uint8_t data[], size_t size) {
 }
 
 #ifdef _WIN32
-static HANDLE hCom = 0;
-
-static void closeSerial() {
-    if (hCom > 0) {
-        CloseHandle(hCom);
-        hCom = 0;
-    }
-}
-
-static void initSerial(const char* comPort) {
+void HardwareSerial::_open(const char* comPort) {
     hCom = CreateFileA(comPort, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hCom == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Error opening %s (maybe you meant \\\\.\\%s): %d\n", comPort, comPort, GetLastError());
@@ -157,7 +156,7 @@ static void initSerial(const char* comPort) {
     dcb.DCBlength = sizeof(DCB);
     if (!GetCommState(hCom, &dcb)) {
         fprintf(stderr, "Error getting comm state: %d\n", GetLastError());
-        closeSerial();
+        end();
         return;
     }
     dcb.BaudRate = CBR_115200;
@@ -166,37 +165,63 @@ static void initSerial(const char* comPort) {
     dcb.StopBits = ONESTOPBIT;
     if (!SetCommState(hCom, &dcb)) {
         fprintf(stderr, "Error setting comm state: %d\n", GetLastError());
-        closeSerial();
+        end();
         return;
     }
     COMMTIMEOUTS ctos = {MAXDWORD, 0, 0, 0, 1};
     if (!SetCommTimeouts(hCom, &ctos)) {
         fprintf(stderr, "Error setting comm timeouts: %d\n", GetLastError());
-        closeSerial();
+        end();
         return;
     }
 
-    fprintf(stderr, "Opened %s\n", comPort);
+    fprintf(stderr, "Opened serial port %s\n", comPort);
 }
 
-static SOCKET hSock = INVALID_SOCKET;
-
-static void closeSocket() {
-    if (hSock != INVALID_SOCKET) {
-        closesocket(hSock);
-        hSock = INVALID_SOCKET;
-    }
-    WSACleanup();
+uint8_t HardwareSerial::connected() {
+    return hCom > 0;
 }
 
-static void initSocket(const char* host, int port) {
-    WSADATA wsaData;
-    int rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (rc != 0) {
-        fprintf(stderr, "WSAStartup failed: %d\n", rc);
-        return;
+void HardwareSerial::_close() {
+    if (hCom > 0) {
+        CloseHandle(hCom);
+        hCom = 0;
     }
+}
 
+size_t HardwareSerial::write(const uint8_t* buffer, size_t size) {
+    if (connected()) {
+        DWORD dwBytesWritten;
+        if (WriteFile(hCom, buffer, size, &dwBytesWritten, NULL)) {
+            return dwBytesWritten;
+        } else {
+            fprintf(stderr, "Serial write failed\n");
+        }
+    }
+    return 0;
+}
+
+int HardwareSerial::_performIo() {
+    int bytesRead = -1;
+    if (connected()) {
+        uint8_t buffer[128];
+        DWORD dwBytesRead;
+        if (ReadFile(hCom, buffer, sizeof(buffer), &dwBytesRead, NULL)) {
+            if (dwBytesRead == sizeof(buffer)) {
+                fprintf(stderr, "Serial read buffer overflow\n");
+            }
+            _copyToBuffer(buffer, dwBytesRead);
+            bytesRead = dwBytesRead;
+        } else {
+            fprintf(stderr, "Serial read failed\n");
+            end();
+        }
+    }
+    return bytesRead;
+}
+
+
+int WiFiClient::connect(const char* host, uint16_t port) {
     struct addrinfo hints, *result = nullptr;
     SecureZeroMemory(&hints, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -204,23 +229,23 @@ static void initSocket(const char* host, int port) {
     hints.ai_protocol = IPPROTO_TCP;
     char szPort[6];
     itoa(port, szPort, 10);
-    rc = getaddrinfo(host, szPort, &hints, &result);
+    int rc = getaddrinfo(host, szPort, &hints, &result);
     if (rc != 0) {
         fprintf(stderr, "Unknown host %s: %d\n", host, rc);
-        closeSocket();
-        return;
+        stop();
+        return 0;
     }
 
     hSock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (hSock == INVALID_SOCKET) {
         fprintf(stderr, "Failed to create socket: %d\n", WSAGetLastError());
-        closeSocket();
-        return;
+        stop();
+        return 0;
     }
 
-    int numRetries = 30;
-    for (int i=0; i<numRetries; i++) {
-        rc = connect(hSock, result->ai_addr, (int)result->ai_addrlen);
+    rc = SOCKET_ERROR;
+    for (int i=0; i<_connectAttempts; i++) {
+        rc = ::connect(hSock, result->ai_addr, (int)result->ai_addrlen);
         if (rc != SOCKET_ERROR) {
             break;
         }
@@ -229,97 +254,79 @@ static void initSocket(const char* host, int port) {
     freeaddrinfo(result);
     if (rc == SOCKET_ERROR) {
         fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
-        closeSocket();
-        return;
+        stop();
+        return 0;
     }
 
     fprintf(stderr, "Connected to %s:%d\n", host, port);
+    return 1;
 }
 
-size_t IOStream::write(const uint8_t* buffer, size_t size) {
-    if (hCom) {
-        DWORD dwBytesWritten;
-        if (WriteFile(hCom, buffer, size, &dwBytesWritten, NULL)) {
-            return dwBytesWritten;
-        } else {
-            fprintf(stderr, "Serial write failed\n");
-            return 0;
-        }
-    }
+uint8_t WiFiClient::connected() {
+    return hSock != INVALID_SOCKET;
+}
+
+void WiFiClient::_close() {
     if (hSock != INVALID_SOCKET) {
+        closesocket(hSock);
+        hSock = INVALID_SOCKET;
+    }
+}
+
+size_t WiFiClient::write(const uint8_t* buffer, size_t size) {
+    if (connected()) {
         int bytesWritten = send(hSock, (char*)buffer, size, 0);
         if (bytesWritten != SOCKET_ERROR) {
             return bytesWritten;
         } else {
             fprintf(stderr, "Socket write failed: %d\n", WSAGetLastError());
-            return 0;
         }
     }
     return 0;
 }
 
-static void perform_io() {
-    if (hCom) {
+int WiFiClient::_performIo() {
+    int bytesRead = -1;
+    if (connected()) {
+        u_long nbioFlag = 1;
+        if (ioctlsocket(hSock, FIONBIO, &nbioFlag)) {
+            fprintf(stderr, "WARNING: Could not set non-blocking mode.\n");
+        }
+
         uint8_t buffer[128];
-        DWORD dwBytesRead;
-        if (!ReadFile(hCom, buffer, sizeof(buffer), &dwBytesRead, NULL)) {
-            fprintf(stderr, "Serial read failed\n");
-            closeSocket();
-        }
-        if (dwBytesRead == sizeof(buffer)) {
-            fprintf(stderr, "Serial read buffer overflow\n");
-        }
-        Serial.copyToBuffer(buffer, dwBytesRead);
-        for (int i=0; i<dwBytesRead; i++) {
-            serialEvent();
-        }
-    }
-    if (hSock != INVALID_SOCKET) {
-        uint8_t buffer[128];
-        int bytesRead = recv(hSock, (char*)buffer, sizeof(buffer), 0);
+        bytesRead = recv(hSock, (char*)buffer, sizeof(buffer), 0);
         if (bytesRead > 0) {
             if (bytesRead == sizeof(buffer)) {
                 fprintf(stderr, "Socket read buffer overflow\n");
             }
-            Serial.copyToBuffer(buffer, bytesRead);
-            for (int i=0; i<bytesRead; i++) {
-                serialEvent();
-            }
+            _copyToBuffer(buffer, bytesRead);
         } else if (bytesRead == 0) {
             fprintf(stderr, "Socket connection closed\n");
-            closeSocket();
+            stop();
         } else {
-            fprintf(stderr, "Socket read failed: %d\n", WSAGetLastError());
-            closeSocket();
+            const int err = WSAGetLastError();
+            if (err == WSAEWOULDBLOCK) {
+                bytesRead = 0;
+            } else {
+                fprintf(stderr, "Socket read failed: %d\n", err);
+                stop();
+            }
+        }
+
+        if (connected()) {
+            nbioFlag = 0;
+            ioctlsocket(hSock, FIONBIO, &nbioFlag);
         }
     }
+    return bytesRead;
 }
 #else
-static int sockfd = 0;
 
-static void closeSocket() {
-    if (sockfd > 0) {
-        close(sockfd);
-        sockfd = 0;
-    }
-}
-
-size_t IOStream::write(const uint8_t* buffer, size_t size) {
-    ssize_t bytesWritten = ::write(sockfd, buffer, size);
-    if (bytesWritten >= 0) {
-        return bytesWritten;
-    } else {
-        fprintf(stderr, "Socket write failed: %d\n", errno);
-        closeSocket();
-        return 0;
-    }
-}
-
-static void initSocket(const char* host, int port) {
+int WiFiClient::connect(const char* host, uint16_t port) {
     struct hostent* hostinfo = gethostbyname(host);
     if (hostinfo == nullptr) {
         fprintf(stderr, "Unknown host %s\n", host);
-        return;
+        return 0;
     }
 
     sockaddr_in sock_addr;
@@ -330,13 +337,12 @@ static void initSocket(const char* host, int port) {
     sockfd = socket(PF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         fprintf(stderr, "Failed to create socket\n");
-        return;
+        return 0;
     }
 
     bool connected = false;
-    int numRetries = 30;
-    for (int i=0; i<numRetries; i++) {
-        connected = (connect(sockfd, (struct sockaddr *) &sock_addr, sizeof(sock_addr)) == 0);
+    for (int i=0; i<_connectAttempts; i++) {
+        connected = (::connect(sockfd, (struct sockaddr *) &sock_addr, sizeof(sock_addr)) == 0);
         if (connected) {
             break;
         }
@@ -344,57 +350,86 @@ static void initSocket(const char* host, int port) {
     }
     if (!connected) {
         fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
-        closeSocket();
-        return;
+        stop();
+        return 0;
     }
 
     fprintf(stderr, "Connected to %s:%d\n", host, port);
+    return 1;
 }
 
-static void perform_io() {
+void WiFiClient::_close() {
     if (sockfd > 0) {
+        close(sockfd);
+        sockfd = 0;
+    }
+}
+
+uint8_t WiFiClient::connected() {
+    return sockfd > 0;
+}
+
+size_t WiFiClient::write(const uint8_t* buffer, size_t size) {
+    if (connected()) {
+        ssize_t bytesWritten = ::write(sockfd, buffer, size);
+        if (bytesWritten >= 0) {
+            return bytesWritten;
+        } else {
+            fprintf(stderr, "Socket write failed: %d\n", errno);
+            stop();
+        }
+    }
+    return 0;
+}
+
+int WiFiClient::_performIo() {
+    ssize_t bytesRead = -1;
+    if (connected()) {
         uint8_t buffer[128];
-        ssize_t bytesRead = recv(sockfd, buffer, sizeof(buffer), MSG_DONTWAIT);
+        bytesRead = recv(sockfd, buffer, sizeof(buffer), MSG_DONTWAIT);
         if (bytesRead > 0) {
             if (bytesRead == sizeof(buffer)) {
                 fprintf(stderr, "Socket read buffer overflow\n");
             }
-            Serial.copyToBuffer(buffer, bytesRead);
-            for (int i=0; i<bytesRead; i++) {
-                serialEvent();
-            }
+            _copyToBuffer(buffer, bytesRead);
         } else if (bytesRead == 0) {
             fprintf(stderr, "Socket connection closed\n");
-            closeSocket();
+            stop();
         } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
             fprintf(stderr, "Socket read failed: %d\n", errno);
-            closeSocket();
+            stop();
         }
     }
+    return bytesRead;
 }
 #endif
 
+int WiFiClient::connect(IPAddress ip, uint16_t port) {
+    return 0;
+}
+
+void WiFiClass::setHostname(const char* hostname) {
+
+}
+
+void WiFiClass::enableSTA(bool flag) {
+
+}
+
+void WiFiClass::setAutoReconnect(bool flag) {
+
+}
+
+void WiFiClass::begin(const char* ssid, const char* password) {
+
+}
+
+void WiFiClass::waitForConnectResult() {
+
+}
+
 WiFiClass WiFi;
 
-bool WiFiClient::connected() {
-    return false;
-}
-
-void WiFiClient::connect(const char* server, uint16_t port) {
-
-}
-
-int WiFiClient::available() {
-    return 0;
-}
-
-int WiFiClient::read() {
-    return 0;
-}
-
-size_t WiFiClient::write(const uint8_t* buffer, size_t size) {
-    return 0;
-}
 
 
 static void loadRssiFile(const char* filename) {
@@ -471,6 +506,15 @@ int main(int argc, const char* argv[])
     clock_getres(CLOCK_MONOTONIC, &timerResolution);
     fprintf(stderr, "Timer resolution %lds %ldns\n", timerResolution.tv_sec, timerResolution.tv_nsec);
 
+#ifdef _WIN32
+    WSADATA wsaData;
+    int rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (rc != 0) {
+        fprintf(stderr, "WSAStartup failed: %d\n", rc);
+        return -1;
+    }
+#endif
+
     if (addr) {
         const char* sep = strchr(addr, ':');
         if (sep) {
@@ -483,10 +527,16 @@ int main(int argc, const char* argv[])
             strncpy(host, addr, len);
             host[len] = '\0';
             int port = atoi(sep+1);
-            initSocket(host, port);
+            WiFiClient* netClient = new WiFiClient();
+            netClient->_connectAttempts = 30;
+            netClient->_serialEmulation = true;
+            netClient->connect(host, port);
+            Serial.delegate = netClient;
         } else {
 #ifdef _WIN32
-            initSerial(addr);
+            HardwareSerial* serial = new HardwareSerial();
+            serial->_open(addr);
+            Serial.delegate = serial;
 #else
             fprintf(stderr, "Serial ports not supported\n");
 #endif
@@ -512,18 +562,24 @@ int main(int argc, const char* argv[])
 
         unsigned long t = millis();
         if (t - last_io > 5) {
-            perform_io();
+            int bytesRead = Serial.delegate->_performIo();
+            if (bytesRead > 0) {
+                for (int i=0; i<bytesRead; i++) {
+                    serialEvent();
+                }
+            }
             last_io = t;
         }
     }
 
     fprintf(stderr, "\nTerminating...\n");
 
-#ifdef _WIN32
-    closeSerial();
-#endif
-    closeSocket();
+    Serial.delegate->_close();
     closePinOutFile();
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
 
     return 0;
 }

@@ -12,11 +12,11 @@ cd %RH_BUILD_WORKDIR%
 if not exist build_sil mkdir build_sil
 echo on
 set ARDUINO_LIBS=%USERPROFILE%\Documents\Arduino\libraries
-set MQTT_SRC=%ARDUINO_LIBS%\MQTT\src\*.cpp
-set LWMQTT_SRC=%ARDUINO_LIBS%\MQTT\src\lwmqtt\*.c
-gcc -c -Ofast %LWMQTT_SRC%
-g++ -c -Ofast %MQTT_SRC% -Isil
-g++ -Ofast -DMULTI_RHNODE_MAX=%1 *.cpp sil\*.cpp *.o -Isil -o build_sil\%RH_BUILD_PROJNAME%.exe -lws2_32
+set MQTT_SRC=%ARDUINO_LIBS%\MQTT\src
+set LWMQTT_SRC=%ARDUINO_LIBS%\MQTT\src\lwmqtt
+gcc -c -Ofast %LWMQTT_SRC%\*.c
+g++ -c -Ofast %MQTT_SRC%\*.cpp -Isil
+g++ -Ofast -DMULTI_RHNODE_MAX=%1 *.cpp sil\*.cpp *.o -Isil -I%MQTT_SRC% -o build_sil\%RH_BUILD_PROJNAME%.exe -lws2_32
 @echo off
 :ex
 endlocal
