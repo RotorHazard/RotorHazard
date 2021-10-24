@@ -96,10 +96,35 @@
             <th>{{ __('Round ID') }}</th>
             <th>{{ __('Heat ID') }}</th>
             <th>{{ __('Class ID') }}</th>
+            <th>{{ __('Format ID') }}</th>
+            <th>{{ __('Start Time') }}</th>
+            <th>{{ __('Start Time Formatted') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for savedrace in savedraceMeta %}
+        <tr>
+            <td>{{ savedrace.id }}</td>
+            <td>{{ savedrace.round_id }}</td>
+            <td>{{ savedrace.heat_id }}</td>
+            <td>{{ savedrace.class_id }}</td>
+            <td>{{ savedrace.format_id }}</td>
+            <td>{{ savedrace.start_time }}</td>
+            <td>{{ savedrace.start_time_formatted }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>{{ __('Saved Race Laps') }}</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>{{ __('ID') }}</th>
+            <th>{{ __('Race ID') }}</th>
             <th>{{ __('Node Index') }}</th>
             <th>{{ __('Pilot ID') }}</th>
-            <th>{{ __('Lap ID') }}</th>
-            <th>{{ __('Lap Time Stamp') }}</th>
+            <th>{{ __('Lap Timestamp') }}</th>
             <th>{{ __('Lap Time') }}</th>
             <th>{{ __('Lap Time Formatted') }}</th>
         </tr>
@@ -108,12 +133,9 @@
         {% for savedracelap in savedraceLap %}
         <tr>
             <td>{{ savedracelap.id }}</td>
-            <td>{{ savedracelap.round_id }}</td>
-            <td>{{ savedracelap.heat_id }}</td>
-            <td>{{ savedracelap.class_id }}</td>
+            <td>{{ savedracelap.race_id }}</td>
             <td>{{ savedracelap.node_index }}</td>
             <td>{{ savedracelap.pilot_id }}</td>
-            <td>{{ savedracelap.lap_id }}</td>
             <td>{{ savedracelap.lap_time_stamp }}</td>
             <td>{{ savedracelap.lap_time }}</td>
             <td>{{ savedracelap.lap_time_formatted }}</td>
