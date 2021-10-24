@@ -27,7 +27,10 @@ class RHRace():
         self.node_has_finished = {}
         self.any_races_started = False
         # concluded
+        self.finish_time = 0 # Monotonic, updated when race finishes
+        self.finish_time_epoch_ms = 0 # ms since 1970-01-01
         self.end_time = 0 # Monotonic, updated when race is stopped
+        self.end_time_epoch_ms = 0 # ms since 1970-01-01
         # leaderboard/cache
         self.results = None # current race results
         self.cacheStatus = CacheStatus.INVALID # whether cache is valid

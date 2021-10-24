@@ -33,12 +33,49 @@
 			"properties": {
 				"CONFIG_FILE": {
 					"type": "string",
-					"description": "Python logging config file to apply"
+					"description": "Python logging config file to apply."
 				}
 			}
 		},
 		"LED": {
 			"type": "object"
+		},
+		"MQTT": {
+			"type": "object",
+			"properties": {
+				"BROKER": {
+					"description": "MQTT broker hostname or IP address.",
+					"type": "string"
+				},
+				"PORT": {
+					"description": "MQTT broker port.",
+					"$ref": "#/$defs/sport"
+				},
+				"CLIENT_ID": {
+					"description": "MQTT client ID.",
+					"type": "string"
+				},
+				"USERNAME": {
+					"description": "MQTT username.",
+					"type": "string"
+				},
+				"PASSWORD": {
+					"description": "MQTT password.",
+					"type": "string"
+				},
+				"CLIENT_CERT": {
+					"description": "Path to client certificate PEM file.",
+					"type": "string"
+				},
+				"PRIVATE_KEY": {
+					"description": "Path to private key PEM file.",
+					"type": "string"
+				},
+				"TOPIC": {
+					"description": "Parent topic to publish under.",
+					"type": "string"
+				}
+			}
 		},
 		"AUDIO": {
 			"type": "object",

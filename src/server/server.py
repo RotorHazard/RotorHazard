@@ -72,6 +72,7 @@ Events = EventManager()
 from leds import Color, ColorVal, hexToColor
 from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
 from .audio_event_manager import AudioEventManager
+from .mqtt_event_manager import MqttEventManager
 
 import helpers as helper_pkg
 import sensors as sensor_pkg
@@ -2347,9 +2348,13 @@ def race_expire_thread(start_token):
 
         # if race still in progress and is still same race
         if RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token:
-            logger.info("Race count-down timer reached expiration")
             RACE.timer_running = False # indicate race timer no longer running
-            Events.trigger(Evt.RACE_FINISH)
+            RACE.finish_time = monotonic()
+            RACE.finish_time_epoch_ms = monotonic_to_epoch_millis(RACE.finish_time)
+            Events.trigger(Evt.RACE_FINISH, {
+                'race': RACE
+            })
+            logger.info("Race count-down timer reached expiration")
             check_win_condition(at_finish=True, start_token=start_token)
             emit_current_leaderboard()
         else:
@@ -2380,10 +2385,11 @@ def on_stop_race():
 def do_stop_race_actions():
     if RACE.race_status == RHRace.RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
+        RACE.end_time_epoch_ms = monotonic_to_epoch_millis(RACE.end_time)
         delta_time = RACE.end_time - RACE.start_time_monotonic
         duration_ms = delta_time * 1000.0
 
-        logger.info('Race stopped at {0:.3f} ({1:.0f}), duration {2:.0f}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), duration_ms))
+        logger.info('Race stopped at {0:.3f} ({1:.0f}), duration {2:.0f}ms'.format(RACE.end_time, RACE.end_time_epoch_ms, duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -2395,6 +2401,7 @@ def do_stop_race_actions():
         RACE.race_status = RHRace.RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RHRace.RaceStatus.DONE)
         Events.trigger(Evt.RACE_STOP, {
+            'race': RACE,
             'color': ColorVal.RED
         })
         check_win_condition()
@@ -4476,7 +4483,8 @@ def pass_record_callback(node, lap_race_time, source):
                             'node_index': node.index,
                             'color': led_manager.getDisplayColor(node.index),
                             'lap': lap_data,
-                            'results': RACE.results
+                            'results': RACE.results,
+                            'timer': socket.gethostname()+':'+str(rhconfig.GENERAL['HTTP_PORT'])
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}, Late: {3}' \
@@ -5461,6 +5469,10 @@ if vrx_controller:
 
 audio_manager = AudioEventManager(Events, RHData, RACE, rhconfig.AUDIO)
 audio_manager.install_default_effects()
+
+mqtt_manager = MqttEventManager(Events, RHData, RACE, rhconfig.MQTT)
+mqtt_manager.install_default_messages()
+mqtt_manager.start()
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language)

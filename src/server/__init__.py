@@ -15,6 +15,7 @@ class Config:
         self.HARDWARE = {}
         self.SENSORS = {}
         self.LED = {}
+        self.MQTT = {}
         self.SERIAL_PORTS = []
         self.SOCKET_PORTS = []
         self.LOGGING = {}
@@ -72,13 +73,15 @@ class Config:
             jsonschema.validate(instance=externalConfig, schema=self.schema)
 
             self.GENERAL.update(externalConfig['GENERAL'])
-        
+
             if 'HARDWARE' in externalConfig:
                 self.HARDWARE.update(externalConfig['HARDWARE'])
             if 'LOGGING' in externalConfig:
                 self.LOGGING.update(externalConfig['LOGGING'])
             if 'LED' in externalConfig:
                 self.LED.update(externalConfig['LED'])
+            if 'MQTT' in externalConfig:
+                self.MQTT.update(externalConfig['MQTT'])
             if 'AUDIO' in externalConfig:
                 self.AUDIO.update(externalConfig['AUDIO'])
             if 'VRX_CONTROL' in externalConfig:

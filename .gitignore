@@ -7,5 +7,6 @@ db_bkp
 logs
 /src/server/static/user/*
 !/src/server/static/user/README.md
+/doc/schemas
 /.settings
 /dev/
