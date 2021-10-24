@@ -240,8 +240,8 @@ def calc_leaderboard(rhDataObj, **params):
             found_pilot = False
             node_index = 0
             laps = []
-            for node_index in raceObj.node_pilots:
-                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
+            for node_index, node_pilot in raceObj.node_pilots.items():
+                if node_pilot and node_pilot.id == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
                     laps = raceObj.get_active_laps()[node_index]
                     found_pilot = True
                     break
@@ -1457,7 +1457,7 @@ def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
                     race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
                     for node in raceObj.node_laps:
                         if len(raceObj.node_laps[node]) > 0:
-                            team = raceObj.node_teams[node]
+                            team = raceObj.node_pilots[node].team
                             if team is not None:
                                 most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
                                 spent_time = race_duration_ms - most_recent_lap
@@ -1514,7 +1514,7 @@ def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
                     }
 
                 for node in raceObj.node_laps:
-                    team = raceObj.node_teams[node]
+                    team = raceObj.node_teams[node].team
                     if team is not None:
                         laps = raceObj.node_laps[node]
                         if len(laps) >= 2:

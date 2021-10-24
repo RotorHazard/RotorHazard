@@ -11,7 +11,6 @@ class RHRace():
         self._num_nodes = 0
         self.current_heat = 1 # heat ID
         self.node_pilots = {} # current race pilots, by node, filled on heat change
-        self.node_teams = {} # current race teams, by node, filled on heat change
         self.format = None # raceformat object
         # sequence
         self.scheduled = False # Whether to start a race when time
@@ -62,6 +61,16 @@ class RHRace():
         self.cacheStatus = CacheStatus.INVALID
         self.team_cacheStatus = CacheStatus.INVALID
 
+    def set_current_pilots(self, rhdata):
+        self.node_pilots = {}
+        for idx in range(self.num_nodes):
+            self.node_pilots[idx] = None
+
+        for heatNode in rhdata.get_heatNodes_by_heat(self.current_heat):
+            if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
+                db_pilot = rhdata.get_pilot(heatNode.pilot_id)
+                self.node_pilots[heatNode.node_index] = RHPilot(db_pilot)
+
     def init_node_finished_flags(self, heatNodes):
         self.node_has_finished = {}
         for heatNode in heatNodes:
@@ -100,6 +109,35 @@ class RHRace():
 
 
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
+
+
+class RHPilot:
+    def __init__(self, db_pilot):
+        self._id = db_pilot.id
+        self._name = db_pilot.name
+        self._callsign = db_pilot.callsign
+        self._team = db_pilot.team
+        self._phonetic = db_pilot.phonetic if db_pilot.phonetic else db_pilot.callsign
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def callsign(self):
+        return self._callsign
+
+    @property
+    def phonetic(self):
+        return self._phonetic
+
+    @property
+    def team(self):
+        return self._team
 
 
 class RaceMode(IntEnum):

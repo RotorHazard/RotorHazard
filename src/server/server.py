@@ -1280,7 +1280,7 @@ def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RHData.alter_heat(data)
     if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
-        set_current_heat_data(heat.id)
+        set_current_heat_data()
     emit_heat_data(noself=True)
     if ('pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
@@ -1303,7 +1303,7 @@ def on_delete_heat(data):
             if RACE.current_heat != heat_id:
                 logger.info('Changing current heat to Heat {0}'.format(heat_id))
                 RACE.current_heat = heat_id
-            set_current_heat_data(heat_id)
+            set_current_heat_data()
         emit_heat_data()
 
 
@@ -2647,22 +2647,10 @@ def init_node_cross_fields():
         node.show_crossing_flag = False
 
 
-def set_current_heat_data(new_heat_id):
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
-    for idx in range(RACE.num_nodes):
-        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE
-        RACE.node_teams[idx] = None
+def set_current_heat_data():
+    RACE.set_current_pilots(RHData)
 
-    for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
-        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-        if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-            RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
-        else:
-            RACE.node_teams[heatNode.node_index] = None
-
-    heat_data = RHData.get_heat(new_heat_id)
+    heat_data = RHData.get_heat(RACE.current_heat)
 
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
         class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
@@ -2675,7 +2663,7 @@ def set_current_heat_data(new_heat_id):
         autoUpdateCalibration()
 
     Events.trigger(Evt.HEAT_SET, {
-        'heat_id': new_heat_id,
+        'heat_id': RACE.current_heat,
         })
 
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
@@ -2692,7 +2680,7 @@ def on_set_current_heat(data):
     new_heat_id = data['heat']
     logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
     RACE.current_heat = new_heat_id
-    set_current_heat_data(new_heat_id)
+    set_current_heat_data()
 
 
 @SOCKET_IO.on('generate_heats')
@@ -3436,7 +3424,7 @@ def build_laps_list(active_race=RACE):
             })
 
         if node_idx in active_race.node_pilots and active_race.node_pilots[node_idx]:
-            pilot = RHData.get_pilot(active_race.node_pilots[node_idx])
+            pilot = active_race.node_pilots[node_idx]
             pilot_data = {
                 'id': pilot.id,
                 'name': pilot.name,
@@ -4396,12 +4384,11 @@ def pass_record_callback(node, lap_race_time, source):
             or (RACE.race_status is RHRace.RaceStatus.DONE and \
                 lap_timestamp_absolute < RACE.end_time):
 
-            # Get the current pilot id on the node
-            pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node.index)
-
-            # reject passes before race start and with disabled (no-pilot) nodes
+            # Get the current pilot on the node
+            pilot = RACE.node_pilots[node.index]
             race_format = getCurrentRaceFormat()
-            if pilot_id != RHUtils.PILOT_ID_NONE or race_format is SECONDARY_RACE_FORMAT:
+            # reject passes before race start and with disabled (no-pilot) nodes
+            if pilot or race_format is SECONDARY_RACE_FORMAT:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon
@@ -4437,7 +4424,6 @@ def pass_record_callback(node, lap_race_time, source):
                         RACE.set_node_finished_flag(node.index)
 
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
-                    pilot_obj = RHData.get_pilot(pilot_id)
 
                     lap_ok_flag = True
                     lap_late_flag = False
@@ -4452,7 +4438,7 @@ def pass_record_callback(node, lap_race_time, source):
                         if race_format.lap_grace_sec and lap_time_stamp > race_format.race_time_sec*1000 and lap_time_stamp <= (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
                             if not node_finished_flag:
                                 RACE.set_node_finished_flag(node.index)
-                                logger.info('Pilot {} done'.format(pilot_obj.callsign))
+                                logger.info('Pilot {} done'.format(pilot.callsign))
                             else:
                                 lap_ok_flag = False
 
@@ -4513,19 +4499,19 @@ def pass_record_callback(node, lap_race_time, source):
                                                    (not node_finished_flag) else None
                             if lap_id:
                                 if race_format.team_racing_mode:
-                                    team_name = pilot_obj.team if pilot_obj else ""
+                                    team_name = pilot.team if pilot.team else ""
                                     team_laps = RACE.team_results['meta']['teams'][team_name]['laps']
                                     logger.debug('Team {} lap {}'.format(team_name, team_laps))
                                     # if winning team has been declared then don't announce team lap number
                                     if RACE.win_status == RHRace.WinStatus.DECLARED:
                                         team_laps = None
-                                    emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, \
+                                    emit_phonetic_data(pilot.id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, \
                                                     (check_leader and \
                                                      team_name == Results.get_leading_team_name(RACE.team_results)))
                                 else:
-                                    emit_phonetic_data(pilot_id, lap_id, lap_time, lap_time_stamp, None, None, \
+                                    emit_phonetic_data(pilot.id, lap_id, lap_time, lap_time_stamp, None, None, \
                                                     (check_leader and \
-                                                     pilot_id == Results.get_leading_pilot_id(RACE.results)))
+                                                     pilot.id == Results.get_leading_pilot_id(RACE.results)))
 
                             check_win_condition() # check for and announce possible winner
                             if RACE.win_status != RHRace.WinStatus.NONE:
@@ -4779,15 +4765,7 @@ def init_race_state():
     first_heat = RHData.get_first_heat()
     if first_heat:
         RACE.current_heat = first_heat.id
-        RACE.node_pilots = {}
-        RACE.node_teams = {}
-        for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
-            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-            if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
-            else:
-                RACE.node_teams[heatNode.node_index] = None
+        RACE.set_current_pilots(RHData)
 
     # Set race format
     raceformat_id = RHData.get_optionInt('currentFormat')

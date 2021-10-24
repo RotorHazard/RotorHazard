@@ -795,15 +795,7 @@ class RHData():
 
         # update current race
         if heat_id == self._RACE.current_heat:
-            self._RACE.node_pilots = {}
-            self._RACE.node_teams = {}
-            for heatNode in self.get_heatNodes_by_heat(heat_id):
-                self._RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-                if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                    self._RACE.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
-                else:
-                    self._RACE.node_teams[heatNode.node_index] = None
+            self._RACE.set_current_pilots(self)
             self._RACE.cacheStatus = CacheStatus.INVALID  # refresh leaderboard
 
         logger.info('Heat {0} altered with {1}'.format(heat_id, data))

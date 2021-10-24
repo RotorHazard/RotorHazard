@@ -111,8 +111,7 @@ def say_lap_time(node_index, lap, RHData, RACE, say, **kwargs):
     lap_num = lap['lap_number']
     race_format = RACE.format
     if lap_num > 0 or race_format.start_behavior == StartBehavior.FIRST_LAP:
-        pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
-        pilot = RHData.get_pilot(pilot_id)
+        pilot = RACE.node_pilots[node_index]
         phonetic_time = RHUtils.phonetictime_format(lap['lap_time'], RHData.get_option('timeFormatPhonetic'))
         lap_time_stamp = lap['lap_time_stamp']
         msg = "{}".format(pilot.phonetic if pilot.phonetic else pilot.callsign)
