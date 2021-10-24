@@ -15,7 +15,7 @@ class ChorusAPI():
         self.rssi_interval = 0
 
     def emit_pass_record(self, node, lap_number, lap_time_stamp):
-        self.serial_io.write("S{0}L{1:02x}{2:08x}\n".format(node.index, lap_number, int(lap_time_stamp)).encode("UTF-8"))
+        self.serial_io.write("S{0}L{1:02x}{2:08x}\n".format(node.index, lap_number, lap_time_stamp).encode("UTF-8"))
 
     def emit_rssi(self, node_addr):
         self.serial_io.write(self._getRssiResponse(node_addr).encode("UTF-8"))

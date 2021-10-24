@@ -206,7 +206,7 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
 
 # convert 'monotonic' time to epoch milliseconds since 1970-01-01
 def monotonic_to_epoch_millis(secs):
-    return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
+    return round(1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET)
 
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
@@ -4181,7 +4181,7 @@ def set_vrx_node(data):
 
 
 @catchLogExceptionsWrapper
-def emit_pass_record(node, lap_number, lap_time_stamp):
+def emit_pass_record(node, lap_number : int, lap_time_stamp : int):
     '''Emits 'pass_record' message (will be consumed by primary timer in cluster, livetime, etc).'''
     if CHORUS_API:
         CHORUS_API.emit_pass_record(node, lap_number, lap_time_stamp)
@@ -4362,7 +4362,7 @@ def pass_record_callback(node, lap_race_time, source):
 
     # lap_race_time is lap timestamp relative to start time
     lap_timestamp_absolute = lap_race_time + RACE.start_time_monotonic
-    lap_time_stamp = lap_race_time * 1000 # store as milliseconds
+    lap_time_stamp = round(lap_race_time * 1000) # store as milliseconds
 
     if logger.getEffectiveLevel() <= logging.DEBUG:
         enter_fmtstr = RHUtils.time_format((node.enter_at_timestamp-RACE.start_time_monotonic)*1000, \
