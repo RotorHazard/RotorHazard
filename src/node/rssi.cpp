@@ -15,7 +15,7 @@ inline void initExtremum(Extremum& e, rssi_t rssi, mtime_t ts)
     e.duration = 0;
 }
 
-RssiNode::RssiNode() : defaultFilter(lpfFilter1, lpfFilter2, medianFilter)
+RssiNode::RssiNode()
 {
     setFilter(&defaultFilter);
 }

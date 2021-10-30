@@ -205,9 +205,6 @@ struct RssiResult
 class RssiNode
 {
 private:
-    LowPassFilter15Hz lpfFilter1;
-    LowPassFilter50Hz lpfFilter2;
-
 #if defined(USE_PH) || defined(__TEST__)
     ConnectedComponent ccs[(PH_HISTORY_SIZE+1)/2];
 #ifdef __TEST__
@@ -249,7 +246,7 @@ private:
     bool checkForCrossing_old(rssi_t enterThreshold, rssi_t exitThreshold);
 public:
     MedianFilter<rssi_t, 5, 0> medianFilter;
-    Composite3Filter<rssi_t> defaultFilter;
+    Filter<rssi_t>& defaultFilter = medianFilter;
     NoFilter<rssi_t> noFilter;
 
 #ifdef SCAN_HISTORY

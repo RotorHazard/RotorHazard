@@ -432,23 +432,18 @@ void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)
     {
         flags |= LAPSTATS_FLAG_PEAK;
     }
+
     buffer.write8(flags);
     ioBufferWriteRssi(buffer, lastPass.rssiNadir);  // lowest rssi since end of last pass
     ioBufferWriteRssi(buffer, state.nodeRssiNadir);
 
-    switch(extremumType) {
-        case PEAK:
-            // send peak
-            ioBufferWriteExtremum(buffer, history.popNextToSend(), timeNowVal);
-            break;
-        case NADIR:
-            // send nadir
-            ioBufferWriteExtremum(buffer, history.popNextToSend(), timeNowVal);
-            break;
-        default:
-            ioBufferWriteRssi(buffer, 0);
-            buffer.write16(0);
-            buffer.write16(0);
+    if (extremumType != NONE) {
+        Extremum extremum = history.popNextToSend();
+        ioBufferWriteExtremum(buffer, extremum, timeNowVal);
+    } else {
+        ioBufferWriteRssi(buffer, 0);
+        buffer.write16(0);
+        buffer.write16(0);
     }
 }
 

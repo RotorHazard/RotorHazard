@@ -8,23 +8,18 @@ class ConnectedComponent:
 		self.birth = birth
 		self.death = death
 
-
 	def __str__(self):
 		return "{} -> {} ({})".format(self.birth[1], self.death[1], self.lifetime())
-
 
 	def __repr__(self):
 		return "{} -> {}".format(self.birth, self.death)
 
-
 	def to_pair(self):
 		return [self.birth[1], self.death[1]]
-
 
 	def to_upair(self):
 		'''Unsigned/unordered pair'''
 		return [self.death[1], self.birth[1]] if self.death[1] < self.birth[1] else [self.birth[1], self.death[1]]
-
 
 	def lifetime(self):
 		return abs(self.birth[1] - self.death[1])
@@ -83,6 +78,8 @@ def plotPersistenceDiagram(axs, ccs):
 	maxv = np.max(data)*1.05
 	axs.set_xlim((minv, maxv))
 	axs.set_ylim((minv, maxv))
+	axs.set_xlabel('Death')
+	axs.set_ylabel('Birth')
 	axs.plot([minv,maxv], [minv,maxv], "--", c='gray')
 
 
@@ -95,3 +92,5 @@ def plotLifetimes(axs, ccs):
 	maxy = np.max(data[:,1])*1.05
 	axs.set_xlim((minx, maxx))
 	axs.set_ylim((miny, maxy))
+	axs.set_xlabel('Death')
+	axs.set_ylabel('Lifetime')
