@@ -4,8 +4,14 @@
 #include "Collections.h"
 
 struct ConnectedComponent {
-    uint_fast8_t birth = 0;
-    uint_fast8_t death = 0;
+    uint8_t birth = 0;
+    uint8_t death = 0;
+    inline uint_fast8_t peakLifetime(rssi_t phData[]) {
+        return phData[birth] - phData[death];
+    }
+    inline uint_fast8_t nadirLifetime(rssi_t phData[]) {
+        return phData[death] - phData[birth];
+    }
 };
 
 template <size_t N> static ConnectedComponent *idxToCC[N];

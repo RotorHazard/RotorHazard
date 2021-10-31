@@ -147,11 +147,17 @@ template <uint8_t N> class SortedUnifiedSendBuffer : public UnifiedSendBuffer<Ex
             UnifiedSendBuffer<Extremum,N>::removeLast();
             const int_fast8_t lastIdx = UnifiedSendBuffer<Extremum,N>::buffer.size();
             int_fast8_t shift = 0;
-            for (int_fast8_t i=0; i<lastIdx; i++) {
+            int_fast8_t i = 0;
+            for (; i<lastIdx; i++) {
                 if (sortedIdxs[i] == lastIdx) {
                     shift = 1;
+                    break;
                 }
-                sortedIdxs[i] = sortedIdxs[i+shift];
+            }
+            if (shift > 0) {
+                for (; i<lastIdx; i++) {
+                    sortedIdxs[i] = sortedIdxs[i+shift];
+                }
             }
         }
 };

@@ -205,7 +205,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         // find lifetime of last value when a nadir
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
-            const uint_fast8_t lastLifetime = phData[cc.death] - phData[cc.birth];
+            const uint_fast8_t lastLifetime = cc.nadirLifetime(phData);
 #ifdef USE_MQTT
             lifetimeSample = -lastLifetime;
 #endif
@@ -223,7 +223,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         // find lifetime of last value when a peak
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
-            const uint_fast8_t lastLifetime = phData[cc.birth] - phData[cc.death];
+            const uint_fast8_t lastLifetime = cc.peakLifetime(phData);
 #ifdef USE_MQTT
             lifetimeSample = lastLifetime;
 #endif
