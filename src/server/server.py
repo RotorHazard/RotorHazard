@@ -5061,7 +5061,10 @@ if RACE.num_nodes > 0:
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
 
-SENSORS.discover(config=Config.SENSORS, **hardwareHelpers)
+try:
+    SENSORS.discover(config=Config.SENSORS, **hardwareHelpers)
+except Exception:
+    logger.exception("Exception while discovering sensors")
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
