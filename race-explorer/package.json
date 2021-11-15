@@ -1,0 +1,48 @@
+{
+  "name": "race-explorer",
+  "version": "0.1.0",
+  "private": true,
+  "homepage": "race-explorer",
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity": "^3.41.0",
+    "@aws-sdk/client-s3": "^3.41.0",
+    "@aws-sdk/credential-providers": "^3.41.0",
+    "@emotion/react": "^11.5.0",
+    "@emotion/styled": "^11.3.0",
+    "@mui/material": "^5.1.0",
+    "@mui/utils": "^5.1.0",
+    "@testing-library/jest-dom": "^5.15.0",
+    "@testing-library/react": "^11.2.7",
+    "@testing-library/user-event": "^12.8.3",
+    "core-js": "^3.19.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-scripts": "^3.4.4",
+    "uuid": "^7.0.3",
+    "web-vitals": "^1.1.2"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
