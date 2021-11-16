@@ -50,7 +50,7 @@ function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
 	var secs = s % 60;
 	var mins = (s - secs) / 60;
 
-	if (!formatted_time) {
+	if (!timeformat) {
 		timeformat = '{m}:{s}.{d}';
 	}
 	var formatted_time = timeformat.replace('{d}', pad(ms, 3));
