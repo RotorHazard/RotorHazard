@@ -2276,6 +2276,8 @@ def race_start_thread(start_token):
                     logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
                             .format(node.index+1, node.current_rssi, node.enter_at_level))
 
+    RACE.current_round = RHData.get_max_round(RACE.current_heat) + 1
+
     # do non-blocking delay before time-critical code
     time_remaining = RACE.start_time_monotonic - monotonic()
     countdown_time = int(time_remaining)
@@ -2455,8 +2457,6 @@ def on_save_laps():
     # Get the last saved round for the current heat
     max_round = RHData.get_max_round(RACE.current_heat)
 
-    if max_round is None:
-        max_round = 0
     # Loop through laps to copy to saved races
     profile = getCurrentProfile()
     profile_freqs = json.loads(profile.frequencies)
@@ -5480,8 +5480,10 @@ export_manager = DataExportManager(RHData, PageCache, Language)
 # register endpoints
 from . import json_endpoints
 from . import ota
+from . import race_event
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota.createBlueprint())
+APP.register_blueprint(race_event.createBlueprint(RHData))
 
 if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     from .chorus_api import ChorusAPI

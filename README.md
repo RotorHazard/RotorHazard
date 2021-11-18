@@ -34,20 +34,22 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
     * Supervised learning (based on corrected laps).
     * Unsupervised learning (gradient descent).
 * Multi-frequency node support on Arduino Nanos (track more than one frequency per node).
+* MQTT protocol.
 * Frequency band scanner (UI and standalone tool).
 * Support for server (e.g. Raspberry Pi) audio output (e.g. bluetooth speaker).
 * Link pilots with their MultiGP or iFPV accounts.
-* Sync events with iFPV.
+* Sync race events with iFPV.
 * BDRA race formats.
 * Sensor alarms (for INA219, BME280, etc).
 * More host sensors for Linux/Windows systems.
-* Command line option to specify configuration file.
+* Command line options to specify configuration file and database.
 * Support for multiple I2C buses.
 * Software-in-the-loop node code.
 * Nodes-over-sockets.
 * Support for Chorus hardware/software.
 * Support for LapRF hardware.
 * Support for multiple LiveTime protocols (Delta 5 and Chorus).
+* Cloud-based UI.
 * Test coverage.
 * ...and a massive code clean-up!
 
@@ -55,7 +57,7 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 
 ## Quick start
 
-To install:
+To install/upgrade:
 ```
 ./install.sh
 ```

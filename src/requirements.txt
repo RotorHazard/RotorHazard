@@ -1,12 +1,12 @@
-Flask==1.1.*
+Flask==2.0.*
 Flask_SocketIO==4.2.*
-itsdangerous==1.1.*
-Jinja2==2.11.*
-MarkupSafe==1.1.*
+itsdangerous==2.0.*
+Jinja2==3.0.*
+MarkupSafe==2.*
 python-engineio==3.11.*
 python-socketio==4.4.*
 six==1.14.*
-Werkzeug==1.0.*
+Werkzeug==2.0.*
 gevent==20.6.*
 gevent-websocket==0.10.*
 greenlet==0.4.16
@@ -16,7 +16,7 @@ monotonic==1.5.*
 pyserial==3.4.*
 paho-mqtt==1.5.*
 websocket-client==0.57.*
-requests==2.25.*
+requests==2.26.*
 jsonschema==3.*
 cffi==1.14.*
 Pillow>=8.3.2

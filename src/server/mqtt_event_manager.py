@@ -47,27 +47,22 @@ class MqttEventManager:
         return _handler
 
 
-race_num = 0
-
-
 def race_start(client, topic, event, RACE, **kwargs):
-    global race_num
-    race_num += 1
     msg = {'startTime': RACE.start_time_epoch_ms}
-    client.publish("{}/{}/{}/{}".format(topic, event, race_num, RACE.current_heat), json.dumps(msg))
+    client.publish("{}/{}/{}/{}".format(topic, event, RACE.current_round, RACE.current_heat), json.dumps(msg))
 
 
-def race_lap(client, topic, event, RACE, node_index, timer, lap, **kwargs):
+def race_lap(client, topic, event, RACE, node_index, lap, timer, **kwargs):
     pilot = RACE.node_pilots[node_index]
     msg = {'timestamp': lap['lap_time_stamp']}
-    client.publish("{}/{}/{}/{}/{}/{}/{}".format(topic, event, race_num, RACE.current_heat, pilot.callsign, timer, lap['lap_number']), json.dumps(msg))
+    client.publish("{}/{}/{}/{}/{}/{}/{}".format(topic, event, RACE.current_round, RACE.current_heat, pilot.callsign, lap['lap_number'], timer), json.dumps(msg))
 
 
 def race_finish(client, topic, event, RACE, **kwargs):
     msg = {'finishTime': RACE.finish_time_epoch_ms}
-    client.publish("{}/{}/{}/{}".format(topic, event, race_num, RACE.current_heat), json.dumps(msg))
+    client.publish("{}/{}/{}/{}".format(topic, event, RACE.current_round, RACE.current_heat), json.dumps(msg))
 
 
 def race_stop(client, topic, event, RACE, **kwargs):
     msg = {'stopTime': RACE.end_time_epoch_ms}
-    client.publish("{}/{}/{}/{}".format(topic, event, race_num, RACE.current_heat), json.dumps(msg))
+    client.publish("{}/{}/{}/{}".format(topic, event, RACE.current_round, RACE.current_heat), json.dumps(msg))

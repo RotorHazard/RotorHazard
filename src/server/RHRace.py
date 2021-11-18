@@ -10,6 +10,7 @@ class RHRace():
         # setup/options
         self._num_nodes = 0
         self.current_heat = 1 # heat ID
+        self.current_round = 1
         self.node_pilots = {} # current race pilots, by node, filled on heat change
         self.format = None # raceformat object
         # sequence
