@@ -40,7 +40,12 @@ class Config:
         self.LED['PANEL_ROTATE']   = 0
         self.LED['INVERTED_PANEL_ROWS'] = False
 
-        # Video Receiver Configuration
+        # MQTT configuration
+        self.MQTT['TIMER_ANN_TOPIC'] = 'timer/ann'
+        self.MQTT['TIMER_CTRL_TOPIC'] = 'timer/ctrl'
+        self.MQTT['RACE_ANN_TOPIC'] = 'race/ann'
+
+        # Video Receiver configuration
         self.VRX_CONTROL['HOST']    = 'localhost'     # MQTT broker IP Address
         self.VRX_CONTROL['ENABLED'] = False
         self.VRX_CONTROL['OSD_LAP_HEADER'] = 'L'

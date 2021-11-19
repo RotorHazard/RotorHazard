@@ -71,10 +71,14 @@
 					"description": "Path to private key PEM file.",
 					"type": "string"
 				},
-				"TOPIC": {
-					"description": "Parent topic to publish under.",
+				"RACING_TOPIC": {
+					"description": "Parent topic to publish racing events under.",
 					"type": "string"
-				}
+				},
+        "SYSTEM_TOPIC": {
+          "description": "Parent topic to publish system events under.",
+          "type": "string"
+        }
 			}
 		},
 		"AUDIO": {

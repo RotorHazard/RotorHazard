@@ -12,10 +12,13 @@ from interface import ExtremumFilter, ensure_iter
 
 logger = logging.getLogger(__name__)
 
-RESPONSE_WAIT = 0.5 # secs
+RESPONSE_WAIT = 0.5  # secs
 WRITE_CHILL_TIME = 0.010
 
+
 class LapRFNodeManager(NodeManager):
+    TYPE = "LapRF"
+
     def __init__(self, addr, io_stream):
         super().__init__()
         self.max_rssi_value = 3500
@@ -24,7 +27,7 @@ class LapRFNodeManager(NodeManager):
         self.stream_buffer = bytearray()
         self.voltage = None
         self.min_lap_time = None
-        self.race_start_rtc_time = 0 # usecs
+        self.race_start_rtc_time = 0  # usecs
         self.race_start_time_request_ts = None
         self.last_write_ts = 0
 
@@ -149,14 +152,28 @@ class LapRFInterface(BaseHardwareInterface):
             node = node_manager.nodes[node_idx]
             node.band_idx = record.band
             node.channel_idx = record.channel
-            node.frequency = record.frequency if record.enabled else 0
+            old_frequency = node.frequency
+            old_bandChannel = node.bandChannel
+            if record.enabled:
+                node.frequency = record.frequency
+                if record.band_idx >= 1 and record.band_idx <= len(laprf.LIVE_TIME_BANDS) and record.channel_idx >= 1 and record.channel_idx <= laprf.MAX_CHANNELS:
+                    node.bandChannel = laprf.LIVE_TIME_BANDS[record.band_idx-1] + str(record.channel_idx)
+                else:
+                    node.bandChannel = None
+            else:
+                node.frequency = 0
+                node.bandChannel = None
             node.threshold = record.threshold
             node.gain = record.gain
             node.is_configured = True
+            if node.frequency != old_frequency:
+                self._notify_frequency_changed(node)
+            if node.bandChannel != old_bandChannel:
+                self._notify_bandChannel_changed(node)
         elif isinstance(record, laprf.TimeEvent):
             if node_manager.race_start_time_request_ts is not None:
                 server_oneway = (monotonic() - node_manager.race_start_time_request_ts)/2
-                node_manager.race_start_rtc_time = record.rtc_time - server_oneway*1000000 # usecs
+                node_manager.race_start_rtc_time = record.rtc_time - server_oneway*1000000  # usecs
                 node_manager.race_start_time_request_ts = None
         elif isinstance(record, laprf.SettingsEvent):
             if record.min_lap_time:
@@ -182,10 +199,10 @@ class LapRFInterface(BaseHardwareInterface):
         node = self.nodes[node_index]
         self.set_rf_setup(node, node.frequency, node.band_idx, node.channel_idx, node.gain, threshold)
 
-    def set_frequency(self, node_index, frequency, band='', channel=0):
+    def set_frequency(self, node_index, frequency, band=None, channel=None):
         node = self.nodes[node_index]
         try:
-            band_idx = laprf.LIVE_TIME_BANDS.index(band) + 1
+            band_idx = laprf.LIVE_TIME_BANDS.index(band) + 1 if band else 0
         except ValueError:
             band_idx = 0
         channel_idx = channel if channel else 0

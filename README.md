@@ -61,6 +61,7 @@ To install/upgrade:
 ```
 ./install.sh
 ```
+(Can take a long time if your system is out-of-date).
 
 To run the server:
 ```

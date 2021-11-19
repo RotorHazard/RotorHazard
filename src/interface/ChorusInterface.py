@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class ChorusNodeManager(NodeManager):
+    TYPE = "Chorus"
+
     def __init__(self, serial_io):
         super().__init__()
         self.serial_io = serial_io
@@ -153,27 +155,14 @@ class ChorusInterface(BaseHardwareInterface):
 
         super().set_race_status(race_status)
 
-    #
-    # External functions for setting data
-    #
-
-    def set_frequency(self, node_index, frequency, band=None, channel=None):
-        node = self.nodes[node_index]
-        node.debug_pass_count = 0  # reset debug pass count on frequency change
-        if frequency:
-            node.frequency = node.set_and_validate_value_4x('F', frequency)
-        else:  # if freq=0 (node disabled) then write default freq, but save 0 value
-            node.set_and_validate_value_4x('F', 5800)
-            node.frequency = 0
+    def transmit_frequency(self, node, frequency):
+        return node.set_and_validate_value_4x('F', frequency)
 
     def transmit_enter_at_level(self, node, level):
         return node.set_and_validate_value_4x('T', level)
 
     def transmit_exit_at_level(self, node, level):
         return node.set_and_validate_value_4x('T', level)
-
-    def force_end_crossing(self, node_index):
-        _node = self.nodes[node_index]
 
 
 def get_hardware_interface(config, *args, **kwargs):

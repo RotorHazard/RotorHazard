@@ -176,6 +176,9 @@ class NodeManager(CommandsWithRetry):
     def close(self):
         pass
 
+    def get_disabled_frequency(self):
+        return 5800
+
     def __enter__(self):
         self.lock.__enter__()
 
@@ -196,6 +199,7 @@ class Node(CommandsWithRetry):
         self.addr = "{}#{}".format(self.manager.addr, self.multi_node_index)
 
         self.frequency = 0
+        self.bandChannel = None
         self.current_rssi = 0
         self.node_peak_rssi = 0
         self.node_nadir_rssi = float('inf')

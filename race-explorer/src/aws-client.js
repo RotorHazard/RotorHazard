@@ -1,9 +1,9 @@
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { CognitoIdentityClient } from "@aws-sdk/client-cognito-identity";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
-import * as config from './config.js';
+import * as config from './aws-config.js';
 
-export default function createLoader() {
+export default function createEventDataLoader() {
   const authToken = getAuthToken();
   let loginTokens = {};
   if (authToken) {

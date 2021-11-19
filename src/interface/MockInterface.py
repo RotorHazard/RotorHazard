@@ -2,7 +2,7 @@
 
 import os
 import logging
-from monotonic import monotonic # to capture read timing
+from monotonic import monotonic  # to capture read timing
 import random
 
 from .Node import NodeManager
@@ -16,6 +16,8 @@ MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 
 class MockNodeManager(NodeManager):
+    TYPE = "Mock"
+
     def __init__(self, index):
         super().__init__()
         self.api_level = 0
@@ -33,7 +35,7 @@ class MockInterface(BaseHardwareInterface):
         self.data_files = [None]*num_nodes if use_datafiles else None
         for index in range(num_nodes):
             manager = MockNodeManager(index)
-            node = manager.add_node(index) # New node instance
+            node = manager.add_node(index)  # New node instance
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.node_managers.append(manager)
@@ -134,14 +136,6 @@ class MockInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency, band=None, channel=None):
-        node = self.nodes[node_index]
-        node.debug_pass_count = 0  # reset debug pass count on frequency change
-        if frequency:
-            node.frequency = frequency
-        else:  # if freq=0 (node disabled) then write default freq, but save 0 value
-            node.frequency = 0
-
     def set_mode(self, node_index, mode):
         node = self.nodes[node_index]
         node.mode = mode
@@ -157,15 +151,6 @@ class MockInterface(BaseHardwareInterface):
             # restore original frequency
             if not scan_enabled:
                 self.set_frequency(node_index, node.frequency)
-
-    def transmit_enter_at_level(self, node, level):
-        return level
-
-    def transmit_exit_at_level(self, node, level):
-        return level
-
-    def force_end_crossing(self, node_index):
-        pass
 
     def read_scan_history(self, node_index):
         freqs = list(range(5645, 5945, 5))

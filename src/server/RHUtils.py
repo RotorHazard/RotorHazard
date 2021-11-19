@@ -13,7 +13,6 @@ import socket
 import random
 import json
 import jsonschema
-from interface.BaseHardwareInterface import FREQUENCY_NONE
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FORMAT_ID_NONE = 0  # indicator value for unformatted class
-FREQUENCY_ID_NONE = FREQUENCY_NONE  # indicator value for node disabled
+FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 IS_SYS_RASPBERRY_PI = True  # set by 'idAndLogSystemInfo()'
 
 VTX_TABLE = {}

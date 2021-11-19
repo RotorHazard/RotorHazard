@@ -12,29 +12,30 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import * as util from './util.js';
-import createLoader from './rh-client.js';
+import { createEventDataLoader } from './rh-client.js';
 
 
-function processEvents(eventData, raceEvents) {
-  const jsonl = eventData.split('\n');
+function processEvents(data, raceEvents) {
+  const jsonl = data.split('\n');
   for (const l of jsonl) {
     if (l.length > 0) {
       try {
         const msg = JSON.parse(l);
         if ('event' in msg) {
           raceEvents[msg.event] = raceEvents[msg.event] ?? {};
-          let event = raceEvents[msg.event];
+          const event = raceEvents[msg.event];
           if ('round' in msg) {
             event[msg.round] = event[msg.round] ?? {};
-            let round = event[msg.round];
+            const round = event[msg.round];
             if ('heat' in msg) {
               round[msg.heat] = round[msg.heat] ?? {};
-              let heat = round[msg.heat];
+              const heat = round[msg.heat];
               if ('pilot' in msg) {
-                heat[msg.pilot] = heat[msg.pilot] ?? {pilot: msg.pilot, laps: []};
-                let pilot = heat[msg.pilot]
+                heat[msg.pilot] = heat[msg.pilot] ?? {name: msg.pilot, laps: []};
+                const pilot = heat[msg.pilot]
                 if ('lap' in msg) {
-                  pilot.laps.push({lap: msg.lap, timestamp: msg.timestamp, gate: msg.gate});
+                  const lapData = {lap: msg.lap, timestamp: msg.timestamp, timer: msg.timer};
+                  pilot.laps.push(lapData);
                 } else if ('laps' in msg) {
                   pilot.laps.push(...msg['laps']);
                 }
@@ -67,7 +68,7 @@ export default function Race(props) {
   const loaderRef = useRef();
 
   useEffect(() => {
-    const loader = createLoader();
+    const loader = createEventDataLoader();
     loaderRef.current = loader;
     readData(loader, setEventData);
   }, []);
@@ -135,7 +136,7 @@ export default function Race(props) {
     <Stack direction="column" alignItems="stretch">
       <FormControl>
         <InputLabel id="event-label">Event</InputLabel>
-        <Select labelId="event-label" label="Event" value={selectedEvent} onChange={(evt) => selectEvent(evt.target.value)}>
+        <Select labelId="event-label" value={selectedEvent} onChange={(evt) => selectEvent(evt.target.value)}>
         {eventNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{name}</MenuItem>
@@ -145,7 +146,7 @@ export default function Race(props) {
       </FormControl>
       <FormControl>
         <InputLabel id="round-label">Round</InputLabel>
-        <Select labelId="round-label" label="Round" value={selectedRound} onChange={(evt) => selectRound(evt.target.value)}>
+        <Select labelId="round-label" value={selectedRound} onChange={(evt) => selectRound(evt.target.value)}>
         {roundNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{name}</MenuItem>
@@ -155,7 +156,7 @@ export default function Race(props) {
       </FormControl>
       <FormControl>
         <InputLabel id="heat-label">Heat</InputLabel>
-        <Select labelId="heat-label" label="Heat" value={selectedHeat} onChange={(evt) => selectHeat(evt.target.value)}>
+        <Select labelId="heat-label" value={selectedHeat} onChange={(evt) => selectHeat(evt.target.value)}>
         {heatNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{name}</MenuItem>
@@ -178,12 +179,18 @@ export default function Race(props) {
             let lapCells = [];
             let k = pilotHeat.laps.length - 1;
             for (let i=maxLaps; i>=minLaps; i--) {
-              let lapInfo = [];
+              let lapInfo = '';
               if (i === pilotHeat.laps[k].lap) {
+                let lapTime = '';
                 if (k-1 >= 0 && i-1 === pilotHeat.laps[k-1].lap) {
-                  lapInfo.push(util.formatTimeMillis(pilotHeat.laps[k].timestamp-pilotHeat.laps[k-1].timestamp)+'\n');
+                  lapTime = util.formatTimeMillis(pilotHeat.laps[k].timestamp-pilotHeat.laps[k-1].timestamp)+'\n';
                 }
-                lapInfo.push(<span class='lapTimestamp'>({util.formatTimeMillis(pilotHeat.laps[k].timestamp)})</span>);
+                lapInfo = (
+                  <div>
+                  <span>{lapTime}</span>
+                  <span className="lapTimestamp">({util.formatTimeMillis(pilotHeat.laps[k].timestamp)}</span>)
+                  </div>
+                );
                 k--;
               }
               lapCells.push(<TableCell key={i} align="right">{lapInfo}</TableCell>);
@@ -193,7 +200,7 @@ export default function Race(props) {
               key={pilotKey}
               sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
             >
-              <TableCell component="th" scope="row">{pilotHeat.pilot}</TableCell>
+              <TableCell component="th" scope="row">{pilotHeat.name}</TableCell>
               {lapCells}
             </TableRow>
             );

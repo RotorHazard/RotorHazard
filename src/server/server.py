@@ -19,16 +19,7 @@ from . import RHTimeFns
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
 
-EPOCH_START = RHTimeFns.getEpochStartTime()
-
-# program-start time, in milliseconds since 1970-01-01
-PROGRAM_START_EPOCH_TIME = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
-
-# program-start time (in milliseconds, starting at zero)
-PROGRAM_START_MTONIC = monotonic()
-
-# offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
-MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
+PROGRAM_START = RHTimeFns.MonotonicEpochSync()
 
 # Normal importing resumes here
 import gevent.monkey
@@ -124,6 +115,8 @@ if not config_file_name:
 rhconfig = Config()
 rhconfig.load(config_file_name)
 
+TIMER_ID = socket.gethostname()+':'+str(rhconfig.GENERAL['HTTP_PORT'])
+
 DB_FILE_NAME = args.database
 if not DB_FILE_NAME and args.config:
     DB_FILE_NAME = rhconfig.GENERAL['DATABASE']
@@ -203,11 +196,6 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
     if subclass:
         item['subclass'] = subclass
     ui_server_messages[mainclass] = item
-
-
-# convert 'monotonic' time to epoch milliseconds since 1970-01-01
-def monotonic_to_epoch_millis(secs):
-    return round(1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET)
 
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
@@ -738,7 +726,7 @@ def on_get_timestamp():
         now = RACE.start_time_monotonic
     else:
         now = monotonic()
-    return {'timestamp': monotonic_to_epoch_millis(now)}
+    return {'timestamp': PROGRAM_START.monotonic_to_epoch_millis(now)}
 
 
 @SOCKET_IO.on('get_settings')
@@ -827,7 +815,7 @@ def on_join_cluster_ex(data=None):
 def on_check_secondary_query(data):
     ''' Check-query received from primary; return response. '''
     payload = {
-        'timestamp': monotonic_to_epoch_millis(monotonic())
+        'timestamp': PROGRAM_START.monotonic_to_epoch_millis(monotonic())
     }
     SOCKET_IO.emit('check_secondary_response', payload)
 
@@ -966,8 +954,8 @@ def on_set_frequency(data):
         data = json.loads(data)
     node_index = data['node']
     frequency = int(data['frequency'])
-    band = str(data['band']) if 'band' in data and data['band'] != None else None
-    channel = int(data['channel']) if 'channel' in data and data['channel'] != None else None
+    band = str(data['band']) if 'band' in data and data['band'] is not None else None
+    channel = int(data['channel']) if 'channel' in data and data['channel'] is not None else None
 
     if node_index < 0 or node_index >= RACE.num_nodes:
         logger.info('Unable to set frequency ({0}) on node {1}; node index out of range'.format(frequency, node_index+1))
@@ -1060,9 +1048,20 @@ def set_all_frequencies(freqs):
     profile_freqs = json.loads(profile.frequencies)
 
     for idx in range(RACE.num_nodes):
-        profile_freqs["b"][idx] = freqs["b"][idx]
-        profile_freqs["c"][idx] = freqs["c"][idx]
-        profile_freqs["f"][idx] = freqs["f"][idx]
+        if idx < len(profile_freqs["b"]):
+            profile_freqs["b"][idx] = freqs["b"][idx]
+        else:
+            profile_freqs["b"].append(freqs["b"][idx])
+
+        if idx < len(profile_freqs["c"]):
+            profile_freqs["c"][idx] = freqs["c"][idx]
+        else:
+            profile_freqs["c"].append(freqs["c"][idx])
+
+        if idx < len(profile_freqs["f"]):
+            profile_freqs["f"][idx] = freqs["f"][idx]
+        else:
+            profile_freqs["f"].append(freqs["f"][idx])
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
     RHData.alter_profile({
@@ -2109,7 +2108,7 @@ def on_stage_race():
 
         RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
         INTERFACE.race_start_time = RACE.start_time_monotonic
-        RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
+        RACE.start_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
 
@@ -2352,7 +2351,7 @@ def race_expire_thread(start_token):
         if RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token:
             RACE.timer_running = False # indicate race timer no longer running
             RACE.finish_time = monotonic()
-            RACE.finish_time_epoch_ms = monotonic_to_epoch_millis(RACE.finish_time)
+            RACE.finish_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.finish_time)
             Events.trigger(Evt.RACE_FINISH, {
                 'race': RACE
             })
@@ -2387,7 +2386,7 @@ def on_stop_race():
 def do_stop_race_actions():
     if RACE.race_status == RHRace.RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
-        RACE.end_time_epoch_ms = monotonic_to_epoch_millis(RACE.end_time)
+        RACE.end_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.end_time)
         delta_time = RACE.end_time - RACE.start_time_monotonic
         duration_ms = delta_time * 1000.0
 
@@ -3570,7 +3569,7 @@ def emit_result_data_thread(params, sid=None):
 
         emit_payload = PageCache.get_cache()
 
-        if 'nobroadcast' in params and sid != None:
+        if 'nobroadcast' in params and sid is not None:
             emit('result_data', emit_payload, namespace='/', room=sid)
         else:
             SOCKET_IO.emit('result_data', emit_payload, namespace='/')
@@ -4306,27 +4305,24 @@ heartbeat_thread_function.last_error_rep_time = monotonic()
 
 @catchLogExceptionsWrapper
 def clock_check_thread_function():
-    ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
+    ''' Monitor system clock and adjust PROGRAM_START if significant jump detected.
         (This can happen if NTP synchronization occurs after server starts up.) '''
-    global PROGRAM_START_EPOCH_TIME
-    global MTONIC_TO_EPOCH_MILLIS_OFFSET
+    global PROGRAM_START
     global serverInfoItems
     try:
         while True:
             gevent.sleep(10)
             if RACE.any_races_started:  # stop monitoring after any race started
                 break
-            time_now = monotonic()
-            epoch_now = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
-            diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
+            sync_now = RHTimeFns.MonotonicEpochSync()
+            diff_ms = sync_now.diff(PROGRAM_START)
             if abs(diff_ms) > 30000:
-                PROGRAM_START_EPOCH_TIME += diff_ms
-                MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
-                logger.info("Adjusting PROGRAM_START_EPOCH_TIME for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
-                            format(diff_ms/1000, PROGRAM_START_EPOCH_TIME))
+                PROGRAM_START.adjustBy(sync_now, diff_ms)
+                logger.info("Adjusting PROGRAM_START for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
+                            format(diff_ms/1000, PROGRAM_START.epochTime))
                 # update values that will be reported if running as cluster timer
-                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START.epochTime)
+                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START.epochTime/1000.0))
                 if has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
                     emit_join_cluster_response()
@@ -4358,7 +4354,7 @@ def ms_to_race_start():
 
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
-    delta_time = monotonic() - PROGRAM_START_MTONIC
+    delta_time = monotonic() - PROGRAM_START.monotonicTime
     milli_sec = delta_time * 1000.0
     return milli_sec
 
@@ -4484,7 +4480,7 @@ def pass_record_callback(node, lap_race_time, source):
                             'color': led_manager.getDisplayColor(node.index),
                             'lap': lap_data,
                             'results': RACE.results,
-                            'timer': socket.gethostname()+':'+str(rhconfig.GENERAL['HTTP_PORT'])
+                            'timer': TIMER_ID
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}, Late: {3}' \
@@ -4991,7 +4987,7 @@ def initialize_hardware_interface():
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
             INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, \
-                            isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
+                            isS32BPillFlag=RHGPIO.isS32BPillBoard(), **serviceHelpers)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
             if INTERFACE and ((not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0) and \
@@ -5023,7 +5019,7 @@ def initialize_hardware_interface():
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
             if (not rhconfig.SERIAL_PORTS) or len(rhconfig.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module('interface.MockInterface')
-                INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, **hardwareHelpers)
+                INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, **serviceHelpers)
                 for node_manager in INTERFACE.node_managers:  # put mock nodes at latest API level
                     node_manager.api_level = NODE_API_BEST
                 set_ui_message(
@@ -5157,8 +5153,8 @@ def buildServerInfo():
         # create version of 'serverInfo' without 'about_html' entry
         serverInfoItems = serverInfo.copy()
         serverInfoItems.pop('about_html', None)
-        serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+        serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START.epochTime)
+        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START.epochTime/1000.0))
 
         return serverInfo
 
@@ -5176,7 +5172,7 @@ def reportServerInfo():
         if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
             logger.info('** WARNING: Node firmware is out of date and may not function properly **')
             msgStr = "Node firmware is out of date and may not function properly."
-            if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
+            if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port is not None:
                 msgStr += " " + "If an S32_BPill board is connected, you should" + \
                           " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
                           "its processor."
@@ -5184,7 +5180,7 @@ def reportServerInfo():
         elif serverInfo['node_api_lowest'] < NODE_API_BEST:
             logger.info('** NOTICE: Node firmware update is available **')
             msgStr = "Node firmware update is available."
-            if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
+            if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port is not None:
                 msgStr += " " + "If an S32_BPill board is connected, you should" + \
                           " <a href=\"/updatenodes\">" + "flash" + "</a> " + \
                           "its processor."
@@ -5200,7 +5196,7 @@ def reportServerInfo():
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
+logger.debug('Program started at {0:.0f}'.format(PROGRAM_START.epochTime))
 RHUtils.idAndLogSystemInfo()
 
 if RHUtils.isVersionPython2():
@@ -5257,13 +5253,13 @@ if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
     stm32loader.reset_to_run()
     stm32loader.set_console_output_fn(None)
 
-hardwareHelpers = {}
+serviceHelpers = {}
 for helper in search_modules(helper_pkg, suffix='helper'):
     helper_key = helper.__name__[len(helper_pkg.__name__)+1:]
     try:
-        hardwareHelpers[helper_key] = helper.create(rhconfig)
+        serviceHelpers[helper_key] = helper.create(rhconfig)
     except Exception as ex:
-        logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
+        logger.warning("Unable to create service helper '{0}':  {1}".format(helper.__name__, ex))
 
 resultFlag = initialize_hardware_interface()
 if not resultFlag:
@@ -5306,7 +5302,7 @@ try:
                 )
             break
         secondary = SecondaryNode(sec_idx, secondary_info, RACE, RHData, getCurrentProfile, \
-                          emit_split_pass_info, monotonic_to_epoch_millis, \
+                          emit_split_pass_info, PROGRAM_START, \
                           emit_cluster_connect_change, RELEASE_VERSION)
         CLUSTER.addSecondary(secondary)
 except:
@@ -5334,7 +5330,12 @@ gevent.sleep(0.500)
 
 if hasattr(INTERFACE, 'sensors'):
     SENSORS.extend(INTERFACE.sensors)
-SENSORS.discover(sensor_pkg, config=rhconfig.SENSORS, **hardwareHelpers)
+SENSORS.discover(sensor_pkg, config=rhconfig.SENSORS, **serviceHelpers)
+
+INTERFACE.mqtt_client = serviceHelpers.get('mqtt_helper', None)
+INTERFACE.mqtt_ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
+INTERFACE.mqtt_ctrl_topic = rhconfig.MQTT['TIMER_CTRL_TOPIC']
+INTERFACE.timer_id = TIMER_ID
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
@@ -5470,9 +5471,8 @@ if vrx_controller:
 audio_manager = AudioEventManager(Events, RHData, RACE, rhconfig.AUDIO)
 audio_manager.install_default_effects()
 
-mqtt_manager = MqttEventManager(Events, RHData, RACE, rhconfig.MQTT)
+mqtt_manager = MqttEventManager(Events, RHData, RACE, rhconfig.MQTT, serviceHelpers.get('mqtt_helper', None))
 mqtt_manager.install_default_messages()
-mqtt_manager.start()
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language)
@@ -5480,10 +5480,10 @@ export_manager = DataExportManager(RHData, PageCache, Language)
 # register endpoints
 from . import json_endpoints
 from . import ota
-from . import race_event
+from . import race_explorer_endpoints
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota.createBlueprint())
-APP.register_blueprint(race_event.createBlueprint(RHData))
+APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData))
 
 if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     from .chorus_api import ChorusAPI

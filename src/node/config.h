@@ -142,7 +142,7 @@
 #define MQTT_USERNAME "test"
 #define MQTT_PASSWORD "test"
 #define MQTT_SAMPLE_INTERVAL 100
-#define MQTT_TOPIC "timer/node_manager"
+#define MQTT_TOPIC "node_managers/timer"
 
 
 // Pins

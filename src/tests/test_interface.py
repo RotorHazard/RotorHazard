@@ -3,6 +3,13 @@ from interface import calculate_checksum, ExtremumFilter, RssiHistory
 from interface.MockInterface import MockInterface
 from interface.BaseHardwareInterface import PeakNadirHistory
 
+
+class StubMQTTMessage:
+    def __init__(self, topic, payload):
+        self.topic = topic
+        self.payload = payload.encode('utf-8')
+
+
 class InterfaceTest(unittest.TestCase):
     def test_checksum(self):
         data = bytearray([200, 145])
@@ -104,6 +111,39 @@ class InterfaceTest(unittest.TestCase):
         })
         self.assertEqual(new_enter_at_level, 11)
         self.assertEqual(new_exit_at_level, 6)
+
+    def test_mqtt_frequency(self):
+        intf = MockInterface(1)
+        intf.timer_id = 'local'
+        msg = {
+            'topic': intf._mqtt_create_node_topic('system', intf.nodes[0], "frequency"),
+            'payload': '5675'
+        }
+        intf._mqtt_set_frequency(intf.node_managers[0], None, None, StubMQTTMessage(**msg))
+        self.assertEqual(intf.nodes[0].frequency, 5675)
+
+    def test_mqtt_frequency_bandChannel(self):
+        intf = MockInterface(1)
+        intf.timer_id = 'local'
+        msg = {
+            'topic': intf._mqtt_create_node_topic('system', intf.nodes[0], "frequency"),
+            'payload': '5675,X4'
+        }
+        intf._mqtt_set_frequency(intf.node_managers[0], None, None, StubMQTTMessage(**msg))
+        self.assertEqual(intf.nodes[0].frequency, 5675)
+        self.assertEqual(intf.nodes[0].bandChannel, 'X4')
+
+    def test_mqtt_bandChannel(self):
+        intf = MockInterface(1)
+        intf.timer_id = 'local'
+        msg = {
+            'topic': intf._mqtt_create_node_topic('system', intf.nodes[0], "bandChannel"),
+            'payload': 'R8'
+        }
+        intf._mqtt_set_bandChannel(intf.node_managers[0], None, None, StubMQTTMessage(**msg))
+        self.assertEqual(intf.nodes[0].frequency, 5917)
+        self.assertEqual(intf.nodes[0].bandChannel, 'R8')
+
 
 
 if __name__ == '__main__':

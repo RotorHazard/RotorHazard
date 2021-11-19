@@ -69,7 +69,7 @@ class RunningMedian:
         self.ring_[self.head_] = x
         self.head_ = (self.head_ + 1) % len(self.ring_)
 
-        if current != None: self.sorted_.remove(current)
+        if current is not None: self.sorted_.remove(current)
         self.sorted_.insert(x)
 
     def median(self):

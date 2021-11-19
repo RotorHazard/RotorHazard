@@ -58,8 +58,8 @@ class I2CBus(object):
             logger.info('I2C error: {0}'.format(err))
 
 
-def create(config):
-    bus_ids = config.HARDWARE['I2C_BUSES']
+def create(rhconfig):
+    bus_ids = rhconfig.HARDWARE['I2C_BUSES']
     buses = []
     for bus_id in bus_ids:
         logger.debug('Starting I2C on bus {0}'.format(bus_id))

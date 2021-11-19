@@ -1,4 +1,10 @@
 #!/bin/sh
+set -e
+
+# Make sure system is up-to-date, security fixes and all
+sudo apt-get update
+sudo apt-get upgrade -y
+
 cd src
 python3 -m pip install --upgrade -r requirements.txt
 sudo apt-get install python3-numpy
@@ -13,6 +19,10 @@ python3 -m json_schema_for_humans.generate src/vtxconfig_schema-1.0.json doc/sch
 
 # Race explorer
 sudo apt-get install nodejs
+# npm for old Raspbians
+set +e
+sudo apt-get install npm
+set -e
 cd race-explorer
 npm install
 npm run build

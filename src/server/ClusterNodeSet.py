@@ -24,7 +24,7 @@ class SecondaryNode:
     TIMEDIFF_CORRECTION_THRESH_MS = 250  # correct split times if secondary clock more off than this
 
     def __init__(self, idVal, info, RACE, RHData, getCurrentProfile, \
-                 emit_split_pass_info, monotonic_to_epoch_millis, \
+                 emit_split_pass_info, PROGRAM_START, \
                  emit_cluster_connect_change, server_release_version):
         self.id = idVal
         self.info = info
@@ -32,7 +32,7 @@ class SecondaryNode:
         self.RHData = RHData
         self.getCurrentProfile = getCurrentProfile
         self.emit_split_pass_info = emit_split_pass_info
-        self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
+        self.PROGRAM_START = PROGRAM_START
         self.emit_cluster_connect_change = emit_cluster_connect_change
         self.server_release_version = server_release_version
         addr = info['address']
@@ -140,8 +140,8 @@ class SecondaryNode:
                                     self.lastCheckQueryTime = now_time
                                     # timestamp not actually used by secondary, but send to make query and response symmetrical
                                     payload = {
-                                        'timestamp': self.monotonic_to_epoch_millis(now_time) \
-                                                         if self.monotonic_to_epoch_millis else 0
+                                        'timestamp': self.PROGRAM_START.monotonic_to_epoch_millis(now_time) \
+                                                         if self.PROGRAM_START else 0
                                     }
                                     # don't update 'lastContactTime' value until response received
                                     self.sio.emit('check_secondary_query', payload)
@@ -402,9 +402,9 @@ class SecondaryNode:
                         secondaryTimestamp = data.get('timestamp', 0)
                         if secondaryTimestamp:
                             # calculate local-time value midway between before and after network query
-                            localTimestamp = self.monotonic_to_epoch_millis(\
+                            localTimestamp = self.PROGRAM_START.monotonic_to_epoch_millis(\
                                              self.lastCheckQueryTime + transitTime/2) \
-                                             if self.monotonic_to_epoch_millis else 0
+                                             if self.PROGRAM_START else 0
                             # calculate clock-time difference in ms and add to running median
                             self.timeDiffMedianObj.insert(int(round(secondaryTimestamp - localTimestamp)))
                             self.timeDiffMedianMs = self.timeDiffMedianObj.median()

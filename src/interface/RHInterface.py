@@ -83,6 +83,7 @@ def unpack_rssi(node, data):
 
 
 class RHNodeManager(NodeManager):
+    TYPE = "RH"
     MAX_RETRY_COUNT = 2
 
     def __init__(self):
@@ -110,6 +111,9 @@ class RHNodeManager(NodeManager):
             self.curr_multi_node_index = node.set_and_validate_value_8(WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, node.multi_node_index)
             self.select = curr_select
         return self.curr_multi_node_index == node.multi_node_index
+
+    def get_disabled_frequency(self):
+        return 1111 if self.api_level >= 24 else super().get_disabled_frequency()
 
     def read_revision_code(self):
         self.api_level = 0
@@ -152,7 +156,7 @@ class RHNodeManager(NodeManager):
         try:
             data = self.read_command(READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, RHNodeManager.MAX_RETRY_COUNT)
             self.firmware_version_str = bytearray(data).decode("utf-8").rstrip('\0') \
-                                          if data != None else None
+                                          if data is not None else None
         except Exception:
             logger.exception('Error fetching READ_FW_VERSION from {}'.format(self.addr))
         return self.firmware_version_str
@@ -521,24 +525,27 @@ class RHInterface(BaseHardwareInterface):
         else:
             return node.get_value_16(command)
 
+    def transmit_frequency(self, node, frequency):
+        return node.set_and_validate_value_16(
+            WRITE_FREQUENCY,
+            READ_FREQUENCY,
+            frequency)
+
+    def transmit_enter_at_level(self, node, level):
+        return self.set_and_validate_value_rssi(node,
+            WRITE_ENTER_AT_LEVEL,
+            READ_ENTER_AT_LEVEL,
+            level)
+
+    def transmit_exit_at_level(self, node, level):
+        return self.set_and_validate_value_rssi(node,
+            WRITE_EXIT_AT_LEVEL,
+            READ_EXIT_AT_LEVEL,
+            level)
+
     #
     # External functions for setting data
     #
-
-    def set_frequency(self, node_index, frequency, band=None, channel=None):
-        node = self.nodes[node_index]
-        node.debug_pass_count = 0  # reset debug pass count on frequency change
-        if frequency:
-            node.frequency = node.set_and_validate_value_16(
-                WRITE_FREQUENCY,
-                READ_FREQUENCY,
-                frequency)
-        else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
-            node.set_and_validate_value_16(
-                WRITE_FREQUENCY,
-                READ_FREQUENCY,
-                1111 if node.manager.api_level >= 24 else 5800)
-            node.frequency = 0
 
     def set_mode(self, node_index, mode):
         node = self.nodes[node_index]
@@ -558,18 +565,6 @@ class RHInterface(BaseHardwareInterface):
             # restore original frequency
             if not scan_enabled:
                 self.set_frequency(node_index, node.frequency)
-
-    def transmit_enter_at_level(self, node, level):
-        return self.set_and_validate_value_rssi(node,
-            WRITE_ENTER_AT_LEVEL,
-            READ_ENTER_AT_LEVEL,
-            level)
-
-    def transmit_exit_at_level(self, node, level):
-        return self.set_and_validate_value_rssi(node,
-            WRITE_EXIT_AT_LEVEL,
-            READ_EXIT_AT_LEVEL,
-            level)
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]

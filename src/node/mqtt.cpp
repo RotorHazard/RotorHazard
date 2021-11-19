@@ -77,8 +77,8 @@ inline bool copyNonNegativeInteger(char* dst, const char* src, int maxLen);
 
 /**
  * Topic structure:
- * node_manager/<name>/<idx>/frequency
- * node_manager/<name>/<idx>/power
+ * <nodeManager>/<idx>/frequency
+ * <nodeManager>/<idx>/power
  */
 void mqttProcessMessage(const char topic[], const char msg[], int msgLen) {
     char homeTopic[64] = "";
