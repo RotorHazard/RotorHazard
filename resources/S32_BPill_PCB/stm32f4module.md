@@ -55,6 +55,8 @@ If this is the first time using the processor, its initial programming (flashing
 
 Once the processor has been flash-updated the first time, future flash-updates can be performed by simply clicking on the `Update` button. The displayed processor type should be "STM32F4".
 
+Note that the above flashing method will only work with an STM32F411CEU6 module. If another type of STM32F4 module is used or if the flashing fails, see the "src/node/[readme_S32_BPill.md](../../src/node/readme_S32_BPill.md)" file for instructions on building and flashing the code using the Arduino IDE. The module pinout should match what is shown above.
+
 **Technical Notes:**
 
 * Comparing the pinouts for the Blue Pill STM32F103C8T6 vs. the WeAct "Black Pill" STM32F411CEU6 module, the pins on one side are identical (pins 21-40), whereas on the other side pins 5-15 are shifted by one and the reset pin is moved. Most of these changes are handled in the node code (with the STM32_F4_PROCTYPE build option), but the jumper wires are needed to route the Reset and RSSI_1-to-B1 signals. See [here for a spreadsheet](files/RHNode_Pinout_F411CE_20210502.xlsx) with pinout information.

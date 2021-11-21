@@ -39,6 +39,8 @@ Support for STM32 processors in the Arduino IDE is provided by the [STM32duino p
 <a id="s32stlink"></a>
 8b. If other methods are unsuccessful, the code may be uploaded to the BPill processor using an [ST-Link](https://www.ebay.com/sch/i.html?_nkw=ST-Link) USB programming adapter. It should be wired to the 4 pins of the programming connector on the BPill processor (SWCLK, SWDIO, GND, 3.3V as shown [here](https://alexbirkett.github.io/microcontroller/2019/03/30/flash_bluepill_using_ST_link.html)). In the "Tools" menu, set the "Upload method" to "STM32CubeProgrammer (SWD)". Clicking on the 'Upload' button should flash the code onto the S32_BPill processor.
 
+*STM32F4:* If the code needs to be built for an STM32F4 module (as described [here](../../resources/S32_BPill_PCB/stm32f4module.md)) the above process may be used if the "Board part number" is configured to match the processor type.  Also, to configure the proper I/O pinout, the following line should added to the "src/node/config.h" file (right after the "#include" statements):  `#define STM32_F4_PROCTYPE 1`
+
 ## Command-line Compiling and Uploading (S32_BPill Nodes)
 
 Command-line batch/script files for compiling and uploading the node code may be found in the `src/node/scripts` directory. For these files to work, the Arduino IDE needs to be installed -- Arduino IDE version 1.8 or newer is required, and it can be downloaded from https://www.arduino.cc/en/Main/Software
