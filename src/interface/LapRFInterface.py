@@ -8,7 +8,7 @@ from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from sensors import Sensor, Reading
 import interface.laprf_protocol as laprf
-from interface import ExtremumFilter
+from interface import ExtremumFilter, ensure_iter
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +80,13 @@ class LapRFNode(Node):
 
 
 class LapRFInterface(BaseHardwareInterface):
-    def __init__(self, addr, io_stream):
+    def __init__(self, addr_streams):
         super().__init__()
-        node_manager = LapRFNodeManager(addr, io_stream)
-        self.node_managers = [node_manager]
+        addr_streams = ensure_iter(addr_streams)
+        for addr_stream in addr_streams:
+            node_manager = LapRFNodeManager(*addr_stream)
+            self.node_manager.append(node_manager)
+
         self.sensors = []
 
         for node_manager in self.node_managers:
@@ -223,16 +226,42 @@ class SocketStream:
         self.socket.close()
 
 
-def get_hardware_interface(*args, **kwargs):
-    SERIAL_SCHEME = 'serial:'
-    addr = kwargs['config'].LAPRF['ADDRESS']
-    if addr.startswith(SERIAL_SCHEME):
-        port = addr[len(SERIAL_SCHEME)]
-        io_stream = serial.Serial(port=port, baudrate=115200, timeout=0.25)
-    else:
+SERIAL_SCHEME = 'serial:'
+SOCKET_SCHEME = 'socket://'
+
+
+def _normalize_addr(addr):
+    if not addr.startswith(SERIAL_SCHEME) and not addr.startswith(SOCKET_SCHEME):
+        # assume simple <host>[:<port>]
         host_port = addr.split(':')
         if len(host_port) == 1:
             host_port = (host_port[0], 5403)
         addr = "socket://{}:{}/".format(host_port[0], host_port[1])
+    return addr
+
+
+def _create_stream(addr):
+    if addr.startswith(SERIAL_SCHEME):
+        port = addr[len(SERIAL_SCHEME):]
+        io_stream = serial.Serial(port=port, baudrate=115200, timeout=0.25)
+    elif addr.startswith(SOCKET_SCHEME):
+        # strip any trailing /
+        end_pos = -1 if addr[-1] == '/' else len(addr)
+        socket_addr = addr[len(SOCKET_SCHEME):end_pos]
+        host_port = socket_addr.split(':')
+        if len(host_port) == 1:
+            host_port = (host_port[0], 5403)
         io_stream = SocketStream(socket.create_connection(host_port))
-    return LapRFInterface(addr, io_stream)
+    else:
+        raise ValueError("Unsupported address: {}".format(addr))
+    return io_stream
+
+
+def get_hardware_interface(config, *args, **kwargs):
+    addrs = ensure_iter(config.LAPRF['ADDRESS'])
+    addr_streams = []
+    for addr in addrs:
+        addr  = _normalize_addr(addr)
+        io_stream = _create_stream(addr)
+        addr_streams.append((addr, io_stream))
+    return LapRFInterface(addr_streams)

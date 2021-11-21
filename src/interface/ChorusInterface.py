@@ -8,7 +8,7 @@ from monotonic import monotonic
 from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from sensors import Sensor, Reading
-from interface import ExtremumFilter
+from interface import ExtremumFilter, ensure_iter
 
 RETRY_COUNT=5
 
@@ -77,10 +77,13 @@ class ChorusNode(Node):
 
 
 class ChorusInterface(BaseHardwareInterface):
-    def __init__(self, serial_io):
+    def __init__(self, serial_ios):
         super().__init__()
-        node_manager = ChorusNodeManager(serial_io)
-        self.node_managers = [node_manager]
+        serial_ios = ensure_iter(serial_ios)
+        for serial_io in serial_ios:
+            node_manager = ChorusNodeManager(serial_io)
+            self.node_managers.append(node_manager)
+
         self.sensors = []
 
         for node_manager in self.node_managers:
@@ -175,6 +178,6 @@ class ChorusInterface(BaseHardwareInterface):
 
 def get_hardware_interface(config, *args, **kwargs):
     '''Returns the interface object.'''
-    port = config.CHORUS['HARDWARE_PORT']
-    serial_io = serial.Serial(port=port, baudrate=115200, timeout=0.1)
-    return ChorusInterface(serial_io)
+    ports = ensure_iter(config.CHORUS['HARDWARE_PORT'])
+    serial_ios = [serial.Serial(port=port, baudrate=115200, timeout=0.1) for port in ports]
+    return ChorusInterface(serial_ios)

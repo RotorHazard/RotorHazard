@@ -46,6 +46,12 @@ def calculate_checksum(data: bytearray):
     return checksum
 
 
+def ensure_iter(l):
+    if not hasattr(l, '__iter__'):
+        l = [l]
+    return l
+
+
 class RssiHistory:
     def __init__(self):
         # monotonic timestamps (secs)
