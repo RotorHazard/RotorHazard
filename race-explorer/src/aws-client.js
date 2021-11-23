@@ -3,7 +3,7 @@ import { CognitoIdentityClient } from "@aws-sdk/client-cognito-identity";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
 import * as config from './aws-config.js';
 
-export default function createEventDataLoader() {
+export default function createResultDataLoader() {
   const authToken = getAuthToken();
   let loginTokens = {};
   if (authToken) {

@@ -1,13 +1,13 @@
 import mqtt from 'mqtt';
 import * as config from './rh-config.js';
 
-export function createEventDataLoader() {
-  return (processEvents, raceEvents) => loadEventData(config.eventDataEndpoint, processEvents, raceEvents);
+export function createResultDataLoader() {
+  return (processResults, raceEvents) => loadResultData(config.resultDataEndpoint, processResults, raceEvents);
 }
 
-async function loadEventData(endpoint, processEvents, raceEvents) {
+async function loadResultData(endpoint, processResults, raceEvents) {
   const body = await (await fetch(endpoint)).text();
-  processEvents(body, raceEvents);
+  processResults(body, raceEvents);
 }
 
 export function createSetupDataLoader() {
@@ -33,6 +33,12 @@ export async function loadVtxTable(setVtxTable) {
   }
   setVtxTable(vtxTable);
 }
+
+export async function loadEventData(setEventData) {
+  const body = await (await fetch(config.eventDataEndpoint)).json();
+  setEventData(body);
+}
+
 
 let mqttConfig = null;
 

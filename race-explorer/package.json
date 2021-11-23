@@ -9,6 +9,7 @@
     "@aws-sdk/credential-providers": "^3.41.0",
     "@emotion/react": "^11.5.0",
     "@emotion/styled": "^11.3.0",
+    "@mui/icons-material": "^5.2.0",
     "@mui/material": "^5.1.0",
     "@mui/utils": "^5.1.0",
     "@testing-library/jest-dom": "^5.15.0",

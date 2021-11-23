@@ -6,6 +6,10 @@ import Input from '@mui/material/Input';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import Tooltip from '@mui/material/Tooltip';
+import ComputerIcon from '@mui/icons-material/Computer';
+import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
+import EventSeatIcon from '@mui/icons-material/EventSeat';
+import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
 import { createSetupDataLoader, loadVtxTable, loadMqttConfig, getMqttClient } from './rh-client.js';
 
@@ -135,8 +139,9 @@ function Frequency(props) {
       );
     })}
     </Select>
-    <Input value={frequency} disabled={frequency===0}
-      onChange={(evt) => changeFrequency(Number(evt.target.value))}
+    <InputLabel id="frequency-label">Frequency</InputLabel>
+    <Input labelId="frequency-label" value={frequency}
+      onChange={(evt) => changeFrequency(evt.target.value)}
       inputProps={{
       step: 5,
       min: 5645,
@@ -154,26 +159,26 @@ function EnterExitTriggers(props) {
   const enterTriggerChangesHook = props?.enterTriggerChangesHook;
   useEffect(() => {
     if (enterTriggerChangesHook) {
-      return enterTriggerChangesHook((level) => {setEnterTrigger(Number(level));});
+      return enterTriggerChangesHook((level) => {setEnterTrigger(level);});
     }
   }, [enterTriggerChangesHook]);
 
   const exitTriggerChangesHook = props?.exitTriggerChangesHook;
   useEffect(() => {
     if (exitTriggerChangesHook) {
-      return exitTriggerChangesHook((level) => {setExitTrigger(Number(level));});
+      return exitTriggerChangesHook((level) => {setExitTrigger(level);});
     }
   }, [exitTriggerChangesHook]);
 
   const changeEnterTrigger = (level) => {
-    setEnterTrigger(Number(level));
+    setEnterTrigger(level);
     if (props?.onEnterTriggerChange) {
       props.onEnterTriggerChange(level);
     }
   };
 
   const changeExitTrigger = (level) => {
-    setExitTrigger(Number(level));
+    setExitTrigger(level);
     if (props?.onExitTriggerChange) {
       props.onExitTriggerChange(level);
     }
@@ -181,7 +186,8 @@ function EnterExitTriggers(props) {
 
   return (
     <div>
-    <Input value={enterTrigger}
+    <InputLabel id="enter-label">Enter trigger value</InputLabel>
+    <Input labelId="enter-label" value={enterTrigger}
       onChange={(evt) => changeEnterTrigger(evt.target.value)}
       inputProps={{
       step: 1,
@@ -189,7 +195,8 @@ function EnterExitTriggers(props) {
       max: 255,
       type: 'number'
     }}/>
-    <Input value={exitTrigger}
+    <InputLabel id="exit-label">Exit trigger value</InputLabel>
+    <Input labelId="exit-label" value={exitTrigger}
       onChange={(evt) => changeExitTrigger(evt.target.value)}
       inputProps={{
       step: 1,
@@ -226,7 +233,7 @@ function TimerConfig(props) {
       const mqttClient = getMqttClient();
       mqttClient.subscribeTo(freqAnnTopic, (payload) => {
         const newFreq = new TextDecoder('UTF-8').decode(payload);
-        setFreq(Number(newFreq));
+        setFreq(newFreq);
       });
       return () => {
         mqttClient.unsubscribeFrom(freqAnnTopic);
@@ -254,7 +261,7 @@ function TimerConfig(props) {
       const mqttClient = getMqttClient();
       mqttClient.subscribeTo(enterTrigAnnTopic, (payload) => {
         const newLevel = new TextDecoder('UTF-8').decode(payload);
-        setEnterTrigger(Number(newLevel));
+        setEnterTrigger(newLevel);
       });
       return () => {
         mqttClient.unsubscribeFrom(enterTrigAnnTopic);
@@ -268,7 +275,7 @@ function TimerConfig(props) {
       const mqttClient = getMqttClient();
       mqttClient.subscribeTo(exitTrigAnnTopic, (payload) => {
         const newLevel = new TextDecoder('UTF-8').decode(payload);
-        setExitTrigger(Number(newLevel));
+        setExitTrigger(newLevel);
       });
       return () => {
         mqttClient.unsubscribeFrom(exitTrigAnnTopic);
@@ -278,14 +285,14 @@ function TimerConfig(props) {
   
   return (
     <div>
-    <Frequency frequency={freq} bandChannel={bc}
+    <Frequency frequency={freq.toString()} bandChannel={bc}
       onFrequencyChange={mqttFrequencyPublisher}
       frequencyChangesHook={mqttFrequencySubscriber}
       onBandChannelChange={mqttBandChannelPublisher}
       bandChannelChangesHook={mqttBandChannelSubscriber}
       vtxTable={props.vtxTable}
     />
-    <EnterExitTriggers enterTrigger={enterTrigger} exitTrigger={exitTrigger}
+    <EnterExitTriggers enterTrigger={enterTrigger.toString()} exitTrigger={exitTrigger.toString()}
       onEnterTriggerChange={mqttEnterTriggerPublisher}
       enterTriggerChangesHook={mqttEnterTriggerSubscriber}
       onExitTriggerChange={mqttExitTriggerPublisher}
@@ -309,6 +316,51 @@ function getTimerConfigFactory(type) {
   }
 }
 
+function TrackConfig(props) {
+  const [order, setOrder] = useState(props.order);
+  const [seat, setSeat] = useState(props.seat);
+  const [location, setLocation] = useState(props.location);
+
+  const changeOrder = (v) => {
+    setOrder(v);
+  };
+
+  const changeSeat = (s) => {
+    setSeat(s);
+  };
+
+  const changeLocation = (loc) => {
+    setLocation(loc);
+  };
+
+  return (
+    <div>
+    <FlagIcon/>
+    <InputLabel id="order-label">Track order</InputLabel>
+    <Input labelId="order-label" value={order}
+      onChange={(evt) => changeOrder(evt.target.value)}
+      inputProps={{
+      step: 1,
+      min: 1,
+      type: 'number'
+    }}/>
+    <InputLabel id="location-label">Location</InputLabel>
+    <Input labelId="location-label" value={location}
+      onChange={(evt) => changeLocation(evt.target.value)}
+    />
+    <EventSeatIcon/>
+    <InputLabel id="seat-label">Seat</InputLabel>
+    <Input labelId="seat-label" value={seat}
+      onChange={(evt) => changeSeat(evt.target.value)}
+      inputProps={{
+      step: 1,
+      min: 1,
+      type: 'number'
+    }}/>
+    </div>
+  );
+}
+
 export default function Setup(props) {
   const [setupData, setSetupData] = useState({});
   const [mqttConfig, setMqttConfig] = useState({});
@@ -327,14 +379,19 @@ export default function Setup(props) {
     loadVtxTable(setVtxTable);
   }, []);
 
+  let order = 0;
   return (
     <List>
     {
       Object.entries(setupData).map((timerEntry) => {
         const timerId = timerEntry[0];
         const timer = timerEntry[1];
+        order++;
+        let seat = 0;
         return (
-          <ListItem key={timerId}>{timerId}
+          <ListItem key={timerId}>
+          <ComputerIcon/>
+          {timerId}
           <List>
           {
             Object.entries(timer).map((nmEntry) => {
@@ -342,7 +399,9 @@ export default function Setup(props) {
               const nm = nmEntry[1];
               const createTimerConfig = getTimerConfigFactory(nm.type);
               return (
-                <ListItem key={nmAddr}>{nmAddr}
+                <ListItem key={nmAddr}>
+                <DeveloperBoardIcon/>
+                {nmAddr}
                 <List>
                 {
                   Object.entries(nm.nodes).map((nodeEntry) => {
@@ -351,10 +410,12 @@ export default function Setup(props) {
                     const annTopic = mqttConfig ? [mqttConfig.timerAnnTopic, timerId, nmAddr, nodeId].join('/') : null;
                     const ctrlTopic = mqttConfig ? [mqttConfig.timerCtrlTopic, timerId, nmAddr, nodeId].join('/') : null;
                     const timerConfig = createTimerConfig(node, vtxTable, annTopic, ctrlTopic);
+                    seat++;
                     return (
                       <ListItem key={nodeId}>
                       {node.id}
                       {timerConfig}
+                      <TrackConfig order={order} seat={seat}/>
                       </ListItem>
                     );
                   })

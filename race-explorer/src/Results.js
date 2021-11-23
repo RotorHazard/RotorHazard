@@ -12,10 +12,10 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import * as util from './util.js';
-import { createEventDataLoader } from './rh-client.js';
+import { createResultDataLoader } from './rh-client.js';
 
 
-function processEvents(data, raceEvents) {
+function processResults(data, raceEvents) {
   const jsonl = data.split('\n');
   for (const l of jsonl) {
     if (l.length > 0) {
@@ -50,30 +50,30 @@ function processEvents(data, raceEvents) {
   }
 }
 
-async function readData(loader, setEventData) {
+async function readData(loader, setResultData) {
   try {
     let raceEvents = {};
-    await loader(processEvents, raceEvents);
-    setEventData(raceEvents);
+    await loader(processResults, raceEvents);
+    setResultData(raceEvents);
   } catch (err) {
     console.log(err);
   }
 }
 
-export default function Race(props) {
-  const [eventData, setEventData] = useState({});
+export default function Results(props) {
+  const [resultData, setResultData] = useState({});
   const [selectedEvent, setEvent] = useState('');
   const [selectedRound, setRound] = useState('');
   const [selectedHeat, setHeat] = useState('');
   const loaderRef = useRef();
 
   useEffect(() => {
-    const loader = createEventDataLoader();
+    const loader = createResultDataLoader();
     loaderRef.current = loader;
-    readData(loader, setEventData);
+    readData(loader, setResultData);
   }, []);
 
-  util.useInterval(() => {readData(loaderRef.current, setEventData);}, 60000);
+  util.useInterval(() => {readData(loaderRef.current, setResultData);}, 60000);
 
   const selectEvent = (event) => {
     setEvent(event);
@@ -87,14 +87,14 @@ export default function Race(props) {
     setHeat(heat);
   };
 
-  const eventNames = Object.keys(eventData);
+  const eventNames = Object.keys(resultData);
   let roundData = {};
   let roundNames = [];
   let heatData = {};
   let heatNames = [];
   let pilotHeatData = {};
-  if (selectedEvent in eventData) {
-    roundData = eventData[selectedEvent];
+  if (selectedEvent in resultData) {
+    roundData = resultData[selectedEvent];
     roundNames = Object.keys(roundData);
     if (selectedRound in roundData) {
       heatData = roundData[selectedRound];

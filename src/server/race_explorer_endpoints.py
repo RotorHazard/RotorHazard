@@ -13,8 +13,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
             'raceAnnTopic': rhconfig.MQTT['RACE_ANN_TOPIC']
         }
 
-    @APP.route('/raceEvent')
-    def race_event():
+    @APP.route('/raceResults')
+    def race_results():
         eventName = RHData.get_option('eventName', '')
         msgs = []
         for race in RHData.get_savedRaceMetas():
@@ -28,6 +28,13 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                 msg = {'event': eventName, 'round': round_id, 'heat': heat_id, 'pilot': pilot.name, 'laps': laps}
                 msgs.append(msg)
         return '\n'.join([json.dumps(msg) for msg in msgs])
+
+    @APP.route('/raceEvent')
+    def race_event():
+        data = {}
+        for pilot in RHData.get_pilots():
+            data[pilot.callsign] = {}
+        return data
 
     @APP.route('/timerSetup')
     def timer_setup():
