@@ -3189,6 +3189,7 @@ def emit_environmental_data(**params):
     emit_payload = []
     for sensor in SENSORS:
         emit_payload.append({sensor.name: sensor.getReadings()})
+    Events.trigger(Evt.SENSOR_UPDATE, {'sensors': emit_payload})
 
     if ('nobroadcast' in params):
         emit('environmental_data', emit_payload)

@@ -6,6 +6,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Results from './Results';
 import Event from './Event';
 import Setup from './Setup';
+import Sensors from './Sensors';
 
 const AppBarOffset = () => <Toolbar/>;
 
@@ -24,6 +25,10 @@ export default function App(props) {
     setup: {
       button: <Button key="setup" disabled={page==='setup'} color="inherit" variant="outlined" onClick={() => {setPage('setup')}}>Setup</Button>,
       content: <Setup/>
+    },
+    sensors: {
+      button: <Button key="sensors" disabled={page==='sensors'} color="inherit" variant="outlined" onClick={() => {setPage('sensors')}}>Sensors</Button>,
+      content: <Sensors/>
     }
   };
   let content = <div/>;

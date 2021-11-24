@@ -10,7 +10,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
         return {
             'timerAnnTopic': rhconfig.MQTT['TIMER_ANN_TOPIC'],
             'timerCtrlTopic': rhconfig.MQTT['TIMER_CTRL_TOPIC'],
-            'raceAnnTopic': rhconfig.MQTT['RACE_ANN_TOPIC']
+            'raceAnnTopic': rhconfig.MQTT['RACE_ANN_TOPIC'],
+            'sensorAnnTopic': rhconfig.MQTT['SENSOR_ANN_TOPIC']
         }
 
     @APP.route('/raceResults')

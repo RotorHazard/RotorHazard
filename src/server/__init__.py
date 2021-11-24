@@ -44,6 +44,7 @@ class Config:
         self.MQTT['TIMER_ANN_TOPIC'] = 'timer/ann'
         self.MQTT['TIMER_CTRL_TOPIC'] = 'timer/ctrl'
         self.MQTT['RACE_ANN_TOPIC'] = 'race/ann'
+        self.MQTT['SENSOR_ANN_TOPIC'] = 'sensor/ann'
 
         # Video Receiver configuration
         self.VRX_CONTROL['HOST']    = 'localhost'     # MQTT broker IP Address

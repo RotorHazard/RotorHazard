@@ -176,4 +176,5 @@ class Evt:
     # VRX Controller
     VRX_DATA_RECEIVE = 'VrxDataRecieve'
 
+    SENSOR_UPDATE = 'sensorUpdate'
 
