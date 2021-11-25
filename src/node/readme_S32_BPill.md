@@ -10,11 +10,11 @@ Support for STM32 processors in the Arduino IDE is provided by the [STM32duino p
 
 1. In the "Preferences" dialog add the following link to the "Additional Boards Managers URLs" field:
 
-`https://github.com/stm32duino/BoardManagerFiles/raw/master/STM32/package_stm_index.json`
+`https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json`
 
-2. In the "Tools" menu, select "Board" | "Boards Manager"; select "Contributed" type; select "STM32 Cores", select a version and click on install. (The newest version is usually the one you want.) After the installation is complete you can close the Board Manager.
+2. In the "Tools" menu, select "Board" | "Boards Manager"; select "Contributed" type; select "STM32 MCU based boards", select a version and click on install. (The newest version is usually the one you want.) After the installation is complete you can close the Board Manager.
 
-3. In the "Tools" menu, select "Board" | "Boards Manager..." | "STM32 Boards (selected from submenu)" | "Generic STM32F1 Series"
+3. In the "Tools" menu, select "Board" | "Boards Manager..." | "STM32 boards groups" | "Generic STM32F1 Series"
 
 4. In the "Tools" menu, select "Board part number" | "BluePill F103C8"
 
@@ -61,24 +61,22 @@ The following batch/script files are available:
 
 The node code may also be edited and built using the [Sloeber-Eclipse IDE](http://eclipse.baeyens.it). To install Sloeber-Eclipse:
 
-1. Install Sloeber-Eclipse (V4.3.3 or later) from http://eclipse.baeyens.it <br>
+1. Install Sloeber-Eclipse (V4.4.1 or later) from http://eclipse.baeyens.it <br>
   Note: The length of install path should be less than 26 characters ([Sloeber limitation](https://github.com/Sloeber/arduino-eclipse-plugin/issues/705))
 
-2. Install STM32 Cores into Sloeber-Eclipse:
+2. Install STMicroelectronics-STM32 into Sloeber-Eclipse:
   * Open "Arduino > Preferences"
-  * In the tree view that pops up, go to "Arduino > Third party index url's" and add the STM32 support package URL:
+  * In the tree view that pops up, go to "Arduino > Third party index url's" and add the following support package URL:
 
-`https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/master/STM32/package_stm_index.json`
+`https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json`
 
-3. In "Arduino | Preferences | Platforms and Boards" select 'STM32 Core' version 1.7.0 <br>
-  Note:  There are newer version available, but it seems like if version >= 1.8.0 is used then the builds fail
-
+3. In "Arduino | Preferences | Platforms and Boards" open the tree to "STMicroelectronics | STM32 MCU based boards" and select a version. (The newest version is usually the one you want.)
 
 S32_BPill-node project files for Sloeber-Eclipse may be found in the `src/node/project_files/eclipse_sloeber` directory -- copy these files to the `src/node` directory. Then, in Sloeber-Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
 
-In "Project" | "Properties" | "Arduino" the "Arduino board selection" settings should be similar to these:
+In "Project | Properties | Arduino" the "Arduino board selection" settings should be similar to these:
 ```
-Platform folder:  .../STM32/hardware/stm32/1.7.0
+Platform folder:  .../STMicroelectronics/hardware/stm32/2.1.0
 Board:  Generic STM32F1 series
 Upload Protocol:  Default
 Port:  [COM for FTDI]
@@ -92,3 +90,5 @@ USB speed:  Low/Full Speed
 ```
 
 Hitting the 'Verify' button will build the code, which should create the firmware file `src/node/Release/rhnode_S32_BPill.bin`
+
+*STM32F4:* If the code needs to be built for an STM32F4 module (as described [here](../../resources/S32_BPill_PCB/stm32f4module.md)) the above process may be used if the "Board part number" is configured to match the processor type.  Also, to configure the proper I/O pinout, the following line should added to the "src/node/config.h" file (right after the "#include" statements):  `#define STM32_F4_PROCTYPE 1`

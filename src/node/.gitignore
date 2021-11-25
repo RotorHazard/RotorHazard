@@ -5,6 +5,7 @@
 /.settings
 /.cproject
 /.project
+/.sproject
 /Release/
 /build_arduino/
 /build_stm32/
