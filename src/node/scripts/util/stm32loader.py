@@ -809,7 +809,7 @@ def download_to_buffer(src_url, log_flag=True):
     if file_size > MAX_SRC_FILE_SIZE:
         raise RuntimeError("File data size too large ({})".format(file_size))
     if log_flag:
-        Console_output_fn("Downloaded {} bytes".format(file_size, src_url))
+        Console_output_fn("Downloaded {} bytes".format(file_size))
     return resp.content
 
 # read given local file to buffer
