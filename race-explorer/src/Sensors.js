@@ -68,17 +68,42 @@ export default function Sensors(props) {
             return readings.map((readingEntry) => {
               const readingName = readingEntry[0];
               const readingData = readingEntry[1];
-              let value = readingData.value;
-              if ('units' in readingData) {
-                value  += readingData.units;
+              const value = readingData.value;
+              const units = readingData?.units ?? '';
+              let displayValue;
+              switch (readingName) {
+                case 'voltage':
+                  displayValue = Number(value).toFixed(2) + units;
+                  break;
+                case 'current':
+                  displayValue = Number(value).toFixed(0) + units;
+                  break;
+                case 'power':
+                  displayValue = Number(value).toFixed(0) + units;
+                  break;
+                case 'temperature':
+                  displayValue = Number(value).toFixed(1) + units;
+                  break;
+                case 'humidity':
+                  displayValue = Number(value).toFixed(1) + units;
+                  break;
+                case 'pressure':
+                  displayValue = Number(value).toFixed(1) + units;
+                  break;
+                case 'capacity':
+                  displayValue = Number(value).toFixed(0) + units;
+                  break;
+                default:
+                  displayValue = value + units;
               }
+
               const firstCell = sensorCell;
               sensorCell = null;
               return (
                 <TableRow>
                 {firstCell}
                 <TableCell>{readingName}</TableCell>
-                <TableCell>{value}</TableCell>
+                <TableCell>{displayValue}</TableCell>
                 </TableRow>
               );
             });

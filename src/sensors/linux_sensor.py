@@ -10,7 +10,7 @@ def file_url(file):
 
 class TemperatureSensor(Sensor):
     def __init__(self, file, name):
-        super().__init__(self, url=file_url(file), name=name)
+        super().__init__(url=file_url(file), name=name)
         self.file = file
         self.description = 'Core temperature'
         self.update()
@@ -25,7 +25,7 @@ class TemperatureSensor(Sensor):
 
 class BatterySensor(Sensor):
     def __init__(self, file, name):
-        super().__init__(self, url=file_url(file), name=name)
+        super().__init__(url=file_url(file), name=name)
         self.file = file
         self.description = 'Battery'
         self.update()

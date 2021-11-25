@@ -20,8 +20,8 @@ if (dev) {
   mqttConfigEndpoint = '/mqttConfig';
 }
 
-export const mqttBroker = 'ws://localhost:8080';
+export const mqttBroker = '';
 export const mqttOptions = {
-  username: 'race',
+  username: 'race-admin',
   password: 'fu56rg20'
 };

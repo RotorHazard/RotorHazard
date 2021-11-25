@@ -1,0 +1,10 @@
+
+topic read race/ann/#
+topic read timer/ann/#
+topic read sensor/ann/#
+
+user race-admin
+topic readwrite race/ann/#
+topic readwrite timer/ann/#
+topic readwrite timer/ctrl/#
+topic readwrite sensor/ann/#

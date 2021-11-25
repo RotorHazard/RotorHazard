@@ -1,4 +1,4 @@
-name: BetaHazard
+name: BetaHazard CI
 
 on:
   push:
@@ -73,6 +73,7 @@ jobs:
         cd race-explorer
         npm install
         npm run build
+        cd ..
 
     - name: Upload code coverage
       uses: codecov/codecov-action@v1

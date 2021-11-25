@@ -1,0 +1,30 @@
+name: BetaHazard release
+
+on:
+  push:
+    tags:
+      - "race-explorer-*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build UI
+      run: |
+        cd race-explorer
+        npm install
+        npm run build
+        cd ..
+
+    - name: Zip UI
+      run: |
+        zip -9r race-explorer.zip race-explorer/build/
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          race-explorer.zip

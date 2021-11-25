@@ -26,7 +26,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                 pilot = RHData.get_pilot(pilotrace.pilot_id)
                 pilotlaps = RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id)
                 laps = [{'lap': i, 'timestamp': pilotlap.lap_time_stamp, 'timer': TIMER_ID} for i,pilotlap in enumerate(pilotlaps)]
-                msg = {'event': eventName, 'round': round_id, 'heat': heat_id, 'pilot': pilot.name, 'laps': laps}
+                msg = {'event': eventName, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
                 msgs.append(msg)
         return '\n'.join([json.dumps(msg) for msg in msgs])
 

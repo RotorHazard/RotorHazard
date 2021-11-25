@@ -41,6 +41,10 @@ class Config:
         self.LED['INVERTED_PANEL_ROWS'] = False
 
         # MQTT configuration
+        self.MQTT['BROKER'] = 'localhost'
+        self.MQTT['PORT'] = 1883
+        self.MQTT['USERNAME'] = 'race-admin'
+        self.MQTT['PASSWORD'] = 'fu56rg20'
         self.MQTT['TIMER_ANN_TOPIC'] = 'timer/ann'
         self.MQTT['TIMER_CTRL_TOPIC'] = 'timer/ctrl'
         self.MQTT['RACE_ANN_TOPIC'] = 'race/ann'

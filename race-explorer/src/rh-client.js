@@ -69,7 +69,11 @@ let mqttClient = null;
 
 export function getMqttClient() {
   if (mqttClient === null) {
-    mqttClient = mqtt.connect(config.mqttBroker, config.mqttOptions);
+    let mqttBroker = config.mqttBroker;
+    if (mqttBroker === '') {
+      mqttBroker = 'ws://'+window.location.hostname+':8083';
+    }
+    mqttClient = mqtt.connect(mqttBroker, config.mqttOptions);
     mqttClient.on('message', mqttTopicListener);
   }
   return mqttClient;
