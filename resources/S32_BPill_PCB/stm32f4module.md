@@ -36,7 +36,7 @@ The second jumper wire goes from the single-pin header that was installed at the
 
 ![stm32f4_mod8](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/stm32f4pics/stm32f4_mod8.jpg)
 
-For this processor and board (S32_BPill), the RotorHazard server must be version 3.0.0 or later. The RotorHazard server should be installed on the timer as per the instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)'.
+For this processor and board (S32_BPill), the RotorHazard server must be version 3.1.0 or later. The RotorHazard server should be installed on the timer as per the instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)'.
 
 If this is the first time using the processor, its initial programming (flashing) should be performed as follows:
 

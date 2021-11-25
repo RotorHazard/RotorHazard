@@ -8,7 +8,7 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * Instead of multiple Arduinos, the board has a single STM32 processor
 
-* Board size (100×100mm) is the same as the "standard" Delta5 PCBs
+* Board size (100x100mm) is the same as the "standard" Delta5 PCBs
 
 * Supports 1 to 8 RX5808 node modules on a single PCB
 
@@ -74,7 +74,7 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 ## Notes
 
-* For the S32_BPill board the RotorHazard server must be version 3.0.0 or later.
+* For the S32_BPill board the RotorHazard server must be version 3.1.0 or later.
 
 * The recommended voltage regulators for the board are Pololu [D36V28F5](https://www.pololu.com/product/3782) (5V) and Pololu [D24V22F3](https://www.pololu.com/product/2857) (3.3V). See [here for additional notes](files/PololuCompatibilityWithRaceTimer.txt) about Pololu voltage regulators.
 
