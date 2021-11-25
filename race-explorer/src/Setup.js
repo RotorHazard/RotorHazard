@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
 import MenuItem from '@mui/material/MenuItem';
 import Input from '@mui/material/Input';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import Tooltip from '@mui/material/Tooltip';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
 import ComputerIcon from '@mui/icons-material/Computer';
 import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
+import MemoryIcon from '@mui/icons-material/Memory';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
@@ -317,37 +323,25 @@ function getTimerConfigFactory(type) {
 }
 
 function TrackConfig(props) {
-  const [order, setOrder] = useState(props.order);
+  const [position, setPosition] = useState(props.position);
   const [seat, setSeat] = useState(props.seat);
-  const [location, setLocation] = useState(props.location);
 
-  const changeOrder = (v) => {
-    setOrder(v);
+  const changePosition = (v) => {
+    setPosition(v);
   };
 
   const changeSeat = (s) => {
     setSeat(s);
   };
 
-  const changeLocation = (loc) => {
-    setLocation(loc);
-  };
-
   return (
     <div>
     <FlagIcon/>
-    <InputLabel id="order-label">Track order</InputLabel>
-    <Input labelId="order-label" value={order}
-      onChange={(evt) => changeOrder(evt.target.value)}
-      inputProps={{
-      step: 1,
-      min: 1,
-      type: 'number'
-    }}/>
-    <InputLabel id="location-label">Location</InputLabel>
-    <Input labelId="location-label" value={location}
-      onChange={(evt) => changeLocation(evt.target.value)}
-    />
+    <InputLabel id="position-label">Track position</InputLabel>
+    <Select labelId="position-label" value={position}
+      onChange={(evt) => changePosition(evt.target.value)}>
+      <MenuItem value={position}>{position}</MenuItem>
+    </Select>
     <EventSeatIcon/>
     <InputLabel id="seat-label">Seat</InputLabel>
     <Input labelId="seat-label" value={seat}
@@ -379,58 +373,62 @@ export default function Setup(props) {
     loadVtxTable(setVtxTable);
   }, []);
 
-  let order = 0;
+  let timerPosition = "Start/finish";
+  let timerPositionIdx = 1;
   return (
-    <List>
-    {
-      Object.entries(setupData).map((timerEntry) => {
-        const timerId = timerEntry[0];
-        const timer = timerEntry[1];
-        order++;
-        let seat = 0;
-        return (
-          <ListItem key={timerId}>
-          <ComputerIcon/>
-          {timerId}
-          <List>
-          {
-            Object.entries(timer).map((nmEntry) => {
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Timer</TableCell>
+            <TableCell>Node manager</TableCell>
+            <TableCell>Node</TableCell>
+            <TableCell>Setup</TableCell>
+            <TableCell>Track</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+        {
+          Object.entries(setupData).map((timerEntry) => {
+            const timerId = timerEntry[0];
+            const nodeManagers = Object.entries(timerEntry[1]);
+            let timerCell = <TableCell rowSpan={nodeManagers.length}><ComputerIcon/>{timerId}</TableCell>;
+            const position = timerPosition;
+            timerPositionIdx++;
+            timerPosition = "Gate "+timerPositionIdx;
+            let seat = 0;
+            return nodeManagers.map((nmEntry) => {
               const nmAddr = nmEntry[0];
               const nm = nmEntry[1];
+              const nodes = Object.entries(nm.nodes);
+              let nmCell = <TableCell rowSpan={nodes.length}><DeveloperBoardIcon/>{nmAddr}</TableCell>;
               const createTimerConfig = getTimerConfigFactory(nm.type);
-              return (
-                <ListItem key={nmAddr}>
-                <DeveloperBoardIcon/>
-                {nmAddr}
-                <List>
-                {
-                  Object.entries(nm.nodes).map((nodeEntry) => {
-                    const nodeId = nodeEntry[0];
-                    const node = nodeEntry[1];
-                    const annTopic = mqttConfig ? [mqttConfig.timerAnnTopic, timerId, nmAddr, nodeId].join('/') : null;
-                    const ctrlTopic = mqttConfig ? [mqttConfig.timerCtrlTopic, timerId, nmAddr, nodeId].join('/') : null;
-                    const timerConfig = createTimerConfig(node, vtxTable, annTopic, ctrlTopic);
-                    seat++;
-                    return (
-                      <ListItem key={nodeId}>
-                      {node.id}
-                      {timerConfig}
-                      <TrackConfig order={order} seat={seat}/>
-                      </ListItem>
-                    );
-                  })
-                }
-                </List>
-                </ListItem>
-              );
-            })
-            
-          }
-          </List>
-          </ListItem>
-        );
-      })
-    }
-    </List>
+              return nodes.map((nodeEntry) => {
+                const nodeId = nodeEntry[0];
+                const node = nodeEntry[1];
+                const annTopic = mqttConfig ? [mqttConfig.timerAnnTopic, timerId, nmAddr, nodeId].join('/') : null;
+                const ctrlTopic = mqttConfig ? [mqttConfig.timerCtrlTopic, timerId, nmAddr, nodeId].join('/') : null;
+                const timerConfig = createTimerConfig(node, vtxTable, annTopic, ctrlTopic);
+                const firstCell = timerCell;
+                timerCell = null;
+                const secondCell = nmCell;
+                nmCell = null;
+                seat++;
+                return (
+                  <TableRow>
+                  {firstCell}
+                  {secondCell}
+                  <TableCell><MemoryIcon/>{node.id}</TableCell>
+                  <TableCell>{timerConfig}</TableCell>
+                  <TableCell><TrackConfig position={position} seat={seat}/></TableCell>
+                  </TableRow>
+                );
+              });
+            });
+          })
+        }
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }
