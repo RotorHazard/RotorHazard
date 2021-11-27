@@ -34,12 +34,12 @@ export default function Event(props) {
     {
       heats.map((heat) => {
         return (
-          <div>
+          <div key={heat}>
           Heat {heat}
           <List component={Stack} direction="row">
           {
             seats.map((seat) => {
-              return <ListItemText>Seat {seat}</ListItemText>;
+              return <ListItemText key={seat}>Seat {seat}</ListItemText>;
             })
           }
           </List>

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
-import Input from '@mui/material/Input';
+import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import Select from '@mui/material/Select';
+import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -17,7 +21,7 @@ import MemoryIcon from '@mui/icons-material/Memory';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
-import { createSetupDataLoader, loadVtxTable, loadMqttConfig, getMqttClient } from './rh-client.js';
+import { createSetupDataLoader, loadVtxTable, loadTrackData, loadMqttConfig, getMqttClient } from './rh-client.js';
 
 
 function processSetup(data, setupData) {
@@ -71,10 +75,10 @@ async function readData(loader, setSetupData) {
 }
 
 function Frequency(props) {
+  const vtxTable = props.vtxTable;
   const [frequency, setFrequency] = useState(props.frequency);
   const [band, setBand] = useState(props?.bandChannel?.[0] ?? '');
   const [channel, setChannel] = useState(props?.bandChannel?.[1] ?? '');
-  const vtxTable = props.vtxTable;
 
   const frequencyChangesHook = props?.frequencyChangesHook;
   useEffect(() => {
@@ -121,6 +125,7 @@ function Frequency(props) {
 
   return (
     <div>
+    <FormControl>
     <InputLabel id="band-label">Band</InputLabel>
     <Select labelId="band-label" value={band} defaultValue=""
     onChange={(evt) => selectBand(evt.target.value)}>
@@ -133,6 +138,8 @@ function Frequency(props) {
       );
     })}
     </Select>
+    </FormControl>
+    <FormControl>
     <InputLabel id="channel-label">Channel</InputLabel>
     <Select labelId="channel-label" value={channel} defaultValue=""
     onChange={(evt) => selectChannel(evt.target.value)}>
@@ -145,14 +152,16 @@ function Frequency(props) {
       );
     })}
     </Select>
-    <InputLabel id="frequency-label">Frequency</InputLabel>
-    <Input labelId="frequency-label" value={frequency}
+    </FormControl>
+    <TextField label="Frequency" helperText="0 to disable"
+      value={frequency}
       onChange={(evt) => changeFrequency(evt.target.value)}
       inputProps={{
       step: 5,
       min: 5645,
       max: 5945,
-      type: 'number'
+      type: 'number',
+      maxLength: 4
     }}/>
     </div>
   );
@@ -192,8 +201,7 @@ function EnterExitTriggers(props) {
 
   return (
     <div>
-    <InputLabel id="enter-label">Enter trigger value</InputLabel>
-    <Input labelId="enter-label" value={enterTrigger}
+    <TextField label="Enter trigger value" value={enterTrigger}
       onChange={(evt) => changeEnterTrigger(evt.target.value)}
       inputProps={{
       step: 1,
@@ -201,8 +209,7 @@ function EnterExitTriggers(props) {
       max: 255,
       type: 'number'
     }}/>
-    <InputLabel id="exit-label">Exit trigger value</InputLabel>
-    <Input labelId="exit-label" value={exitTrigger}
+    <TextField label="Exit trigger value" value={exitTrigger}
       onChange={(evt) => changeExitTrigger(evt.target.value)}
       inputProps={{
       step: 1,
@@ -323,11 +330,11 @@ function getTimerConfigFactory(type) {
 }
 
 function TrackConfig(props) {
-  const [position, setPosition] = useState(props.position);
+  const [location, setLocation] = useState(props.location);
   const [seat, setSeat] = useState(props.seat);
 
-  const changePosition = (v) => {
-    setPosition(v);
+  const changeLocation = (v) => {
+    setLocation(v);
   };
 
   const changeSeat = (s) => {
@@ -336,34 +343,42 @@ function TrackConfig(props) {
 
   return (
     <div>
-    <FlagIcon/>
-    <InputLabel id="position-label">Track position</InputLabel>
-    <Select labelId="position-label" value={position}
-      onChange={(evt) => changePosition(evt.target.value)}>
-      <MenuItem value={position}>{position}</MenuItem>
+    <FormControl>
+    <InputLabel id="location-label">Track location</InputLabel>
+    <Select labelId="location-label" value={location}
+      onChange={(evt) => changeLocation(evt.target.value)}>
+      {
+        props.trackLayout.map((loc) => {
+          return (
+            <MenuItem value={loc.name}>
+              <ListItemIcon><FlagIcon/></ListItemIcon>
+              <ListItemText>{loc.name}</ListItemText>
+             </MenuItem>
+          );
+        })
+      }
     </Select>
-    <EventSeatIcon/>
-    <InputLabel id="seat-label">Seat</InputLabel>
-    <Input labelId="seat-label" value={seat}
+    </FormControl>
+    <TextField label="Seat" value={seat}
       onChange={(evt) => changeSeat(evt.target.value)}
       inputProps={{
       step: 1,
       min: 1,
       type: 'number'
-    }}/>
+      }}
+      InputProps={{
+        startAdornment: <InputAdornment position="start"><EventSeatIcon/></InputAdornment>
+      }}
+    />
     </div>
   );
 }
 
 export default function Setup(props) {
-  const [setupData, setSetupData] = useState({});
   const [mqttConfig, setMqttConfig] = useState({});
   const [vtxTable, setVtxTable] = useState({});
-
-  useEffect(() => {
-    const loader = createSetupDataLoader();
-    readData(loader, setSetupData);
-  }, []);
+  const [trackLayout, setTrackLayout] = useState([]);
+  const [setupData, setSetupData] = useState({});
 
   useEffect(() => {
     loadMqttConfig(setMqttConfig);
@@ -373,8 +388,18 @@ export default function Setup(props) {
     loadVtxTable(setVtxTable);
   }, []);
 
-  let timerPosition = "Start/finish";
-  let timerPositionIdx = 1;
+  useEffect(() => {
+    loadTrackData((data) => {
+      setTrackLayout(data.layout);
+    });
+  }, []);
+
+  useEffect(() => {
+    const loader = createSetupDataLoader();
+    readData(loader, setSetupData);
+  }, []);
+
+  let trackLocationIdx = 0;
   return (
     <TableContainer component={Paper}>
       <Table>
@@ -393,9 +418,8 @@ export default function Setup(props) {
             const timerId = timerEntry[0];
             const nodeManagers = Object.entries(timerEntry[1]);
             let timerCell = <TableCell rowSpan={nodeManagers.length}><ComputerIcon/>{timerId}</TableCell>;
-            const position = timerPosition;
-            timerPositionIdx++;
-            timerPosition = "Gate "+timerPositionIdx;
+            const trackLocation = trackLayout[trackLocationIdx].name;
+            trackLocationIdx++;
             let seat = 0;
             return nodeManagers.map((nmEntry) => {
               const nmAddr = nmEntry[0];
@@ -415,12 +439,12 @@ export default function Setup(props) {
                 nmCell = null;
                 seat++;
                 return (
-                  <TableRow>
+                  <TableRow key={nodeId}>
                   {firstCell}
                   {secondCell}
                   <TableCell><MemoryIcon/>{node.id}</TableCell>
                   <TableCell>{timerConfig}</TableCell>
-                  <TableCell><TrackConfig position={position} seat={seat}/></TableCell>
+                  <TableCell><TrackConfig location={trackLocation} seat={seat} trackLayout={trackLayout}/></TableCell>
                   </TableRow>
                 );
               });

@@ -30,7 +30,7 @@ export default function App(props) {
         <Tabs value={tabIndex} textColor="inherit" indicatorColor="secondary" onChange={(evt,idx)=>{setTabIndex(idx)}}>
         {
           tabs.map((entry) => {
-            return <Tab label={entry.label}/>;
+            return <Tab key={entry.label} label={entry.label}/>;
           })
         }
         </Tabs>

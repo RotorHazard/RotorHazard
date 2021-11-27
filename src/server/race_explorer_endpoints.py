@@ -1,4 +1,5 @@
 import json
+from flask import request
 from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
 
@@ -36,6 +37,25 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
         for pilot in RHData.get_pilots():
             data[pilot.callsign] = {}
         return data
+
+    @APP.route('/trackLayout', methods=['GET'])
+    def track_layout_get():
+        track = RHData.get_option('trackLayout', None)
+        if track:
+            track = json.loads(track)
+        else:
+            track = {
+                'crs': 'Local grid',
+                'units': 'm',
+                'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}]
+            }
+        return track
+
+    @APP.route('/trackLayout', methods=['POST'])
+    def track_layout_post():
+        data = request.get_json()
+        RHData.set_option('trackLayout', json.dumps(data))
+        return '', 204
 
     @APP.route('/timerSetup')
     def timer_setup():

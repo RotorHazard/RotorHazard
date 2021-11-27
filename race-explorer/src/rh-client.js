@@ -1,4 +1,5 @@
 import mqtt from 'mqtt';
+import axios from 'axios';
 import * as config from './rh-config.js';
 
 export function createResultDataLoader() {
@@ -6,7 +7,7 @@ export function createResultDataLoader() {
 }
 
 async function loadResultData(endpoint, processResults, raceEvents) {
-  const body = await (await fetch(endpoint)).text();
+  const body = (await axios.get(endpoint)).data;
   processResults(body, raceEvents);
 }
 
@@ -15,7 +16,7 @@ export function createSetupDataLoader() {
 }
 
 async function loadSetupData(endpoint, processSetup, setupData) {
-  const body = await (await fetch(endpoint)).text();
+  const body = (await axios.get(endpoint)).data;
   processSetup(body, setupData);
 }
 
@@ -23,7 +24,7 @@ const vtxTable = {};
 
 export async function loadVtxTable(setVtxTable) {
   if (Object.keys(vtxTable).length === 0) {
-    const body = await (await fetch(config.vtxTableEndpoint)).json();
+    const body = (await axios.get(config.vtxTableEndpoint)).data;
     for (let band of body.vtx_table.bands_list) {
       vtxTable[band.letter] = {
         name: band.name,
@@ -35,16 +36,28 @@ export async function loadVtxTable(setVtxTable) {
 }
 
 export async function loadEventData(setEventData) {
-  const body = await (await fetch(config.eventDataEndpoint)).json();
+  const body = (await axios.get(config.eventDataEndpoint)).data;
   setEventData(body);
 }
 
+export async function loadTrackData(setTrackData) {
+  const body = (await axios.get(config.trackDataEndpoint)).data;
+  setTrackData(body);
+}
+
+export async function storeTrackData(trackData) {
+  try {
+    await axios.post(config.trackDataEndpoint, trackData);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
 
 let mqttConfig = null;
 
 export async function loadMqttConfig(setMqttConfig) {
   if (mqttConfig === null) {
-    mqttConfig = await (await fetch(config.mqttConfigEndpoint)).json();
+    mqttConfig = (await axios.get(config.mqttConfigEndpoint)).data;
   }
   setMqttConfig(mqttConfig);
 }
