@@ -65,12 +65,16 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
             msgs.append(msg)
             for node in node_manager.nodes:
                 msg = {'timer': TIMER_ID, 'nodeManager': node_manager.addr, 'node': node.multi_node_index, 'frequency': node.frequency}
-                if node.bandChannel:
+                if node.bandChannel is not None:
                     msg['bandChannel'] = node.bandChannel
-                if node.enter_at_level:
+                if node.enter_at_level is not None:
                     msg['enterTrigger'] = node.enter_at_level
-                if node.exit_at_level:
+                if node.exit_at_level is not None:
                     msg['exitTrigger'] = node.exit_at_level
+                if 'threshold' in node and node.threshold is not None:
+                    msg['threshold'] = node.threshold
+                if 'gain' in node and node.gain is not None:
+                    msg['gain'] = node.gain
                 msgs.append(msg)
         return '\n'.join([json.dumps(msg) for msg in msgs])
 

@@ -7,7 +7,6 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
-import Tooltip from '@mui/material/Tooltip';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -21,6 +20,8 @@ import MemoryIcon from '@mui/icons-material/Memory';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
+import Frequency from './Frequency.js';
+import LapRFConfig from './LapRF.js';
 import { createSetupDataLoader, loadVtxTable, loadTrackData, loadMqttConfig, getMqttClient } from './rh-client.js';
 
 
@@ -48,11 +49,17 @@ function processSetup(data, setupData) {
               if ('bandChannel' in msg) {
                 node.bandChannel = msg.bandChannel;
               }
-              if ('enterTrigger in msg') {
+              if ('enterTrigger' in msg) {
                 node.enterTrigger = msg.enterTrigger;
               }
-              if ('exitTrigger in msg') {
+              if ('exitTrigger' in msg) {
                 node.exitTrigger = msg.exitTrigger;
+              }
+              if ('threshold' in msg) {
+                node.threshold = msg.threshold;
+              }
+              if ('gain' in msg) {
+                node.gain = msg.gain;
               }
             }
           }
@@ -72,99 +79,6 @@ async function readData(loader, setSetupData) {
   } catch (err) {
     console.log(err);
   }
-}
-
-function Frequency(props) {
-  const vtxTable = props.vtxTable;
-  const [frequency, setFrequency] = useState(props.frequency);
-  const [band, setBand] = useState(props?.bandChannel?.[0] ?? '');
-  const [channel, setChannel] = useState(props?.bandChannel?.[1] ?? '');
-
-  const frequencyChangesHook = props?.frequencyChangesHook;
-  useEffect(() => {
-    if (frequencyChangesHook) {
-      return frequencyChangesHook((freq) => {setFrequency(freq); setBand(''); setChannel('');});
-    }
-  }, [frequencyChangesHook]);
-
-  const bandChannelChangesHook = props?.bandChannelChangesHook;
-  useEffect(() => {
-    if (bandChannelChangesHook) {
-      return bandChannelChangesHook((bandChannel) => {setBand(bandChannel[0]); setChannel(bandChannel[1]);});
-    }
-  }, [bandChannelChangesHook]);
-
-  const changeFrequency = (frequency) => {
-    setFrequency(frequency);
-    setBand('');
-    setChannel('');
-    if (props?.onFrequencyChange) {
-      props.onFrequencyChange(frequency);
-    }
-  };
-
-  const selectBand = (band) => {
-    setBand(band);
-    if (band !== '' && channel !== '') {
-      setFrequency(vtxTable[band].channels[Number(channel)-1])
-      if (props?.onBandChannelChange) {
-        props.onBandChannelChange(band+channel);
-      }
-    }
-  };
-
-  const selectChannel = (channel) => {
-    setChannel(channel);
-    if (band !== '' && channel !== '') {
-      setFrequency(vtxTable[band].channels[Number(channel)-1])
-      if (props?.onBandChannelChange) {
-        props.onBandChannelChange(band+channel);
-      }
-    }
-  };
-
-  return (
-    <div>
-    <FormControl>
-    <InputLabel id="band-label">Band</InputLabel>
-    <Select labelId="band-label" value={band} defaultValue=""
-    onChange={(evt) => selectBand(evt.target.value)}>
-    {Object.entries(vtxTable).map((entry) => {
-      const band = entry[0];
-      return (
-        <Tooltip key={band} value={band} title={entry[1].name}>
-        <MenuItem>{band}</MenuItem>
-        </Tooltip>
-      );
-    })}
-    </Select>
-    </FormControl>
-    <FormControl>
-    <InputLabel id="channel-label">Channel</InputLabel>
-    <Select labelId="channel-label" value={channel} defaultValue=""
-    onChange={(evt) => selectChannel(evt.target.value)}>
-    {band in vtxTable && vtxTable[band].channels.map((freq, idx) => {
-      const chan = idx + 1;
-      return (
-        <Tooltip key={chan} value={chan} title={freq}>
-        <MenuItem>{chan}</MenuItem>
-        </Tooltip>
-      );
-    })}
-    </Select>
-    </FormControl>
-    <TextField label="Frequency" helperText="0 to disable"
-      value={frequency}
-      onChange={(evt) => changeFrequency(evt.target.value)}
-      inputProps={{
-      step: 5,
-      min: 5645,
-      max: 5945,
-      type: 'number',
-      maxLength: 4
-    }}/>
-    </div>
-  );
 }
 
 function EnterExitTriggers(props) {
@@ -201,7 +115,7 @@ function EnterExitTriggers(props) {
 
   return (
     <div>
-    <TextField label="Enter trigger value" value={enterTrigger}
+    <TextField label="Enter trigger" value={enterTrigger}
       onChange={(evt) => changeEnterTrigger(evt.target.value)}
       inputProps={{
       step: 1,
@@ -209,7 +123,7 @@ function EnterExitTriggers(props) {
       max: 255,
       type: 'number'
     }}/>
-    <TextField label="Exit trigger value" value={exitTrigger}
+    <TextField label="Exit trigger" value={exitTrigger}
       onChange={(evt) => changeExitTrigger(evt.target.value)}
       inputProps={{
       step: 1,
@@ -312,12 +226,6 @@ function TimerConfig(props) {
       exitTriggerChangesHook={mqttExitTriggerSubscriber}
     />
     </div>
-  );
-}
-
-function LapRFConfig(props) {
-  return (
-    <TimerConfig node={props.node} vtxTable={props.vtxTable} annTopic={props.annTopic} ctrlTopic={props.ctrlTopic}/>
   );
 }
 

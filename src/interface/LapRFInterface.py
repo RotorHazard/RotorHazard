@@ -163,6 +163,8 @@ class LapRFInterface(BaseHardwareInterface):
             else:
                 node.frequency = 0
                 node.bandChannel = None
+            old_threshold = node.threshold
+            old_gain = node.gain
             node.threshold = record.threshold
             node.gain = record.gain
             node.is_configured = True
@@ -170,6 +172,10 @@ class LapRFInterface(BaseHardwareInterface):
                 self._notify_frequency_changed(node)
             if node.bandChannel != old_bandChannel:
                 self._notify_bandChannel_changed(node)
+            if node.threshold != old_threshold:
+                self._notify_threshold_changed(node)
+            if node.gain != old_gain:
+                self._notify_gain_changed(node)
         elif isinstance(record, laprf.TimeEvent):
             if node_manager.race_start_time_request_ts is not None:
                 server_oneway = (monotonic() - node_manager.race_start_time_request_ts)/2
@@ -196,8 +202,14 @@ class LapRFInterface(BaseHardwareInterface):
         self.set_threshold(node_index, level)
 
     def set_threshold(self, node_index, threshold):
-        node = self.nodes[node_index]
-        self.set_rf_setup(node, node.frequency, node.band_idx, node.channel_idx, node.gain, threshold)
+        if threshold >= 0 and threshold <= laprf.MAX_THRESHOLD:
+            node = self.nodes[node_index]
+            self.set_rf_setup(node, node.frequency, node.band_idx, node.channel_idx, node.gain, threshold)
+
+    def set_gain(self, node_index, gain):
+        if gain >= 0 and gain <= laprf.MAX_GAIN:
+            node = self.nodes[node_index]
+            self.set_rf_setup(node, node.frequency, node.band_idx, node.channel_idx, gain, node.threshold)
 
     def set_frequency(self, node_index, frequency, band=None, channel=None):
         node = self.nodes[node_index]
@@ -227,6 +239,25 @@ class LapRFInterface(BaseHardwareInterface):
             logger.error("LapRF ignored our request to change the frequency of node {} (requested {}, is {})".format(node, frequency, node.frequency))
         if node.threshold != threshold:
             logger.error("LapRF ignored our request to change the threshold of node {} (requested {}, is {})".format(node, threshold, node.threshold))
+
+    def _notify_threshold_changed(self, node):
+        if self.mqtt_client:
+            self._mqtt_publish_threshold(node)
+
+    def _notify_gain_changed(self, node):
+        if self.mqtt_client:
+            self._mqtt_publish_gain(node)
+
+    def _mqtt_node_start(self, node):
+        super()._mqtt_node_start(node)
+        self._mqtt_publish_threshold(node)
+        self._mqtt_publish_gain(node)
+
+    def _mqtt_publish_threshold(self, node):
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "threshold"), str(node.threshold))
+
+    def _mqtt_publish_gain(self, node):
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "gain"), str(node.gain))
 
 
 class SocketStream:

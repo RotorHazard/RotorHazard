@@ -103,8 +103,6 @@ class BaseHardwareInterface:
         self.mqtt_client.message_callback_remove(ctrlTopicFilter)
 
     def _mqtt_node_start(self, node):
-        msg = {'node': node.index}
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node), json.dumps(msg))
         self._mqtt_publish_frequency(node)
         self._mqtt_publish_bandChannel(node)
         self._mqtt_publish_enter_trigger(node)
