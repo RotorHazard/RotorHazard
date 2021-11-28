@@ -1,5 +1,19 @@
 # Software Setup Instructions
 
+- [Introduction](#introduction)
+- [Install RotorHazard on a Raspberry Pi](#install-rotorhazard-on-a-raspberry-pi)
+- [RotorHazard Node Code](#rotorhazard-node-code)
+- [Optional Components](#optional-components)
+- [Running the RotorHazard server](#running-the-rotorhazard-server)
+- [Updating an existing installation](#updating-an-existing-installation)
+- [Enable Port forwarding](#enable-port-forwarding)
+- [Other Operating Systems](#other-operating-systems)
+- [Viewing Database Files](#viewing-database-files)
+- [RotorHazard Portable](#rotorhazard-portable)
+- [Logging](#logging)
+
+## Introduction
+
 The central software component of the RotorHazard system is its server, written in Python, which operates its functions and serves up web pages to browsers. In a standard setup, the server is run on a RaspberryPi. (It is also possible to run RotorHazard on other types of hardware -- see the [Other Operating Systems](#otheros) section below.)
 
 Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.
@@ -112,11 +126,26 @@ cd ~/RotorHazard/src/server
 sudo pip install -r requirements.txt
 ```
 
-### 7. Reboot System
+### 7. Setup Config File
+In the "src/server" directory, copy the *config-dist.json* file to *config.json*:
+```
+cp config-dist.json config.json
+```
+
+With a command like `nano config.json` edit the *config.json* file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. These are the login credentials you will need to enter (in the browser popup window) to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages).
+
+The contents of the *config.json* file must in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+
+### 8. Reboot System
 After the above setup steps are performed, the system should be rebooted by entering the following using a terminal window:
 ```
 sudo reboot
 ```
+
+### User Guide
+
+The RotorHazard Race Timer [User Guide](User%20Guide.md) contains further instructions and setup tips for using the timer and the software.
+
 
 ----------------------------------------------------------------------------
 

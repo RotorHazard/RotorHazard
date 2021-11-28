@@ -1,5 +1,28 @@
 # Calibration and Sensor Tuning Parameters
 
+- [Introduction](#introduction)
+- [Parameters](#parameters)
+  - [EnterAt](#enterat)
+  - [ExitAt](#exitat)
+  - [Calibration Mode](#calibration-mode)
+  - [Start of Race EnterAt/ExitAt Lowering](#start-of-race-enteratexitat-lowering)
+- [Tuning](#tuning)
+  - [Set the *EnterAt* value](#set-the-enterat-value)
+  - [Set the *ExitAt* value](#set-the-exitat-value)
+  - [Tuning Example](#tuning-example)
+  - [Alternate Tuning Method](#alternate-tuning-method)
+- [Notes](#notes)
+- [Troubleshooting](#troubleshooting)
+  - [Missing Laps (System usually *Clear*)](#missing-laps-system-usually-clear)
+  - [Missing Laps (System usually *Crossing*)](#missing-laps-system-usually-crossing)
+  - [Laps register on other parts of a course](#laps-register-on-other-parts-of-a-course)
+  - [Many laps register at once](#many-laps-register-at-once)
+  - [Laps take a long time to register](#laps-take-a-long-time-to-register)
+  - [Node is never *crossing*](#node-is-never-crossing)
+  - [Node is never *clear*](#node-is-never-clear)
+
+## Introduction
+
 _If you are having trouble calibrating your timer, be sure you have constructed and placed [RF shielding](Shielding%20and%20Course%20Position.md) correctly._
 
 Each node keeps track of the signal strength (RSSI) on a selected frequency and uses this relative strength to determine whether a transmitter is near the timing gate. The RotorHazard timing system allows you to calibrate each node individually so that you can compensate for the behavior and hardware differences across your system and environment.
