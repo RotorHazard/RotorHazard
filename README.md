@@ -1,7 +1,5 @@
 ![RotorHazard Logo](/src/server/static/image/RotorHazard%20Logo.svg)
 
-[![CI](https://api.travis-ci.com/RotorHazard/RotorHazard.svg)](https://travis-ci.com/RotorHazard/RotorHazard)
-
 # RotorHazard
 **FPV Race Timing and Event Management**
 
