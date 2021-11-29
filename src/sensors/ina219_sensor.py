@@ -10,7 +10,7 @@ class INA219Sensor(I2CSensor):
         super().__init__(name=name, i2c_addr=addr, i2c_bus=i2c_bus)
         self.description = 'INA219'
         max_current = float(config['max_current']) if 'max_current' in config else None
-        self.device = ina219.INA219(0.1, address=addr, max_expected_amps=max_current)
+        self.device = ina219.INA219(0.1, busnum=i2c_bus.id, address=addr, max_expected_amps=max_current)
         self.device.configure()
         self.device.sleep()
         self._readData()

@@ -7,6 +7,7 @@
 /.settings
 /.cproject
 /.project
+/.sproject
 /Release/
 /build_*
 /test_*

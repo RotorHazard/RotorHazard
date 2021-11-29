@@ -1,5 +1,17 @@
 # RotorHazard Race Timer User Guide
 
+- [Initial Setup](#initial-setup)
+  - [Hardware and Software Setup](#hardware-and-software-setup)
+  - [Connect to the Server](#connect-to-the-server)
+- [Pages](#pages)
+  - [Home](#home)
+  - [Event](#event)
+  - [Results](#results)
+  - [Current](#current)
+  - [Settings](#settings)
+  - [Run](#run)
+  - [Marshal](#marshal)
+
 ## Initial Setup
 
 ### Hardware and Software Setup
@@ -7,11 +19,6 @@ Follow the instructions here if not done already:<br>
 [Hardware Setup](Hardware%20Setup.md)<br>
 [Software Setup](Software%20Setup.md)<br>
 [RF shielding](Shielding%20and%20Course%20Position.md)
-
-### Set up Config File
-In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. This items in this file must in valid JSON format. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
-
-ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will need to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages).
 
 ### Connect to the Server
 A computer, phone or tablet may be used to interact with the race timer by launching a web browser and entering the IP address of the Raspberry Pi. The Raspberry Pi may be connected using an ethernet cable, or to an available WiFi network. If the IP address of the Pi is not known, it may be viewed using the terminal command "ifconfig", and it can configured to a static value on the Pi desktop via the "Network Preferences." If the Pi is connected to a WiFi network, its IP address may be found in the 'Clients' list on the admin page for the network's router.
@@ -180,3 +187,13 @@ Delete laps with the "×" button on the unwanted lap. Deleted laps are removed f
 You may click on/touch the graph to set enter/exit points, activate recalculation, and highlight specific laps. Clicking on laps in the list also adds a highlight on the graph. Press <kbd>delete</kbd> or <kbd>x</kbd> to delete a highlighted lap. Active laps are displayed in green, and deleted laps change to red. The width of the lap indicator shows the enter/exit points, and the yellow highlight draws a line at the exact lap time within that window.
 
 "Commit changes" when you are finished adjusting the race data to save it to the database and update the race results.
+
+<br/>
+
+-----------------------------
+
+See Also:<br/>
+[doc/Tuning Parameters.md](Tuning%20Parameters.md)<br/>
+[doc/Software Setup.md](Software%20Setup.md)<br/>
+[doc/Hardware Setup.md](Hardware%20Setup.md)<br/>
+[Build Resources (PCB, etc)](../resources/README.md)

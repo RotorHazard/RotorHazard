@@ -34,22 +34,17 @@
 		<link>
 			<name>core/core</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/STM32/hardware/stm32/1.7.0/cores/arduino</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/STMicroelectronics/hardware/stm32/2.1.0/cores/arduino</locationURI>
 		</link>
 		<link>
 			<name>core/variant</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/STM32/hardware/stm32/1.7.0/variants/PILL_F103XX</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/STMicroelectronics/hardware/stm32/2.1.0/variants/STM32F1xx/F103C8T_F103CB(T-U)</locationURI>
 		</link>
 		<link>
-			<name>libraries/EEPROM</name>
+			<name>libraries/SrcWrapper</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/STM32/hardware/stm32/1.7.0/libraries/EEPROM</locationURI>
-		</link>
-		<link>
-			<name>libraries/Wire</name>
-			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/STM32/hardware/stm32/1.7.0/libraries/Wire</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/STMicroelectronics/hardware/stm32/2.1.0/libraries/SrcWrapper</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

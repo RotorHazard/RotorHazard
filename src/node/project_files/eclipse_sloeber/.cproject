@@ -20,30 +20,27 @@
 							<tool id="io.sloeber.tool.sketch.compiler.cpp.797787068" name="Arduino C++ Compiler" superClass="io.sloeber.tool.sketch.compiler.cpp">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.cpp.sketch.option.incpath.1001921042" name="Include Paths (-I)" superClass="io.sloeber.compiler.cpp.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${A.RUNTIME.TOOLS.ARM-NONE-EABI-GCC.PATH}\arm-none-eabi\include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/libraries/EEPROM/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/libraries/Wire/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/core/core}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/libraries/SrcWrapper/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.cpp.sketch.input.148803291" name="CPP source files" superClass="io.sloeber.compiler.cpp.sketch.input"/>
 							</tool>
 							<tool id="io.sloeber.tool.compiler.c.776927810" name="Arduino C Compiler" superClass="io.sloeber.tool.compiler.c">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.c.sketch.option.incpath.338320404" name="Include Paths (-I)" superClass="io.sloeber.compiler.c.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${A.RUNTIME.TOOLS.XPACK-ARM-NONE-EABI-GCC.PATH}\arm-none-eabi\include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/libraries/EEPROM/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/libraries/Wire/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/core/core}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/libraries/SrcWrapper/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.c.sketch.input.1248256971" name="C Source Files" superClass="io.sloeber.compiler.c.sketch.input"/>
 							</tool>
 							<tool id="io.sloeber.tool.sketch.compiler.s.1659978194" name="Arduino Assembler" superClass="io.sloeber.tool.sketch.compiler.s">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.asm.sketch.option.incpath.764853966" name="Include Paths (-I)" superClass="io.sloeber.compiler.asm.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${A.RUNTIME.TOOLS.ARM-NONE-EABI-GCC.PATH}\arm-none-eabi\include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/libraries/EEPROM/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S32_BPill_node/libraries/Wire/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/core/core}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/rhnode_S32_BPill/libraries/SrcWrapper/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.S.sketch.input.1971039903" name="Assembly source files" superClass="io.sloeber.compiler.S.sketch.input"/>
 							</tool>
@@ -54,7 +51,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="project_files|scripts|build_stm32|build_arduino|test|libraries/?*/**/?xamples/**|libraries/?*/**/?xtras/**|libraries/?*/**/test*/**|libraries/?*/**/third-party/**|libraries/**/._*|libraries/?*/utility/*/*" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
+						<entry excluding="build_stm32_f4|project_files|scripts|build_stm32|build_arduino|test|libraries/?*/**/?xamples/**|libraries/?*/**/?xtras/**|libraries/?*/**/test*/**|libraries/?*/**/third-party/**|libraries/**/._*|libraries/?*/utility/*/*" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

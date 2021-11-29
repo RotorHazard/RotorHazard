@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
-RELEASE_VERSION = "3.1.0-dev.10" # Public release version code
+RELEASE_VERSION = "3.1.0" # Public release version code
 SERVER_API = 32+2 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -1567,9 +1567,11 @@ def on_restore_database(data):
             RHData.close()
 
             RACE = RHRace.RHRace() # Reset all RACE values
+            RACE.num_nodes = len(INTERFACE.nodes)  # restore number of nodes
             LAST_RACE = RACE
             try:
                 RHData.recover_database(Database.db_uri(BASEDIR, DB_BKP_DIR_NAME + '/' + backup_file))
+                reset_current_laps()
                 clean_results_cache()
                 expand_heats()
                 raceformat_id = RHData.get_optionInt('currentFormat')
@@ -5262,8 +5264,8 @@ for helper in search_modules(helper_pkg, suffix='helper'):
     except Exception as ex:
         logger.warning("Unable to create service helper '{0}':  {1}".format(helper.__name__, ex))
 
-resultFlag = initialize_hardware_interface()
-if not resultFlag:
+initRhResultFlag = initialize_hardware_interface()
+if not initRhResultFlag:
     log.wait_for_queue_empty()
     sys.exit(1)
 
@@ -5331,7 +5333,10 @@ gevent.sleep(0.500)
 
 if hasattr(INTERFACE, 'sensors'):
     SENSORS.extend(INTERFACE.sensors)
-SENSORS.discover(sensor_pkg, config=rhconfig.SENSORS, **serviceHelpers)
+try:
+    SENSORS.discover(sensor_pkg, config=rhconfig.SENSORS, **serviceHelpers)
+except Exception:
+    logger.exception("Exception while discovering sensors")
 
 INTERFACE.mqtt_client = serviceHelpers.get('mqtt_helper', None)
 INTERFACE.mqtt_ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
