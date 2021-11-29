@@ -20,6 +20,48 @@ export function useInterval(callback, delay) {
   }, [delay]);
 }
 
+export function createBaseLoader() {
+  const BaseLoader = {
+    isCancelled: false,
+    async load(processor, setState) {
+      let data = this._getCached();
+      let error = null;
+      if (data === null) {
+        try {
+          data = await this._load(processor);
+        } catch(err) {
+          if (err?.name !== 'AbortError' && err?.message !== 'canceled') {
+            error = () => {
+              console.error(err.message);
+            };
+          }
+        }
+      }
+
+      if (!this.isCancelled) {
+        if (data !== null) {
+          this._cache(data);
+          setState(data);
+        } else {
+          error();
+        }
+      }
+    },
+    _getCached() {
+      return null;
+    },
+    _cache(data) {},
+    cancel() {
+      this.isCancelled = true;
+      this.aborter.abort();
+    }
+  };
+
+  const loader = Object.create(BaseLoader);
+  loader.aborter = new AbortController();
+  return loader;
+};
+
 export function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
   s = Math.round(s);
   let ms = s % 1000;

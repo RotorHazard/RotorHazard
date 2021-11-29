@@ -3,7 +3,7 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
-import { loadEventData } from './rh-client.js';
+import { createEventDataLoader } from './rh-client.js';
 
 export default function Event(props) {
   const [eventData, setEventData] = useState({});
@@ -11,7 +11,9 @@ export default function Event(props) {
   const seats = [1, 2, 3, 4, 5, 6];
 
   useEffect(() => {
-    loadEventData(setEventData);
+    const loader = createEventDataLoader();
+    loader.load(null, setEventData);
+    return () => loader.cancel();
   }, []);
 
   return (

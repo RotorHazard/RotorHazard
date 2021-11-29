@@ -22,8 +22,16 @@ import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
 import Frequency from './Frequency.js';
 import LapRFConfig from './LapRF.js';
-import { createSetupDataLoader, loadVtxTable, loadTrackData, loadMqttConfig, getMqttClient } from './rh-client.js';
+import { createSetupDataLoader, createVtxTableLoader, createTrackDataLoader, createMqttConfigLoader, getMqttClient } from './rh-client.js';
 
+function processVtxTable(data, vtxTable) {
+  for (let band of data.vtx_table.bands_list) {
+    vtxTable[band.letter] = {
+      name: band.name,
+      channels: band.frequencies.filter((f) => f > 0)
+    };
+  }
+}
 
 function processSetup(data, setupData) {
   const jsonl = data.split('\n');
@@ -68,16 +76,6 @@ function processSetup(data, setupData) {
         console.log(ex+": "+l);
       }
     }
-  }
-}
-
-async function readData(loader, setSetupData) {
-  try {
-    let setupData = {};
-    await loader(processSetup, setupData);
-    setSetupData(setupData);
-  } catch (err) {
-    console.log(err);
   }
 }
 
@@ -258,7 +256,7 @@ function TrackConfig(props) {
       {
         props.trackLayout.map((loc) => {
           return (
-            <MenuItem value={loc.name}>
+            <MenuItem key={loc.name} value={loc.name}>
               <ListItemIcon><FlagIcon/></ListItemIcon>
               <ListItemText>{loc.name}</ListItemText>
              </MenuItem>
@@ -289,22 +287,29 @@ export default function Setup(props) {
   const [setupData, setSetupData] = useState({});
 
   useEffect(() => {
-    loadMqttConfig(setMqttConfig);
+    const loader = createMqttConfigLoader();
+    loader.load(null, setMqttConfig);
+    return () => loader.cancel();
   }, []);
 
   useEffect(() => {
-    loadVtxTable(setVtxTable);
+    const loader = createVtxTableLoader();
+    loader.load(processVtxTable, setVtxTable);
+    return () => loader.cancel();
   }, []);
 
   useEffect(() => {
-    loadTrackData((data) => {
+    const loader = createTrackDataLoader();
+    loader.load(null, (data) => {
       setTrackLayout(data.layout);
     });
+    return () => loader.cancel();
   }, []);
 
   useEffect(() => {
     const loader = createSetupDataLoader();
-    readData(loader, setSetupData);
+    loader.load(processSetup, setSetupData);
+    return () => loader.cancel();
   }, []);
 
   let trackLocationIdx = 0;

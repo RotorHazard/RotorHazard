@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -50,30 +50,22 @@ function processResults(data, raceEvents) {
   }
 }
 
-async function readData(loader, setResultData) {
-  try {
-    let raceEvents = {};
-    await loader(processResults, raceEvents);
-    setResultData(raceEvents);
-  } catch (err) {
-    console.log(err);
-  }
-}
-
 export default function Results(props) {
   const [resultData, setResultData] = useState({});
   const [selectedEvent, setEvent] = useState('');
   const [selectedRound, setRound] = useState('');
   const [selectedHeat, setHeat] = useState('');
-  const loaderRef = useRef();
 
   useEffect(() => {
     const loader = createResultDataLoader();
-    loaderRef.current = loader;
-    readData(loader, setResultData);
+    loader.load(processResults, setResultData);
+    return () => loader.cancel();
   }, []);
 
-  util.useInterval(() => {readData(loaderRef.current, setResultData);}, 60000);
+  util.useInterval(() => {
+    const loader = createResultDataLoader();
+    loader.load(processResults, setResultData);
+  }, 60000);
 
   const selectEvent = (event) => {
     setEvent(event);

@@ -20,7 +20,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { debounce } from 'lodash';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { loadTrackData, storeTrackData } from './rh-client.js';
+import { createTrackDataLoader, storeTrackData } from './rh-client.js';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -57,6 +57,11 @@ export default function Tracks(props) {
   const [crs, setCRS] = useState(CRSS[0]);
   const [units, setUnits] = useState(UNITS[0]);
   const mapRef = useRef();
+  const newGateRef = useRef();
+
+  useEffect(() => {
+    newGateRef.current = 1;
+  }, []);
 
   useEffect(() => {
     let map;
@@ -87,7 +92,8 @@ export default function Tracks(props) {
   }, [crs]);
 
   useEffect(() => {
-    loadTrackData((data) => {
+    const loader = createTrackDataLoader();
+    loader.load(null, (data) => {
       if (mapRef.current) {
         const center = data?.layout?.[0]?.location ?? [0,0];
         mapRef.current.flyTo(center);
@@ -96,6 +102,7 @@ export default function Tracks(props) {
       setUnits(data?.units ?? '');
       setTrackLayout(data.layout);
     });
+    return () => loader.cancel();
   }, []);
 
   useEffect(() => {
@@ -117,7 +124,7 @@ export default function Tracks(props) {
   }, [crs, units, trackLayout]);
 
   const addLocation = () => {
-    setTrackLayout((old) => {return [...old, {name: "Gate "+old.length, type: ELEMENT_TYPES[0], location: [5*old.length,0]}]})
+    setTrackLayout((old) => {return [...old, {name: "Gate "+(newGateRef.current++), type: ELEMENT_TYPES[0], location: [5*old.length,0]}]})
   };
 
   const selectCRS = (newCrs) => {
@@ -213,7 +220,7 @@ export default function Tracks(props) {
               deleteControl = null;
             }
             return (
-              <TableRow key={idx}>
+              <TableRow key={loc.name}>
                 <TableCell>
                 {deleteControl}
                 </TableCell>

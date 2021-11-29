@@ -6,7 +6,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { loadMqttConfig, getMqttClient } from './rh-client.js';
+import { createMqttConfigLoader, getMqttClient } from './rh-client.js';
 
 
 function getSensorListener(setSensors) {
@@ -33,11 +33,14 @@ export default function Sensors(props) {
   const [sensors, setSensors] = useState({});
 
   useEffect(() => {
-    loadMqttConfig(setMqttConfig);
+    const loader = createMqttConfigLoader();
+    loader.load(null, setMqttConfig);
+    return () => loader.cancel();
   }, []);
 
-  useEffect(() => {
-    if (mqttConfig?.sensorAnnTopic) {
+  let mqttSubscriber = null;
+  if (mqttConfig?.sensorAnnTopic) {
+    mqttSubscriber = (setSensors) => {
       const listener = getSensorListener(setSensors);
       const mqttClient = getMqttClient();
       mqttClient.on('message', listener);
@@ -46,8 +49,14 @@ export default function Sensors(props) {
         mqttClient.unsubscribe(mqttConfig.sensorAnnTopic+'/#');
         mqttClient.off('message', listener);
       };
+    };
+  }
+
+  useEffect(() => {
+    if (mqttSubscriber) {
+      return mqttSubscriber(setSensors);
     }
-  }, [mqttConfig, sensors]);
+  }, [mqttSubscriber]);
 
   return (
     <TableContainer component={Paper}>

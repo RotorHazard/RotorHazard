@@ -1,48 +1,49 @@
 import mqtt from 'mqtt';
 import axios from 'axios';
+import { createBaseLoader } from './util.js';
 import * as config from './rh-config.js';
 
-export function createResultDataLoader() {
-  return (processResults, raceEvents) => loadResultData(config.resultDataEndpoint, processResults, raceEvents);
+function createLoader(endpoint) {
+  const loader = createBaseLoader();
+  loader.endpoint = endpoint;
+  loader._load = async function(processor) {
+    const body = (await axios.get(this.endpoint, {signal: this.aborter.signal})).data;
+    let data;
+    if (processor !== null) {
+      data = {};
+      processor(body, data);
+    } else {
+      data = body;
+    }
+    return data;
+  };
+
+  return loader;
 }
 
-async function loadResultData(endpoint, processResults, raceEvents) {
-  const body = (await axios.get(endpoint)).data;
-  processResults(body, raceEvents);
+export function createResultDataLoader() {
+  return createLoader(config.resultDataEndpoint);
 }
 
 export function createSetupDataLoader() {
-  return (processSetup, setupData) => loadSetupData(config.setupDataEndpoint, processSetup, setupData);
+  return createLoader(config.setupDataEndpoint);
 }
 
-async function loadSetupData(endpoint, processSetup, setupData) {
-  const body = (await axios.get(endpoint)).data;
-  processSetup(body, setupData);
+let vtxTable = null;
+
+export function createVtxTableLoader() {
+  const vtxTableLoader = createLoader(config.vtxTableEndpoint);
+  vtxTableLoader._getCached = () => vtxTable;
+  vtxTableLoader._cache = (data) => {vtxTable = data;};
+  return vtxTableLoader;
 }
 
-const vtxTable = {};
-
-export async function loadVtxTable(setVtxTable) {
-  if (Object.keys(vtxTable).length === 0) {
-    const body = (await axios.get(config.vtxTableEndpoint)).data;
-    for (let band of body.vtx_table.bands_list) {
-      vtxTable[band.letter] = {
-        name: band.name,
-        channels: band.frequencies.filter((f) => f > 0)
-      };
-    }
-  }
-  setVtxTable(vtxTable);
+export function createEventDataLoader() {
+  return createLoader(config.eventDataEndpoint);
 }
 
-export async function loadEventData(setEventData) {
-  const body = (await axios.get(config.eventDataEndpoint)).data;
-  setEventData(body);
-}
-
-export async function loadTrackData(setTrackData) {
-  const body = (await axios.get(config.trackDataEndpoint)).data;
-  setTrackData(body);
+export function createTrackDataLoader() {
+  return createLoader(config.trackDataEndpoint);
 }
 
 export async function storeTrackData(trackData) {
@@ -55,28 +56,12 @@ export async function storeTrackData(trackData) {
 
 let mqttConfig = null;
 
-export async function loadMqttConfig(setMqttConfig) {
-  if (mqttConfig === null) {
-    mqttConfig = (await axios.get(config.mqttConfigEndpoint)).data;
-  }
-  setMqttConfig(mqttConfig);
+export function createMqttConfigLoader() {
+  const mqttConfigLoader = createLoader(config.mqttConfigEndpoint);
+  mqttConfigLoader._getCached = () => mqttConfig;
+  mqttConfigLoader._cache = (data) => {mqttConfig = data;};
+  return mqttConfigLoader;
 }
-
-mqtt.MqttClient.prototype.topicHandlers = {};
-function mqttTopicListener(topic, payload) {
-  if (topic in this.topicHandlers) {
-    const handler = this.topicHandlers[topic];
-    handler(payload);
-  }
-};
-mqtt.MqttClient.prototype.subscribeTo = function(topic, handler) {
-  this.topicHandlers[topic] = handler;
-  this.subscribe(topic);
-};
-mqtt.MqttClient.prototype.unsubscribeFrom = function(topic) {
-  this.unsubscribe(topic);
-  delete this.topicHandlers[topic];
-};
 
 let mqttClient = null;
 
@@ -87,7 +72,24 @@ export function getMqttClient() {
       mqttBroker = 'ws://'+window.location.hostname+':8083';
     }
     mqttClient = mqtt.connect(mqttBroker, config.mqttOptions);
-    mqttClient.on('message', mqttTopicListener);
+
+    mqttClient.topicHandlers = {};
+    mqttClient.subscribeTo = function(topic, handler) {
+      this.topicHandlers[topic] = handler;
+      this.subscribe(topic);
+    };
+    mqttClient.unsubscribeFrom = function(topic) {
+      this.unsubscribe(topic);
+      delete this.topicHandlers[topic];
+    };
+    mqttClient.mqttTopicListener = function(topic, payload) {
+      if (topic in this.topicHandlers) {
+        const handler = this.topicHandlers[topic];
+        handler(payload);
+      }
+    };
+
+    mqttClient.on('message', mqttClient.mqttTopicListener);
   }
   return mqttClient;
 }
