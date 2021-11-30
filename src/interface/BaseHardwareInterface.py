@@ -171,6 +171,26 @@ class BaseHardwareInterface:
     def _mqtt_publish_exit_trigger(self, node):
         self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exitTrigger"), str(node.exit_at_level))
 
+    def _mqtt_publish_enter(self, node):
+        msg = {'lap': node.node_lap_id+1, 'timestamp': str(node.enter_at_timestamp), 'rssi': node.current_rssi}
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "enter"), json.dumps(msg))
+
+    def _mqtt_publish_exit(self, node):
+        msg = {'lap': node.node_lap_id, 'timestamp': str(node.exit_at_timestamp), 'rssi': node.current_rssi}
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exit"), json.dumps(msg))
+
+    def _mqtt_publish_pass(self, node, lap_ts, lap_source):
+        if lap_source == BaseHardwareInterface.LAP_SOURCE_REALTIME:
+            lap_source_type = 'realtime'
+        elif lap_source == BaseHardwareInterface.LAP_SOURCE_MANUAL:
+            lap_source_type = 'manual'
+        else:
+            lap_source_type = None
+        msg = {'lap': node.node_lap_id, 'timestamp': str(lap_ts), 'source': lap_source_type}
+        if hasattr(node, 'pass_peak_rssi'):
+            msg['rssi'] = node.pass_peak_rssi
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "pass"), json.dumps(msg))
+
     def _notify_frequency_changed(self, node):
         if self.mqtt_client:
             self._mqtt_publish_frequency(node)
@@ -186,6 +206,21 @@ class BaseHardwareInterface:
     def _notify_exit_trigger_changed(self, node):
         if self.mqtt_client:
             self._mqtt_publish_exit_trigger(node)
+
+    def _notify_trigger(self, node):
+        if callable(self.node_crossing_callback):
+            gevent.spawn(self.node_crossing_callback, node)
+        if self.mqtt_client:
+            if node.crossing_flag:
+                self._mqtt_publish_enter(node)
+            else:
+                self._mqtt_publish_exit(node)
+
+    def _notify_pass(self, node, lap_ts, lap_source):
+        if callable(self.pass_record_callback):
+            gevent.spawn(self.pass_record_callback, node, lap_ts, lap_source)
+        if self.mqtt_client:
+            self._mqtt_publish_pass(node, lap_ts, lap_source)
 
     def _update_loop(self):
         while True:
@@ -208,11 +243,10 @@ class BaseHardwareInterface:
             node.crossing_flag = cross_flag
             if cross_flag:
                 node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
-                node.enter_at_timestamp = monotonic()
+                node.enter_at_timestamp = readtime
             else:
-                node.exit_at_timestamp = monotonic()
-            if callable(self.node_crossing_callback):
-                cross_list.append(node)
+                node.exit_at_timestamp = readtime
+            cross_list.append(node)
 
         # calc lap timestamp
         if ms_val < 0 or ms_val > 9999999:
@@ -277,33 +311,26 @@ class BaseHardwareInterface:
         '''
         cross_list - list of node objects
         '''
-        if len(cross_list) > 0 and callable(self.node_crossing_callback):
-            gevent.spawn(self._process_crossings, cross_list)
-
-    def _process_crossings(self, cross_list):
-        for node in cross_list:
-            self.node_crossing_callback(node)
+        if len(cross_list) > 0:
+            for node in cross_list:
+                self._notify_trigger(node)
 
     def process_updates(self, upd_list):
         '''
         upd_list - list of (node, lap_timestamp) tuples
         '''
-        if len(upd_list) > 0 and callable(self.pass_record_callback):
-            gevent.spawn(self._process_updates, upd_list)
-
-    def _process_updates(self, upd_list):
         if len(upd_list) == 1:  # list contains single item
             item = upd_list[0]
             node = item[0]
             lap_timestamp = item[1]
-            self.pass_record_callback(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+            self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
 
         elif len(upd_list) > 1:  # list contains multiple items; sort so processed in order by lap time
             upd_list.sort(key=lambda i: i[1])
             for item in upd_list:
                 node = item[0]
                 lap_timestamp = item[1]
-                self.pass_record_callback(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+                self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
 
     def ai_calibrate_nodes(self):
         for node in self.nodes:
@@ -374,7 +401,7 @@ class BaseHardwareInterface:
         node = self.nodes[node_index]
         lap_timestamp = monotonic() - (ms_val / 1000.0) - self.race_start_time  # relative to start time
         node.enter_at_timestamp = node.exit_at_timestamp = 0
-        gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
+        self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
     def force_end_crossing(self, node_index):
         pass

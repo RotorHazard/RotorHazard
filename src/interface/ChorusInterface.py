@@ -1,7 +1,6 @@
 '''Chorus hardware interface layer.'''
 
 import logging
-import gevent
 import serial
 from monotonic import monotonic
 
@@ -124,9 +123,9 @@ class ChorusInterface(BaseHardwareInterface):
             node = node_manager.nodes[multi_node_idx]
             cmd = data[2]
             if cmd == 'L':
-                _lap_id = int(data[3:5], 16)
+                node.node_lap_id = int(data[3:5], 16)
                 lap_ts = int(data[5:13], 16) # relative to start time
-                gevent.spawn(self.pass_record_callback, node.index, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+                self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
             elif cmd == 'r':
                 rssi = int(data[3:7], 16)
                 node.current_rssi = rssi

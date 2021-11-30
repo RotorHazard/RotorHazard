@@ -13,6 +13,16 @@ class ChorusAPI():
         self.on_stop_race = on_stop_race
         self.on_reset_race = on_reset_race
         self.rssi_interval = 0
+        self.thread = None
+
+    def start(self):
+        if self.thread is None:
+            self.thread = gevent.spawn(self.chorus_api_thread_function)
+
+    def stop(self):
+        if self.thread:
+            self.thread.kill(block=True, timeout=0.5)
+            self.thread = None
 
     def emit_pass_record(self, node, lap_number, lap_time_stamp):
         self.serial_io.write("S{0}L{1:02x}{2:08x}\n".format(node.index, lap_number, lap_time_stamp).encode("UTF-8"))

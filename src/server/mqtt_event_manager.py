@@ -41,23 +41,23 @@ class MqttEventManager:
 
 def race_start(client, race_topic, raceEvent, RACE, **kwargs):
     msg = {'startTime': RACE.start_time_epoch_ms}
-    client.publish(make_topic(race_topic, [raceEvent, RACE.current_round, RACE.current_heat]), json.dumps(msg))
+    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_round), str(RACE.current_heat)]), json.dumps(msg))
 
 
-def race_lap(client, race_topic, raceEvent, RACE, node_index, lap, timer, **kwargs):
+def race_lap(client, race_topic, raceEvent, RACE, node_index, lap, timer_id, **kwargs):
     pilot = RACE.node_pilots[node_index]
     msg = {'timestamp': lap['lap_time_stamp']}
-    client.publish(make_topic(race_topic, [raceEvent, RACE.current_round, RACE.current_heat, pilot.callsign, str(lap['lap_number']), timer]), json.dumps(msg))
+    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_round), str(RACE.current_heat), pilot.callsign, str(lap['lap_number']), timer_id]), json.dumps(msg))
 
 
 def race_finish(client, race_topic, raceEvent, RACE, **kwargs):
     msg = {'finishTime': RACE.finish_time_epoch_ms}
-    client.publish(make_topic(race_topic, [raceEvent, RACE.current_round, RACE.current_heat]), json.dumps(msg))
+    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_round), str(RACE.current_heat)]), json.dumps(msg))
 
 
 def race_stop(client, race_topic, raceEvent, RACE, **kwargs):
     msg = {'stopTime': RACE.end_time_epoch_ms}
-    client.publish(make_topic(race_topic, [raceEvent, RACE.current_round, RACE.current_heat]), json.dumps(msg))
+    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_round), str(RACE.current_heat)]), json.dumps(msg))
 
 
 def sensor_update(client, sensor_topic, sensors, **kwargs):

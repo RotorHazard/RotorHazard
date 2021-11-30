@@ -25,10 +25,8 @@ class I2CBus(object):
     def url_of(self, addr):
         return i2c_url(self.id, addr)
 
-
     def i2c_end(self):
         self.i2c_timestamp = monotonic()
-
 
     def i2c_sleep(self):
         if self.i2c_timestamp == -1:
@@ -37,7 +35,6 @@ class I2CBus(object):
         if (time_remaining > 0):
             # print("i2c sleep {0}".format(time_remaining))
             gevent.sleep(time_remaining)
-
 
     def with_i2c(self, callback):
         val = None
@@ -50,12 +47,14 @@ class I2CBus(object):
                     self.i2c_end()
         return val
 
-
     def with_i2c_quietly(self, callback):
         try:
             self.with_i2c(callback)
         except IOError as err:
             logger.info('I2C error: {0}'.format(err))
+
+    def close(self):
+        pass
 
 
 def create(rhconfig):

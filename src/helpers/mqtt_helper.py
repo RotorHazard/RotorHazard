@@ -21,15 +21,21 @@ def split_topic(topic):
 
 
 def create(rhconfig):
-    client = None
     mqttConfig = rhconfig.MQTT
-    if 'BROKER' in mqttConfig and mqttConfig['BROKER']:
-        client_id = mqttConfig['CLIENT_ID'] if 'CLIENT_ID' in mqttConfig else None
-        client = mqtt_client.Client(client_id=client_id)
-        if 'USERNAME' in mqttConfig and mqttConfig['USERNAME']:
-            client.username_pw_set(mqttConfig['USERNAME'], mqttConfig['PASSWORD'] if 'PASSWORD' in mqttConfig else None)
-        if 'CLIENT_CERT' in mqttConfig and mqttConfig['CLIENT_CERT'] and 'PRIVATE_KEY' in mqttConfig and mqttConfig['PRIVATE_KEY']:
-            client.tls_set(certfile=mqttConfig['CLIENT_CERT'], keyfile=mqttConfig['PRIVATE_KEY'])
-        client.connect(mqttConfig['BROKER'], mqttConfig['PORT'] if 'PORT' in mqttConfig else 1883)
-        client.loop_start()
+    if 'BROKER' not in mqttConfig or not mqttConfig['BROKER']:
+        raise Exception("MQTT not configured")
+    client_id = mqttConfig['CLIENT_ID'] if 'CLIENT_ID' in mqttConfig else None
+    client = mqtt_client.Client(client_id=client_id)
+    if 'USERNAME' in mqttConfig and mqttConfig['USERNAME']:
+        client.username_pw_set(mqttConfig['USERNAME'], mqttConfig['PASSWORD'] if 'PASSWORD' in mqttConfig else None)
+    if 'CLIENT_CERT' in mqttConfig and mqttConfig['CLIENT_CERT'] and 'PRIVATE_KEY' in mqttConfig and mqttConfig['PRIVATE_KEY']:
+        client.tls_set(certfile=mqttConfig['CLIENT_CERT'], keyfile=mqttConfig['PRIVATE_KEY'])
+    client.connect(mqttConfig['BROKER'], mqttConfig['PORT'] if 'PORT' in mqttConfig else 1883)
+    client.loop_start()
+
+    def close(self):
+        self.disconnect()
+        self.loop_stop()
+
+    mqtt_client.Client.close = close
     return client

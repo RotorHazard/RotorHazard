@@ -161,6 +161,7 @@ INTERFACE = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
 CHORUS_API = None    # initialized later
+MQTT_API = None    # initialized later
 ClusterSendAckQueueObj = None
 serverInfo = None
 serverInfoItems = None
@@ -4483,7 +4484,7 @@ def pass_record_callback(node, lap_race_time, source):
                             'color': led_manager.getDisplayColor(node.index),
                             'lap': lap_data,
                             'results': RACE.results,
-                            'timer': TIMER_ID
+                            'timer_id': TIMER_ID
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}, Late: {3}' \
@@ -5009,9 +5010,7 @@ def initialize_hardware_interface():
                         subclass='no-library'
                         )
                 RACE.num_nodes = 0
-                INTERFACE.pass_record_callback = pass_record_callback
                 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-                INTERFACE.node_crossing_callback = node_crossing_callback
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
@@ -5054,9 +5053,7 @@ def initialize_hardware_interface():
 
         RACE.num_nodes = len(INTERFACE.nodes)  # save number of nodes found
         # set callback functions invoked by interface module
-        INTERFACE.pass_record_callback = pass_record_callback
         INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-        INTERFACE.node_crossing_callback = node_crossing_callback
         return True
     except:
         logger.exception("Error initializing hardware interface")
@@ -5338,7 +5335,8 @@ try:
 except Exception:
     logger.exception("Exception while discovering sensors")
 
-INTERFACE.mqtt_client = serviceHelpers.get('mqtt_helper', None)
+mqtt_client = serviceHelpers.get('mqtt_helper', None)
+INTERFACE.mqtt_client = mqtt_client
 INTERFACE.mqtt_ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
 INTERFACE.mqtt_ctrl_topic = rhconfig.MQTT['TIMER_CTRL_TOPIC']
 INTERFACE.timer_id = TIMER_ID
@@ -5477,7 +5475,7 @@ if vrx_controller:
 audio_manager = AudioEventManager(Events, RHData, RACE, rhconfig.AUDIO)
 audio_manager.install_default_effects()
 
-mqtt_manager = MqttEventManager(Events, RHData, RACE, rhconfig.MQTT, serviceHelpers.get('mqtt_helper', None))
+mqtt_manager = MqttEventManager(Events, RHData, RACE, rhconfig.MQTT, mqtt_client)
 mqtt_manager.install_default_messages()
 
 # data exporters
@@ -5499,6 +5497,16 @@ if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     chorusSerial = serial.Serial(port=chorusPort, baudrate=115200, timeout=0.1)
     CHORUS_API = ChorusAPI(chorusSerial, INTERFACE, SENSORS, connect_handler, on_stop_race, lambda : on_reset_auto_calibration({}))
 
+if mqtt_client:
+    from .mqtt_api import MqttAPI
+
+    MQTT_API = MqttAPI(mqtt_client, rhconfig.MQTT['TIMER_ANN_TOPIC'], TIMER_ID, INTERFACE,
+                       node_crossing_callback,
+                       pass_record_callback,
+                       on_set_frequency,
+                       on_set_enter_at_level,
+                       on_set_exit_at_level)
+
 
 def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     if not RHData.get_option("secret_key"):
@@ -5508,7 +5516,9 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     logger.info("Running http server at port " + str(port_val))
     gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
     if CHORUS_API:
-        chorus_thread = gevent.spawn(CHORUS_API.chorus_api_thread_function)
+        CHORUS_API.start()
+    if MQTT_API:
+        MQTT_API.start()
     init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP, {
         'color': ColorVal.ORANGE,
@@ -5535,10 +5545,13 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     if rep_str:
         logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
     if CHORUS_API:
-        chorus_thread.kill(block=True, timeout=0.5)
-        chorus_thread = None
+        CHORUS_API.stop()
+    if MQTT_API:
+        MQTT_API.stop()
     stop_background_threads()
     INTERFACE.close()
+    for service in serviceHelpers.values():
+        service.close()
     log.wait_for_queue_empty()
     gevent.sleep(2)  # allow system shutdown command to run before program exit
     log.close_logging()

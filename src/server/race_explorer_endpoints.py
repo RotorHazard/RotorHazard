@@ -71,9 +71,9 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                     msg['enterTrigger'] = node.enter_at_level
                 if node.exit_at_level is not None:
                     msg['exitTrigger'] = node.exit_at_level
-                if 'threshold' in node and node.threshold is not None:
+                if hasattr(node, 'threshold') and node.threshold is not None:
                     msg['threshold'] = node.threshold
-                if 'gain' in node and node.gain is not None:
+                if hasattr(node, 'gain') and node.gain is not None:
                     msg['gain'] = node.gain
                 msgs.append(msg)
         return '\n'.join([json.dumps(msg) for msg in msgs])

@@ -26,6 +26,15 @@ jobs:
         python3 -m pip install -r reqsNonPi.txt
         cd ..
 
+    - name: Install latest Mosquitto
+      run: |
+        sudo apt-add-repository ppa:mosquitto-dev/mosquitto-ppa
+        sudo apt-get update
+        sudo apt-get install -y mosquitto
+        mosquitto_passwd -c -b mosquitto-bh.pwd race-admin fu56rg20
+        sudo cp mosquitto-bh.* /etc/mosquitto/conf.d/
+        sudo systemctl restart mosquitto
+
     - name: Build schema docs
       run: |
         python3 -m pip install json-schema-for-humans

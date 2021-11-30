@@ -106,6 +106,11 @@ class LapRFInterface(BaseHardwareInterface):
                 raise Exception("LapRF did not respond with RF setup information")
             self.sensors.append(LapRFSensor(node_manager))
 
+    def start(self):
+        for node in self.nodes:
+            node.node_lap_id = 0
+        super().start()
+
     def _update(self):
         for node_manager in self.node_managers:
             self._poll(node_manager)
@@ -146,7 +151,8 @@ class LapRFInterface(BaseHardwareInterface):
             lap_ts = (record.rtc_time - node_manager.race_start_rtc_time)/1000000
             if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
                 node.pass_history.append((lap_ts + self.race_start_time, node.pass_peak_rssi))
-            gevent.spawn(self.pass_record_callback, node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+            node.node_lap_id += 1
+            self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
         elif isinstance(record, laprf.RFSetupEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
