@@ -5,7 +5,6 @@ import gevent
 import json
 import socketio
 from monotonic import monotonic
-from . import RHUtils
 from .RHRace import RaceStatus
 from .eventmanager import Evt
 from .util.RunningMedian import RunningMedian
@@ -23,22 +22,21 @@ class SecondaryNode:
     TIMEDIFF_MEDIAN_SIZE = 30
     TIMEDIFF_CORRECTION_THRESH_MS = 250  # correct split times if secondary clock more off than this
 
-    def __init__(self, idVal, info, RACE, RHData, getCurrentProfile, \
-                 emit_split_pass_info, PROGRAM_START, \
+    def __init__(self, idVal, info, RACE, getCurrentProfile, \
+                 split_record_callback, join_cluster_callback,
+                 PROGRAM_START, \
                  emit_cluster_connect_change, server_release_version):
         self.id = idVal
         self.info = info
         self.RACE = RACE
-        self.RHData = RHData
         self.getCurrentProfile = getCurrentProfile
-        self.emit_split_pass_info = emit_split_pass_info
+        self.split_record_callback = split_record_callback
+        self.join_cluster_callback = join_cluster_callback
         self.PROGRAM_START = PROGRAM_START
         self.emit_cluster_connect_change = emit_cluster_connect_change
         self.server_release_version = server_release_version
-        addr = info['address']
-        if not '://' in addr:
-            addr = 'http://' + addr
-        self.address = addr
+        self.address = info['address']
+        self.node_managers = {}
         self.isMirrorMode = (str(info.get('mode', SecondaryNode.SPLIT_MODE)) == SecondaryNode.MIRROR_MODE)
         self.secondaryModeStr = SecondaryNode.MIRROR_MODE if self.isMirrorMode else SecondaryNode.SPLIT_MODE
         self.recEventsFlag = info.get('recEventsFlag', self.isMirrorMode)
@@ -302,79 +300,27 @@ class SecondaryNode:
                                     (self.numDisconnsDuringRace > 0 and \
                                      (stoppedRaceFlag or self.RACE.race_status == RaceStatus.RACING)) else ""))
 
+    def _lookup_node(self, node_index):
+        for nm, ns in self.node_managers.items():
+            for n, n_idx in ns.items():
+                if n_idx == node_index:
+                    return nm, n
+        return None
+
     def on_pass_record(self, data):
         try:
             self.lastContactTime = monotonic()
             self.numContacts += 1
+            # if secondary-timer clock was detected as not synchronized then apply correction
+            if self.timeCorrectionMs != 0:
+                data['timestamp'] -= self.timeCorrectionMs
+
             node_index = data['node']
-
-            if self.RACE.race_status is RaceStatus.RACING:
-
-                pilot_id = self.RHData.get_pilot_from_heatNode(self.RACE.current_heat, node_index) 
-                
-                if pilot_id != RHUtils.PILOT_ID_NONE:
-
-                    # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
-                    split_ts = data['timestamp'] - self.RACE.start_time_epoch_ms
-
-                    act_laps_list = self.RACE.get_active_laps()[node_index]
-                    lap_count = max(0, len(act_laps_list) - 1)
-                    split_id = self.id
-
-                    # get timestamp for last lap pass (including lap 0)
-                    if len(act_laps_list) > 0:
-                        last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-                        lap_split = self.RHData.get_lapSplits_by_lap(node_index, lap_count)
-
-                        if len(lap_split) <= 0: # first split for this lap
-                            if split_id > 0:
-                                logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
-                            last_split_ts = last_lap_ts
-                        else:
-                            last_split_id = lap_split[-1].id 
-                            if split_id > last_split_id:
-                                if split_id > last_split_id + 1:
-                                    logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-                                last_split_ts = lap_split.split_time_stamp
-                            else:
-                                logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
-                                last_split_ts = None
-                    else:
-                        logger.info('Ignoring split {0} before zero lap for node {1}'.format(split_id+1, node_index+1))
-                        last_split_ts = None
-
-                    if last_split_ts is not None:
-
-                        # if secondary-timer clock was detected as not synchronized then apply correction
-                        if self.timeCorrectionMs != 0:
-                            split_ts -= self.timeCorrectionMs
-
-                        split_time = split_ts - last_split_ts
-                        split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                        split_time_str = RHUtils.time_format(split_time, self.RHData.get_option('timeFormat'))
-                        logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
-                            .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
-                            ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
-
-                        self.RHData.add_lapSplit({
-                            'node_index': node_index,
-                            'pilot_id': pilot_id,
-                            'lap_id': lap_count,
-                            'splid_id': split_id,
-                            'split_time_stamp': split_ts,
-                            'split_time': split_time,
-                            'split_time_formatted': split_time_str,
-                            'split_speed': split_speed
-                        })
-                        
-                        self.emit_split_pass_info(pilot_id, split_id, split_time)
-
-                else:
-                    logger.info('Split pass record dismissed: Node: {0}, no pilot on node'.format(node_index+1))
-
-            else:
-                logger.info('Ignoring split {0} for node {1} because race not running'.format(self.id+1, node_index+1))
-
+            ts = data['timestamp']
+            nm, n = self._lookup_node(node_index)
+            # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
+            split_ts = ts - self.RACE.start_time_epoch_ms
+            self.split_record_callback(self.address, nm, n, split_ts)
         except Exception:
             logger.exception("Error processing pass record from secondary {0} at {1}".format(self.id+1, self.address))
 
@@ -419,6 +365,8 @@ class SecondaryNode:
                              format(self.id+1, self.address))
 
     def join_cluster_response(self, data):
+        self.node_managers = data['node_managers']
+        self.join_cluster_callback(self.address, self.node_managers)
         try:
             infoStr = data.get('server_info')
             logger.debug("Server info from secondary {0} at {1}:  {2}".\

@@ -145,7 +145,7 @@ def assemble_complete(RHData, PageCache, Language):
     payload['SavedRaceMeta'] = assemble_racemeta_complete(RHData, PageCache, Language)
     payload['SavedPilotRace'] = assemble_pilotrace_complete(RHData, PageCache, Language)
     payload['SavedRaceLap'] = assemble_racelap_complete(RHData, PageCache, Language)
-    payload['LapSplit'] = assemble_split_complete(RHData, PageCache, Language)
+    payload['SavedRaceLapSplit'] = assemble_split_complete(RHData, PageCache, Language)
     payload['Profiles'] = assemble_profiles_complete(RHData, PageCache, Language)
     payload['GlobalSettings'] = assemble_settings_complete(RHData, PageCache, Language)
     return payload

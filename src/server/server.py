@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.0" # Public release version code
-SERVER_API = 32+2 # Server API version
+SERVER_API = 32+3 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -37,6 +37,7 @@ import functools
 import socket
 import random
 import string
+import math
 import json
 from collections import OrderedDict
 from six import unichr, string_types
@@ -115,7 +116,7 @@ if not config_file_name:
 rhconfig = Config()
 rhconfig.load(config_file_name)
 
-TIMER_ID = socket.gethostname()+':'+str(rhconfig.GENERAL['HTTP_PORT'])
+TIMER_ID = 'http://' + socket.gethostname() + ':' + str(rhconfig.GENERAL['HTTP_PORT'])
 
 DB_FILE_NAME = args.database
 if not DB_FILE_NAME and args.config:
@@ -762,7 +763,11 @@ def emit_cluster_msg_to_primary(messageType, messagePayload, waitForAckFlag=True
 def emit_join_cluster_response():
     '''Emits 'join_cluster_response' message to primary timer.'''
     payload = {
-        'server_info': json.dumps(serverInfoItems)
+        'server_info': json.dumps(serverInfoItems),
+        'node_managers': {
+            node_manager.addr: [node.index for node in node_manager.nodes]
+            for node_manager in INTERFACE.node_managers
+        }
     }
     emit_cluster_msg_to_primary('join_cluster_response', payload, False)
 
@@ -1279,14 +1284,18 @@ def on_duplicate_heat(data):
 @catchLogExceptionsWrapper
 def on_alter_heat(data):
     '''Update heat.'''
-    heat, altered_race_list = RHData.alter_heat(data)
-    if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
-        set_current_heat_data()
-    emit_heat_data(noself=True)
-    if ('pilot' in data or 'class' in data) and len(altered_race_list):
-        emit_result_data() # live update rounds page
-        message = __('Alterations made to heat: {0}').format(heat.note)
-        emit_priority_message(message, False)
+    node_index = data['node']
+    location_id, seat = get_local_location_id_and_seat(INTERFACE.nodes[node_index])
+    if location_id == 0:
+        data['node'] = seat
+        heat, altered_race_list = RHData.alter_heat(data)
+        if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
+            set_current_heat_data()
+        emit_heat_data(noself=True)
+        if ('pilot' in data or 'class' in data) and len(altered_race_list):
+            emit_result_data() # live update rounds page
+            message = __('Alterations made to heat: {0}').format(heat.note)
+            emit_priority_message(message, False)
 
 
 @SOCKET_IO.on('delete_heat')
@@ -1512,10 +1521,7 @@ def on_backup_database():
     # read DB data and convert to Base64
     with open(bkp_name, mode='rb') as file_obj:
         file_content = file_obj.read()
-    if hasattr(base64, "encodebytes"):
-        file_content = base64.encodebytes(file_content).decode()
-    else:
-        file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+    file_content = base64.encodebytes(file_content).decode()
 
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
@@ -1768,10 +1774,7 @@ def on_download_logs(data):
             # read logs-zip file data and convert to Base64
             with open(zip_path_name, mode='rb') as file_obj:
                 file_content = file_obj.read()
-            if hasattr(base64, "encodebytes"):
-                file_content = base64.encodebytes(file_content).decode()
-            else:
-                file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+            file_content = base64.encodebytes(file_content).decode()
 
             emit_payload = {
                 'file_name': os.path.basename(zip_path_name),
@@ -2478,18 +2481,21 @@ def on_save_laps():
 
     for node_index in range(min(RACE.num_nodes, len(profile_freqs["f"]))):
         if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-            pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
-
-            history_times, history_values = INTERFACE.nodes[node_index].history.get()
-            race_data[node_index] = {
-                'race_id': new_race.id,
-                'pilot_id': pilot_id,
-                'history_values': json.dumps(history_values),
-                'history_times': json.dumps(history_times),
-                'enter_at': INTERFACE.nodes[node_index].enter_at_level,
-                'exit_at': INTERFACE.nodes[node_index].exit_at_level,
-                'laps': RACE.node_laps[node_index]
-                }
+            node = INTERFACE.nodes[node_index]
+            location_id, seat = get_local_location_id_and_seat(node)
+            if location_id == 0:
+                pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, seat)
+                history_times, history_values = node.history.get()
+                race_data[seat] = {
+                    'race_id': new_race.id,
+                    'pilot_id': pilot_id,
+                    'history_values': json.dumps(history_values),
+                    'history_times': json.dumps(history_times),
+                    'enter_at': node.enter_at_level,
+                    'exit_at': node.exit_at_level,
+                    'laps': RACE.node_laps[seat],
+                    'splits': RACE.node_splits[seat]
+                    }
 
     RHData.add_race_data(race_data)
 
@@ -2636,7 +2642,6 @@ def clear_laps():
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.winning_lap_id = 0
     reset_current_laps() # Clear out the current laps table
-    RHData.clear_lapSplits()
     logger.info('Current laps cleared')
 
 
@@ -2863,13 +2868,8 @@ def on_delete_lap(data):
         db_next['lap_time'] = db_next['lap_time_stamp']
         db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], RHData.get_option('timeFormat'))
 
-    try:  # delete any split laps for deleted lap
-        lap_splits = RHData.get_lapSplits_by_lap(node_index, lap_number)
-        if lap_splits and len(lap_splits) > 0:
-            for lap_split in lap_splits:
-                RHData.clear_lapSplit(lap_split)
-    except:
-        logger.exception("Error deleting split laps")
+    # delete any split laps for deleted lap
+    RACE.node_splits[node_index] = list(filter(lambda split: split['lap_id'] != lap_index, RACE.node_splits[node_index]))
 
     Events.trigger(Evt.LAP_DELETE, {
         #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
@@ -3406,7 +3406,7 @@ def build_laps_list(active_race=RACE):
                 if active_race.format and active_race.format.start_behavior == RHRace.StartBehavior.FIRST_LAP:
                     lap_number += 1
 
-                splits = get_splits(node_idx, lap['lap_number'], True)
+                splits = get_splits(active_race, node_idx, lap['lap_number'], True)
                 if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
                         fastest_lap_time = lap['lap_time']
                         fastest_lap_index = idx
@@ -3424,7 +3424,7 @@ def build_laps_list(active_race=RACE):
                     'late_lap': lap.get('late_lap', False)
                 })
 
-        splits = get_splits(node_idx, last_lap_id+1, False)
+        splits = get_splits(active_race, node_idx, last_lap_id+1, False)
         if splits:
             node_laps.append({
                 'lap_number': last_lap_id+1,
@@ -3471,12 +3471,12 @@ def emit_current_laps(**params):
         SOCKET_IO.emit('current_laps', emit_payload)
 
 
-def get_splits(node_idx, lap_id, lapCompleted):
+def get_splits(active_race, node_idx, lap_id, lapCompleted):
     splits = []
     if CLUSTER:
         for secondary_index in range(len(CLUSTER.secondaries)):
             if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-                split = RHData.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
+                split = list(filter(lambda split: split['lap_id'] == lap_id and split['split_id'] == secondary_index, active_race.node_splits[node_idx]))
                 if split:
                     split_payload = {
                         'split_id': secondary_index,
@@ -4366,7 +4366,6 @@ def ms_from_program_start():
 @catchLogExcDBCloseWrapper
 def pass_record_callback(node, lap_race_time, source):
     '''Handles pass records from the nodes.'''
-
     # lap_race_time is lap timestamp relative to start time
     lap_timestamp_absolute = lap_race_time + RACE.start_time_monotonic
     lap_time_stamp = round(lap_race_time * 1000) # store as milliseconds
@@ -4384,15 +4383,21 @@ def pass_record_callback(node, lap_race_time, source):
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
+    location_id, seat = get_local_location_id_and_seat(node)
+    if location_id > 0:
+        track = json.loads(RHData.get_option('trackLayout', None))
+        add_split(location_id, seat, lap_time_stamp, track)
+        return
+
     profile_freqs = json.loads(getCurrentProfile().frequencies)
-    if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
+    if profile_freqs["f"][seat] != RHUtils.FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end
         if RACE.race_status is RHRace.RaceStatus.RACING \
             or (RACE.race_status is RHRace.RaceStatus.DONE and \
                 lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot on the node
-            pilot = RACE.node_pilots[node.index]
+            pilot = RACE.node_pilots[seat]
             race_format = getCurrentRaceFormat()
             # reject passes before race start and with disabled (no-pilot) nodes
             if pilot or race_format is SECONDARY_RACE_FORMAT:
@@ -4402,11 +4407,11 @@ def pass_record_callback(node, lap_race_time, source):
                     if node.start_thresh_lower_flag:
                         node.start_thresh_lower_time = monotonic()
 
-                    lap_number = len(RACE.get_active_laps()[node.index])
+                    lap_number = len(RACE.get_active_laps()[seat])
 
                     if lap_number: # This is a normal completed lap
                         # Find the time stamp of the last lap completed (including "late" laps for timing)
-                        last_lap_time_stamp = RACE.get_active_laps(True)[node.index][-1]['lap_time_stamp']
+                        last_lap_time_stamp = RACE.get_active_laps(True)[seat][-1]['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
@@ -4423,12 +4428,12 @@ def pass_record_callback(node, lap_race_time, source):
                         min_lap = RHData.get_optionInt("MinLapSec")
                         min_lap_behavior = RHData.get_optionInt("MinLapBehavior")
 
-                    node_finished_flag = RACE.get_node_finished_flag(node.index)
+                    node_finished_flag = RACE.get_node_finished_flag(seat)
                     # set next node race status as 'finished' if winner has been declared
                     #  or timer mode is count-down race and race-time has expired
                     if RACE.win_status == RHRace.WinStatus.DECLARED or \
                                     (race_format.race_mode == RHRace.RaceMode.FIXED_TIME and RACE.timer_running is False):
-                        RACE.set_node_finished_flag(node.index)
+                        RACE.set_node_finished_flag(seat)
 
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
 
@@ -4437,14 +4442,14 @@ def pass_record_callback(node, lap_race_time, source):
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
-                            logger.info('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
-                                       .format(node.index+1, lap_number, lap_time_fmtstr, min_lap, node.under_min_lap_count))
+                            logger.info('Pass record under lap minimum ({3}): Seat={0}, Lap={1}, LapTime={2}, Count={4}' \
+                                       .format(seat+1, lap_number, lap_time_fmtstr, min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
                         if race_format.lap_grace_sec and lap_time_stamp > race_format.race_time_sec*1000 and lap_time_stamp <= (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
                             if not node_finished_flag:
-                                RACE.set_node_finished_flag(node.index)
+                                RACE.set_node_finished_flag(seat)
                                 logger.info('Pilot {} done'.format(pilot.callsign))
                             else:
                                 lap_ok_flag = False
@@ -4454,8 +4459,8 @@ def pass_record_callback(node, lap_race_time, source):
                         if RACE.win_status == RHRace.WinStatus.DECLARED and (race_format.team_racing_mode or \
                                                                         node_finished_flag):
                             lap_late_flag = True  # "late" lap pass (after race winner declared)
-                            logger.info('Ignoring lap after race winner declared: Node={}, lap={}, lapTime={}' \
-                                       .format(node.index+1, lap_number, lap_time_fmtstr))
+                            logger.info('Ignoring lap after race winner declared: Seat={}, lap={}, lapTime={}' \
+                                       .format(seat+1, lap_number, lap_time_fmtstr))
 
                         # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
                         emit_pass_record(node, lap_number, lap_time_stamp)
@@ -4470,7 +4475,7 @@ def pass_record_callback(node, lap_race_time, source):
                             'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
                             'late_lap': lap_late_flag
                         }
-                        RACE.node_laps[node.index].append(lap_data)
+                        RACE.node_laps[seat].append(lap_data)
 
                         RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
@@ -4480,20 +4485,20 @@ def pass_record_callback(node, lap_race_time, source):
                             RACE.team_cacheStatus = Results.CacheStatus.VALID
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
-                            'node_index': node.index,
-                            'color': led_manager.getDisplayColor(node.index),
+                            'node_index': seat,
+                            'color': led_manager.getDisplayColor(seat),
                             'lap': lap_data,
                             'results': RACE.results,
-                            'timer_id': TIMER_ID
+                            'location_id': location_id
                             })
 
-                        logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}, Late: {3}' \
-                            .format(node.index+1, lap_number, lap_time_fmtstr, lap_late_flag))
+                        logger.debug('Pass record: Seat: {0}, Lap: {1}, Lap time: {2}, Late: {3}' \
+                            .format(seat+1, lap_number, lap_time_fmtstr, lap_late_flag))
                         emit_current_laps() # update all laps on the race page
                         emit_current_leaderboard() # generate and update leaderboard
 
                         if lap_number == 0:
-                            emit_first_pass_registered(node.index) # play first-pass sound
+                            emit_first_pass_registered(seat) # play first-pass sound
 
                         if race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP:
                             lap_number += 1
@@ -4527,7 +4532,7 @@ def pass_record_callback(node, lap_race_time, source):
 
                     else:
                         # record lap as 'deleted'
-                        RACE.node_laps[node.index].append({
+                        RACE.node_laps[seat].append({
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
@@ -4536,14 +4541,107 @@ def pass_record_callback(node, lap_race_time, source):
                             'deleted': True
                         })
                 else:
-                    logger.debug('Pass record dismissed: Node: {0}, Race not started' \
-                        .format(node.index+1))
+                    logger.debug('Pass record dismissed: Seat: {0}, Race not started' \
+                        .format(seat+1))
             else:
-                logger.debug('Pass record dismissed: Node: {0}, Pilot not defined' \
-                    .format(node.index+1))
+                logger.debug('Pass record dismissed: Seat: {0}, Pilot not defined' \
+                    .format(seat+1))
     else:
-        logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
-            .format(node.index+1))
+        logger.debug('Pass record dismissed: Seat: {0}, Frequency not defined' \
+            .format(seat+1))
+
+
+def get_local_location_id_and_seat(node):
+    timer_mapping = json.loads(RHData.get_option('timerMapping', None))
+    track = json.loads(RHData.get_option('trackLayout', None))
+    return get_location_id_and_seat(TIMER_ID, node.manager.addr, node.multi_node_index, track, timer_mapping)
+
+
+def get_location_id_and_seat(timer_id, nm, n, track, timer_mapping):
+    node_map_info = timer_mapping[timer_id][nm][n]
+    for idx, loc in enumerate(track['layout']):
+        if loc['name'] == node_map_info['location']:
+            return idx, node_map_info['seat']
+    raise ValueError('Timer mapping/track layout is inconsistent')
+
+
+def join_cluster_callback(split_timer_id, nms):
+    timer_mapping = json.loads(RHData.get_option('timerMapping', None))
+    timer_map_info = timer_mapping.get(split_timer_id, None)
+    if not timer_map_info:
+        timer_mapping[split_timer_id] = {
+            nm.addr: [{'location': '', 'seat': node_index} for node_index in nodes]
+            for nm,nodes in nms.items()
+        }
+        RHData.set_option('timerMapping', json.dumps(timer_mapping))
+
+
+def split_record_callback(split_timer_id, nm, n, split_ts):
+    track = json.loads(RHData.get_option('trackLayout', None))
+    timer_mapping = json.loads(RHData.get_option('timerMapping', None))
+    location_id, seat = get_location_id_and_seat(split_timer_id, nm, n, track, timer_mapping)
+    add_split(location_id, seat, split_ts, track)
+
+
+def add_split(location_id, seat, split_ts, track):
+    split_id = location_id - 1
+    if RACE.race_status == RHRace.RaceStatus.RACING:
+
+        pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, seat) 
+        
+        if pilot_id != RHUtils.PILOT_ID_NONE:
+
+            act_laps_list = RACE.get_active_laps()[seat]
+            lap_count = max(0, len(act_laps_list) - 1)
+
+            # get timestamp for last lap pass (including lap 0)
+            if len(act_laps_list) > 0:
+                last_lap_ts = act_laps_list[-1]['lap_time_stamp']
+                lap_splits = list(filter(lambda split: split['lap_id'] == lap_count, RACE.node_splits[seat]))
+
+                if len(lap_splits) == 0: # first split for this lap
+                    if split_id > 0:
+                        logger.info('Ignoring missing splits before {0} for seat {1}'.format(split_id+1, seat+1))
+                    last_split_ts = last_lap_ts
+                else:
+                    last_split = lap_splits[-1]
+                    last_split_id = last_split['split_id'] 
+                    if split_id > last_split_id:
+                        if split_id > last_split_id + 1:
+                            logger.info('Ignoring missing splits between {0} and {1} for seat {2}'.format(last_split_id+1, split_id+1, seat+1))
+                        last_split_ts = last_split['split_time_stamp']
+                    else:
+                        logger.info('Ignoring out-of-order split {0} for seat {1}'.format(split_id+1, seat+1))
+                        last_split_ts = None
+            else:
+                logger.info('Ignoring split {0} before zero lap for seat {1}'.format(split_id+1, seat+1))
+                last_split_ts = None
+
+            if last_split_ts is not None:
+                split_time = split_ts - last_split_ts
+                distance = math.dist(track['layout'][split_id+1]['location'], track['layout'][split_id]['location'])
+                split_speed = distance*1000.0/float(split_time) if distance else None
+                split_time_str = RHUtils.time_format(split_time, RHData.get_option('timeFormat'))
+                logger.debug('Split pass record: Seat {0}, lap {1}, split {2}, time={3}, speed={4}' \
+                    .format(seat+1, lap_count+1, split_id+1, split_time_str, \
+                    ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
+
+                RACE.node_splits[seat].append({
+                    'lap_id': lap_count,
+                    'split_id': split_id,
+                    'split_time_stamp': split_ts,
+                    'split_time': split_time,
+                    'split_time_formatted': split_time_str,
+                    'split_speed': split_speed
+                })
+                
+                emit_split_pass_info(pilot_id, split_id, split_time)
+
+        else:
+            logger.info('Split pass record dismissed: No pilot in seat {}'.format(seat+1))
+
+    else:
+        logger.info('Ignoring split {0} for seat {1} because race not running'.format(split_id+1, seat+1))
 
 
 def check_win_condition(**kwargs):
@@ -5277,45 +5375,6 @@ if args.jumptobl:
         sys.exit(0 if successFlag else 1)
     sys.exit(0)
 
-CLUSTER = ClusterNodeSet(Language, Events)
-hasMirrors = False
-try:
-    for sec_idx, secondary_info in enumerate(rhconfig.GENERAL['SECONDARIES']):
-        if isinstance(secondary_info, string_types):
-            secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
-        if 'address' not in secondary_info:
-            raise RuntimeError("Secondary 'address' item not specified")
-        # substitute asterisks in given address with values from host IP address
-        secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
-                                                                secondary_info['address'])
-        if 'timeout' not in secondary_info:
-            secondary_info['timeout'] = rhconfig.GENERAL['SECONDARY_TIMEOUT']
-        if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
-            hasMirrors = True
-        elif hasMirrors:
-            logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
-            set_ui_message(
-                'secondary',
-                "Mirror secondaries must be last; ignoring part of secondary configuration",
-                header='Notice',
-                subclass='mirror'
-                )
-            break
-        secondary = SecondaryNode(sec_idx, secondary_info, RACE, RHData, getCurrentProfile, \
-                          emit_split_pass_info, PROGRAM_START, \
-                          emit_cluster_connect_change, RELEASE_VERSION)
-        CLUSTER.addSecondary(secondary)
-except:
-    logger.exception("Error adding secondary to cluster")
-    set_ui_message(
-        'secondary',
-        'Secondary configuration is invalid.',
-        header='Error',
-        subclass='error'
-        )
-
-if CLUSTER and CLUSTER.hasRecEventsSecondaries():
-    CLUSTER.init_repeater()
 
 logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
 if RACE.num_nodes > 0:
@@ -5503,9 +5562,75 @@ if mqtt_client:
     MQTT_API = MqttAPI(mqtt_client, rhconfig.MQTT['TIMER_ANN_TOPIC'], TIMER_ID, INTERFACE,
                        node_crossing_callback,
                        pass_record_callback,
+                       split_record_callback,
                        on_set_frequency,
                        on_set_enter_at_level,
                        on_set_exit_at_level)
+
+CLUSTER = ClusterNodeSet(Language, Events)
+hasMirrors = False
+DEFAULT_TIMER_MAPPING = {
+    TIMER_ID: {
+        nm.addr: [{'location': 'Start/finish', 'seat': node.index} for node in nm.nodes]
+        for nm in INTERFACE.node_managers
+    }
+}
+DEFAULT_TRACK = {
+    'crs': 'Local grid',
+    'units': 'm',
+    'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}]
+}
+try:
+    for sec_idx, secondary_info in enumerate(rhconfig.GENERAL['SECONDARIES']):
+        if isinstance(secondary_info, string_types):
+            secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
+        if 'address' not in secondary_info:
+            raise RuntimeError("Secondary 'address' item not specified")
+        # substitute asterisks in given address with values from host IP address
+        secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
+                                                                secondary_info['address'])
+        if not '://' in secondary_info['address']:
+            secondary_info['address'] = 'http://' + secondary_info['address']
+        if 'timeout' not in secondary_info:
+            secondary_info['timeout'] = rhconfig.GENERAL['SECONDARY_TIMEOUT']
+        if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
+            hasMirrors = True
+        elif hasMirrors:
+            logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
+            set_ui_message(
+                'secondary',
+                "Mirror secondaries must be last; ignoring part of secondary configuration",
+                header='Notice',
+                subclass='mirror'
+                )
+            break
+        secondary = SecondaryNode(sec_idx, secondary_info, RACE, getCurrentProfile, \
+                          split_record_callback, join_cluster_callback,
+                          PROGRAM_START, \
+                          emit_cluster_connect_change, RELEASE_VERSION)
+        CLUSTER.addSecondary(secondary)
+        track_location = 'Split '+(secondary.id+1)
+        prev_loc_coord = DEFAULT_TRACK['layout'][-1]['location']
+        dist = secondary_info['distance'] if 'distance' in secondary_info else 0
+        track_coord = [prev_loc_coord[0] + dist, prev_loc_coord[1]]
+        track_loc_info = {'name': track_location, 'type': 'Arch gate', 'location': track_coord}
+        DEFAULT_TRACK['layout'].append(track_loc_info)
+except:
+    logger.exception("Error adding secondary to cluster")
+    set_ui_message(
+        'secondary',
+        'Secondary configuration is invalid.',
+        header='Error',
+        subclass='error'
+        )
+
+if CLUSTER and CLUSTER.hasRecEventsSecondaries():
+    CLUSTER.init_repeater()
+
+if RHData.get_option('trackLayout', None) is None:
+    RHData.set_option('trackLayout', json.dumps(DEFAULT_TRACK))
+if RHData.get_option('timerMapping', None) is None:
+    RHData.set_option('timerMapping', json.dumps(DEFAULT_TIMER_MAPPING))
 
 
 def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
@@ -5552,6 +5677,7 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     INTERFACE.close()
     for service in serviceHelpers.values():
         service.close()
+    RHData.close()
     log.wait_for_queue_empty()
     gevent.sleep(2)  # allow system shutdown command to run before program exit
     log.close_logging()

@@ -3,11 +3,11 @@ import axios from 'axios';
 import { createBaseLoader } from './util.js';
 import * as config from './rh-config.js';
 
-function createLoader(endpoint) {
+function createLoader(endpoint, opts={}) {
   const loader = createBaseLoader();
   loader.endpoint = endpoint;
   loader._load = async function(processor) {
-    const body = (await axios.get(this.endpoint, {signal: this.aborter.signal})).data;
+    const body = (await axios.get(this.endpoint, {...opts, signal: this.aborter.signal})).data;
     let data;
     if (processor !== null) {
       data = {};
@@ -22,11 +22,11 @@ function createLoader(endpoint) {
 }
 
 export function createResultDataLoader() {
-  return createLoader(config.resultDataEndpoint);
+  return createLoader(config.resultDataEndpoint, {responseType: 'text'});
 }
 
 export function createSetupDataLoader() {
-  return createLoader(config.setupDataEndpoint);
+  return createLoader(config.setupDataEndpoint, {responseType: 'text'});
 }
 
 let vtxTable = null;
@@ -49,6 +49,18 @@ export function createTrackDataLoader() {
 export async function storeTrackData(trackData) {
   try {
     await axios.post(config.trackDataEndpoint, trackData);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+
+export function createTimerMappingLoader() {
+  return createLoader(config.timerMappingEndpoint);
+}
+
+export async function storeTimerMapping(timerMapping) {
+  try {
+    await axios.post(config.timerMappingEndpoint, timerMapping);
   } catch (ex) {
     console.log(ex);
   }

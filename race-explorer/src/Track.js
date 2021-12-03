@@ -108,7 +108,7 @@ export default function Tracks(props) {
   useEffect(() => {
     const map = mapRef.current;
     if (map) {
-      for (let loc of trackLayout) {
+      for (const loc of trackLayout) {
         L.marker(loc.location, {title: loc.name}).addTo(map.trackLayer);
       }
     }

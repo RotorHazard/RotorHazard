@@ -140,23 +140,29 @@ class BaseHardwareInterface:
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
         if node:
             bandChannel = msg.payload.decode('utf-8')
-            band = bandChannel[0]
-            channel = int(bandChannel[1])
             if bandChannel in FREQS:
                 freq = FREQS[bandChannel]
+                band = bandChannel[0]
+                channel = int(bandChannel[1])
                 self.set_frequency(node.index, freq, band, channel)
 
     def _mqtt_set_enter_trigger(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
         if node:
-            level = int(msg.payload.decode('utf-8'))
-            self.set_enter_at_level(node.index, level)
+            try:
+                level = int(msg.payload.decode('utf-8'))
+                self.set_enter_at_level(node.index, level)
+            except:
+                logger.warn('Invalid enter trigger message')
 
     def _mqtt_set_exit_trigger(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
         if node:
-            level = int(msg.payload.decode('utf-8'))
-            self.set_exit_at_level(node.index, level)
+            try:
+                level = int(msg.payload.decode('utf-8'))
+                self.set_exit_at_level(node.index, level)
+            except:
+                logger.warn('Invalid exit trigger message')
 
     def _mqtt_publish_frequency(self, node):
         self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "frequency"), str(node.frequency))
@@ -401,6 +407,7 @@ class BaseHardwareInterface:
         node = self.nodes[node_index]
         lap_timestamp = monotonic() - (ms_val / 1000.0) - self.race_start_time  # relative to start time
         node.enter_at_timestamp = node.exit_at_timestamp = 0
+        node.node_lap_id += 1
         self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
     def force_end_crossing(self, node_index):

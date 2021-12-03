@@ -42,6 +42,8 @@ class MockInterface(BaseHardwareInterface):
             self.nodes.append(node)
 
     def start(self):
+        for node in self.nodes:
+            node.node_lap_id = 0
         if self.data_files is not None:
             for node in self.nodes:
                 if not self.data_files[node.index]:

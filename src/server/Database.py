@@ -84,25 +84,6 @@ class RaceClass(DB.Model):
         return '<RaceClass %r>' % self.id
 
 
-class LapSplit(DB.Model):
-    __tablename__ = 'lap_split'
-    __table_args__ = (
-        DB.UniqueConstraint('node_index', 'lap_id', 'split_id'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    lap_id = DB.Column(DB.Integer, nullable=False)
-    split_id = DB.Column(DB.Integer, nullable=False)
-    split_time_stamp = DB.Column(DB.Integer, nullable=False)
-    split_time = DB.Column(DB.Integer, nullable=False)
-    split_time_formatted = DB.Column(DB.Integer, nullable=False)
-    split_speed = DB.Column(DB.Float, nullable=True)
-
-    def __repr__(self):
-        return '<LapSplit %r>' % self.pilot_id
-
-
 class SavedRaceMeta(DB.Model):
     __tablename__ = 'saved_race_meta'
     __table_args__ = (
@@ -157,6 +138,26 @@ class SavedRaceLap(DB.Model):
 
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id
+
+
+class SavedRaceLapSplit(DB.Model):
+    __tablename__ = 'saved_race_lap_split'
+    __table_args__ = (
+        DB.UniqueConstraint('race_id', 'node_index', 'lap_id', 'split_id'),
+    )
+    id = DB.Column(DB.Integer, primary_key=True)
+    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
+    node_index = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    lap_id = DB.Column(DB.Integer, nullable=False)
+    split_id = DB.Column(DB.Integer, nullable=False)
+    split_time_stamp = DB.Column(DB.Integer, nullable=False)
+    split_time = DB.Column(DB.Integer, nullable=False)
+    split_time_formatted = DB.Column(DB.String, nullable=False)
+    split_speed = DB.Column(DB.Float, nullable=True)
+
+    def __repr__(self):
+        return '<SavedRaceLapSplit %r>' % self.pilot_id
 
 
 class Profiles(DB.Model):

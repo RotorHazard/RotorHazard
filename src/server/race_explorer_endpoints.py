@@ -20,15 +20,22 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
         eventName = RHData.get_option('eventName', '')
         msgs = []
         for race in RHData.get_savedRaceMetas():
+            race_id = race.id
             round_id = race.round_id
             heat_id = race.heat_id
             pilotraces = RHData.get_savedPilotRaces_by_savedRaceMeta(race.id)
             for pilotrace in pilotraces:
                 pilot = RHData.get_pilot(pilotrace.pilot_id)
-                pilotlaps = RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id)
-                laps = [{'lap': i, 'timestamp': pilotlap.lap_time_stamp, 'timer': TIMER_ID} for i,pilotlap in enumerate(pilotlaps)]
-                msg = {'event': eventName, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
-                msgs.append(msg)
+                if pilot:
+                    pilotlaps = RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id)
+                    laps = []
+                    for lap_id,pilotlap in enumerate(pilotlaps):
+                        laps.append({'lap': lap_id, 'timestamp': pilotlap.lap_time_stamp, 'location': 0})
+                        lapsplits = RHData.get_lapSplits_by_lap(race_id, pilotrace.node_index, lap_id)
+                        for lapsplit in lapsplits:
+                            laps.append({'lap': lap_id, 'timestamp': lapsplit.split_time_stamp, 'location': lapsplit.split_id+1})
+                    msg = {'event': eventName, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
+                    msgs.append(msg)
         return '\n'.join([json.dumps(msg) for msg in msgs])
 
     @APP.route('/raceEvent')
@@ -49,12 +56,34 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                 'units': 'm',
                 'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}]
             }
+            RHData.set_option('trackLayout', json.dumps(track))
         return track
 
     @APP.route('/trackLayout', methods=['POST'])
     def track_layout_post():
         data = request.get_json()
         RHData.set_option('trackLayout', json.dumps(data))
+        return '', 204
+
+    @APP.route('/timerMapping', methods=['GET'])
+    def timer_mapping_get():
+        timerMapping = RHData.get_option('timerMapping', None)
+        if timerMapping:
+            timerMapping = json.loads(timerMapping)
+        else:
+            timerMapping = {
+                TIMER_ID: {
+                    nm.addr: [{'location': 'Start/finish', 'seat': node.index} for node in nm.nodes]
+                    for nm in INTERFACE.node_managers
+                }
+            }
+            RHData.set_option('timerMapping', json.dumps(timerMapping))
+        return timerMapping
+
+    @APP.route('/timerMapping', methods=['POST'])
+    def timer_mapping_post():
+        data = request.get_json()
+        RHData.set_option('timerMapping', json.dumps(data))
         return '', 204
 
     @APP.route('/timerSetup')

@@ -25,6 +25,7 @@ class RHRace():
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
         self.start_time_delay_secs = 0 # random-length race-start delay
         self.node_laps = {} # current race lap objects, by node
+        self.node_splits = {}
         self.node_has_finished = {}
         self.any_races_started = False
         # concluded
@@ -62,6 +63,7 @@ class RHRace():
 
     def reset(self):
         self.node_laps = {idx: [] for idx in range(self._num_nodes)}
+        self.node_splits = {idx: [] for idx in range(self._num_nodes)}
         self.cacheStatus = CacheStatus.INVALID
         self.team_cacheStatus = CacheStatus.INVALID
 

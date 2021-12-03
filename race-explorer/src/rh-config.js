@@ -2,6 +2,7 @@ export let resultDataEndpoint;
 export let eventDataEndpoint;
 export let setupDataEndpoint;
 export let trackDataEndpoint;
+export let timerMappingEndpoint;
 export let vtxTableEndpoint;
 export let mqttConfigEndpoint;
 
@@ -10,6 +11,7 @@ if (process.env.NODE_ENV === 'development') {
   eventDataEndpoint = '/race-explorer/dev/eventData.json';
   setupDataEndpoint = '/race-explorer/dev/setupData.jsonl';
   trackDataEndpoint = '/race-explorer/dev/trackData.json';
+  timerMappingEndpoint = '/race-explorer/dev/timerMapping.json';
   vtxTableEndpoint = '/race-explorer/dev/vtx_table.json';
   mqttConfigEndpoint = '/race-explorer/dev/mqttConfig.json';
 } else {
@@ -17,6 +19,7 @@ if (process.env.NODE_ENV === 'development') {
   eventDataEndpoint = '/raceEvent';
   setupDataEndpoint = '/timerSetup';
   trackDataEndpoint = '/trackLayout';
+  timerMappingEndpoint = '/timerMapping';
   vtxTableEndpoint = '/vtxTable';
   mqttConfigEndpoint = '/mqttConfig';
 }

@@ -1,13 +1,17 @@
 from helpers.mqtt_helper import make_topic, split_topic
 from interface.BaseHardwareInterface import BaseHardwareInterface
 from server.RHUtils import FREQS
+import logging
 import json
+
+logger = logging.getLogger(__name__)
 
 
 class MqttAPI:
     def __init__(self, client, ann_topic, timer_id, INTERFACE,
                  node_crossing_callback,
                  pass_record_callback,
+                 split_record_callback,
                  on_set_frequency,
                  on_set_enter_at_level,
                  on_set_exit_at_level):
@@ -17,6 +21,7 @@ class MqttAPI:
         self.INTERFACE = INTERFACE
         self.node_crossing_callback = node_crossing_callback
         self.pass_record_callback = pass_record_callback
+        self.split_record_callback = split_record_callback
         self.on_set_frequency = on_set_frequency
         self.on_set_enter_at_level = on_set_enter_at_level
         self.on_set_exit_at_level = on_set_exit_at_level
@@ -74,25 +79,39 @@ class MqttAPI:
             self.node_crossing_callback(node)
 
     def pass_handler(self, client, userdata, msg):
-        node = self._get_node_from_topic(msg.topic)
-        if node:
-            pass_info = json.loads(msg.payload.decode('utf-8'))
-            if pass_info['source'] == 'realtime':
-                lap_source = BaseHardwareInterface.LAP_SOURCE_REALTIME
-            elif pass_info['source'] == 'manual':
-                lap_source = BaseHardwareInterface.LAP_SOURCE_MANUAL
+        topicNames = split_topic(msg.topic)
+        if len(topicNames) >= 4:
+            timer_id = topicNames[-4]
+            nm_name = topicNames[-3]
+            multi_node_index = int(topicNames[-2])
+            if timer_id == self.timer_id:
+                for node_manager in self.INTERFACE.node_managers:
+                    if node_manager.addr == nm_name and multi_node_index < len(node_manager.nodes):
+                        node = node_manager.nodes[multi_node_index]
+                        pass_info = json.loads(msg.payload.decode('utf-8'))
+                        if pass_info['source'] == 'realtime':
+                            lap_source = BaseHardwareInterface.LAP_SOURCE_REALTIME
+                        elif pass_info['source'] == 'manual':
+                            lap_source = BaseHardwareInterface.LAP_SOURCE_MANUAL
+                        else:
+                            lap_source = None
+            
+                        if lap_source:
+                            lap_ts = float(pass_info['timestamp'])
+                            self.pass_record_callback(node, lap_ts, lap_source)
             else:
-                lap_source = None
-
-            if lap_source:
+                pass_info = json.loads(msg.payload.decode('utf-8'))
                 lap_ts = float(pass_info['timestamp'])
-                self.pass_record_callback(node, lap_ts, lap_source)
+                self.split_record_callback(timer_id, nm_name, multi_node_index, lap_ts)
 
     def set_frequency_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            freq = int(msg.payload.decode('utf-8'))
-            self.on_set_frequency({'node': node.index, 'frequency': freq})
+            try:
+                freq = int(msg.payload.decode('utf-8'))
+                self.on_set_frequency({'node': node.index, 'frequency': freq})
+            except:
+                logger.warn('Invalid frequency message')
 
     def set_bandChannel_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
@@ -105,11 +124,17 @@ class MqttAPI:
     def set_enter_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            level = int(msg.payload.decode('utf-8'))
-            self.on_set_enter_at_level({'node': node.index, 'enter_at_level': level})
+            try:
+                level = int(msg.payload.decode('utf-8'))
+                self.on_set_enter_at_level({'node': node.index, 'enter_at_level': level})
+            except:
+                logger.warn('Invalid enter trigger message')
 
     def set_exit_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            level = int(msg.payload.decode('utf-8'))
-            self.on_set_exit_at_level({'node': node.index, 'exit_at_level': level})
+            try:
+                level = int(msg.payload.decode('utf-8'))
+                self.on_set_exit_at_level({'node': node.index, 'exit_at_level': level})
+            except:
+                logger.warn('Invalid exit trigger message')

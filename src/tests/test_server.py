@@ -14,6 +14,7 @@ from server import server, log, RHRace
 from interface.Node import NodeManager
 import tests as tests_pkg
 
+
 class ServerTest(unittest.TestCase):
     def setUp(self):
         self.client = server.SOCKET_IO.test_client(server.APP)
@@ -297,9 +298,7 @@ class ServerTest(unittest.TestCase):
         # trigger livetime client mode
         self.client.emit('get_version')
         server.RACE.race_status = 1
-        node_manager = NodeManager()
-        node_manager.addr = 'test:'
-        node = node_manager.add_node(0)
+        node = server.INTERFACE.nodes[0]
         server.RACE.start_time_monotonic = 10
         server.RACE.start_time_epoch_ms = server.PROGRAM_START.monotonic_to_epoch_millis(server.RACE.start_time_monotonic)
         server.pass_record_callback(node, 19.8, 0)

@@ -1646,6 +1646,19 @@ class RHData():
                     deleted=lap['deleted']
                 ))
 
+            for split in node_data['splits']:
+                self._Database.DB.session.add(self._Database.SavedRaceLapSplit(
+                    race_id=node_data['race_id'],
+                    node_index=node_index,
+                    pilot_id=node_data['pilot_id'],
+                    lap_id=split['lap_id'],
+                    split_id=split['split_id'],
+                    split_time_stamp=split['split_time_stamp'],
+                    split_time=split['split_time'],
+                    split_time_formatted=split['split_time_formatted'],
+                    split_speed=split['split_speed']
+                ))
+
         self.commit()
         return True
 
@@ -1653,68 +1666,24 @@ class RHData():
         self._Database.DB.session.query(self._Database.SavedRaceMeta).delete()
         self._Database.DB.session.query(self._Database.SavedPilotRace).delete()
         self._Database.DB.session.query(self._Database.SavedRaceLap).delete()
-        self._Database.DB.session.query(self._Database.LapSplit).delete()
+        self._Database.DB.session.query(self._Database.SavedRaceLapSplit).delete()
         self.commit()
         logger.info('Database saved races reset')
         return True
 
     # Splits
     def get_lapSplits(self):
-        return self._Database.LapSplit.query.all()
+        return self._Database.SavedRaceLapSplit.query.all()
 
-    def get_lapSplits_by_lap(self, node_index, lap_id):
-        return self._Database.LapSplit.query.filter_by(
+    def get_lapSplits_by_lap(self, race_id, node_index, lap_id):
+        return self._Database.SavedRaceLapSplit.query.filter_by(
+            race_id=race_id,
             node_index=node_index,
             lap_id=lap_id
             ).all()
 
-    def get_lapSplit_by_params(self, node_index, lap_id, split_id):
-        return self._Database.LapSplit.query.filter_by(
-            node_index=node_index,
-            lap_id=lap_id,
-            split_id=split_id
-            ).one_or_none()
-
-    def add_lapSplit(self, init=None):
-        lap_split = self._Database.LapSplit(
-            node_index=0,
-            pilot_id=RHUtils.PILOT_ID_NONE,
-            lap_id=0,
-            split_id=0,
-            split_time_stamp='',
-            split_time=0,
-            split_time_formatted=0,
-            split_speed=0
-        )
-
-        if init:
-            if 'node_index' in init:
-                lap_split.node_index = init['node_index']
-            if 'pilot_id' in init:
-                lap_split.pilot_id = init['pilot_id']
-            if 'lap_id' in init:
-                lap_split.lap_id = init['lap_id']
-            if 'split_id' in init:
-                lap_split.split_id = init['split_id']
-            if 'split_time_stamp' in init:
-                lap_split.split_time_stamp = init['split_time_stamp']
-            if 'split_time' in init:
-                lap_split.split_time = init['split_time']
-            if 'split_time_formatted' in init:
-                lap_split.split_time_formatted = init['split_time_formatted']
-            if 'split_speed' in init:
-                lap_split.split_speed = init['split_speed']
-
-        self._Database.DB.session.add(lap_split)
-        self.commit()
-
     def clear_lapSplit(self, lapSplit):
         self._Database.DB.session.delete(lapSplit)
-        self.commit()
-        return True
-
-    def clear_lapSplits(self):
-        self._Database.DB.session.query(self._Database.LapSplit).delete()
         self.commit()
         return True
 

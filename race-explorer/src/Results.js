@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './Results.css';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -12,7 +13,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import * as util from './util.js';
-import { createResultDataLoader } from './rh-client.js';
+import { createTrackDataLoader, createTimerMappingLoader, createResultDataLoader } from './rh-client.js';
 
 
 function processResults(data, raceEvents) {
@@ -34,7 +35,7 @@ function processResults(data, raceEvents) {
                 heat[msg.pilot] = heat[msg.pilot] ?? {name: msg.pilot, laps: []};
                 const pilot = heat[msg.pilot]
                 if ('lap' in msg) {
-                  const lapData = {lap: msg.lap, timestamp: msg.timestamp, timer: msg.timer};
+                  const lapData = {lap: msg.lap, timestamp: msg.timestamp, location: msg.location};
                   pilot.laps.push(lapData);
                 } else if ('laps' in msg) {
                   pilot.laps.push(...msg['laps']);
@@ -51,10 +52,54 @@ function processResults(data, raceEvents) {
 }
 
 export default function Results(props) {
+  const [trackData, setTrackData] = useState({});
+  const [timerMapping, setTimerMapping] = useState([]);
+  const [timedLocations, setTimedLocations] = useState([]);
   const [resultData, setResultData] = useState({});
   const [selectedEvent, setEvent] = useState('');
   const [selectedRound, setRound] = useState('');
   const [selectedHeat, setHeat] = useState('');
+
+  useEffect(() => {
+    const loader = createTrackDataLoader();
+    loader.load(null, (data) => {
+      setTrackData(data);
+    });
+    return () => loader.cancel();
+  }, []);
+
+  useEffect(() => {
+    const loader = createTimerMappingLoader();
+    loader.load(null, (data) => {
+      setTimerMapping(data);
+    });
+    return () => loader.cancel();
+  }, []);
+
+  useEffect(() => {
+    if (trackData?.layout) {
+      const mappedLocations = {};
+      Object.entries(timerMapping).forEach((timerEntry) => {
+        const timerId = timerEntry[0];
+        Object.entries(timerEntry[1]).forEach((nmEntry) => {
+          const nmId = nmEntry[0];
+          Object.entries(nmEntry[1]).forEach((nEntry) => {
+            const nId = nEntry[0];
+            const n = nEntry[1];
+            mappedLocations[n.location] = mappedLocations[n.location] ?? [];
+            mappedLocations[n.location].push([timerId,nmId,nId]);
+          })
+        });
+      });
+      const timedLocIds = [];
+      for (let locId=0; locId<trackData.layout.length; locId++) {
+        if (mappedLocations[trackData.layout[locId].name]) {
+          timedLocIds.push(locId);
+        }
+      }
+      setTimedLocations(timedLocIds);
+    }
+  }, [trackData, timerMapping]);
 
   useEffect(() => {
     const loader = createResultDataLoader();
@@ -168,24 +213,68 @@ export default function Results(props) {
           {Object.entries(pilotHeatData).map((entry) => {
             const pilotKey = entry[0];
             const pilotHeat = entry[1];
+            const laps = [];
+            for (const lap of pilotHeat.laps) {
+              laps[lap.lap] = laps[lap.lap] ?? [];
+              laps[lap.lap][lap.location] = lap.timestamp;
+            }
             let lapCells = [];
-            let k = pilotHeat.laps.length - 1;
-            for (let i=maxLaps; i>=minLaps; i--) {
-              let lapInfo = '';
-              if (i === pilotHeat.laps[k].lap) {
-                let lapTime = '';
-                if (k-1 >= 0 && i-1 === pilotHeat.laps[k-1].lap) {
-                  lapTime = util.formatTimeMillis(pilotHeat.laps[k].timestamp-pilotHeat.laps[k-1].timestamp)+'\n';
+            for (let lapId=maxLaps; lapId>=minLaps; lapId--) {
+              let lapInfo = [];
+              if (laps[lapId]) {
+                const timestamps = laps[lapId];
+                for (const locId of timedLocations) {
+                  let delta = null;
+                  let timestamp = null;
+                  if (locId === 0) {
+                    if (timestamps[locId]) {
+                      timestamp = timestamps[locId];
+                      if (lapId === 0) {
+                        delta = timestamp;
+                      } else if (lapId > 0 && laps[lapId-1]?.[0]) {
+                        delta = timestamp - laps[lapId-1][0];
+                      }
+                    }
+                    lapInfo.push(
+                      <div>
+                      <span className="lapTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
+                      <span> </span>
+                      <span className="lapTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
+                      </div>
+                    );
+                  } else if (locId > 0) {
+                    if (timestamps[locId]) {
+                      timestamp = timestamps[locId];
+                      if (timestamps[locId-1]) {
+                        delta = timestamp - timestamps[locId-1];
+                      }
+                    }
+                    lapInfo.push(
+                      <div>
+                      <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
+                      <span> </span>
+                      <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
+                      </div>
+                    );
+                  }
                 }
-                lapInfo = (
+                let delta = null;
+                let timestamp = null;
+                if (laps[lapId+1]?.[0]) {
+                  timestamp = laps[lapId+1][0];
+                  if (timestamps[timedLocations[timedLocations.length-1]]) {
+                    delta = timestamp - timestamps[timedLocations[timedLocations.length-1]];
+                  }
+                }
+                lapInfo.push(
                   <div>
-                  <span>{lapTime}</span>
-                  <span className="lapTimestamp">({util.formatTimeMillis(pilotHeat.laps[k].timestamp)}</span>)
+                  <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
+                  <span> </span>
+                  <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
                   </div>
                 );
-                k--;
               }
-              lapCells.push(<TableCell key={i} align="right">{lapInfo}</TableCell>);
+              lapCells.push(<TableCell key={lapId} align="right">{lapInfo}</TableCell>);
             }
             return (
             <TableRow

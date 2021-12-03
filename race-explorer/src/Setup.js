@@ -22,10 +22,10 @@ import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
 import Frequency from './Frequency.js';
 import LapRFConfig from './LapRF.js';
-import { createSetupDataLoader, createVtxTableLoader, createTrackDataLoader, createMqttConfigLoader, getMqttClient } from './rh-client.js';
+import { createSetupDataLoader, createVtxTableLoader, createTimerMappingLoader, storeTimerMapping, createTrackDataLoader, createMqttConfigLoader, getMqttClient } from './rh-client.js';
 
 function processVtxTable(data, vtxTable) {
-  for (let band of data.vtx_table.bands_list) {
+  for (const band of data.vtx_table.bands_list) {
     vtxTable[band.letter] = {
       name: band.name,
       channels: band.frequencies.filter((f) => f > 0)
@@ -236,22 +236,28 @@ function getTimerConfigFactory(type) {
 }
 
 function TrackConfig(props) {
-  const [location, setLocation] = useState(props.location);
-  const [seat, setSeat] = useState(props.seat);
+  const [location, setLocation] = useState(props.location ?? '');
+  const [seat, setSeat] = useState(props.seat ?? 1);
 
   const changeLocation = (v) => {
     setLocation(v);
+    if (props?.onLocationChange) {
+      props.onLocationChange(v);
+    }
   };
 
   const changeSeat = (s) => {
     setSeat(s);
+    if (props?.onSeatChange) {
+      props.onSeatChange(s);
+    }
   };
 
   return (
     <div>
     <FormControl>
     <InputLabel id="location-label">Track location</InputLabel>
-    <Select labelId="location-label" value={location}
+    <Select labelId="location-label" value={location} defaultValue=""
       onChange={(evt) => changeLocation(evt.target.value)}>
       {
         props.trackLayout.map((loc) => {
@@ -265,8 +271,8 @@ function TrackConfig(props) {
       }
     </Select>
     </FormControl>
-    <TextField label="Seat" value={seat}
-      onChange={(evt) => changeSeat(evt.target.value)}
+    <TextField label="Seat" value={seat+1}
+      onChange={(evt) => changeSeat(evt.target.value-1)}
       inputProps={{
       step: 1,
       min: 1,
@@ -280,10 +286,13 @@ function TrackConfig(props) {
   );
 }
 
+const saveTimerMapping = debounce(storeTimerMapping, 2000);
+
 export default function Setup(props) {
   const [mqttConfig, setMqttConfig] = useState({});
   const [vtxTable, setVtxTable] = useState({});
   const [trackLayout, setTrackLayout] = useState([]);
+  const [timerMapping, setTimerMapping] = useState([]);
   const [setupData, setSetupData] = useState({});
 
   useEffect(() => {
@@ -307,12 +316,23 @@ export default function Setup(props) {
   }, []);
 
   useEffect(() => {
+    const loader = createTimerMappingLoader();
+    loader.load(null, (data) => {
+      setTimerMapping(data);
+    });
+    return () => loader.cancel();
+  }, []);
+
+  useEffect(() => {
     const loader = createSetupDataLoader();
     loader.load(processSetup, setSetupData);
     return () => loader.cancel();
   }, []);
 
-  let trackLocationIdx = 0;
+  useEffect(() => {
+    saveTimerMapping(timerMapping);
+  }, [timerMapping]);
+
   return (
     <TableContainer component={Paper}>
       <Table>
@@ -331,9 +351,6 @@ export default function Setup(props) {
             const timerId = timerEntry[0];
             const nodeManagers = Object.entries(timerEntry[1]);
             let timerCell = <TableCell rowSpan={nodeManagers.length}><ComputerIcon/>{timerId}</TableCell>;
-            const trackLocation = trackLayout[trackLocationIdx].name;
-            trackLocationIdx++;
-            let seat = 0;
             return nodeManagers.map((nmEntry) => {
               const nmAddr = nmEntry[0];
               const nm = nmEntry[1];
@@ -350,14 +367,32 @@ export default function Setup(props) {
                 timerCell = null;
                 const secondCell = nmCell;
                 nmCell = null;
-                seat++;
+                const trackLocation = timerMapping[timerId]?.[nmAddr]?.[nodeId]?.location;
+                const seat = timerMapping[timerId]?.[nmAddr]?.[nodeId]?.seat;
+                const updateLocation = (loc) => {
+                  const mappingInfo = timerMapping[timerId] ?? {};
+                  mappingInfo[nmAddr] = mappingInfo[nmAddr] ?? [];
+                  mappingInfo[nmAddr][nodeId] = mappingInfo[nmAddr][nodeId] ?? {};
+                  mappingInfo[nmAddr][nodeId].location = loc;
+                  setTimerMapping({...timerMapping, [timerId]: mappingInfo});
+                };
+                const updateSeat = (s) => {
+                  const mappingInfo = timerMapping[timerId] ?? {};
+                  mappingInfo[nmAddr] = mappingInfo[nmAddr] ?? [];
+                  mappingInfo[nmAddr][nodeId] = mappingInfo[nmAddr][nodeId] ?? {};
+                  mappingInfo[nmAddr][nodeId].seat = s;
+                  setTimerMapping({...timerMapping, [timerId]: mappingInfo});
+                };
                 return (
                   <TableRow key={nodeId}>
                   {firstCell}
                   {secondCell}
                   <TableCell><MemoryIcon/>{node.id}</TableCell>
                   <TableCell>{timerConfig}</TableCell>
-                  <TableCell><TrackConfig location={trackLocation} seat={seat} trackLayout={trackLayout}/></TableCell>
+                  <TableCell>
+                    <TrackConfig location={trackLocation} seat={seat} trackLayout={trackLayout}
+                    onLocationChange={updateLocation} onSeatChange={updateSeat}/>
+                  </TableCell>
                   </TableRow>
                 );
               });
