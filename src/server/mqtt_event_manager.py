@@ -19,6 +19,7 @@ class MqttEventManager:
         if self.client:
             self.addEvent(Evt.RACE_START, race_start)
             self.addEvent(Evt.RACE_LAP_RECORDED, race_lap)
+            self.addEvent(Evt.RACE_SPLIT_RECORDED, race_split)
             self.addEvent(Evt.RACE_FINISH, race_finish)
             self.addEvent(Evt.RACE_STOP, race_stop)
             self.addEvent(Evt.SENSOR_UPDATE, sensor_update)
@@ -48,6 +49,12 @@ def race_lap(client, race_topic, raceEvent, RACE, node_index, lap, location_id, 
     pilot = RACE.node_pilots[node_index]
     msg = {'timestamp': lap['lap_time_stamp']}
     client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_round), str(RACE.current_heat), pilot.callsign, str(lap['lap_number']), str(location_id)]), json.dumps(msg))
+
+
+def race_split(client, race_topic, raceEvent, RACE, node_index, split, location_id, **kwargs):
+    pilot = RACE.node_pilots[node_index]
+    msg = {'timestamp': split['split_time_stamp']}
+    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_round), str(RACE.current_heat), pilot.callsign, str(split['lap_number']), str(location_id)]), json.dumps(msg))
 
 
 def race_finish(client, race_topic, raceEvent, RACE, **kwargs):

@@ -6,12 +6,13 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import * as util from './util.js';
 import { createMqttConfigLoader, getMqttClient } from './rh-client.js';
 
 
 function getSensorListener(setSensors) {
   return (topic, payload) => {
-    const parts = topic.split('/');
+    const parts = util.splitTopic(topic);
     const sensorName = parts[parts.length-2];
     const readingName = parts[parts.length-1];
     const value = new TextDecoder('UTF-8').decode(payload);
@@ -38,25 +39,22 @@ export default function Sensors(props) {
     return () => loader.cancel();
   }, []);
 
-  let mqttSubscriber = null;
-  if (mqttConfig?.sensorAnnTopic) {
-    mqttSubscriber = (setSensors) => {
-      const listener = getSensorListener(setSensors);
-      const mqttClient = getMqttClient();
-      mqttClient.on('message', listener);
-      mqttClient.subscribe(mqttConfig.sensorAnnTopic+'/#');
-      return () => {
-        mqttClient.unsubscribe(mqttConfig.sensorAnnTopic+'/#');
-        mqttClient.off('message', listener);
-      };
-    };
-  }
-
   useEffect(() => {
-    if (mqttSubscriber) {
+    if (mqttConfig?.sensorAnnTopic) {
+      const topic = mqttConfig.sensorAnnTopic+'/#';
+      const mqttSubscriber = (setSensors) => {
+        const listener = getSensorListener(setSensors);
+        const mqttClient = getMqttClient();
+        mqttClient.on('message', listener);
+        mqttClient.subscribe(topic);
+        return () => {
+          mqttClient.unsubscribe(topic);
+          mqttClient.off('message', listener);
+        };
+      };
       return mqttSubscriber(setSensors);
     }
-  }, [mqttSubscriber]);
+  }, [mqttConfig]);
 
   return (
     <TableContainer component={Paper}>

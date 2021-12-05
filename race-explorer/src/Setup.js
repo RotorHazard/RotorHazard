@@ -22,6 +22,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
 import Frequency from './Frequency.js';
 import LapRFConfig from './LapRF.js';
+import * as util from './util.js';
 import { createSetupDataLoader, createVtxTableLoader, createTimerMappingLoader, storeTimerMapping, createTrackDataLoader, createMqttConfigLoader, getMqttClient } from './rh-client.js';
 
 function processVtxTable(data, vtxTable) {
@@ -360,8 +361,8 @@ export default function Setup(props) {
               return nodes.map((nodeEntry) => {
                 const nodeId = nodeEntry[0];
                 const node = nodeEntry[1];
-                const annTopic = mqttConfig ? [mqttConfig.timerAnnTopic, timerId, nmAddr, nodeId].join('/') : null;
-                const ctrlTopic = mqttConfig ? [mqttConfig.timerCtrlTopic, timerId, nmAddr, nodeId].join('/') : null;
+                const annTopic = mqttConfig ? util.makeTopic(mqttConfig.timerAnnTopic, [timerId, nmAddr, nodeId]) : null;
+                const ctrlTopic = mqttConfig ? util.makeTopic(mqttConfig.timerCtrlTopic, [timerId, nmAddr, nodeId]) : null;
                 const timerConfig = createTimerConfig(node, vtxTable, annTopic, ctrlTopic);
                 const firstCell = timerCell;
                 timerCell = null;

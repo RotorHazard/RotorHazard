@@ -4634,7 +4634,20 @@ def add_split(location_id, seat, split_ts, track):
                     'split_time_formatted': split_time_str,
                     'split_speed': split_speed
                 })
-                
+
+                Events.trigger(Evt.RACE_SPLIT_RECORDED, {
+                    'node_index': seat,
+                    'color': led_manager.getDisplayColor(seat),
+                    'split': {
+                        'lap_number': lap_count,
+                        'split_time_stamp': split_ts,
+                        'split_time': split_time,
+                        'split_time_formatted': split_time_str,
+                    },
+                    'results': RACE.results,
+                    'location_id': location_id
+                    })
+
                 emit_split_pass_info(pilot_id, split_id, split_time)
 
         else:

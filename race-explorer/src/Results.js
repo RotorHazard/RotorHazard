@@ -13,8 +13,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import * as util from './util.js';
-import { createTrackDataLoader, createTimerMappingLoader, createResultDataLoader } from './rh-client.js';
-
+import { createMqttConfigLoader, createTrackDataLoader, createTimerMappingLoader, createResultDataLoader, getMqttClient } from './rh-client.js';
 
 function processResults(data, raceEvents) {
   const jsonl = data.split('\n');
@@ -22,28 +21,7 @@ function processResults(data, raceEvents) {
     if (l.length > 0) {
       try {
         const msg = JSON.parse(l);
-        if ('event' in msg) {
-          raceEvents[msg.event] = raceEvents[msg.event] ?? {};
-          const event = raceEvents[msg.event];
-          if ('round' in msg) {
-            event[msg.round] = event[msg.round] ?? {};
-            const round = event[msg.round];
-            if ('heat' in msg) {
-              round[msg.heat] = round[msg.heat] ?? {};
-              const heat = round[msg.heat];
-              if ('pilot' in msg) {
-                heat[msg.pilot] = heat[msg.pilot] ?? {name: msg.pilot, laps: []};
-                const pilot = heat[msg.pilot]
-                if ('lap' in msg) {
-                  const lapData = {lap: msg.lap, timestamp: msg.timestamp, location: msg.location};
-                  pilot.laps.push(lapData);
-                } else if ('laps' in msg) {
-                  pilot.laps.push(...msg['laps']);
-                }
-              }
-            }
-          }
-        }
+        processMessage(msg, raceEvents);
       } catch (ex) {
         console.log(ex+": "+l);
       }
@@ -51,14 +29,86 @@ function processResults(data, raceEvents) {
   }
 }
 
+function processMessage(msg, raceEvents) {
+  if ('event' in msg) {
+    raceEvents[msg.event] = raceEvents[msg.event] ?? {};
+    const event = raceEvents[msg.event];
+    if ('round' in msg) {
+      event[msg.round] = event[msg.round] ?? {};
+      const round = event[msg.round];
+      if ('heat' in msg) {
+        round[msg.heat] = round[msg.heat] ?? {pilots: {}, lastRaceUpdate: 0};
+        const heat = round[msg.heat];
+        if ('startTime' in msg) {
+          heat.startTime = msg.startTime;
+        }
+        if ('finishTime' in msg) {
+          heat.finishTime = msg.finishTime;
+        }
+        if ('stopTime' in msg) {
+          heat.stopTime = msg.stopTime;
+        }
+        if ('pilot' in msg) {
+          const pilots = heat.pilots;
+          pilots[msg.pilot] = pilots[msg.pilot] ?? {name: msg.pilot, laps: []};
+          const pilot = pilots[msg.pilot];
+          if ('lap' in msg) {
+            const lapData = {lap: msg.lap, timestamp: msg.timestamp, location: msg.location};
+            pilot.laps.push(lapData);
+          } else if ('laps' in msg) {
+            pilot.laps.push(...msg['laps']);
+          }
+          if (pilot.laps.length > 0) {
+            heat.lastRaceUpdate = Math.max(pilot.laps[pilot.laps.length-1].timestamp, heat.lastRaceUpdate);
+          }
+        }
+      }
+    }
+  }
+}
+
+function getRaceListener(setMqttData) {
+  return (topic, payload) => {
+    const parts = util.splitTopic(topic);
+    const event = parts[parts.length-3];
+    const round = parts[parts.length-2];
+    const heat = parts[parts.length-1];
+    const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
+    setMqttData((old) => [...old, {event, round, heat, ...msg}]);
+  };
+}
+
+function getLapListener(setMqttData) {
+  return (topic, payload) => {
+    const parts = util.splitTopic(topic);
+    const event = parts[parts.length-6];
+    const round = parts[parts.length-5];
+    const heat = parts[parts.length-4];
+    const pilot = parts[parts.length-3];
+    const lap = parts[parts.length-2];
+    const location = parts[parts.length-1];
+    const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
+    setMqttData((old) => [...old, {event, round, heat, pilot, lap, location, ...msg}]);
+  };
+}
+
 export default function Results(props) {
+  const [mqttConfig, setMqttConfig] = useState({});
   const [trackData, setTrackData] = useState({});
   const [timerMapping, setTimerMapping] = useState([]);
   const [timedLocations, setTimedLocations] = useState([]);
   const [resultData, setResultData] = useState({});
+  const [mqttRaceData, setMqttRaceData] = useState([]);
+  const [mqttLapData, setMqttLapData] = useState([]);
   const [selectedEvent, setEvent] = useState('');
   const [selectedRound, setRound] = useState('');
   const [selectedHeat, setHeat] = useState('');
+
+  useEffect(() => {
+    const loader = createMqttConfigLoader();
+    loader.load(null, setMqttConfig);
+    return () => loader.cancel();
+  }, []);
 
   useEffect(() => {
     const loader = createTrackDataLoader();
@@ -107,9 +157,49 @@ export default function Results(props) {
     return () => loader.cancel();
   }, []);
 
+  useEffect(() => {
+    if (mqttConfig?.raceAnnTopic) {
+      const raceTopic = util.makeTopic(mqttConfig.raceAnnTopic, ['+', '+', '+']);
+      const mqttSubscriber = (setMqttData) => {
+        const raceListener = getRaceListener(setMqttData);
+        const mqttClient = getMqttClient();
+        mqttClient.on('message', raceListener);
+        mqttClient.subscribe(raceTopic);
+        return () => {
+          mqttClient.unsubscribe(raceTopic);
+          mqttClient.off('message', raceListener);
+          setMqttData([]);
+        };
+      };
+      return mqttSubscriber(setMqttRaceData);
+    }
+  }, [mqttConfig]);
+
+  useEffect(() => {
+    if (mqttConfig?.raceAnnTopic && selectedEvent && selectedRound && selectedHeat) {
+      const lapTopic = util.makeTopic(mqttConfig.raceAnnTopic, [selectedEvent, selectedRound, selectedHeat, '+', '+', '+']);
+      const mqttSubscriber = (setMqttData) => {
+        const lapListener = getLapListener(setMqttData);
+        const mqttClient = getMqttClient();
+        mqttClient.on('message', lapListener);
+        mqttClient.subscribe(lapTopic);
+        return () => {
+          mqttClient.unsubscribe(lapTopic);
+          mqttClient.off('message', lapListener);
+          setMqttData([]);
+        };
+      };
+      return mqttSubscriber(setMqttLapData);
+    }
+  }, [mqttConfig, selectedEvent, selectedRound, selectedHeat]);
+
   util.useInterval(() => {
     const loader = createResultDataLoader();
-    loader.load(processResults, setResultData);
+    loader.load(processResults, (data) => {
+      setResultData(data);
+      setMqttRaceData((old) => old.filter((msg) => !data?.[msg.event]?.[msg.round]?.[msg.heat]?.stopTimestamp));
+      setMqttLapData((old) => old.filter((msg) => msg.timestamp > data?.[msg.event]?.[msg.round]?.[msg.heat]?.lastRaceUpdate));
+    });
   }, 60000);
 
   const selectEvent = (event) => {
@@ -124,12 +214,19 @@ export default function Results(props) {
     setHeat(heat);
   };
 
+  for (const msg of mqttRaceData) {
+    processMessage(msg, resultData);
+  }
+  for (const msg of mqttLapData) {
+    processMessage(msg, resultData);
+  }
+
   const eventNames = Object.keys(resultData);
   let roundData = {};
   let roundNames = [];
   let heatData = {};
   let heatNames = [];
-  let pilotHeatData = {};
+  let heat = {pilots: {}};
   if (selectedEvent in resultData) {
     roundData = resultData[selectedEvent];
     roundNames = Object.keys(roundData);
@@ -137,7 +234,7 @@ export default function Results(props) {
       heatData = roundData[selectedRound];
       heatNames = Object.keys(heatData);
       if (selectedHeat in heatData) {
-        pilotHeatData = heatData[selectedHeat];
+        heat = heatData[selectedHeat];
       } else {
         if (heatNames.length > 0) {
           setHeat(heatNames[heatNames.length-1]);
@@ -154,6 +251,7 @@ export default function Results(props) {
     }
   }
 
+  const pilotHeatData = heat.pilots;
   let minLaps = Number.MAX_SAFE_INTEGER;
   let maxLaps = 0;
   for (const pilotHeat of Object.values(pilotHeatData)) {

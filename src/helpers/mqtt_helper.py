@@ -8,7 +8,7 @@ def make_topic(root, parts):
     topic += '/'.join([p.replace('%', '%25').
                  replace('/', '%2F').
                  replace('#', '%23').
-                 replace('+', '%2B') if len(p) > 1 else p for p in parts])
+                 replace('+', '%2B') if not p in ['+', '#'] else p for p in parts])
     return topic
 
 

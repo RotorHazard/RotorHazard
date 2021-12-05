@@ -62,6 +62,29 @@ export function createBaseLoader() {
   return loader;
 };
 
+export function makeTopic(root, parts) {
+  let topic = root;
+  for (const part of parts) {
+    let encodedPart;
+    if (part === '+' || part === '#') {
+      encodedPart = part;
+    } else {
+      encodedPart = part.replace('%', '%25').replace('/', '%2F').replace('#', '%23').replace('+', '%2B');
+    }
+    topic += '/';
+    topic += encodedPart;
+  }
+  return topic;
+}
+
+export function splitTopic(topic) {
+  const parts = topic.split('/');
+  for (let i=0; i<parts.length; i++) {
+    parts[i] = parts[i].replace('%2B', '+').replace('%23', '#').replace('%2F', '/').replace('%25', '%');
+  }
+  return parts;
+}
+
 export function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
   s = Math.round(s);
   let ms = s % 1000;
