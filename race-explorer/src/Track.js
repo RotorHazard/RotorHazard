@@ -17,6 +17,8 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import DeleteIcon from '@mui/icons-material/Delete';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
 import { debounce } from 'lodash';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -44,13 +46,35 @@ const UNITS = [
   "ft"
 ];
 
-const ELEMENT_TYPES = [
+const LOCATION_TYPES = [
   "Arch gate",
   "Square gate",
   "Flag"
 ];
 
 const saveTrackData = debounce(storeTrackData, 2000);
+
+
+function GpsButton(props) {
+  const [state, setState] = useState('Not fixed');
+  const map = props.map;
+  const getCurrentPosition = () => {
+    setState('Fixing');
+    map.once('locationfound', (evt) => {
+      if (props?.onClick) {
+        setState('Fixed');
+        props.onClick(evt);
+      }
+    });
+    map.locate(props?.locateOptions ?? {});
+  };
+  const icon = (state === 'Fixed') ? <GpsFixedIcon/> : <GpsNotFixedIcon/>;
+  const disabled = (state === 'Fixing');
+  return (
+    <Button startIcon={icon} disabled={disabled} onClick={getCurrentPosition}>Get position</Button>
+  );
+}
+
 
 export default function Tracks(props) {
   const [trackLayout, setTrackLayout] = useState([]);
@@ -124,7 +148,7 @@ export default function Tracks(props) {
   }, [crs, units, trackLayout]);
 
   const addLocation = () => {
-    setTrackLayout((old) => {return [...old, {name: "Gate "+(newGateRef.current++), type: ELEMENT_TYPES[0], location: [5*old.length,0]}]})
+    setTrackLayout((old) => {return [...old, {name: "Gate "+(newGateRef.current++), type: LOCATION_TYPES[0], location: [5*old.length,0]}]})
   };
 
   const selectCRS = (newCrs) => {
@@ -185,6 +209,12 @@ export default function Tracks(props) {
                 return old.filter((item,i) => i !== idx);
               });
             };
+            let deleteControl;
+            if (idx > 0) {
+              deleteControl = <IconButton onClick={deleteLocation}><DeleteIcon/></IconButton>;
+            } else {
+              deleteControl = null;
+            }
             const changeName = (n) => {
               setTrackLayout((old) => {
                 const newData = [...old];
@@ -192,7 +222,7 @@ export default function Tracks(props) {
                 return newData;
               });
             };
-            const selectElementType = (t) => {
+            const selectLocationType = (t) => {
               setTrackLayout((old) => {
                 const newData = [...old];
                 newData[idx].type = t;
@@ -213,12 +243,14 @@ export default function Tracks(props) {
                 return newData;
               });
             };
-            let deleteControl;
-            if (idx > 0) {
-              deleteControl = <IconButton onClick={deleteLocation}><DeleteIcon/></IconButton>;
-            } else {
-              deleteControl = null;
-            }
+            const getCurrentPosition = (evt) => {
+              setTrackLayout((old) => {
+                const newData = [...old];
+                newData[idx].location[0] = evt.latlng.lat;
+                newData[idx].location[1] = evt.latlng.lng;
+                return newData;
+              });
+            };
             return (
               <TableRow key={loc.name}>
                 <TableCell>
@@ -226,9 +258,9 @@ export default function Tracks(props) {
                 </TableCell>
                 <TableCell><TextField value={loc.name} onChange={(evt) => changeName(evt.target.value)}/></TableCell>
                 <TableCell>
-                <Select value={loc.type} onChange={(evt) => selectElementType(evt.target.value)}>
+                <Select value={loc.type} onChange={(evt) => selectLocationType(evt.target.value)}>
                 {
-                  ELEMENT_TYPES.map((t) => {
+                  LOCATION_TYPES.map((t) => {
                     return <MenuItem key={t} value={t}>{t}</MenuItem>;
                   })
                 }
@@ -239,6 +271,7 @@ export default function Tracks(props) {
                   inputProps={{type: 'number'}}/>
                 <TextField value={loc.location[1]} onChange={(evt) => changeYLocation(evt.target.valueAsNumber)}
                   inputProps={{type: 'number'}}/>
+                <GpsButton map={mapRef.current} onClick={getCurrentPosition} locateOptions={{setView:true, enableHighAccuracy: true}}/>
                 </TableCell>
               </TableRow>
             );
