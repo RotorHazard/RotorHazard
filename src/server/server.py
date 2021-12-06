@@ -1345,34 +1345,48 @@ def on_set_profile(data, emit_vals=True):
         logger.info("Set Profile to '%s'" % profile_val)
         # set freqs, enter_ats, and exit_ats
         freqs = json.loads(profile.frequencies)
-        while RACE.num_nodes > len(freqs["b"]):
-            freqs["b"].append(RHUtils.FREQUENCY_ID_NONE)
-        while RACE.num_nodes > len(freqs["c"]):
-            freqs["c"].append(RHUtils.FREQUENCY_ID_NONE)
-        while RACE.num_nodes > len(freqs["f"]):
-            freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
+        moreNodesFlag = False
+        if RACE.num_nodes > len(freqs["b"]) or RACE.num_nodes > len(freqs["c"]) or \
+                                        RACE.num_nodes > len(freqs["f"]):
+            moreNodesFlag = True
+            while RACE.num_nodes > len(freqs["b"]):
+                freqs["b"].append(RHUtils.FREQUENCY_ID_NONE)
+            while RACE.num_nodes > len(freqs["c"]):
+                freqs["c"].append(RHUtils.FREQUENCY_ID_NONE)
+            while RACE.num_nodes > len(freqs["f"]):
+                freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
 
         if profile.enter_ats:
             enter_ats_loaded = json.loads(profile.enter_ats)
             enter_ats = enter_ats_loaded["v"]
-            while RACE.num_nodes > len(enter_ats):
-                enter_ats.append(None)
+            if RACE.num_nodes > len(enter_ats):
+                moreNodesFlag = True
+                while RACE.num_nodes > len(enter_ats):
+                    enter_ats.append(None)
         else: #handle null data by copying in hardware values
             enter_at_levels = {}
             enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'enter_ats': enter_at_levels})
+            RHData.alter_profile({'profile_id': profile_val, 'enter_ats': enter_at_levels})
             enter_ats = enter_at_levels["v"]
 
         if profile.exit_ats:
             exit_ats_loaded = json.loads(profile.exit_ats)
             exit_ats = exit_ats_loaded["v"]
-            while RACE.num_nodes > len(exit_ats):
-                exit_ats.append(None)
+            if RACE.num_nodes > len(exit_ats):
+                moreNodesFlag = True
+                while RACE.num_nodes > len(exit_ats):
+                    exit_ats.append(None)
         else: #handle null data by copying in hardware values
             exit_at_levels = {}
             exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'exit_ats': exit_at_levels})
+            RHData.alter_profile({'profile_id': profile_val,'exit_ats': exit_at_levels})
             exit_ats = exit_at_levels["v"]
+
+        # if added nodes detected then update profile values in database
+        if moreNodesFlag:
+            logger.info("Updating profile '%s' in DB to account for added nodes" % profile_val)
+            RHData.alter_profile({'profile_id': profile_val, 'frequencies': freqs,
+                                  'enter_ats': enter_ats_loaded, 'exit_ats': exit_ats_loaded})
 
         Events.trigger(Evt.PROFILE_SET, {
             'profile_id': profile_val,
