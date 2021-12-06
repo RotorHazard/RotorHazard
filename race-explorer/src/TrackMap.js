@@ -5,11 +5,20 @@ import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
+
+import droneIcon from './drone.png';
+
 L.Marker.prototype.options.icon = L.icon({
   ...L.Icon.Default.prototype.options,
   iconUrl: icon,
   iconRetinaUrl: iconRetina,
   shadowUrl: iconShadow
+});
+
+const DRONE_ICON = L.icon({
+  iconUrl: droneIcon,
+  iconSize: [24,24],
+  iconAnchor: [24,12]
 });
 
 const LOCAL_GRID = 'Local grid';
@@ -39,6 +48,8 @@ export function TrackMapContainer(props) {
     }
     map.trackLayer = L.featureGroup();
     map.trackLayer.addTo(map);
+    map.pilotLayer = L.featureGroup();
+    map.pilotLayer.addTo(map);
     setMap(map);
     return () => {
       map.remove();
@@ -46,7 +57,7 @@ export function TrackMapContainer(props) {
   }, [props.id, props.crs]);
 
   useEffect(() => {
-      if (map) {
+      if (map && props?.trackLayout) {
         for (const loc of props.trackLayout) {
           L.marker(loc.location, {title: loc.name}).addTo(map.trackLayer);
         }
@@ -55,12 +66,21 @@ export function TrackMapContainer(props) {
   }, [map, props.trackLayout]);
 
   useEffect(() => {
+      if (map && props?.trackLayout && props?.pilotPositions) {
+        Object.entries(props.pilotPositions).forEach((entry) => {
+          L.marker(entry[1], {title: entry[0], icon: DRONE_ICON, pane: 'tooltipPane'}).addTo(map.pilotLayer);
+        });
+        return () => {map.pilotLayer.clearLayers()};
+      }
+  }, [map, props.trackLayout, props.pilotPositions]);
+
+  useEffect(() => {
     if (map && props?.flyTo) {
       map.flyTo(props.flyTo);
     }
   }, [map, props.flyTo]);
 
-  return props.children(map);
+  return props?.children ? props.children(map) : <></>;
 }
 
 export function Map(props) {

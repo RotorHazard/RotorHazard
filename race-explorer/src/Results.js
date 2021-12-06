@@ -12,6 +12,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import { TrackMapContainer, Map } from './TrackMap.js';
 import * as util from './util.js';
 import { createMqttConfigLoader, createTrackDataLoader, createTimerMappingLoader, createResultDataLoader, getMqttClient } from './rh-client.js';
 
@@ -85,8 +86,8 @@ function getLapListener(setMqttData) {
     const round = parts[parts.length-5];
     const heat = parts[parts.length-4];
     const pilot = parts[parts.length-3];
-    const lap = parts[parts.length-2];
-    const location = parts[parts.length-1];
+    const lap = Number(parts[parts.length-2]);
+    const location = Number(parts[parts.length-1]);
     const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
     setMqttData((old) => [...old, {event, round, heat, pilot, lap, location, ...msg}]);
   };
@@ -95,6 +96,7 @@ function getLapListener(setMqttData) {
 export default function Results(props) {
   const [mqttConfig, setMqttConfig] = useState({});
   const [trackData, setTrackData] = useState({});
+  const [flyTo, setFlyTo] = useState(null);
   const [timerMapping, setTimerMapping] = useState([]);
   const [timedLocations, setTimedLocations] = useState([]);
   const [resultData, setResultData] = useState({});
@@ -114,6 +116,8 @@ export default function Results(props) {
     const loader = createTrackDataLoader();
     loader.load(null, (data) => {
       setTrackData(data);
+      const startPos = data?.layout?.[0]?.location ?? [0,0];
+      setFlyTo(startPos);
     });
     return () => loader.cancel();
   }, []);
@@ -251,15 +255,30 @@ export default function Results(props) {
     }
   }
 
-  const pilotHeatData = heat.pilots;
+  const trackLayout = trackData.layout;
   let minLaps = Number.MAX_SAFE_INTEGER;
   let maxLaps = 0;
-  for (const pilotHeat of Object.values(pilotHeatData)) {
-    for (const lap of pilotHeat.laps) {
+  const pilotLapDetails = {};
+  const pilotPositions = {}
+  for (const pilotHeat of Object.values(heat.pilots)) {
+    const pilotLaps = pilotHeat.laps;
+    const lapSplits = [];
+    for (const lap of pilotLaps) {
       const lapNumber = lap['lap'];
       minLaps = Math.min(lapNumber, minLaps);
       maxLaps = Math.max(lapNumber, maxLaps);
+      lapSplits[lap.lap] = lapSplits[lap.lap] ?? [];
+      lapSplits[lap.lap][lap.location] = lap.timestamp;
     }
+    pilotLapDetails[pilotHeat.name] = lapSplits;
+
+    const lastLocation = pilotLaps.length > 0 ? pilotLaps[pilotLaps.length-1].location : 0;
+    const lastPosition = trackLayout[lastLocation].location;
+    const nextPosition = trackLayout[lastLocation+1 < trackLayout.length ? lastLocation+1 : 0].location;
+    const t = 0.5 + 0.25*(Math.random() - 0.5);
+    const x = (t*nextPosition[0] + (1-t)*lastPosition[0]);
+    const y = (t*nextPosition[1] + (1-t)*lastPosition[1]);
+    pilotPositions[pilotHeat.name] = [x, y];
   }
 
   let lapHeaders = [];
@@ -308,19 +327,14 @@ export default function Results(props) {
             </TableRow>
           </TableHead>
           <TableBody>
-          {Object.entries(pilotHeatData).map((entry) => {
+          {Object.entries(pilotLapDetails).map((entry) => {
             const pilotKey = entry[0];
-            const pilotHeat = entry[1];
-            const laps = [];
-            for (const lap of pilotHeat.laps) {
-              laps[lap.lap] = laps[lap.lap] ?? [];
-              laps[lap.lap][lap.location] = lap.timestamp;
-            }
+            const lapSplits = entry[1];
             let lapCells = [];
             for (let lapId=maxLaps; lapId>=minLaps; lapId--) {
               let lapInfo = [];
-              if (laps[lapId]) {
-                const timestamps = laps[lapId];
+              if (lapSplits[lapId]) {
+                const timestamps = lapSplits[lapId];
                 for (const locId of timedLocations) {
                   let delta = null;
                   let timestamp = null;
@@ -329,8 +343,8 @@ export default function Results(props) {
                       timestamp = timestamps[locId];
                       if (lapId === 0) {
                         delta = timestamp;
-                      } else if (lapId > 0 && laps[lapId-1]?.[0]) {
-                        delta = timestamp - laps[lapId-1][0];
+                      } else if (lapId > 0 && lapSplits[lapId-1]?.[0]) {
+                        delta = timestamp - lapSplits[lapId-1][0];
                       }
                     }
                     lapInfo.push(
@@ -358,8 +372,8 @@ export default function Results(props) {
                 }
                 let delta = null;
                 let timestamp = null;
-                if (laps[lapId+1]?.[0]) {
-                  timestamp = laps[lapId+1][0];
+                if (lapSplits[lapId+1]?.[0]) {
+                  timestamp = lapSplits[lapId+1][0];
                   if (timestamps[timedLocations[timedLocations.length-1]]) {
                     delta = timestamp - timestamps[timedLocations[timedLocations.length-1]];
                   }
@@ -379,7 +393,7 @@ export default function Results(props) {
               key={pilotKey}
               sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
             >
-              <TableCell component="th" scope="row">{pilotHeat.name}</TableCell>
+              <TableCell component="th" scope="row">{pilotKey}</TableCell>
               {lapCells}
             </TableRow>
             );
@@ -387,6 +401,8 @@ export default function Results(props) {
           </TableBody>
         </Table>
       </TableContainer>
+      <TrackMapContainer id="map" crs={trackData.crs} trackLayout={trackData.layout} pilotPositions={pilotPositions} flyTo={flyTo}/>
+      <Map id="map"/>
     </Stack>
   );
 }
