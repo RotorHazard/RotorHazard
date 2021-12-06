@@ -20,6 +20,7 @@
     "leaflet": "^1.7.1",
     "lodash": "^4.17.21",
     "mqtt": "^4.2.8",
+    "nanoid": "^3.1.30",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-scripts": "^3.4.4",

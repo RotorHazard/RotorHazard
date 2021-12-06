@@ -19,20 +19,11 @@ import AddLocationIcon from '@mui/icons-material/AddLocation';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
+import { TrackMapContainer, Map } from './TrackMap.js';
 import { debounce } from 'lodash';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { nanoid } from 'nanoid';
 import { createTrackDataLoader, storeTrackData } from './rh-client.js';
 
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
-L.Marker.prototype.options.icon = L.icon({
-  ...L.Icon.Default.prototype.options,
-  iconUrl: icon,
-  iconRetinaUrl: iconRetina,
-  shadowUrl: iconShadow
-});
 
 const LOCAL_GRID = 'Local grid';
 
@@ -54,6 +45,20 @@ const LOCATION_TYPES = [
 
 const saveTrackData = debounce(storeTrackData, 2000);
 
+
+function ValidatingTextField(props) {
+  const [value, setValue] = useState(props?.value ?? '');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const changeValue = (evt) => {
+    if (props?.validateChange) {
+      const msg = props.validateChange(evt.target.value);
+      setErrorMsg(msg);
+    }
+    setValue(evt.target.value);
+  };
+  return <TextField value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg}/>;
+}
 
 function GpsButton(props) {
   const [state, setState] = useState('Not fixed');
@@ -80,7 +85,7 @@ export default function Tracks(props) {
   const [trackLayout, setTrackLayout] = useState([]);
   const [crs, setCRS] = useState(CRSS[0]);
   const [units, setUnits] = useState(UNITS[0]);
-  const mapRef = useRef();
+  const [flyTo, setFlyTo] = useState(null);
   const newGateRef = useRef();
 
   useEffect(() => {
@@ -88,56 +93,21 @@ export default function Tracks(props) {
   }, []);
 
   useEffect(() => {
-    let map;
-    if (crs === LOCAL_GRID) {
-      map = L.map('map', {
-        crs: L.CRS.Simple,
-        center: [0,0],
-        zoom: 4
-       });
-    } else {
-      map = L.map('map', {
-        center: [0,0],
-        zoom: 16,
-        layers: [
-          L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-            attribution:
-              '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-          }),
-        ]
-      });
-    }
-    map.trackLayer = L.featureGroup();
-    map.trackLayer.addTo(map);
-    mapRef.current = map;
-    return () => {
-      map.remove();
-    }
-  }, [crs]);
-
-  useEffect(() => {
     const loader = createTrackDataLoader();
     loader.load(null, (data) => {
-      if (mapRef.current) {
-        const center = data?.layout?.[0]?.location ?? [0,0];
-        mapRef.current.flyTo(center);
+      for (const loc of data.layout) {
+        loc.id = loc?.id ?? nanoid();
       }
       setCRS(data.crs);
-      setUnits(data?.units ?? '');
+      if (data?.units) {
+        setUnits(data?.units);
+      }
       setTrackLayout(data.layout);
+      const startPos = data?.layout?.[0]?.location ?? [0,0];
+      setFlyTo(startPos);
     });
     return () => loader.cancel();
   }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (map) {
-      for (const loc of trackLayout) {
-        L.marker(loc.location, {title: loc.name}).addTo(map.trackLayer);
-      }
-    }
-    return () => {if (map) {map.trackLayer.clearLayers()}};
-  }, [trackLayout]);
 
   useEffect(() => {
     const data = {crs: crs, layout: trackLayout};
@@ -148,7 +118,7 @@ export default function Tracks(props) {
   }, [crs, units, trackLayout]);
 
   const addLocation = () => {
-    setTrackLayout((old) => {return [...old, {name: "Gate "+(newGateRef.current++), type: LOCATION_TYPES[0], location: [5*old.length,0]}]})
+    setTrackLayout((old) => {return [...old, {id: nanoid(), name: "Gate "+(newGateRef.current++), type: LOCATION_TYPES[0], location: [5*old.length,0]}]})
   };
 
   const selectCRS = (newCrs) => {
@@ -191,7 +161,9 @@ export default function Tracks(props) {
     </FormControl>
     {unitSelector}
     </Stack>
-    <TableContainer component={Paper}>
+    <TrackMapContainer id="map" crs={crs} trackLayout={trackLayout} flyTo={flyTo}>
+    {(map) => (
+      <TableContainer component={Paper}>
       <Table>
         <TableHead>
           <TableRow>
@@ -216,11 +188,19 @@ export default function Tracks(props) {
               deleteControl = null;
             }
             const changeName = (n) => {
+              if (n.trim() !== n) {
+                return "Excess whitespace";
+              }
+              const existingIndex = trackLayout.findIndex((l) => l.name === n);
+              if (existingIndex !== -1 && existingIndex !== idx) {
+                return "Duplicate name";
+              }
               setTrackLayout((old) => {
                 const newData = [...old];
                 newData[idx].name = n;
                 return newData;
               });
+              return '';
             };
             const selectLocationType = (t) => {
               setTrackLayout((old) => {
@@ -252,11 +232,13 @@ export default function Tracks(props) {
               });
             };
             return (
-              <TableRow key={loc.name}>
+              <TableRow key={loc.id}>
                 <TableCell>
                 {deleteControl}
                 </TableCell>
-                <TableCell><TextField value={loc.name} onChange={(evt) => changeName(evt.target.value)}/></TableCell>
+                <TableCell>
+                <ValidatingTextField value={loc.name} validateChange={changeName}/>
+                </TableCell>
                 <TableCell>
                 <Select value={loc.type} onChange={(evt) => selectLocationType(evt.target.value)}>
                 {
@@ -271,7 +253,7 @@ export default function Tracks(props) {
                   inputProps={{type: 'number'}}/>
                 <TextField value={loc.location[1]} onChange={(evt) => changeYLocation(evt.target.valueAsNumber)}
                   inputProps={{type: 'number'}}/>
-                <GpsButton map={mapRef.current} onClick={getCurrentPosition} locateOptions={{setView:true, enableHighAccuracy: true}}/>
+                <GpsButton map={map} onClick={getCurrentPosition} locateOptions={{setView:true, enableHighAccuracy: true}}/>
                 </TableCell>
               </TableRow>
             );
@@ -280,7 +262,9 @@ export default function Tracks(props) {
         </TableBody>
       </Table>
     </TableContainer>
-    <div id="map"/>
+    )}
+    </TrackMapContainer>
+    <Map id="map"/>
     </Stack>
   );
 }
