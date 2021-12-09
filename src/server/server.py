@@ -3736,10 +3736,16 @@ def emit_pilot_data(**params):
     pilot_objs = RHData.get_pilots()
 
     # prefetch web data
+    def fetch_web_data(urls):
+        data = {}
+        for url in urls:
+            data[url] = web.get_pilot_data(url)
+        return data
+
+    g = gevent.spawn(fetch_web_data, [pilot.url for pilot in pilot_objs if pilot.url])
     web_gs = {}
     for pilot in pilot_objs:
         if pilot.url:
-            g = gevent.spawn(web.get_pilot_data, pilot.url)
             web_gs[pilot.id] = g
 
     pilots_list = []
@@ -3766,8 +3772,8 @@ def emit_pilot_data(**params):
 
         if pilot.url:
             gevent.wait([web_gs[pilot.id]])
-            pilot_web_data = web_gs[pilot.id].value
-            pilot_data.update(pilot_web_data)
+            web_data = web_gs[pilot.id].value
+            pilot_web_data = web_data[pilot.url]
             changed_pilot_data = {}
             if 'name' in pilot_web_data and pilot_web_data['name'] != pilot_data['name']:
                 changed_pilot_data['name'] = pilot_web_data['name']
@@ -3776,6 +3782,7 @@ def emit_pilot_data(**params):
             if changed_pilot_data:
                 changed_pilot_data['pilot_id'] = pilot.id
                 RHData.alter_pilot(changed_pilot_data)
+            pilot_data.update(pilot_web_data)
 
         # local overrides
         if not pilot.name.startswith('~'):

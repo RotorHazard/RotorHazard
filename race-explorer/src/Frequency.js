@@ -6,6 +6,14 @@ import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 
+export function processVtxTable(data, vtxTable) {
+  for (const band of data.vtx_table.bands_list) {
+    vtxTable[band.letter] = {
+      name: band.name,
+      channels: band.frequencies.filter((f) => f > 0)
+    };
+  }
+}
 
 export default function Frequency(props) {
   const vtxTable = props.vtxTable;

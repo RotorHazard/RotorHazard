@@ -272,13 +272,15 @@ export default function Results(props) {
     }
     pilotLapDetails[pilotHeat.name] = lapSplits;
 
-    const lastLocation = pilotLaps.length > 0 ? pilotLaps[pilotLaps.length-1].location : 0;
-    const lastPosition = trackLayout[lastLocation].location;
-    const nextPosition = trackLayout[lastLocation+1 < trackLayout.length ? lastLocation+1 : 0].location;
-    const t = 0.5 + 0.25*(Math.random() - 0.5);
-    const x = (t*nextPosition[0] + (1-t)*lastPosition[0]);
-    const y = (t*nextPosition[1] + (1-t)*lastPosition[1]);
-    pilotPositions[pilotHeat.name] = [x, y];
+    if (trackLayout) {
+      const lastLocation = pilotLaps.length > 0 ? pilotLaps[pilotLaps.length-1].location : 0;
+      const lastPosition = trackLayout[lastLocation].location;
+      const nextPosition = trackLayout[lastLocation+1 < trackLayout.length ? lastLocation+1 : 0].location;
+      const t = 0.5 + 0.25*(Math.random() - 0.5);
+      const x = (t*nextPosition[0] + (1-t)*lastPosition[0]);
+      const y = (t*nextPosition[1] + (1-t)*lastPosition[1]);
+      pilotPositions[pilotHeat.name] = [x, y];
+    }
   }
 
   let lapHeaders = [];
@@ -348,7 +350,7 @@ export default function Results(props) {
                       }
                     }
                     lapInfo.push(
-                      <div>
+                      <div key={lapId+'/'+locId}>
                       <span className="lapTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
                       <span> </span>
                       <span className="lapTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
@@ -362,7 +364,7 @@ export default function Results(props) {
                       }
                     }
                     lapInfo.push(
-                      <div>
+                      <div key={lapId+'/'+locId}>
                       <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
                       <span> </span>
                       <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
@@ -379,7 +381,7 @@ export default function Results(props) {
                   }
                 }
                 lapInfo.push(
-                  <div>
+                  <div key={lapId+':-1'}>
                   <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
                   <span> </span>
                   <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>

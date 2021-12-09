@@ -42,6 +42,14 @@ export function createEventDataLoader() {
   return createLoader(config.eventDataEndpoint);
 }
 
+export async function storeEventData(eventData) {
+  try {
+    await axios.post(config.eventDataEndpoint, eventData);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+
 export function createTrackDataLoader() {
   return createLoader(config.trackDataEndpoint);
 }

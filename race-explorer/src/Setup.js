@@ -20,19 +20,10 @@ import MemoryIcon from '@mui/icons-material/Memory';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
-import Frequency from './Frequency.js';
+import Frequency, { processVtxTable } from './Frequency.js';
 import LapRFConfig from './LapRF.js';
 import * as util from './util.js';
 import { createSetupDataLoader, createVtxTableLoader, createTimerMappingLoader, storeTimerMapping, createTrackDataLoader, createMqttConfigLoader, getMqttClient } from './rh-client.js';
-
-function processVtxTable(data, vtxTable) {
-  for (const band of data.vtx_table.bands_list) {
-    vtxTable[band.letter] = {
-      name: band.name,
-      channels: band.frequencies.filter((f) => f > 0)
-    };
-  }
-}
 
 function processSetup(data, setupData) {
   const jsonl = data.split('\n');
@@ -237,8 +228,8 @@ function getTimerConfigFactory(type) {
 }
 
 function TrackConfig(props) {
-  const [location, setLocation] = useState(props.location ?? '');
-  const [seat, setSeat] = useState(props.seat ?? 1);
+  const [location, setLocation] = useState(props.location ?? 'Start/finish');
+  const [seat, setSeat] = useState(props.seat ?? 0);
 
   const changeLocation = (v) => {
     setLocation(v);

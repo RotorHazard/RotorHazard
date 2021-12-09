@@ -17,7 +17,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
 
     @APP.route('/raceResults')
     def race_results():
-        eventName = RHData.get_option('eventName', '')
+        event_name = RHData.get_option('eventName', '')
         msgs = []
         for race in RHData.get_savedRaceMetas():
             race_id = race.id
@@ -34,16 +34,61 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                         lapsplits = RHData.get_lapSplits_by_lap(race_id, pilotrace.node_index, lap_id)
                         for lapsplit in lapsplits:
                             laps.append({'lap': lap_id, 'timestamp': lapsplit.split_time_stamp, 'location': lapsplit.split_id+1})
-                    msg = {'event': eventName, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
+                    msg = {'event': event_name, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
                     msgs.append(msg)
         return '\n'.join([json.dumps(msg) for msg in msgs])
 
-    @APP.route('/raceEvent')
-    def race_event():
-        data = {}
+    @APP.route('/raceEvent', methods=['GET'])
+    def race_event_get():
+        event_name = RHData.get_option('eventName')
+        event_desc = RHData.get_option('eventDescription')
+        event_url = RHData.get_option('eventURL')
+        pilots = {}
+        pilots_by_id = {}
         for pilot in RHData.get_pilots():
-            data[pilot.callsign] = {}
+            pilots[pilot.callsign] = {'name': pilot.name}
+            pilots_by_id[pilot.id] = pilot
+        race_classes = {"Open": {}}
+        race_classes_by_id = {0: "Open"}
+        for race_class in RHData.get_raceClasses():
+            race_classes[race_class.name] = {}
+            race_classes_by_id[race_class.id] = race_class
+        seats = []
+        current_profile = RHData.get_optionInt('currentProfile')
+        profile = RHData.get_profile(current_profile)
+        freqs = json.loads(profile.frequencies)
+        for f_b_c in zip(freqs['f'], freqs['b'], freqs['c']):
+            fbc = {'frequency': f_b_c[0]}
+            if f_b_c[1] and f_b_c[2]:
+                fbc['bandChannel'] = f_b_c[1] + str(f_b_c[2])
+            seats.append(fbc)
+        heats = []
+        for heat_idx, heat_data in enumerate(RHData.get_heats()):
+            heat_seats = [None] * len(seats)
+            for heat_node in RHData.get_heatNodes_by_heat(heat_data.id):
+                if heat_node.pilot_id in pilots_by_id:
+                    heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
+            heat = {
+                'name': heat_data.note if heat_data.note else str(heat_idx+1),
+                'class': race_classes_by_id[heat_data.class_id],
+                'seats': heat_seats
+            }
+            heats.append(heat)
+        data = {
+            'name': event_name,
+            'description': event_desc,
+            'url': event_url,
+            'pilots': pilots,
+            'classes': race_classes,
+            'seats': seats,
+            'heats': heats
+        }
         return data
+
+    @APP.route('/raceEvent', methods=['POST'])
+    def race_event_post():
+        data = request.get_json()
+        return '', 204
 
     @APP.route('/trackLayout', methods=['GET'])
     def track_layout_get():
