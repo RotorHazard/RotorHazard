@@ -86,16 +86,16 @@ For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_tr
 ### 4. Perform System Update
 Using a terminal window, do a system update and upgrade (this can take a few minutes):
 ```
-sudo apt-get update && sudo apt-get upgrade
+sudo apt update && sudo apt upgrade
 ```
 
 <a id="python"></a>
 ### 5. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
-sudo apt install python-dev python3-dev libffi-dev python-smbus build-essential python-pip python3-pip git scons swig python-rpi.gpio python3-rpi.gpio
+sudo apt install python3-dev libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
 ```
-Check the current default version of Python by entering the following command:
+The minimum version of Python supported is 3.5 Check the current default version of Python by entering the following command:
 ```
 python --version
 ```
