@@ -108,8 +108,15 @@ class MqttAPI:
         node = self._get_node_from_topic(msg.topic)
         if node:
             try:
-                freq = int(msg.payload.decode('utf-8'))
-                self.on_set_frequency({'node': node.index, 'frequency': freq})
+                freq_bandChannel = msg.payload.decode('utf-8').split(',')
+                if len(freq_bandChannel) >= 1:
+                    freq = int(freq_bandChannel[0])
+                    set_data = {'node': node.index, 'frequency': freq}
+                    if len(freq_bandChannel) >= 2:
+                        bandChannel = freq_bandChannel[1]
+                        set_data['band'] = bandChannel[0]
+                        set_data['channel'] = int(bandChannel[1])
+                    self.on_set_frequency(set_data)
             except:
                 logger.warn('Invalid frequency message')
 

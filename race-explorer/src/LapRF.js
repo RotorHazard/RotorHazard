@@ -9,14 +9,14 @@ function ThresholdGain(props) {
   const [threshold, setThreshold] = useState(props.threshold);
   const [gain, setGain] = useState(props.gain);
 
-  const thresholdChangesHook = props?.thresholdChangesHook;
+  const thresholdChangesHook = props.thresholdChangesHook;
   useEffect(() => {
     if (thresholdChangesHook) {
       return thresholdChangesHook((level) => {setThreshold(level);});
     }
   }, [thresholdChangesHook]);
 
-  const gainChangesHook = props?.gainChangesHook;
+  const gainChangesHook = props.gainChangesHook;
   useEffect(() => {
     if (gainChangesHook) {
       return gainChangesHook((level) => {setGain(level);});
@@ -25,14 +25,14 @@ function ThresholdGain(props) {
 
   const changeThreshold = (level) => {
     setThreshold(level);
-    if (props?.onThresholdChange) {
+    if (props.onThresholdChange) {
       props.onThresholdChange(level);
     }
   };
 
   const changeGain = (level) => {
     setGain(level);
-    if (props?.onGainChange) {
+    if (props.onGainChange) {
       props.onGainChange(level);
     }
   };
@@ -68,7 +68,6 @@ export default function LapRFConfig(props) {
   
   let mqttFrequencyPublisher = null;
   let mqttFrequencySubscriber = null;
-  let mqttBandChannelPublisher = null;
   let mqttBandChannelSubscriber = null;
   let mqttThresholdPublisher = null;
   let mqttThresholdSubscriber = null;
@@ -77,8 +76,11 @@ export default function LapRFConfig(props) {
   if (props.annTopic && props.ctrlTopic) {
     const freqAnnTopic = [props.annTopic, "frequency"].join('/');
     const freqCtrlTopic = [props.ctrlTopic, "frequency"].join('/');
-    mqttFrequencyPublisher = debounce((freq) => {
-      getMqttClient().publish(freqCtrlTopic, freq);
+    const bcAnnTopic = [props.annTopic, "bandChannel"].join('/');
+    const bcCtrlTopic = [props.ctrlTopic, "bandChannel"].join('/');
+    mqttFrequencyPublisher = debounce((freq, bc) => {
+      getMqttClient().publish(bcCtrlTopic, bc);
+      getMqttClient().publish(freqCtrlTopic, freq+','+bc);
      }, 1500);
     mqttFrequencySubscriber = (setFreq) => {
       const mqttClient = getMqttClient();
@@ -90,10 +92,6 @@ export default function LapRFConfig(props) {
         mqttClient.unsubscribeFrom(freqAnnTopic);
       };
     };
-  
-    const bcAnnTopic = [props.annTopic, "bandChannel"].join('/');
-    const bcCtrlTopic = [props.ctrlTopic, "bandChannel"].join('/');
-    mqttBandChannelPublisher = (bc) => {getMqttClient().publish(bcCtrlTopic, bc);};
     mqttBandChannelSubscriber = (setBandChannel) => {
       const mqttClient = getMqttClient();
       mqttClient.subscribeTo(bcAnnTopic, (payload) => {
@@ -137,9 +135,8 @@ export default function LapRFConfig(props) {
   return (
     <div>
     <Frequency frequency={freq.toString()} bandChannel={bc}
-      onFrequencyChange={mqttFrequencyPublisher}
+      onChange={mqttFrequencyPublisher}
       frequencyChangesHook={mqttFrequencySubscriber}
-      onBandChannelChange={mqttBandChannelPublisher}
       bandChannelChangesHook={mqttBandChannelSubscriber}
       vtxTable={props.vtxTable}
     />

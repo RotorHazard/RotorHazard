@@ -18,17 +18,17 @@ export function processVtxTable(data, vtxTable) {
 export default function Frequency(props) {
   const vtxTable = props.vtxTable;
   const [frequency, setFrequency] = useState(props.frequency);
-  const [band, setBand] = useState(props?.bandChannel?.[0] ?? '');
-  const [channel, setChannel] = useState(props?.bandChannel?.[1] ?? '');
+  const [band, setBand] = useState(props.bandChannel?.[0] ?? '');
+  const [channel, setChannel] = useState(props.bandChannel?.[1] ?? '');
 
-  const frequencyChangesHook = props?.frequencyChangesHook;
+  const frequencyChangesHook = props.frequencyChangesHook;
   useEffect(() => {
     if (frequencyChangesHook) {
       return frequencyChangesHook((freq) => {setFrequency(freq); setBand(''); setChannel('');});
     }
   }, [frequencyChangesHook]);
 
-  const bandChannelChangesHook = props?.bandChannelChangesHook;
+  const bandChannelChangesHook = props.bandChannelChangesHook;
   useEffect(() => {
     if (bandChannelChangesHook) {
       return bandChannelChangesHook((bandChannel) => {setBand(bandChannel[0]); setChannel(bandChannel[1]);});
@@ -39,17 +39,18 @@ export default function Frequency(props) {
     setFrequency(frequency);
     setBand('');
     setChannel('');
-    if (props?.onFrequencyChange) {
-      props.onFrequencyChange(frequency);
+    if (props.onChange) {
+      props.onChange(frequency, '');
     }
   };
 
   const selectBand = (band) => {
     setBand(band);
     if (band !== '' && channel !== '') {
-      setFrequency(vtxTable[band].channels[Number(channel)-1])
-      if (props?.onBandChannelChange) {
-        props.onBandChannelChange(band+channel);
+      const freq = vtxTable[band].channels[Number(channel)-1];
+      setFrequency(freq)
+      if (props.onChange) {
+        props.onChange(freq, band+channel);
       }
     }
   };
@@ -57,9 +58,10 @@ export default function Frequency(props) {
   const selectChannel = (channel) => {
     setChannel(channel);
     if (band !== '' && channel !== '') {
-      setFrequency(vtxTable[band].channels[Number(channel)-1])
-      if (props?.onBandChannelChange) {
-        props.onBandChannelChange(band+channel);
+      const freq = vtxTable[band].channels[Number(channel)-1];
+      setFrequency(freq)
+      if (props.onChange) {
+        props.onChange(freq, band+channel);
       }
     }
   };

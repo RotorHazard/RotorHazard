@@ -125,16 +125,14 @@ class BaseHardwareInterface:
     def _mqtt_set_frequency(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
         if node:
-            freq_data = msg.payload.decode('utf-8')
-            if len(freq_data) == 4:
-                freq = int(freq_data)
-                self.set_frequency(node.index, freq)
-            else:
-                freq_bandChannel = freq_data.split(',')
-                if len(freq_bandChannel) == 2:
-                    freq = int(freq_bandChannel[0])
+            freq_bandChannel = msg.payload.decode('utf-8').split(',')
+            if len(freq_bandChannel) >= 1:
+                freq = int(freq_bandChannel[0])
+                if len(freq_bandChannel) >= 2:
                     bandChannel = freq_bandChannel[1]
                     self.set_frequency(node.index, freq, bandChannel[0], int(bandChannel[1]))
+                else:
+                    self.set_frequency(node.index, freq)
 
     def _mqtt_set_bandChannel(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)

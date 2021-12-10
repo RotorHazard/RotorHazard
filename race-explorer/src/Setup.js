@@ -75,14 +75,14 @@ function EnterExitTriggers(props) {
   const [enterTrigger, setEnterTrigger] = useState(props.enterTrigger);
   const [exitTrigger, setExitTrigger] = useState(props.exitTrigger);
 
-  const enterTriggerChangesHook = props?.enterTriggerChangesHook;
+  const enterTriggerChangesHook = props.enterTriggerChangesHook;
   useEffect(() => {
     if (enterTriggerChangesHook) {
       return enterTriggerChangesHook((level) => {setEnterTrigger(level);});
     }
   }, [enterTriggerChangesHook]);
 
-  const exitTriggerChangesHook = props?.exitTriggerChangesHook;
+  const exitTriggerChangesHook = props.exitTriggerChangesHook;
   useEffect(() => {
     if (exitTriggerChangesHook) {
       return exitTriggerChangesHook((level) => {setExitTrigger(level);});
@@ -91,14 +91,14 @@ function EnterExitTriggers(props) {
 
   const changeEnterTrigger = (level) => {
     setEnterTrigger(level);
-    if (props?.onEnterTriggerChange) {
+    if (props.onEnterTriggerChange) {
       props.onEnterTriggerChange(level);
     }
   };
 
   const changeExitTrigger = (level) => {
     setExitTrigger(level);
-    if (props?.onExitTriggerChange) {
+    if (props.onExitTriggerChange) {
       props.onExitTriggerChange(level);
     }
   };
@@ -134,7 +134,6 @@ function TimerConfig(props) {
   
   let mqttFrequencyPublisher = null;
   let mqttFrequencySubscriber = null;
-  let mqttBandChannelPublisher = null;
   let mqttBandChannelSubscriber = null;
   let mqttEnterTriggerPublisher = null;
   let mqttEnterTriggerSubscriber = null;
@@ -143,8 +142,11 @@ function TimerConfig(props) {
   if (props.annTopic && props.ctrlTopic) {
     const freqAnnTopic = [props.annTopic, "frequency"].join('/');
     const freqCtrlTopic = [props.ctrlTopic, "frequency"].join('/');
-    mqttFrequencyPublisher = debounce((freq) => {
-      getMqttClient().publish(freqCtrlTopic, freq);
+    const bcAnnTopic = [props.annTopic, "bandChannel"].join('/');
+    const bcCtrlTopic = [props.ctrlTopic, "bandChannel"].join('/');
+    mqttFrequencyPublisher = debounce((freq, bc) => {
+      getMqttClient().publish(bcCtrlTopic, bc);
+      getMqttClient().publish(freqCtrlTopic, freq+','+bc);
      }, 1500);
     mqttFrequencySubscriber = (setFreq) => {
       const mqttClient = getMqttClient();
@@ -156,10 +158,6 @@ function TimerConfig(props) {
         mqttClient.unsubscribeFrom(freqAnnTopic);
       };
     };
-  
-    const bcAnnTopic = [props.annTopic, "bandChannel"].join('/');
-    const bcCtrlTopic = [props.ctrlTopic, "bandChannel"].join('/');
-    mqttBandChannelPublisher = (bc) => {getMqttClient().publish(bcCtrlTopic, bc);};
     mqttBandChannelSubscriber = (setBandChannel) => {
       const mqttClient = getMqttClient();
       mqttClient.subscribeTo(bcAnnTopic, (payload) => {
@@ -203,9 +201,8 @@ function TimerConfig(props) {
   return (
     <div>
     <Frequency frequency={freq.toString()} bandChannel={bc}
-      onFrequencyChange={mqttFrequencyPublisher}
+      onChange={mqttFrequencyPublisher}
       frequencyChangesHook={mqttFrequencySubscriber}
-      onBandChannelChange={mqttBandChannelPublisher}
       bandChannelChangesHook={mqttBandChannelSubscriber}
       vtxTable={props.vtxTable}
     />

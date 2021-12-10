@@ -15,7 +15,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import AddLocationIcon from '@mui/icons-material/AddLocation';
+import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
@@ -35,12 +35,6 @@ const CRSS = [
 const UNITS = [
   "m",
   "ft"
-];
-
-const LOCATION_TYPES = [
-  "Arch gate",
-  "Square gate",
-  "Flag"
 ];
 
 const saveTrackData = debounce(storeTrackData, 2000);
@@ -85,6 +79,7 @@ export default function Tracks(props) {
   const [trackLayout, setTrackLayout] = useState([]);
   const [crs, setCRS] = useState(CRSS[0]);
   const [units, setUnits] = useState(UNITS[0]);
+  const [locTypes, setLocTypes] = useState('');
   const [flyTo, setFlyTo] = useState(null);
   const newGateRef = useRef();
 
@@ -96,29 +91,30 @@ export default function Tracks(props) {
     const loader = createTrackDataLoader();
     loader.load(null, (data) => {
       for (const loc of data.layout) {
-        loc.id = loc?.id ?? nanoid();
+        loc.id = loc.id ?? nanoid();
       }
       setCRS(data.crs);
-      if (data?.units) {
-        setUnits(data?.units);
+      if (data.units) {
+        setUnits(data.units);
       }
+      setLocTypes(data.types);
       setTrackLayout(data.layout);
-      const startPos = data?.layout?.[0]?.location ?? [0,0];
+      const startPos = data.layout?.[0]?.location ?? [0,0];
       setFlyTo(startPos);
     });
     return () => loader.cancel();
   }, []);
 
   useEffect(() => {
-    const data = {crs: crs, layout: trackLayout};
+    const data = {crs: crs, layout: trackLayout, types: locTypes};
     if (crs === LOCAL_GRID) {
       data.units = units;
     }
     saveTrackData(data);
-  }, [crs, units, trackLayout]);
+  }, [crs, units, locTypes, trackLayout]);
 
   const addLocation = () => {
-    setTrackLayout((old) => {return [...old, {id: nanoid(), name: "Gate "+(newGateRef.current++), type: LOCATION_TYPES[0], location: [5*old.length,0]}]})
+    setTrackLayout((old) => {return [...old, {id: nanoid(), name: "Gate "+(newGateRef.current++), type: locTypes[0], location: [5*old.length,0]}]})
   };
 
   const selectCRS = (newCrs) => {
@@ -148,7 +144,6 @@ export default function Tracks(props) {
   return (
     <Stack>
     <Stack direction="row">
-    <Button startIcon={<AddLocationIcon/>} onClick={addLocation}>Add</Button>
     <FormControl>
     <InputLabel id="crs-label">CRS</InputLabel>
     <Select labelId="crs-label" value={crs} onChange={(evt) => selectCRS(evt.target.value)}>
@@ -242,7 +237,7 @@ export default function Tracks(props) {
                 <TableCell>
                 <Select value={loc.type} onChange={(evt) => selectLocationType(evt.target.value)}>
                 {
-                  LOCATION_TYPES.map((t) => {
+                  locTypes.map((t) => {
                     return <MenuItem key={t} value={t}>{t}</MenuItem>;
                   })
                 }
@@ -259,6 +254,8 @@ export default function Tracks(props) {
             );
           })
         }
+        <TableRow><TableCell colSpan="4"><IconButton onClick={addLocation}><AddIcon/></IconButton>
+</TableCell></TableRow>
         </TableBody>
       </Table>
     </TableContainer>

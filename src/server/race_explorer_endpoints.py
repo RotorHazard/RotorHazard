@@ -88,6 +88,9 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
     @APP.route('/raceEvent', methods=['POST'])
     def race_event_post():
         data = request.get_json()
+        RHData.set_option('eventName', data['name'])
+        RHData.set_option('eventDescription', data['description'])
+        RHData.set_option('eventURL', data['url'])
         return '', 204
 
     @APP.route('/trackLayout', methods=['GET'])
@@ -99,7 +102,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
             track = {
                 'crs': 'Local grid',
                 'units': 'm',
-                'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}]
+                'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}],
+                'types': ["Arch gate", "Square gate", "Flag"]
             }
             RHData.set_option('trackLayout', json.dumps(track))
         return track
