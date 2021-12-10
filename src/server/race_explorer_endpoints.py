@@ -48,11 +48,20 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
         for pilot in RHData.get_pilots():
             pilots[pilot.callsign] = {'name': pilot.name}
             pilots_by_id[pilot.id] = pilot
-        race_classes = {"Open": {}}
-        race_classes_by_id = {0: "Open"}
+        race_formats_by_id = {0: None}
+        for race_format in RHData.get_raceFormats():
+            race_formats_by_id[race_format.id] = race_format.name
+        race_classes = {}
+        race_classes_by_id = {}
         for race_class in RHData.get_raceClasses():
-            race_classes[race_class.name] = {}
-            race_classes_by_id[race_class.id] = race_class
+            race_classes[race_class.name] = {
+                'description': race_class.description,
+                'format': race_formats_by_id[race_class.format_id]
+            }
+            race_classes_by_id[race_class.id] = race_class.name
+        if not race_classes:
+            race_classes = {"Open": {'description': "Default class"}}
+            race_classes_by_id = {0: "Open"}
         seats = []
         current_profile = RHData.get_optionInt('currentProfile')
         profile = RHData.get_profile(current_profile)

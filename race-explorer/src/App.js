@@ -5,6 +5,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Results from './Results';
 import Event from './Event';
+import RaceClasses from './RaceClasses';
+import Pilots from './Pilots';
 import Track from './Track';
 import Setup from './Setup';
 import Sensors from './Sensors';
@@ -17,6 +19,8 @@ export default function App(props) {
   const tabs = [
     {label: "Results", content: <Results/>},
     {label: "Event", content: <Event/>},
+    {label: "Classes", content: <RaceClasses/>},
+    {label: "Pilots", content: <Pilots/>},
     {label: "Track", content: <Track/>},
     {label: "Setup", content: <Setup/>},
     {label: "Sensors", content: <Sensors/>}
