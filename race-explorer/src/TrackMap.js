@@ -21,20 +21,14 @@ const DRONE_ICON = L.icon({
   iconAnchor: [24,12]
 });
 
-const LOCAL_GRID = 'Local grid';
+const LAT_LONG = 'Lat/Long';
 
 export function TrackMapContainer(props) {
   const [map, setMap] = useState(null);
 
   useEffect(() => {
     let map;
-    if (props.crs === LOCAL_GRID) {
-      map = L.map(props.id, {
-        crs: L.CRS.Simple,
-        center: [0,0],
-        zoom: 4
-       });
-    } else {
+    if (props.crs === LAT_LONG) {
       map = L.map(props.id, {
         center: [0,0],
         zoom: 16,
@@ -45,6 +39,12 @@ export function TrackMapContainer(props) {
           }),
         ]
       });
+    } else {
+      map = L.map(props.id, {
+        crs: L.CRS.Simple,
+        center: [0,0],
+        zoom: 4
+       });
     }
     map.trackLayer = L.featureGroup();
     map.trackLayer.addTo(map);

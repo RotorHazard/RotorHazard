@@ -7,6 +7,8 @@
     "@aws-sdk/client-cognito-identity": "^3.41.0",
     "@aws-sdk/client-s3": "^3.41.0",
     "@aws-sdk/credential-providers": "^3.41.0",
+    "@dnd-kit/core": "^4.0.3",
+    "@dnd-kit/utilities": "^3.0.1",
     "@emotion/react": "^11.5.0",
     "@emotion/styled": "^11.3.0",
     "@mui/icons-material": "^5.2.0",

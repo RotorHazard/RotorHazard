@@ -39,6 +39,25 @@ const UNITS = [
 
 const saveTrackData = debounce(storeTrackData, 2000);
 
+function copyLocation(loc, newVals) {
+  if (!loc.id) {
+    throw Error("Location missing ID");
+  }
+  return {
+    id: loc.id,
+    name: loc.name,
+    type: loc.type,
+    location: loc.location,
+    ...newVals
+  };
+}
+
+function updateLocation(layout, locIdx, newVals) {
+  const newLayout = [...layout];
+  const newLoc = copyLocation(layout[locIdx], newVals);
+  newLayout[locIdx] = newLoc;
+  return newLayout;
+}
 
 function ValidatingTextField(props) {
   const [value, setValue] = useState(props?.value ?? '');
@@ -51,7 +70,7 @@ function ValidatingTextField(props) {
     }
     setValue(evt.target.value);
   };
-  return <TextField value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg}/>;
+  return <TextField value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg} inputProps={props.inputProps}/>;
 }
 
 function GpsButton(props) {
@@ -114,7 +133,15 @@ export default function Tracks(props) {
   }, [crs, units, locTypes, trackLayout]);
 
   const addLocation = () => {
-    setTrackLayout((old) => {return [...old, {id: nanoid(), name: "Gate "+(newGateRef.current++), type: locTypes[0], location: [5*old.length,0]}]})
+    setTrackLayout((old) => {
+      const newLayout = [...old];
+      const newLocation = {id: nanoid(), name: "Gate "+(newGateRef.current++), type: locTypes[0], location: [5*old.length,0]};
+      if (old.length > 0) {
+        newLocation.type = old[old.length-1].type;
+      }
+      newLayout.push(newLocation);
+      return newLayout;
+     })
   };
 
   const selectCRS = (newCrs) => {
@@ -191,39 +218,36 @@ export default function Tracks(props) {
                 return "Duplicate name";
               }
               setTrackLayout((old) => {
-                const newData = [...old];
-                newData[idx].name = n;
-                return newData;
+                return updateLocation(old, idx, {name: n});
               });
               return '';
             };
             const selectLocationType = (t) => {
               setTrackLayout((old) => {
-                const newData = [...old];
-                newData[idx].type = t;
-                return newData;
+                return updateLocation(old, idx, {type: t});
               });
             };
             const changeXLocation = (x) => {
+              if (!x) {
+                return 'Missing/invalid value';
+              }
               setTrackLayout((old) => {
-                const newData = [...old];
-                newData[idx].location[0] = x;
-                return newData;
+                return updateLocation(old, idx, {location: [Number(x), old[idx].location[1]]});
               });
+              return '';
             };
             const changeYLocation = (y) => {
+              if (!y) {
+                return 'Missing/invalid value';
+              }
               setTrackLayout((old) => {
-                const newData = [...old];
-                newData[idx].location[1] = y;
-                return newData;
+                return updateLocation(old, idx, {location: [old[idx].location[0], Number(y)]});
               });
+              return '';
             };
             const getCurrentPosition = (evt) => {
               setTrackLayout((old) => {
-                const newData = [...old];
-                newData[idx].location[0] = evt.latlng.lat;
-                newData[idx].location[1] = evt.latlng.lng;
-                return newData;
+                return updateLocation(old, idx, {location: [evt.latlng.lat, evt.latlng.lng]});
               });
             };
             return (
@@ -244,9 +268,9 @@ export default function Tracks(props) {
                 </Select>
                 </TableCell>
                 <TableCell>
-                <TextField value={loc.location[0]} onChange={(evt) => changeXLocation(evt.target.valueAsNumber)}
+                <ValidatingTextField value={loc.location[0]} validateChange={changeXLocation}
                   inputProps={{type: 'number'}}/>
-                <TextField value={loc.location[1]} onChange={(evt) => changeYLocation(evt.target.valueAsNumber)}
+                <ValidatingTextField value={loc.location[1]} validateChange={changeYLocation}
                   inputProps={{type: 'number'}}/>
                 <GpsButton map={map} onClick={getCurrentPosition} locateOptions={{setView:true, enableHighAccuracy: true}}/>
                 </TableCell>
