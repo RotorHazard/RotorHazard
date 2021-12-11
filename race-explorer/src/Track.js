@@ -4,7 +4,6 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
@@ -19,6 +18,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
+import ValidatingTextField from './ValidatingTextField.js';
 import { TrackMapContainer, Map } from './TrackMap.js';
 import { debounce } from 'lodash';
 import { nanoid } from 'nanoid';
@@ -57,20 +57,6 @@ function updateLocation(layout, locIdx, newVals) {
   const newLoc = copyLocation(layout[locIdx], newVals);
   newLayout[locIdx] = newLoc;
   return newLayout;
-}
-
-function ValidatingTextField(props) {
-  const [value, setValue] = useState(props?.value ?? '');
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const changeValue = (evt) => {
-    if (props?.validateChange) {
-      const msg = props.validateChange(evt.target.value);
-      setErrorMsg(msg);
-    }
-    setValue(evt.target.value);
-  };
-  return <TextField value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg} inputProps={props.inputProps}/>;
 }
 
 function GpsButton(props) {

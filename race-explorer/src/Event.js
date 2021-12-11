@@ -6,7 +6,6 @@ import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import TextField from '@mui/material/TextField';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Table from '@mui/material/Table';
@@ -20,6 +19,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { DndContext, useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import ValidatingTextField from './ValidatingTextField.js';
 import Frequency, { processVtxTable } from './Frequency.js';
 import { debounce } from 'lodash';
 import { nanoid } from 'nanoid';
@@ -93,25 +93,33 @@ function RaceSeat(props) {
 }
 
 
+function createRace(raceClasses, seats) {
+  const newSeats = [];
+  for (let i=0; i<seats.length; i++) {
+    newSeats[i] = null;
+  }
+  const classNames = Object.keys(raceClasses);
+  return {id: nanoid(), class: classNames[0], name: 'New race', seats: newSeats};
+}
+
 function RaceRoundTable(props) {
   const [races, setRaces] = useState(props.races ?? []);
   useEffect(() => {
     setRaces(props.races);
   }, [props.races]);
-  const onChangeCallback = props.onChange;
-  useEffect(() => {
-    if (onChangeCallback) {
-      onChangeCallback(races);
+
+  const updateRaces = (updater) => {
+    const newRaces = updater(races);
+    setRaces(newRaces);
+    if (props.onChange) {
+      props.onChange(props.stage, newRaces);
     }
-  }, [onChangeCallback, races]);
+  };
+
   const addRace = () => {
-    setRaces((old) => {
+    updateRaces((old) => {
       const newRaces = [...old];
-      const raceClasses = Object.keys(props.classes);
-      const newRace = {id: nanoid(), class: raceClasses[0], name: 'New race', seats: []};
-      for (let i=0; i<props.seats.length; i++) {
-        newRace.seats[i] = null;
-      }
+      const newRace = createRace(props.raceClasses, props.seats);
       if (old.length > 0) {
         newRace.class = old[old.length-1].class;
       }
@@ -125,7 +133,7 @@ function RaceRoundTable(props) {
       <Table>
         <TableHead>
           <TableRow>
-          <TableCell>{props.title}</TableCell>
+          <TableCell>{props.stage}</TableCell>
           <TableCell>Class</TableCell>
           {props.seats?.map((fbc, idx) => {
             return <TableCell key={idx}>Seat {idx+1}</TableCell>;
@@ -136,34 +144,34 @@ function RaceRoundTable(props) {
         {
           races.map((race, raceIdx) => {
             const deleteRace = () => {
-              setRaces((old) => {
+              updateRaces((old) => {
                 const newRaces = [...old];
                 newRaces.splice(raceIdx, 1);
                 return newRaces;
               });
             };
-            const deleteButton = raceIdx > 0 ? <IconButton onClick={deleteRace}><DeleteIcon/></IconButton> : null;
             const changeRaceName = (name) => {
-              setRaces((old) => {
+              updateRaces((old) => {
                 return updateRace(old, raceIdx, {name: name});
               });
+              return '';
             };
             const changeRaceClass = (cls) => {
-              setRaces((old) => {
+              updateRaces((old) => {
                 return updateRace(old, raceIdx, {class: cls});
               });
             };
             return (
               <TableRow key={race.id}>
               <TableCell component="th" scope="row">
-                {deleteButton}
-                <TextField value={race.name} onChange={(evt) => changeRaceName(evt.target.value)}/>
+                <IconButton onClick={deleteRace}><DeleteIcon/></IconButton>
+                <ValidatingTextField value={race.name} validateChange={changeRaceName}/>
               </TableCell>
               <TableCell>
                 <FormControl>
                 <Select value={race.class} onChange={(evt) => changeRaceClass(evt.target.value)}>
                 {
-                  Object.keys(props.classes).map((cls) => {
+                  Object.keys(props.raceClasses).map((cls) => {
                     return <MenuItem key={cls} value={cls}>{cls}</MenuItem>;
                   })
                 }
@@ -174,9 +182,9 @@ function RaceRoundTable(props) {
                 race.seats.map((pilot, seatIdx) => {
                   return (
                     <TableCell key={seatIdx}>
-                    <RaceSeat id={race.id+'/'+seatIdx} stage={props.title} race={raceIdx} seat={seatIdx}>
+                    <RaceSeat id={race.id+'/'+seatIdx} stage={props.stage} race={raceIdx} seat={seatIdx}>
                     {pilot &&
-                    <RacePilot id={race.id+'/'+seatIdx} stage={props.title} race={raceIdx} seat={seatIdx} pilot={pilot}/>
+                    <RacePilot id={race.id+'/'+seatIdx} stage={props.stage} race={raceIdx} seat={seatIdx} pilot={pilot}/>
                     }
                     </RaceSeat>
                     </TableCell>
@@ -209,18 +217,18 @@ function RaceRoundPanel(props) {
     </Select>
     </FormControl>
     <Button>Generate</Button>
-    <RaceRoundTable title={props.title} seats={props.seats} races={props.races}
-      classes={props.classes} onChange={props.onChange}
+    <RaceRoundTable stage={props.stage} seats={props.seats} races={props.races}
+      raceClasses={props.raceClasses} onChange={props.onChange}
     />
     </div>
   );
 }
 
-const HEAT_GEN = [
+const QUALIFYING_GENS = [
   "Random"
 ];
 
-const MAIN_GEN = [
+const MAINS_GENS = [
   "Triples"
 ];
 
@@ -240,6 +248,32 @@ function Pilot(props) {
 }
 
 
+function updateStage(oldStages, stage, races) {
+  const newStages = {...oldStages};
+  if (races.length > 0) {
+    newStages[stage] = races;
+  } else {
+    delete newStages[stage];
+  }
+  return newStages;
+}
+
+function setRaces(setStages, stage, races) {
+  setStages((old) => updateStage(old, stage, races));
+}
+
+function updateRaces(oldStages, updateRace) {
+  return Object.fromEntries(Object.entries(oldStages).map((entry) => {
+    const races = entry[1];
+    const newRaces = races.map((race) => {
+      const newRace = copyRace(race);
+      updateRace(newRace);
+      return newRace;
+    });
+    return [entry[0], newRaces];
+  }));
+}
+
 export default function Event(props) {
   const [vtxTable, setVtxTable] = useState({});
   const [eventName, setEventName] = useState('');
@@ -248,8 +282,7 @@ export default function Event(props) {
   const [pilots, setPilots] = useState({});
   const [raceClasses, setRaceClasses] = useState({});
   const [seats, setSeats] = useState([]);
-  const [heats, setHeats] = useState([]);
-  const [mains, setMains] = useState([]);
+  const [stages, setStages] = useState({});
   const [tabIndex, setTabIndex] = useState(0);
 
   useEffect(() => {
@@ -261,22 +294,18 @@ export default function Event(props) {
   useEffect(() => {
     const loader = createEventDataLoader();
     loader.load(null, (data) => {
-      for (const race of data.heats) {
-        race.id = race.id ?? nanoid();
-      }
-      if (data.mains) {
-        for (const race of data.mains) {
+      Object.values(data.stages).forEach((races) => {
+        for (const race of races) {
           race.id = race.id ?? nanoid();
         }
-      }
+      });
       setEventName(data.name);
       setEventDesc(data.description);
       setEventUrl(data.url);
       setPilots(data.pilots);
       setRaceClasses(data.classes);
       setSeats(data.seats);
-      setHeats(data.heats);
-      setMains(data.mains ?? [])
+      setStages(data.stages);
     });
     return () => loader.cancel();
   }, []);
@@ -289,50 +318,49 @@ export default function Event(props) {
       pilots: pilots,
       classes: raceClasses,
       seats: seats,
-      heats: heats,
-      mains: mains
+      stages: stages,
     });
-  }, [eventName, eventDesc, eventUrl, pilots, raceClasses, seats, heats, mains]);
+  }, [eventName, eventDesc, eventUrl, pilots, raceClasses, seats, stages]);
 
-  const tabs = [
-    {label: "Heats", content: (
-      <RaceRoundPanel title="Heats" seats={seats} races={heats} classes={raceClasses} generators={HEAT_GEN}
-      onChange={setHeats}/>
-    )},
-    {label: "Mains", content: (
-      <RaceRoundPanel title="Mains" seats={seats} races={mains} classes={raceClasses} generators={MAIN_GEN}
-      onChange={setMains}/>
-    )}
-  ];
-  const tab = tabs[tabIndex];
+  const tabs = Object.entries(stages).map((entry, idx) => {
+    const stage = entry[0];
+    const races = entry[1];
+    const generators = (idx > 0) ? MAINS_GENS : QUALIFYING_GENS;
+    return {label: stage, content: (
+      <RaceRoundPanel stage={stage} seats={seats} races={races} raceClasses={raceClasses} generators={generators}
+        onChange={(stage, races) => {
+          setRaces(setStages, stage, races);
+      }}/>
+    )};
+  });
+
+  if (tabs.length > 0 && tabIndex >= tabs.length) {
+    setTabIndex(tabs.length-1);
+  }
+  const tab = tabs.length > 0 ? tabs[tabIndex] : null;
 
   const changeEventName = (v) => {
     setEventName(v);
+    return '';
   };
 
   const changeEventDesc = (v) => {
     setEventDesc(v);
+    return '';
   };
 
   const changeEventUrl = (v) => {
     setEventUrl(v);
+    return '';
   };
 
-  const addRaceSeats = (races) => {
-    return races.map((race) => {
-      const newRace = copyRace(race);
-      newRace.seats.push(null);
-      return newRace;
-    });
-  };
   const addSeat = () => {
     setSeats((old) => {
       const newSeats = [...old];
       newSeats.push({frequency: 0});
       return newSeats;
     });
-    setHeats(addRaceSeats);
-    setMains(addRaceSeats);
+    setStages((old) => updateRaces(old, (race) => {race.seats.push(null)}));
   };
 
   const onDragEnd = (evt) => {
@@ -342,8 +370,8 @@ export default function Event(props) {
     if (evt.over && dragData.source === 'rooster') {
       const dropData = evt.over.data.current;
       stage = dropData.stage;
-      updater = (old) => {
-        const newRaces = [...old];
+      updater = (oldRaces) => {
+        const newRaces = [...oldRaces];
         const newRace = copyRace(newRaces[dropData.race]);
         newRace.seats[dropData.seat] = dragData.pilot;
         newRaces[dropData.race] = newRace;
@@ -352,8 +380,8 @@ export default function Event(props) {
     } else if (evt.over && dragData.source === 'seat') {
       const dropData = evt.over.data.current;
       stage = dropData.stage;
-      updater = (old) => {
-        const newRaces = [...old];
+      updater = (oldRaces) => {
+        const newRaces = [...oldRaces];
         const fromRace = copyRace(newRaces[dragData.race]);
         newRaces[dragData.race] = fromRace;
         let toRace;
@@ -371,8 +399,8 @@ export default function Event(props) {
       };
     } else if (!evt.over && dragData.source === 'seat') {
       stage = dragData.stage;
-      updater = (old) => {
-        const newRaces = [...old];
+      updater = (oldRaces) => {
+        const newRaces = [...oldRaces];
         const fromRace = copyRace(newRaces[dragData.race]);
         newRaces[dragData.race] = fromRace;
         fromRace.seats[dragData.seat] = null;
@@ -380,39 +408,27 @@ export default function Event(props) {
       };
     }
     if (updater) {
-      if (stage === 'Heats') {
-        setHeats(updater);
-      } else if (stage === 'Mains') {
-        setMains(updater);
-      }
+      setStages((old) => updateStage(old, stage, updater(old[stage])));
     }
   };
 
   return (
     <Stack>
-    <TextField label="Event name" value={eventName} onChange={(evt) => changeEventName(evt.target.value)}/>
-    <TextField label="Event description" multiline value={eventDesc} onChange={(evt) => changeEventDesc(evt.target.value)}/>
-    <TextField label="Event URL" value={eventUrl} onChange={(evt) => changeEventUrl(evt.target.value)}/>
+    <ValidatingTextField label="Event name" value={eventName} validateChange={changeEventName}/>
+    <ValidatingTextField label="Event description" multiline value={eventDesc} validateChange={changeEventDesc}/>
+    <ValidatingTextField label="Event URL" value={eventUrl} validateChange={changeEventUrl} inputProps={{type: 'url'}}/>
     <TableContainer component={Paper}>
       <Table>
         <TableHead>
           <TableRow>
           {seats.map((fbc, idx) => {
-            const deleteRaceSeats = (races) => {
-              return races.map((race) => {
-                const newRace = copyRace(race);
-                newRace.seats.splice(idx, 1);
-                return newRace;
-              });
-            };
             const deleteSeat = () => {
               setSeats((old) => {
                 const newSeats = [...old];
                 newSeats.splice(idx, 1);
                 return newSeats;
               });
-              setHeats(deleteRaceSeats);
-              setMains(deleteRaceSeats);
+              setStages((old) => updateRaces(old, (race) => {race.seats.splice(idx, 1)}));
             };
             const deleteButton = idx > 0 ? <IconButton onClick={deleteSeat}><DeleteIcon/></IconButton> : null;
             return <TableCell key={idx}>{deleteButton} Seat {idx+1}</TableCell>;
@@ -458,14 +474,32 @@ export default function Event(props) {
     </div>
     </div>
     <Stack>
-    <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={tabIndex} onChange={(evt,idx)=>{setTabIndex(idx)}}>
+    <Stack direction="row">
+    <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={tabIndex}
+      onChange={(evt,idx)=>{setTabIndex(idx);}}>
     {
       tabs.map((entry) => {
         return <Tab key={entry.label} label={entry.label}/>;
       })
     }
     </Tabs>
-    {tab.content}
+    <IconButton onClick={() => {
+      const newRace = createRace(raceClasses, seats);
+      let name;
+      switch (tabs.length) {
+        case 0:
+          name = "Qualifying";
+          break;
+        case 1:
+          name = "Mains";
+          break;
+        default:
+          name = "New stage "+(tabs.length+1);
+      }
+      setStages((old) => updateStage(old, name, [newRace]));
+    }}><AddIcon/></IconButton>
+    </Stack>
+    {tab?.content}
     </Stack>
     </Stack>
     </DndContext>
