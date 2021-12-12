@@ -17,8 +17,7 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { DndContext, useDroppable, useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
+import { DndContext, DragOverlay, useDroppable, useDraggable } from '@dnd-kit/core';
 import ValidatingTextField from './ValidatingTextField.js';
 import Frequency, { processVtxTable } from './Frequency.js';
 import { debounce } from 'lodash';
@@ -48,47 +47,59 @@ function updateRace(races, idx, newVals) {
 }
 
 
-function RacePilot(props) {
-  const {attributes, listeners, setNodeRef, transform} = useDraggable({
+function Draggable(props) {
+  const {attributes, listeners, setNodeRef} = useDraggable({
     id: props.id,
-    data: {
-      stage: props.stage, race: props.race, seat: props.seat,
-      source: 'seat'
-    }
+    data: props.data
   });
   const style = {
-    transform: transform ? CSS.Translate.toString(transform) : null,
+    touchAction: 'none',
+    ...props.style
+  };
+
+  return <button ref={setNodeRef} style={style} {...listeners} {...attributes}>{props.children}</button>;
+}
+
+
+function Pilot(props) {
+  return <div>{props.callsign}</div>;
+}
+
+
+function DraggableSeat(props) {
+  const data = {
+    race: props.race, seat: props.seat,
+    source: 'seat'
+  };
+  const style = {
     display: 'block',
     margin: '0 auto',
     minWidth: '5em',
     minHeight: '1em'
   };
-
-  return <button ref={setNodeRef} style={style} {...listeners} {...attributes}>{props.pilot}</button>;
+  return <Draggable id={props.id} data={data} style={style}>{props.children}</Draggable>;
 }
 
 
-function RaceSeat(props) {
+function DroppableSeat(props) {
   const {isOver, setNodeRef} = useDroppable({
     id: props.id,
     data: {
-      stage: props.stage, race: props.race, seat: props.seat
+      race: props.race, seat: props.seat
     }
   });
-  const scale = isOver ? 2 : 1;
   const style = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    border: '1px solid black',
+    border: isOver ? '1px solid red' : '1px solid black',
     borderTopLeftRadius: '5px', borderTopRightRadius: '5px',
     borderBottomLeftRadius: '5px', borderBottomRightRadius: '5px',
     minWidth: '5em',
-    minHeight: (scale*2)+'em'
+    minHeight: isOver ? '4em' : '2em'
   };
-  const contents = isOver ? (props.seat+1) : props.children;
   return (
-    <div ref={setNodeRef} style={style}>{contents}</div>
+    <div ref={setNodeRef} style={style}>{props.children}</div>
   );
 }
 
@@ -102,8 +113,10 @@ function createRace(raceClasses, seats) {
   return {id: nanoid(), class: classNames[0], name: 'New race', seats: newSeats};
 }
 
-function RaceRoundTable(props) {
-  const [races, setRaces] = useState(props.races ?? []);
+
+function RacesTable(props) {
+  const [races, setRaces] = useState([]);
+
   useEffect(() => {
     setRaces(props.races);
   }, [props.races]);
@@ -112,7 +125,7 @@ function RaceRoundTable(props) {
     const newRaces = updater(races);
     setRaces(newRaces);
     if (props.onChange) {
-      props.onChange(props.stage, newRaces);
+      props.onChange(newRaces);
     }
   };
 
@@ -133,7 +146,7 @@ function RaceRoundTable(props) {
       <Table>
         <TableHead>
           <TableRow>
-          <TableCell>{props.stage}</TableCell>
+          <TableCell>Race</TableCell>
           <TableCell>Class</TableCell>
           {props.seats?.map((fbc, idx) => {
             return <TableCell key={idx}>Seat {idx+1}</TableCell>;
@@ -180,13 +193,14 @@ function RaceRoundTable(props) {
               </TableCell>
               {
                 race.seats.map((pilot, seatIdx) => {
+                  const id = race.id+'/'+seatIdx;
                   return (
                     <TableCell key={seatIdx}>
-                    <RaceSeat id={race.id+'/'+seatIdx} stage={props.stage} race={raceIdx} seat={seatIdx}>
+                    <DroppableSeat id={id} race={raceIdx} seat={seatIdx}>
                     {pilot &&
-                    <RacePilot id={race.id+'/'+seatIdx} stage={props.stage} race={raceIdx} seat={seatIdx} pilot={pilot}/>
+                    <DraggableSeat id={id} race={raceIdx} seat={seatIdx}><Pilot callsign={pilot}/></DraggableSeat>
                     }
-                    </RaceSeat>
+                    </DroppableSeat>
                     </TableCell>
                   );
                 })
@@ -203,7 +217,8 @@ function RaceRoundTable(props) {
   );
 }
 
-function RaceRoundPanel(props) {
+
+function RaceStagePanel(props) {
   return (
     <div>
     <FormControl>
@@ -217,7 +232,7 @@ function RaceRoundPanel(props) {
     </Select>
     </FormControl>
     <Button>Generate</Button>
-    <RaceRoundTable stage={props.stage} seats={props.seats} races={props.races}
+    <RacesTable races={props.stage.races} seats={props.seats}
       raceClasses={props.raceClasses} onChange={props.onChange}
     />
     </div>
@@ -232,46 +247,46 @@ const MAINS_GENS = [
   "Triples"
 ];
 
-function Pilot(props) {
-  const {attributes, listeners, setNodeRef, transform} = useDraggable({
-    id: props.pilot,
-    data: {pilot: props.pilot, source: 'rooster'}
-  });
+function DraggableEntry(props) {
+  const data = {pilot: props.pilot, source: 'rooster'};
   const style = {
-    transform: transform ? CSS.Translate.toString(transform) : null,
     display: 'block',
     minWidth: '5em',
     minHeight: '1em'
   };
-
-  return <button ref={setNodeRef} style={style} {...listeners} {...attributes}>{props.pilot}</button>;
+  return <Draggable id={props.id} data={data} style={style}>{props.children}</Draggable>;
 }
 
 
-function updateStage(oldStages, stage, races) {
-  const newStages = {...oldStages};
-  if (races.length > 0) {
-    newStages[stage] = races;
+function copyStage(stage, newVals) {
+  return {
+    name: stage.name,
+    races: stage.races,
+    ...newVals
+  };
+}
+
+function updateStage(oldStages, stageIdx, newVals) {
+  const newStages = [...oldStages];
+  if (stageIdx === -1) {
+    newStages.push(newVals);
+  } else if (newVals.races.length > 0) {
+    newStages[stageIdx] = copyStage(oldStages[stageIdx], newVals);
   } else {
-    delete newStages[stage];
+    delete newStages[stageIdx];
   }
   return newStages;
 }
 
-function setRaces(setStages, stage, races) {
-  setStages((old) => updateStage(old, stage, races));
-}
-
-function updateRaces(oldStages, updateRace) {
-  return Object.fromEntries(Object.entries(oldStages).map((entry) => {
-    const races = entry[1];
-    const newRaces = races.map((race) => {
+function mutateRaces(oldStages, updateRace) {
+  return oldStages.map((stage) => {
+    const newRaces = stage.races.map((race) => {
       const newRace = copyRace(race);
       updateRace(newRace);
       return newRace;
     });
-    return [entry[0], newRaces];
-  }));
+    return {...stage, races: newRaces};
+  });
 }
 
 export default function Event(props) {
@@ -282,8 +297,9 @@ export default function Event(props) {
   const [pilots, setPilots] = useState({});
   const [raceClasses, setRaceClasses] = useState({});
   const [seats, setSeats] = useState([]);
-  const [stages, setStages] = useState({});
-  const [tabIndex, setTabIndex] = useState(0);
+  const [stages, setStages] = useState([]);
+  const [stageIndex, setStageIndex] = useState(0);
+  const [draggingPilot, setDraggingPilot] = useState(null);
 
   useEffect(() => {
     const loader = createVtxTableLoader();
@@ -294,8 +310,8 @@ export default function Event(props) {
   useEffect(() => {
     const loader = createEventDataLoader();
     loader.load(null, (data) => {
-      Object.values(data.stages).forEach((races) => {
-        for (const race of races) {
+      data.stages.forEach((stage) => {
+        for (const race of stage.races) {
           race.id = race.id ?? nanoid();
         }
       });
@@ -322,22 +338,19 @@ export default function Event(props) {
     });
   }, [eventName, eventDesc, eventUrl, pilots, raceClasses, seats, stages]);
 
-  const tabs = Object.entries(stages).map((entry, idx) => {
-    const stage = entry[0];
-    const races = entry[1];
-    const generators = (idx > 0) ? MAINS_GENS : QUALIFYING_GENS;
-    return {label: stage, content: (
-      <RaceRoundPanel stage={stage} seats={seats} races={races} raceClasses={raceClasses} generators={generators}
-        onChange={(stage, races) => {
-          setRaces(setStages, stage, races);
-      }}/>
+  const stageTabs = stages.map((stage, stageIdx) => {
+    const generators = (stageIdx > 0) ? MAINS_GENS : QUALIFYING_GENS;
+    return {label: stage.name, content: (
+      <RaceStagePanel stage={stage} seats={seats} raceClasses={raceClasses} generators={generators}
+        onChange={(races) => {setStages((old) => updateStage(old, stageIdx, {races: races}));}}
+      />
     )};
   });
 
-  if (tabs.length > 0 && tabIndex >= tabs.length) {
-    setTabIndex(tabs.length-1);
+  if (stageTabs.length > 0 && stageIndex >= stageTabs.length) {
+    setStageIndex(stageTabs.length-1);
   }
-  const tab = tabs.length > 0 ? tabs[tabIndex] : null;
+  const stageTab = stageTabs.length > 0 ? stageTabs[stageIndex] : null;
 
   const changeEventName = (v) => {
     setEventName(v);
@@ -360,16 +373,23 @@ export default function Event(props) {
       newSeats.push({frequency: 0});
       return newSeats;
     });
-    setStages((old) => updateRaces(old, (race) => {race.seats.push(null)}));
+    setStages((old) => mutateRaces(old, (race) => {race.seats.push(null)}));
   };
 
+  const onDragStart = (evt) => {
+    const dragData = evt.active.data.current;
+    if (dragData.source === 'rooster') {
+      setDraggingPilot(dragData.pilot);
+    } else if (dragData.source === 'seat') {
+      setDraggingPilot(stages[stageIndex].races[dragData.race].seats[dragData.seat]);
+    }
+  };
   const onDragEnd = (evt) => {
+    setDraggingPilot(null);
     const dragData = evt.active.data.current;
     let updater = null;
-    let stage = null;
     if (evt.over && dragData.source === 'rooster') {
       const dropData = evt.over.data.current;
-      stage = dropData.stage;
       updater = (oldRaces) => {
         const newRaces = [...oldRaces];
         const newRace = copyRace(newRaces[dropData.race]);
@@ -379,7 +399,6 @@ export default function Event(props) {
       };
     } else if (evt.over && dragData.source === 'seat') {
       const dropData = evt.over.data.current;
-      stage = dropData.stage;
       updater = (oldRaces) => {
         const newRaces = [...oldRaces];
         const fromRace = copyRace(newRaces[dragData.race]);
@@ -398,7 +417,6 @@ export default function Event(props) {
         return newRaces;
       };
     } else if (!evt.over && dragData.source === 'seat') {
-      stage = dragData.stage;
       updater = (oldRaces) => {
         const newRaces = [...oldRaces];
         const fromRace = copyRace(newRaces[dragData.race]);
@@ -408,7 +426,7 @@ export default function Event(props) {
       };
     }
     if (updater) {
-      setStages((old) => updateStage(old, stage, updater(old[stage])));
+      setStages((old) => updateStage(old, stageIndex, {races: updater(old[stageIndex].races)}));
     }
   };
 
@@ -428,7 +446,7 @@ export default function Event(props) {
                 newSeats.splice(idx, 1);
                 return newSeats;
               });
-              setStages((old) => updateRaces(old, (race) => {race.seats.splice(idx, 1)}));
+              setStages((old) => mutateRaces(old, (race) => {race.seats.splice(idx, 1)}));
             };
             const deleteButton = idx > 0 ? <IconButton onClick={deleteSeat}><DeleteIcon/></IconButton> : null;
             return <TableCell key={idx}>{deleteButton} Seat {idx+1}</TableCell>;
@@ -461,24 +479,25 @@ export default function Event(props) {
       </Table>
     </TableContainer>
 
-    <DndContext onDragEnd={onDragEnd}>
+    <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} autoScroll={true}>
     <Stack direction="row">
     <div>
     <div>Pilots</div>
     <div>
     {
       pilots && Object.entries(pilots).map((entry) => {
-        return <Pilot key={entry[0]} pilot={entry[0]}/>;
+        const callsign = entry[0];
+        return <DraggableEntry key={callsign} id={callsign} pilot={callsign}><Pilot callsign={callsign}/></DraggableEntry>;
       })
     }
     </div>
     </div>
     <Stack>
     <Stack direction="row">
-    <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={tabIndex}
-      onChange={(evt,idx)=>{setTabIndex(idx);}}>
+    <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={stageIndex}
+      onChange={(evt,idx)=>{setStageIndex(idx);}}>
     {
-      tabs.map((entry) => {
+      stageTabs.map((entry) => {
         return <Tab key={entry.label} label={entry.label}/>;
       })
     }
@@ -486,7 +505,7 @@ export default function Event(props) {
     <IconButton onClick={() => {
       const newRace = createRace(raceClasses, seats);
       let name;
-      switch (tabs.length) {
+      switch (stageTabs.length) {
         case 0:
           name = "Qualifying";
           break;
@@ -494,14 +513,18 @@ export default function Event(props) {
           name = "Mains";
           break;
         default:
-          name = "New stage "+(tabs.length+1);
+          name = "New stage "+(stageTabs.length+1);
+          break;
       }
-      setStages((old) => updateStage(old, name, [newRace]));
+      setStages((old) => updateStage(old, -1, {name: name, races: [newRace]}));
     }}><AddIcon/></IconButton>
     </Stack>
-    {tab?.content}
+    {stageTab?.content}
     </Stack>
     </Stack>
+    <DragOverlay wrapperElement="button" dropAnimation={null}>
+    {draggingPilot ? <Pilot callsign={draggingPilot}/> : null}
+    </DragOverlay>
     </DndContext>
 
     </Stack>

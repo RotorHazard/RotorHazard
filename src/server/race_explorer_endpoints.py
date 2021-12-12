@@ -69,23 +69,26 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                 fbc['bandChannel'] = f_b_c[1] + str(f_b_c[2])
             seats.append(fbc)
 
-        stages = RHData.get_option('eventStages', None)
-        if stages:
-            stages = json.loads(stages)
-        else:
-            heats = []
-            for heat_idx, heat_data in enumerate(RHData.get_heats()):
-                heat_seats = [None] * len(seats)
-                for heat_node in RHData.get_heatNodes_by_heat(heat_data.id):
-                    if heat_node.pilot_id in pilots_by_id:
-                        heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
-                heat = {
-                    'name': heat_data.note if heat_data.note else str(heat_idx+1),
-                    'class': race_classes_by_id[heat_data.class_id],
-                    'seats': heat_seats
-                }
-                heats.append(heat)
-            stages = {'Heats': heats}
+        stages = []
+        prev_stage_name = None
+        for heat_idx, heat_data in enumerate(RHData.get_heats()):
+            heat_seats = [None] * len(seats)
+            for heat_node in RHData.get_heatNodes_by_heat(heat_data.id):
+                if heat_node.pilot_id in pilots_by_id:
+                    heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
+            stage_name = 'Mains' if heat_data.note and heat_data.note.endswith(' Main') else 'Qualifying'
+            race_name = heat_data.note if heat_data.note else 'Heat '+str(heat_idx+1)
+            race = {
+                'name': race_name,
+                'class': race_classes_by_id[heat_data.class_id],
+                'seats': heat_seats
+            }
+            if stage_name != prev_stage_name:
+                races = []
+                stage = {'name': stage_name, 'races': races}
+                stages.append(stage)
+                prev_stage_name = stage_name
+            races.append(race)
         data = {
             'name': event_name,
             'description': event_desc,
@@ -103,7 +106,6 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
         RHData.set_option('eventName', data['name'])
         RHData.set_option('eventDescription', data['description'])
         RHData.set_option('eventURL', data['url'])
-        RHData.set_option('eventStages', json.dumps(data['stages']))
         return '', 204
 
     @APP.route('/trackLayout', methods=['GET'])
