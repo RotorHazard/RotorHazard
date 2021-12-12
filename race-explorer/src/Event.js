@@ -22,7 +22,11 @@ import ValidatingTextField from './ValidatingTextField.js';
 import Frequency, { processVtxTable } from './Frequency.js';
 import { debounce } from 'lodash';
 import { nanoid } from 'nanoid';
-import { createVtxTableLoader, createEventDataLoader, storeEventData } from './rh-client.js';
+import {
+  createVtxTableLoader,
+  createEventDataLoader, storeEventData,
+  createRaceGeneratorLoader, generateRace
+} from './rh-client.js';
 
 const saveEventData = debounce(storeEventData, 2000);
 
@@ -114,6 +118,22 @@ function createRace(raceClasses, seats) {
 }
 
 
+function RaceClassSelector(props) {
+  const labelId = nanoid()+"-raceclass-label";
+  return (
+    <FormControl>
+    {props.label && <InputLabel id={labelId}>{props.label}</InputLabel>}
+    <Select labelId={props.label ? labelId : null} value={props.value} onChange={(evt) => props.onSelect(evt.target.value)}>
+    {
+      Object.keys(props.raceClasses).map((cls) => {
+        return <MenuItem key={cls} value={cls}>{cls}</MenuItem>;
+      })
+    }
+    </Select>
+    </FormControl>
+  );
+}
+
 function RacesTable(props) {
   const [races, setRaces] = useState([]);
 
@@ -169,7 +189,7 @@ function RacesTable(props) {
               });
               return '';
             };
-            const changeRaceClass = (cls) => {
+            const selectRaceClass = (cls) => {
               updateRaces((old) => {
                 return updateRace(old, raceIdx, {class: cls});
               });
@@ -181,15 +201,7 @@ function RacesTable(props) {
                 <ValidatingTextField value={race.name} validateChange={changeRaceName}/>
               </TableCell>
               <TableCell>
-                <FormControl>
-                <Select value={race.class} onChange={(evt) => changeRaceClass(evt.target.value)}>
-                {
-                  Object.keys(props.raceClasses).map((cls) => {
-                    return <MenuItem key={cls} value={cls}>{cls}</MenuItem>;
-                  })
-                }
-                </Select>
-                </FormControl>
+                <RaceClassSelector value={race.class} raceClasses={props.raceClasses} onSelect={selectRaceClass}/>
               </TableCell>
               {
                 race.seats.map((pilot, seatIdx) => {
@@ -218,20 +230,122 @@ function RacesTable(props) {
 }
 
 
+function idifyRaces(races) {
+  for (const race of races) {
+    race.id = race.id ?? nanoid();
+  }
+  return races
+}
+
+function buildUi(uiDesc) {
+  const renderers = [];
+  Object.entries(uiDesc).forEach((entry) => {
+    const param = entry[0];
+    const desc = entry[1];
+    if(desc.label) {
+      switch (desc.type) {
+        case 'class':
+          const renderer = (props, uiState, setUiState) => (
+            <RaceClassSelector key={param} label={desc.label} value={uiState[param]} raceClasses={props.raceClasses}
+            onSelect={(raceClass) => {setUiState((old) => {return {...old, [param]: raceClass};});}}/>
+          );
+          renderers.push(renderer);
+          break;
+        default:
+          break;
+      }
+    }
+  });
+  return function(props, uiState, setUiState) {
+    return <>{
+      renderers.map((renderer) => renderer(props, uiState, setUiState))
+    }</>;
+  };
+}
+
+function initiateUiState(uiDesc, raceClasses, setGeneratorUiState) {
+  const state = {};
+  Object.entries(uiDesc).forEach((entry) => {
+    const param = entry[0];
+    const desc = entry[1];
+    if(desc.label) {
+      switch (desc.type) {
+        case 'class':
+          state[param] = Object.keys(raceClasses)[0];
+          break;
+        default:
+          break;
+      }
+    }
+  });
+  setGeneratorUiState(state);
+}
+
 function RaceStagePanel(props) {
+  const [generator, setGenerator] = useState('');
+  const [generatorParams, setGeneratorParams] = useState({});
+  const [generatorUi, setGeneratorUi] = useState({'render': ()=>null});
+  const [generatorUiState, setGeneratorUiState] = useState({});
+
+  useEffect(() => {
+    setGenerator(Object.keys(props.generators)[0]);
+  }, [props.generators]);
+
+  useEffect(() => {
+    const endpoint = props.generators[generator];
+    const loader = createRaceGeneratorLoader(endpoint);
+    loader.load(null, setGeneratorParams);
+    return () => loader.cancel();
+  }, [props.generators, generator]);
+
+  useEffect(() => {
+    const ui = buildUi(generatorParams);
+    setGeneratorUi({'render': ui});
+  }, [generatorParams]);
+
+  useEffect(() => {
+    initiateUiState(generatorParams, props.raceClasses, setGeneratorUiState);
+  }, [generatorParams, props.raceClasses]);
+
+  const generate = () => {
+    const endpoint = props.generators[generator];
+    const data = Object.fromEntries(Object.entries(generatorParams).map((entry) => {
+      const param = entry[0];
+      const desc = entry[1];
+      let value = null;
+      switch (desc.type) {
+        case 'pilots':
+          value = Object.keys(props.pilots);
+          break;
+        case 'seats':
+          value = props.seats.length;
+          break;
+        default:
+          value = generatorUiState[param];
+          break;
+      }
+      return [param, value];
+    }));
+    generateRace(endpoint, data, (races) => {
+      idifyRaces(races);
+      props.onChange(races);
+    });
+  };
+
   return (
     <div>
     <FormControl>
     <InputLabel id="method-label">Method</InputLabel>
-    <Select labelId="method-label" value={props.generators[0]}>
+    <Select labelId="method-label" value={generator} onChange={(evt) => setGenerator(evt.target.value)}>
     {
-      props.generators.map((gen) => {
+      Object.keys(props.generators).map((gen) => {
         return <MenuItem key={gen} value={gen}>{gen}</MenuItem>
       })
     }
     </Select>
     </FormControl>
-    <Button>Generate</Button>
+    {generatorUi.render(props, generatorUiState, setGeneratorUiState)}
+    <Button onClick={generate}>Generate</Button>
     <RacesTable races={props.stage.races} seats={props.seats}
       raceClasses={props.raceClasses} onChange={props.onChange}
     />
@@ -239,13 +353,13 @@ function RaceStagePanel(props) {
   );
 }
 
-const QUALIFYING_GENS = [
-  "Random"
-];
+const QUALIFYING_GENS = {
+  Random: "/race-generators/random"
+};
 
-const MAINS_GENS = [
-  "Triples"
-];
+const MAINS_GENS = {
+  Random: "/race-generators/random"
+};
 
 function DraggableEntry(props) {
   const data = {pilot: props.pilot, source: 'rooster'};
@@ -266,15 +380,24 @@ function copyStage(stage, newVals) {
   };
 }
 
-function updateStage(oldStages, stageIdx, newVals) {
+function updateStage(oldStages, stageIdx, newVals, setStageIndex) {
   const newStages = [...oldStages];
   if (stageIdx === -1) {
     newStages.push(newVals);
   } else if (newVals.races.length > 0) {
     newStages[stageIdx] = copyStage(oldStages[stageIdx], newVals);
   } else {
-    delete newStages[stageIdx];
+    newStages.splice(stageIdx, 1);
   }
+  setStageIndex((oldIdx) => {
+    if (stageIdx === -1 || oldIdx >= newStages.length) {
+      return newStages.length - 1;
+    } else if (newStages.length === 1) {
+      return 0;
+    } else {
+      return oldIdx;
+    }
+  });
   return newStages;
 }
 
@@ -310,11 +433,7 @@ export default function Event(props) {
   useEffect(() => {
     const loader = createEventDataLoader();
     loader.load(null, (data) => {
-      data.stages.forEach((stage) => {
-        for (const race of stage.races) {
-          race.id = race.id ?? nanoid();
-        }
-      });
+      data.stages.forEach((stage) => {idifyRaces(stage.races)});
       setEventName(data.name);
       setEventDesc(data.description);
       setEventUrl(data.url);
@@ -341,16 +460,13 @@ export default function Event(props) {
   const stageTabs = stages.map((stage, stageIdx) => {
     const generators = (stageIdx > 0) ? MAINS_GENS : QUALIFYING_GENS;
     return {label: stage.name, content: (
-      <RaceStagePanel stage={stage} seats={seats} raceClasses={raceClasses} generators={generators}
-        onChange={(races) => {setStages((old) => updateStage(old, stageIdx, {races: races}));}}
+      <RaceStagePanel pilots={pilots} stage={stage} seats={seats} raceClasses={raceClasses} generators={generators}
+        onChange={(races) => {setStages((old) => updateStage(old, stageIdx, {races: races}, setStageIndex));}}
       />
     )};
   });
 
-  if (stageTabs.length > 0 && stageIndex >= stageTabs.length) {
-    setStageIndex(stageTabs.length-1);
-  }
-  const stageTab = stageTabs.length > 0 ? stageTabs[stageIndex] : null;
+  const stageTab = (stageIndex >= 0 && stageIndex < stageTabs.length) ? stageTabs[stageIndex] : null;
 
   const changeEventName = (v) => {
     setEventName(v);
@@ -426,7 +542,7 @@ export default function Event(props) {
       };
     }
     if (updater) {
-      setStages((old) => updateStage(old, stageIndex, {races: updater(old[stageIndex].races)}));
+      setStages((old) => updateStage(old, stageIndex, {races: updater(old[stageIndex].races)}, setStageIndex));
     }
   };
 
@@ -494,14 +610,16 @@ export default function Event(props) {
     </div>
     <Stack>
     <Stack direction="row">
-    <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={stageIndex}
+    {stageTab && (
+      <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={stageIndex}
       onChange={(evt,idx)=>{setStageIndex(idx);}}>
-    {
-      stageTabs.map((entry) => {
-        return <Tab key={entry.label} label={entry.label}/>;
-      })
+      {
+        stageTabs.map((entry) => {
+          return <Tab key={entry.label} label={entry.label}/>;
+        })
+      }
+      </Tabs>)
     }
-    </Tabs>
     <IconButton onClick={() => {
       const newRace = createRace(raceClasses, seats);
       let name;
@@ -516,7 +634,7 @@ export default function Event(props) {
           name = "New stage "+(stageTabs.length+1);
           break;
       }
-      setStages((old) => updateStage(old, -1, {name: name, races: [newRace]}));
+      setStages((old) => updateStage(old, -1, {name: name, races: [newRace]}, setStageIndex));
     }}><AddIcon/></IconButton>
     </Stack>
     {stageTab?.content}

@@ -113,3 +113,12 @@ export function getMqttClient() {
   }
   return mqttClient;
 }
+
+export async function generateRace(endpoint, params, setRaces) {
+  const body = (await axios.post(endpoint, params)).data;
+  setRaces(body.races);
+}
+
+export function createRaceGeneratorLoader(endpoint) {
+  return createLoader(endpoint);
+}

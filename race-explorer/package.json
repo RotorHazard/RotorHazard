@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "homepage": "race-explorer",
+  "proxy": "http://localhost:5000",
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.41.0",
     "@aws-sdk/client-s3": "^3.41.0",

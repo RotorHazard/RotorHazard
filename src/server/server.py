@@ -5566,9 +5566,11 @@ export_manager = DataExportManager(RHData, PageCache, Language)
 from . import json_endpoints
 from . import ota
 from . import race_explorer_endpoints
+from . import race_generator_endpoints
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota.createBlueprint())
 APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData))
+APP.register_blueprint(race_generator_endpoints.createBlueprint())
 
 if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     from .chorus_api import ChorusAPI
