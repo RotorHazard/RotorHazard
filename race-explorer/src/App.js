@@ -20,8 +20,8 @@ export default function App(props) {
     {label: "Results", content: <Results/>},
     {label: "Event", content: <Event/>},
     {label: "Classes", content: <RaceClasses/>},
-    {label: "Pilots", content: <Pilots/>},
     {label: "Track", content: <Track/>},
+    {label: "Pilots", content: <Pilots/>},
     {label: "Setup", content: <Setup/>},
     {label: "Sensors", content: <Sensors/>}
   ];

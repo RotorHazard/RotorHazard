@@ -160,12 +160,16 @@ function RacesTable(props) {
       return newRaces;
     });
   };
+  const deleteRaces = () => {
+    updateRaces((old) => []);
+  }
   return (
     <div>
     <TableContainer component={Paper}>
       <Table>
         <TableHead>
           <TableRow>
+          <TableCell><IconButton onClick={deleteRaces}><DeleteIcon/></IconButton></TableCell>
           <TableCell>Race</TableCell>
           <TableCell>Class</TableCell>
           {props.seats?.map((fbc, idx) => {
@@ -196,8 +200,10 @@ function RacesTable(props) {
             };
             return (
               <TableRow key={race.id}>
-              <TableCell component="th" scope="row">
+              <TableCell>
                 <IconButton onClick={deleteRace}><DeleteIcon/></IconButton>
+              </TableCell>
+              <TableCell component="th" scope="row">
                 <ValidatingTextField value={race.name} validateChange={changeRaceName}/>
               </TableCell>
               <TableCell>
@@ -221,7 +227,7 @@ function RacesTable(props) {
             );
           })
         }
-        <TableRow><TableCell colSpan={(props.seats?.length ?? 0)+2}><IconButton onClick={addRace}><AddIcon/></IconButton></TableCell></TableRow>
+        <TableRow><TableCell colSpan={(props.seats?.length ?? 0)+3}><IconButton onClick={addRace}><AddIcon/></IconButton></TableCell></TableRow>
         </TableBody>
       </Table>
     </TableContainer>
@@ -237,22 +243,40 @@ function idifyRaces(races) {
   return races
 }
 
+function updateUiState(setUiState, param, v) {
+  setUiState((old) => {return {...old, [param]: v};})
+}
+
 function buildUi(uiDesc) {
   const renderers = [];
   Object.entries(uiDesc).forEach((entry) => {
     const param = entry[0];
     const desc = entry[1];
     if(desc.label) {
+      let renderer;
       switch (desc.type) {
         case 'class':
-          const renderer = (props, uiState, setUiState) => (
+          renderer = (props, uiState, setUiState) => (
             <RaceClassSelector key={param} label={desc.label} value={uiState[param]} raceClasses={props.raceClasses}
-            onSelect={(raceClass) => {setUiState((old) => {return {...old, [param]: raceClass};});}}/>
+            onSelect={(raceClass) => {updateUiState(setUiState, param, raceClass);}}/>
           );
-          renderers.push(renderer);
+          break;
+        case 'seats':
+          renderer = (props, uiState, setUiState) => (
+            <ValidatingTextField key={param} label={desc.label} value={uiState[param]}
+            validateChange={(v) => {
+              updateUiState(setUiState, param, Number(v));
+              return '';
+            }}
+            inputProps={{type: 'number', min: 1, max: props.seats.length}}/>
+          );
           break;
         default:
+          renderer = null;
           break;
+      }
+      if (renderer !== null) {
+        renderers.push(renderer);
       }
     }
   });
@@ -263,19 +287,25 @@ function buildUi(uiDesc) {
   };
 }
 
-function initiateUiState(uiDesc, raceClasses, setGeneratorUiState) {
+function initiateUiState(uiDesc, seats, raceClasses, setGeneratorUiState) {
   const state = {};
   Object.entries(uiDesc).forEach((entry) => {
     const param = entry[0];
     const desc = entry[1];
     if(desc.label) {
+      let value;
       switch (desc.type) {
         case 'class':
-          state[param] = Object.keys(raceClasses)[0];
+          value = Object.keys(raceClasses)[0];
+          break;
+        case 'seats':
+          value = seats.length;
           break;
         default:
+          value = null;
           break;
       }
+      state[param] = value;
     }
   });
   setGeneratorUiState(state);
@@ -304,8 +334,8 @@ function RaceStagePanel(props) {
   }, [generatorParams]);
 
   useEffect(() => {
-    initiateUiState(generatorParams, props.raceClasses, setGeneratorUiState);
-  }, [generatorParams, props.raceClasses]);
+    initiateUiState(generatorParams, props.seats, props.raceClasses, setGeneratorUiState);
+  }, [generatorParams, props.seats, props.raceClasses]);
 
   const generate = () => {
     const endpoint = props.generators[generator];
@@ -317,9 +347,6 @@ function RaceStagePanel(props) {
         case 'pilots':
           value = Object.keys(props.pilots);
           break;
-        case 'seats':
-          value = props.seats.length;
-          break;
         default:
           value = generatorUiState[param];
           break;
@@ -328,7 +355,7 @@ function RaceStagePanel(props) {
     }));
     generateRace(endpoint, data, (races) => {
       idifyRaces(races);
-      props.onChange(races);
+      props.onChange(props.stage.races.concat(races));
     });
   };
 
@@ -384,10 +411,8 @@ function updateStage(oldStages, stageIdx, newVals, setStageIndex) {
   const newStages = [...oldStages];
   if (stageIdx === -1) {
     newStages.push(newVals);
-  } else if (newVals.races.length > 0) {
-    newStages[stageIdx] = copyStage(oldStages[stageIdx], newVals);
   } else {
-    newStages.splice(stageIdx, 1);
+    newStages[stageIdx] = copyStage(oldStages[stageIdx], newVals);
   }
   setStageIndex((oldIdx) => {
     if (stageIdx === -1 || oldIdx >= newStages.length) {

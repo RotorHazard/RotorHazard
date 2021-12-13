@@ -11,7 +11,7 @@ def createBlueprint():
     def random_get():
         return {
             "class": {"label": "Class", "type": "class"},
-            "seats": {"type": "seats"},
+            "seats": {"label": "Seats", "type": "seats"},
             "pilots": {"type": "pilots"}
         }
 

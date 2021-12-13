@@ -48,6 +48,7 @@ class Heat(DB.Model):
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
     note = DB.Column(DB.String(80), nullable=True)
+    stage = DB.Column(DB.String(80), nullable=False)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
@@ -162,6 +163,9 @@ class SavedRaceLapSplit(DB.Model):
 
 class Profiles(DB.Model):
     __tablename__ = 'profiles'
+    __table_args__ = (
+        DB.UniqueConstraint('name'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
     description = DB.Column(DB.String(256), nullable=True)

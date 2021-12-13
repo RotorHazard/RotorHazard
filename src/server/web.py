@@ -71,23 +71,13 @@ def on_sync_event():
     freqs = json.loads(event_data['event']['frequencies'])
     rhfreqs = [convert_ifpv_freq(f) for f in freqs]
 
-    profiles_by_name = {}
-    for rhprofile in rhdata.get_profiles():
-        profiles_by_name[rhprofile.name] = rhprofile
     profile_data = {'profile_name': event_name,
                     'frequencies': {'b': [b for b,_,_ in rhfreqs],
                                     'c': [c for _,c,_ in rhfreqs],
                                     'f': [f for _,_,f in rhfreqs]
                                     }
                     }
-    if event_name in profiles_by_name:
-        # update existing profile
-        rhprofile = profiles_by_name[event_name]
-        profile_data['profile_id'] = rhprofile.id
-        rhdata.alter_profile(profile_data)
-    else:
-        # add new profile
-        rhdata.add_profile(profile_data)
+    rhprofile = rhdata.upsert_profile(profile_data)
 
     pilots_by_url = {}
     for rhpilot in rhdata.get_pilots():

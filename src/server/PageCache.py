@@ -88,7 +88,7 @@ class PageCache:
             heats = {}
             for heat in self._RHData.get_heats():
                 if self._RHData.savedRaceMetas_has_heat(heat.id):
-                    rounds = []
+                    roundsForHeat = []
                     for race in self._RHData.get_savedRaceMetas_by_heat(heat.id):    
                         pilotraces = []
                         for pilotrace in self._RHData.get_savedPilotRaces_by_savedRaceMeta(race.id):
@@ -134,7 +134,7 @@ class PageCache:
                                     error_flag = True
                                     break
 
-                        rounds.append({
+                        roundsForHeat.append({
                             'id': race.round_id,
                             'start_time_formatted': race.start_time_formatted,
                             'nodes': pilotraces,
@@ -162,7 +162,7 @@ class PageCache:
                     heats[heat.id] = {
                         'heat_id': heat.id,
                         'note': heat.note,
-                        'rounds': rounds,
+                        'rounds': roundsForHeat,
                         'leaderboard': results
                     }
 

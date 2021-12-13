@@ -192,18 +192,21 @@ class RHData():
                                                   getattr(row_data, 'name', '') != '-None-':
                         if 'id' in class_type.__table__.columns.keys() and \
                             'id' in row_data.keys():
-                            db_update = class_type.query.filter(getattr(class_type,'id')==row_data['id']).first()
+                            # update existing record
+                            obj_to_update = class_type.query.filter(getattr(class_type,'id')==row_data['id']).first()
                         else:
-                            db_update = None
+                            # insert new record
+                            obj_to_update = None
 
-                        if db_update is None:
+                        if obj_to_update is None:
                             new_data = class_type()
                             for col in class_type.__table__.columns:
                                 colName = col.name
                                 if colName in row_data.keys():
                                     setattr(new_data, colName, row_data[colName])
                                 elif colName in kwargs['defaults']:
-                                    setattr(new_data, colName, kwargs['defaults'][colName])
+                                    defaultValue = kwargs['defaults'][colName]
+                                    setattr(new_data, colName, defaultValue(new_data) if callable(defaultValue) else defaultValue)
 
                             #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
                             self._Database.DB.session.add(new_data)
@@ -212,10 +215,11 @@ class RHData():
                             for col in class_type.__table__.columns:
                                 colName = col.name
                                 if colName in row_data.keys():
-                                    setattr(db_update, colName, row_data[colName])
+                                    setattr(obj_to_update, colName, row_data[colName])
                                 elif colName in kwargs['defaults']:
                                     if colName != 'id':
-                                        setattr(db_update, colName, kwargs['defaults'][colName])
+                                        defaultValue = kwargs['defaults'][colName]
+                                        setattr(obj_to_update, colName, defaultValue(obj_to_update) if callable(defaultValue) else defaultValue)
 
                         self._Database.DB.session.flush()
                 logger.info('Database table "{0}" restored'.format(class_type.__name__))
@@ -368,7 +372,8 @@ class RHData():
                                 'note': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID,
+                                'stage': self._get_default_stage_name
                             })
 
                         # extract pilots from heats and load into heatnode
@@ -397,7 +402,8 @@ class RHData():
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID,
+                                'stage': self._get_default_stage_name
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
@@ -663,6 +669,9 @@ class RHData():
     def get_first_heat(self):
         return self._Database.Heat.query.first()
 
+    def _get_default_stage_name(self, heat):
+        return 'Mains' if (not hasattr(heat, 'note')) or (heat.note and heat.note.endswith(' Main')) else 'Qualifying'
+
     def add_heat(self, init=EMPTY_DICT, initPilots=EMPTY_DICT):
         # Add new heat
         new_heat = self._Database.Heat(
@@ -674,6 +683,10 @@ class RHData():
             new_heat.class_id = init['class_id']
         if 'note' in init:
             new_heat.note = init['note']
+        if 'stage' in init:
+            new_heat.stage = init['stage']
+        else:
+            new_heat.stage = self._get_default_stage_name(new_heat)
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -750,6 +763,8 @@ class RHData():
         if 'note' in data:
             self._PageCache.set_valid(False)
             heat.note = data['note']
+        if 'stage' in data:
+            heat.stage = data['stage']
         if 'class' in data:
             old_class_id = heat.class_id
             heat.class_id = data['class']
@@ -1152,6 +1167,17 @@ class RHData():
 
         logger.debug('Altered profile {0} to {1}'.format(profile.id, data))
 
+        return profile
+
+    def upsert_profile(self, profile_data):
+        profile = self._Database.Profiles.query.filter_by(name=profile_data['profile_name']).one_or_none()
+        if profile:
+            # update existing profile
+            profile_data['profile_id'] = profile.id
+            profile = self.alter_profile(profile_data)
+        else:
+            # add new profile
+            profile = self.add_profile(profile_data)
         return profile
 
     def delete_profile(self, profile_id):

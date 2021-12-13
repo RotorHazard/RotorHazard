@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.0" # Public release version code
-SERVER_API = 32+3 # Server API version
+SERVER_API = 32+4 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -2712,6 +2712,7 @@ def generate_heats(data):
 
     input_class = int(data['input_class'])
     output_class = int(data['output_class'])
+    stage = data['stage']
     suffix = data['suffix']
     pilots_per_heat = int(data['pilots_per_heat'])
 
@@ -2760,7 +2761,7 @@ def generate_heats(data):
         gevent.sleep()
         time_now = monotonic()
 
-    if cacheStatus == Results.CacheStatus.VALID:
+    if results and cacheStatus == Results.CacheStatus.VALID:
         if win_condition == RHRace.WinCondition.NONE:
 
             leaderboard = random.sample(results['by_race_time'], len(results['by_race_time']))
@@ -2814,7 +2815,8 @@ def generate_heats(data):
             ladder = letters[len(generated_heats) - idx]
             new_heat = RHData.add_heat({
                 'class_id': output_class,
-                'note': ladder + ' ' + suffix
+                'note': ladder + ' ' + suffix,
+                'stage': stage
                 }, heat)
 
         logger.info("Generated {0} heats from class {1}".format(len(generated_heats), input_class))

@@ -891,6 +891,7 @@
 				input_class: parseInt($('#generator_input_class').val()),
 				output_class: parseInt($('#generator_output_class').val()),
 				suffix: $('#generator_suffix').val(),
+				stage: $('#generator_stage').val(),
 				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
 			};
 			$('button#generate_heats').prop('disabled', true);
@@ -2448,12 +2449,18 @@
 				</div>
 				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
 			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_suffix">{{ __('Suffix') }}</label>
-				</div>
-				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
-			</li>
+      <li>
+        <div class="label-block">
+          <label for="generator_stage">{{ __('Stage') }}</label>
+        </div>
+        <input type="text" id="generator_stage" value="{{ __('Mains') }}" />
+      </li>
+      <li>
+        <div class="label-block">
+          <label for="generator_suffix">{{ __('Suffix') }}</label>
+        </div>
+        <input type="text" id="generator_suffix" value="{{ __('Main') }}" />
+      </li>
 			<li>
 				<div class="label-block">
 					<label for="generator_output_class">{{ __('Output Class') }}</label>
