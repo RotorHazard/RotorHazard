@@ -163,10 +163,6 @@ class Evt:
     LAPS_RESAVE = 'lapsResave'
     LAP_DELETE = 'lapDelete'
     LAP_RESTORE_DELETED = 'lapRestoreDeleted'
-    # Results cache
-    CACHE_CLEAR = 'cacheClear'
-    CACHE_READY = 'cacheReady'
-    CACHE_FAIL = 'cacheFail'
     # CLUSTER
     CLUSTER_JOIN = 'clusterJoin'
     # LED

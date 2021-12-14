@@ -9,21 +9,17 @@ from . import RHUtils
 from .RHUtils import catchLogExceptionsWrapper
 import logging
 from monotonic import monotonic
-from .eventmanager import Evt, EventManager
 from .RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
-Events = EventManager()
 
 logger = logging.getLogger(__name__)
+
 
 class CacheStatus:
     INVALID = 'invalid'
     VALID = 'valid'
 
-class Results():
-    def __init__ (self, rhDataObj):
-        self._RHData = rhDataObj
-    
+
 def invalidate_all_caches(rhDataObj):
     ''' Check all caches and invalidate any paused builds '''
     rhDataObj.clear_results_savedRaceMetas()
@@ -31,9 +27,8 @@ def invalidate_all_caches(rhDataObj):
     rhDataObj.clear_results_raceClasses()
     rhDataObj.clear_results_event()
 
-    Events.trigger(Evt.CACHE_CLEAR)
-
     logger.debug('All Result caches invalidated')
+
 
 def normalize_cache_status(rhDataObj):
     ''' Check all caches and invalidate any paused builds '''
@@ -54,11 +49,13 @@ def normalize_cache_status(rhDataObj):
 
     logger.debug('All Result caches normalized')
 
+
 def build_atomic_result_cache(rhDataObj, **params):
     return {
         'results': calc_leaderboard(rhDataObj, **params),
         'cacheStatus': CacheStatus.VALID
     }
+
 
 @catchLogExceptionsWrapper
 def build_atomic_results_caches(rhDataObj, params):
@@ -149,6 +146,7 @@ def build_atomic_results_caches(rhDataObj, params):
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
+
 
 def calc_leaderboard(rhDataObj, **params):
     ''' Generates leaderboards '''
@@ -643,6 +641,7 @@ def calc_leaderboard(rhDataObj, **params):
 
     return leaderboard_output
 
+
 def calc_team_leaderboard(raceObj, rhDataObj):
     '''Calculates and returns team-racing info.'''
     # Uses current results cache / requires calc_leaderboard to have been run prior
@@ -820,6 +819,7 @@ def calc_team_leaderboard(raceObj, rhDataObj):
         return leaderboard_output
     return None
 
+
 def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
     race_format = raceObj.format
     if race_format:
@@ -850,6 +850,7 @@ def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
             elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
                 return check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs)
     return None
+
 
 def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
     # if racing is stopped, all pilots have completed last lap after time expired,
@@ -928,6 +929,7 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
     return {
         'status': WinStatus.NONE
     }
+
 
 def check_win_most_laps(raceObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
@@ -1014,6 +1016,7 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
         'status': WinStatus.NONE
     }
 
+
 def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
     if (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
                     raceObj.race_status == RaceStatus.DONE or 'at_finish' in kwargs:
@@ -1041,6 +1044,7 @@ def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
     return {
         'status': WinStatus.NONE
     }
+
 
 def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
     race_format = raceObj.format
@@ -1081,6 +1085,7 @@ def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
     return {
         'status': WinStatus.NONE
     }
+
 
 def check_win_fastest_lap(raceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
@@ -1127,6 +1132,7 @@ def check_win_fastest_lap(raceObj, **kwargs):
         'status': WinStatus.NONE
     }
 
+
 def check_win_fastest_consecutive(raceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
                 raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
@@ -1167,6 +1173,7 @@ def check_win_fastest_consecutive(raceObj, **kwargs):
     return {
         'status': WinStatus.NONE
     }
+
 
 def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
@@ -1264,6 +1271,7 @@ def check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs):
         'status': WinStatus.NONE
     }
 
+
 def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
                 raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
@@ -1353,6 +1361,7 @@ def check_win_team_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs):
         'status': WinStatus.NONE
     }
 
+
 def check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs):
     if (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
                     raceObj.race_status == RaceStatus.DONE or 'at_finish' in kwargs:
@@ -1380,6 +1389,7 @@ def check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
     return {
         'status': WinStatus.NONE
     }
+
 
 def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
     race_format = raceObj.format
@@ -1416,6 +1426,7 @@ def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
     return {
         'status': WinStatus.NONE
     }
+
 
 def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
@@ -1478,6 +1489,7 @@ def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
         'status': WinStatus.NONE
     }
 
+
 def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
                 raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
@@ -1536,6 +1548,7 @@ def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
         'status': WinStatus.NONE
     }
 
+
 def get_leading_pilot_id(results):
     try:
         primary_leaderboard = results['meta']['primary_leaderboard']
@@ -1546,6 +1559,7 @@ def get_leading_pilot_id(results):
         logger.exception("Error in Results 'get_leading_pilot_id()'")
     return RHUtils.PILOT_ID_NONE
 
+
 def get_leading_team_name(results):
     try:
         primary_leaderboard = results['meta']['primary_leaderboard']
@@ -1555,6 +1569,7 @@ def get_leading_team_name(results):
     except Exception:
         logger.exception("Error in Results 'get_leading_team_name()'")
     return ''
+
 
 def get_pilot_lap_counts_str(results):
     try:
@@ -1567,6 +1582,7 @@ def get_pilot_lap_counts_str(results):
     except Exception:
         logger.exception("Error in Results 'get_pilot_lap_totals_str()'")
     return ''
+
 
 def get_team_lap_totals_str(results):
     try:

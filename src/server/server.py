@@ -178,7 +178,7 @@ RACE = RHRace.RHRace() # For storing race management variables
 LAST_RACE = None
 SECONDARY_RACE_FORMAT = None
 RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
-PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
+PageCache = PageCache.PageCache(RHData) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 
 def __web(text):

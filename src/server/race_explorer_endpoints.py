@@ -40,9 +40,9 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
 
     @APP.route('/raceEvent', methods=['GET'])
     def race_event_get():
-        event_name = RHData.get_option('eventName')
-        event_desc = RHData.get_option('eventDescription')
-        event_url = RHData.get_option('eventURL')
+        event_name = RHData.get_option('eventName', "")
+        event_desc = RHData.get_option('eventDescription', "")
+        event_url = RHData.get_option('eventURL', "")
         pilots = {}
         pilots_by_id = {}
         for pilot in RHData.get_pilots():

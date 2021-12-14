@@ -10,7 +10,6 @@ if new data becomes available during the build process.
 
 import logging
 from monotonic import monotonic
-from .eventmanager import Evt
 import json
 from . import Results, RHUtils
 import gevent
@@ -20,12 +19,12 @@ logger = logging.getLogger(__name__)
 from flask_sqlalchemy import SQLAlchemy
 DB = SQLAlchemy()
 
+
 class PageCache:
     _CACHE_TIMEOUT = 10
 
-    def __init__(self, RHData, Events):
+    def __init__(self, RHData):
         self._RHData = RHData
-        self._Events = Events
         self._cache = {} # Cache of complete results page
         self._buildToken = False # Time of result generation or false if no results are being calculated
         self._valid = False # Whether cache is valid
@@ -64,7 +63,6 @@ class PageCache:
                     self.set_buildToken(False)
                     break
 
-
     def update_cache(self):
         '''Builds any invalid atomic result caches and creates final output'''
         timing = {
@@ -74,7 +72,6 @@ class PageCache:
 
         expires = monotonic() + self._CACHE_TIMEOUT
         error_flag = False
-        results = None
 
         self.check_buildToken(timing) # Don't restart calculation if another calculation thread exists
 
@@ -116,21 +113,22 @@ class PageCache:
                                 'node_index': pilotrace.node_index,
                                 'laps': laps
                             })
+
+                        round_results = None
                         if race.cacheStatus == Results.CacheStatus.INVALID:
                             logger.info('Rebuilding Heat %d Round %d cache', heat.id, race.round_id)
                             build = Results.build_atomic_result_cache(self._RHData, heat_id=heat.id, round_id=race.round_id)
                             self._RHData.set_results_savedRaceMeta(race.id, build)
-                            results = build['results']
+                            round_results = build['results']
                         else:
                             expires = monotonic() + self._CACHE_TIMEOUT
                             while True:
                                 gevent.idle()
                                 if race.cacheStatus == Results.CacheStatus.VALID:
-                                    results = race.results
+                                    round_results = race.results
                                     break
                                 elif monotonic() > expires:
                                     logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.id, race.round_id)
-                                    results = None
                                     error_flag = True
                                     break
 
@@ -138,24 +136,24 @@ class PageCache:
                             'id': race.round_id,
                             'start_time_formatted': race.start_time_formatted,
                             'nodes': pilotraces,
-                            'leaderboard': results
+                            'leaderboard': round_results
                         })
 
+                    heat_results = None # across all rounds
                     if heat.cacheStatus == Results.CacheStatus.INVALID:
                         logger.info('Rebuilding Heat %d cache', heat.id)
                         build = Results.build_atomic_result_cache(self._RHData, heat_id=heat.id) 
                         self._RHData.set_results_heat(heat.id, build)
-                        results = build['results']
+                        heat_results = build['results']
                     else:
                         expires = monotonic() + self._CACHE_TIMEOUT
                         while True:
                             gevent.idle()
                             if heat.cacheStatus == Results.CacheStatus.VALID:
-                                results = heat.results
+                                heat_results = heat.results
                                 break
                             elif monotonic() > expires:
                                 logger.warning('T%d: Cache build timed out: Heat Summary %d', timing['start'], heat.id)
-                                results = None
                                 error_flag = True
                                 break
     
@@ -163,7 +161,7 @@ class PageCache:
                         'heat_id': heat.id,
                         'note': heat.note,
                         'rounds': roundsForHeat,
-                        'leaderboard': results
+                        'leaderboard': heat_results
                     }
 
             timing['round_results'] = monotonic()
@@ -180,21 +178,21 @@ class PageCache:
             gevent.sleep()
             current_classes = {}
             for race_class in self._RHData.get_raceClasses():
+                race_class_results = None
                 if race_class.cacheStatus == Results.CacheStatus.INVALID:
                     logger.info('Rebuilding Class %d cache', race_class.id)
                     build = Results.build_atomic_result_cache(self._RHData, class_id=race_class.id)
                     self._RHData.set_results_raceClass(race_class.id, build)
-                    results = build['results']
+                    race_class_results = build['results']
                 else:
                     expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
                         gevent.idle()
                         if race_class.cacheStatus == Results.CacheStatus.VALID:
-                            results = race_class.results
+                            race_class_results = race_class.results
                             break
                         elif monotonic() > expires:
                             logger.warning('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
-                            results = None
                             error_flag = True
                             break
 
@@ -202,18 +200,19 @@ class PageCache:
                 current_class['id'] = race_class.id
                 current_class['name'] = race_class.name
                 current_class['description'] = race_class.name
-                current_class['leaderboard'] = results
+                current_class['leaderboard'] = race_class_results
                 current_classes[race_class.id] = current_class
 
             timing['event'] = monotonic()
             logger.debug('T%d: results by class assembled in %.3fs', timing['start'], timing['event'] - timing['by_class'])
 
             gevent.sleep()
+            event_results = None
             if self._RHData.get_results_event()['cacheStatus'] == Results.CacheStatus.INVALID:
                 logger.info('Rebuilding Event cache')
-                results = Results.calc_leaderboard(self._RHData)
+                event_results = Results.calc_leaderboard(self._RHData)
                 self._RHData.set_results_event({
-                    'results': json.dumps(results),
+                    'results': json.dumps(event_results),
                     'cacheStatus': Results.CacheStatus.VALID
                     })
             else:
@@ -223,19 +222,17 @@ class PageCache:
                     eventCache = self._RHData.get_results_event()
                     if eventCache['cacheStatus'] == Results.CacheStatus.VALID:
                         try:
-                            results = json.loads(eventCache['results'])
+                            event_results = json.loads(eventCache['results'])
                         except:
                             self._RHData.set_results_event({
                                 'results': False,
                                 'cacheStatus': Results.CacheStatus.INVALID
                                 })
-                            results = None
                             error_flag = True
                             logger.error('T%d: Unable to retrieve "valid" event cache from RHData')
                         break
                     elif monotonic() > expires:
                         logger.warning('Cache build timed out: Event Summary')
-                        results = None
                         error_flag = True
                         break
 
@@ -246,7 +243,7 @@ class PageCache:
                 'heats': heats,
                 'heats_by_class': heats_by_class,
                 'classes': current_classes,
-                'event_leaderboard': results
+                'event_leaderboard': event_results
             }
 
             self.set_cache(payload)
@@ -254,11 +251,8 @@ class PageCache:
 
             if error_flag:
                 logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
-                # *** emit_priority_message(__("Results did not load completely. Please try again."), False)
-                self._Events.trigger(Evt.CACHE_FAIL)
             else:
                 self.set_valid(True)
-                self._Events.trigger(Evt.CACHE_READY)
 
             logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
 
