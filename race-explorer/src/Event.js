@@ -3,6 +3,8 @@ import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
@@ -17,7 +19,7 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { DndContext, DragOverlay, useDroppable, useDraggable } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useDroppable, useDraggable, useSensors, useSensor, MouseSensor, TouchSensor, KeyboardSensor } from '@dnd-kit/core';
 import ValidatingTextField from './ValidatingTextField.js';
 import Frequency, { processVtxTable } from './Frequency.js';
 import { debounce } from 'lodash';
@@ -164,7 +166,6 @@ function RacesTable(props) {
     updateRaces((old) => []);
   }
   return (
-    <div>
     <TableContainer component={Paper}>
       <Table>
         <TableHead>
@@ -231,7 +232,6 @@ function RacesTable(props) {
         </TableBody>
       </Table>
     </TableContainer>
-    </div>
   );
 }
 
@@ -399,6 +399,24 @@ function DraggableEntry(props) {
 }
 
 
+function PilotRooster(props) {
+  const pilots = props.pilots;
+  return (
+    <div>
+    <div>Pilots</div>
+    <List>
+    {
+      pilots && Object.entries(pilots).map((entry) => {
+        const callsign = entry[0];
+        return <ListItem key={callsign}><DraggableEntry id={callsign} pilot={callsign}><Pilot callsign={callsign}/></DraggableEntry></ListItem>;
+      })
+    }
+    </List>
+    </div>
+  );
+}
+
+
 function copyStage(stage, newVals) {
   return {
     name: stage.name,
@@ -448,6 +466,12 @@ export default function Event(props) {
   const [stages, setStages] = useState([]);
   const [stageIndex, setStageIndex] = useState(0);
   const [draggingPilot, setDraggingPilot] = useState(null);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor)
+  );
 
   useEffect(() => {
     const loader = createVtxTableLoader();
@@ -524,6 +548,9 @@ export default function Event(props) {
     } else if (dragData.source === 'seat') {
       setDraggingPilot(stages[stageIndex].races[dragData.race].seats[dragData.seat]);
     }
+  };
+  const onDragCancel= (evt) => {
+    setDraggingPilot(null);
   };
   const onDragEnd = (evt) => {
     setDraggingPilot(null);
@@ -620,50 +647,41 @@ export default function Event(props) {
       </Table>
     </TableContainer>
 
-    <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} autoScroll={true}>
+    <DndContext onDragStart={onDragStart} onDragCancel={onDragCancel} onDragEnd={onDragEnd} sensors={sensors}>
     <Stack direction="row">
-    <div>
-    <div>Pilots</div>
-    <div>
-    {
-      pilots && Object.entries(pilots).map((entry) => {
-        const callsign = entry[0];
-        return <DraggableEntry key={callsign} id={callsign} pilot={callsign}><Pilot callsign={callsign}/></DraggableEntry>;
-      })
-    }
-    </div>
-    </div>
-    <Stack>
-    <Stack direction="row">
-    {stageTab && (
-      <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={stageIndex}
-      onChange={(evt,idx)=>{setStageIndex(idx);}}>
-      {
-        stageTabs.map((entry) => {
-          return <Tab key={entry.label} label={entry.label}/>;
-        })
-      }
-      </Tabs>)
-    }
-    <IconButton onClick={() => {
-      const newRace = createRace(raceClasses, seats);
-      let name;
-      switch (stageTabs.length) {
-        case 0:
-          name = "Qualifying";
-          break;
-        case 1:
-          name = "Mains";
-          break;
-        default:
-          name = "New stage "+(stageTabs.length+1);
-          break;
-      }
-      setStages((old) => updateStage(old, -1, {name: name, races: [newRace]}, setStageIndex));
-    }}><AddIcon/></IconButton>
-    </Stack>
-    {stageTab?.content}
-    </Stack>
+      <PilotRooster pilots={pilots}/>
+  
+      <Stack>
+        <Stack direction="row">
+        {stageTab && (
+          <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={stageIndex}
+          onChange={(evt,idx)=>{setStageIndex(idx);}}>
+          {
+            stageTabs.map((entry) => {
+              return <Tab key={entry.label} label={entry.label}/>;
+            })
+          }
+          </Tabs>)
+        }
+        <IconButton onClick={() => {
+          const newRace = createRace(raceClasses, seats);
+          let name;
+          switch (stageTabs.length) {
+            case 0:
+              name = "Qualifying";
+              break;
+            case 1:
+              name = "Mains";
+              break;
+            default:
+              name = "New stage "+(stageTabs.length+1);
+              break;
+          }
+          setStages((old) => updateStage(old, -1, {name: name, races: [newRace]}, setStageIndex));
+        }}><AddIcon/></IconButton>
+        </Stack>
+        {stageTab?.content}
+      </Stack>
     </Stack>
     <DragOverlay wrapperElement="button" dropAnimation={null}>
     {draggingPilot ? <Pilot callsign={draggingPilot}/> : null}

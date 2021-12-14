@@ -372,21 +372,24 @@ export default function Results(props) {
                     );
                   }
                 }
-                let delta = null;
-                let timestamp = null;
-                if (lapSplits[lapId+1]?.[0]) {
-                  timestamp = lapSplits[lapId+1][0];
-                  if (timestamps[timedLocations[timedLocations.length-1]]) {
-                    delta = timestamp - timestamps[timedLocations[timedLocations.length-1]];
+                if (lapInfo.length > 1) {
+                  // split between last gate and first gate
+                  let delta = null;
+                  let timestamp = null;
+                  if (lapSplits[lapId+1]?.[0]) {
+                    timestamp = lapSplits[lapId+1][0];
+                    if (timestamps[timedLocations[timedLocations.length-1]]) {
+                      delta = timestamp - timestamps[timedLocations[timedLocations.length-1]];
+                    }
                   }
+                  lapInfo.push(
+                    <div key={lapId+':-1'}>
+                    <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
+                    <span> </span>
+                    <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
+                    </div>
+                  );
                 }
-                lapInfo.push(
-                  <div key={lapId+':-1'}>
-                  <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
-                  <span> </span>
-                  <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
-                  </div>
-                );
               }
               lapCells.push(<TableCell key={lapId} align="right">{lapInfo}</TableCell>);
             }

@@ -31,7 +31,7 @@ export default function App(props) {
   return (
     <div className="App">
       <AppBar>
-        <Tabs value={tabIndex} textColor="inherit" indicatorColor="secondary" onChange={(evt,idx)=>{setTabIndex(idx)}}>
+        <Tabs value={tabIndex} textColor="inherit" indicatorColor="secondary" variant="scrollable" onChange={(evt,idx)=>{setTabIndex(idx)}}>
         {
           tabs.map((entry) => {
             return <Tab key={entry.label} label={entry.label}/>;
