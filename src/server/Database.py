@@ -32,6 +32,9 @@ def db_uri(basedir, dbname):
 
 class Pilot(DB.Model):
     __tablename__ = 'pilot'
+    __table_args__ = (
+        DB.UniqueConstraint('callsign'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), nullable=False)
     team = DB.Column(DB.String(80), nullable=False, default=RHUtils.DEF_TEAM_NAME)
@@ -74,6 +77,9 @@ class HeatNode(DB.Model):
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'
+    __table_args__ = (
+        DB.UniqueConstraint('name'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
@@ -177,6 +183,9 @@ class Profiles(DB.Model):
 
 class RaceFormat(DB.Model):
     __tablename__ = 'race_format'
+    __table_args__ = (
+        DB.UniqueConstraint('name'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
@@ -193,6 +202,9 @@ class RaceFormat(DB.Model):
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'
+    __table_args__ = (
+        DB.UniqueConstraint('option_name'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String, nullable=False)

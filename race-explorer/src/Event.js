@@ -247,25 +247,24 @@ function updateUiState(setUiState, param, v) {
   setUiState((old) => {return {...old, [param]: v};})
 }
 
-function buildUi(uiDesc) {
+function buildUi(genDesc) {
   const renderers = [];
-  Object.entries(uiDesc).forEach((entry) => {
-    const param = entry[0];
-    const desc = entry[1];
-    if(desc.label) {
+  genDesc.parameters.forEach((param) => {
+    const paramName = param.name;
+    if(param.label) {
       let renderer;
-      switch (desc.type) {
+      switch (param.type) {
         case 'class':
           renderer = (props, uiState, setUiState) => (
-            <RaceClassSelector key={param} label={desc.label} value={uiState[param]} raceClasses={props.raceClasses}
-            onSelect={(raceClass) => {updateUiState(setUiState, param, raceClass);}}/>
+            <RaceClassSelector key={paramName} label={param.label} value={uiState[paramName]} raceClasses={props.raceClasses}
+            onSelect={(raceClass) => {updateUiState(setUiState, paramName, raceClass);}}/>
           );
           break;
         case 'seats':
           renderer = (props, uiState, setUiState) => (
-            <ValidatingTextField key={param} label={desc.label} value={uiState[param]}
+            <ValidatingTextField key={paramName} label={param.label} value={uiState[paramName]}
             validateChange={(v) => {
-              updateUiState(setUiState, param, Number(v));
+              updateUiState(setUiState, paramName, Number(v));
               return '';
             }}
             inputProps={{type: 'number', min: 1, max: props.seats.length}}/>
@@ -287,14 +286,13 @@ function buildUi(uiDesc) {
   };
 }
 
-function initiateUiState(uiDesc, seats, raceClasses, setGeneratorUiState) {
+function initiateUiState(genDesc, seats, raceClasses, setGeneratorUiState) {
   const state = {};
-  Object.entries(uiDesc).forEach((entry) => {
-    const param = entry[0];
-    const desc = entry[1];
-    if(desc.label) {
+  genDesc.parameters.forEach((param) => {
+    const paramName = param.name;
+    if(param.label) {
       let value;
-      switch (desc.type) {
+      switch (param.type) {
         case 'class':
           value = Object.keys(raceClasses)[0];
           break;
@@ -305,7 +303,7 @@ function initiateUiState(uiDesc, seats, raceClasses, setGeneratorUiState) {
           value = null;
           break;
       }
-      state[param] = value;
+      state[paramName] = value;
     }
   });
   setGeneratorUiState(state);
@@ -313,7 +311,7 @@ function initiateUiState(uiDesc, seats, raceClasses, setGeneratorUiState) {
 
 function RaceStagePanel(props) {
   const [generator, setGenerator] = useState('');
-  const [generatorParams, setGeneratorParams] = useState({});
+  const [generatorDesc, setGeneratorDesc] = useState({parameters: []});
   const [generatorUi, setGeneratorUi] = useState({'render': ()=>null});
   const [generatorUiState, setGeneratorUiState] = useState({});
 
@@ -324,34 +322,33 @@ function RaceStagePanel(props) {
   useEffect(() => {
     const endpoint = props.generators[generator];
     const loader = createRaceGeneratorLoader(endpoint);
-    loader.load(null, setGeneratorParams);
+    loader.load(null, setGeneratorDesc);
     return () => loader.cancel();
   }, [props.generators, generator]);
 
   useEffect(() => {
-    const ui = buildUi(generatorParams);
+    const ui = buildUi(generatorDesc);
     setGeneratorUi({'render': ui});
-  }, [generatorParams]);
+  }, [generatorDesc]);
 
   useEffect(() => {
-    initiateUiState(generatorParams, props.seats, props.raceClasses, setGeneratorUiState);
-  }, [generatorParams, props.seats, props.raceClasses]);
+    initiateUiState(generatorDesc, props.seats, props.raceClasses, setGeneratorUiState);
+  }, [generatorDesc, props.seats, props.raceClasses]);
 
   const generate = () => {
     const endpoint = props.generators[generator];
-    const data = Object.fromEntries(Object.entries(generatorParams).map((entry) => {
-      const param = entry[0];
-      const desc = entry[1];
+    const data = Object.fromEntries(generatorDesc.parameters.map((param) => {
+      const paramName = param.name;
       let value = null;
-      switch (desc.type) {
+      switch (param.type) {
         case 'pilots':
           value = Object.keys(props.pilots);
           break;
         default:
-          value = generatorUiState[param];
+          value = generatorUiState[paramName];
           break;
       }
-      return [param, value];
+      return [paramName, value];
     }));
     generateRace(endpoint, data, (races) => {
       idifyRaces(races);
@@ -385,6 +382,7 @@ const QUALIFYING_GENS = {
 };
 
 const MAINS_GENS = {
+  Mains: "/race-generators/mains",
   Random: "/race-generators/random"
 };
 

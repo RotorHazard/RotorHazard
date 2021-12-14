@@ -150,7 +150,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
         track = RHData.get_option('trackLayout', None)
         if track:
             track = json.loads(track)
-        else:
+        if not track or not track['layout']:
             track = {
                 'crs': 'Local grid',
                 'units': 'm',
