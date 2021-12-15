@@ -13,7 +13,7 @@ class RHRace():
         self.current_round = 1
         self.current_stage = None
         self.node_pilots = {} # current race pilots, by node, filled on heat change
-        self.format = None # raceformat object
+        self._format = None # raceformat object
         # sequence
         self.scheduled = False # Whether to start a race when time
         self.scheduled_time = 0 # Start race when time reaches this value
@@ -35,13 +35,12 @@ class RHRace():
         self.end_time = 0 # Monotonic, updated when race is stopped
         self.end_time_epoch_ms = 0 # ms since 1970-01-01
         # leaderboard/cache
-        self.results = None # current race results
-        self.cacheStatus = CacheStatus.INVALID # whether cache is valid
+        self.result_fn = lambda race: None
+        self.team_result_fn = lambda race: None
         self.status_message = '' # Race status message (winner, team info)
 
-        self.team_results = None # current race results
-        self.team_cacheStatus = CacheStatus.INVALID # whether cache is valid
         self.win_status = WinStatus.NONE # whether race is won
+        self.modification_count = 0
 
         '''
         Lap Object (dict) for node_laps:
@@ -62,11 +61,27 @@ class RHRace():
         self._num_nodes = new_value
         self.reset()
 
+    @property
+    def format(self):
+        return self._format
+
+    @format.setter
+    def format(self, new_race_format):
+        self._format = new_race_format
+        self.modification_count += 1
+
+    @property
+    def results(self):
+        return self.result_fn(self)
+
+    @property
+    def team_results(self):
+        return self.team_result_fn(self)
+
     def reset(self):
         self.node_laps = {idx: [] for idx in range(self._num_nodes)}
         self.node_splits = {idx: [] for idx in range(self._num_nodes)}
-        self.cacheStatus = CacheStatus.INVALID
-        self.team_cacheStatus = CacheStatus.INVALID
+        self.modification_count += 1
 
     def set_current_pilots(self, rhdata):
         self.node_pilots = {}
@@ -77,6 +92,8 @@ class RHRace():
             if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
                 db_pilot = rhdata.get_pilot(heatNode.pilot_id)
                 self.node_pilots[heatNode.node_index] = RHPilot(db_pilot)
+
+        self.modification_count += 1
 
     def init_node_finished_flags(self, heatNodes):
         self.node_has_finished = {}
@@ -189,7 +206,3 @@ class RaceStatus:
     RACING = BaseHardwareInterface.RACE_STATUS_RACING
     DONE = BaseHardwareInterface.RACE_STATUS_DONE
 
-
-class CacheStatus:
-    INVALID = 'invalid'
-    VALID = 'valid'

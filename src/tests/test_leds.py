@@ -44,7 +44,7 @@ class LedsTest(unittest.TestCase):
     def run_effects(self, module):
         strip = MockPixel(36)
         race = RHRace()
-        race.results = {'by_race_time': [{'starts':1, 'node':0, 'position':1}]}
+        race.result_fn = lambda race: {'by_race_time': [{'starts':1, 'node':0, 'position':1}]}
         test_args = {
             'RACE': race,
             'iterations': 3,

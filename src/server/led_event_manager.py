@@ -15,7 +15,6 @@ import json
 from . import RHRace
 import gevent
 from leds import hexToColor
-from .Results import CacheStatus
 from .eventmanager import Evt
 from six.moves import UserDict
 import logging
@@ -129,7 +128,7 @@ class LEDEventManager:
         if mode == 1: # by pilot
             color = '#ffffff'
             if from_result:
-                if self.RACE.last_race_results and self.RACE.last_race_cacheStatus == CacheStatus.VALID and 'by_race_time' in self.RACE.last_race_results:
+                if self.RACE.last_race_results and 'by_race_time' in self.RACE.last_race_results:
                     for line in self.RACE.last_race_results['by_race_time']:
                         if line['node'] == node_index:
                             color = self.RHData.get_pilot(line['pilot_id']).color

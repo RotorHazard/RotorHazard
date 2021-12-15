@@ -2,6 +2,7 @@
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from flask.blueprints import Blueprint
+from . import Results
 
 class AlchemyEncoder(json.JSONEncoder):
     def default(self, obj):  #pylint: disable=arguments-differ
@@ -27,8 +28,9 @@ class AlchemyEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self, obj)
 
-def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
+def createBlueprint(RESULTS, RACE, serverInfo, getCurrentProfile):
     APP = Blueprint('json', __name__)
+    RHData = RESULTS.rhDataObj
 
     @APP.route('/api/pilot/all')
     def api_pilot_all():
@@ -96,7 +98,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
 
         payload = {
             'setup': heat,
-            'leaderboard': Results.calc_leaderboard(RHData, heat_id=heat_id)
+            'leaderboard': RESULTS.calc_heat_leaderboard(heat_id)
         }
 
         return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -148,12 +150,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
 
     @APP.route('/api/race/current')
     def api_race_current():
-        if RACE.cacheStatus == Results.CacheStatus.VALID:
-            results = RACE.results
-        else:
-            results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-            RACE.results = results
-            RACE.cacheStatus = Results.CacheStatus.VALID
+        results = RESULTS.calc_current_race_leaderboard(RACE, getCurrentProfile())
 
         payload = {
             "raw_laps": RACE.node_laps,
@@ -174,7 +171,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
 
         payload = {
             "heats": heats,
-            "leaderboard": Results.calc_leaderboard(RHData)
+            "leaderboard": RESULTS.calc_event_leaderboard()
         }
 
         return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -212,7 +209,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
             'start_time_formatted': race.start_time_formatted,
             'nodes': pilotraces,
             'sort': RHData.get_option('pilotSort'),
-            'leaderboard': Results.calc_leaderboard(RHData, heat_id=heat_id, round_id=round_id)
+            'leaderboard': RESULTS.calc_race_leaderboard(heat_id, round_id)
         }
 
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}

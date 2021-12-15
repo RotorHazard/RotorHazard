@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.0" # Public release version code
-SERVER_API = 32+4 # Server API version
+SERVER_API = 32+5 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -177,8 +177,12 @@ Server_secondary_mode = None
 RACE = RHRace.RHRace() # For storing race management variables
 LAST_RACE = None
 SECONDARY_RACE_FORMAT = None
-RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
-PageCache = PageCache.PageCache(RHData) # For storing page cache
+RESULTS_CACHE = Results.ResultsCache()
+RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME, RESULTS_CACHE) # Primary race data storage
+RESULTS = Results.Results(RHData, RESULTS_CACHE)
+RACE.result_fn = RESULTS.calc_current_race_leaderboard
+RACE.team_result_fn = RESULTS.calc_team_leaderboard 
+PageCache = PageCache.PageCache(RESULTS) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 
 def __web(text):
@@ -300,8 +304,6 @@ def setCurrentRaceFormat(race_format, **kwargs):
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
-        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-        RACE.team_cacheStatus = Results.CacheStatus.INVALID
     else:
         RACE.format = race_format
 
@@ -840,7 +842,7 @@ def on_cluster_event_trigger(data):
     if Server_secondary_mode == SecondaryNode.MIRROR_MODE:
         if evtName == Evt.RACE_STAGE:
             RACE.race_status = RHRace.RaceStatus.STAGING
-            RACE.results = None
+            RACE.results = lambda race: None
             if led_manager.isEnabled():
                 if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
                     led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
@@ -853,7 +855,7 @@ def on_cluster_event_trigger(data):
         elif evtName == Evt.LAPS_CLEAR:
             RACE.race_status = RHRace.RaceStatus.READY
         elif evtName == Evt.RACE_LAP_RECORDED:
-            RACE.results = evtArgs['results']
+            RACE.results = lambda race: evtArgs['results']
 
     evtArgs.pop('RACE', None) # remove race if exists
 
@@ -1390,8 +1392,7 @@ def on_alter_pilot(data):
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    RACE.set_current_pilots(RHData)
 
 
 @SOCKET_IO.on('delete_pilot')
@@ -1401,6 +1402,7 @@ def on_delete_pilot(data):
     result = RHData.delete_pilot(data['pilot'])
 
     if result:
+        RACE.set_current_pilots(RHData)
         emit_pilot_data()
         emit_heat_data()
 
@@ -1578,6 +1580,8 @@ def on_restore_database(data):
             RHData.close()
 
             RACE = RHRace.RHRace() # Reset all RACE values
+            RACE.result_fn = RESULTS.calc_current_race_leaderboard
+            RACE.team_result_fn = RESULTS.calc_team_leaderboard 
             RACE.num_nodes = len(INTERFACE.nodes)  # restore number of nodes
             LAST_RACE = RACE
             try:
@@ -2613,7 +2617,6 @@ def on_resave_laps(data):
 @catchLogExceptionsWrapper
 def build_atomic_result_caches(params):
     PageCache.set_valid(False)
-    Results.build_atomic_results_caches(RHData, params)
     emit_result_data()
 
 
@@ -2645,7 +2648,8 @@ def on_discard_laps(**kwargs):
 def clear_laps():
     '''Clear the current laps table.'''
     global LAST_RACE
-    LAST_RACE = copy.deepcopy(RACE)
+    memo = {id(RACE.result_fn): RACE.result_fn, id(RACE.team_result_fn): RACE.team_result_fn}
+    LAST_RACE = copy.deepcopy(RACE, memo)
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.winning_lap_id = 0
     reset_current_laps() # Clear out the current laps table
@@ -2687,8 +2691,6 @@ def set_current_heat_data():
         'heat_id': RACE.current_heat,
         })
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     emit_race_format()
@@ -2713,7 +2715,6 @@ def on_generate_heats(data):
 @catchLogExceptionsWrapper
 def generate_heats(data):
     '''Generate heats from qualifying class'''
-    RESULTS_TIMEOUT = 30 # maximum time to wait for results to generate
 
     input_class = int(data['input_class'])
     output_class = int(data['output_class'])
@@ -2740,33 +2741,17 @@ def generate_heats(data):
             results['by_race_time'].append(entry)
 
         win_condition = RHRace.WinCondition.NONE
-        cacheStatus = Results.CacheStatus.VALID
     else:
         race_class = RHData.get_raceClass(input_class)
         race_format = RHData.get_raceFormat(race_class.format_id)
-        results = race_class.results
+        results = RESULTS.calc_class_leaderboard(race_class.id)
         if race_format:
             win_condition = race_format.win_condition
-            cacheStatus = race_class.cacheStatus
         else:
             win_condition = RHRace.WinCondition.NONE
-            cacheStatus = Results.CacheStatus.VALID
             logger.info('Unable to fetch format from race class {0}'.format(input_class))
 
-    if cacheStatus == Results.CacheStatus.INVALID:
-        # build new results if needed
-        logger.info("No class cache available for {0}; regenerating".format(input_class))
-        RHData.set_results_raceClass(race_class.id,
-            Results.build_atomic_result_cache(RHData, class_id=race_class.id)
-            )
-
-    time_now = monotonic()
-    timeout = time_now + RESULTS_TIMEOUT
-    while cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
-        gevent.sleep()
-        time_now = monotonic()
-
-    if results and cacheStatus == Results.CacheStatus.VALID:
+    if results:
         if win_condition == RHRace.WinCondition.NONE:
 
             leaderboard = random.sample(results['by_race_time'], len(results['by_race_time']))
@@ -2887,11 +2872,6 @@ def on_delete_lap(data):
 
     logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-    RACE.cacheStatus = Results.CacheStatus.VALID
-    if RACE.format.team_racing_mode:
-        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-        RACE.team_cacheStatus = Results.CacheStatus.VALID
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
     emit_current_laps() # Race page, update web client
@@ -2933,11 +2913,6 @@ def on_restore_deleted_lap(data):
 
     logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-    RACE.cacheStatus = Results.CacheStatus.VALID
-    if RACE.format.team_racing_mode:
-        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-        RACE.team_cacheStatus = Results.CacheStatus.VALID
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
     emit_current_laps() # Race page, update web client
@@ -3087,7 +3062,7 @@ def imdtabler_update_freqs(data):
 @catchLogExceptionsWrapper
 def clean_results_cache():
     ''' wipe all results caches '''
-    Results.invalidate_all_caches(RHData)
+    RESULTS_CACHE.clear_all()
     PageCache.set_valid(False)
 
 # Socket io emit functions
@@ -3600,34 +3575,19 @@ def emit_current_leaderboard(**params):
     emit_payload['current']['heat_note'] = RHData.get_heat_note(RACE.current_heat)
     emit_payload['current']['status_msg'] = RACE.status_message
 
-    if RACE.cacheStatus == Results.CacheStatus.VALID:
-        emit_payload['current']['leaderboard'] = RACE.results
-    else:
-        results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-        RACE.results = results
-        RACE.cacheStatus = Results.CacheStatus.VALID
-        emit_payload['current']['leaderboard'] = results
-
-    if RACE.format.team_racing_mode:
-        if RACE.team_cacheStatus == Results.CacheStatus.VALID:
-            emit_payload['current']['team_leaderboard'] = RACE.team_results
-        else:
-            team_results = Results.calc_team_leaderboard(RACE, RHData)
-            RACE.team_results = team_results
-            RACE.team_cacheStatus = Results.CacheStatus.VALID
-            emit_payload['current']['team_leaderboard'] = team_results
+    emit_payload['current']['leaderboard'] = RACE.results
+    emit_payload['current']['team_leaderboard'] = RACE.team_results
 
     # cache
     if LAST_RACE is not None:
         emit_payload['last_race'] = {}
         emit_payload['last_race']['status_msg'] = LAST_RACE.status_message
 
-        if LAST_RACE.cacheStatus == Results.CacheStatus.VALID:
-            emit_payload['last_race']['leaderboard'] = LAST_RACE.results
-            emit_payload['last_race']['heat'] = LAST_RACE.current_heat
-            emit_payload['last_race']['heat_note'] = RHData.get_heat_note(LAST_RACE.current_heat)
+        emit_payload['last_race']['leaderboard'] = LAST_RACE.results
+        emit_payload['last_race']['heat'] = LAST_RACE.current_heat
+        emit_payload['last_race']['heat_note'] = RHData.get_heat_note(LAST_RACE.current_heat)
 
-        if LAST_RACE.team_cacheStatus == Results.CacheStatus.VALID and LAST_RACE.format.team_racing_mode:
+        if LAST_RACE.format.team_racing_mode:
             emit_payload['last_race']['team_leaderboard'] = LAST_RACE.team_results
 
     if ('nobroadcast' in params):
@@ -4493,13 +4453,6 @@ def pass_record_callback(node, lap_race_time, source):
                         }
                         RACE.node_laps[seat].append(lap_data)
 
-                        RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-                        RACE.cacheStatus = Results.CacheStatus.VALID
-
-                        if race_format.team_racing_mode:
-                            RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-                            RACE.team_cacheStatus = Results.CacheStatus.VALID
-
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': seat,
                             'color': led_manager.getDisplayColor(seat),
@@ -4679,7 +4632,7 @@ def check_win_condition(**kwargs):
     del_lap_flag = 'deletedLap' in kwargs
 
     # if winner not yet declared or racer lap was deleted then check win condition
-    win_status_dict = Results.check_win_condition_result(RACE, RHData, INTERFACE, **kwargs) \
+    win_status_dict = RESULTS.check_win_condition_result(RACE, INTERFACE, **kwargs) \
                       if win_not_decl_flag or del_lap_flag else None
 
     if win_status_dict is not None:
@@ -4911,7 +4864,6 @@ def init_race_state():
     setCurrentRaceFormat(race_format, silent=True)
 
     # Normalize results caches
-    Results.normalize_cache_status(RHData)
     PageCache.set_valid(False)
 
 
@@ -5574,7 +5526,7 @@ from . import json_endpoints
 from . import ota
 from . import race_explorer_endpoints
 from . import race_generator_endpoints
-APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
+APP.register_blueprint(json_endpoints.createBlueprint(RESULTS, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota.createBlueprint())
 APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, APP.rhserver))
 APP.register_blueprint(race_generator_endpoints.createBlueprint(PageCache))
