@@ -254,6 +254,16 @@ function buildUi(genDesc) {
     if(param.label) {
       let renderer;
       switch (param.type) {
+        case 'integer':
+          renderer = (props, uiState, setUiState) => (
+            <ValidatingTextField key={paramName} label={param.label} value={uiState[paramName]}
+            validateChange={(v) => {
+              updateUiState(setUiState, paramName, Number(v));
+              return '';
+            }}
+            inputProps={{type: 'number', min: param.min, max: param.max}}/>
+          );
+          break;
         case 'class':
           renderer = (props, uiState, setUiState) => (
             <RaceClassSelector key={paramName} label={param.label} value={uiState[paramName]} raceClasses={props.raceClasses}
@@ -300,7 +310,7 @@ function initiateUiState(genDesc, seats, raceClasses, setGeneratorUiState) {
           value = seats.length;
           break;
         default:
-          value = null;
+          value = param.default ?? null;
           break;
       }
       state[paramName] = value;
@@ -383,6 +393,7 @@ const QUALIFYING_GENS = {
 
 const MAINS_GENS = {
   Mains: "/race-generators/mains",
+  "MultiGP Brackets": "/race-generators/mgp-brackets",
   Random: "/race-generators/random"
 };
 

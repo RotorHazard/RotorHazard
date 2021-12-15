@@ -93,4 +93,130 @@ def createBlueprint(PageCache):
         mains.reverse()
         return {'races': mains}
 
+    @APP.route('/race-generators/mgp-brackets', methods=['GET'])
+    def mgp_brackets_get():
+        return {
+            "parameters": [
+                {"name": "resultsClass", "label": "Results class", "type": "class"},
+                {"name": "mainsClass", "label": "Mains class", "type": "class"},
+                {"name": "seats", "label": "Seats", "type": "seats"},
+                {"name": "bracket", "label": "Bracket", "type": "integer", "default": 1, "min": 1, "max": 6}
+            ]
+        }
+
+    @APP.route('/race-generators/mgp-brackets', methods=['POST'])
+    def mgp_brackets_post():
+        '''
+        2021 MultiGP Rules & Regulations
+        7.9.1. Double Elimination Brackets
+        https://docs.google.com/document/d/1x-otorbEruq5oD6b1yzoBTHO9SwUNmb2itguUoY8x3s/
+        '''
+        data = request.get_json()
+        results_class = data['resultsClass']
+        mains_class = data['mainsClass']
+        n_seats = int(data['seats'])
+        bracket = int(data['bracket'])
+        results = PageCache.get_cache()
+
+        # 1-index based!
+        seeding_table = [
+            [[3,6,11,14], [2,7,10,15], [4,5,12,13], [1,8,9,16]],
+            {'previous_races': 4,
+             'race_offset': 5,
+             'races': [
+                 [(1,3),(1,4),(2,3),(2,4)],
+                 [(1,1),(1,2),(2,1),(2,2)],
+                 [(3,3),(3,4),(4,3),(4,4)],
+                 [(3,1),(3,2),(4,1),(4,2)]
+                 ]
+            },
+            {'previous_races': 4,
+             'race_offset': 9,
+             'races': [
+                 [(1,1),(1,2),(2,3),(2,4)],
+                 [(3,1),(3,2),(4,3),(4,4)],
+                 [(2,1),(2,2),(4,1),(4,2)],
+                 ]
+            },
+            {'previous_races': 3,
+             'race_offset': 12,
+             'races': [
+                 [(1,1),(1,2),(2,1),(2,2)]
+                 ]
+            },
+            {'previous_races': 2,
+             'race_offset': 13,
+             'races': [
+                 [(2,1),(2,2),(1,3),(1,4)]
+                 ]
+            },
+            {'previous_races': 3,
+             'race_offset': 14,
+             'races': [
+                 [(1,1),(1,2),(3,1),(3,2)]
+                 ]
+            }
+        ]
+
+        leaderboard_positions = [
+            (14,1), (14,2), (14,3), (14,4),
+            (13,3), (13,4), (12,3), (12,4),
+            (10,3), (10,4), (9,3), (9,4),
+            (7,3), (7,4), (5,3), (5,4)
+        ]
+
+        mains = []
+        if bracket == 1:
+            seeding = seeding_table[bracket-1]
+
+            leaderboard = None
+            if results_class == "Unclassified":
+                leaderboard = results['event_leaderboard']
+            else:
+                for class_results in results['classes'].values():
+                    if class_results['name'] == results_class:
+                        leaderboard = class_results['leaderboard']
+                        break
+            if leaderboard is None:
+                return {'races': []}
+    
+            pilots = leaderboard[leaderboard['meta']['primary_leaderboard']]
+
+            for i, race_seeds in enumerate(seeding):
+                seats = [pilots[seed_pos-1]['callsign'] if seed_pos <= len(pilots) else None for seed_pos in race_seeds]
+                mains.append({'name': 'Race '+str(i+1), 'class': mains_class, 'seats': seats[:n_seats]})
+        elif bracket >= 2 and bracket <= len(seeding_table):
+            seeding = seeding_table[bracket-1]
+            n_bracket_races = seeding['previous_races']
+
+            results_heats = results['heats']
+            all_heats = None
+            if results_class == "Unclassified":
+                all_heats = [results_heats[heat_id] for heat_id in range(1,len(results_heats)+1)]
+            else:
+                class_id = None
+                for class_results in results['classes'].values():
+                    if class_results['name'] == results_class:
+                        class_id = class_results['id']
+                        break
+                if class_id is None:
+                    return {'races': []}
+                all_heats = [results_heats[idx] for idx in results['heats_by_class'][class_id]]
+            heats = all_heats[-n_bracket_races:]
+            race_offset = seeding['race_offset']
+            for i, race_seeds in enumerate(seeding['races']):
+                seats = []
+                for seed_pos in race_seeds:
+                    pilot = None
+                    if seed_pos[0] <= len(heats):
+                        heat = heats[seed_pos[0]-1]
+                        leaderboard = heat['leaderboard']
+                        pilots = leaderboard[leaderboard['meta']['primary_leaderboard']]
+                        if seed_pos[1] <= len(pilots):
+                            pilot = pilots[seed_pos[1]-1]['callsign']
+                    seats.append(pilot)
+                mains.append({'name': 'Race '+str(i+race_offset), 'class': mains_class, 'seats': seats[:n_seats]})
+    
+        return {'races': mains}
+
     return APP

@@ -141,7 +141,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                             heat_pilots[seat] = pilot_ids[callsign]
                     RHData.add_heat(init=heat_data, initPilots=heat_pilots)
                 h += 1
-        for i in range(len(heats)-1, h-1, -1):
+        for i in range(len(heats)-1, h, -1):
             RHData.delete_heat(heats[i].id)
         return '', 204
 

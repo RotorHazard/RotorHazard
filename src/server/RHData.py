@@ -14,6 +14,7 @@ import shutil
 import json
 import jsonschema
 import glob
+from uuid import uuid4
 from types import MappingProxyType
 from . import RHUtils
 from .eventmanager import Evt
@@ -21,6 +22,14 @@ from .RHRace import RaceStatus, RaceMode, WinCondition, StagingTones, StartBehav
 from .Results import CacheStatus
 
 EMPTY_DICT = MappingProxyType({})
+
+
+def _get_default_stage_name(heat):
+    return 'Mains' if (not hasattr(heat, 'note')) or (heat.note and heat.note.endswith(' Main')) else 'Qualifying'
+
+
+def unique_id():
+    return uuid4().hex
 
 
 class RHData():
@@ -91,13 +100,10 @@ class RHData():
 
     def reset_all(self, nofill=False):
         self.reset_pilots()
-        if nofill:
-            self.reset_heats(nofill=True)
-        else:
-            self.reset_heats()
+        self.reset_heats(nofill=nofill)
         self.clear_race_data()
         self.reset_profiles()
-        self.reset_raceFormats()
+        self.reset_raceFormats(nofill=nofill)
         self.reset_raceClasses()
         self.reset_options()
 
@@ -182,9 +188,9 @@ class RHData():
             return output
 
         except Exception as ex:
-            logger.warning('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+            logger.warning('Unable to read "{0}" table from previous database'.format(table_name), ex)
 
-    def restore_table(self, class_type, table_query_data, **kwargs):
+    def restore_table(self, class_type, table_query_data, defaults=EMPTY_DICT):
         if table_query_data:
             try:
                 for row_data in table_query_data:
@@ -204,21 +210,21 @@ class RHData():
                                 colName = col.name
                                 if colName in row_data.keys():
                                     setattr(new_data, colName, row_data[colName])
-                                elif colName in kwargs['defaults']:
-                                    defaultValue = kwargs['defaults'][colName]
+                                elif colName in defaults:
+                                    defaultValue = defaults[colName]
                                     setattr(new_data, colName, defaultValue(new_data) if callable(defaultValue) else defaultValue)
 
-                            #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
+                            #logger.debug('Row_data add:  ' + str(new_data))
                             self._Database.DB.session.add(new_data)
                         else:
-                            #logger.info('DEBUG row_data update:  ' + str(getattr(row_data, match_name)))
+                            #logger.debug('Row_data update:  ' + str(obj_to_update))
                             for col in class_type.__table__.columns:
                                 colName = col.name
                                 if colName in row_data.keys():
                                     setattr(obj_to_update, colName, row_data[colName])
-                                elif colName in kwargs['defaults']:
+                                elif colName in defaults:
                                     if colName != 'id':
-                                        defaultValue = kwargs['defaults'][colName]
+                                        defaultValue = defaults[colName]
                                         setattr(obj_to_update, colName, defaultValue(obj_to_update) if callable(defaultValue) else defaultValue)
 
                         self._Database.DB.session.flush()
@@ -340,7 +346,7 @@ class RHData():
                     self._Database.DB.session.query(self._Database.Pilot).delete()
                     self.restore_table(self._Database.Pilot, pilot_query_data, defaults={
                             'name': 'New Pilot',
-                            'callsign': 'New Callsign',
+                            'callsign': lambda data: 'New Callsign ' + unique_id(),
                             'team': RHUtils.DEF_TEAM_NAME,
                             'phonetic': '',
                             'color': None
@@ -373,7 +379,7 @@ class RHData():
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
                                 'cacheStatus': CacheStatus.INVALID,
-                                'stage': self._get_default_stage_name
+                                'stage': _get_default_stage_name
                             })
 
                         # extract pilots from heats and load into heatnode
@@ -403,7 +409,7 @@ class RHData():
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
                                 'cacheStatus': CacheStatus.INVALID,
-                                'stage': self._get_default_stage_name
+                                'stage': _get_default_stage_name
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
@@ -416,24 +422,24 @@ class RHData():
 
                 if raceFormat_query_data:
                     self.restore_table(self._Database.RaceFormat, raceFormat_query_data, defaults={
-                        'name': self.__("Migrated Format"),
-                        'race_mode': RaceMode.FIXED_TIME,
+                        'name': lambda data: self.__("Migrated Format") + ' ' + unique_id(),
+                        'race_mode': RaceMode.FIXED_TIME.value,
                         'race_time_sec': 120,
                         'lap_grace_sec': 0,
                         'start_delay_min': 2,
                         'start_delay_max': 5,
-                        'staging_tones': StagingTones.TONES_ALL,
+                        'staging_tones': StagingTones.TONES_ALL.value,
                         'number_laps_win': 0,
-                        'win_condition': WinCondition.MOST_LAPS,
+                        'win_condition': WinCondition.MOST_LAPS.value,
                         'team_racing_mode': False,
-                        'start_behavior': StartBehavior.HOLESHOT
+                        'start_behavior': StartBehavior.HOLESHOT.value
                     })
                 else:
                     self.reset_raceFormats()
 
                 if profiles_query_data:
                     self.restore_table(self._Database.Profiles, profiles_query_data, defaults={
-                            'name': self.__("Migrated Profile"),
+                            'name': lambda data: self.__("Migrated Profile") + ' ' + unique_id(),
                             'frequencies': json.dumps(self.default_frequencies()),
                             'enter_ats': json.dumps({'v': [None for _i in range(self._RACE.num_nodes)]}),
                             'exit_ats': json.dumps({'v': [None for _i in range(self._RACE.num_nodes)]}),
@@ -443,7 +449,7 @@ class RHData():
                     self.reset_profiles()
 
                 self.restore_table(self._Database.RaceClass, raceClass_query_data, defaults={
-                        'name': 'New class',
+                        'name': lambda data: 'New class ' + unique_id(),
                         'format_id': 0,
                         'results': None,
                         'cacheStatus': CacheStatus.INVALID
@@ -500,6 +506,8 @@ class RHData():
         self.commit()
 
         self.primeCache() # refresh Options cache
+
+        self.install_new_raceFormats()
 
         self._Events.trigger(Evt.DATABASE_RECOVER)
 
@@ -669,9 +677,6 @@ class RHData():
     def get_first_heat(self):
         return self._Database.Heat.query.first()
 
-    def _get_default_stage_name(self, heat):
-        return 'Mains' if (not hasattr(heat, 'note')) or (heat.note and heat.note.endswith(' Main')) else 'Qualifying'
-
     def add_heat(self, init=EMPTY_DICT, initPilots=EMPTY_DICT):
         # Add new heat
         new_heat = self._Database.Heat(
@@ -686,7 +691,7 @@ class RHData():
         if 'stage' in init:
             new_heat.stage = init['stage']
         else:
-            new_heat.stage = self._get_default_stage_name(new_heat)
+            new_heat.stage = _get_default_stage_name(new_heat)
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -760,24 +765,29 @@ class RHData():
         heat_id = data['heat']
         heat = self._Database.Heat.query.get(heat_id)
 
-        if 'note' in data:
+        class_changed = False
+        pilot_changed = False
+        if 'note' in data and heat.note != data['note']:
             self._PageCache.set_valid(False)
             heat.note = data['note']
-        if 'stage' in data:
+        if 'stage' in data and heat.stage != data['stage']:
             heat.stage = data['stage']
-        if 'class' in data:
+        if 'class' in data and heat.class_id != data['class']:
             old_class_id = heat.class_id
             heat.class_id = data['class']
+            class_changed = True
         if 'pilot' in data:
             node_index = data['node']
             heatnode = self._Database.HeatNode.query.filter_by(
                 heat_id=heat_id, node_index=node_index).one()
-            heatnode.pilot_id = data['pilot']
+            if heatnode.pilot_id != data['pilot']:
+                heatnode.pilot_id = data['pilot']
+                pilot_changed = True
 
         # alter existing saved races:
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
 
-        if 'class' in data:
+        if class_changed:
             if len(race_list):
                 for race_meta in race_list:
                     race_meta.class_id = data['class']
@@ -785,7 +795,7 @@ class RHData():
                 if old_class_id is not RHUtils.CLASS_ID_NONE:
                     self.clear_results_raceClass(old_class_id)
 
-        if 'pilot' in data:
+        if pilot_changed:
             if len(race_list):
                 for race_meta in race_list:
                     for pilot_race in self._Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
@@ -799,7 +809,7 @@ class RHData():
 
                 self.clear_results_heat(heat.id)
 
-        if 'pilot' in data or 'class' in data:
+        if pilot_changed or class_changed:
             if len(race_list):
                 if heat.class_id is not RHUtils.CLASS_ID_NONE:
                     self.clear_results_raceClass(heat.class_id)
@@ -1232,16 +1242,16 @@ class RHData():
     def add_format(self, init=None):
         race_format = self._Database.RaceFormat(
             name='',
-            race_mode=RaceMode.FIXED_TIME,
+            race_mode=RaceMode.FIXED_TIME.value,
             race_time_sec=0,
             lap_grace_sec=0,
             start_delay_min=0,
             start_delay_max=0,
-            staging_tones=StagingTones.TONES_NONE,
+            staging_tones=StagingTones.TONES_NONE.value,
             number_laps_win=0,
-            win_condition=WinCondition.NONE,
+            win_condition=WinCondition.NONE.value,
             team_racing_mode=False,
-            start_behavior=StartBehavior.HOLESHOT)
+            start_behavior=StartBehavior.HOLESHOT.value)
 
         if init:
             if 'format_name' in init:
@@ -1405,31 +1415,36 @@ class RHData():
         self.commit()
         return True
 
-    def reset_raceFormats(self):
+    def reset_raceFormats(self, nofill=False):
         self.clear_raceFormats()
+        self.commit()
+        if not nofill:
+            self.install_new_raceFormats()
+        logger.info("Database reset race formats")
+        return True
+
+    def install_new_raceFormats(self):
         with open('race_formats.schema.json', 'r') as f:
             schema = json.load(f)
         with open('race_formats.json', 'r') as f:
             default_race_formats = json.load(f)
         jsonschema.validate(instance=default_race_formats, schema=schema)
         for race_format in default_race_formats:
-            self.add_format({
-                'format_name': race_format['format_name'],
-                'race_mode': RaceMode[race_format['race_mode']].value,
-                'race_time_sec': race_format['race_time_sec'],
-                'lap_grace_sec': race_format['lap_grace_sec'],
-                'start_delay_min': race_format['start_delay_min'],
-                'start_delay_max': race_format['start_delay_max'],
-                'staging_tones': StagingTones[race_format['staging_tones']].value,
-                'number_laps_win': race_format['number_laps_win'],
-                'win_condition': WinCondition[race_format['win_condition']].value,
-                'team_racing_mode': race_format['team_racing_mode'],
-                'start_behavior': StartBehavior[race_format['start_behavior']].value
-                })
-
+            if not self._Database.RaceFormat.query.filter_by(name=race_format['format_name']).one_or_none():
+                self.add_format({
+                    'format_name': race_format['format_name'],
+                    'race_mode': RaceMode[race_format['race_mode']].value,
+                    'race_time_sec': race_format['race_time_sec'],
+                    'lap_grace_sec': race_format['lap_grace_sec'],
+                    'start_delay_min': race_format['start_delay_min'],
+                    'start_delay_max': race_format['start_delay_max'],
+                    'staging_tones': StagingTones[race_format['staging_tones']].value,
+                    'number_laps_win': race_format['number_laps_win'],
+                    'win_condition': WinCondition[race_format['win_condition']].value,
+                    'team_racing_mode': race_format['team_racing_mode'],
+                    'start_behavior': StartBehavior[race_format['start_behavior']].value
+                    })
         self.commit()
-        logger.info("Database reset race formats")
-        return True
 
     # Race Meta
     def get_savedRaceMeta(self, race_id):
