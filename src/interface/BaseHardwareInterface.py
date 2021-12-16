@@ -401,9 +401,9 @@ class BaseHardwareInterface:
     # External functions for setting data
     #
 
-    def intf_simulate_lap(self, node_index, ms_val):
+    def simulate_lap(self, node_index):
         node = self.nodes[node_index]
-        lap_timestamp = monotonic() - (ms_val / 1000.0) - self.race_start_time  # relative to start time
+        lap_timestamp = monotonic() - self.race_start_time  # relative to start time
         node.enter_at_timestamp = node.exit_at_timestamp = 0
         node.node_lap_id += 1
         self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)

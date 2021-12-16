@@ -1271,7 +1271,9 @@ def on_set_scan(data):
 @catchLogExceptionsWrapper
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
-    RHData.add_heat()
+    heats = RHData.get_heats()
+    stage = heats[-1].stage.name if len(heats) > 0 else 'Qualifying'
+    RHData.add_heat(init={'stage': stage})
     emit_heat_data()
 
 
@@ -1286,18 +1288,18 @@ def on_duplicate_heat(data):
 @catchLogExceptionsWrapper
 def on_alter_heat(data):
     '''Update heat.'''
-    node_index = data['node']
-    location_id, seat = get_local_location_id_and_seat(INTERFACE.nodes[node_index])
-    if location_id == 0:
+    if 'pilot' in data:
+        node_index = data['node']
+        location_id, seat = get_local_location_id_and_seat(INTERFACE.nodes[node_index])
         data['node'] = seat
-        heat, altered_race_list = RHData.alter_heat(data)
-        if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
-            set_current_heat_data()
-        emit_heat_data(noself=True)
-        if ('pilot' in data or 'class' in data) and len(altered_race_list):
-            emit_result_data() # live update rounds page
-            message = __('Alterations made to heat: {0}').format(heat.note)
-            emit_priority_message(message, False)
+    heat, altered_race_list = RHData.alter_heat(data)
+    if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
+        set_current_heat_data()
+    emit_heat_data(noself=True)
+    if ('pilot' in data or 'class' in data) and len(altered_race_list):
+        emit_result_data() # live update rounds page
+        message = __('Alterations made to heat: {0}').format(heat.note)
+        emit_priority_message(message, False)
 
 
 @SOCKET_IO.on('delete_heat')
@@ -2284,6 +2286,9 @@ def race_start_thread(start_token):
                             .format(node.index+1, node.current_rssi, node.enter_at_level))
 
     RACE.current_round = RHData.get_max_round(RACE.current_heat) + 1
+    heat_data = RHData.get_heat(RACE.current_heat)
+    RACE.current_stage = heat_data.stage_id
+
 
     # do non-blocking delay before time-critical code
     time_remaining = RACE.start_time_monotonic - monotonic()
@@ -2949,7 +2954,7 @@ def on_simulate_lap(data):
         'nodeIndex': node_index,
         'color': led_manager.getDisplayColor(node_index)
         })
-    INTERFACE.intf_simulate_lap(node_index, 0)
+    INTERFACE.simulate_lap(node_index)
 
 
 @SOCKET_IO.on('LED_solid')
@@ -4403,8 +4408,8 @@ def pass_record_callback(node, lap_race_time, source):
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][seat] != RHUtils.FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end
-        if RACE.race_status is RHRace.RaceStatus.RACING \
-            or (RACE.race_status is RHRace.RaceStatus.DONE and \
+        if RACE.race_status == RHRace.RaceStatus.RACING \
+            or (RACE.race_status == RHRace.RaceStatus.DONE and \
                 lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot on the node
@@ -5571,7 +5576,7 @@ from . import race_explorer_endpoints
 from . import race_generator_endpoints
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota.createBlueprint())
-APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData))
+APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, APP.rhserver))
 APP.register_blueprint(race_generator_endpoints.createBlueprint(PageCache))
 
 if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
@@ -5659,12 +5664,7 @@ if RHData.get_option('timerMapping', None) is None:
     RHData.set_option('timerMapping', json.dumps(DEFAULT_TIMER_MAPPING))
 
 
-def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
-    if not RHData.get_option("secret_key"):
-        RHData.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
-
-    APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
-    logger.info("Running http server at port " + str(port_val))
+def start():
     gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
     if CHORUS_API:
         CHORUS_API.start()
@@ -5675,6 +5675,38 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
         'color': ColorVal.ORANGE,
         'message': 'RotorHazard ' + RELEASE_VERSION
         })
+
+
+def stop():
+    Events.trigger(Evt.SHUTDOWN, {
+        'color': ColorVal.RED
+        })
+    rep_str = INTERFACE.get_intf_error_report_str(True)
+    if rep_str:
+        logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
+
+    if CHORUS_API:
+        CHORUS_API.stop()
+    if MQTT_API:
+        MQTT_API.stop()
+    stop_background_threads()
+    INTERFACE.close()
+    for service in serviceHelpers.values():
+        if hasattr(service, 'close'):
+            service.close()
+    RHData.close()
+    log.wait_for_queue_empty()
+    gevent.sleep(2)  # allow system shutdown command to run before program exit
+    log.close_logging()
+
+
+def run(port_val = rhconfig.GENERAL['HTTP_PORT']):
+    if not RHData.get_option("secret_key"):
+        RHData.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
+
+    APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
+    logger.info("Running http server at port " + str(port_val))
+    start()
     if args.autostart:
         gevent.spawn(on_stage_race)
 
@@ -5689,26 +5721,9 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     except Exception:
         logger.exception("Server exception")
 
-    Events.trigger(Evt.SHUTDOWN, {
-        'color': ColorVal.RED
-        })
-    rep_str = INTERFACE.get_intf_error_report_str(True)
-    if rep_str:
-        logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
-    if CHORUS_API:
-        CHORUS_API.stop()
-    if MQTT_API:
-        MQTT_API.stop()
-    stop_background_threads()
-    INTERFACE.close()
-    for service in serviceHelpers.values():
-        service.close()
-    RHData.close()
-    log.wait_for_queue_empty()
-    gevent.sleep(2)  # allow system shutdown command to run before program exit
-    log.close_logging()
+    stop()
 
 
 # Start HTTP server
 if __name__ == '__main__':
-    start()
+    run()

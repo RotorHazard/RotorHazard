@@ -47,11 +47,21 @@ class Pilot(DB.Model):
         return '<Pilot %r>' % self.id
 
 
+class Stage(DB.Model):
+    __tablename__ = 'stage'
+    __table_args__ = (
+        DB.UniqueConstraint('name'),
+    )
+    id = DB.Column(DB.Integer, primary_key=True)
+    name = DB.Column(DB.String(80), nullable=False)
+
+
 class Heat(DB.Model):
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
     note = DB.Column(DB.String(80), nullable=True)
-    stage = DB.Column(DB.String(80), nullable=False)
+    stage_id = DB.Column(DB.Integer, DB.ForeignKey("stage.id"), nullable=False)
+    stage = DB.relationship(Stage)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
@@ -156,7 +166,7 @@ class SavedRaceLapSplit(DB.Model):
     race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
     pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    lap_id = DB.Column(DB.Integer, nullable=False)
+    lap_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_lap.id"), nullable=False)
     split_id = DB.Column(DB.Integer, nullable=False)
     split_time_stamp = DB.Column(DB.Integer, nullable=False)
     split_time = DB.Column(DB.Integer, nullable=False)

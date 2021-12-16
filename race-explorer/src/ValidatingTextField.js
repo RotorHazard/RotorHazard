@@ -16,5 +16,5 @@ export default function ValidatingTextField(props) {
     }
     setValue(evt.target.value);
   };
-  return <TextField label={props.label} value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg} inputProps={props.inputProps}/>;
+  return <TextField {...props} value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg}/>;
 }

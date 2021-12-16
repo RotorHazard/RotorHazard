@@ -53,9 +53,6 @@ class I2CBus(object):
         except IOError as err:
             logger.info('I2C error: {0}'.format(err))
 
-    def close(self):
-        pass
-
 
 def create(rhconfig):
     bus_ids = rhconfig.HARDWARE['I2C_BUSES']

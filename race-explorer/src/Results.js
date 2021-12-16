@@ -14,7 +14,7 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { TrackMapContainer, Map } from './TrackMap.js';
 import * as util from './util.js';
-import { createMqttConfigLoader, createTrackDataLoader, createTimerMappingLoader, createResultDataLoader, getMqttClient } from './rh-client.js';
+import { createMqttConfigLoader, createTrackDataLoader, createTimerMappingLoader, createEventDataLoader, createResultDataLoader, getMqttClient } from './rh-client.js';
 
 function processResults(data, raceEvents) {
   const jsonl = data.split('\n');
@@ -31,39 +31,51 @@ function processResults(data, raceEvents) {
 }
 
 function processMessage(msg, raceEvents) {
-  if ('event' in msg) {
-    raceEvents[msg.event] = raceEvents[msg.event] ?? {};
-    const event = raceEvents[msg.event];
-    if ('round' in msg) {
-      event[msg.round] = event[msg.round] ?? {};
-      const round = event[msg.round];
-      if ('heat' in msg) {
-        round[msg.heat] = round[msg.heat] ?? {pilots: {}, lastRaceUpdate: 0};
-        const heat = round[msg.heat];
-        if ('startTime' in msg) {
-          heat.startTime = msg.startTime;
-        }
-        if ('finishTime' in msg) {
-          heat.finishTime = msg.finishTime;
-        }
-        if ('stopTime' in msg) {
-          heat.stopTime = msg.stopTime;
-        }
-        if ('pilot' in msg) {
-          const pilots = heat.pilots;
-          pilots[msg.pilot] = pilots[msg.pilot] ?? {name: msg.pilot, laps: []};
-          const pilot = pilots[msg.pilot];
-          if ('lap' in msg) {
-            const lapData = {lap: msg.lap, timestamp: msg.timestamp, location: msg.location};
-            pilot.laps.push(lapData);
-          } else if ('laps' in msg) {
-            pilot.laps.push(...msg['laps']);
-          }
-          if (pilot.laps.length > 0) {
-            heat.lastRaceUpdate = Math.max(pilot.laps[pilot.laps.length-1].timestamp, heat.lastRaceUpdate);
-          }
-        }
-      }
+  if (!('event' in msg)) {
+    return;
+  }
+  raceEvents[msg.event] = raceEvents[msg.event] ?? {};
+  const event = raceEvents[msg.event];
+
+  if (!('stage' in msg)) {
+    return;
+  }
+  event[msg.stage] = event[msg.stage] ?? {};
+  const stage = event[msg.stage];
+
+  if (!('round' in msg)) {
+    return;
+  }
+  stage[msg.round] = stage[msg.round] ?? {};
+  const round = stage[msg.round];
+
+  if (!('heat' in msg)) {
+    return;
+  }
+  round[msg.heat] = round[msg.heat] ?? {pilots: {}, lastRaceUpdate: 0};
+  const heat = round[msg.heat];
+
+  if ('startTime' in msg) {
+    heat.startTime = msg.startTime;
+  }
+  if ('finishTime' in msg) {
+    heat.finishTime = msg.finishTime;
+  }
+  if ('stopTime' in msg) {
+    heat.stopTime = msg.stopTime;
+  }
+  if ('pilot' in msg) {
+    const pilots = heat.pilots;
+    pilots[msg.pilot] = pilots[msg.pilot] ?? {name: msg.pilot, laps: []};
+    const pilot = pilots[msg.pilot];
+    if ('lap' in msg) {
+      const lapData = {lap: msg.lap, timestamp: msg.timestamp, location: msg.location};
+      pilot.laps.push(lapData);
+    } else if ('laps' in msg) {
+      pilot.laps.push(...msg['laps']);
+    }
+    if (pilot.laps.length > 0) {
+      heat.lastRaceUpdate = Math.max(pilot.laps[pilot.laps.length-1].timestamp, heat.lastRaceUpdate);
     }
   }
 }
@@ -71,25 +83,27 @@ function processMessage(msg, raceEvents) {
 function getRaceListener(setMqttData) {
   return (topic, payload) => {
     const parts = util.splitTopic(topic);
-    const event = parts[parts.length-3];
+    const event = parts[parts.length-4];
+    const stage = parts[parts.length-3];
     const round = parts[parts.length-2];
     const heat = parts[parts.length-1];
     const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
-    setMqttData((old) => [...old, {event, round, heat, ...msg}]);
+    setMqttData((old) => [...old, {event, stage, round, heat, ...msg}]);
   };
 }
 
 function getLapListener(setMqttData) {
   return (topic, payload) => {
     const parts = util.splitTopic(topic);
-    const event = parts[parts.length-6];
+    const event = parts[parts.length-7];
+    const stage = parts[parts.length-6];
     const round = parts[parts.length-5];
     const heat = parts[parts.length-4];
     const pilot = parts[parts.length-3];
     const lap = Number(parts[parts.length-2]);
     const location = Number(parts[parts.length-1]);
     const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
-    setMqttData((old) => [...old, {event, round, heat, pilot, lap, location, ...msg}]);
+    setMqttData((old) => [...old, {event, stage, round, heat, pilot, lap, location, ...msg}]);
   };
 }
 
@@ -99,10 +113,12 @@ export default function Results(props) {
   const [flyTo, setFlyTo] = useState(null);
   const [timerMapping, setTimerMapping] = useState([]);
   const [timedLocations, setTimedLocations] = useState([]);
+  const [eventData, setEventData] = useState({});
   const [resultData, setResultData] = useState({});
   const [mqttRaceData, setMqttRaceData] = useState([]);
   const [mqttLapData, setMqttLapData] = useState([]);
   const [selectedEvent, setEvent] = useState('');
+  const [selectedStage, setStage] = useState('');
   const [selectedRound, setRound] = useState('');
   const [selectedHeat, setHeat] = useState('');
 
@@ -129,6 +145,14 @@ export default function Results(props) {
     });
     return () => loader.cancel();
   }, []);
+
+  useEffect(() => {
+    const loader = createEventDataLoader(selectedEvent);
+    loader.load(null, (data) => {
+      setEventData(data);
+    });
+    return () => loader.cancel();
+  }, [selectedEvent]);
 
   useEffect(() => {
     if (trackData?.layout) {
@@ -163,7 +187,7 @@ export default function Results(props) {
 
   useEffect(() => {
     if (mqttConfig?.raceAnnTopic) {
-      const raceTopic = util.makeTopic(mqttConfig.raceAnnTopic, ['+', '+', '+']);
+      const raceTopic = util.makeTopic(mqttConfig.raceAnnTopic, ['+', '+', '+', '+']);
       const mqttSubscriber = (setMqttData) => {
         const raceListener = getRaceListener(setMqttData);
         const mqttClient = getMqttClient();
@@ -180,8 +204,8 @@ export default function Results(props) {
   }, [mqttConfig]);
 
   useEffect(() => {
-    if (mqttConfig?.raceAnnTopic && selectedEvent && selectedRound && selectedHeat) {
-      const lapTopic = util.makeTopic(mqttConfig.raceAnnTopic, [selectedEvent, selectedRound, selectedHeat, '+', '+', '+']);
+    if (mqttConfig?.raceAnnTopic && selectedEvent && selectedStage && selectedRound && selectedHeat) {
+      const lapTopic = util.makeTopic(mqttConfig.raceAnnTopic, [selectedEvent, selectedStage, selectedRound, selectedHeat, '+', '+', '+']);
       const mqttSubscriber = (setMqttData) => {
         const lapListener = getLapListener(setMqttData);
         const mqttClient = getMqttClient();
@@ -195,19 +219,23 @@ export default function Results(props) {
       };
       return mqttSubscriber(setMqttLapData);
     }
-  }, [mqttConfig, selectedEvent, selectedRound, selectedHeat]);
+  }, [mqttConfig, selectedEvent, selectedStage, selectedRound, selectedHeat]);
 
   util.useInterval(() => {
     const loader = createResultDataLoader();
     loader.load(processResults, (data) => {
       setResultData(data);
-      setMqttRaceData((old) => old.filter((msg) => !data?.[msg.event]?.[msg.round]?.[msg.heat]?.stopTimestamp));
-      setMqttLapData((old) => old.filter((msg) => msg.timestamp > data?.[msg.event]?.[msg.round]?.[msg.heat]?.lastRaceUpdate));
+      setMqttRaceData((old) => old.filter((msg) => !data?.[msg.event]?.[msg.stage]?.[msg.round]?.[msg.heat]?.stopTimestamp));
+      setMqttLapData((old) => old.filter((msg) => msg.timestamp > data?.[msg.event]?.[msg.stage]?.[msg.round]?.[msg.heat]?.lastRaceUpdate));
     });
   }, 60000);
 
   const selectEvent = (event) => {
     setEvent(event);
+  };
+
+  const selectStage = (stage) => {
+    setStage(stage);
   };
 
   const selectRound = (round) => {
@@ -226,27 +254,37 @@ export default function Results(props) {
   }
 
   const eventNames = Object.keys(resultData);
+  let stageData = {};
+  let stageNames = [];
   let roundData = {};
   let roundNames = [];
   let heatData = {};
   let heatNames = [];
   let heat = {pilots: {}};
   if (selectedEvent in resultData) {
-    roundData = resultData[selectedEvent];
-    roundNames = Object.keys(roundData);
-    if (selectedRound in roundData) {
-      heatData = roundData[selectedRound];
-      heatNames = Object.keys(heatData);
-      if (selectedHeat in heatData) {
-        heat = heatData[selectedHeat];
+    stageData = resultData[selectedEvent];
+    stageNames = Object.keys(stageData);
+    if (selectedStage in stageData) {
+      roundData = stageData[selectedStage];
+      roundNames = Object.keys(roundData);
+      if (selectedRound in roundData) {
+        heatData = roundData[selectedRound];
+        heatNames = Object.keys(heatData);
+        if (selectedHeat in heatData) {
+          heat = heatData[selectedHeat];
+        } else {
+          if (heatNames.length > 0) {
+            setHeat(heatNames[heatNames.length-1]);
+          }
+        }
       } else {
-        if (heatNames.length > 0) {
-          setHeat(heatNames[heatNames.length-1]);
+        if (roundNames.length > 0) {
+          setRound(roundNames[roundNames.length-1]);
         }
       }
     } else {
-      if (roundNames.length > 0) {
-        setRound(roundNames[roundNames.length-1]);
+      if (stageNames.length > 0) {
+        setStage(stageNames[stageNames.length-1]);
       }
     }
   } else {
@@ -290,9 +328,10 @@ export default function Results(props) {
 
   return (
     <Stack direction="column" alignItems="stretch">
+      <Stack direction="row">
       <FormControl>
         <InputLabel id="event-label">Event</InputLabel>
-        <Select labelId="event-label" value={selectedEvent} onChange={(evt) => selectEvent(evt.target.value)}>
+        <Select labelId="event-label" sx={{minWidth: '6em'}} value={selectedEvent} onChange={(evt) => selectEvent(evt.target.value)}>
         {eventNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{name}</MenuItem>
@@ -301,8 +340,18 @@ export default function Results(props) {
         </Select>
       </FormControl>
       <FormControl>
+        <InputLabel id="stage-label">Stage</InputLabel>
+        <Select labelId="stage-label" sx={{minWidth: '6em'}} value={selectedStage} onChange={(evt) => selectStage(evt.target.value)}>
+        {stageNames.map((name) => {
+          return (
+          <MenuItem key={name} value={name}>{eventData.stages?.find((s)=>s.id===name)?.name ?? name}</MenuItem>
+          );
+        })}
+        </Select>
+      </FormControl>
+      <FormControl>
         <InputLabel id="round-label">Round</InputLabel>
-        <Select labelId="round-label" value={selectedRound} onChange={(evt) => selectRound(evt.target.value)}>
+        <Select labelId="round-label" sx={{minWidth: '6em'}} value={selectedRound} onChange={(evt) => selectRound(evt.target.value)}>
         {roundNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{name}</MenuItem>
@@ -312,14 +361,15 @@ export default function Results(props) {
       </FormControl>
       <FormControl>
         <InputLabel id="heat-label">Heat</InputLabel>
-        <Select labelId="heat-label" value={selectedHeat} onChange={(evt) => selectHeat(evt.target.value)}>
+        <Select labelId="heat-label" sx={{minWidth: '5em'}} value={selectedHeat} onChange={(evt) => selectHeat(evt.target.value)}>
         {heatNames.map((name) => {
           return (
-          <MenuItem key={name} value={name}>{name}</MenuItem>
+          <MenuItem key={name} value={name}>{eventData.stages?.find((s)=>s.id===selectedStage)?.races?.find((r)=>r.id===name)?.name ?? name}</MenuItem>
           );
         })}
         </Select>
       </FormControl>
+      </Stack>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

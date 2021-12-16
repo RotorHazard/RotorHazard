@@ -104,7 +104,9 @@ def on_sync_event():
         for node, pilot_id in heats[h].items():
             rhdata.alter_heat({'heat': rhheats[h].id, 'node': node, 'pilot': pilot_id})
     for h in range(len(rhheats), len(heats)):
-        rhdata.add_heat(initPilots=heats[h])
+        rhdata.add_heat(init={'stage': 'Qualifying'}, initPilots=heats[h])
+    for i in range(len(rhheats)-1, len(heats)-1, -1):
+        rhdata.delete_heat(rhheats[i].id)
 
     current_app.rhserver['on_set_profile']({'profile': rhprofile.id})
     current_app.rhserver['emit_pilot_data']()

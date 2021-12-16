@@ -98,6 +98,7 @@ export default function Frequency(props) {
     </FormControl>
     <TextField label="Frequency" helperText="0 to disable"
       value={frequency}
+      sx={{minWidth: '6em'}}
       onChange={(evt) => changeFrequency(evt.target.value)}
       inputProps={{
       step: 5,

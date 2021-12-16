@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import create_engine, MetaData, Table
 from datetime import datetime
 import os
-import traceback
 import shutil
 import json
 import jsonschema
@@ -21,11 +20,9 @@ from .eventmanager import Evt
 from .RHRace import RaceStatus, RaceMode, WinCondition, StagingTones, StartBehavior
 from .Results import CacheStatus
 
+QUALIFYING_STAGE = 'Qualifying'
+MAINS_STAGE = 'Mains'
 EMPTY_DICT = MappingProxyType({})
-
-
-def _get_default_stage_name(heat):
-    return 'Mains' if (not hasattr(heat, 'note')) or (heat.note and heat.note.endswith(' Main')) else 'Qualifying'
 
 
 def unique_id():
@@ -95,11 +92,12 @@ class RHData():
             self.reset_all(nofill) # Fill with defaults
             return True
         except Exception as ex:
-            logger.error('Error creating database: ' + str(ex))
+            logger.error('Error creating database', exc_info=ex)
             return False
 
     def reset_all(self, nofill=False):
         self.reset_pilots()
+        self.reset_stages(nofill=nofill)
         self.reset_heats(nofill=nofill)
         self.clear_race_data()
         self.reset_profiles()
@@ -112,7 +110,7 @@ class RHData():
             self._Database.DB.session.commit()
             return True
         except Exception as ex:
-            logger.error('Error writing to database: ' + str(ex))
+            logger.error('Error writing to database', exc_info=ex)
             return False
 
     def close(self):
@@ -120,7 +118,7 @@ class RHData():
             self._Database.DB.session.close()
             return True
         except Exception as ex:
-            logger.error('Error closing to database: ' + str(ex))
+            logger.error('Error closing to database', exc_info=ex)
             return False
 
     # File Handling
@@ -188,7 +186,7 @@ class RHData():
             return output
 
         except Exception as ex:
-            logger.warning('Unable to read "{0}" table from previous database'.format(table_name), ex)
+            logger.warning('Unable to read "{0}" table from previous database'.format(table_name), exc_info=ex)
 
     def restore_table(self, class_type, table_query_data, defaults=EMPTY_DICT):
         if table_query_data:
@@ -230,8 +228,7 @@ class RHData():
                         self._Database.DB.session.flush()
                 logger.info('Database table "{0}" restored'.format(class_type.__name__))
             except Exception as ex:
-                logger.warning('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
-                logger.debug(traceback.format_exc())
+                logger.warning('Error restoring "{0}" table from previous database'.format(class_type.__name__), exc_info=ex)
         else:
             logger.debug('Error restoring "{0}" table: no data'.format(class_type.__name__))
 
@@ -271,6 +268,7 @@ class RHData():
             raceMeta_query_data = self.get_legacy_table_data(metadata, 'saved_race_meta')
             racePilot_query_data = self.get_legacy_table_data(metadata, 'saved_pilot_race')
             raceLap_query_data = self.get_legacy_table_data(metadata, 'saved_race_lap')
+            stage_query_data = self.get_legacy_table_data(metadata, 'stage')
 
             engine.dispose() # close connection after loading
 
@@ -305,7 +303,12 @@ class RHData():
                 "osd_positionHeader",
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
-                "nextHeatBehavior"
+                "nextHeatBehavior",
+                "eventName",
+                "eventDecription",
+                "eventURL",
+                "trackLayout",
+                "timerMapping"
             ]
 
             # RSSI reduced by half for 2.0.0
@@ -331,8 +334,7 @@ class RHData():
 
             recover_status['stage_0'] = True
         except Exception as ex:
-            logger.warning('Error reading data from previous database (stage 0):  ' + str(ex))
-            logger.debug(traceback.format_exc())
+            logger.warning('Error reading data from previous database (stage 0)', exc_info=ex)
 
         if "startup" in kwargs:
             self.backup_db_file(False)  # rename and move DB file
@@ -357,6 +359,12 @@ class RHData():
                 else:
                     self.reset_pilots()
 
+                if stage_query_data:
+                    self._Database.DB.session.query(self._Database.Stage).delete()
+                    self.restore_table(self._Database.Stage, stage_query_data)
+                else:
+                    self.reset_stages()
+
                 if migrate_db_api < 27:
                     # old heat DB structure; migrate node 0 to heat table
 
@@ -379,7 +387,7 @@ class RHData():
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
                                 'cacheStatus': CacheStatus.INVALID,
-                                'stage': _get_default_stage_name
+                                'stage_id': self.get_default_stage_id
                             })
 
                         # extract pilots from heats and load into heatnode
@@ -409,7 +417,7 @@ class RHData():
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
                                 'cacheStatus': CacheStatus.INVALID,
-                                'stage': _get_default_stage_name
+                                'stage_id': self.get_default_stage_id
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
@@ -465,8 +473,7 @@ class RHData():
 
                 recover_status['stage_1'] = True
             except Exception as ex:
-                logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
-                logger.debug(traceback.format_exc())
+                logger.warning('Error while writing data from previous database (stage 1)', exc_info=ex)
                 # failed recovery, db reset
                 self.reset_all()
                 self.commit()
@@ -500,8 +507,7 @@ class RHData():
 
                     recover_status['stage_2'] = True
                 except Exception as ex:
-                    logger.warning('Error while writing data from previous database (stage 2):  ' + str(ex))
-                    logger.debug(traceback.format_exc())
+                    logger.warning('Error while writing data from previous database (stage 2)', exc_info=ex)
 
         self.commit()
 
@@ -660,6 +666,43 @@ class RHData():
         logger.info('Database pilots reset')
         return True
 
+    def get_or_insert_stage(self, name):
+        stage = self._Database.Stage.query.filter_by(name=name).one_or_none()
+        if not stage:
+            stage = self._Database.Stage(name=name)
+            self._Database.DB.session.add(stage)
+            self.commit()
+        return stage
+    
+    def get_default_stage_id(self, heat):
+        if hasattr(heat, 'note'):
+            if heat.note:
+                stage_name = MAINS_STAGE if heat.note.endswith(' Main') else QUALIFYING_STAGE
+                parts = heat.note.split(' ')
+                if len(parts) >= 3:
+                    stage_name = parts[0] + ' ' + stage_name
+            else:
+                stage_name = QUALIFYING_STAGE
+        else:
+            stage_name = MAINS_STAGE
+        stage = self.get_or_insert_stage(stage_name)
+        return stage.id
+
+    def reset_stages(self, nofill=False):
+        self._Database.DB.session.query(self._Database.Stage).delete()
+        self.commit()
+        if not nofill:
+            default_stages = [
+                {'name': QUALIFYING_STAGE},
+                {'name': MAINS_STAGE}
+            ]
+            for stage_data in default_stages:
+                if not self._Database.Stage.query.filter_by(name=stage_data['name']).one_or_none():
+                    stage_obj = self._Database.Stage(name=stage_data['name'])
+                    self._Database.DB.session.add(stage_obj)
+            self.commit()
+        return True
+
     # Heats
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
@@ -669,7 +712,7 @@ class RHData():
         return heat_data.note if heat_data else None
 
     def get_heats(self):
-        return self._Database.Heat.query.all()
+        return self._Database.Heat.query.order_by(self._Database.Heat.stage_id, self._Database.Heat.id).all()
 
     def get_heats_by_class(self, class_id):
         return self._Database.Heat.query.filter_by(class_id=class_id).all()
@@ -678,8 +721,12 @@ class RHData():
         return self._Database.Heat.query.first()
 
     def add_heat(self, init=EMPTY_DICT, initPilots=EMPTY_DICT):
+        stage_name = init['stage']
+        stage = self.get_or_insert_stage(stage_name)
+
         # Add new heat
         new_heat = self._Database.Heat(
+            stage_id=stage.id,
             class_id=RHUtils.CLASS_ID_NONE,
             cacheStatus=CacheStatus.INVALID
             )
@@ -688,10 +735,6 @@ class RHData():
             new_heat.class_id = init['class_id']
         if 'note' in init:
             new_heat.note = init['note']
-        if 'stage' in init:
-            new_heat.stage = init['stage']
-        else:
-            new_heat.stage = _get_default_stage_name(new_heat)
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -735,7 +778,8 @@ class RHData():
         else:
             new_class = source_heat.class_id
 
-        new_heat = self._Database.Heat(note=new_heat_note,
+        new_heat = self._Database.Heat(stage_id=source_heat.stage_id,
+            note=new_heat_note,
             class_id=new_class,
             results=None,
             cacheStatus=CacheStatus.INVALID)
@@ -771,7 +815,8 @@ class RHData():
             self._PageCache.set_valid(False)
             heat.note = data['note']
         if 'stage' in data and heat.stage != data['stage']:
-            heat.stage = data['stage']
+            stage = self.get_or_insert_stage(data['stage'])
+            heat.stage_id = stage.id
         if 'class' in data and heat.class_id != data['class']:
             old_class_id = heat.class_id
             heat.class_id = data['class']
@@ -874,7 +919,7 @@ class RHData():
                             else:
                                 logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                     except Exception as ex:
-                        logger.warning("Error adjusting single remaining heat ID: " + str(ex))
+                        logger.warning("Error adjusting single remaining heat ID", exc_info=ex)
 
                 return heat_id
         else:
@@ -916,7 +961,7 @@ class RHData():
     def reset_heats(self, nofill=False):
         self.clear_heats()
         if not nofill:
-            self.add_heat()
+            self.add_heat(init={'stage':QUALIFYING_STAGE})
             self._RACE.current_heat = self.get_first_heat().id
         logger.info('Database heats reset')
 

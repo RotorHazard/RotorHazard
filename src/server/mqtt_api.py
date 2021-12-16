@@ -37,6 +37,7 @@ class MqttAPI:
         self.client.message_callback_remove(topic)
 
     def start(self):
+        logger.info('MQTT API started')
         self._subscribe_to('enter', self.enter_handler)
         self._subscribe_to('exit', self.exit_handler)
         self._subscribe_to('pass', self.pass_handler)
@@ -53,6 +54,7 @@ class MqttAPI:
         self._unsubscibe_from('bandChannel')
         self._unsubscibe_from('enterTrigger')
         self._unsubscibe_from('exitTrigger')
+        logger.info('MQTT API stopped')
 
     def _get_node_from_topic(self, topic):
         topicNames = split_topic(topic)

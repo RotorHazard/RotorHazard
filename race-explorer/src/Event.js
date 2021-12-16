@@ -205,7 +205,7 @@ function RacesTable(props) {
                 <IconButton onClick={deleteRace}><DeleteIcon/></IconButton>
               </TableCell>
               <TableCell component="th" scope="row">
-                <ValidatingTextField value={race.name} validateChange={changeRaceName}/>
+                <ValidatingTextField value={race.name} sx={{minWidth: "5em"}} validateChange={changeRaceName}/>
               </TableCell>
               <TableCell>
                 <RaceClassSelector value={race.class} raceClasses={props.raceClasses} onSelect={selectRaceClass}/>

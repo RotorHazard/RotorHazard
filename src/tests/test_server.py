@@ -2,6 +2,7 @@ import os
 import unittest
 import gevent
 from datetime import datetime
+from monotonic import monotonic
 
 os.environ['RH_CONFIG'] = 'config-dist.json'
 TEST_DB = 'test-database.db'
@@ -10,8 +11,7 @@ if os.path.isfile(TEST_DB):
 os.environ['RH_DATABASE'] = TEST_DB
 os.environ['RH_INTERFACE'] = 'Mock'
 
-from server import server, log, RHRace
-from interface.Node import NodeManager
+from server import server, RHRace
 import tests as tests_pkg
 
 
@@ -23,9 +23,13 @@ class ServerTest(unittest.TestCase):
         self.client.disconnect()
 
     @classmethod
+    def setUpClass(cls):
+        server.start()
+
+    @classmethod
     def tearDownClass(cls):
         server.shutdown('Tear down')
-        log.close_logging()
+        server.stop()
 
     def get_response(self, event):
         responses = self.client.get_received()
@@ -38,6 +42,15 @@ class ServerTest(unittest.TestCase):
         responses = self.client.get_received()
         evt_resps = filter(lambda resp: resp['name'] in events, responses)
         return [resp['args'][0] for resp in evt_resps]
+
+    def wait_for_response(self, event, max_wait):
+        expiry_time = monotonic() + max_wait
+        while monotonic() < expiry_time:
+            responses = self.client.get_received()
+            for resp in reversed(responses):
+                if resp['name'] == event:
+                    return resp['args'][0]
+        self.fail('No response of type {0}'.format(event))
 
     def test_sensors(self):
         server.SENSORS.clear()
@@ -201,6 +214,19 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['heats'][1]['pilots'][0], data['pilot'])
         self.assertEqual(resp['heats'][1]['note'], data['note'])
         self.assertEqual(resp['heats'][1]['class_id'], data['class'])
+
+    def test_run_a_race(self):
+        self.client.emit('alter_heat', {'heat':1, 'node':0, 'pilot':1})
+        self.client.emit('set_race_format', {'race_format': 5})
+        self.client.emit('stage_race')
+        self.get_response('stage_ready')
+        gevent.sleep(0.5)
+        self.get_response('race_status')
+        server.INTERFACE.simulate_lap(0)
+        gevent.sleep(0.1)
+        self.get_response('pass_record')
+        self.client.emit('stop_race')
+
 
 # scanner
 

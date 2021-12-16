@@ -38,13 +38,13 @@ export function createVtxTableLoader() {
   return vtxTableLoader;
 }
 
-export function createEventDataLoader() {
+export function createEventDataLoader(raceEvent) {
   return createLoader(config.eventDataEndpoint);
 }
 
 export async function storeEventData(eventData) {
   try {
-    await axios.post(config.eventDataEndpoint, eventData);
+    await axios.put(config.eventDataEndpoint, eventData);
   } catch (ex) {
     console.log(ex);
   }
@@ -56,7 +56,7 @@ export function createTrackDataLoader() {
 
 export async function storeTrackData(trackData) {
   try {
-    await axios.post(config.trackDataEndpoint, trackData);
+    await axios.put(config.trackDataEndpoint, trackData);
   } catch (ex) {
     console.log(ex);
   }
@@ -68,7 +68,7 @@ export function createTimerMappingLoader() {
 
 export async function storeTimerMapping(timerMapping) {
   try {
-    await axios.post(config.timerMappingEndpoint, timerMapping);
+    await axios.put(config.timerMappingEndpoint, timerMapping);
   } catch (ex) {
     console.log(ex);
   }

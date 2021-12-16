@@ -111,11 +111,13 @@ export default function Tracks(props) {
   }, []);
 
   useEffect(() => {
-    const data = {crs: crs, layout: trackLayout, types: locTypes};
-    if (crs === LOCAL_GRID) {
-      data.units = units;
+    if (trackLayout.length > 0) {
+      const data = {crs: crs, layout: trackLayout, types: locTypes};
+      if (crs === LOCAL_GRID) {
+        data.units = units;
+      }
+      saveTrackData(data);
     }
-    saveTrackData(data);
   }, [crs, units, locTypes, trackLayout]);
 
   const addLocation = () => {

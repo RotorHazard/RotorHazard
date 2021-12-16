@@ -3,7 +3,7 @@ from flask import request
 from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
 
-def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
+def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
     APP = Blueprint('race_explorer', __name__, static_url_path='/race-explorer', static_folder='../../race-explorer/build')
 
     @APP.route('/mqttConfig')
@@ -23,6 +23,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
             race_id = race.id
             round_id = race.round_id
             heat_id = race.heat_id
+            heat = RHData.get_heat(heat_id)
+            stage_id = heat.stage_id
             pilotraces = RHData.get_savedPilotRaces_by_savedRaceMeta(race.id)
             for pilotrace in pilotraces:
                 pilot = RHData.get_pilot(pilotrace.pilot_id)
@@ -34,7 +36,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                         lapsplits = RHData.get_lapSplits_by_lap(race_id, pilotrace.node_index, lap_id)
                         for lapsplit in lapsplits:
                             laps.append({'lap': lap_id, 'timestamp': lapsplit.split_time_stamp, 'location': lapsplit.split_id+1})
-                    msg = {'event': event_name, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
+                    msg = {'event': event_name, 'stage': stage_id, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
                     msgs.append(msg)
         return '\n'.join([json.dumps(msg) for msg in msgs])
 
@@ -78,14 +80,15 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
                     heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
             race_name = heat_data.note if heat_data.note else 'Heat '+str(heat_idx+1)
             race = {
+                'id': str(heat_data.id),
                 'name': race_name,
                 'class': race_classes_by_id[heat_data.class_id],
                 'seats': heat_seats
             }
-            stage_name = heat_data.stage
+            stage_name = heat_data.stage.name
             if stage_name != prev_stage_name:
                 races = []
-                stage = {'name': stage_name, 'races': races}
+                stage = {'id': str(heat_data.stage_id), 'name': stage_name, 'races': races}
                 stages.append(stage)
                 prev_stage_name = stage_name
             races.append(race)
@@ -100,49 +103,10 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
         }
         return data
 
-    @APP.route('/raceEvent', methods=['POST'])
+    @APP.route('/raceEvent', methods=['PUT'])
     def race_event_post():
         data = request.get_json()
-        RHData.set_option('eventName', data['name'])
-        RHData.set_option('eventDescription', data['description'])
-        RHData.set_option('eventURL', data['url'])
-
-        seats = data['seats']
-        profile_data = {'profile_name': data['name'],
-                        'frequencies': {'b': [s['bandChannel'][0] if 'bandChannel' in s else None for s in seats],
-                                        'c': [int(s['bandChannel'][1]) if 'bandChannel' in s else None for s in seats],
-                                        'f': [s['frequency'] for s in seats]
-                                        }
-                        }
-        RHData.upsert_profile(profile_data)
-
-        stages = data['stages']
-        heats = RHData.get_heats()
-        pilot_ids = {}
-        for pilot in RHData.get_pilots():
-            pilot_ids[pilot.callsign] = pilot.id
-        h = 0
-        for stage in stages:
-            for race in stage['races']:
-                if h < len(heats):
-                    heat = heats[h]
-                    heat_nodes = RHData.get_heatNodes_by_heat(heat.id)
-                    for seat_index in range(len(heat_nodes), len(race['seats'])):
-                        RHData.add_heatNode(heat.id, seat_index)
-                    for seat,callsign in enumerate(race['seats']):
-                        if callsign in pilot_ids:
-                            heat_data = {'heat': heat.id, 'note': race['name'], 'stage': stage['name'], 'node': seat, 'pilot': pilot_ids[callsign]}
-                            RHData.alter_heat(heat_data)
-                else:
-                    heat_data = {'note': race['name'], 'stage': stage['name']}
-                    heat_pilots = {}
-                    for seat,callsign in enumerate(race['seats']):
-                        if callsign in pilot_ids:
-                            heat_pilots[seat] = pilot_ids[callsign]
-                    RHData.add_heat(init=heat_data, initPilots=heat_pilots)
-                h += 1
-        for i in range(len(heats)-1, h, -1):
-            RHData.delete_heat(heats[i].id)
+        import_event(data, rhserver)
         return '', 204
 
     @APP.route('/trackLayout', methods=['GET'])
@@ -160,7 +124,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
             RHData.set_option('trackLayout', json.dumps(track))
         return track
 
-    @APP.route('/trackLayout', methods=['POST'])
+    @APP.route('/trackLayout', methods=['PUT'])
     def track_layout_post():
         data = request.get_json()
         RHData.set_option('trackLayout', json.dumps(data))
@@ -181,7 +145,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
             RHData.set_option('timerMapping', json.dumps(timerMapping))
         return timerMapping
 
-    @APP.route('/timerMapping', methods=['POST'])
+    @APP.route('/timerMapping', methods=['PUT'])
     def timer_mapping_post():
         data = request.get_json()
         RHData.set_option('timerMapping', json.dumps(data))
@@ -214,3 +178,50 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData):
 
     return APP
 
+
+def import_event(data, rhserver):
+    RHData = rhserver['RHData']
+    RHData.set_option('eventName', data['name'])
+    RHData.set_option('eventDescription', data['description'])
+    RHData.set_option('eventURL', data['url'])
+
+    seats = data['seats']
+    profile_data = {'profile_name': data['name'],
+                    'frequencies': {'b': [s['bandChannel'][0] if 'bandChannel' in s else None for s in seats],
+                                    'c': [int(s['bandChannel'][1]) if 'bandChannel' in s else None for s in seats],
+                                    'f': [s['frequency'] for s in seats]
+                                    }
+                    }
+    profile = RHData.upsert_profile(profile_data)
+
+    stages = data['stages']
+    heats = RHData.get_heats()
+    pilot_ids = {}
+    for pilot in RHData.get_pilots():
+        pilot_ids[pilot.callsign] = pilot.id
+    h = 0
+    for stage in stages:
+        for race in stage['races']:
+            if h < len(heats):
+                heat = heats[h]
+                heat_nodes = RHData.get_heatNodes_by_heat(heat.id)
+                for seat_index in range(len(heat_nodes), len(race['seats'])):
+                    RHData.add_heatNode(heat.id, seat_index)
+                for seat,callsign in enumerate(race['seats']):
+                    if callsign in pilot_ids:
+                        heat_data = {'heat': heat.id, 'note': race['name'], 'stage': stage['name'], 'node': seat, 'pilot': pilot_ids[callsign]}
+                        RHData.alter_heat(heat_data)
+            else:
+                heat_data = {'note': race['name'], 'stage': stage['name']}
+                heat_pilots = {}
+                for seat,callsign in enumerate(race['seats']):
+                    if callsign in pilot_ids:
+                        heat_pilots[seat] = pilot_ids[callsign]
+                RHData.add_heat(init=heat_data, initPilots=heat_pilots)
+            h += 1
+    for i in range(len(heats)-1, h-1, -1):
+        RHData.delete_heat(heats[i].id)
+
+    rhserver['on_set_profile']({'profile': profile.id})
+    rhserver['emit_pilot_data']()
+    rhserver['emit_heat_data']()
