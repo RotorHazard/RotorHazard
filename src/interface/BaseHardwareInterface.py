@@ -163,17 +163,17 @@ class BaseHardwareInterface:
                 logger.warn('Invalid exit trigger message')
 
     def _mqtt_publish_frequency(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "frequency"), str(node.frequency))
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "frequency"), str(node.frequency), retain=True)
 
     def _mqtt_publish_bandChannel(self, node):
         if node.bandChannel:
-            self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "bandChannel"), node.bandChannel)
+            self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "bandChannel"), node.bandChannel, retain=True)
 
     def _mqtt_publish_enter_trigger(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "enterTrigger"), str(node.enter_at_level))
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "enterTrigger"), str(node.enter_at_level), retain=True)
 
     def _mqtt_publish_exit_trigger(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exitTrigger"), str(node.exit_at_level))
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exitTrigger"), str(node.exit_at_level), retain=True)
 
     def _mqtt_publish_enter(self, node):
         msg = {'lap': node.node_lap_id+1, 'timestamp': str(node.enter_at_timestamp), 'rssi': node.current_rssi}
