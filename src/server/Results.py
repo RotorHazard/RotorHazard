@@ -13,6 +13,26 @@ from .RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 logger = logging.getLogger(__name__)
 
 
+def fastest_3_consecutive_builder(leaderboard):
+    return 'by_consecutives'
+
+
+def fastest_lap_builder(leaderboard):
+    return 'by_fastest_lap'
+
+
+def race_time_builder(leaderboard):
+    return 'by_race_time'
+
+
+LEADERBOARD_BUILDERS = {
+    WinCondition.FASTEST_3_CONSECUTIVE: fastest_3_consecutive_builder,
+    WinCondition.FASTEST_LAP: fastest_lap_builder,
+    WinCondition.NONE: race_time_builder,
+    WinCondition.MOST_LAPS: race_time_builder,
+    WinCondition.FIRST_TO_LAP_X: race_time_builder,
+}
+
 def _current_race_cache_key(*args, **kwargs):
     current_race = args[0]
     return cachetools.hashkey(id(current_race), current_race.modification_count)
@@ -540,14 +560,10 @@ class Results:
         }
     
         if race_format:
-            if race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                primary_leaderboard = 'by_consecutives'
-            elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                primary_leaderboard = 'by_fastest_lap'
+            builder = LEADERBOARD_BUILDERS.get(race_format.win_condition, None)
+            if builder:
+                primary_leaderboard = builder(leaderboard_output)
             else:
-                # WinCondition.NONE
-                # WinCondition.MOST_LAPS
-                # WinCondition.FIRST_TO_LAP_X
                 primary_leaderboard = 'by_race_time'
     
             leaderboard_output['meta'] = {
