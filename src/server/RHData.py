@@ -953,14 +953,19 @@ class RHData():
     def get_raceClasses(self):
         return self._Database.RaceClass.query.all()
 
-    def add_raceClass(self):
+    def add_raceClass(self, init=EMPTY_DICT):
         # Add new race class
         new_race_class = self._Database.RaceClass(
-            name='',
-            description='',
-            format_id=RHUtils.FORMAT_ID_NONE
+            name=init['name'] if 'name' in init else '',
+            description=init['description'] if 'description' in init else '',
+            format_id=init['format_id'] if 'format_id' in init else RHUtils.FORMAT_ID_NONE
             )
         self._Database.DB.session.add(new_race_class)
+        self._Database.DB.session.flush()
+
+        if not new_race_class.name:
+            new_race_class.name = 'Class {}'.format(new_race_class.id)
+
         self.commit()
 
         self._Events.trigger(Evt.CLASS_ADD, {
@@ -1229,6 +1234,8 @@ class RHData():
         if init:
             if 'format_name' in init:
                 race_format.name = init['format_name']
+            else:
+                race_format.name = 'Format '+unique_id()
             if 'race_mode' in init:
                 race_format.race_mode = init['race_mode']
             if 'race_time_sec' in init:

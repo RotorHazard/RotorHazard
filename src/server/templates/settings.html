@@ -1046,7 +1046,11 @@
 
 		$('button#sync_event').click(function (event) {
 			$(this).prop('disabled', true);
-			socket.emit('sync_event')
+			socket.emit('set_option', {
+			  option: 'eventURL',
+			  value: $('#set_event_url').val()
+			});
+			socket.emit('sync_event');
 		});
 
 		$('button#add_race_class').click(function (event) {

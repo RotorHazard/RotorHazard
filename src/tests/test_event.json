@@ -1,0 +1,81 @@
+{
+	"name": "Test event",
+	"date": "2011-04-12",
+	"seats": [
+		{
+			"frequency": 5658,
+			"bandChannel": "R1"
+		},
+		{
+			"frequency": 5695,
+			"bandChannel": "R2"
+		},
+		{
+			"frequency": 5760,
+			"bandChannel": "F2"
+		},
+		{
+			"frequency": 5800,
+			"bandChannel": "F4"
+		}
+	],
+	"pilots": {
+		"P1": {
+			"name": "Pilot 1",
+			"url": "https://some.url.com"
+		},
+		"P2": {
+			"name": "Pilot 2",
+			"url": "https://some.url.com"
+		},
+		"P3": {
+			"name": "Pilot 3",
+			"url": "https://some.url.com"
+		},
+		"P4": {
+			"name": "Pilot 4",
+			"url": "https://some.url.com"
+		},
+		"P5": {
+			"name": "Pilot 5",
+			"url": "https://some.url.com"
+		},
+		"P6": {
+			"name": "Pilot 6",
+			"url": "https://some.url.com"
+		},
+		"P7": {
+			"name": "Pilot 7",
+			"url": "https://some.url.com"
+		},
+		"P8": {
+			"name": "Pilot 8",
+			"url": "https://some.url.com"
+		}
+	},
+	"stages": [
+		{
+			"name": "Qualifying",
+			"races": [
+				{
+					"name": "Heat 1",
+					"seats": [
+						"P1",
+						"P2",
+						"P3",
+						"P4"
+					]
+				},
+				{
+					"name": "Heat 2",
+					"seats": [
+						"P5",
+						"P6",
+						"P7",
+						"P8"
+					]
+				}
+			]
+		}
+	]
+}

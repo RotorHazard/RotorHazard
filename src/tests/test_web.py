@@ -1,8 +1,9 @@
 import unittest
+import json
 from server import web
 
 class WebTest(unittest.TestCase):
-    def test_ifpv(self):
+    def test_ifpv_pilot(self):
         url = 'https://league.ifpv.co.uk/pilots/220'
         data = web.get_pilot_data(url)
         if not data:
@@ -12,6 +13,14 @@ class WebTest(unittest.TestCase):
         self.assertEqual(data['name'], 'Jon Totham')
         self.assertEqual(data['callsign'], 'Vaxel')
         self.assertEqual(data['logo'], 'https://league.ifpv.co.uk/storage/images/pilots/1515246538.gif')
+
+    def test_ifpv_event(self):
+        with open('tests/test_ifpv_event.json') as f:
+            ifpv_json = json.loads(f.read())
+        actual_json = web.convert_ifpv_json(ifpv_json)
+        with open('tests/test_event.json') as f:
+            expected_json = json.loads(f.read())
+        self.assertEqual(actual_json, expected_json)
 
     def test_multigp(self):
         url  = 'https://www.multigp.com/pilots/view/?pilot=SeekND'

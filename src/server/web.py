@@ -6,6 +6,7 @@ from .socketio import SOCKET_IO
 from flask import current_app
 import json
 from .RHUtils import FREQS
+from .race_explorer_endpoints import import_event
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,47 @@ def convert_ifpv_freq(ifpv_bc):
     return b, c, f
 
 
+def convert_ifpv_json(ifpv_data):
+    event_name = ifpv_data['event']['name']
+    event_date = ifpv_data['event']['date']
+    num_heats = ifpv_data['event']['heats']
+
+    freqs = json.loads(ifpv_data['event']['frequencies'])
+    rhfreqs = [convert_ifpv_freq(f) for f in freqs]
+    seats = [
+        {'frequency': f,
+         'bandChannel': b+str(c)
+         } for b,c,f in rhfreqs
+        ]
+
+    pilots = {
+        pilot['callsign']: {'name': pilot['name'], 'url': pilot['pilot_url']}
+        for pilot in ifpv_data['pilots']
+    }
+
+    heats = [None] * num_heats
+    for pilot in ifpv_data['pilots']:
+        heat = pilot['heat']-1
+        seat = pilot['car']-1
+        if heats[heat] is None:
+            heats[heat] = {'name': 'Heat '+str(heat+1),
+                           'seats': [None] * len(seats)}
+        heats[heat]['seats'][seat] = pilot['callsign']
+
+    event_data = {
+        'name': event_name,
+        'date': event_date,
+        'seats': seats,
+        'pilots': pilots,
+        'stages': [
+            {'name': 'Qualifying',
+             'races': heats}
+        ]
+    }
+
+    return event_data
+
+
 @SOCKET_IO.on('sync_event')
 def on_sync_event():
     rhdata = current_app.rhserver['RHData']
@@ -65,49 +107,8 @@ def on_sync_event():
     if not event_url:
         return
 
+    logging.info("Syncing event...")
     resp = requests.get(event_url, timeout=TIMEOUT)
-    event_data = resp.json()
-    event_name = event_data['event']['name']
-    freqs = json.loads(event_data['event']['frequencies'])
-    rhfreqs = [convert_ifpv_freq(f) for f in freqs]
-
-    profile_data = {'profile_name': event_name,
-                    'frequencies': {'b': [b for b,_,_ in rhfreqs],
-                                    'c': [c for _,c,_ in rhfreqs],
-                                    'f': [f for _,_,f in rhfreqs]
-                                    }
-                    }
-    rhprofile = rhdata.upsert_profile(profile_data)
-
-    pilots_by_url = {}
-    for rhpilot in rhdata.get_pilots():
-        pilots_by_url[rhpilot.url] = rhpilot
-
-    heats = {}
-    for pilot in event_data['pilots']:
-        url = pilot['pilot_url']
-        heat = pilot['heat']-1
-        node = pilot['car']-1
-        if url in pilots_by_url:
-            rhpilot = pilots_by_url[url]
-        else:
-            # add new pilot
-            rhpilot = rhdata.add_pilot({'url': url})
-
-        if heat not in heats:
-            heats[heat] = {}
-        heats[heat][node] = rhpilot.id
-        
-
-    rhheats = rhdata.get_heats()
-    for h in range(min(len(heats), len(rhheats))):
-        for node, pilot_id in heats[h].items():
-            rhdata.alter_heat({'heat': rhheats[h].id, 'node': node, 'pilot': pilot_id})
-    for h in range(len(rhheats), len(heats)):
-        rhdata.add_heat(init={'stage': 'Qualifying'}, initPilots=heats[h])
-    for i in range(len(rhheats)-1, len(heats)-1, -1):
-        rhdata.delete_heat(rhheats[i].id)
-
-    current_app.rhserver['on_set_profile']({'profile': rhprofile.id})
-    current_app.rhserver['emit_pilot_data']()
-    current_app.rhserver['emit_heat_data']()
+    ifpv_data = resp.json()
+    event_data = convert_ifpv_json(ifpv_data)
+    import_event(event_data, current_app.rhserver)
