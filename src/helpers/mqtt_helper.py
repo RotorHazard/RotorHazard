@@ -1,3 +1,5 @@
+import gevent.monkey
+gevent.monkey.patch_all()
 import paho.mqtt.client as mqtt_client
 
 
@@ -31,11 +33,10 @@ def create(rhconfig):
     if 'CLIENT_CERT' in mqttConfig and mqttConfig['CLIENT_CERT'] and 'PRIVATE_KEY' in mqttConfig and mqttConfig['PRIVATE_KEY']:
         client.tls_set(certfile=mqttConfig['CLIENT_CERT'], keyfile=mqttConfig['PRIVATE_KEY'])
     client.connect(mqttConfig['BROKER'], mqttConfig['PORT'] if 'PORT' in mqttConfig else 1883)
-    client.loop_start()
+    gevent.spawn(client.loop_forever)
 
     def close(self):
         self.disconnect()
-        self.loop_stop()
 
     mqtt_client.Client.close = close
     return client
