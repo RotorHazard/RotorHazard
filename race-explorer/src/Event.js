@@ -18,6 +18,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import AddIcon from '@mui/icons-material/Add';
+import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { DndContext, DragOverlay, useDroppable, useDraggable, useSensors, useSensor, MouseSensor, TouchSensor, KeyboardSensor } from '@dnd-kit/core';
 import ValidatingTextField from './ValidatingTextField.js';
@@ -27,7 +28,7 @@ import { nanoid } from 'nanoid';
 import {
   createVtxTableLoader,
   createEventDataLoader, storeEventData,
-  createRaceGeneratorLoader, generateRace
+  createRaceGeneratorLoader, generateRaces
 } from './rh-client.js';
 
 const saveEventData = debounce(storeEventData, 2000);
@@ -170,7 +171,9 @@ function RacesTable(props) {
       <Table>
         <TableHead>
           <TableRow>
-          <TableCell><IconButton onClick={deleteRaces}><DeleteIcon/></IconButton></TableCell>
+          <TableCell><IconButton onClick={deleteRaces}>
+          {races.length > 0 ? <DeleteIcon/> : <ClearIcon/>}
+          </IconButton></TableCell>
           <TableCell>Race</TableCell>
           <TableCell>Class</TableCell>
           {props.seats?.map((fbc, idx) => {
@@ -360,9 +363,14 @@ function RaceStagePanel(props) {
       }
       return [paramName, value];
     }));
-    generateRace(endpoint, data, (races) => {
+    generateRaces(endpoint, data, (stageData) => {
+      const races = stageData.races;
       idifyRaces(races);
-      props.onChange(props.stage.races.concat(races));
+      let newStageName = props.stage.name;
+      if (newStageName !== 'Qualifying' && stageData.type) {
+        newStageName = stageData.type;
+      }
+      props.onChange(newStageName, props.stage.races.concat(races));
     });
   };
 
@@ -381,7 +389,7 @@ function RaceStagePanel(props) {
     {generatorUi.render(props, generatorUiState, setGeneratorUiState)}
     <Button onClick={generate}>Generate</Button>
     <RacesTable races={props.stage.races} seats={props.seats}
-      raceClasses={props.raceClasses} onChange={props.onChange}
+      raceClasses={props.raceClasses} onChange={(races) => props.onChange(props.stage.name, races)}
     />
     </div>
   );
@@ -438,6 +446,9 @@ function updateStage(oldStages, stageIdx, newVals, setStageIndex) {
   const newStages = [...oldStages];
   if (stageIdx === -1) {
     newStages.push(newVals);
+  } else if (newStages[stageIdx].races.length === 0 && newVals.races.length === 0) {
+    // delete stage on 'double' delete
+    newStages.splice(stageIdx, 1);
   } else {
     newStages[stageIdx] = copyStage(oldStages[stageIdx], newVals);
   }
@@ -517,9 +528,12 @@ export default function Event(props) {
 
   const stageTabs = stages.map((stage, stageIdx) => {
     const generators = (stageIdx > 0) ? MAINS_GENS : QUALIFYING_GENS;
+    const onStageChange = (name, races) => {
+      setStages((old) => updateStage(old, stageIdx, {name: name, races: races}, setStageIndex));
+    };
     return {label: stage.name, content: (
       <RaceStagePanel pilots={pilots} stage={stage} seats={seats} raceClasses={raceClasses} generators={generators}
-        onChange={(races) => {setStages((old) => updateStage(old, stageIdx, {races: races}, setStageIndex));}}
+        onChange={onStageChange}
       />
     )};
   });
@@ -664,7 +678,7 @@ export default function Event(props) {
         <Stack direction="row">
         {stageTab && (
           <Tabs sx={{borderBottom: 1, borderColor: 'divider'}} value={stageIndex}
-          onChange={(evt,idx)=>{setStageIndex(idx);}}>
+          variant="scrollable" onChange={(evt,idx)=>{setStageIndex(idx);}}>
           {
             stageTabs.map((entry) => {
               return <Tab key={entry.label} label={entry.label}/>;
@@ -673,7 +687,6 @@ export default function Event(props) {
           </Tabs>)
         }
         <IconButton onClick={() => {
-          const newRace = createRace(raceClasses, seats);
           let name;
           switch (stageTabs.length) {
             case 0:
@@ -686,7 +699,7 @@ export default function Event(props) {
               name = "New stage "+(stageTabs.length+1);
               break;
           }
-          setStages((old) => updateStage(old, -1, {name: name, races: [newRace]}, setStageIndex));
+          setStages((old) => updateStage(old, -1, {name: name, races: []}, setStageIndex));
         }}><AddIcon/></IconButton>
         </Stack>
         {stageTab?.content}

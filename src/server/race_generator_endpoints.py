@@ -35,7 +35,7 @@ def createBlueprint(PageCache):
                 i = 0
         if i > 0:
             heats.append({'name': 'Heat '+str(len(heats)+1), 'class': race_class, 'seats': seats})
-        return {'races': heats}
+        return {'type': 'Random', 'races': heats}
 
     @APP.route('/race-generators/mains', methods=['GET'])
     def mains_get():
@@ -43,7 +43,7 @@ def createBlueprint(PageCache):
             "parameters": [
                 {"name": "resultsClass", "label": "Results class", "type": "class"},
                 {"name": "mainsClass", "label": "Mains class", "type": "class"},
-                {"name": "seats", "label": "Seats", "type": "seats"},
+                {"name": "seats", "label": "Seats", "type": "seats"}
             ]
         }
 
@@ -91,7 +91,7 @@ def createBlueprint(PageCache):
             mains.append({'name': main_letter+' Main', 'class': mains_class, 'seats': seats})
             main_letter = chr(ord(main_letter) + 1)
         mains.reverse()
-        return {'races': mains}
+        return {'type': 'Mains', 'races': mains}
 
     @APP.route('/race-generators/mgp-brackets', methods=['GET'])
     def mgp_brackets_get():
@@ -217,6 +217,6 @@ def createBlueprint(PageCache):
                     seats.append(pilot)
                 mains.append({'name': 'Race '+str(i+race_offset), 'class': mains_class, 'seats': seats[:n_seats]})
     
-        return {'races': mains}
+        return {'type': 'MultiGP bracket '+str(bracket), 'races': mains}
 
     return APP
