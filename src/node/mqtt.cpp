@@ -27,8 +27,17 @@ void mqttEventRun() {
 #endif
     } else {
         if (mqttClient.connect(WIFI_HOSTNAME, MQTT_USERNAME, MQTT_PASSWORD)) {
-            char nodeTopicFilter[64] = "";
-            int n = sprintNodeTopic(nodeTopicFilter);
+            char topic[64] = "";
+            int n = sprintNodeTopic(topic);
+            char msg[128] = "";
+            int msgLen = sprints(msg, "{\"version\": \"");
+            msgLen += sprints(msg+msgLen, FIRMWARE_VERSION);
+            msgLen += sprints(msg+msgLen, "\", \"arch\": \"");
+            msgLen += sprints(msg+msgLen, hardware.getProcessorType());
+            msgLen += sprints(msg+msgLen, "\"}");
+            mqttClient.publish(topic, msg, msgLen);
+
+            char *nodeTopicFilter = topic;
             sprints(nodeTopicFilter+n, "/+/frequency");
             mqttClient.subscribe(nodeTopicFilter);
             sprints(nodeTopicFilter+n, "/+/power");
