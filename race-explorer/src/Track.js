@@ -84,7 +84,7 @@ export default function Tracks(props) {
   const [trackLayout, setTrackLayout] = useState([]);
   const [crs, setCRS] = useState(CRSS[0]);
   const [units, setUnits] = useState(UNITS[0]);
-  const [locTypes, setLocTypes] = useState('');
+  const [locTypes, setLocTypes] = useState([]);
   const [flyTo, setFlyTo] = useState(null);
   const newGateRef = useRef();
 

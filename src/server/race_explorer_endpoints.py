@@ -3,6 +3,7 @@ from flask import request
 from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
 
+
 def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
     APP = Blueprint('race_explorer', __name__, static_url_path='/race-explorer', static_folder='../../race-explorer/build')
 
@@ -76,7 +77,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         for heat_idx, heat_data in enumerate(RHData.get_heats()):
             heat_seats = [None] * len(seats)
             for heat_node in RHData.get_heatNodes_by_heat(heat_data.id):
-                if heat_node.pilot_id in pilots_by_id:
+                if heat_node.node_index < len(heat_seats) and heat_node.pilot_id in pilots_by_id:
                     heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
             race_name = heat_data.note if heat_data.note else 'Heat '+str(heat_idx+1)
             race = {
@@ -115,12 +116,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         if track:
             track = json.loads(track)
         if not track or not track['layout']:
-            track = {
-                'crs': 'Local grid',
-                'units': 'm',
-                'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}],
-                'types': ["Arch gate", "Square gate", "Flag"]
-            }
+            track = rhserver.DEFAULT_TRACK
             RHData.set_option('trackLayout', json.dumps(track))
         return track
 

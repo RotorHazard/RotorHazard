@@ -5561,8 +5561,10 @@ DEFAULT_TIMER_MAPPING = {
 DEFAULT_TRACK = {
     'crs': 'Local grid',
     'units': 'm',
-    'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}]
+    'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}],
+    'types': ["Arch gate", "Square gate", "Flag"]
 }
+
 try:
     for sec_idx, secondary_info in enumerate(rhconfig.GENERAL['SECONDARIES']):
         if isinstance(secondary_info, string_types):

@@ -80,7 +80,7 @@ export function TrackMapContainer(props) {
     }
   }, [map, props.flyTo]);
 
-  return props?.children ? props.children(map) : <></>;
+  return props.children ? props.children(map) : <></>;
 }
 
 export function Map(props) {
