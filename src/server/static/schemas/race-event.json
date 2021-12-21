@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "url": { "type": "string" },
+    "pilots": {
+      "type": "object",
+      "description": "Pilot callsigns",
+      "additionalProperties": {
+        "properties": {
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "classes": {
+      "type": "object",
+      "description": "Race class names",
+      "additionalProperties": {
+        "properties": {
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "seats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "frequency": { "type": "integer" },
+          "bandChannel": { "type": "string" }
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "races": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "class": { "type": "string" },
+                "seats": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

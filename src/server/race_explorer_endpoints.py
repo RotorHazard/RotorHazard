@@ -18,6 +18,15 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
     @APP.route('/raceResults')
     def race_results():
+        """
+        Return race results.
+        ---
+        responses:
+            200:
+                description: Race results (jsonl)
+                schema:
+                    $ref: static/schemas/race-results.json
+        """
         event_name = RHData.get_option('eventName', '')
         msgs = []
         for race in RHData.get_savedRaceMetas():
@@ -43,6 +52,15 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
     @APP.route('/raceEvent', methods=['GET'])
     def race_event_get():
+        """
+        Return event setup.
+        ---
+        responses:
+            200:
+                description: Event setup
+                schema:
+                    $ref: static/schemas/race-event.json
+        """
         event_name = RHData.get_option('eventName', "")
         event_desc = RHData.get_option('eventDescription', "")
         event_url = RHData.get_option('eventURL', "")
@@ -106,6 +124,15 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
     @APP.route('/raceEvent', methods=['PUT'])
     def race_event_post():
+        """
+        Set event info.
+        ---
+        parameters:
+             - name: eventData
+               in: body
+               schema:
+                    $ref: 'static/schemas/race-event.json'
+        """
         data = request.get_json()
         import_event(data, rhserver)
         return '', 204

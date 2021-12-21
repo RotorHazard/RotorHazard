@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "properties": {
+    "event": { "type": "string" },
+    "stage": { "type": "integer" },
+    "round": { "type": "integer" },
+    "heat": { "type": "integer" },
+    "pilot": { "type": "string" },
+    "laps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lap": { "type": "integer" },
+          "timestamp": { "type": "number", "description": "seconds" },
+          "location": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

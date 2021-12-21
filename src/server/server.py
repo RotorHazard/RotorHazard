@@ -45,6 +45,7 @@ from six import unichr, string_types
 from flask import Flask, send_file, request, Response, session, templating, redirect
 from flask_compress import Compress
 from flask_socketio import emit
+from flasgger import Swagger
 from .socketio import SOCKET_IO
 
 from . import Config, Database, Results, Language, \
@@ -76,6 +77,7 @@ from data_export import DataExportManager
 
 APP = Flask(__name__, static_url_path='/static')
 Compress(APP)
+Swagger(APP)
 
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
