@@ -1,6 +1,7 @@
 import gevent.monkey
 gevent.monkey.patch_all()
 import paho.mqtt.client as mqtt_client
+from collections import UserDict
 
 
 def make_topic(root, parts):
@@ -22,21 +23,38 @@ def split_topic(topic):
             replace('%25', '%') for p in parts]
 
 
+def create_client(mqttConfig, prefix):
+    def get_value(key, default_value=None):
+        return mqttConfig.get(prefix+key, mqttConfig.get(key, default_value))
+
+    broker = get_value('BROKER')
+    if not broker:
+        raise Exception("MQTT not configured")
+    client_id = get_value('CLIENT_ID')
+    client = mqtt_client.Client(client_id=client_id)
+    username = get_value('USERNAME')
+    if username:
+        client.username_pw_set(username, get_value('PASSWORD'))
+    client_cert = get_value('CLIENT_CERT')
+    private_key = get_value('PRIVATE_KEY')
+    if client_cert and private_key:
+        client.tls_set(certfile=client_cert, keyfile=private_key)
+    client.connect(broker, get_value('PORT', 1883))
+    gevent.spawn(client.loop_forever)
+    return client
+
+
+class MqttHelper(UserDict):
+    def close(self):
+        for client in self.data.values():
+            client.disconnect()
+
+
 def create(rhconfig):
     mqttConfig = rhconfig.MQTT
-    if 'BROKER' not in mqttConfig or not mqttConfig['BROKER']:
-        raise Exception("MQTT not configured")
-    client_id = mqttConfig['CLIENT_ID'] if 'CLIENT_ID' in mqttConfig else None
-    client = mqtt_client.Client(client_id=client_id)
-    if 'USERNAME' in mqttConfig and mqttConfig['USERNAME']:
-        client.username_pw_set(mqttConfig['USERNAME'], mqttConfig['PASSWORD'] if 'PASSWORD' in mqttConfig else None)
-    if 'CLIENT_CERT' in mqttConfig and mqttConfig['CLIENT_CERT'] and 'PRIVATE_KEY' in mqttConfig and mqttConfig['PRIVATE_KEY']:
-        client.tls_set(certfile=mqttConfig['CLIENT_CERT'], keyfile=mqttConfig['PRIVATE_KEY'])
-    client.connect(mqttConfig['BROKER'], mqttConfig['PORT'] if 'PORT' in mqttConfig else 1883)
-    gevent.spawn(client.loop_forever)
-
-    def close(self):
-        self.disconnect()
-
-    mqtt_client.Client.close = close
-    return client
+    timer_client = create_client(mqttConfig, 'TIMER_')
+    race_client = create_client(mqttConfig, 'RACE_')
+    helper = MqttHelper()
+    helper['timer'] = timer_client
+    helper['race'] = race_client
+    return helper
