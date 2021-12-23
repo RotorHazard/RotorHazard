@@ -22,11 +22,11 @@ function createLoader(endpoint, opts={}) {
 }
 
 export function createResultDataLoader() {
-  return createLoader(config.resultDataEndpoint, {responseType: 'text'});
+  return createLoader(config.resultDataEndpoint, {responseType: 'text', headers: {'Accept': 'application/jsonl'}});
 }
 
 export function createSetupDataLoader() {
-  return createLoader(config.setupDataEndpoint, {responseType: 'text'});
+  return createLoader(config.setupDataEndpoint, {responseType: 'text', headers: {'Accept': 'application/jsonl'}});
 }
 
 let vtxTable = null;

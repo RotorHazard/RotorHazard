@@ -23,32 +23,53 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         ---
         responses:
             200:
-                description: Race results (jsonl)
-                schema:
-                    $ref: static/schemas/race-results.json
+                description: Race results
+                content:
+                    application/json:
+                        schema:
+                            $ref: static/schemas/race-results.json
+                    application/jsonl:
+                        schema:
+                            $ref: static/schemas/race-result.json
         """
-        event_name = RHData.get_option('eventName', '')
-        msgs = []
-        for race in RHData.get_savedRaceMetas():
-            race_id = race.id
-            round_id = race.round_id
-            heat_id = race.heat_id
-            heat = RHData.get_heat(heat_id)
-            stage_id = heat.stage_id
-            pilotraces = RHData.get_savedPilotRaces_by_savedRaceMeta(race.id)
-            for pilotrace in pilotraces:
-                pilot = RHData.get_pilot(pilotrace.pilot_id)
-                if pilot:
-                    pilotlaps = RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id)
-                    laps = []
-                    for lap_id,pilotlap in enumerate(pilotlaps):
-                        laps.append({'lap': lap_id, 'timestamp': pilotlap.lap_time_stamp, 'location': 0})
-                        lapsplits = RHData.get_lapSplits_by_lap(race_id, pilotrace.node_index, lap_id)
-                        for lapsplit in lapsplits:
-                            laps.append({'lap': lap_id, 'timestamp': lapsplit.split_time_stamp, 'location': lapsplit.split_id+1})
-                    msg = {'event': event_name, 'stage': stage_id, 'round': round_id, 'heat': heat_id, 'pilot': pilot.callsign, 'laps': laps}
-                    msgs.append(msg)
-        return '\n'.join([json.dumps(msg) for msg in msgs])
+        if 'application/json' in request.accept_mimetypes:
+            return race_results_json()
+        elif 'application/jsonl' in request.accept_mimetypes:
+            return race_results_jsonl()
+        else:
+            return '', 406
+
+    @APP.route('/raceResults.jsonl')
+    def race_results_jsonl():
+        msgs = export_results(rhserver)
+        return '\n'.join([json.dumps(msg) for msg in msgs]), 200, {'Content-Type': 'application/jsonl'}
+
+    @APP.route('/raceResults.json')
+    def race_results_json():
+        msgs = export_results(rhserver)
+        results_by_pilot = {}
+        for msg in msgs:
+            eventName = msg['event']
+            stageIdx = msg['stage']
+            roundIdx = msg['round']
+            heatIdx = msg['heat']
+            pilot = msg['pilot']
+            if pilot not in results_by_pilot:
+                results_by_pilot[pilot] = {}
+            results = results_by_pilot[pilot]
+            if eventName not in results:
+                results[eventName] = {}
+            event = results[eventName]
+            if stageIdx not in event:
+                event[stageIdx] = {}
+            stage = event[stageIdx]
+            if heatIdx not in stage:
+                stage[heatIdx] = []
+            heat = stage[heatIdx]
+            while roundIdx >= len(heat):
+                heat.append(None)
+            heat[roundIdx] = msg['laps']
+        return json.dumps(results_by_pilot), 200, {'Content-Type': 'application/json'}
 
     @APP.route('/raceEvent', methods=['GET'])
     def race_event_get():
@@ -58,8 +79,10 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         responses:
             200:
                 description: Event setup
-                schema:
-                    $ref: static/schemas/race-event.json
+                content:
+                    application/json:
+                        schema:
+                            $ref: static/schemas/race-event.json
         """
         event_name = RHData.get_option('eventName', "")
         event_desc = RHData.get_option('eventDescription', "")
@@ -127,11 +150,11 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         """
         Set event info.
         ---
-        parameters:
-             - name: eventData
-               in: body
-               schema:
-                    $ref: 'static/schemas/race-event.json'
+        requestBody:
+           content:
+               application/json:
+                   schema:
+                        $ref: 'static/schemas/race-event.json'
         """
         data = request.get_json()
         import_event(data, rhserver)
@@ -176,6 +199,21 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
     @APP.route('/timerSetup')
     def timer_setup():
+        """
+        Return timer setup.
+        ---
+        responses:
+            200:
+                description: Timer setup
+                content:
+                    application/jsonl: {}
+        """
+        if 'application/jsonl' in request.accept_mimetypes:
+            return timer_setup_jsonl()
+        else:
+            return '', 406
+ 
+    def timer_setup_jsonl():
         msgs = []
         for node_manager in INTERFACE.node_managers:
             msg = {'timer': TIMER_ID, 'nodeManager': node_manager.addr, 'type': node_manager.__class__.TYPE}
@@ -193,13 +231,39 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                 if hasattr(node, 'gain') and node.gain is not None:
                     msg['gain'] = node.gain
                 msgs.append(msg)
-        return '\n'.join([json.dumps(msg) for msg in msgs])
+        return '\n'.join([json.dumps(msg) for msg in msgs]), 200, {'Content-Type': 'application/jsonl'}
 
     @APP.route('/vtxTable')
     def vtx_table():
         return VTX_TABLE
 
     return APP
+
+
+def export_results(rhserver):
+    RHData = rhserver['RHData']
+    event_name = RHData.get_option('eventName', '')
+    msgs = []
+    for race in RHData.get_savedRaceMetas():
+        race_id = race.id
+        round_idx = race.round_id - 1
+        heat_id = race.heat_id
+        heat = RHData.get_heat(heat_id)
+        stage_id = heat.stage_id
+        pilotraces = RHData.get_savedPilotRaces_by_savedRaceMeta(race.id)
+        for pilotrace in pilotraces:
+            pilot = RHData.get_pilot(pilotrace.pilot_id)
+            if pilot:
+                pilotlaps = RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id)
+                laps = []
+                for lap_id,pilotlap in enumerate(pilotlaps):
+                    laps.append({'lap': lap_id, 'timestamp': pilotlap.lap_time_stamp, 'location': 0})
+                    lapsplits = RHData.get_lapSplits_by_lap(race_id, pilotrace.node_index, lap_id)
+                    for lapsplit in lapsplits:
+                        laps.append({'lap': lap_id, 'timestamp': lapsplit.split_time_stamp, 'location': lapsplit.split_id+1})
+                msg = {'event': event_name, 'stage': 'id:'+str(stage_id), 'round': round_idx, 'heat': 'id:'+str(heat_id), 'pilot': pilot.callsign, 'laps': laps}
+                msgs.append(msg)
+    return msgs
 
 
 def import_event(data, rhserver):

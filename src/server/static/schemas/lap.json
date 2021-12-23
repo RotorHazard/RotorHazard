@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "lap": { "type": "integer" },
+    "timestamp": { "type": "number", "description": "Lap timestamp measured from start of race (seconds)" },
+    "location": { "type": "integer" }
+  }
+}

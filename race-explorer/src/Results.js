@@ -107,6 +107,16 @@ function getLapListener(setMqttData) {
   };
 }
 
+const ID_PREFIX = 'id:';
+
+function lookupByIndexOrId(arr, key) {
+  if (key.startsWith(ID_PREFIX)) {
+    const id = key.substring(ID_PREFIX.length);
+    return arr?.find((v)=>v.id === id);
+  } else {
+    return arr?.[key];
+  }
+}
 export default function Results(props) {
   const [mqttConfig, setMqttConfig] = useState({});
   const [trackData, setTrackData] = useState({});
@@ -344,7 +354,7 @@ export default function Results(props) {
         <Select labelId="stage-label" sx={{minWidth: '6em'}} value={selectedStage} onChange={(evt) => selectStage(evt.target.value)}>
         {stageNames.map((name) => {
           return (
-          <MenuItem key={name} value={name}>{eventData.stages?.find((s)=>s.id===name)?.name ?? name}</MenuItem>
+          <MenuItem key={name} value={name}>{lookupByIndexOrId(eventData.stages, name)?.name ?? name}</MenuItem>
           );
         })}
         </Select>
@@ -364,7 +374,7 @@ export default function Results(props) {
         <Select labelId="heat-label" sx={{minWidth: '5em'}} value={selectedHeat} onChange={(evt) => selectHeat(evt.target.value)}>
         {heatNames.map((name) => {
           return (
-          <MenuItem key={name} value={name}>{eventData.stages?.find((s)=>s.id===selectedStage)?.races?.find((r)=>r.id===name)?.name ?? name}</MenuItem>
+          <MenuItem key={name} value={name}>{lookupByIndexOrId(lookupByIndexOrId(eventData.stages, selectedStage)?.races, name)?.name ?? name}</MenuItem>
           );
         })}
         </Select>

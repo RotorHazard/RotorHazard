@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "event": { "type": "string",  "description": "Event name" },
+    "stage": { "type": "integer", "description": "Stage index (or an opaque ID of the form id:&lt;id&gt;). See event info." },
+    "round": { "type": "integer", "description": "Round index" },
+    "heat":  { "type": "integer", "description": "Heat index (or an opaque ID of the form id:&lt;id&gt;). See event info." },
+    "pilot": { "type": "string",  "description": "Pilot callsign" },
+    "laps": {
+      "type": "array",
+      "items": {
+        "$ref": "lap.json"
+      }
+    }
+  }
+}

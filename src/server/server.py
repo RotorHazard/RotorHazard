@@ -77,6 +77,11 @@ from data_export import DataExportManager
 
 APP = Flask(__name__, static_url_path='/static')
 Compress(APP)
+APP.config['SWAGGER'] = {
+    'title': 'Race explorer API',
+    'uiversion': 3,
+    'openapi': '3.0.3'
+}
 Swagger(APP)
 
 HEARTBEAT_THREAD = None

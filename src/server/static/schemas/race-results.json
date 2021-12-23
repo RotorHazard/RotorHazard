@@ -1,19 +1,25 @@
 {
   "type": "object",
-  "properties": {
-    "event": { "type": "string" },
-    "stage": { "type": "integer" },
-    "round": { "type": "integer" },
-    "heat": { "type": "integer" },
-    "pilot": { "type": "string" },
-    "laps": {
-      "type": "array",
-      "items": {
+  "description": "Pilot callsigns",
+  "additionalProperties": {
+    "type": "object",
+    "description": "Event names",
+    "additionalProperties": {
+      "type": "object",
+      "description": "Stage indices (or IDs)",
+      "additionalProperties": {
         "type": "object",
-        "properties": {
-          "lap": { "type": "integer" },
-          "timestamp": { "type": "number", "description": "seconds" },
-          "location": { "type": "integer" }
+        "description": "Heats indices (or IDs)",
+        "additionalProperties": {
+          "type": "array",
+          "description": "Rounds",
+          "items": {
+            "type": "array",
+            "description": "Laps",
+            "items": {
+              "$ref": "lap.json"
+            }
+          }
         }
       }
     }
