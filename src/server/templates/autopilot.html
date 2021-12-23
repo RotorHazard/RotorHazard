@@ -1,0 +1,213 @@
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Seat') }}{% endblock %}{% block head %}
+<link rel="stylesheet" href="/static/streamnode.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'race_format',
+		'leaderboard',
+		'current_laps',
+		'current_heat'
+	];
+
+	rotorhazard.show_messages = false;
+	var streamnode = 1;
+	var lastHeat = null;
+	var currentScene = "";
+	var FPVFeedSceneName = "4Box";
+	var resultsSceneName = "Results";
+	var pilotCardsSceneName = "Pilot Intro";
+	var FPVSourceNames = "Node{N}-{analog,HD0,DJI}"
+	var obsURL = "ws://localhost:4444";
+	
+	var obsSocket = new WebSocket(obsURL);
+	var obsRecvListeners = [];
+	$(document).ready(function () {
+		rotorhazard.show_messages = false;
+		
+
+		(function () {
+			var old = console.log;
+			var logger = document.getElementById('log');
+			var date = new Date();
+			var logTime = date.toLocaleString('en-US', { hour12: false });
+			console.log = function (message) {
+				if (typeof message == 'object') {
+					logger.innerHTML += '['+logTime+'] '+(JSON && JSON.stringify ? JSON.stringify(message) : message) + '<br />';
+				} else {
+					logger.innerHTML += '['+logTime+'] '+message + '<br />';
+				}
+			}
+		})();
+		
+		console.log("FPV feed source names: "+FPVSourceNames);
+		console.log("FPV feed scene name: "+FPVFeedSceneName);
+		console.log("Results scene name: "+resultsSceneName);
+		console.log("Next heat pilot cards scene name: "+pilotCardsSceneName);
+		console.log("URL to the remote (or local) OBS instance: "+obsURL);
+		console.log("");
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		function sleep(milliseconds){
+			const date = Date.now();
+			let currentDate = null;
+			do {
+				currentDate = Date.now();
+			}while(currentDate-date < milliseconds);
+		}
+
+		socket.on('race_status', function(msg) {
+			var raceStatus = msg['race_status'];
+			if(raceStatus==3){ //race is counting down, lets double check were on the right scene and have the right feeds
+				if (lastHeat!=null){
+					setScene(FPVFeedSceneName);
+			      		setTimeout(() => {applyHeatToOBS(lastHeat);}, 100);
+				}
+			}
+			if(raceStatus==0){ //Race Director hit save, lets switch back to FPV feeds in 10 seconds and update
+				if (lastHeat!=null){
+					setTimeout(() => { if(currentScene!=FPVFeedSceneName){setScene(pilotCardsSceneName);} }, 10000);
+				}
+			}
+			if(msg['race_status']==2){ //race just stopped
+				setScene(resultsSceneName);
+			}
+			
+
+		});
+
+		//the race director has selected a new heat
+		socket.on('current_heat', function(msg) {
+			lastHeat = msg;
+			applyHeatToOBS(msg);
+		});
+
+		function applyHeatToOBS(msg){
+			console.log("updating video systems");
+			var videoSystems = ["analog","HD0","DJI"];
+			var nodeVideoSystems = [];
+			var heatNodes = msg.heatNodes;
+			for (var key in heatNodes){
+				var callsign = heatNodes[key].callsign;
+				var videoSystem = heatNodes[key].videoSystem;
+				console.log("-pilot: "+callsign);
+				//nodeVideoSystems.append({"callsign":callsign, "videoSystem":videoSystem});
+			      	console.log("--enabling "+videoSystem);
+				enableStreamItem("Node"+(parseInt(key)+1)+"-"+videoSystem);
+			      	var itemsToDisable = videoSystems.filter(e => e !== videoSystem);
+				for (var j = 0; j < itemsToDisable.length; j++){
+			      		var itemToDisable = itemsToDisable[j];
+					console.log("--disabling "+itemToDisable);
+			      		disableStreamItem("Node"+(parseInt(key)+1)+"-"+itemToDisable);
+				}
+			}
+		};
+
+		function setScene(sceneName){
+			console.log("changing scene: "+sceneName);
+			sendOBSCommand("SetCurrentScene",{"scene-name":sceneName});
+			currentScene = sceneName;
+		}
+
+		function enableStreamItem(itemName){
+			//console.log("sending obs command");
+			var requestType = "SetSceneItemProperties";
+			var requestData = {"item":itemName, "visible":true};
+			//console.log("sending "+requestType+", "+JSON.stringify(requestData,null,2));
+			sendOBSCommand(requestType,requestData);
+		};
+
+		function disableStreamItem(itemName){
+			//console.log("sending obs command");
+			var requestType = "SetSceneItemProperties";
+			var requestData = {"item":itemName, "visible":false};
+			//console.log("sending "+requestType+", "+JSON.stringify(requestData,null,2));
+			sendOBSCommand(requestType,requestData);
+		};
+
+		async function sha256(message) {
+			const msgBuffer = new TextEncoder().encode(message);                    
+			const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+			return hashHex;
+		}
+
+		function sendIdentity(password, msg, params){
+			var salt = msg['authentication']['salt'];
+			var challange = msg['authentication']['challenge'];
+			var secret = window.btoa(unescape(encodeURIComponent(sha256(encodeURI(password+salt)))));
+			var encodedAuthString = window.btoa(unescape(encodeURIComponent(secret+encodeURI(challange))));
+			var decodedAuthString = window.btoa(unescape(encodeURIComponent(encodedAuthString)));
+			console.log("sending identity message");
+			obsSocket.send(decodedAuthString);
+		}
+
+		function sendOBSCommand(requestType, data){
+			var payload = data;
+			//var payload = {"message-id":crypto.randomUUID(), "request-type":"GetVersion"};
+			data["message-id"] = crypto.randomUUID();
+			data["request-type"] = requestType;
+			obsSocket.send(JSON.stringify(data));
+
+		}
+
+		obsSocket.onmessage = function(msg) {
+			obsSocket.onopen = function(){
+			      	var incoming_payload = msg;
+			      	var op_code = incoming_payload['op'];
+			      	var data_payload = incoming_payload['d'];
+			      	if ((op_code == 7) || (op_code == 9)){
+			      		var payload_request_id = data_payload['requestId'];
+			      		//if (payload_request_id.startswith('emit_')){
+			      		//	continue;
+			      		//}
+					obsRecvListeners[payload_request_id]();
+			      	}
+				if (op_code == 5){
+			      		console.log("event");
+			      	}
+			      	if (op_code == 0){
+					console.log("identifying");
+			      		console.log(data_payload);
+			      		var obsPassword = "";
+			      		var obsParams = "";
+			      		sendIdentity(obsPassword, data_payload, obsParams);
+			      	}
+			      	if (op_code == 2){
+			      		console.log("identity confirmed");
+			      	}
+				var msgContent = {"update-type":"SetSceneItemProperties", "item":"Node1-"+videoSystem, "visible":true};
+				obsSocket.send(msgContent);
+			};
+
+		};
+		/*socket.on('leaderboard', function (msg) {
+			var race = msg.current.leaderboard;
+
+			primary_leaderboard = race.meta.primary_leaderboard;
+			leaderboard = race[primary_leaderboard];
+
+			found_streamnode = false;
+
+			videoSystemData = leaderboard;
+		});*/
+
+		socket.on('race_format', function (msg) {
+			rotorhazard.race_formats = msg;
+		});
+	});
+
+
+</script>
+{% endblock %} {% block content %}
+<div id="pilot-info" style="left: auto;">
+	<div id="callsign"></div>
+</div>
+<div id="log" style="font-family: lucida console; font-size: 0.9rem;"></div>
+{% endblock %}

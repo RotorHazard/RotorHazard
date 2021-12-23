@@ -468,6 +468,11 @@ def render_stream():
     return render_template('streams.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
+@APP.route('/autopilot')
+def render_obsconnect():
+    '''Route to obs remote control.'''
+    return render_template('autopilot.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, num_nodes=RACE.num_nodes)
+
 @APP.route('/stream/results')
 def render_stream_results():
     '''Route to current race leaderboard stream.'''
@@ -483,6 +488,16 @@ def render_stream_node(node_id):
         )
     else:
         return False
+
+@APP.route('/stream/pilotcard/<int:node_id>')
+def render_pilot_card(node_id):
+    '''Route to single pilot card for streaming.'''
+    if node_id <= RACE.num_nodes:
+        return render_template('pilotcard.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+            node_id=node_id-1
+        )
+    else:
+        return false
 
 @APP.route('/stream/class/<int:class_id>')
 def render_stream_class(class_id):
@@ -3552,6 +3567,7 @@ def emit_pilot_data(**params):
             'name': pilot.name,
             'team_options': opts_str,
             'locked': locked,
+            'video_system': pilot.video_system
         }
 
         if led_manager.isEnabled():
@@ -3590,13 +3606,14 @@ def emit_current_heat(**params):
             'callsign': None,
             'heatNodeColor': heatNode.color,
             'pilotColor': None,
+            'videoSystem': None,
             'activeColor': None
             }
         pilot = RHData.get_pilot(heatNode.pilot_id)
         if pilot:
             heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
             heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
-
+            heatNode_data[heatNode.node_index]['videoSystem'] = pilot.video_system
         if led_manager.isEnabled():
             heatNode_data[heatNode.node_index]['activeColor'] = led_manager.getDisplayColor(heatNode.node_index)
 

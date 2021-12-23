@@ -342,7 +342,8 @@ class RHData():
                             'callsign': 'New Callsign',
                             'team': RHUtils.DEF_TEAM_NAME,
                             'phonetic': '',
-                            'color': None
+                            'color': None,
+                            'video_system': ''
                         })
                     for pilot in self._Database.Pilot.query.all():
                         if not pilot.color:
@@ -538,7 +539,8 @@ class RHData():
             callsign='',
             team=RHUtils.DEF_TEAM_NAME,
             phonetic='',
-            color=color)
+            color=color,
+            video_system='analog')
 
         if init:
             if 'name' in init:
@@ -551,6 +553,8 @@ class RHData():
                 new_pilot.phonetic = init['phonetic']
             if 'color' in init:
                 new_pilot.color = init['color']
+            if 'video_system' in init:
+                new_pilot.video_system = init['video_system']
                 
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
@@ -581,6 +585,8 @@ class RHData():
             pilot.name = data['name']
         if 'color' in data:
             pilot.color = data['color']
+        if 'video_system' in data:
+            pilot.video_system = data['video_system']
 
         self.commit()
 

@@ -1072,6 +1072,12 @@
 					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
 					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
+
+					var videoSystem = $('<div class="phonetic">');
+
+					videoSystem.append('<label for="video_system_' + pilot.id + '">');
+					videoSystem.append('<input type="text" class="set_pilot_video_system" id="video_system_' + pilot.pilot_id + '"data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.video_system + '" placeholder="' + __('video system') +'">');
+					el.append(videoSystem);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
 					if (!pilot.locked) {
 						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
@@ -1153,6 +1159,18 @@
 			var data = {
 				pilot_id: parseInt($(this).data('pilot_id')),
 				phonetic: $(this).val()
+			};
+			socket.emit('alter_pilot', data);
+		})
+
+		$(document).on("focus", '.set_pilot_video_system', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_video_system', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				video_system: $(this).val()
 			};
 			socket.emit('alter_pilot', data);
 		})

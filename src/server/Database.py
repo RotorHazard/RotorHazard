@@ -26,6 +26,7 @@ class Pilot(DB.Model):
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
+    video_system = DB.Column(DB.String(80), nullable=False)
 
     def __repr__(self):
         return '<Pilot %r>' % self.id
