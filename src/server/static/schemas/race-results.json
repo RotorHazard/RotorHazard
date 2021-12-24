@@ -6,10 +6,10 @@
     "description": "Event names",
     "additionalProperties": {
       "type": "object",
-      "description": "Stage indices (or IDs)",
+      "description": "Stage indices (or opaque IDs of the form id:&lt;id&gt;). See event info.",
       "additionalProperties": {
         "type": "object",
-        "description": "Heats indices (or IDs)",
+        "description": "Heats indices (or opaque IDs of the form id:&lt;id&gt;). See event info.",
         "additionalProperties": {
           "type": "array",
           "description": "Rounds",

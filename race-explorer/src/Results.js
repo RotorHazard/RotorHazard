@@ -331,9 +331,13 @@ export default function Results(props) {
     }
   }
 
+  const raceClassName = lookupByIndexOrId(lookupByIndexOrId(eventData.stages, selectedStage)?.races, selectedHeat)?.class;
+  const raceFormatName = eventData.classes?.[raceClassName]?.format;
+  const raceFormat = eventData.formats?.[raceFormatName];
+  const lapCountOffset = raceFormat?.start === 'start-line' ? 1 : 0;
   let lapHeaders = [];
   for (let i=maxLaps; i>=minLaps; i--) {
-    lapHeaders.push(<TableCell key={i} align="right">Lap {i}</TableCell>);
+    lapHeaders.push(<TableCell key={i} align="right">Lap {i+lapCountOffset}</TableCell>);
   }
 
   return (

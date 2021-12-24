@@ -2,6 +2,7 @@ import json
 from flask import request
 from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
+from . import RHRace
 
 
 def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
@@ -87,22 +88,32 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         event_name = RHData.get_option('eventName', "")
         event_desc = RHData.get_option('eventDescription', "")
         event_url = RHData.get_option('eventURL', "")
+
         pilots = {}
         pilots_by_id = {}
         for pilot in RHData.get_pilots():
             pilots[pilot.callsign] = {'name': pilot.name}
             pilots_by_id[pilot.id] = pilot
-        race_formats_by_id = {0: None}
+
+        race_formats = {}
+        race_formats_by_id = {0: 'None'}
         for race_format in RHData.get_raceFormats():
+            race_formats[race_format.name] = {
+                'start': 'start-line' if race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP else 'first-pass',
+                'duration': race_format.race_time_sec + race_format.lap_grace_sec
+            }
             race_formats_by_id[race_format.id] = race_format.name
+
         race_classes = {"Unclassified": {'description': "Default class"}}
         race_classes_by_id = {0: "Unclassified"}
         for race_class in RHData.get_raceClasses():
+            race_format_name = race_formats_by_id[race_class.format_id]
             race_classes[race_class.name] = {
                 'description': race_class.description,
-                'format': race_formats_by_id[race_class.format_id]
+                'format': race_format_name
             }
             race_classes_by_id[race_class.id] = race_class.name
+
         seats = []
         current_profile = RHData.get_optionInt('currentProfile')
         profile = RHData.get_profile(current_profile)
@@ -113,6 +124,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                 fbc['bandChannel'] = f_b_c[1] + str(f_b_c[2])
             seats.append(fbc)
 
+        event_formats = {}
+        event_classes = {}
         stages = []
         prev_stage_name = None
         for heat_idx, heat_data in enumerate(RHData.get_heats()):
@@ -121,10 +134,17 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                 if heat_node.node_index < len(heat_seats) and heat_node.pilot_id in pilots_by_id:
                     heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
             race_name = heat_data.note if heat_data.note else 'Heat '+str(heat_idx+1)
+            race_class_name = race_classes_by_id[heat_data.class_id]
+            if race_class_name not in event_classes:
+                race_class = race_classes[race_class_name]
+                event_classes[race_class_name] = race_class
+                race_format_name = race_class['format']
+                if race_format_name not in event_formats:
+                    event_formats[race_format_name] = race_formats[race_format_name]
             race = {
                 'id': str(heat_data.id),
                 'name': race_name,
-                'class': race_classes_by_id[heat_data.class_id],
+                'class': race_class_name,
                 'seats': heat_seats
             }
             stage_name = heat_data.stage.name
@@ -139,7 +159,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
             'description': event_desc,
             'url': event_url,
             'pilots': pilots,
-            'classes': race_classes,
+            'formats': event_formats,
+            'classes': event_classes,
             'seats': seats,
             'stages': stages
         }

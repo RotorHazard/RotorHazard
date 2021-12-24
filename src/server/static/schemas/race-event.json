@@ -13,6 +13,16 @@
         }
       }
     },
+    "formats": {
+      "type": "object",
+      "description": "Race format names",
+      "additionalProperties": {
+        "properties": {
+          "start": { "type": "string", "enum": ["start-line", "first-pass"] },
+          "duration": { "type": "integer", "description": "Race duration, 0 for no limit (seconds)" }
+        }
+      }
+    },
     "classes": {
       "type": "object",
       "description": "Race class names",
