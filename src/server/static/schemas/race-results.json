@@ -1,23 +1,53 @@
 {
   "type": "object",
-  "description": "Pilot callsigns",
-  "additionalProperties": {
-    "type": "object",
-    "description": "Event names",
-    "additionalProperties": {
+  "properties": {
+    "pilots": {
       "type": "object",
-      "description": "Stage indices (or opaque IDs of the form id:&lt;id&gt;). See event info.",
+      "description": "Pilot callsigns",
       "additionalProperties": {
         "type": "object",
-        "description": "Heats indices (or opaque IDs of the form id:&lt;id&gt;). See event info.",
-        "additionalProperties": {
-          "type": "array",
-          "description": "Rounds",
-          "items": {
-            "type": "array",
-            "description": "Laps",
-            "items": {
-              "$ref": "lap.json"
+        "properties": {
+          "events": {
+            "type": "object",
+            "description": "Event names",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "stages": {
+                  "type": "object",
+                  "description": "Stage indices (or opaque IDs of the form id:&lt;id&gt;). See event info.",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "heats": {
+                        "type": "object",
+                        "description": "Heats indices (or opaque IDs of the form id:&lt;id&gt;). See event info.",
+                        "additionalProperties": {
+                          "type": "object",
+                          "properties": {
+                            "rounds": {
+                              "type": "array",
+                              "description": "Rounds",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "laps": {
+                                    "type": "array",
+                                    "description": "Laps",
+                                    "items": {
+                                      "$ref": "lap.json"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }

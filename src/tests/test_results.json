@@ -1,0 +1,70 @@
+{
+    "pilots": {
+        "Pilot A": {
+            "events": {
+                "Cup": {
+                    "stages": {
+                        "0": {
+                            "heats": {
+                                "0": {
+                                    "rounds": [{
+                                            "laps": [{
+                                                    "timestamp": 0.6,
+                                                    "lap": 0,
+                                                    "location": 0
+                                                }, {
+                                                    "timestamp": 1.75,
+                                                    "lap": 1,
+                                                    "location": 0
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "Pilot B": {
+            "events": {
+                "Cup": {
+                    "stages": {
+                        "0": {
+                            "heats": {
+                                "0": {
+                                    "rounds": [{
+                                            "laps": [{
+                                                    "timestamp": 1,
+                                                    "lap": 0,
+                                                    "location": 0
+                                                }, {
+                                                    "timestamp": 1.5,
+                                                    "lap": 1,
+                                                    "location": 0
+                                                }, {
+                                                    "timestamp": 2.1,
+                                                    "lap": 2,
+                                                    "location": 0
+                                                }, {
+                                                    "timestamp": 2.6,
+                                                    "lap": 3,
+                                                    "location": 0
+                                                }, {
+                                                    "timestamp": 3.8,
+                                                    "lap": 4,
+                                                    "location": 0
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,8 +1,10 @@
+import itertools
 import json
 from flask import request
 from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
 from . import RHRace
+import numpy as np
 
 
 def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
@@ -48,29 +50,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
     @APP.route('/raceResults.json')
     def race_results_json():
         msgs = export_results(rhserver)
-        results_by_pilot = {}
-        for msg in msgs:
-            eventName = msg['event']
-            stageIdx = msg['stage']
-            roundIdx = msg['round']
-            heatIdx = msg['heat']
-            pilot = msg['pilot']
-            if pilot not in results_by_pilot:
-                results_by_pilot[pilot] = {}
-            results = results_by_pilot[pilot]
-            if eventName not in results:
-                results[eventName] = {}
-            event = results[eventName]
-            if stageIdx not in event:
-                event[stageIdx] = {}
-            stage = event[stageIdx]
-            if heatIdx not in stage:
-                stage[heatIdx] = []
-            heat = stage[heatIdx]
-            while roundIdx >= len(heat):
-                heat.append(None)
-            heat[roundIdx] = msg['laps']
-        return json.dumps(results_by_pilot), 200, {'Content-Type': 'application/json'}
+        results = pilot_results(msgs)
+        return json.dumps(results), 200, {'Content-Type': 'application/json'}
 
     @APP.route('/raceEvent', methods=['GET'])
     def race_event_get():
@@ -287,6 +268,33 @@ def export_results(rhserver):
     return msgs
 
 
+def pilot_results(msgs):
+    results = {'pilots': {}}
+    results_by_pilot = results['pilots']
+    for msg in msgs:
+        eventName = msg['event']
+        stageIdx = msg['stage']
+        roundIdx = msg['round']
+        heatIdx = msg['heat']
+        pilot = msg['pilot']
+        if pilot not in results_by_pilot:
+            results_by_pilot[pilot] = {'events': {}}
+        event_results = results_by_pilot[pilot]['events']
+        if eventName not in event_results:
+            event_results[eventName] = {'stages': {}}
+        event_stages = event_results[eventName]['stages']
+        if stageIdx not in event_stages:
+            event_stages[stageIdx] = {'heats': {}}
+        heats = event_stages[stageIdx]['heats']
+        if heatIdx not in heats:
+            heats[heatIdx] = {'rounds': []}
+        rounds = heats[heatIdx]['rounds']
+        while roundIdx >= len(rounds):
+            rounds.append(None)
+        rounds[roundIdx] = {'laps': msg['laps']}
+    return results
+
+
 def import_event(data, rhserver):
     event_name = data['name']
     race_classes = data['classes'] if 'classes' in data else {}
@@ -379,3 +387,98 @@ def import_event(data, rhserver):
     rhserver['on_set_profile']({'profile': profile.id})
     rhserver['emit_pilot_data']()
     rhserver['emit_heat_data']()
+
+
+def calculate_metrics(results, event_data):
+    event_name = event_data['name']
+    for pilot, pilot_result in results['pilots'].items():
+        event_result = pilot_result['events'].get(event_name, {})
+        for stage_idx, stage_result in event_result['stages'].items():
+            stage_info = lookup_by_index_or_id(event_data['stages'], stage_idx)
+            for heat_idx, heat_result in stage_result['heats'].items():
+                if stage_info:
+                    race_info = lookup_by_index_or_id(stage_info['races'], heat_idx)
+                    race_class_name = race_info['class']
+                    heat_result['class'] = race_class_name
+                    race_class = event_data['classes'].get(race_class_name, {})
+                else:
+                    race_class = {}
+                if race_class:
+                    race_format = event_data['formats'].get(race_class.get('format', ''))
+                else:
+                    race_format = {}
+                for race_result in heat_result['rounds']:
+                    race_metrics = calculate_race_metrics(race_result, race_format)
+                    race_result['metrics'] = race_metrics
+                heat_result['metrics'] = aggregate_metrics([r['metrics'] for r in heat_result['rounds']])
+            stage_result['metrics'] = {}
+            stage_metrics = stage_result['metrics']
+            for race_class in event_data['classes']:
+                stage_metrics[race_class] = aggregate_metrics([h['metrics'] for h in stage_result['heats'].values() if h['class'] == race_class])
+        event_result['metrics'] = {}
+        event_metrics = event_result['metrics']
+        for race_class in event_data['classes']:
+            event_metrics[race_class] = aggregate_metrics([s['metrics'][race_class] for s in event_result['stages'].values()])
+    return results
+
+
+def calculate_race_metrics(race, race_format):
+    laps = race['laps']
+    if race_format.get('start', 'first-pass') == 'start-line':
+        start_time = 0
+    else:
+        start_time = laps[0]['timestamp'] if laps else None
+        laps = laps[1:]
+    lap_count = len(laps)
+    race_time = laps[-1]['timestamp'] - start_time if lap_count else 0
+    lap_times = [laps[i]['timestamp'] - (laps[i-1]['timestamp'] if i-1 >= 0 else start_time) for i in range(len(laps))]
+    return {
+        'lapCount': lap_count,
+        'time': race_time,
+        'lapTimes': lap_times,
+        'fastest': np.min(lap_times),
+        'mean': np.mean(lap_times),
+        'stdDev': np.std(lap_times),
+        'fastest3Consecutive': best_n_consecutive(lap_times, 3)
+    }
+
+
+def aggregate_metrics(metrics):
+    lap_count = np.sum([r['lapCount'] for r in metrics])
+    race_time = np.sum([r['time'] for r in metrics])
+    lap_times = list(itertools.chain(*[r['lapTimes'] for r in metrics]))
+    consec_totals = [np.sum(r['fastest3Consecutive']) for r in metrics]
+    if consec_totals:
+        idx = np.argmin(consec_totals)
+        consecs = metrics[idx]['fastest3Consecutive']
+    else:
+        consecs = []
+    return {
+        'lapCount': lap_count,
+        'time': race_time,
+        'lapTimes': lap_times,
+        'fastest': np.min(lap_times),
+        'mean': np.mean(lap_times),
+        'stdDev': np.std(lap_times),
+        'fastest3Consecutive': consecs
+    }
+
+
+def best_n_consecutive(arr, n):
+    consec_totals = [np.sum(arr[i:i+n]) for i in range(len(arr)+1-n)]
+    if consec_totals:
+        idx = np.argmin(consec_totals)
+        return arr[idx:idx+n]
+    else:
+        return []
+
+
+ID_PREFIX = 'id:'
+
+def lookup_by_index_or_id(arr, key):
+    if key.startswith(ID_PREFIX):
+        entry_id = key.substring(len(ID_PREFIX))
+        matching_entries = filter(lambda e: e['id'] == entry_id, arr)
+        return matching_entries[0] if matching_entries else []
+    else:
+        return arr[int(key)]

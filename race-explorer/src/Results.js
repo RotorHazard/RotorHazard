@@ -267,7 +267,7 @@ export default function Results(props) {
   let stageData = {};
   let stageNames = [];
   let roundData = {};
-  let roundNames = [];
+  let roundIdxs = [];
   let heatData = {};
   let heatNames = [];
   let heat = {pilots: {}};
@@ -276,7 +276,7 @@ export default function Results(props) {
     stageNames = Object.keys(stageData);
     if (selectedStage in stageData) {
       roundData = stageData[selectedStage];
-      roundNames = Object.keys(roundData);
+      roundIdxs = Object.keys(roundData);
       if (selectedRound in roundData) {
         heatData = roundData[selectedRound];
         heatNames = Object.keys(heatData);
@@ -288,8 +288,8 @@ export default function Results(props) {
           }
         }
       } else {
-        if (roundNames.length > 0) {
-          setRound(roundNames[roundNames.length-1]);
+        if (roundIdxs.length > 0) {
+          setRound(roundIdxs[roundIdxs.length-1]);
         }
       }
     } else {
@@ -366,9 +366,9 @@ export default function Results(props) {
       <FormControl>
         <InputLabel id="round-label">Round</InputLabel>
         <Select labelId="round-label" sx={{minWidth: '6em'}} value={selectedRound} onChange={(evt) => selectRound(evt.target.value)}>
-        {roundNames.map((name) => {
+        {roundIdxs.map((idx) => {
           return (
-          <MenuItem key={name} value={name}>{name}</MenuItem>
+          <MenuItem key={idx} value={idx}>{Number(idx)+1}</MenuItem>
           );
         })}
         </Select>

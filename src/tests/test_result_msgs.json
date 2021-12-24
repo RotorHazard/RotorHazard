@@ -1,0 +1,13 @@
+{"messages": [
+{"pilot": "Pilot A", "event": "Cup", "stage": 0, "round": 0, "heat": 0, "laps": [
+  {"timestamp": 0.6, "lap": 0, "location": 0},
+  {"timestamp": 1.75, "lap": 1, "location": 0}
+  ]},
+{"pilot": "Pilot B", "event": "Cup", "stage": 0, "round": 0, "heat": 0, "laps": [
+  {"timestamp": 1, "lap": 0, "location": 0},
+  {"timestamp": 1.5, "lap": 1, "location": 0},
+  {"timestamp": 2.1, "lap": 2, "location": 0},
+  {"timestamp": 2.6, "lap": 3, "location": 0},
+  {"timestamp": 3.8, "lap": 4, "location": 0}
+  ]}
+]}

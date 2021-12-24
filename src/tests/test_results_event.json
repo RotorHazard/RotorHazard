@@ -1,0 +1,12 @@
+{
+"formats": {"BDRA": {"start": "first-pass", "duration": 150}},
+"classes": {"Open": {"format": "BDRA"}},
+"name": "Cup",
+"stages": [
+{"name": "Qualifying",
+"races": [
+{"name": "A", "class": "Open"}
+]
+}
+]
+}

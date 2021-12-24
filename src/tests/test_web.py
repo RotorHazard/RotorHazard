@@ -18,9 +18,9 @@ class WebTest(unittest.TestCase):
         with open('tests/test_ifpv_event.json') as f:
             ifpv_json = json.loads(f.read())
         actual_json = web.convert_ifpv_json(ifpv_json)
-        with open('tests/test_event.json') as f:
+        with open('tests/test_converted_ifpv_event.json') as f:
             expected_json = json.loads(f.read())
-        self.assertEqual(actual_json, expected_json)
+        self.assertDictEqual(actual_json, expected_json)
 
     def test_multigp(self):
         url  = 'https://www.multigp.com/pilots/view/?pilot=SeekND'
@@ -30,6 +30,7 @@ class WebTest(unittest.TestCase):
             return
 
         self.assertEqual(data['logo'], 'https://multigp-storage-new.s3.us-east-2.amazonaws.com/user/1135/profileImage-20.png')
+
 
 if __name__ == '__main__':
     unittest.main()
