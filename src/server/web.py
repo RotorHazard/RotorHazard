@@ -95,7 +95,7 @@ def convert_ifpv_json(ifpv_data):
         'pilots': pilots,
         'stages': [
             {'name': 'Qualifying',
-             'races': heats}
+             'heats': heats}
         ]
     }
 

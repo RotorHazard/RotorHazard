@@ -85,10 +85,10 @@ function getRaceListener(setMqttData) {
     const parts = util.splitTopic(topic);
     const event = parts[parts.length-4];
     const stage = parts[parts.length-3];
-    const round = parts[parts.length-2];
-    const heat = parts[parts.length-1];
+    const heat = parts[parts.length-2];
+    const round = parts[parts.length-1];
     const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
-    setMqttData((old) => [...old, {event, stage, round, heat, ...msg}]);
+    setMqttData((old) => [...old, {event, stage, heat, round, ...msg}]);
   };
 }
 
@@ -97,13 +97,13 @@ function getLapListener(setMqttData) {
     const parts = util.splitTopic(topic);
     const event = parts[parts.length-7];
     const stage = parts[parts.length-6];
-    const round = parts[parts.length-5];
-    const heat = parts[parts.length-4];
+    const heat = parts[parts.length-5];
+    const round = parts[parts.length-4];
     const pilot = parts[parts.length-3];
     const lap = Number(parts[parts.length-2]);
     const location = Number(parts[parts.length-1]);
     const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
-    setMqttData((old) => [...old, {event, stage, round, heat, pilot, lap, location, ...msg}]);
+    setMqttData((old) => [...old, {event, stage, heat, round, pilot, lap, location, ...msg}]);
   };
 }
 
@@ -215,7 +215,7 @@ export default function Results(props) {
 
   useEffect(() => {
     if (mqttConfig?.raceAnnTopic && selectedEvent && selectedStage && selectedRound && selectedHeat) {
-      const lapTopic = util.makeTopic(mqttConfig.raceAnnTopic, [selectedEvent, selectedStage, selectedRound, selectedHeat, '+', '+', '+']);
+      const lapTopic = util.makeTopic(mqttConfig.raceAnnTopic, [selectedEvent, selectedStage, selectedHeat, selectedRound, '+', '+', '+']);
       const mqttSubscriber = (setMqttData) => {
         const lapListener = getLapListener(setMqttData);
         const mqttClient = getMqttClient();
@@ -378,7 +378,7 @@ export default function Results(props) {
         <Select labelId="heat-label" sx={{minWidth: '5em'}} value={selectedHeat} onChange={(evt) => selectHeat(evt.target.value)}>
         {heatNames.map((name) => {
           return (
-          <MenuItem key={name} value={name}>{lookupByIndexOrId(lookupByIndexOrId(eventData.stages, selectedStage)?.races, name)?.name ?? name}</MenuItem>
+          <MenuItem key={name} value={name}>{lookupByIndexOrId(lookupByIndexOrId(eventData.stages, selectedStage)?.heats, name)?.name ?? name}</MenuItem>
           );
         })}
         </Select>

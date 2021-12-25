@@ -28,7 +28,7 @@ import { nanoid } from 'nanoid';
 import {
   createVtxTableLoader,
   createEventDataLoader, storeEventData,
-  createRaceGeneratorLoader, generateRaces
+  createHeatGeneratorLoader, generateHeats
 } from './rh-client.js';
 
 const saveEventData = debounce(storeEventData, 2000);
@@ -334,7 +334,7 @@ function RaceStagePanel(props) {
 
   useEffect(() => {
     const endpoint = props.generators[generator];
-    const loader = createRaceGeneratorLoader(endpoint);
+    const loader = createHeatGeneratorLoader(endpoint);
     loader.load(null, setGeneratorDesc);
     return () => loader.cancel();
   }, [props.generators, generator]);
@@ -363,14 +363,14 @@ function RaceStagePanel(props) {
       }
       return [paramName, value];
     }));
-    generateRaces(endpoint, data, (stageData) => {
-      const races = stageData.races;
+    generateHeats(endpoint, data, (stageData) => {
+      const races = stageData.heats;
       idifyRaces(races);
       let newStageName = props.stage.name;
       if (newStageName !== 'Qualifying' && stageData.type) {
         newStageName = stageData.type;
       }
-      props.onChange(newStageName, props.stage.races.concat(races));
+      props.onChange(newStageName, props.stage.heats.concat(races));
     });
   };
 
@@ -388,7 +388,7 @@ function RaceStagePanel(props) {
     </FormControl>
     {generatorUi.render(props, generatorUiState, setGeneratorUiState)}
     <Button onClick={generate}>Generate</Button>
-    <RacesTable races={props.stage.races} seats={props.seats}
+    <RacesTable races={props.stage.heats} seats={props.seats}
       raceClasses={props.raceClasses} onChange={(races) => props.onChange(props.stage.name, races)}
     />
     </div>
@@ -396,13 +396,13 @@ function RaceStagePanel(props) {
 }
 
 const QUALIFYING_GENS = {
-  Random: "/race-generators/random"
+  Random: "/heat-generators/random"
 };
 
 const MAINS_GENS = {
-  Mains: "/race-generators/mains",
-  "MultiGP Brackets": "/race-generators/mgp-brackets",
-  Random: "/race-generators/random"
+  Mains: "/heat-generators/mains",
+  "MultiGP Brackets": "/heat-generators/mgp-brackets",
+  Random: "/heat-generators/random"
 };
 
 function DraggableEntry(props) {
@@ -433,11 +433,10 @@ function PilotRooster(props) {
   );
 }
 
-
 function copyStage(stage, newVals) {
   return {
     name: stage.name,
-    races: stage.races,
+    heats: stage.heats,
     ...newVals
   };
 }
@@ -446,7 +445,7 @@ function updateStage(oldStages, stageIdx, newVals, setStageIndex) {
   const newStages = [...oldStages];
   if (stageIdx === -1) {
     newStages.push(newVals);
-  } else if (newStages[stageIdx].races.length === 0 && newVals.races.length === 0) {
+  } else if (newStages[stageIdx].heats.length === 0 && newVals.heats.length === 0) {
     // delete stage on 'double' delete
     newStages.splice(stageIdx, 1);
   } else {
@@ -466,12 +465,12 @@ function updateStage(oldStages, stageIdx, newVals, setStageIndex) {
 
 function mutateRaces(oldStages, updateRace) {
   return oldStages.map((stage) => {
-    const newRaces = stage.races.map((race) => {
+    const newRaces = stage.heats.map((race) => {
       const newRace = copyRace(race);
       updateRace(newRace);
       return newRace;
     });
-    return {...stage, races: newRaces};
+    return {...stage, heats: newRaces};
   });
 }
 
@@ -502,7 +501,7 @@ export default function Event(props) {
   useEffect(() => {
     const loader = createEventDataLoader();
     loader.load(null, (data) => {
-      data.stages.forEach((stage) => {idifyRaces(stage.races)});
+      data.stages.forEach((stage) => {idifyRaces(stage.heats)});
       setEventName(data.name);
       setEventDesc(data.description);
       setEventUrl(data.url);
@@ -529,7 +528,7 @@ export default function Event(props) {
   const stageTabs = stages.map((stage, stageIdx) => {
     const generators = (stageIdx > 0) ? MAINS_GENS : QUALIFYING_GENS;
     const onStageChange = (name, races) => {
-      setStages((old) => updateStage(old, stageIdx, {name: name, races: races}, setStageIndex));
+      setStages((old) => updateStage(old, stageIdx, {name: name, heats: races}, setStageIndex));
     };
     return {label: stage.name, content: (
       <RaceStagePanel pilots={pilots} stage={stage} seats={seats} raceClasses={raceClasses} generators={generators}
@@ -569,7 +568,7 @@ export default function Event(props) {
     if (dragData.source === 'rooster') {
       setDraggingPilot(dragData.pilot);
     } else if (dragData.source === 'seat') {
-      setDraggingPilot(stages[stageIndex].races[dragData.race].seats[dragData.seat]);
+      setDraggingPilot(stages[stageIndex].heats[dragData.race].seats[dragData.seat]);
     }
   };
   const onDragCancel= (evt) => {
@@ -617,7 +616,7 @@ export default function Event(props) {
       };
     }
     if (updater) {
-      setStages((old) => updateStage(old, stageIndex, {races: updater(old[stageIndex].races)}, setStageIndex));
+      setStages((old) => updateStage(old, stageIndex, {heats: updater(old[stageIndex].heats)}, setStageIndex));
     }
   };
 
@@ -699,7 +698,7 @@ export default function Event(props) {
               name = "New stage "+(stageTabs.length+1);
               break;
           }
-          setStages((old) => updateStage(old, -1, {name: name, races: []}, setStageIndex));
+          setStages((old) => updateStage(old, -1, {name: name, heats: []}, setStageIndex));
         }}><AddIcon/></IconButton>
         </Stack>
         {stageTab?.content}

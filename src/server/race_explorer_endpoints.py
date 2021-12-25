@@ -76,8 +76,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
             pilots[pilot.callsign] = {'name': pilot.name}
             pilots_by_id[pilot.id] = pilot
 
-        race_formats = {}
-        race_formats_by_id = {0: 'None'}
+        race_formats = {'Free': {'start': 'first-pass', 'duration': 0}}
+        race_formats_by_id = {0: 'Free'}
         for race_format in RHData.get_raceFormats():
             race_formats[race_format.name] = {
                 'start': 'start-line' if race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP else 'first-pass',
@@ -131,7 +131,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
             stage_name = heat_data.stage.name
             if stage_name != prev_stage_name:
                 races = []
-                stage = {'id': str(heat_data.stage_id), 'name': stage_name, 'races': races}
+                stage = {'id': str(heat_data.stage_id), 'name': stage_name, 'heats': races}
                 stages.append(stage)
                 prev_stage_name = stage_name
             races.append(race)
@@ -359,24 +359,24 @@ def import_event(data, rhserver):
     rhheats = RHData.get_heats()
     h = 0
     for stage in stages:
-        for race in stage['races']:
+        for heat in stage['heats']:
             if h < len(rhheats):
                 rhheat = rhheats[h]
                 heat_nodes = RHData.get_heatNodes_by_heat(rhheat.id)
-                for seat_index in range(len(heat_nodes), len(race['seats'])):
+                for seat_index in range(len(heat_nodes), len(heat['seats'])):
                     RHData.add_heatNode(rhheat.id, seat_index)
-                for seat,callsign in enumerate(race['seats']):
+                for seat,callsign in enumerate(heat['seats']):
                     if callsign in pilot_ids:
-                        heat_data = {'heat': rhheat.id, 'note': race['name'], 'stage': stage['name'], 'node': seat, 'pilot': pilot_ids[callsign]}
-                        if 'class' in race:
-                            heat_data['class'] = raceClass_ids[race['class']]
+                        heat_data = {'heat': rhheat.id, 'note': heat['name'], 'stage': stage['name'], 'node': seat, 'pilot': pilot_ids[callsign]}
+                        if 'class' in heat:
+                            heat_data['class'] = raceClass_ids[heat['class']]
                         RHData.alter_heat(heat_data)
             else:
-                heat_data = {'note': race['name'], 'stage': stage['name']}
-                if 'class' in race:
-                    heat_data['class'] = raceClass_ids[race['class']]
+                heat_data = {'note': heat['name'], 'stage': stage['name']}
+                if 'class' in heat:
+                    heat_data['class'] = raceClass_ids[heat['class']]
                 heat_pilots = {}
-                for seat,callsign in enumerate(race['seats']):
+                for seat,callsign in enumerate(heat['seats']):
                     if callsign in pilot_ids:
                         heat_pilots[seat] = pilot_ids[callsign]
                 RHData.add_heat(init=heat_data, initPilots=heat_pilots)
@@ -391,14 +391,14 @@ def import_event(data, rhserver):
 
 def calculate_metrics(results, event_data):
     event_name = event_data['name']
-    for pilot, pilot_result in results['pilots'].items():
+    for pilot_result in results['pilots'].values():
         event_result = pilot_result['events'].get(event_name, {})
         for stage_idx, stage_result in event_result['stages'].items():
             stage_info = lookup_by_index_or_id(event_data['stages'], stage_idx)
             for heat_idx, heat_result in stage_result['heats'].items():
                 if stage_info:
-                    race_info = lookup_by_index_or_id(stage_info['races'], heat_idx)
-                    race_class_name = race_info['class']
+                    heat_info = lookup_by_index_or_id(stage_info['heats'], heat_idx)
+                    race_class_name = heat_info['class']
                     heat_result['class'] = race_class_name
                     race_class = event_data['classes'].get(race_class_name, {})
                 else:

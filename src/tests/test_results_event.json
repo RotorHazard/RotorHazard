@@ -4,7 +4,7 @@
 "name": "Cup",
 "stages": [
 {"name": "Qualifying",
-"races": [
+"heats": [
 {"name": "A", "class": "Open"}
 ]
 }

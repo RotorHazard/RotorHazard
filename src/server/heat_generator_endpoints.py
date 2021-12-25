@@ -5,9 +5,9 @@ from numpy.random import default_rng
 rng = default_rng()
 
 def createBlueprint(PageCache):
-    APP = Blueprint('race_generator', __name__)
+    APP = Blueprint('heat_generator', __name__)
 
-    @APP.route('/race-generators/random', methods=['GET'])
+    @APP.route('/heat-generators/random', methods=['GET'])
     def random_get():
         return {
             "parameters": [
@@ -17,7 +17,7 @@ def createBlueprint(PageCache):
             ]
         }
 
-    @APP.route('/race-generators/random', methods=['POST'])
+    @APP.route('/heat-generators/random', methods=['POST'])
     def random_post():
         data = request.get_json()
         race_class = data['class']
@@ -35,9 +35,9 @@ def createBlueprint(PageCache):
                 i = 0
         if i > 0:
             heats.append({'name': 'Heat '+str(len(heats)+1), 'class': race_class, 'seats': seats})
-        return {'type': 'Random', 'races': heats}
+        return {'type': 'Random', 'heats': heats}
 
-    @APP.route('/race-generators/mains', methods=['GET'])
+    @APP.route('/heat-generators/mains', methods=['GET'])
     def mains_get():
         return {
             "parameters": [
@@ -47,7 +47,7 @@ def createBlueprint(PageCache):
             ]
         }
 
-    @APP.route('/race-generators/mains', methods=['POST'])
+    @APP.route('/heat-generators/mains', methods=['POST'])
     def mains_post():
         data = request.get_json()
         results_class = data['resultsClass']
@@ -63,7 +63,7 @@ def createBlueprint(PageCache):
                     leaderboard = class_results['leaderboard']
                     break
         if leaderboard is None:
-            return {'races': []}
+            return {'heats': []}
 
         pilots = leaderboard[leaderboard['meta']['primary_leaderboard']]
         mains = []
@@ -91,9 +91,9 @@ def createBlueprint(PageCache):
             mains.append({'name': main_letter+' Main', 'class': mains_class, 'seats': seats})
             main_letter = chr(ord(main_letter) + 1)
         mains.reverse()
-        return {'type': 'Mains', 'races': mains}
+        return {'type': 'Mains', 'heats': mains}
 
-    @APP.route('/race-generators/mgp-brackets', methods=['GET'])
+    @APP.route('/heat-generators/mgp-brackets', methods=['GET'])
     def mgp_brackets_get():
         return {
             "parameters": [
@@ -104,7 +104,7 @@ def createBlueprint(PageCache):
             ]
         }
 
-    @APP.route('/race-generators/mgp-brackets', methods=['POST'])
+    @APP.route('/heat-generators/mgp-brackets', methods=['POST'])
     def mgp_brackets_post():
         '''
         2021 MultiGP Rules & Regulations
@@ -178,7 +178,7 @@ def createBlueprint(PageCache):
                         leaderboard = class_results['leaderboard']
                         break
             if leaderboard is None:
-                return {'races': []}
+                return {'heats': []}
     
             pilots = leaderboard[leaderboard['meta']['primary_leaderboard']]
 
@@ -200,7 +200,7 @@ def createBlueprint(PageCache):
                         class_id = class_results['id']
                         break
                 if class_id is None:
-                    return {'races': []}
+                    return {'heats': []}
                 all_heats = [results_heats[idx] for idx in results['heats_by_class'][class_id]]
             heats = all_heats[-n_bracket_races:]
             race_offset = seeding['race_offset']
@@ -217,6 +217,6 @@ def createBlueprint(PageCache):
                     seats.append(pilot)
                 mains.append({'name': 'Race '+str(i+race_offset), 'class': mains_class, 'seats': seats[:n_seats]})
     
-        return {'type': 'MultiGP bracket '+str(bracket), 'races': mains}
+        return {'type': 'MultiGP bracket '+str(bracket), 'heats': mains}
 
     return APP
