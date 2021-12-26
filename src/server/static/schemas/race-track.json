@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "crs": { "type": "string", "enum": ["Local grid", "Lat/Long"], "description": "Coordinate reference system"},
+    "units": { "type": "string", "enum": ["m", "ft"], "description": "Coordinate units" },
+    "types": {
+      "type": "object",
+      "description": "Location types",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "layout": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "location": {
+            "type": "array",
+            "description": "Coordinates",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

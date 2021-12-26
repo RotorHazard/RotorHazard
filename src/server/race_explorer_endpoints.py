@@ -150,13 +150,13 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
     @APP.route('/raceEvent', methods=['PUT'])
     def race_event_post():
         """
-        Set event info.
+        Sets event info.
         ---
         requestBody:
            content:
                application/json:
                    schema:
-                        $ref: 'static/schemas/race-event.json'
+                        $ref: static/schemas/race-event.json
         """
         data = request.get_json()
         import_event(data, rhserver)
@@ -164,16 +164,36 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
     @APP.route('/trackLayout', methods=['GET'])
     def track_layout_get():
+        """
+        Return track layout.
+        ---
+        responses:
+            200:
+                description: Track layout
+                content:
+                    application/json:
+                        schema:
+                            $ref: static/schemas/race-track.json
+        """
         track = RHData.get_option('trackLayout', None)
         if track:
             track = json.loads(track)
         if not track or not track['layout']:
-            track = rhserver.DEFAULT_TRACK
+            track = rhserver['DEFAULT_TRACK']
             RHData.set_option('trackLayout', json.dumps(track))
         return track
 
     @APP.route('/trackLayout', methods=['PUT'])
     def track_layout_post():
+        """
+        Sets track layout.
+        ---
+        requestBody:
+            content:
+                application/json:
+                    schema:
+                        $ref: static/schemas/race-track.json
+        """
         data = request.get_json()
         RHData.set_option('trackLayout', json.dumps(data))
         return '', 204
