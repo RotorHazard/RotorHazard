@@ -470,7 +470,7 @@ export default function Results(props) {
           </TableBody>
         </Table>
       </TableContainer>
-      <TrackMapContainer id="map" crs={trackData.crs} trackLayout={trackData.layout} pilotPositions={pilotPositions} flyTo={flyTo}/>
+      <TrackMapContainer id="map" crs={trackData.crs} units={trackData.units} trackLayout={trackData.layout} pilotPositions={pilotPositions} flyTo={flyTo}/>
       <Map id="map"/>
     </Stack>
   );

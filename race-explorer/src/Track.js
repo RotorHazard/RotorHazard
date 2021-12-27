@@ -18,6 +18,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
+import MouseIcon from '@mui/icons-material/Mouse';
 import ValidatingTextField from './ValidatingTextField.js';
 import { TrackMapContainer, Map } from './TrackMap.js';
 import { debounce } from 'lodash';
@@ -59,16 +60,32 @@ function updateLocation(layout, locIdx, newVals) {
   return newLayout;
 }
 
+function ClickOnMapButton(props) {
+  const [state, setState] = useState('Inactive');
+  const map = props.map;
+  const addMapListener = (evt) => {
+    setState('Active');
+    map._container.style.cursor = 'auto';
+    map.once('click', (evt) => {
+      map._container.style.cursor = '';
+      setState('Inactive');
+      props.onClick(evt);
+    });
+  };
+  const disabled = (state === 'Active');
+  return (
+    <Button startIcon={<MouseIcon/>} disabled={disabled} onClick={addMapListener}>Click on map</Button>
+  );
+}
+
 function GpsButton(props) {
   const [state, setState] = useState('Not fixed');
   const map = props.map;
   const getCurrentPosition = () => {
     setState('Fixing');
     map.once('locationfound', (evt) => {
-      if (props?.onClick) {
-        setState('Fixed');
-        props.onClick(evt);
-      }
+      setState('Fixed');
+      props.onClick(evt);
     });
     map.locate(props?.locateOptions ?? {});
   };
@@ -102,7 +119,7 @@ export default function Tracks(props) {
       if (data.units) {
         setUnits(data.units);
       }
-      setLocTypes(data.types);
+      setLocTypes(data.locationTypes);
       setTrackLayout(data.layout);
       const startPos = data.layout?.[0]?.location ?? [0,0];
       setFlyTo(startPos);
@@ -112,7 +129,7 @@ export default function Tracks(props) {
 
   useEffect(() => {
     if (trackLayout.length > 0) {
-      const data = {crs: crs, layout: trackLayout, types: locTypes};
+      const data = {crs: crs, layout: trackLayout, locationTypes: locTypes};
       if (crs === LOCAL_GRID) {
         data.units = units;
       }
@@ -171,7 +188,7 @@ export default function Tracks(props) {
     </FormControl>
     {unitSelector}
     </Stack>
-    <TrackMapContainer id="map" crs={crs} trackLayout={trackLayout} flyTo={flyTo}>
+    <TrackMapContainer id="map" crs={crs} units={units} trackLayout={trackLayout} flyTo={flyTo}>
     {(map) => (
       <TableContainer component={Paper}>
       <Table>
@@ -233,7 +250,7 @@ export default function Tracks(props) {
               });
               return '';
             };
-            const getCurrentPosition = (evt) => {
+            const setPosition = (evt) => {
               setTrackLayout((old) => {
                 return updateLocation(old, idx, {location: [evt.latlng.lat, evt.latlng.lng]});
               });
@@ -260,7 +277,8 @@ export default function Tracks(props) {
                   inputProps={{type: 'number'}}/>
                 <ValidatingTextField value={loc.location[1]} validateChange={changeYLocation}
                   inputProps={{type: 'number'}}/>
-                <GpsButton map={map} onClick={getCurrentPosition} locateOptions={{setView:true, enableHighAccuracy: true}}/>
+                <ClickOnMapButton map={map} onClick={setPosition}/>
+                <GpsButton map={map} onClick={setPosition} locateOptions={{setView:true, enableHighAccuracy: true}}/>
                 </TableCell>
               </TableRow>
             );

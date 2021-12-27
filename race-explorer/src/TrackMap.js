@@ -45,6 +45,13 @@ export function TrackMapContainer(props) {
         center: [0,0],
         zoom: 4
        });
+       const grid_5m = L.featureGroup();
+       const spacing = (props.units === 'ft') ? 16.4 : 5;
+       for (let i=0; i<51; i++) {
+         L.polyline([[spacing*(i-25), -25*spacing], [spacing*(i-25), 25*spacing]], {color: 'gray', weight: 1}).addTo(grid_5m);
+         L.polyline([[-25*spacing, spacing*(i-25)], [25*spacing, spacing*(i-25)]], {color: 'gray', weight: 1}).addTo(grid_5m);
+       }
+       grid_5m.addTo(map);
     }
     map.trackLayer = L.featureGroup();
     map.trackLayer.addTo(map);
@@ -54,10 +61,10 @@ export function TrackMapContainer(props) {
     return () => {
       map.remove();
     }
-  }, [props.id, props.crs]);
+  }, [props.id, props.crs, props.units]);
 
   useEffect(() => {
-      if (map && props?.trackLayout) {
+      if (map && props.trackLayout) {
         for (const loc of props.trackLayout) {
           L.marker(loc.location, {title: loc.name}).addTo(map.trackLayer);
         }
@@ -66,7 +73,7 @@ export function TrackMapContainer(props) {
   }, [map, props.trackLayout]);
 
   useEffect(() => {
-      if (map && props?.trackLayout && props?.pilotPositions) {
+      if (map && props.trackLayout && props.pilotPositions) {
         Object.entries(props.pilotPositions).forEach((entry) => {
           L.marker(entry[1], {title: entry[0], icon: DRONE_ICON, pane: 'tooltipPane'}).addTo(map.pilotLayer);
         });
@@ -75,7 +82,7 @@ export function TrackMapContainer(props) {
   }, [map, props.trackLayout, props.pilotPositions]);
 
   useEffect(() => {
-    if (map && props?.flyTo) {
+    if (map && props.flyTo) {
       map.flyTo(props.flyTo);
     }
   }, [map, props.flyTo]);

@@ -5569,7 +5569,7 @@ DEFAULT_TRACK = {
     'crs': 'Local grid',
     'units': 'm',
     'layout': [{'name': 'Start/finish', 'type': 'Arch gate', 'location': [0,0]}],
-    'types': {"Arch gate": {}, "Square gate": {"description": "1.5m square"}, "Flag": {}}
+    'locationTypes': {"Arch gate": {}, "Square gate": {"description": "1.5m square"}, "Flag": {}}
 }
 
 try:

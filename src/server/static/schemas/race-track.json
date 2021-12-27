@@ -3,7 +3,7 @@
   "properties": {
     "crs": { "type": "string", "enum": ["Local grid", "Lat/Long"], "description": "Coordinate reference system"},
     "units": { "type": "string", "enum": ["m", "ft"], "description": "Coordinate units" },
-    "types": {
+    "locationTypes": {
       "type": "object",
       "description": "Location types",
       "additionalProperties": {

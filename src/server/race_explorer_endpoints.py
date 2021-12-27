@@ -8,7 +8,7 @@ from . import RHRace
 import numpy as np
 
 
-class RaceObjective(Enum):
+class RaceObjective(str,Enum):
     FASTEST_CONSECUTIVE = 'fastest-consecutive'
     MOST_LAPS_QUICKEST_TIME = 'most-laps-quickest-time'
 
@@ -116,7 +116,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         track = RHData.get_option('trackLayout', None)
         if track:
             track = json.loads(track)
-        if not track or not track['layout']:
+        if not track or not track.get('locationType', None) or not track.get('layout', None):
             track = rhserver['DEFAULT_TRACK']
             RHData.set_option('trackLayout', json.dumps(track))
         return track
