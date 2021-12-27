@@ -1,3 +1,4 @@
+from enum import Enum
 import itertools
 import json
 from flask import request
@@ -5,6 +6,12 @@ from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
 from . import RHRace
 import numpy as np
+
+
+class RaceObjective(Enum):
+    FASTEST_CONSECUTIVE = 'fastest-consecutive'
+    MOST_LAPS_QUICKEST_TIME = 'most-laps-quickest-time'
+
 
 
 def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
@@ -53,6 +60,15 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         results = pilot_results(msgs)
         return json.dumps(results), 200, {'Content-Type': 'application/json'}
 
+    @APP.route('/eventLeaderboard', methods=['GET'])
+    def event_leaderboard():
+        msgs = export_results(rhserver)
+        results = pilot_results(msgs)
+        event_data = export_event(rhserver)
+        calculate_metrics(results, event_data)
+        leaderboard = calculate_leaderboard(results, event_data)
+        return json.dumps(leaderboard, default=json_numpy_converter), 200, {'Content-Type': 'application/json'}
+
     @APP.route('/raceEvent', methods=['GET'])
     def race_event_get():
         """
@@ -66,85 +82,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                         schema:
                             $ref: static/schemas/race-event.json
         """
-        event_name = RHData.get_option('eventName', "")
-        event_desc = RHData.get_option('eventDescription', "")
-        event_url = RHData.get_option('eventURL', "")
-
-        pilots = {}
-        pilots_by_id = {}
-        for pilot in RHData.get_pilots():
-            pilots[pilot.callsign] = {'name': pilot.name}
-            pilots_by_id[pilot.id] = pilot
-
-        race_formats = {'Free': {'start': 'first-pass', 'duration': 0}}
-        race_formats_by_id = {0: 'Free'}
-        for race_format in RHData.get_raceFormats():
-            race_formats[race_format.name] = {
-                'start': 'start-line' if race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP else 'first-pass',
-                'duration': race_format.race_time_sec + race_format.lap_grace_sec
-            }
-            race_formats_by_id[race_format.id] = race_format.name
-
-        race_classes = {"Unclassified": {'description': "Default class"}}
-        race_classes_by_id = {0: "Unclassified"}
-        for race_class in RHData.get_raceClasses():
-            race_format_name = race_formats_by_id[race_class.format_id]
-            race_classes[race_class.name] = {
-                'description': race_class.description,
-                'format': race_format_name
-            }
-            race_classes_by_id[race_class.id] = race_class.name
-
-        seats = []
-        current_profile = RHData.get_optionInt('currentProfile')
-        profile = RHData.get_profile(current_profile)
-        freqs = json.loads(profile.frequencies)
-        for f_b_c in zip(freqs['f'], freqs['b'], freqs['c']):
-            fbc = {'frequency': f_b_c[0]}
-            if f_b_c[1] and f_b_c[2]:
-                fbc['bandChannel'] = f_b_c[1] + str(f_b_c[2])
-            seats.append(fbc)
-
-        event_formats = {}
-        event_classes = {}
-        stages = []
-        prev_stage_name = None
-        for heat_idx, heat_data in enumerate(RHData.get_heats()):
-            heat_seats = [None] * len(seats)
-            for heat_node in RHData.get_heatNodes_by_heat(heat_data.id):
-                if heat_node.node_index < len(heat_seats) and heat_node.pilot_id in pilots_by_id:
-                    heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
-            race_name = heat_data.note if heat_data.note else 'Heat '+str(heat_idx+1)
-            race_class_name = race_classes_by_id[heat_data.class_id]
-            if race_class_name not in event_classes:
-                race_class = race_classes[race_class_name]
-                event_classes[race_class_name] = race_class
-                race_format_name = race_class['format']
-                if race_format_name not in event_formats:
-                    event_formats[race_format_name] = race_formats[race_format_name]
-            race = {
-                'id': str(heat_data.id),
-                'name': race_name,
-                'class': race_class_name,
-                'seats': heat_seats
-            }
-            stage_name = heat_data.stage.name
-            if stage_name != prev_stage_name:
-                races = []
-                stage = {'id': str(heat_data.stage_id), 'name': stage_name, 'heats': races}
-                stages.append(stage)
-                prev_stage_name = stage_name
-            races.append(race)
-        data = {
-            'name': event_name,
-            'description': event_desc,
-            'url': event_url,
-            'pilots': pilots,
-            'formats': event_formats,
-            'classes': event_classes,
-            'seats': seats,
-            'stages': stages
-        }
+        data = export_event(rhserver)
         return data
 
     @APP.route('/raceEvent', methods=['PUT'])
@@ -315,6 +253,108 @@ def pilot_results(msgs):
     return results
 
 
+def export_event(rhserver):
+    RHData = rhserver['RHData']
+    event_name = RHData.get_option('eventName', "")
+    event_desc = RHData.get_option('eventDescription', "")
+    event_url = RHData.get_option('eventURL', "")
+
+    pilots = {}
+    pilots_by_id = {}
+    for pilot in RHData.get_pilots():
+        pilots[pilot.callsign] = {'name': pilot.name}
+        pilots_by_id[pilot.id] = pilot
+
+    race_formats = {'Free': {'start': 'first-pass', 'duration': 0}}
+    race_formats_by_id = {0: 'Free'}
+    for race_format in RHData.get_raceFormats():
+        race_formats[race_format.name] = export_race_format(race_format)
+        race_formats_by_id[race_format.id] = race_format.name
+
+    race_classes = {"Unclassified": {'description': "Default class"}}
+    race_classes_by_id = {0: "Unclassified"}
+    for race_class in RHData.get_raceClasses():
+        race_format_name = race_formats_by_id[race_class.format_id]
+        race_classes[race_class.name] = {
+            'description': race_class.description,
+            'format': race_format_name
+        }
+        race_classes_by_id[race_class.id] = race_class.name
+
+    seats = []
+    current_profile = RHData.get_optionInt('currentProfile')
+    profile = RHData.get_profile(current_profile)
+    freqs = json.loads(profile.frequencies)
+    for f_b_c in zip(freqs['f'], freqs['b'], freqs['c']):
+        fbc = {'frequency': f_b_c[0]}
+        if f_b_c[1] and f_b_c[2]:
+            fbc['bandChannel'] = f_b_c[1] + str(f_b_c[2])
+        seats.append(fbc)
+
+    event_formats = {}
+    event_classes = {}
+    stages = []
+    prev_stage_name = None
+    for heat_idx, heat_data in enumerate(RHData.get_heats()):
+        heat_seats = [None] * len(seats)
+        for heat_node in RHData.get_heatNodes_by_heat(heat_data.id):
+            if heat_node.node_index < len(heat_seats) and heat_node.pilot_id in pilots_by_id:
+                heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
+        race_name = heat_data.note if heat_data.note else 'Heat '+str(heat_idx+1)
+        race_class_name = race_classes_by_id[heat_data.class_id]
+        if race_class_name not in event_classes:
+            race_class = race_classes[race_class_name]
+            event_classes[race_class_name] = race_class
+            race_format_name = race_class['format']
+            if race_format_name not in event_formats:
+                event_formats[race_format_name] = race_formats[race_format_name]
+        race = {
+            'id': str(heat_data.id),
+            'name': race_name,
+            'class': race_class_name,
+            'seats': heat_seats
+        }
+        stage_name = heat_data.stage.name
+        if stage_name != prev_stage_name:
+            races = []
+            stage = {'id': str(heat_data.stage_id), 'name': stage_name, 'heats': races}
+            stages.append(stage)
+            prev_stage_name = stage_name
+        races.append(race)
+    data = {
+        'name': event_name,
+        'description': event_desc,
+        'url': event_url,
+        'pilots': pilots,
+        'formats': event_formats,
+        'classes': event_classes,
+        'seats': seats,
+        'stages': stages
+    }
+    return data
+
+
+def export_race_format(race_format):
+    start = 'start-line' if race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP else 'first-pass'
+    consecutive_laps = 0
+    if race_format.win_condition == RHRace.WinCondition.FASTEST_3_CONSECUTIVE:
+        objective = RaceObjective.FASTEST_CONSECUTIVE
+        consecutive_laps = 3
+    elif race_format.win_condition == RHRace.WinCondition.MOST_PROGRESS:
+        objective = RaceObjective.MOST_LAPS_QUICKEST_TIME
+    else:
+        objective = None
+    json = {
+        'start': start,
+        'duration': race_format.race_time_sec + race_format.lap_grace_sec,
+        'objective': objective,
+        'maxLaps': race_format.number_laps_win
+    }
+    if consecutive_laps:
+        json['consecutiveLaps'] = consecutive_laps
+    return json
+
+
 def import_event(data, rhserver):
     event_name = data['name']
     race_classes = data['classes'] if 'classes' in data else {}
@@ -415,12 +455,14 @@ def calculate_metrics(results, event_data):
         event_result = pilot_result['events'].get(event_name, {})
         for stage_idx, stage_result in event_result['stages'].items():
             stage_info = lookup_by_index_or_id(event_data['stages'], stage_idx)
+            stage_classes = set()
             for heat_idx, heat_result in stage_result['heats'].items():
                 if stage_info:
                     heat_info = lookup_by_index_or_id(stage_info['heats'], heat_idx)
                     race_class_name = heat_info['class']
                     heat_result['class'] = race_class_name
                     race_class = event_data['classes'].get(race_class_name, {})
+                    stage_classes.add(race_class_name)
                 else:
                     race_class = {}
                 if race_class:
@@ -430,15 +472,16 @@ def calculate_metrics(results, event_data):
                 for race_result in heat_result['rounds']:
                     race_metrics = calculate_race_metrics(race_result, race_format)
                     race_result['metrics'] = race_metrics
-                heat_result['metrics'] = aggregate_metrics([r['metrics'] for r in heat_result['rounds']])
+                heat_result['metrics'] = aggregate_metrics([r['metrics'] for r in heat_result['rounds']], race_format)
             stage_result['metrics'] = {}
             stage_metrics = stage_result['metrics']
-            for race_class in event_data['classes']:
-                stage_metrics[race_class] = aggregate_metrics([h['metrics'] for h in stage_result['heats'].values() if h['class'] == race_class])
+            for race_class in stage_classes:
+                stage_metrics[race_class] = aggregate_metrics([h['metrics'] for h in stage_result['heats'].values() if h['class'] == race_class], race_format)
         event_result['metrics'] = {}
         event_metrics = event_result['metrics']
         for race_class in event_data['classes']:
-            event_metrics[race_class] = aggregate_metrics([s['metrics'][race_class] for s in event_result['stages'].values()])
+            stage_metrics = [s['metrics'][race_class] for s in event_result['stages'].values() if race_class in s['metrics']]
+            event_metrics[race_class] = aggregate_metrics(stage_metrics, race_format)
     return results
 
 
@@ -452,42 +495,46 @@ def calculate_race_metrics(race, race_format):
     lap_count = len(laps)
     race_time = laps[-1]['timestamp'] - start_time if lap_count else 0
     lap_times = [laps[i]['timestamp'] - (laps[i-1]['timestamp'] if i-1 >= 0 else start_time) for i in range(len(laps))]
-    return {
+    metrics = {
         'lapCount': lap_count,
         'time': race_time,
         'lapTimes': lap_times,
-        'fastest': np.min(lap_times),
-        'mean': np.mean(lap_times),
-        'stdDev': np.std(lap_times),
-        'fastest3Consecutive': best_n_consecutive(lap_times, 3)
+        'fastest': np.min(lap_times) if lap_times else None,
+        'mean': np.mean(lap_times) if lap_times else None,
+        'stdDev': np.std(lap_times) if lap_times else None
     }
+    if race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
+        n = race_format['consecutiveLaps']
+        metrics['fastest'+str(n)+'Consecutive'] = best_n_consecutive(lap_times, n)
+    return metrics
 
 
-def aggregate_metrics(metrics):
+def aggregate_metrics(metrics, race_format):
     lap_count = np.sum([r['lapCount'] for r in metrics])
     race_time = np.sum([r['time'] for r in metrics])
     lap_times = list(itertools.chain(*[r['lapTimes'] for r in metrics]))
-    consec_totals = [np.sum(r['fastest3Consecutive']) for r in metrics]
-    if consec_totals:
-        idx = np.argmin(consec_totals)
-        consecs = metrics[idx]['fastest3Consecutive']
-    else:
-        consecs = []
-    return {
+    agg_metrics = {
         'lapCount': lap_count,
         'time': race_time,
         'lapTimes': lap_times,
-        'fastest': np.min(lap_times),
-        'mean': np.mean(lap_times),
-        'stdDev': np.std(lap_times),
-        'fastest3Consecutive': consecs
+        'fastest': np.min(lap_times) if lap_times else None,
+        'mean': np.mean(lap_times) if lap_times else None,
+        'stdDev': np.std(lap_times) if lap_times else None
     }
+    if race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
+        n = race_format['consecutiveLaps']
+        metric_name = 'fastest' + str(n) + 'Consecutive'
+        consecutive_totals = [np.sum(r[metric_name]) for r in metrics]
+        if consecutive_totals:
+            idx = np.argmin(consecutive_totals)
+            agg_metrics[metric_name] = metrics[idx][metric_name]
+    return agg_metrics
 
 
 def best_n_consecutive(arr, n):
-    consec_totals = [np.sum(arr[i:i+n]) for i in range(len(arr)+1-n)]
-    if consec_totals:
-        idx = np.argmin(consec_totals)
+    consecutive_totals = [np.sum(arr[i:i+n]) for i in range(len(arr)+1-n)]
+    if consecutive_totals:
+        idx = np.argmin(consecutive_totals)
         return arr[idx:idx+n]
     else:
         return []
@@ -497,8 +544,48 @@ ID_PREFIX = 'id:'
 
 def lookup_by_index_or_id(arr, key):
     if key.startswith(ID_PREFIX):
-        entry_id = key.substring(len(ID_PREFIX))
-        matching_entries = filter(lambda e: e['id'] == entry_id, arr)
+        entry_id = key[len(ID_PREFIX):]
+        matching_entries = [e for e in arr if e['id'] == entry_id]
         return matching_entries[0] if matching_entries else []
     else:
         return arr[int(key)]
+
+
+def calculate_leaderboard(results, event_data):
+    event_name = event_data['name']
+    for stage_idx, stage_info in enumerate(event_data['stages']):
+        stage_id = ID_PREFIX + stage_info['id'] if 'id' in stage_info else stage_idx
+        stage_results_by_class = {}
+        for pilot, pilot_result in results['pilots'].items():
+            metrics_by_class = pilot_result['events'][event_name]['stages'][stage_id]['metrics']
+            for race_class, metrics in metrics_by_class.items():
+                race_class_info = event_data['classes'][race_class]
+                race_format = event_data['formats'][race_class_info['format']]
+                class_results = stage_results_by_class.get(race_class, None)
+                if not class_results:
+                    class_results = []
+                    stage_results_by_class[race_class] = class_results
+                if race_format['objective'] == RaceObjective.MOST_LAPS_QUICKEST_TIME:
+                    score = (-metrics['lapCount'], metrics['time'])
+                    result = (metrics['lapCount'], metrics['time'])
+                elif race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
+                    n = race_format['consecutiveLaps']
+                    metric_name = 'fastest' + str(n) + 'Consecutive'
+                    score = metrics[metric_name]
+                    result = score
+                else:
+                    raise ValueError("Unsupported objective: " + race_format['objective'])
+                class_results.append((pilot, score, result))
+        stage_info['leaderboard'] = {}
+        stage_leaderboard = stage_info['leaderboard']
+        for race_class, class_results in stage_results_by_class.items():
+            # ranking = 'best'
+            class_results.sort(key=lambda psr: psr[1])
+            stage_leaderboard[race_class] = list(map(lambda psr: {'pilot': psr[0], 'result': psr[2]}, class_results))
+    return event_data
+
+
+def json_numpy_converter(o):
+    if isinstance(o, np.generic):
+        return o.item()
+    raise TypeError(type(o))

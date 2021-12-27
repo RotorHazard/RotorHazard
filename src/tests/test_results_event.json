@@ -1,5 +1,5 @@
 {
-"formats": {"BDRA": {"start": "first-pass", "duration": 150}},
+"formats": {"BDRA": {"start": "first-pass", "duration": 150, "objective": "fastest-consecutive", "consecutiveLaps": 3}},
 "classes": {"Open": {"format": "BDRA"}},
 "name": "Cup",
 "stages": [

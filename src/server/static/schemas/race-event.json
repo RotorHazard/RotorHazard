@@ -8,6 +8,7 @@
       "type": "object",
       "description": "Pilot callsigns",
       "additionalProperties": {
+        "type": "object",
         "properties": {
           "name": { "type": "string" }
         }
@@ -17,9 +18,13 @@
       "type": "object",
       "description": "Race format names",
       "additionalProperties": {
+        "type": "object",
         "properties": {
           "start": { "type": "string", "enum": ["start-line", "first-pass"] },
-          "duration": { "type": "integer", "description": "Race duration, 0 for no limit (seconds)" }
+          "duration": { "type": "integer", "description": "Race duration, 0 for no limit (seconds)" },
+          "objective": { "type": "string" },
+          "maxLaps": { "type": "integer", "minimum": 0 },
+          "consecutiveLaps": { "type": "integer", "minimum": 0 }
         }
       }
     },
@@ -27,6 +32,7 @@
       "type": "object",
       "description": "Race class names",
       "additionalProperties": {
+        "type": "object",
         "properties": {
           "description": { "type": "string" }
         }
