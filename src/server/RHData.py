@@ -958,7 +958,8 @@ class RHData():
         new_race_class = self._Database.RaceClass(
             name=init['name'] if 'name' in init else '',
             description=init['description'] if 'description' in init else '',
-            format_id=init['format_id'] if 'format_id' in init else RHUtils.FORMAT_ID_NONE
+            format_id=init['format_id'] if 'format_id' in init else RHUtils.FORMAT_ID_NONE,
+            parent_id=init['parent_id'] if 'parent_id' in init else None
             )
         self._Database.DB.session.add(new_race_class)
         self._Database.DB.session.flush()
@@ -1008,33 +1009,35 @@ class RHData():
 
     def alter_raceClass(self, data):
         # alter existing classes
-        race_class_id = data['class_id']
+        race_class_id = data['id']
         race_class = self._Database.RaceClass.query.get(race_class_id)
 
         if not race_class:
             return False, False
 
-        if 'class_name' in data:
-            race_class.name = data['class_name']
-        if 'class_format' in data:
-            race_class.format_id = data['class_format']
-        if 'class_description' in data:
-            race_class.description = data['class_description']
+        if 'name' in data:
+            race_class.name = data['name']
+        if 'format_id' in data:
+            race_class.format_id = data['format_id']
+        if 'description' in data:
+            race_class.description = data['description']
+        if 'parent_id' in data:
+            race_class.parent_id = data['parent_id']
 
         race_list = self._Database.SavedRaceMeta.query.filter_by(class_id=race_class_id).all()
 
-        if 'class_name' in data:
+        if 'name' in data:
             if len(race_list):
                 self._PageCache.set_valid(False)
 
-        if 'class_format' in data:
+        if 'format_id' in data:
             if len(race_list):
                 self._PageCache.set_valid(False)
                 self._RESULTS_CACHE.evict_event()
                 self._RESULTS_CACHE.evict_class(race_class.id)
 
             for race_meta in race_list:
-                race_meta.format_id = data['class_format']
+                race_meta.format_id = data['format_id']
                 self._RESULTS_CACHE.evict_race(race_meta.id)
 
             heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
@@ -1386,8 +1389,8 @@ class RHData():
         self._Database.DB.session.query(self._Database.RaceFormat).delete()
         for race_class in self.get_raceClasses():
             self.alter_raceClass({
-                'class_id': race_class.id,
-                'class_format': RHUtils.FORMAT_ID_NONE
+                'id': race_class.id,
+                'format_id': RHUtils.FORMAT_ID_NONE
                 })
 
         self.commit()

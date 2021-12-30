@@ -74,6 +74,18 @@ export async function storeTimerMapping(timerMapping) {
   }
 }
 
+export function createRaceClassLoader() {
+  return createLoader(config.raceClassEndpoint);
+}
+
+export async function storeRaceClasses(raceClasses) {
+  try {
+    await axios.put(config.raceClassEndpoint, raceClasses);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+
 let mqttConfig = null;
 
 export function createMqttConfigLoader() {

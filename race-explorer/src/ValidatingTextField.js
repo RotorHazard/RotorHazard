@@ -16,5 +16,9 @@ export default function ValidatingTextField(props) {
     }
     setValue(evt.target.value);
   };
-  return <TextField {...props} value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg}/>;
+
+  const tfProps = {...props};
+  delete tfProps.validateChange;
+
+  return <TextField {...tfProps} value={value} onChange={changeValue} error={errorMsg !== ''} helperText={errorMsg}/>;
 }

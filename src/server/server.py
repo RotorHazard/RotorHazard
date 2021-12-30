@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.0" # Public release version code
-SERVER_API = 32+5 # Server API version
+SERVER_API = 32+6 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -1354,15 +1354,15 @@ def on_alter_race_class(data):
     '''Update race class.'''
     race_class, altered_race_list = RHData.alter_raceClass(data)
 
-    if ('class_format' in data or 'class_name' in data) and len(altered_race_list):
+    if ('format_id' in data or 'name' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.name)
         emit_priority_message(message, False)
 
     emit_class_data(noself=True)
-    if 'class_name' in data:
+    if 'name' in data:
         emit_heat_data() # Update class names in heat displays
-    if 'class_format' in data:
+    if 'format_id' in data:
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
 

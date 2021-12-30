@@ -20,8 +20,9 @@ import Paper from '@mui/material/Paper';
 import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { DndContext, DragOverlay, useDroppable, useDraggable, useSensors, useSensor, MouseSensor, TouchSensor, KeyboardSensor } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
 import ValidatingTextField from './ValidatingTextField.js';
+import Draggable, { useDnDSensors } from './Draggable.js';
 import Frequency, { processVtxTable } from './Frequency.js';
 import { debounce } from 'lodash';
 import { nanoid } from 'nanoid';
@@ -51,20 +52,6 @@ function updateRace(races, idx, newVals) {
   const newRace = copyRace(races[idx], newVals);
   newRaces[idx] = newRace;
   return newRaces;
-}
-
-
-function Draggable(props) {
-  const {attributes, listeners, setNodeRef} = useDraggable({
-    id: props.id,
-    data: props.data
-  });
-  const style = {
-    touchAction: 'none',
-    ...props.style
-  };
-
-  return <button ref={setNodeRef} style={style} {...listeners} {...attributes}>{props.children}</button>;
 }
 
 
@@ -486,11 +473,7 @@ export default function Event(props) {
   const [stageIndex, setStageIndex] = useState(0);
   const [draggingPilot, setDraggingPilot] = useState(null);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor),
-    useSensor(KeyboardSensor)
-  );
+  const sensors = useDnDSensors();
 
   useEffect(() => {
     const loader = createVtxTableLoader();

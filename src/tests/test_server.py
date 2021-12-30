@@ -180,17 +180,17 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_race_class(self):
         data = {
-            'class_id': 1,
-            'class_name': 'New name',
-            'class_format': 0,
-            'class_description': 'Test class'
+            'id': 1,
+            'name': 'New name',
+            'format_id': 0,
+            'description': 'Test class'
         }
         self.client.emit('alter_race_class', data)
         self.client.emit('load_data', {'load_types': ['class_data']})
         resp = self.get_response('class_data')
-        self.assertEqual(resp['classes'][0]['name'], data['class_name'])
-        self.assertEqual(resp['classes'][0]['format'], data['class_format'])
-        self.assertEqual(resp['classes'][0]['description'], data['class_description'])
+        self.assertEqual(resp['classes'][0]['name'], data['name'])
+        self.assertEqual(resp['classes'][0]['format'], data['format_id'])
+        self.assertEqual(resp['classes'][0]['description'], data['description'])
 
     def test_add_heat(self):
         self.client.emit('load_data', {'load_types': ['heat_data']})

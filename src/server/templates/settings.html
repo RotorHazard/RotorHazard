@@ -1003,15 +1003,15 @@
 
 		$(document).on("change", '.set_race_class_name', function (event) {
 			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_name: $(this).val(),
+				id: parseInt($(this).data('class_id')),
+				name: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
 
 			for (var i in rotorhazard.class_data.classes) {
 				var race_class = rotorhazard.class_data.classes[i];
-				if (race_class['id'] == data.class_id) {
-					race_class.name = data.class_name;
+				if (race_class['id'] == data.id) {
+					race_class.name = data.name;
 					break;
 				}
 			}
@@ -1020,16 +1020,16 @@
 
 		$(document).on("change", '.set_race_class_format', function (event) {
 			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_format: $(this).val(),
+				id: parseInt($(this).data('class_id')),
+				format_id: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
 		});
 
 		$(document).on("change", '.set_race_class_description', function (event) {
 			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_description: $(this).val(),
+				id: parseInt($(this).data('class_id')),
+				description: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
 		});

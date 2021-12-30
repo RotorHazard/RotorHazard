@@ -1,5 +1,5 @@
 #!/bin/sh
-RACE_EXPLORER_VERSION=race-explorer-v0.7.3
+RACE_EXPLORER_VERSION=race-explorer-v0.8
 set -e
 
 # Add extra repos

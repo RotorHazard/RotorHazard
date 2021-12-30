@@ -92,6 +92,10 @@ class RaceClass(DB.Model):
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    parent_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=True)
+    children = DB.relationship("RaceClass",
+                               cascade="all, delete-orphan",
+                               backref=DB.backref("parent", remote_side=[id]))
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id

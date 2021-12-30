@@ -86,18 +86,99 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         return data
 
     @APP.route('/raceEvent', methods=['PUT'])
-    def race_event_post():
+    def race_event_put():
         """
         Sets event info.
         ---
         requestBody:
            content:
-               application/json:
-                   schema:
+                application/json:
+                    schema:
                         $ref: static/schemas/race-event.json
         """
         data = request.get_json()
         import_event(data, rhserver)
+        return '', 204
+
+    @APP.route("/raceClasses", methods=['GET'])
+    def race_classes_get():
+        """
+        Gets race classes.
+        ---
+        requestBody:
+            content:
+             application/json: {}
+        """
+        race_formats_by_id = {0: 'Free'}
+        for race_format in RHData.get_raceFormats():
+            race_formats_by_id[race_format.id] = race_format.name
+
+        roots = {}
+        rhroots = [rhraceclass for rhraceclass in RHData.get_raceClasses() if rhraceclass.parent_id is None]
+        raceclasses_by_id = {}
+        q = []
+        q.extend(rhroots)
+        while q:
+            rhraceclass = q.pop()
+
+            raceclass = {'description': rhraceclass.description, 'children': {}}
+            raceclass['format'] = race_formats_by_id[rhraceclass.format_id]
+            raceclasses_by_id[rhraceclass.id] = raceclass
+            if rhraceclass.parent_id:
+                parent_raceclass = raceclasses_by_id[rhraceclass.parent_id]
+                children = parent_raceclass['children']
+            else:
+                children = roots
+            children[rhraceclass.name] = raceclass
+
+            q.extend(rhraceclass.children)
+        return {'classes': roots}
+
+    @APP.route("/raceClasses", methods=['PUT'])
+    def race_classes_put():
+        """
+        Sets race classes.
+        ---
+        requestBody:
+            content:
+                application/json: {}
+        """
+        data = request.get_json()
+        current_race_class_names = set()
+        rhraceclasses_by_name = {}
+        for rhraceclass in RHData.get_raceClasses():
+            current_race_class_names.add(rhraceclass.name)
+            rhraceclasses_by_name[rhraceclass.name] = rhraceclass
+
+        q = []
+        def addNodes(children, parent_id):
+            q.extend(children)
+            for race_class_name, race_class in children:
+                rhraceclass = rhraceclasses_by_name.get(race_class_name, None)
+                if rhraceclass:
+                    RHData.alter_raceClass({'id': rhraceclass.id,
+                                            'name': race_class_name,
+                                            'description': race_class['description'],
+                                            'parent_id': parent_id})
+                    current_race_class_names.remove(race_class_name)
+                else:
+                    rhraceclass = RHData.add_raceClass(init={
+                                                'name': race_class_name,
+                                                'description': race_class['description'],
+                                                'parent_id': parent_id})
+                    rhraceclasses_by_name[race_class_name] = rhraceclass
+
+        addNodes(data['classes'].items(), None)
+        while q:
+            race_class_name, race_class = q.pop()
+            rhraceclass = rhraceclasses_by_name.get(race_class_name, None)
+            addNodes(race_class['children'].items(), rhraceclass.id if rhraceclass else None)
+
+        for race_class_name in current_race_class_names:
+            rhraceclass = rhraceclasses_by_name.get(race_class_name, None)
+            if rhraceclass:
+                RHData.delete_raceClass(rhraceclass.id)
+
         return '', 204
 
     @APP.route('/trackLayout', methods=['GET'])
@@ -122,7 +203,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         return track
 
     @APP.route('/trackLayout', methods=['PUT'])
-    def track_layout_post():
+    def track_layout_put():
         """
         Sets track layout.
         ---
@@ -152,12 +233,12 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         return timerMapping
 
     @APP.route('/timerMapping', methods=['PUT'])
-    def timer_mapping_post():
+    def timer_mapping_put():
         data = request.get_json()
         RHData.set_option('timerMapping', json.dumps(data))
         return '', 204
 
-    @APP.route('/timerSetup')
+    @APP.route('/timerSetup', methods=['GET'])
     def timer_setup():
         """
         Return timer setup.
@@ -173,6 +254,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         else:
             return '', 406
  
+    @APP.route('/timerSetup.jsonl', methods=['GET'])
     def timer_setup_jsonl():
         msgs = []
         for node_manager in INTERFACE.node_managers:
