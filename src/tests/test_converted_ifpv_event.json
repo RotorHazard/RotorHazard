@@ -1,6 +1,9 @@
 {
 	"name": "Test event",
 	"date": "2011-04-12",
+	"classes": {
+		"BDRA Open": {"format": "BDRA Qualifying"}
+	},
 	"seats": [
 		{
 			"frequency": 5658,
@@ -51,6 +54,38 @@
 		"P8": {
 			"name": "Pilot 8",
 			"url": "https://some.url.com"
+		},
+		"P9": {
+			"name": "Pilot 9",
+			"url": "https://some.url.com"
+		},
+		"P10": {
+			"name": "Pilot 10",
+			"url": "https://some.url.com"
+		},
+		"P11": {
+			"name": "Pilot 11",
+			"url": "https://some.url.com"
+		},
+		"P12": {
+			"name": "Pilot 12",
+			"url": "https://some.url.com"
+		},
+		"P13": {
+			"name": "Pilot 13",
+			"url": "https://some.url.com"
+		},
+		"P14": {
+			"name": "Pilot 14",
+			"url": "https://some.url.com"
+		},
+		"P15": {
+			"name": "Pilot 15",
+			"url": "https://some.url.com"
+		},
+		"P16": {
+			"name": "Pilot 16",
+			"url": "https://some.url.com"
 		}
 	},
 	"stages": [
@@ -59,6 +94,7 @@
 			"heats": [
 				{
 					"name": "Heat 1",
+					"class": "BDRA Open",
 					"seats": [
 						"P1",
 						"P2",
@@ -68,11 +104,32 @@
 				},
 				{
 					"name": "Heat 2",
+					"class": "BDRA Open",
 					"seats": [
 						"P5",
 						"P6",
 						"P7",
 						"P8"
+					]
+				},
+				{
+					"name": "Heat 3",
+					"class": "BDRA Open",
+					"seats": [
+						"P9",
+						"P10",
+						"P11",
+						"P12"
+					]
+				},
+				{
+					"name": "Heat 4",
+					"class": "BDRA Open",
+					"seats": [
+						"P13",
+						"P14",
+						"P15",
+						"P16"
 					]
 				}
 			]

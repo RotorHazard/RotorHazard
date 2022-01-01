@@ -65,6 +65,8 @@ def convert_ifpv_json(ifpv_data):
     event_name = ifpv_data['event']['name']
     event_date = ifpv_data['event']['date']
     num_heats = ifpv_data['event']['heats']
+    race_class_name = 'BDRA Open'
+    race_format_name = 'BDRA Qualifying'
 
     freqs = json.loads(ifpv_data['event']['frequencies'])
     rhfreqs = [convert_ifpv_freq(f) for f in freqs]
@@ -85,12 +87,14 @@ def convert_ifpv_json(ifpv_data):
         seat = pilot['car']-1
         if heats[heat] is None:
             heats[heat] = {'name': 'Heat '+str(heat+1),
+                           'class': race_class_name,
                            'seats': [None] * len(seats)}
         heats[heat]['seats'][seat] = pilot['callsign']
 
     event_data = {
         'name': event_name,
         'date': event_date,
+        'classes': {race_class_name: {'format': race_format_name}},
         'seats': seats,
         'pilots': pilots,
         'stages': [
@@ -106,6 +110,8 @@ def convert_multigp_json(mgp_data):
     data = mgp_data['data']
     event_name = data['name']
     event_date = data['startDate']
+    race_class_name = 'Open'
+
     seats = []
     pilots = {}
     heats = []
@@ -131,7 +137,9 @@ def convert_multigp_json(mgp_data):
             heats.append(None)
         heat = heats[heat_idx]
         if not heat:
-            heat = {'name': 'Heat '+str(heat_idx+1), 'seats': []}
+            heat = {'name': 'Heat '+str(heat_idx+1),
+                    'class': race_class_name,
+                    'seats': []}
             heats[heat_idx] = heat
         heat_seats = heat['seats']
         while seat_idx >= len(heat_seats):
@@ -141,6 +149,7 @@ def convert_multigp_json(mgp_data):
     event_data = {
         'name': event_name,
         'date': event_date,
+        'classes': {race_class_name: {}},
         'seats': seats,
         'pilots': pilots,
         'stages': [

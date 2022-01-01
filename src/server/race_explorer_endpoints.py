@@ -59,12 +59,12 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         results = core.pilot_results(msgs)
         event_data = core.export_event(RHData)
         results = core.calculate_metrics(results, event_data)
-        return json.dumps(results, default=json_numpy_converter), 200, {'Content-Type': 'application/json'}
+        return json.dumps(results, default=core.json_numpy_converter), 200, {'Content-Type': 'application/json'}
 
     @APP.route('/eventLeaderboard')
     def event_leaderboard():
         leaderboard = core.export_leaderboard(RHData)
-        return json.dumps(leaderboard, default=json_numpy_converter), 200, {'Content-Type': 'application/json'}
+        return json.dumps(leaderboard, default=core.json_numpy_converter), 200, {'Content-Type': 'application/json'}
 
     @APP.route('/raceEvent')
     def race_event_get():
@@ -158,7 +158,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         def addNodes(children, parent_id):
             q.extend(children)
             for race_class_name, race_class in children:
-                rhraceclass = rhraceclasses_by_name.get(race_class_name, None)
+                rhraceclass = rhraceclasses_by_name.get(race_class_name)
                 if rhraceclass:
                     RHData.alter_raceClass({'id': rhraceclass.id,
                                             'name': race_class_name,
@@ -175,11 +175,11 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         addNodes(data['classes'].items(), None)
         while q:
             race_class_name, race_class = q.pop()
-            rhraceclass = rhraceclasses_by_name.get(race_class_name, None)
+            rhraceclass = rhraceclasses_by_name.get(race_class_name)
             addNodes(race_class['children'].items(), rhraceclass.id if rhraceclass else None)
 
         for race_class_name in current_race_class_names:
-            rhraceclass = rhraceclasses_by_name.get(race_class_name, None)
+            rhraceclass = rhraceclasses_by_name.get(race_class_name)
             if rhraceclass:
                 RHData.delete_raceClass(rhraceclass.id)
 
@@ -198,8 +198,8 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                         schema:
                             $ref: static/schemas/race-track.json
         """
-        track = RHData.get_optionJson('trackLayout', None)
-        if not track or not track.get('locationType', None) or not track.get('layout', None):
+        track = RHData.get_optionJson('trackLayout')
+        if not track or not track.get('locationType') or not track.get('layout'):
             track = rhserver['DEFAULT_TRACK']
             RHData.set_optionJson('trackLayout', track)
         return track
@@ -221,7 +221,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
     @APP.route('/timerMapping')
     def timer_mapping_get():
-        timerMapping = RHData.get_optionJson('timerMapping', None)
+        timerMapping = RHData.get_optionJson('timerMapping')
         if not timerMapping:
             timerMapping = {
                 TIMER_ID: {
@@ -280,9 +280,3 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         return VTX_TABLE
 
     return APP
-
-
-def json_numpy_converter(o):
-    if isinstance(o, np.generic):
-        return o.item()
-    raise TypeError(type(o))

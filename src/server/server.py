@@ -4543,7 +4543,7 @@ def get_location_id_and_seat(timer_id, nm, n, track, timer_mapping):
 
 def join_cluster_callback(split_timer_id, nms):
     timer_mapping = json.loads(RHData.get_option('timerMapping', None))
-    timer_map_info = timer_mapping.get(split_timer_id, None)
+    timer_map_info = timer_mapping.get(split_timer_id)
     if not timer_map_info:
         timer_mapping[split_timer_id] = {
             nm.addr: [{'location': '', 'seat': node_index} for node_index in nodes]
@@ -5382,7 +5382,7 @@ try:
 except Exception:
     logger.exception("Exception while discovering sensors")
 
-mqtt_clients = serviceHelpers.get('mqtt_helper', None)
+mqtt_clients = serviceHelpers.get('mqtt_helper')
 INTERFACE.mqtt_client = mqtt_clients['timer'] if mqtt_clients else None
 INTERFACE.mqtt_ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
 INTERFACE.mqtt_ctrl_topic = rhconfig.MQTT['TIMER_CTRL_TOPIC']

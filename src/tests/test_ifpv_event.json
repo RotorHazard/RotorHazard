@@ -3,7 +3,7 @@
 		"name": "Test event",
 		"date": "2011-04-12",
 		"url": "https:\/\/some.url.com",
-		"heats": 2,
+		"heats": 4,
 		"frequencies": "[\"rb1\",\"rb2\",\"fs2\",\"fs4\"]"
 	},
 	"pilots": [
@@ -75,6 +75,78 @@
       "name": "Pilot 8",
       "callsign": "P8",
       "heat": 2,
+      "car": 4,
+      "frequency": "fs4",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 9,
+      "name": "Pilot 9",
+      "callsign": "P9",
+      "heat": 3,
+      "car": 1,
+      "frequency": "rb1",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 10,
+      "name": "Pilot 10",
+      "callsign": "P10",
+      "heat": 3,
+      "car": 2,
+      "frequency": "rb2",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 11,
+      "name": "Pilot 11",
+      "callsign": "P11",
+      "heat": 3,
+      "car": 3,
+      "frequency": "fs2",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 12,
+      "name": "Pilot 12",
+      "callsign": "P12",
+      "heat": 3,
+      "car": 4,
+      "frequency": "fs4",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 13,
+      "name": "Pilot 13",
+      "callsign": "P13",
+      "heat": 4,
+      "car": 1,
+      "frequency": "rb1",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 14,
+      "name": "Pilot 14",
+      "callsign": "P14",
+      "heat": 4,
+      "car": 2,
+      "frequency": "rb2",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 15,
+      "name": "Pilot 15",
+      "callsign": "P15",
+      "heat": 4,
+      "car": 3,
+      "frequency": "fs2",
+      "pilot_url": "https:\/\/some.url.com"
+    },
+    {
+      "id": 16,
+      "name": "Pilot 16",
+      "callsign": "P16",
+      "heat": 4,
       "car": 4,
       "frequency": "fs4",
       "pilot_url": "https:\/\/some.url.com"

@@ -1,4 +1,3 @@
-from enum import Enum
 import itertools
 import json
 from . import RHRace
@@ -7,14 +6,11 @@ import numpy as np
 
 UNCLASSIFIED = 'Unclassified'
 
+RACE_FORMAT_FASTEST_CONSECUTIVE = 'fastest-consecutive'
+RACE_FORMAT_MOST_LAPS_QUICKEST_TIME = 'most-laps-quickest-time'
 
-class RaceObjective(str,Enum):
-    FASTEST_CONSECUTIVE = 'fastest-consecutive'
-    MOST_LAPS_QUICKEST_TIME = 'most-laps-quickest-time'
-
-
-class LeaderboardMethod(str,Enum):
-    BEST = 'best'
+LEADERBOARD_BEST = 'best'
+LEADERBOARD_HEAT_POSITIONS = 'heatPositions'
 
 
 def export_results(RHData):
@@ -121,7 +117,7 @@ def export_event(RHData):
         if race_class_name not in event_classes:
             race_class = race_classes[race_class_name]
             event_classes[race_class_name] = race_class
-            race_format_name = race_class.get('format', None)
+            race_format_name = race_class.get('format')
             if race_format_name is not None and race_format_name not in event_formats:
                 event_formats[race_format_name] = race_formats[race_format_name]
         race = {
@@ -158,10 +154,10 @@ def export_race_format(race_format):
     start = 'start-line' if race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP else 'first-pass'
     consecutive_laps = 0
     if race_format.win_condition == RHRace.WinCondition.FASTEST_3_CONSECUTIVE:
-        objective = RaceObjective.FASTEST_CONSECUTIVE
+        objective = RACE_FORMAT_FASTEST_CONSECUTIVE
         consecutive_laps = 3
     elif race_format.win_condition == RHRace.WinCondition.MOST_PROGRESS:
-        objective = RaceObjective.MOST_LAPS_QUICKEST_TIME
+        objective = RACE_FORMAT_MOST_LAPS_QUICKEST_TIME
     else:
         objective = None
     json = {
@@ -215,21 +211,21 @@ def import_event(data, rhserver):
         pilot_ids[rhpilot.callsign] = rhpilot.id
 
     for race_class_name, race_class in race_classes.items():
-        raceClass_id = raceClass_ids.get(race_class_name, None)
+        raceClass_id = raceClass_ids.get(race_class_name)
         if not raceClass_id:
             class_data = {
                 'name': race_class_name
             }
             if 'description' in race_class:
                 class_data['description'] = race_class['description']
-            raceFormat_name = race_class.get('format', None)
+            raceFormat_name = race_class.get('format')
             if raceFormat_name in raceFormat_ids_by_name:
                 class_data['format_id'] = raceFormat_ids_by_name[raceFormat_name]
             rhraceclass = RHData.add_raceClass(class_data)
             raceClass_ids[race_class_name] = rhraceclass.id
 
     for callsign, pilot in pilots.items():
-        pilot_id = pilot_ids.get(callsign, None)
+        pilot_id = pilot_ids.get(callsign)
         if not pilot_id:
             pilot_data = {
                 'callsign': callsign,
@@ -297,7 +293,7 @@ def calculate_metrics(results, event_data):
             for heat_idx, heat_result in stage_result['heats'].items():
                 if stage_info:
                     heat_info = lookup_by_index_or_id(stage_info['heats'], heat_idx)
-                    race_class_name = heat_info['class']
+                    race_class_name = heat_info.get('class', UNCLASSIFIED)
                     heat_result['class'] = race_class_name
                     race_class = event_data['classes'].get(race_class_name, {})
                     stage_classes.add(race_class_name)
@@ -341,7 +337,7 @@ def calculate_race_metrics(race, race_format):
         'mean': np.mean(lap_times) if lap_times else None,
         'stdDev': np.std(lap_times) if lap_times else None
     }
-    if race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
+    if race_format.get('objective') == RACE_FORMAT_FASTEST_CONSECUTIVE:
         n = race_format['consecutiveLaps']
         metrics['fastest'+str(n)+'Consecutive'] = best_n_consecutive(lap_times, n)
     return metrics
@@ -359,7 +355,7 @@ def aggregate_metrics(metrics, race_format):
         'mean': np.mean(lap_times) if lap_times else None,
         'stdDev': np.std(lap_times) if lap_times else None
     }
-    if race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
+    if race_format.get('objective') == RACE_FORMAT_FASTEST_CONSECUTIVE:
         n = race_format['consecutiveLaps']
         metric_name = 'fastest' + str(n) + 'Consecutive'
         consecutive_totals = [np.sum(r[metric_name]) for r in metrics]
@@ -381,7 +377,7 @@ def best_n_consecutive(arr, n):
 ID_PREFIX = 'id:'
 
 def lookup_by_index_or_id(arr, key):
-    if key.startswith(ID_PREFIX):
+    if isinstance(key, str) and key.startswith(ID_PREFIX):
         entry_id = key[len(ID_PREFIX):]
         matching_entries = [e for e in arr if e['id'] == entry_id]
         return matching_entries[0] if matching_entries else []
@@ -397,17 +393,18 @@ def calculate_leaderboard(results, event_data):
             heat_id = ID_PREFIX + heat_info['id'] if 'id' in heat_info else heat_idx
             race_class_name = heat_info['class']
             race_class_info = event_data['classes'][race_class_name]
-            race_format = event_data['formats'][race_class_info['format']]
-            heat_psrs = []
-            for pilot in heat_info['seats']:
-                if pilot:
-                    pilot_stages = results['pilots'][pilot]['events'][event_name]['stages']
-                    if stage_id in pilot_stages:
-                        pilot_heats = pilot_stages[stage_id]['heats']
-                        if heat_id in pilot_heats:
-                            metrics = pilot_heats[heat_id]['metrics']
-                            heat_psrs.append(to_psr(pilot, metrics, race_format))
-            heat_info['ranking'] = rank_psrs(heat_psrs)
+            if 'formats' in event_data:
+                race_format = event_data['formats'][race_class_info['format']]
+                heat_psrs = []
+                for pilot in heat_info['seats']:
+                    if pilot:
+                        pilot_stages = results['pilots'][pilot]['events'][event_name]['stages']
+                        if stage_id in pilot_stages:
+                            pilot_heats = pilot_stages[stage_id]['heats']
+                            if heat_id in pilot_heats:
+                                metrics = pilot_heats[heat_id]['metrics']
+                                heat_psrs.append(to_psr(pilot, metrics, race_format))
+                heat_info['ranking'] = rank_psrs(heat_psrs)
 
         stage_psrs_by_class = {}
         for pilot, pilot_result in results['pilots'].items():
@@ -416,16 +413,17 @@ def calculate_leaderboard(results, event_data):
                 stage_metrics_by_class = pilot_stages[stage_id]['metrics']
                 for race_class_name, metrics in stage_metrics_by_class.items():
                     race_class_info = event_data['classes'][race_class_name]
-                    race_format = event_data['formats'][race_class_info['format']]
-                    class_psrs = stage_psrs_by_class.get(race_class_name, None)
-                    if not class_psrs:
-                        class_psrs = []
-                        stage_psrs_by_class[race_class_name] = class_psrs
-                    class_psrs.append(to_psr(pilot, metrics, race_format))
+                    if 'formats' in event_data:
+                        race_format = event_data['formats'][race_class_info['format']]
+                        class_psrs = stage_psrs_by_class.get(race_class_name)
+                        if not class_psrs:
+                            class_psrs = []
+                            stage_psrs_by_class[race_class_name] = class_psrs
+                        class_psrs.append(to_psr(pilot, metrics, race_format))
 
-        if not stage_info.get('leaderboards', None):
+        if not stage_info.get('leaderboards'):
             # default if no leaderboard config is present
-            stage_info['leaderboards'] = {race_class_name: {'method': LeaderboardMethod.BEST} for race_class_name in stage_psrs_by_class.keys()}
+            stage_info['leaderboards'] = {race_class_name: {'method': LEADERBOARD_BEST} for race_class_name in stage_psrs_by_class.keys()}
         stage_leaderboards = stage_info['leaderboards']
 
         race_classes_by_name = {}
@@ -433,27 +431,58 @@ def calculate_leaderboard(results, event_data):
             race_classes_by_name[race_class_name] = race_class
 
         for parent_race_class_name, leaderboard in stage_leaderboards.items():
-            method = leaderboard['method']
-            if method == LeaderboardMethod.BEST:
-                stage_psrs = []
-                q = []
-                q.append(parent_race_class_name)
-                while q:
-                    race_class_name = q.pop()
-                    stage_psrs.extend(stage_psrs_by_class.get(race_class_name, []))
-                    race_class = race_classes_by_name[race_class_name]
+            race_class_names = []
+            q = []
+            q.append(parent_race_class_name)
+            while q:
+                race_class_name = q.pop()
+                race_class_names.append(race_class_name)
+                race_class = race_classes_by_name[race_class_name]
+                if 'children' in race_class:
                     q.extend(race_class['children'].keys())
+
+            method = leaderboard['method']
+            if method == LEADERBOARD_BEST:
+                stage_psrs = []
+                for race_class_name in race_class_names:
+                    stage_psrs.extend(stage_psrs_by_class.get(race_class_name, []))
                 leaderboard['ranking'] = rank_psrs(stage_psrs)
+            elif method == LEADERBOARD_HEAT_POSITIONS:
+                heat_positions = leaderboard['heatPositions']
+                n = max([heat_pos[0] for heat_pos in heat_positions])
+                races = get_previous_n_races(event_data['stages'], stage_idx+1, race_class_names, n)
+                ranking = []
+                for heat_pos in heat_positions:
+                    pilot_result = races[heat_pos[0]-1]['ranking'][heat_pos[1]-1]
+                    ranking.append({'pilot': pilot_result['pilot']})
+                leaderboard['ranking'] = ranking
             else:
                 raise ValueError("Unsupported method: " + method)
     return event_data
 
 
+def get_previous_n_races(stages, stage_idx, race_class_names, n):
+    if stage_idx-1 < 0 or stage_idx-1 >= len(stages):
+        return None
+
+    races = [None] * n
+    for i in range(stage_idx-1, -1, -1):
+        stage = stages[i]
+        for heat in reversed(stage['heats']):
+            if heat.get('class') in race_class_names:
+                races[n-1] = heat
+                n -= 1
+                if n == 0:
+                    return races
+
+    return None
+
+
 def to_psr(pilot, metrics, race_format):
-    if race_format['objective'] == RaceObjective.MOST_LAPS_QUICKEST_TIME:
+    if race_format['objective'] == RACE_FORMAT_MOST_LAPS_QUICKEST_TIME:
         score = (-metrics['lapCount'], metrics['time'])
         result = (metrics['lapCount'], metrics['time'])
-    elif race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
+    elif race_format['objective'] == RACE_FORMAT_FASTEST_CONSECUTIVE:
         n = race_format['consecutiveLaps']
         metric_name = 'fastest' + str(n) + 'Consecutive'
         score = metrics[metric_name]
@@ -475,3 +504,9 @@ def export_leaderboard(RHData):
     results = calculate_metrics(results, event_data)
     leaderboard = calculate_leaderboard(results, event_data)
     return leaderboard
+
+
+def json_numpy_converter(o):
+    if isinstance(o, np.generic):
+        return o.item()
+    raise TypeError(type(o))
