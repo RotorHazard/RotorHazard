@@ -382,13 +382,13 @@ def export_event(RHData):
     event_classes = {}
     stages = []
     prev_stage_name = None
-    for heat_idx, heat_data in enumerate(RHData.get_heats()):
+    for heat_idx, rhheat in enumerate(RHData.get_heats()):
         heat_seats = [None] * len(seats)
-        for heat_node in RHData.get_heatNodes_by_heat(heat_data.id):
+        for heat_node in RHData.get_heatNodes_by_heat(rhheat.id):
             if heat_node.node_index < len(heat_seats) and heat_node.pilot_id in pilots_by_id:
                 heat_seats[heat_node.node_index] = pilots_by_id[heat_node.pilot_id].callsign
-        race_name = heat_data.note if heat_data.note else 'Heat '+str(heat_idx+1)
-        race_class_name = race_classes_by_id[heat_data.class_id]
+        race_name = rhheat.note if rhheat.note else 'Heat '+str(heat_idx+1)
+        race_class_name = race_classes_by_id[rhheat.class_id]
         if race_class_name not in event_classes:
             race_class = race_classes[race_class_name]
             event_classes[race_class_name] = race_class
@@ -396,15 +396,16 @@ def export_event(RHData):
             if race_format_name is not None and race_format_name not in event_formats:
                 event_formats[race_format_name] = race_formats[race_format_name]
         race = {
-            'id': str(heat_data.id),
+            'id': str(rhheat.id),
             'name': race_name,
             'class': race_class_name,
             'seats': heat_seats
         }
-        stage_name = heat_data.stage.name
+        stage_name = rhheat.stage.name
         if stage_name != prev_stage_name:
             races = []
-            stage = {'id': str(heat_data.stage_id), 'name': stage_name, 'heats': races}
+            stage = {'id': str(rhheat.stage_id), 'name': stage_name, 'heats': races}
+            stage.update(rhheat.stage.data)
             stages.append(stage)
             prev_stage_name = stage_name
         races.append(race)
@@ -507,6 +508,7 @@ def import_event(data, rhserver):
     rhheats = RHData.get_heats()
     h = 0
     for stage in stages:
+        rhheat = None
         for heat in stage['heats']:
             if h < len(rhheats):
                 rhheat = rhheats[h]
@@ -529,10 +531,21 @@ def import_event(data, rhserver):
                 for seat,callsign in enumerate(heat['seats']):
                     if callsign in pilot_ids:
                         heat_pilots[seat] = pilot_ids[callsign]
-                RHData.add_heat(init=heat_data, initPilots=heat_pilots)
+                rhheat = RHData.add_heat(init=heat_data, initPilots=heat_pilots)
             h += 1
+
+        if rhheat:
+            stage_data = {}
+            if 'type' in stage:
+                stage_data['type'] = stage['type']
+            if 'leaderboards' in stage:
+                stage_data['leaderboards'] = stage['leaderboards']
+            rhheat.stage.data = stage_data
+
     for i in range(len(rhheats)-1, h-1, -1):
         RHData.delete_heat(rhheats[i].id)
+
+    RHData.commit()
 
     rhserver['on_set_profile']({'profile': profile.id})
     rhserver['emit_pilot_data']()

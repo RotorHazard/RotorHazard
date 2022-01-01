@@ -51,6 +51,8 @@ function copyRace(r, newVals) {
     id: r.id,
     name: r.name,
     class: r.class,
+    type: r.type,
+    leaderboards: {...r.leaderboards},
     seats: [...r.seats],
     ...newVals
   };

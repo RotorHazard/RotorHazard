@@ -54,6 +54,7 @@ class Stage(DB.Model):
     )
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
+    data = DB.Column(DB.PickleType, nullable=True)
 
 
 class Heat(DB.Model):
