@@ -134,7 +134,8 @@ def export_event(RHData):
         if stage_name != prev_stage_name:
             races = []
             stage = {'id': str(rhheat.stage_id), 'name': stage_name, 'heats': races}
-            stage.update(rhheat.stage.data)
+            if rhheat.stage.data:
+                stage.update(rhheat.stage.data)
             stages.append(stage)
             prev_stage_name = stage_name
         races.append(race)
@@ -149,6 +150,7 @@ def export_event(RHData):
         'seats': seats,
         'stages': stages
     }
+    data.update(RHData.get_optionJson('eventMetadata', {}))
     return data
 
 
@@ -187,6 +189,10 @@ def import_event(data, rhserver):
         RHData.set_option('eventDescription', data['description'])
     if 'url' in data:
         RHData.set_option('eventURL', data['url'])
+    event_metadata = {}
+    if 'date' in data:
+        event_metadata['date'] = data['date']
+    RHData.set_optionJson('eventMetadata', event_metadata)
 
     profile_data = {'profile_name': event_name,
         'frequencies': {'b': [s['bandChannel'][0] if 'bandChannel' in s else None for s in seats],

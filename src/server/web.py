@@ -102,6 +102,55 @@ def convert_ifpv_json(ifpv_data):
     return event_data
 
 
+def convert_multigp_json(mgp_data):
+    data = mgp_data['data']
+    event_name = data['name']
+    event_date = data['startDate']
+    seats = []
+    pilots = {}
+    heats = []
+
+    for entry in data['entries']:
+        callsign = entry['userName']
+        name = entry['firstName'] + ' ' + entry['lastName']
+        pilots[callsign] = {'name': name}
+        freq = entry['frequency']
+        band = entry['band']
+        channel = entry['channel']
+        heat_idx = int(entry['group']) - 1
+        seat_idx = int(entry['groupSlot']) - 1
+        if heat_idx == 0:
+            while seat_idx >= len(seats):
+                seats.append(None)
+            seat = {'frequency': freq}
+            if band and channel:
+                seat['bandChannel'] = band+str(channel)
+            seats[seat_idx] = seat
+
+        while heat_idx >= len(heats):
+            heats.append(None)
+        heat = heats[heat_idx]
+        if not heat:
+            heat = {'name': 'Heat '+str(heat_idx+1), 'seats': []}
+            heats[heat_idx] = heat
+        heat_seats = heat['seats']
+        while seat_idx >= len(heat_seats):
+            heat_seats.append(None)
+        heat_seats[seat_idx] = callsign
+
+    event_data = {
+        'name': event_name,
+        'date': event_date,
+        'seats': seats,
+        'pilots': pilots,
+        'stages': [
+            {'name': 'Qualifying',
+             'heats': heats}
+        ]
+    }
+    return event_data
+
+
 @SOCKET_IO.on('sync_event')
 def on_sync_event():
     sync_event(current_app.rhserver)
@@ -114,7 +163,13 @@ def sync_event(rhserver):
         return
 
     logging.info("Syncing event...")
-    resp = requests.get(event_url, timeout=TIMEOUT)
-    ifpv_data = resp.json()
-    event_data = convert_ifpv_json(ifpv_data)
+    if '.multigp.com/' in event_url:
+        data = {'apiKey': rhserver['rhconfig'].GENERAL['MULTIGP_API_KEY']}
+        resp = requests.post(event_url, json=data, timeout=TIMEOUT)
+        mgp_data = resp.json()
+        event_data = convert_multigp_json(mgp_data)
+    else:
+        resp = requests.get(event_url, timeout=TIMEOUT)
+        ifpv_data = resp.json()
+        event_data = convert_ifpv_json(ifpv_data)
     import_event(event_data, rhserver)
