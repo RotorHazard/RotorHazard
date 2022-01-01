@@ -1,0 +1,156 @@
+{% extends "layout.html" %} {% block title %}{{ __('Settings') }}{% endblock %} {% block head %}
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'exporter_list',
+	];
+
+	$(document).ready(function () {
+		var heartbeatCounter = 0;
+
+		// set admin flag
+		rotorhazard.admin = true;
+		rotorhazard.saveData();
+		$('nav li').removeClass('admin-hide');
+
+		socket.on('exporter_list', function (msg) {
+			$('#exporter_list').empty();
+			if ('exporters' in msg && msg.exporters.length) {
+				msg.exporters.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
+				for (idx in msg.exporters) {
+					var ex = msg.exporters[idx];
+					$('#exporter_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
+				}
+				$('#exporter_list').prop('disabled', false);
+				$('#export_database').prop('disabled', false);
+			} else {
+				$('#exporter_list').append('<option value="-">' + __('No Exporters') + '</option>');
+				$('#exporter_list').prop('disabled', true);
+				$('#export_database').prop('disabled', true);
+			}
+		});
+
+
+
+
+
+
+
+		function calculateRoundPoints(raceResults){
+		        var SLRounds = {};
+		        var raceClasses = raceResults["classes"];
+						for (var key in raceClasses) {
+							var roundNumber = raceClasses[key];
+							var pilotHeats = roundNumber['leaderboard']['by_race_time'];
+							var points = pilotHeats.length;
+							SLRounds[key] = [];
+							for(var pilotHeatKey in pilotHeats){
+								var pilotHeat = pilotHeats[pilotHeatKey];
+								var callsign = pilotHeat['callsign'];
+								var heatTime = pilotHeat['total_time_raw'];
+								var laps = pilotHeat['laps'];
+								var pilotID = pilotHeat['pilot_id'];
+								SLRounds[key].push({"callsign":String(callsign),"points":String(points),"laps":String(laps),"heatTime":String(heatTime)});
+								console.log(SLRounds[key][SLRounds[key].length-1]);
+								points -= 1;
+							}
+						}
+						console.log("SL Rounds");
+						//CAN'T FIGURE OUT HOW TO DO JAVASCRIPT JSON SHIT....
+						console.log(JSON.stringify(SLRounds, null, 4));
+		        return SLRounds;
+		}
+
+		function getPilotTotalsFromRounds(rounds){
+			var pilotPoints = {}
+
+	    //add up the points for each pilot
+			for (var roundKey in rounds) {
+				var round = rounds[roundKey];
+	      console.log("--- round "+JSON.stringify(roundKey));
+				//for (var pilotHeatKey in round) {
+				for (var i = 0; i < round.length; i++) {
+					var pilotHeat = round[i];
+					var callsign = pilotHeat['callsign'];
+					var pilotRoundPoints = pilotHeat['points'];
+					if(callsign in pilotPoints){
+						pilotPoints.push({'callsign':callsign,'points':pilotPoints[i]+pilotRoundPoints);
+					}
+					console.log(callsign+", "+String(pilotRoundPoints));
+				}
+			}
+
+	    //sort the pilots by most points
+			console.log("pilotPoints");
+			console.log(pilotPoints);
+	    //var pilotPoints = dict(sorted(pilotPoints.items(), key = lambda kv: kv[1], reverse=True));
+			/*pilotPoints.sort(function(a, b){
+				return a.points - b.points;
+			});*/
+			for(var callsignKey in pilotPoints){
+				var callsign = pilotPoints[callsignKey];
+				console.log(callsignKey+", "+String(pilotPoints[callsignKey]));
+			}
+	    return pilotPoints;
+		}
+
+		function slformat(raceResults){
+		        var rounds = calculateRoundPoints(raceResults);
+		        var pilotTotalPoints = getPilotTotalsFromRounds(rounds);
+		}
+
+		function createSLTable(formatData){
+			var headers = ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5", "Round 6"];
+			var table = document.createElement("table");
+		}
+
+		socket.on('exported_data', function (msg) {
+			var data = msg.data
+			/*
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			*/
+			// construct blob and initiate browser save-as
+			//console.log(data);
+			slFormatData = slformat(JSON.parse(data));
+			//createSLTable(slFormatData);
+			//saveAs(new Blob([data], {type: msg.encoding}), msg.filename);
+		});
+
+		var exportData = {exporter: 'json_complete_results'};
+		socket.emit('export_database', exportData);
+
+		$('button#export_database').click(function (event) {
+			var data = {
+				exporter: $('#exporter_list').val()
+			};
+			socket.emit('export_database', data);
+			return false;
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+<main class="page-settings">
+
+<div class="panel-content">
+	<div class="control-set">
+		<select id="exporter_list" disabled="disabled">
+			<option value="-">{{ __('No Exporters') }}</option>
+		</select>
+		<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+	</div>
+
+</div>
+
+</main>
+{% endblock %}
