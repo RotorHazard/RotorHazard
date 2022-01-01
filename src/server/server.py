@@ -2811,7 +2811,7 @@ def generate_heats(data):
         for idx, heat in enumerate(reversed(generated_heats), start=1):
             ladder = letters[len(generated_heats) - idx]
             new_heat = RHData.add_heat({
-                'class_id': output_class,
+                'class': output_class,
                 'note': ladder + ' ' + suffix,
                 'stage': stage
                 }, heat)
@@ -5536,7 +5536,7 @@ from . import heat_generator_endpoints
 APP.register_blueprint(json_endpoints.createBlueprint(RESULTS, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota.createBlueprint())
 APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, APP.rhserver))
-APP.register_blueprint(heat_generator_endpoints.createBlueprint(PageCache))
+APP.register_blueprint(heat_generator_endpoints.createBlueprint(RHData))
 
 if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     from .chorus_api import ChorusAPI

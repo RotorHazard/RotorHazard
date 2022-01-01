@@ -8,10 +8,16 @@ from . import RHRace
 import numpy as np
 
 
+UNCLASSIFIED = 'Unclassified'
+
+
 class RaceObjective(str,Enum):
     FASTEST_CONSECUTIVE = 'fastest-consecutive'
     MOST_LAPS_QUICKEST_TIME = 'most-laps-quickest-time'
 
+
+class LeaderboardMethod(str,Enum):
+    BEST = 'best'
 
 
 def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
@@ -51,25 +57,29 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
     @APP.route('/raceResults.jsonl')
     def race_results_jsonl():
-        msgs = export_results(rhserver)
+        msgs = export_results(RHData)
         return '\n'.join([json.dumps(msg) for msg in msgs]), 200, {'Content-Type': 'application/jsonl'}
 
     @APP.route('/raceResults.json')
     def race_results_json():
-        msgs = export_results(rhserver)
+        msgs = export_results(RHData)
         results = pilot_results(msgs)
         return json.dumps(results), 200, {'Content-Type': 'application/json'}
 
-    @APP.route('/eventLeaderboard', methods=['GET'])
-    def event_leaderboard():
-        msgs = export_results(rhserver)
+    @APP.route('/raceMetrics')
+    def race_metrics():
+        msgs = export_results(RHData)
         results = pilot_results(msgs)
-        event_data = export_event(rhserver)
-        calculate_metrics(results, event_data)
-        leaderboard = calculate_leaderboard(results, event_data)
+        event_data = export_event(RHData)
+        results = calculate_metrics(results, event_data)
+        return json.dumps(results, default=json_numpy_converter), 200, {'Content-Type': 'application/json'}
+
+    @APP.route('/eventLeaderboard')
+    def event_leaderboard():
+        leaderboard = export_leaderboard(RHData)
         return json.dumps(leaderboard, default=json_numpy_converter), 200, {'Content-Type': 'application/json'}
 
-    @APP.route('/raceEvent', methods=['GET'])
+    @APP.route('/raceEvent')
     def race_event_get():
         """
         Return event setup.
@@ -82,7 +92,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                         schema:
                             $ref: static/schemas/race-event.json
         """
-        data = export_event(rhserver)
+        data = export_event(RHData)
         return data
 
     @APP.route('/raceEvent', methods=['PUT'])
@@ -100,7 +110,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         import_event(data, rhserver)
         return '', 204
 
-    @APP.route("/raceClasses", methods=['GET'])
+    @APP.route("/raceClasses")
     def race_classes_get():
         """
         Gets race classes.
@@ -181,7 +191,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
 
         return '', 204
 
-    @APP.route('/trackLayout', methods=['GET'])
+    @APP.route('/trackLayout')
     def track_layout_get():
         """
         Return track layout.
@@ -194,12 +204,10 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                         schema:
                             $ref: static/schemas/race-track.json
         """
-        track = RHData.get_option('trackLayout', None)
-        if track:
-            track = json.loads(track)
+        track = RHData.get_optionJson('trackLayout', None)
         if not track or not track.get('locationType', None) or not track.get('layout', None):
             track = rhserver['DEFAULT_TRACK']
-            RHData.set_option('trackLayout', json.dumps(track))
+            RHData.set_optionJson('trackLayout', track)
         return track
 
     @APP.route('/trackLayout', methods=['PUT'])
@@ -214,31 +222,29 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                         $ref: static/schemas/race-track.json
         """
         data = request.get_json()
-        RHData.set_option('trackLayout', json.dumps(data))
+        RHData.set_optionJson('trackLayout', data)
         return '', 204
 
-    @APP.route('/timerMapping', methods=['GET'])
+    @APP.route('/timerMapping')
     def timer_mapping_get():
-        timerMapping = RHData.get_option('timerMapping', None)
-        if timerMapping:
-            timerMapping = json.loads(timerMapping)
-        else:
+        timerMapping = RHData.get_optionJson('timerMapping', None)
+        if not timerMapping:
             timerMapping = {
                 TIMER_ID: {
                     nm.addr: [{'location': 'Start/finish', 'seat': node.index} for node in nm.nodes]
                     for nm in INTERFACE.node_managers
                 }
             }
-            RHData.set_option('timerMapping', json.dumps(timerMapping))
+            RHData.set_optionJson('timerMapping', timerMapping)
         return timerMapping
 
     @APP.route('/timerMapping', methods=['PUT'])
     def timer_mapping_put():
         data = request.get_json()
-        RHData.set_option('timerMapping', json.dumps(data))
+        RHData.set_optionJson('timerMapping', data)
         return '', 204
 
-    @APP.route('/timerSetup', methods=['GET'])
+    @APP.route('/timerSetup')
     def timer_setup():
         """
         Return timer setup.
@@ -254,7 +260,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         else:
             return '', 406
  
-    @APP.route('/timerSetup.jsonl', methods=['GET'])
+    @APP.route('/timerSetup.jsonl')
     def timer_setup_jsonl():
         msgs = []
         for node_manager in INTERFACE.node_managers:
@@ -282,8 +288,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
     return APP
 
 
-def export_results(rhserver):
-    RHData = rhserver['RHData']
+def export_results(RHData):
     event_name = RHData.get_option('eventName', '')
     msgs = []
     for race in RHData.get_savedRaceMetas():
@@ -335,8 +340,7 @@ def pilot_results(msgs):
     return results
 
 
-def export_event(rhserver):
-    RHData = rhserver['RHData']
+def export_event(RHData):
     event_name = RHData.get_option('eventName', "")
     event_desc = RHData.get_option('eventDescription', "")
     event_url = RHData.get_option('eventURL', "")
@@ -353,13 +357,14 @@ def export_event(rhserver):
         race_formats[race_format.name] = export_race_format(race_format)
         race_formats_by_id[race_format.id] = race_format.name
 
-    race_classes = {"Unclassified": {'description': "Default class"}}
-    race_classes_by_id = {0: "Unclassified"}
+    race_classes = {UNCLASSIFIED: {'description': "Default class"}}
+    race_classes_by_id = {0: UNCLASSIFIED}
     for race_class in RHData.get_raceClasses():
         race_format_name = race_formats_by_id[race_class.format_id]
         race_classes[race_class.name] = {
             'description': race_class.description,
-            'format': race_format_name
+            'format': race_format_name,
+            'children': {child.name: {} for child in race_class.children}
         }
         race_classes_by_id[race_class.id] = race_class.name
 
@@ -387,8 +392,8 @@ def export_event(rhserver):
         if race_class_name not in event_classes:
             race_class = race_classes[race_class_name]
             event_classes[race_class_name] = race_class
-            race_format_name = race_class['format']
-            if race_format_name not in event_formats:
+            race_format_name = race_class.get('format', None)
+            if race_format_name is not None and race_format_name not in event_formats:
                 event_formats[race_format_name] = race_formats[race_format_name]
         race = {
             'id': str(heat_data.id),
@@ -403,6 +408,7 @@ def export_event(rhserver):
             stages.append(stage)
             prev_stage_name = stage_name
         races.append(race)
+    event_classes = RHData.get_optionJson('eventClasses', event_classes)
     data = {
         'name': event_name,
         'description': event_desc,
@@ -446,6 +452,7 @@ def import_event(data, rhserver):
 
     RHData = rhserver['RHData']
     RHData.set_option('eventName', event_name)
+    RHData.set_optionJson('eventClasses', race_classes)
     if 'description' in data:
         RHData.set_option('eventDescription', data['description'])
     if 'url' in data:
@@ -459,9 +466,9 @@ def import_event(data, rhserver):
         }
     profile = RHData.upsert_profile(profile_data)
 
-    raceFormat_ids = {}
+    raceFormat_ids_by_name = {}
     for rhraceformat in RHData.get_raceFormats():
-        raceFormat_ids[rhraceformat.name] = rhraceformat.id
+        raceFormat_ids_by_name[rhraceformat.name] = rhraceformat.id
 
     raceClass_ids = {}
     for rhraceclass in RHData.get_raceClasses():
@@ -479,10 +486,9 @@ def import_event(data, rhserver):
             }
             if 'description' in race_class:
                 class_data['description'] = race_class['description']
-            if 'format' in race_class:
-                raceFormat_name = race_class['format']
-                if raceFormat_name in raceFormat_ids:
-                    class_data['format_id'] = raceFormat_ids[raceFormat_name]
+            raceFormat_name = race_class.get('format', None)
+            if raceFormat_name in raceFormat_ids_by_name:
+                class_data['format_id'] = raceFormat_ids_by_name[raceFormat_name]
             rhraceclass = RHData.add_raceClass(class_data)
             raceClass_ids[race_class_name] = rhraceclass.id
 
@@ -510,13 +516,15 @@ def import_event(data, rhserver):
                 for seat,callsign in enumerate(heat['seats']):
                     if callsign in pilot_ids:
                         heat_data = {'heat': rhheat.id, 'note': heat['name'], 'stage': stage['name'], 'node': seat, 'pilot': pilot_ids[callsign]}
-                        if 'class' in heat:
-                            heat_data['class'] = raceClass_ids[heat['class']]
+                        heat_class = heat.get('class', UNCLASSIFIED)
+                        if heat_class != UNCLASSIFIED:
+                            heat_data['class'] = raceClass_ids[heat_class]
                         RHData.alter_heat(heat_data)
             else:
                 heat_data = {'note': heat['name'], 'stage': stage['name']}
-                if 'class' in heat:
-                    heat_data['class'] = raceClass_ids[heat['class']]
+                heat_class = heat.get('class', UNCLASSIFIED)
+                if heat_class != UNCLASSIFIED:
+                    heat_data['class'] = raceClass_ids[heat_class]
                 heat_pilots = {}
                 for seat,callsign in enumerate(heat['seats']):
                     if callsign in pilot_ids:
@@ -637,34 +645,88 @@ def calculate_leaderboard(results, event_data):
     event_name = event_data['name']
     for stage_idx, stage_info in enumerate(event_data['stages']):
         stage_id = ID_PREFIX + stage_info['id'] if 'id' in stage_info else stage_idx
-        stage_results_by_class = {}
+        for heat_idx, heat_info in enumerate(stage_info['heats']):
+            heat_id = ID_PREFIX + heat_info['id'] if 'id' in heat_info else heat_idx
+            race_class_name = heat_info['class']
+            race_class_info = event_data['classes'][race_class_name]
+            race_format = event_data['formats'][race_class_info['format']]
+            heat_psrs = []
+            for pilot in heat_info['seats']:
+                if pilot:
+                    pilot_stages = results['pilots'][pilot]['events'][event_name]['stages']
+                    if stage_id in pilot_stages:
+                        pilot_heats = pilot_stages[stage_id]['heats']
+                        if heat_id in pilot_heats:
+                            metrics = pilot_heats[heat_id]['metrics']
+                            heat_psrs.append(to_psr(pilot, metrics, race_format))
+            heat_info['ranking'] = rank_psrs(heat_psrs)
+
+        stage_psrs_by_class = {}
         for pilot, pilot_result in results['pilots'].items():
-            metrics_by_class = pilot_result['events'][event_name]['stages'][stage_id]['metrics']
-            for race_class, metrics in metrics_by_class.items():
-                race_class_info = event_data['classes'][race_class]
-                race_format = event_data['formats'][race_class_info['format']]
-                class_results = stage_results_by_class.get(race_class, None)
-                if not class_results:
-                    class_results = []
-                    stage_results_by_class[race_class] = class_results
-                if race_format['objective'] == RaceObjective.MOST_LAPS_QUICKEST_TIME:
-                    score = (-metrics['lapCount'], metrics['time'])
-                    result = (metrics['lapCount'], metrics['time'])
-                elif race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
-                    n = race_format['consecutiveLaps']
-                    metric_name = 'fastest' + str(n) + 'Consecutive'
-                    score = metrics[metric_name]
-                    result = score
-                else:
-                    raise ValueError("Unsupported objective: " + race_format['objective'])
-                class_results.append((pilot, score, result))
-        stage_info['leaderboard'] = {}
-        stage_leaderboard = stage_info['leaderboard']
-        for race_class, class_results in stage_results_by_class.items():
-            # ranking = 'best'
-            class_results.sort(key=lambda psr: psr[1])
-            stage_leaderboard[race_class] = list(map(lambda psr: {'pilot': psr[0], 'result': psr[2]}, class_results))
+            pilot_stages = pilot_result['events'][event_name]['stages']
+            if stage_id in pilot_stages:
+                stage_metrics_by_class = pilot_stages[stage_id]['metrics']
+                for race_class_name, metrics in stage_metrics_by_class.items():
+                    race_class_info = event_data['classes'][race_class_name]
+                    race_format = event_data['formats'][race_class_info['format']]
+                    class_psrs = stage_psrs_by_class.get(race_class_name, None)
+                    if not class_psrs:
+                        class_psrs = []
+                        stage_psrs_by_class[race_class_name] = class_psrs
+                    class_psrs.append(to_psr(pilot, metrics, race_format))
+
+        if not stage_info.get('leaderboards', None):
+            # default if no leaderboard config is present
+            stage_info['leaderboards'] = {race_class_name: {'method': LeaderboardMethod.BEST} for race_class_name in stage_psrs_by_class.keys()}
+        stage_leaderboards = stage_info['leaderboards']
+
+        race_classes_by_name = {}
+        for race_class_name, race_class in event_data['classes'].items():
+            race_classes_by_name[race_class_name] = race_class
+
+        for parent_race_class_name, leaderboard in stage_leaderboards.items():
+            method = leaderboard['method']
+            if method == LeaderboardMethod.BEST:
+                stage_psrs = []
+                q = []
+                q.append(parent_race_class_name)
+                while q:
+                    race_class_name = q.pop()
+                    stage_psrs.extend(stage_psrs_by_class.get(race_class_name, []))
+                    race_class = race_classes_by_name[race_class_name]
+                    q.extend(race_class['children'].keys())
+                leaderboard['ranking'] = rank_psrs(stage_psrs)
+            else:
+                raise ValueError("Unsupported method: " + method)
     return event_data
+
+
+def to_psr(pilot, metrics, race_format):
+    if race_format['objective'] == RaceObjective.MOST_LAPS_QUICKEST_TIME:
+        score = (-metrics['lapCount'], metrics['time'])
+        result = (metrics['lapCount'], metrics['time'])
+    elif race_format['objective'] == RaceObjective.FASTEST_CONSECUTIVE:
+        n = race_format['consecutiveLaps']
+        metric_name = 'fastest' + str(n) + 'Consecutive'
+        score = metrics[metric_name]
+        result = score
+    else:
+        raise ValueError("Unsupported objective: " + race_format['objective'])
+    return pilot, score, result
+
+
+def rank_psrs(psrs):
+    psrs.sort(key=lambda psr: psr[1])
+    return list(map(lambda psr: {'pilot': psr[0], 'result': psr[2]}, psrs))
+
+
+def export_leaderboard(RHData):
+    msgs = export_results(RHData)
+    results = pilot_results(msgs)
+    event_data = export_event(RHData)
+    results = calculate_metrics(results, event_data)
+    leaderboard = calculate_leaderboard(results, event_data)
+    return leaderboard
 
 
 def json_numpy_converter(o):

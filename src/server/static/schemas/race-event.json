@@ -55,6 +55,16 @@
         "type": "object",
         "properties": {
           "name": { "type": "string" },
+          "leaderboards": {
+            "type": "object",
+            "description": "Race class names",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "method": { "type": "string" }
+              }
+            }
+          }
           "heats": {
             "type": "array",
             "items": {

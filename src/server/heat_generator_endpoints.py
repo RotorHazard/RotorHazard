@@ -1,10 +1,11 @@
 from flask import request
 from flask.blueprints import Blueprint
 from numpy.random import default_rng
+from . import race_explorer_endpoints as race_exp
 
 rng = default_rng()
 
-def createBlueprint(PageCache):
+def createBlueprint(RHData):
     APP = Blueprint('heat_generator', __name__)
 
     @APP.route('/heat-generators/random', methods=['GET'])
@@ -50,48 +51,53 @@ def createBlueprint(PageCache):
     @APP.route('/heat-generators/mains', methods=['POST'])
     def mains_post():
         data = request.get_json()
+        stage_idx = data['stage']
         results_class = data['resultsClass']
         mains_class = data['mainsClass']
         n_seats = int(data['seats'])
-        results = PageCache.get_cache()
-        leaderboard = None
-        if results_class == "Unclassified":
-            leaderboard = results['event_leaderboard']
-        else:
-            for class_results in results['classes'].values():
-                if class_results['name'] == results_class:
-                    leaderboard = class_results['leaderboard']
-                    break
-        if leaderboard is None:
+
+        leaderboards = race_exp.export_leaderboard(RHData)
+        stages = leaderboards['stages']
+        if stage_idx-1 < 0 or stage_idx-1 >= len(stages):
+            return {'heats': []}
+        stage = stages[stage_idx-1]
+        stage_leaderboard = stage['leaderboards'].get(results_class, None)
+        if stage_leaderboard is None:
             return {'heats': []}
 
-        pilots = leaderboard[leaderboard['meta']['primary_leaderboard']]
+        pilots_to_seats = {}
+        for heat in stage['heats']:
+            for seat_idx, pilot in enumerate(heat['seats']):
+                pilots_to_seats[pilot] = seat_idx
+
+        prs = stage_leaderboard['ranking']
         mains = []
         i = 0
         main_letter = 'A'
-        while i < len(pilots):
-            race_pilots = pilots[i:i+n_seats]
-            i += len(race_pilots)
+        while i < len(prs):
+            heat_prs = prs[i:i+n_seats]
+            i += len(heat_prs)
             # assign pilots to seats
             # prioritise freq assignments to higher ranked pilots
             # (an alternate strategy would be to minimize freq changes)
             seats = [None] * n_seats
             available_seats = list(range(n_seats))
             unassigned = []
-            for pilot in race_pilots:
-                seat_idx = pilot['node']
+            for pr in heat_prs:
+                pilot = pr['pilot']
+                seat_idx = pilots_to_seats[pilot]
                 if seat_idx < len(seats) and not seats[seat_idx]:
-                    seats[seat_idx] = pilot['callsign']
+                    seats[seat_idx] = pilot
                     available_seats.remove(seat_idx)
                 else:
                     unassigned.append(pilot)
             for pilot in unassigned:
                 seat_idx = available_seats.pop(0)
-                seats[seat_idx] = pilot['callsign']
+                seats[seat_idx] = pilot
             mains.append({'name': main_letter+' Main', 'class': mains_class, 'seats': seats})
             main_letter = chr(ord(main_letter) + 1)
         mains.reverse()
-        return {'type': 'Mains', 'heats': mains}
+        return {'type': 'Mains', 'heats': mains, 'leaderboards': {mains_class: {'method': 'best'}}}
 
     @APP.route('/heat-generators/mgp-brackets', methods=['GET'])
     def mgp_brackets_get():
@@ -112,11 +118,11 @@ def createBlueprint(PageCache):
         https://docs.google.com/document/d/1x-otorbEruq5oD6b1yzoBTHO9SwUNmb2itguUoY8x3s/
         '''
         data = request.get_json()
+        stage_idx = data['stage']
         results_class = data['resultsClass']
         mains_class = data['mainsClass']
         n_seats = int(data['seats'])
         bracket = int(data['bracket'])
-        results = PageCache.get_cache()
 
         # 1-index based!
         seeding_table = [
@@ -124,6 +130,7 @@ def createBlueprint(PageCache):
             {'previous_races': 4,
              'race_offset': 5,
              'races': [
+                 # (race, position)
                  [(1,3),(1,4),(2,3),(2,4)],
                  [(1,1),(1,2),(2,1),(2,2)],
                  [(3,3),(3,4),(4,3),(4,4)],
@@ -158,65 +165,79 @@ def createBlueprint(PageCache):
             }
         ]
 
-        leaderboard_positions = [
-            (14,1), (14,2), (14,3), (14,4),
-            (13,3), (13,4), (12,3), (12,4),
-            (10,3), (10,4), (9,3), (9,4),
-            (7,3), (7,4), (5,3), (5,4)
-        ]
+        leaderboards = race_exp.export_leaderboard(RHData)
+        stages = leaderboards['stages']
 
         mains = []
         if bracket == 1:
-            seeding = seeding_table[bracket-1]
-
-            leaderboard = None
-            if results_class == "Unclassified":
-                leaderboard = results['event_leaderboard']
-            else:
-                for class_results in results['classes'].values():
-                    if class_results['name'] == results_class:
-                        leaderboard = class_results['leaderboard']
-                        break
-            if leaderboard is None:
+            stage = get_previous_stage(stages, stage_idx, results_class)
+            if not stage:
                 return {'heats': []}
-    
-            pilots = leaderboard[leaderboard['meta']['primary_leaderboard']]
 
+            stage_leaderboard = stage['leaderboards'][results_class]
+            prs = stage_leaderboard['ranking']
+
+            seeding = seeding_table[bracket-1]
             for i, race_seeds in enumerate(seeding):
-                seats = [pilots[seed_pos-1]['callsign'] if seed_pos <= len(pilots) else None for seed_pos in race_seeds]
+                seats = [prs[seed_pos-1]['pilot'] if seed_pos <= len(prs) else None for seed_pos in race_seeds]
                 mains.append({'name': 'Race '+str(i+1), 'class': mains_class, 'seats': seats[:n_seats]})
         elif bracket >= 2 and bracket <= len(seeding_table):
             seeding = seeding_table[bracket-1]
             n_bracket_races = seeding['previous_races']
 
-            results_heats = results['heats']
-            all_heats = None
-            if results_class == "Unclassified":
-                all_heats = [results_heats[heat_id] for heat_id in range(1,len(results_heats)+1)]
-            else:
-                class_id = None
-                for class_results in results['classes'].values():
-                    if class_results['name'] == results_class:
-                        class_id = class_results['id']
-                        break
-                if class_id is None:
-                    return {'heats': []}
-                all_heats = [results_heats[idx] for idx in results['heats_by_class'][class_id]]
-            heats = all_heats[-n_bracket_races:]
+            heats = get_previous_n_races(stages, stage_idx, results_class, n_bracket_races)
+            if not heats:
+                return {'heats': []}
+
             race_offset = seeding['race_offset']
             for i, race_seeds in enumerate(seeding['races']):
                 seats = []
                 for seed_pos in race_seeds:
                     pilot = None
-                    if seed_pos[0] <= len(heats):
-                        heat = heats[seed_pos[0]-1]
-                        leaderboard = heat['leaderboard']
-                        pilots = leaderboard[leaderboard['meta']['primary_leaderboard']]
-                        if seed_pos[1] <= len(pilots):
-                            pilot = pilots[seed_pos[1]-1]['callsign']
+                    heat = heats[seed_pos[0]-1]
+                    ranking = heat['ranking']
+                    if seed_pos[1] <= len(ranking):
+                        pilot = ranking[seed_pos[1]-1]['pilot']
                     seats.append(pilot)
                 mains.append({'name': 'Race '+str(i+race_offset), 'class': mains_class, 'seats': seats[:n_seats]})
     
-        return {'type': 'MultiGP bracket '+str(bracket), 'heats': mains}
+        bracket_heats = {'type': 'MultiGP bracket '+str(bracket), 'heats': mains}
+        if bracket == len(seeding_table):
+            leaderboard_positions = [
+                (14,1), (14,2), (14,3), (14,4),
+                (13,3), (13,4), (12,3), (12,4),
+                (10,3), (10,4), (9,3), (9,4),
+                (7,3), (7,4), (5,3), (5,4)
+            ]
+            bracket_heats['leaderboards'] = {mains_class: {'method': 'heatPositions', 'heatPositions': leaderboard_positions}}
+        return bracket_heats
 
     return APP
+
+
+def get_previous_stage(stages, stage_idx, race_class_name):
+    if stage_idx-1 < 0 or stage_idx-1 >= len(stages):
+        return None
+
+    for i in range(stage_idx-1, -1, -1):
+        stage = stages[i]
+        if race_class_name in stage['leaderboards']:
+            return stage
+
+    return None
+
+
+def get_previous_n_races(stages, stage_idx, race_class_name, n):
+    if stage_idx-1 < 0 or stage_idx-1 >= len(stages):
+        return None
+
+    races = []
+    for i in range(stage_idx-1, -1, -1):
+        stage = stages[i]
+        for heat in reversed(stage['heats']):
+            if heat.get('class', None) == race_class_name:
+                races.append(heat)
+                if len(races) == n:
+                    return races
+
+    return None

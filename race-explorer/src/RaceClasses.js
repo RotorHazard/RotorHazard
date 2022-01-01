@@ -1,16 +1,15 @@
-import React, { useState, useEffect, forwardRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Stack from '@mui/material/Stack';
-import TreeItem, { useTreeItem } from '@mui/lab/TreeItem';
+import TreeItem from '@mui/lab/TreeItem';
 import TreeView from '@mui/lab/TreeView';
-import IconButton from '@mui/material/IconButton';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
-import clsx from 'clsx';
 import ValidatingTextField from './ValidatingTextField.js';
 import Draggable, { useDnDSensors } from './Draggable.js';
+import RaceClass from './RaceClass.js';
+import TreeNode from './TreeNode.js';
 import { createRaceClassLoader, storeRaceClasses } from './rh-client.js';
 import { debounce } from 'lodash';
 
@@ -49,10 +48,6 @@ function RaceClassPanel(props) {
   );
 }
 
-function RaceClass(props) {
-  return <div className={props.className}>{props.name}</div>;
-}
-
 function DraggableNode(props) {
   const data = {};
   const style = {
@@ -84,82 +79,25 @@ function DroppableNode(props) {
   );
 }
 
-const RootNode = forwardRef(function RootNode(props, ref) {
-  const {
-    classes,
-    className,
-    nodeId,
-    icon: iconProp,
-    expansionIcon,
-    displayIcon
-  } = props;
-  const {
-    disabled,
-    expanded,
-    selected,
-    focused
-  } = useTreeItem(nodeId);
-  const icon = iconProp || expansionIcon || displayIcon;
-  return (
-    <div ref={ref}
-     className={clsx(className, classes.root, {
-        [classes.expanded]: expanded,
-        [classes.selected]: selected,
-        [classes.focused]: focused,
-        [classes.disabled]: disabled,
-      })}
-    >
-    <div className={classes.iconContainer}>
-    {icon}
-    </div>
-    <DroppableNode id={nodeId}>
-    </DroppableNode>
-    </div>
-  );
-});
-
-const RaceClassNode = forwardRef(function RaceClassNode(props, ref) {
-  const {
-    classes,
-    className,
-    label,
-    nodeId,
-    icon: iconProp,
-    expansionIcon,
-    displayIcon
-  } = props;
-  const {
-    disabled,
-    expanded,
-    selected,
-    focused,
-    handleExpansion,
-    handleSelection
-  } = useTreeItem(nodeId);
-  const icon = iconProp || expansionIcon || displayIcon;
-  return (
-    <div ref={ref}
-     className={clsx(className, classes.root, {
-        [classes.expanded]: expanded,
-        [classes.selected]: selected,
-        [classes.focused]: focused,
-        [classes.disabled]: disabled,
-      })}
-    >
-    <div onClick={handleExpansion} className={classes.iconContainer}>
-    {icon}
-    </div>
-    <div onMouseDown={handleSelection}>
-    <DroppableNode id={nodeId}>
-    <DraggableNode id={nodeId}>
-    <RaceClass name={label} className={classes.label}/>
-    </DraggableNode>
-    </DroppableNode>
-    </div>
-    <IconButton onClick={props.onDelete}><DeleteIcon/></IconButton>
-    </div>
-  );
-});
+export function flattenTree(tree) {
+  const nodesByName = {};
+  const q = [];
+  const rootEntries = Object.entries(tree);
+  rootEntries.forEach((e) => {
+    nodesByName[e[0]] = {content: e[1], parent: null};
+  });
+  q.push(...rootEntries);
+  while (q.length > 0) {
+    const entry = q.pop();
+    const node = entry[1];
+    const childEntries = Object.entries(node.children);
+    childEntries.forEach((e) => {
+      nodesByName[e[0]] = {content: e[1], parent: entry};
+    });
+    q.push(...childEntries);
+  }
+  return nodesByName;
+}
 
 export default function RaceClasses(props) {
   const [raceClasses, setRaceClasses] = useState({});
@@ -180,22 +118,7 @@ export default function RaceClasses(props) {
     saveRaceClasses({classes: raceClasses});
   }, [raceClasses]);
 
-  const nodesByName = {};
-  const q = [];
-  const rootRaceClassEntries = Object.entries(raceClasses);
-  rootRaceClassEntries.forEach((e) => {
-    nodesByName[e[0]] = {content: e[1], parent: null};
-  });
-  q.push(...rootRaceClassEntries);
-  while (q.length > 0) {
-    const raceClassEntry = q.pop();
-    const raceClass = raceClassEntry[1];
-    const childRaceClassEntries = Object.entries(raceClass.children);
-    childRaceClassEntries.forEach((e) => {
-      nodesByName[e[0]] = {content: e[1], parent: raceClassEntry};
-    });
-    q.push(...childRaceClassEntries);
-  }
+  const nodesByName = useMemo(() => flattenTree(raceClasses), [raceClasses]);
 
   const treeRenderer = (raceClasses) => {
     return Object.entries(raceClasses).map((e) => {
@@ -215,8 +138,18 @@ export default function RaceClasses(props) {
           setSelectedRaceClass(node.parent);
         }
       };
+      const nodeRenderer = (props) => {
+        return (
+          <DroppableNode id={props.nodeId}>
+          <DraggableNode id={props.nodeId}>
+          <RaceClass name={props.label} className={props.classes.label}/>
+          </DraggableNode>
+          </DroppableNode>
+        );
+      };
       return (
-        <TreeItem key={raceClassName} nodeId={raceClassName} label={raceClassName} sx={{textAlign: 'left'}} ContentComponent={RaceClassNode} ContentProps={{onDelete: deleteNode}}>
+        <TreeItem key={raceClassName} nodeId={raceClassName} label={raceClassName} sx={{textAlign: 'left'}}
+        ContentComponent={TreeNode} ContentProps={{onDelete: deleteNode, render: nodeRenderer}}>
           {treeRenderer(raceClass.children)}
           <TreeItem nodeId={raceClassName + '.add'} icon={<AddIcon/>}/>
         </TreeItem>
@@ -292,11 +225,17 @@ export default function RaceClasses(props) {
       }
     }
   };
+  const rootNodeRenderer = (props) => {
+    return <DroppableNode id={props.nodeId}/>;
+
+  };
   return (
     <Stack direction="row">
     <DndContext onDragStart={onDragStart} onDragCancel={onDragCancel} onDragEnd={onDragEnd} sensors={sensors}>
     <TreeView defaultExpanded={['.root']} defaultCollapseIcon={<ExpandMoreIcon />} defaultExpandIcon={<ChevronRightIcon />} onNodeSelect={nodeSelected}>
-    <TreeItem nodeId='.root' ContentComponent={RootNode}>
+    <TreeItem nodeId='.root'
+      ContentComponent={TreeNode}
+      ContentProps={{disableExpansion: true, disableSelection: true, render: rootNodeRenderer}}>
     {treeRenderer(raceClasses)}
     <TreeItem nodeId='.add' icon={<AddIcon/>}/>
     </TreeItem>

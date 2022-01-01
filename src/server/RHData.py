@@ -699,7 +699,7 @@ class RHData():
         return heat_data.note if heat_data else None
 
     def get_heats(self):
-        return self._Database.Heat.query.order_by(self._Database.Heat.stage_id, self._Database.Heat.id).all()
+        return self._Database.Heat.query.order_by(self._Database.Heat.id).all()
 
     def get_heats_by_class(self, class_id):
         return self._Database.Heat.query.filter_by(class_id=class_id).all()
@@ -717,8 +717,8 @@ class RHData():
             class_id=RHUtils.CLASS_ID_NONE
             )
 
-        if 'class_id' in init:
-            new_heat.class_id = init['class_id']
+        if 'class' in init:
+            new_heat.class_id = init['class']
         if 'note' in init:
             new_heat.note = init['note']
 
@@ -1708,6 +1708,19 @@ class RHData():
             val = self._OptionsCache[option]
             if val:
                 return int(val)
+            else:
+                return default_value
+        except:
+            return default_value
+
+    def set_optionJson(self, option, value):
+        self.set_option(option, json.dumps(value))
+
+    def get_optionJson(self, option, default_value=None):
+        try:
+            val = self._OptionsCache[option]
+            if val:
+                return json.loads(val)
             else:
                 return default_value
         except:

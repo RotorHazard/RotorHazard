@@ -16,20 +16,29 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TreeItem from '@mui/lab/TreeItem';
+import TreeView from '@mui/lab/TreeView';
 import Paper from '@mui/material/Paper';
 import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
 import ValidatingTextField from './ValidatingTextField.js';
 import Draggable, { useDnDSensors } from './Draggable.js';
 import Frequency, { processVtxTable } from './Frequency.js';
+import Pilot from './Pilot.js';
+import RaceClass from './RaceClass.js';
+import TreeNode from './TreeNode.js';
+import { flattenTree } from './RaceClasses.js';
 import { debounce } from 'lodash';
 import { nanoid } from 'nanoid';
 import {
   createVtxTableLoader,
   createEventDataLoader, storeEventData,
-  createHeatGeneratorLoader, generateHeats
+  createHeatGeneratorLoader, generateHeats,
+  createRaceClassLoader
 } from './rh-client.js';
 
 const saveEventData = debounce(storeEventData, 2000);
@@ -52,11 +61,6 @@ function updateRace(races, idx, newVals) {
   const newRace = copyRace(races[idx], newVals);
   newRaces[idx] = newRace;
   return newRaces;
-}
-
-
-function Pilot(props) {
-  return <div>{props.callsign}</div>;
 }
 
 
@@ -350,6 +354,7 @@ function RaceStagePanel(props) {
       }
       return [paramName, value];
     }));
+    data.stage = props.stageIdx;
     generateHeats(endpoint, data, (stageData) => {
       const races = stageData.heats;
       idifyRaces(races);
@@ -357,7 +362,7 @@ function RaceStagePanel(props) {
       if (newStageName !== 'Qualifying' && stageData.type) {
         newStageName = stageData.type;
       }
-      props.onChange(newStageName, props.stage.heats.concat(races));
+      props.onChange({...stageData, name: newStageName, heats: props.stage.heats.concat(races)});
     });
   };
 
@@ -376,7 +381,7 @@ function RaceStagePanel(props) {
     {generatorUi.render(props, generatorUiState, setGeneratorUiState)}
     <Button onClick={generate}>Generate</Button>
     <RacesTable races={props.stage.heats} seats={props.seats}
-      raceClasses={props.raceClasses} onChange={(races) => props.onChange(props.stage.name, races)}
+      raceClasses={props.raceClasses} onChange={(races) => props.onChange({heats: races})}
     />
     </div>
   );
@@ -387,7 +392,7 @@ const QUALIFYING_GENS = {
 };
 
 const MAINS_GENS = {
-  Mains: "/heat-generators/mains",
+  "Ladder Mains": "/heat-generators/mains",
   "MultiGP Brackets": "/heat-generators/mgp-brackets",
   Random: "/heat-generators/random"
 };
@@ -472,6 +477,7 @@ export default function Event(props) {
   const [stages, setStages] = useState([]);
   const [stageIndex, setStageIndex] = useState(0);
   const [draggingPilot, setDraggingPilot] = useState(null);
+  const [raceClassTree, setRaceClassTree] = useState({});
 
   const sensors = useDnDSensors();
 
@@ -479,6 +485,13 @@ export default function Event(props) {
     const loader = createVtxTableLoader();
     loader.load(processVtxTable, setVtxTable);
     return () => loader.cancel();
+  }, []);
+
+  useEffect(() => {
+    const loader = createRaceClassLoader();
+    loader.load(null, (data) => {
+      setRaceClassTree(data.classes);
+    });
   }, []);
 
   useEffect(() => {
@@ -510,11 +523,11 @@ export default function Event(props) {
 
   const stageTabs = stages.map((stage, stageIdx) => {
     const generators = (stageIdx > 0) ? MAINS_GENS : QUALIFYING_GENS;
-    const onStageChange = (name, races) => {
-      setStages((old) => updateStage(old, stageIdx, {name: name, heats: races}, setStageIndex));
+    const onStageChange = (newVals) => {
+      setStages((old) => updateStage(old, stageIdx, newVals, setStageIndex));
     };
     return {label: stage.name, content: (
-      <RaceStagePanel pilots={pilots} stage={stage} seats={seats} raceClasses={raceClasses} generators={generators}
+      <RaceStagePanel pilots={pilots} stage={stage} stageIdx={stageIdx} seats={seats} raceClasses={raceClasses} generators={generators}
         onChange={onStageChange}
       />
     )};
@@ -535,6 +548,36 @@ export default function Event(props) {
   const changeEventUrl = (v) => {
     setEventUrl(v);
     return '';
+  };
+
+  const raceClassTreeRenderer = (raceClasses) => {
+    return Object.entries(raceClasses).map((e) => {
+      const raceClassName = e[0];
+      const raceClass = e[1];
+      const nodeRenderer = (props) => {
+        return (
+          <RaceClass name={props.label} className={props.classes.label}/>
+        );
+      };
+      return (
+        <TreeItem key={raceClassName} nodeId={raceClassName} label={raceClassName} sx={{textAlign: 'left'}}
+        ContentComponent={TreeNode} ContentProps={{render: nodeRenderer}}>
+          {raceClassTreeRenderer(raceClass.children)}
+        </TreeItem>
+      );
+    });
+  };
+
+  const raceClassNodeSelected = (evt, nodeIds) => {
+    const nodesByName = flattenTree(raceClassTree);
+    let raceClasses = {};
+    for (const nodeId of nodeIds) {
+      const raceClass = {...nodesByName[nodeId].content}; // copy
+      raceClass.children = Object.fromEntries(Object.entries(raceClass.children).map((e) => [e[0], {}]));
+      raceClasses[nodeId] = raceClass;
+    }
+    
+    setRaceClasses(raceClasses);
   };
 
   const addSeat = () => {
@@ -608,6 +651,11 @@ export default function Event(props) {
     <ValidatingTextField label="Event name" value={eventName} validateChange={changeEventName}/>
     <ValidatingTextField label="Event description" multiline value={eventDesc} validateChange={changeEventDesc}/>
     <ValidatingTextField label="Event URL" value={eventUrl} validateChange={changeEventUrl} inputProps={{type: 'url'}}/>
+
+    <TreeView multiSelect selected={Object.keys(raceClasses)} defaultCollapseIcon={<ExpandMoreIcon />} defaultExpandIcon={<ChevronRightIcon />} onNodeSelect={raceClassNodeSelected}>
+    {raceClassTreeRenderer(raceClassTree)}
+    </TreeView>
+
     <TableContainer component={Paper}>
       <Table>
         <TableHead>
