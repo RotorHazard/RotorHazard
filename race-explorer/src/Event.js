@@ -22,6 +22,7 @@ import Paper from '@mui/material/Paper';
 import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
@@ -38,7 +39,8 @@ import {
   createVtxTableLoader,
   createEventDataLoader, storeEventData,
   createHeatGeneratorLoader, generateHeats,
-  createRaceClassLoader
+  createRaceClassLoader,
+  syncEvent
 } from './rh-client.js';
 
 const saveEventData = debounce(storeEventData, 2000);
@@ -496,18 +498,20 @@ export default function Event(props) {
     });
   }, []);
 
+  const loadEvent = (data) => {
+    data.stages.forEach((stage) => {idifyRaces(stage.heats)});
+    setEventName(data.name);
+    setEventDesc(data.description);
+    setEventUrl(data.url);
+    setPilots(data.pilots);
+    setRaceClasses(data.classes);
+    setSeats(data.seats);
+    setStages(data.stages);
+  };
+
   useEffect(() => {
     const loader = createEventDataLoader();
-    loader.load(null, (data) => {
-      data.stages.forEach((stage) => {idifyRaces(stage.heats)});
-      setEventName(data.name);
-      setEventDesc(data.description);
-      setEventUrl(data.url);
-      setPilots(data.pilots);
-      setRaceClasses(data.classes);
-      setSeats(data.seats);
-      setStages(data.stages);
-    });
+    loader.load(null, loadEvent);
     return () => loader.cancel();
   }, []);
 
@@ -653,6 +657,7 @@ export default function Event(props) {
     <ValidatingTextField label="Event name" value={eventName} validateChange={changeEventName}/>
     <ValidatingTextField label="Event description" multiline value={eventDesc} validateChange={changeEventDesc}/>
     <ValidatingTextField label="Event URL" value={eventUrl} validateChange={changeEventUrl} inputProps={{type: 'url'}}/>
+    <IconButton onClick={(evt) => {syncEvent(loadEvent)}}><CloudSyncIcon/></IconButton>
 
     <TreeView multiSelect selected={Object.keys(raceClasses)} defaultCollapseIcon={<ExpandMoreIcon />} defaultExpandIcon={<ChevronRightIcon />} onNodeSelect={raceClassNodeSelected}>
     {raceClassTreeRenderer(raceClassTree)}

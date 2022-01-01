@@ -1,7 +1,7 @@
 from flask import request
 from flask.blueprints import Blueprint
 from numpy.random import default_rng
-from . import race_explorer_endpoints as race_exp
+from . import race_explorer_core as racex
 
 rng = default_rng()
 
@@ -56,7 +56,7 @@ def createBlueprint(RHData):
         mains_class = data['mainsClass']
         n_seats = int(data['seats'])
 
-        leaderboards = race_exp.export_leaderboard(RHData)
+        leaderboards = racex.export_leaderboard(RHData)
         stages = leaderboards['stages']
         if stage_idx-1 < 0 or stage_idx-1 >= len(stages):
             return {'heats': []}
@@ -165,7 +165,7 @@ def createBlueprint(RHData):
             }
         ]
 
-        leaderboards = race_exp.export_leaderboard(RHData)
+        leaderboards = racex.export_leaderboard(RHData)
         stages = leaderboards['stages']
 
         mains = []

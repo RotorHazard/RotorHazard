@@ -8,7 +8,7 @@ from .socketio import SOCKET_IO
 from flask import current_app
 import json
 from .RHUtils import FREQS
-from .race_explorer_endpoints import import_event
+from .race_explorer_core import import_event
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,11 @@ def convert_ifpv_json(ifpv_data):
 
 @SOCKET_IO.on('sync_event')
 def on_sync_event():
-    rhdata = current_app.rhserver['RHData']
+    sync_event(current_app.rhserver)
+
+
+def sync_event(rhserver):
+    rhdata = rhserver['RHData']
     event_url = rhdata.get_option('eventURL', '')
     if not event_url:
         return
@@ -113,4 +117,4 @@ def on_sync_event():
     resp = requests.get(event_url, timeout=TIMEOUT)
     ifpv_data = resp.json()
     event_data = convert_ifpv_json(ifpv_data)
-    import_event(event_data, current_app.rhserver)
+    import_event(event_data, rhserver)

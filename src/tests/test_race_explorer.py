@@ -1,6 +1,6 @@
 import unittest
 import json
-import server.race_explorer_endpoints as racex
+import server.race_explorer_core as racex
 
 class RaceExplorerTest(unittest.TestCase):
     def test_pilot_results(self):

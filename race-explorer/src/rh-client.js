@@ -131,6 +131,11 @@ export async function generateHeats(endpoint, params, setRaces) {
   setRaces(body);
 }
 
+export async function syncEvent(loadData) {
+  const body = (await axios.post(config.syncEventEndpoint)).data;
+  loadData(body);
+}
+
 export function createHeatGeneratorLoader(endpoint) {
   return createLoader(endpoint);
 }

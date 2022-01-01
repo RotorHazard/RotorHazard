@@ -1,5 +1,6 @@
 export let resultDataEndpoint;
 export let eventDataEndpoint;
+export let syncEventEndpoint;
 export let setupDataEndpoint;
 export let trackDataEndpoint;
 export let timerMappingEndpoint;
@@ -19,6 +20,7 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   resultDataEndpoint = '/raceResults';
   eventDataEndpoint = '/raceEvent';
+  syncEventEndpoint = '/raceEvent?sync';
   setupDataEndpoint = '/timerSetup';
   trackDataEndpoint = '/trackLayout';
   timerMappingEndpoint = '/timerMapping';
