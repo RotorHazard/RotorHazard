@@ -398,6 +398,8 @@ const QUALIFYING_GENS = {
 const MAINS_GENS = {
   "Ladder Mains": "/heat-generators/mains",
   "MultiGP Brackets": "/heat-generators/mgp-brackets",
+  "FAI Single Brackets": "/heat-generators/fai-single-16",
+  "FAI Double Brackets": "/heat-generators/fai-double-16",
   Random: "/heat-generators/random"
 };
 
