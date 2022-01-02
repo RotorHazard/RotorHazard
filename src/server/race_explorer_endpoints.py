@@ -4,7 +4,6 @@ from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
 from . import web
 from . import race_explorer_core as core
-import numpy as np
 
 
 def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
@@ -148,10 +147,10 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                 application/json: {}
         """
         data = request.get_json()
-        current_race_class_names = set()
+        existing_race_class_names = set()
         rhraceclasses_by_name = {}
         for rhraceclass in RHData.get_raceClasses():
-            current_race_class_names.add(rhraceclass.name)
+            existing_race_class_names.add(rhraceclass.name)
             rhraceclasses_by_name[rhraceclass.name] = rhraceclass
 
         q = []
@@ -164,7 +163,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
                                             'name': race_class_name,
                                             'description': race_class['description'],
                                             'parent_id': parent_id})
-                    current_race_class_names.remove(race_class_name)
+                    existing_race_class_names.remove(race_class_name)
                 else:
                     rhraceclass = RHData.add_raceClass(init={
                                                 'name': race_class_name,
@@ -175,11 +174,11 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         addNodes(data['classes'].items(), None)
         while q:
             race_class_name, race_class = q.pop()
-            rhraceclass = rhraceclasses_by_name.get(race_class_name)
-            addNodes(race_class['children'].items(), rhraceclass.id if rhraceclass else None)
+            rhraceclass = rhraceclasses_by_name[race_class_name]
+            addNodes(race_class['children'].items(), rhraceclass.id)
 
-        for race_class_name in current_race_class_names:
-            rhraceclass = rhraceclasses_by_name.get(race_class_name)
+        for race_class_name in existing_race_class_names:
+            rhraceclass = rhraceclasses_by_name[race_class_name]
             if rhraceclass:
                 RHData.delete_raceClass(rhraceclass.id)
 
@@ -217,6 +216,46 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         """
         data = request.get_json()
         RHData.set_optionJson('trackLayout', data)
+        return '', 204
+
+    @APP.route('/pilots')
+    def pilots_get():
+        rhpilots = RHData.get_pilots()
+        pilots = {}
+        for rhpilot in rhpilots:
+            pilots[rhpilot.callsign] = {
+                'name': rhpilot.name,
+                'url': rhpilot.url
+            }
+        return {'pilots': pilots}
+
+    @APP.route('/pilots', methods=['PUT'])
+    def pilots_put():
+        data = request.get_json()
+        existing_pilot_callsigns = set()
+        rhpilots_by_callsign = {}
+        for rhpilot in RHData.get_pilots():
+            existing_pilot_callsigns.add(rhpilot.callsign)
+            rhpilots_by_callsign[rhpilot.callsign] = rhpilot
+
+        for callsign, pilot_data in data['pilots'].items():
+            rhpilot = rhpilots_by_callsign.get(callsign)
+            if rhpilot:
+                RHData.alter_pilot({'pilot_id': rhpilot.id,
+                                        'callsign': callsign,
+                                        'name': pilot_data['name']})
+                existing_pilot_callsigns.remove(callsign)
+            else:
+                rhpilot = RHData.add_pilot(init={
+                                            'callsign': callsign,
+                                            'name': pilot_data['name']})
+                rhpilots_by_callsign[callsign] = rhpilot
+
+        for callsign in existing_pilot_callsigns:
+            rhpilot = rhpilots_by_callsign[callsign]
+            if rhpilot:
+                RHData.delete_pilot(rhpilot.id)
+
         return '', 204
 
     @APP.route('/timerMapping')

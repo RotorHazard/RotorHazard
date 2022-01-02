@@ -3,6 +3,7 @@ export let eventDataEndpoint;
 export let syncEventEndpoint;
 export let setupDataEndpoint;
 export let trackDataEndpoint;
+export let pilotDataEndpoint;
 export let timerMappingEndpoint;
 export let raceClassEndpoint;
 export let vtxTableEndpoint;
@@ -23,6 +24,7 @@ if (process.env.NODE_ENV === 'development') {
   syncEventEndpoint = '/raceEvent?sync';
   setupDataEndpoint = '/timerSetup';
   trackDataEndpoint = '/trackLayout';
+  pilotDataEndpoint = '/pilots';
   timerMappingEndpoint = '/timerMapping';
   raceClassEndpoint = '/raceClasses';
   vtxTableEndpoint = '/vtxTable';

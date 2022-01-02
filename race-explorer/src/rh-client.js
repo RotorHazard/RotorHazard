@@ -86,6 +86,18 @@ export async function storeRaceClasses(raceClasses) {
   }
 }
 
+export function createPilotDataLoader() {
+  return createLoader(config.pilotDataEndpoint);
+}
+
+export async function storePilotData(pilotData) {
+  try {
+    await axios.put(config.pilotDataEndpoint, pilotData);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+
 let mqttConfig = null;
 
 export function createMqttConfigLoader() {
