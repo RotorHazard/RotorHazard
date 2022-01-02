@@ -3,7 +3,7 @@
 ![CI](https://github.com/pulquero/RotorHazard/actions/workflows/ci.yml/badge.svg)
 [![Coverage](https://codecov.io/github/pulquero/RotorHazard/coverage.svg?branch=BetaHazard)](https://codecov.io/gh/pulquero/RotorHazard/)
 
-# BetaHazard
+# BetaHazard - the forthcoming RotorHazard v4 Beta
 **Cutting-edge innovation in FPV Race Timing and Event Management**
 
 A multi-node radio frequency race timing system for FPV drone racing with event management. Uses 5.8GHz video signals broadcast by drones to trigger lap times. Each node listens on a specified frequency and communicates times to a central server (usually a Raspberry pi). The server's front-end interface, which any device on the same network can connect to via web browser, offers race organizer management and pilot/spectator information. RotorHazard supports up to 16 nodes.
