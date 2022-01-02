@@ -133,7 +133,7 @@ export default function RaceClasses(props) {
           parentMap = raceClasses;
         }
         delete parentMap[raceClassName];
-        setRaceClasses((old) => {return {...old};});
+        setRaceClasses({...raceClasses});
         if (raceClassName === selectedRaceClass?.[0]) {
           setSelectedRaceClass(node.parent);
         }
@@ -170,7 +170,7 @@ export default function RaceClasses(props) {
       const newRaceClassName = 'New class ' + (newClassCounter++);
       const newRaceClass = {description: '', children: {}};
       parentMap[newRaceClassName] = newRaceClass;
-      setRaceClasses((old) => {return {...old};});
+      setRaceClasses({...raceClasses});
     } else if (!nodeId.startsWith('.')) {
       const raceClass = nodesByName[nodeId].content;
       setSelectedRaceClass([nodeId, raceClass]);
@@ -190,7 +190,7 @@ export default function RaceClasses(props) {
     delete parentMap[oldRaceClassName];
     Object.assign(currentRaceClass, newVals);
     parentMap[raceClassName] = currentRaceClass;
-    setRaceClasses((old) => {return {...old};});
+    setRaceClasses({...raceClasses});
     setSelectedRaceClass([raceClassName, currentRaceClass]);
   };
 
@@ -221,7 +221,7 @@ export default function RaceClasses(props) {
           parentMap = dstNode.content.children;
         }
         parentMap[srcRaceClassName] = srcNode.content;
-        setRaceClasses((old) => {return {...old};});
+        setRaceClasses({...raceClasses});
       }
     }
   };
