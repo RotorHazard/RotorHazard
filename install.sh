@@ -8,17 +8,17 @@ wget -O - http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key | sudo apt-key
 sudo wget -O /etc/apt/sources.list.d/mosquitto-${VERSION_CODENAME}.list http://repo.mosquitto.org/debian/mosquitto-${VERSION_CODENAME}.list
 
 # Make sure system is up-to-date, security fixes and all
-sudo apt-get update
-sudo apt-get upgrade -y
+sudo apt update
+sudo apt upgrade -y
 
 # Python packages
 cd src
+sudo apt install -y libatlas-base-dev
 python3 -m pip install --upgrade -r requirements.txt
-sudo apt-get install -y python3-numpy
 cd ..
 
 # Mosquitto
-sudo apt-get install -y mosquitto
+sudo apt install -y mosquitto
 mosquitto_passwd -c -b mosquitto-bh.pwd race-admin fu56rg20
 sudo cp mosquitto-bh.* /etc/mosquitto/conf.d/
 sudo systemctl restart mosquitto
@@ -36,7 +36,7 @@ rm -fr race-explorer/build
 unzip race-explorer.zip
 
 # Race explorer dev
-#sudo apt-get install -y nodejs npm
+#sudo apt install -y nodejs npm
 #cd race-explorer
 #npm install
 #export NODE_OPTIONS=--max_old_space_size=16000
@@ -45,7 +45,7 @@ unzip race-explorer.zip
 
 # Text-to-speech
 cd ..
-sudo apt-get install -y m4 libtool libasound2-dev
+sudo apt install -y m4 libtool libasound2-dev
 if [ ! -d nanotts ]; then
   git clone https://github.com/gmn/nanotts
 fi
@@ -58,16 +58,16 @@ sudo make install
 sudo usermod -G bluetooth -a pi
 # BlueZ-ALSA
 cd ..
-sudo apt-get install -y git automake build-essential libtool pkg-config python-docutils
-sudo apt-get install -y libasound2-dev libbluetooth-dev libdbus-1-dev libglib2.0-dev libsbc-dev libbsd-dev libncurses5-dev libreadline-dev libmp3lame-dev
+sudo apt install -y git automake build-essential libtool pkg-config python3-docutils
+sudo apt install -y libasound2-dev libbluetooth-dev libdbus-1-dev libglib2.0-dev libsbc-dev libbsd-dev libncurses5-dev libreadline-dev libmp3lame-dev
 if [ ! -d bluez-alsa ]; then
   git clone https://github.com/Arkq/bluez-alsa
 fi
 cd bluez-alsa
 autoreconf --install --force
-mkdir build
+mkdir -p build
 cd build
 ../configure --enable-faststream --enable-mp3lame --enable-msbc --enable-upower --enable-a2dpconf --enable-cli --enable-rfcomm --enable-hcitop
 make
 sudo make install
-sudo ln -s /etc/alsa/conf.d/20-bluealsa.conf /usr/share/alsa/alsa.conf.d/20-bluealsa.conf
+sudo ln -s -f /etc/alsa/conf.d/20-bluealsa.conf /usr/share/alsa/alsa.conf.d/20-bluealsa.conf
