@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
-RELEASE_VERSION = "3.1.0" # Public release version code
+RELEASE_VERSION = "3.1.2-dev.1" # Public release version code
 SERVER_API = 32+7 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -1467,26 +1467,26 @@ def on_set_profile(data, emit_vals=True):
             freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
 
         if profile.enter_ats:
-            enter_ats_loaded = json.loads(profile.enter_ats)
-            enter_ats = enter_ats_loaded["v"]
+            enter_at_levels = json.loads(profile.enter_ats)
+            enter_ats = enter_at_levels["v"]
             while RACE.num_nodes > len(enter_ats):
                 enter_ats.append(None)
         else: #handle null data by copying in hardware values
             enter_at_levels = {}
             enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'profile_id': profile_val, 'enter_ats': enter_at_levels})
             enter_ats = enter_at_levels["v"]
 
         if profile.exit_ats:
-            exit_ats_loaded = json.loads(profile.exit_ats)
-            exit_ats = exit_ats_loaded["v"]
+            exit_at_levels = json.loads(profile.exit_ats)
+            exit_ats = exit_at_levels["v"]
             while RACE.num_nodes > len(exit_ats):
                 exit_ats.append(None)
         else: #handle null data by copying in hardware values
             exit_at_levels = {}
             exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'profile_id': profile_val, 'exit_ats': exit_at_levels})
             exit_ats = exit_at_levels["v"]
+
+        RHData.alter_profile({'profile_id': profile_val, 'enter_ats': enter_at_levels, 'exit_ats': exit_at_levels})
 
         Events.trigger(Evt.PROFILE_SET, {
             'profile_id': profile_val,
