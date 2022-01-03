@@ -24,12 +24,13 @@ const DRONE_ICON = L.icon({
 const LAT_LONG = 'Lat/Long';
 
 export function TrackMapContainer(props) {
+  const {id, crs, units, trackLayout, pilotPositions, flyTo, children} = props;
   const [map, setMap] = useState(null);
 
   useEffect(() => {
     let map;
-    if (props.crs === LAT_LONG) {
-      map = L.map(props.id, {
+    if (crs === LAT_LONG) {
+      map = L.map(id, {
         center: [0,0],
         zoom: 16,
         layers: [
@@ -40,13 +41,13 @@ export function TrackMapContainer(props) {
         ]
       });
     } else {
-      map = L.map(props.id, {
+      map = L.map(id, {
         crs: L.CRS.Simple,
         center: [0,0],
         zoom: 4
        });
        const grid_5m = L.featureGroup();
-       const spacing = (props.units === 'ft') ? 16.4 : 5;
+       const spacing = (units === 'ft') ? 16.4 : 5;
        for (let i=0; i<51; i++) {
          L.polyline([[spacing*(i-25), -25*spacing], [spacing*(i-25), 25*spacing]], {color: 'gray', weight: 1}).addTo(grid_5m);
          L.polyline([[-25*spacing, spacing*(i-25)], [25*spacing, spacing*(i-25)]], {color: 'gray', weight: 1}).addTo(grid_5m);
@@ -61,33 +62,33 @@ export function TrackMapContainer(props) {
     return () => {
       map.remove();
     }
-  }, [props.id, props.crs, props.units]);
+  }, [id, crs, units]);
 
   useEffect(() => {
-      if (map && props.trackLayout) {
-        for (const loc of props.trackLayout) {
+      if (map && trackLayout) {
+        for (const loc of trackLayout) {
           L.marker(loc.location, {title: loc.name}).addTo(map.trackLayer);
         }
         return () => {map.trackLayer.clearLayers()};
       }
-  }, [map, props.trackLayout]);
+  }, [map, trackLayout]);
 
   useEffect(() => {
-      if (map && props.trackLayout && props.pilotPositions) {
-        Object.entries(props.pilotPositions).forEach((entry) => {
+      if (map && trackLayout && pilotPositions) {
+        Object.entries(pilotPositions).forEach((entry) => {
           L.marker(entry[1], {title: entry[0], icon: DRONE_ICON, pane: 'tooltipPane'}).addTo(map.pilotLayer);
         });
         return () => {map.pilotLayer.clearLayers()};
       }
-  }, [map, props.trackLayout, props.pilotPositions]);
+  }, [map, trackLayout, pilotPositions]);
 
   useEffect(() => {
-    if (map && props.flyTo) {
-      map.flyTo(props.flyTo);
+    if (map && flyTo) {
+      map.flyTo(flyTo);
     }
-  }, [map, props.flyTo]);
+  }, [map, flyTo]);
 
-  return props.children ? props.children(map) : <></>;
+  return children ? children(map) : <></>;
 }
 
 export function Map(props) {

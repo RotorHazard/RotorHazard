@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import TextField from '@mui/material/TextField';
 
 export default function ValidatingTextField(props) {
-  const [value, setValue] = useState(props.value ?? '');
+  const {value: givenValue, validateChange} = props;
+  const [value, setValue] = useState(givenValue ?? '');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    setValue(props.value);
-  }, [props.value]);
+    setValue(givenValue);
+  }, [givenValue]);
 
   const changeValue = (evt) => {
-    if (props.validateChange) {
-      const msg = props.validateChange(evt.target.value);
+    if (validateChange) {
+      const msg = validateChange(evt.target.value);
       setErrorMsg(msg);
     }
     setValue(evt.target.value);

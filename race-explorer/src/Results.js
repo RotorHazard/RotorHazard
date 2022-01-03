@@ -5,6 +5,8 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -14,7 +16,9 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { TrackMapContainer, Map } from './TrackMap.js';
 import * as util from './util.js';
-import { createMqttConfigLoader, createTrackDataLoader, createTimerMappingLoader, createEventDataLoader, createResultDataLoader, getMqttClient } from './rh-client.js';
+import { createMqttConfigLoader, createTrackDataLoader, createTimerMappingLoader,
+  createEventDataLoader, createResultDataLoader, getMqttClient,
+  calculateMetrics } from './rh-client.js';
 
 function processResults(data, raceEvents) {
   const jsonl = data.split('\n');
@@ -40,7 +44,7 @@ function processMessage(msg, raceEvents) {
   if (!('stage' in msg)) {
     return;
   }
-  event[msg.stage] = event[msg.stage] ?? {};
+  event[msg.stage] = event[msg.stage] ?? [];
   const stage = event[msg.stage];
 
   if (!('round' in msg)) {
@@ -117,6 +121,161 @@ function lookupByIndexOrId(arr, key) {
     return arr?.[key];
   }
 }
+
+
+function LapTable(props) {
+  const {
+    pilotLapDetails,
+    minLaps,
+    maxLaps,
+    lapCountOffset,
+    timedLocations
+  } = props;
+  let headers = [];
+  for (let i=maxLaps; i>=minLaps; i--) {
+    headers.push(<TableCell key={i} align="right">Lap {i+lapCountOffset}</TableCell>);
+  }
+  const orderedPilots = Object.keys(pilotLapDetails);
+  orderedPilots.sort();
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell align="left">Pilot</TableCell>
+            {headers}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+        {orderedPilots.map((pilotKey) => {
+          const lapSplits = pilotLapDetails[pilotKey];
+          let lapCells = [];
+          for (let lapId=maxLaps; lapId>=minLaps; lapId--) {
+            let lapInfo = [];
+            if (lapSplits[lapId]) {
+              const timestamps = lapSplits[lapId];
+              for (const locId of timedLocations) {
+                let delta = null;
+                let timestamp = null;
+                if (locId === 0) {
+                  if (timestamps[locId]) {
+                    timestamp = timestamps[locId];
+                    if (lapId === 0) {
+                      delta = timestamp;
+                    } else if (lapId > 0 && lapSplits[lapId-1]?.[0]) {
+                      delta = timestamp - lapSplits[lapId-1][0];
+                    }
+                  }
+                  lapInfo.push(
+                    <div key={lapId+'/'+locId}>
+                    <span className="lapTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
+                    <span> </span>
+                    <span className="lapTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
+                    </div>
+                  );
+                } else if (locId > 0) {
+                  if (timestamps[locId]) {
+                    timestamp = timestamps[locId];
+                    if (timestamps[locId-1]) {
+                      delta = timestamp - timestamps[locId-1];
+                    }
+                  }
+                  lapInfo.push(
+                    <div key={lapId+'/'+locId}>
+                    <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
+                    <span> </span>
+                    <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
+                    </div>
+                  );
+                }
+              }
+              if (lapInfo.length > 1) {
+                // split between last gate and first gate
+                let delta = null;
+                let timestamp = null;
+                if (lapSplits[lapId+1]?.[0]) {
+                  timestamp = lapSplits[lapId+1][0];
+                  if (timestamps[timedLocations[timedLocations.length-1]]) {
+                    delta = timestamp - timestamps[timedLocations[timedLocations.length-1]];
+                  }
+                }
+                lapInfo.push(
+                  <div key={lapId+':-1'}>
+                  <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
+                  <span> </span>
+                  <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
+                  </div>
+                );
+              }
+            }
+            lapCells.push(<TableCell key={lapId} align="right">{lapInfo}</TableCell>);
+          }
+          return (
+          <TableRow
+            key={pilotKey}
+            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+          >
+            <TableCell component="th" scope="row">{pilotKey}</TableCell>
+            {lapCells}
+          </TableRow>
+          );
+        })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+const STAT_LABELS = {
+  lapCount: {label: 'Lap count', formatter: (x) => x},
+  time: {label: 'Time', formatter: util.formatTimeMillis},
+  fastest: {label: 'Fastest lap', formatter: util.formatTimeMillis},
+  mean: {label: 'Average', formatter: util.formatTimeMillis},
+  stdDev: {label: 'Std dev', formatter: util.formatTimeMillis}
+};
+
+function LapStatsTable(props) {
+  const {pilotLapStats, statNames} = props;
+  const orderedStatNames = [];
+  for (const statName of Object.keys(STAT_LABELS)) {
+    if (statNames.has(statName)) {
+      orderedStatNames.push(statName);
+    }
+  }
+  const orderedPilots = Object.keys(pilotLapStats);
+  orderedPilots.sort();
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell align="left">Pilot</TableCell>
+            {orderedStatNames.map((statName) => {
+              return (<TableCell key={statName} align="right">{STAT_LABELS[statName].label ?? statName}</TableCell>);
+            })}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+        {orderedPilots.map((pilotKey) => {
+          const lapStats = pilotLapStats[pilotKey];
+          return (
+          <TableRow
+            key={pilotKey}
+            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+          >
+            <TableCell component="th" scope="row">{pilotKey}</TableCell>
+            {orderedStatNames.map((statName) => {
+              return (<TableCell key={statName} align="right">{lapStats[statName] ? STAT_LABELS[statName].formatter(lapStats[statName]) : ''}</TableCell>);
+            })}
+            </TableRow>
+          );
+        })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
 export default function Results(props) {
   const [mqttConfig, setMqttConfig] = useState({});
   const [trackData, setTrackData] = useState({});
@@ -125,12 +284,14 @@ export default function Results(props) {
   const [timedLocations, setTimedLocations] = useState([]);
   const [eventData, setEventData] = useState({});
   const [resultData, setResultData] = useState({});
+  const [statsData, setStatsData] = useState({});
   const [mqttRaceData, setMqttRaceData] = useState([]);
   const [mqttLapData, setMqttLapData] = useState([]);
   const [selectedEvent, setEvent] = useState('');
   const [selectedStage, setStage] = useState('');
   const [selectedRound, setRound] = useState('');
   const [selectedHeat, setHeat] = useState('');
+  const [resultTabIndex, setResultTabIndex] = useState(0);
 
   useEffect(() => {
     const loader = createMqttConfigLoader();
@@ -232,6 +393,7 @@ export default function Results(props) {
   }, [mqttConfig, selectedEvent, selectedStage, selectedRound, selectedHeat]);
 
   util.useInterval(() => {
+    // refresh data and remove stale MQTT messages
     const loader = createResultDataLoader();
     loader.load(processResults, (data) => {
       setResultData(data);
@@ -240,22 +402,6 @@ export default function Results(props) {
     });
   }, 60000);
 
-  const selectEvent = (event) => {
-    setEvent(event);
-  };
-
-  const selectStage = (stage) => {
-    setStage(stage);
-  };
-
-  const selectRound = (round) => {
-    setRound(round);
-  };
-
-  const selectHeat = (heat) => {
-    setHeat(heat);
-  };
-
   for (const msg of mqttRaceData) {
     processMessage(msg, resultData);
   }
@@ -263,51 +409,93 @@ export default function Results(props) {
     processMessage(msg, resultData);
   }
 
-  const eventNames = Object.keys(resultData);
-  let stageData = {};
-  let stageNames = [];
-  let roundData = {};
-  let roundIdxs = [];
-  let heatData = {};
-  let heatNames = [];
-  let heat = {pilots: {}};
-  if (selectedEvent in resultData) {
-    stageData = resultData[selectedEvent];
-    stageNames = Object.keys(stageData);
-    if (selectedStage in stageData) {
-      roundData = stageData[selectedStage];
-      roundIdxs = Object.keys(roundData);
-      if (selectedRound in roundData) {
-        heatData = roundData[selectedRound];
-        heatNames = Object.keys(heatData);
-        if (selectedHeat in heatData) {
-          heat = heatData[selectedHeat];
-        } else {
-          if (heatNames.length > 0) {
-            setHeat(heatNames[heatNames.length-1]);
+  useEffect(() => {
+    if (resultTabIndex === 1) {
+      const pilotResults = {pilots: {}};
+      for (const eventEntry of Object.entries(resultData)) {
+        const eventName = eventEntry[0];
+        for (const stageEntry of Object.entries(eventEntry[1])) {
+          const stageId = stageEntry[0];
+          for (let roundIdx=0; roundIdx < stageEntry[1].length; roundIdx++) {
+            const round = stageEntry[1][roundIdx];
+            for (const heatEntry of Object.entries(round)) {
+              const heatId = heatEntry[0];
+              for (const pilotEntry of Object.entries(heatEntry[1].pilots)) {
+                const callsign = pilotEntry[0];
+                const laps = pilotEntry[1].laps;
+                pilotResults.pilots[callsign] = pilotResults.pilots[callsign] ?? {events: {}};
+                const events = pilotResults.pilots[callsign].events;
+                events[eventName] = events[eventName] ?? {stages: {}};
+                const stages = events[eventName].stages;
+                stages[stageId] = stages[stageId] ?? {heats: {}};
+                const heats = stages[stageId].heats;
+                heats[heatId] = heats[heatId] ?? {rounds: []};
+                const rounds = heats[heatId].rounds;
+                rounds[roundIdx] = rounds[roundIdx] ?? {laps: laps};
+              }
+            }
           }
         }
-      } else {
-        if (roundIdxs.length > 0) {
-          setRound(roundIdxs[roundIdxs.length-1]);
+      }
+      calculateMetrics(pilotResults, (metricData) => {
+        const statsData = {};
+        for (const pilotEntry of Object.entries(metricData.pilots)) {
+          const callsign = pilotEntry[0];
+          for (const eventEntry of Object.entries(pilotEntry[1].events)) {
+            const eventName = eventEntry[0];
+            for (const stageEntry of Object.entries(eventEntry[1].stages)) {
+              const stageId = stageEntry[0];
+              for (const heatEntry of Object.entries(stageEntry[1].heats)) {
+                const heatId = heatEntry[0];
+                const heatRounds = heatEntry[1].rounds;
+                for (let roundIdx=0; roundIdx < heatRounds.length; roundIdx++) {
+                  const round = heatRounds[roundIdx];
+                  statsData[eventName] = statsData[eventName] ?? {};
+                  const statsEvent = statsData[eventName];
+                  statsEvent[stageId] = statsEvent[stageId] ?? [];
+                  const statsStage = statsEvent[stageId];
+                  statsStage[roundIdx] = statsStage[roundIdx] ?? {};
+                  const statsRound = statsStage[roundIdx];
+                  statsRound[heatId] = statsRound[heatId] ?? {pilots: {}};
+                  const statsPilot = statsRound[heatId].pilots;
+                  statsPilot[callsign] = {name: callsign, metrics: round.metrics};
+                }
+              }
+            }
+          }
         }
-      }
-    } else {
-      if (stageNames.length > 0) {
-        setStage(stageNames[stageNames.length-1]);
-      }
+        setStatsData(statsData);
+      });
     }
-  } else {
-    if (eventNames.length > 0) {
-      setEvent(eventNames[eventNames.length-1]);
-    }
+  }, [resultData, resultTabIndex]);
+
+  const eventNames = Object.keys(resultData);
+  if (!(selectedEvent in resultData) && eventNames.length > 0) {
+    setEvent(eventNames[eventNames.length-1]);
+  }
+  const stageData = resultData?.[selectedEvent] ?? {};
+  const stageNames = Object.keys(stageData);
+  if (!(selectedStage in stageData) && stageNames.length > 0) {
+    setStage(stageNames[stageNames.length-1]);
+  }
+  const roundData = stageData?.[selectedStage] ?? [];
+  const roundIdxs = Object.keys(roundData);
+  if (!(selectedRound in roundData) && roundIdxs.length > 0) {
+    setRound(roundIdxs[roundIdxs.length-1]);
+  }
+  const heatData = roundData?.[selectedRound] ?? {};
+  const heatNames = Object.keys(heatData);
+  if (!(selectedHeat in heatData) && heatNames.length > 0) {
+    setHeat(heatNames[heatNames.length-1]);
   }
 
   const trackLayout = trackData.layout;
   let minLaps = Number.MAX_SAFE_INTEGER;
   let maxLaps = 0;
+  // pilot callsign -> array of laps -> array of splits -> timestamps
   const pilotLapDetails = {};
   const pilotPositions = {}
+  const heat = heatData?.[selectedHeat] ?? {pilots: {}};
   for (const pilotHeat of Object.values(heat.pilots)) {
     const pilotLaps = pilotHeat.laps;
     const lapSplits = [];
@@ -331,21 +519,37 @@ export default function Results(props) {
     }
   }
 
+  const heatStats = statsData?.[selectedEvent]?.[selectedStage]?.[selectedRound]?.[selectedHeat] ?? {pilots: {}};
+  const pilotLapStats = {};
+  const statNames = new Set();
+  for (const pilotHeat of Object.values(heatStats.pilots)) {
+    const metrics = pilotHeat.metrics;
+    for (const metricName of Object.keys(metrics)) {
+      if (metricName !== 'lapTimes') {
+        statNames.add(metricName);
+      }
+    }
+    pilotLapStats[pilotHeat.name] = metrics;
+  }
+
   const raceClassName = lookupByIndexOrId(lookupByIndexOrId(eventData.stages, selectedStage)?.races, selectedHeat)?.class;
   const raceFormatName = eventData.classes?.[raceClassName]?.format;
   const raceFormat = eventData.formats?.[raceFormatName];
   const lapCountOffset = raceFormat?.start === 'start-line' ? 1 : 0;
-  let lapHeaders = [];
-  for (let i=maxLaps; i>=minLaps; i--) {
-    lapHeaders.push(<TableCell key={i} align="right">Lap {i+lapCountOffset}</TableCell>);
-  }
+
+  const resultTabs = [
+    {label: "Laps", content: <LapTable pilotLapDetails={pilotLapDetails} minLaps={minLaps} maxLaps={maxLaps} lapCountOffset={lapCountOffset} timedLocations={timedLocations}/> },
+    {label: "Stats", content: <LapStatsTable pilotLapStats={pilotLapStats} statNames={statNames}/> }
+  ];
+  const resultTab = resultTabs[resultTabIndex];
 
   return (
     <Stack direction="column" alignItems="stretch">
       <Stack direction="row">
       <FormControl>
         <InputLabel id="event-label">Event</InputLabel>
-        <Select labelId="event-label" sx={{minWidth: '6em'}} value={selectedEvent} onChange={(evt) => selectEvent(evt.target.value)}>
+        <Select labelId="event-label" sx={{minWidth: '6em'}} value={selectedEvent}
+          onChange={(evt) => setEvent(evt.target.value)}>
         {eventNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{name}</MenuItem>
@@ -355,7 +559,8 @@ export default function Results(props) {
       </FormControl>
       <FormControl>
         <InputLabel id="stage-label">Stage</InputLabel>
-        <Select labelId="stage-label" sx={{minWidth: '6em'}} value={selectedStage} onChange={(evt) => selectStage(evt.target.value)}>
+        <Select labelId="stage-label" sx={{minWidth: '6em'}} value={selectedStage}
+          onChange={(evt) => setStage(evt.target.value)}>
         {stageNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{lookupByIndexOrId(eventData.stages, name)?.name ?? name}</MenuItem>
@@ -365,7 +570,8 @@ export default function Results(props) {
       </FormControl>
       <FormControl>
         <InputLabel id="round-label">Round</InputLabel>
-        <Select labelId="round-label" sx={{minWidth: '6em'}} value={selectedRound} onChange={(evt) => selectRound(evt.target.value)}>
+        <Select labelId="round-label" sx={{minWidth: '6em'}} value={selectedRound}
+          onChange={(evt) => setRound(evt.target.value)}>
         {roundIdxs.map((idx) => {
           return (
           <MenuItem key={idx} value={idx}>{Number(idx)+1}</MenuItem>
@@ -375,7 +581,8 @@ export default function Results(props) {
       </FormControl>
       <FormControl>
         <InputLabel id="heat-label">Heat</InputLabel>
-        <Select labelId="heat-label" sx={{minWidth: '5em'}} value={selectedHeat} onChange={(evt) => selectHeat(evt.target.value)}>
+        <Select labelId="heat-label" sx={{minWidth: '5em'}} value={selectedHeat}
+          onChange={(evt) => setHeat(evt.target.value)}>
         {heatNames.map((name) => {
           return (
           <MenuItem key={name} value={name}>{lookupByIndexOrId(lookupByIndexOrId(eventData.stages, selectedStage)?.heats, name)?.name ?? name}</MenuItem>
@@ -384,92 +591,14 @@ export default function Results(props) {
         </Select>
       </FormControl>
       </Stack>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell align="left">Pilot</TableCell>
-              {lapHeaders}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-          {Object.entries(pilotLapDetails).map((entry) => {
-            const pilotKey = entry[0];
-            const lapSplits = entry[1];
-            let lapCells = [];
-            for (let lapId=maxLaps; lapId>=minLaps; lapId--) {
-              let lapInfo = [];
-              if (lapSplits[lapId]) {
-                const timestamps = lapSplits[lapId];
-                for (const locId of timedLocations) {
-                  let delta = null;
-                  let timestamp = null;
-                  if (locId === 0) {
-                    if (timestamps[locId]) {
-                      timestamp = timestamps[locId];
-                      if (lapId === 0) {
-                        delta = timestamp;
-                      } else if (lapId > 0 && lapSplits[lapId-1]?.[0]) {
-                        delta = timestamp - lapSplits[lapId-1][0];
-                      }
-                    }
-                    lapInfo.push(
-                      <div key={lapId+'/'+locId}>
-                      <span className="lapTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
-                      <span> </span>
-                      <span className="lapTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
-                      </div>
-                    );
-                  } else if (locId > 0) {
-                    if (timestamps[locId]) {
-                      timestamp = timestamps[locId];
-                      if (timestamps[locId-1]) {
-                        delta = timestamp - timestamps[locId-1];
-                      }
-                    }
-                    lapInfo.push(
-                      <div key={lapId+'/'+locId}>
-                      <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
-                      <span> </span>
-                      <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
-                      </div>
-                    );
-                  }
-                }
-                if (lapInfo.length > 1) {
-                  // split between last gate and first gate
-                  let delta = null;
-                  let timestamp = null;
-                  if (lapSplits[lapId+1]?.[0]) {
-                    timestamp = lapSplits[lapId+1][0];
-                    if (timestamps[timedLocations[timedLocations.length-1]]) {
-                      delta = timestamp - timestamps[timedLocations[timedLocations.length-1]];
-                    }
-                  }
-                  lapInfo.push(
-                    <div key={lapId+':-1'}>
-                    <span className="splitTime">{delta !== null ? util.formatTimeMillis(delta) : '-'}</span>
-                    <span> </span>
-                    <span className="splitTimestamp">({timestamp !== null ? util.formatTimeMillis(timestamp) : '-'})</span>
-                    </div>
-                  );
-                }
-              }
-              lapCells.push(<TableCell key={lapId} align="right">{lapInfo}</TableCell>);
-            }
-            return (
-            <TableRow
-              key={pilotKey}
-              sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-            >
-              <TableCell component="th" scope="row">{pilotKey}</TableCell>
-              {lapCells}
-            </TableRow>
-            );
-          })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <Tabs value={resultTabIndex} onChange={(evt,idx)=>{setResultTabIndex(idx);}}>
+      {
+        resultTabs.map((entry) => {
+          return <Tab key={entry.label} label={entry.label}/>;
+        })
+      }
+      </Tabs>
+      {resultTab.content}
       <TrackMapContainer id="map" crs={trackData.crs} units={trackData.units} trackLayout={trackData.layout} pilotPositions={pilotPositions} flyTo={flyTo}/>
       <Map id="map"/>
     </Stack>

@@ -1,4 +1,5 @@
 export let resultDataEndpoint;
+export let raceMetricsEndpoint;
 export let eventDataEndpoint;
 export let syncEventEndpoint;
 export let setupDataEndpoint;
@@ -20,6 +21,7 @@ if (process.env.NODE_ENV === 'development') {
   mqttConfigEndpoint = '/race-explorer/dev/mqttConfig.json';
 } else {
   resultDataEndpoint = '/raceResults';
+  raceMetricsEndpoint = '/raceMetrics';
   eventDataEndpoint = '/raceEvent';
   syncEventEndpoint = '/raceEvent?sync';
   setupDataEndpoint = '/timerSetup';

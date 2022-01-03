@@ -72,17 +72,26 @@ function processSetup(data, setupData) {
 }
 
 function EnterExitTriggers(props) {
-  const [enterTrigger, setEnterTrigger] = useState(props.enterTrigger);
-  const [exitTrigger, setExitTrigger] = useState(props.exitTrigger);
+  const {enterTrigger: givenEnterTrigger, exitTrigger: givenExitTrigger,
+    enterTriggerChangesHook, exitTriggerChangesHook,
+    onEnterTriggerChange, onExitTriggerChange} = props;
+  const [enterTrigger, setEnterTrigger] = useState(givenEnterTrigger);
+  const [exitTrigger, setExitTrigger] = useState(givenExitTrigger);
 
-  const enterTriggerChangesHook = props.enterTriggerChangesHook;
+  useEffect(() => {
+    setEnterTrigger(givenEnterTrigger);
+  }, [givenEnterTrigger]);
+
+  useEffect(() => {
+    setExitTrigger(givenExitTrigger);
+  }, [givenExitTrigger]);
+
   useEffect(() => {
     if (enterTriggerChangesHook) {
       return enterTriggerChangesHook((level) => {setEnterTrigger(level);});
     }
   }, [enterTriggerChangesHook]);
 
-  const exitTriggerChangesHook = props.exitTriggerChangesHook;
   useEffect(() => {
     if (exitTriggerChangesHook) {
       return exitTriggerChangesHook((level) => {setExitTrigger(level);});
@@ -91,15 +100,15 @@ function EnterExitTriggers(props) {
 
   const changeEnterTrigger = (level) => {
     setEnterTrigger(level);
-    if (props.onEnterTriggerChange) {
-      props.onEnterTriggerChange(level);
+    if (onEnterTriggerChange) {
+      onEnterTriggerChange(level);
     }
   };
 
   const changeExitTrigger = (level) => {
     setExitTrigger(level);
-    if (props.onExitTriggerChange) {
-      props.onExitTriggerChange(level);
+    if (onExitTriggerChange) {
+      onExitTriggerChange(level);
     }
   };
 
@@ -126,7 +135,8 @@ function EnterExitTriggers(props) {
 }
 
 function TimerConfig(props) {
-  const node = props.node;
+  const {node, annTopic, ctrlTopic, vtxTable} = props;
+
   const freq = node.frequency;
   const bc = node?.bandChannel ?? null;
   const enterTrigger = node.enterTrigger;
@@ -139,11 +149,11 @@ function TimerConfig(props) {
   let mqttEnterTriggerSubscriber = null;
   let mqttExitTriggerPublisher = null;
   let mqttExitTriggerSubscriber = null;
-  if (props.annTopic && props.ctrlTopic) {
-    const freqAnnTopic = [props.annTopic, "frequency"].join('/');
-    const freqCtrlTopic = [props.ctrlTopic, "frequency"].join('/');
-    const bcAnnTopic = [props.annTopic, "bandChannel"].join('/');
-    const bcCtrlTopic = [props.ctrlTopic, "bandChannel"].join('/');
+  if (annTopic && ctrlTopic) {
+    const freqAnnTopic = [annTopic, "frequency"].join('/');
+    const freqCtrlTopic = [ctrlTopic, "frequency"].join('/');
+    const bcAnnTopic = [annTopic, "bandChannel"].join('/');
+    const bcCtrlTopic = [ctrlTopic, "bandChannel"].join('/');
     mqttFrequencyPublisher = debounce((freq, bc) => {
       getMqttClient().publish(bcCtrlTopic, bc);
       getMqttClient().publish(freqCtrlTopic, freq+','+bc);
@@ -169,8 +179,8 @@ function TimerConfig(props) {
       };
     };
 
-    const enterTrigAnnTopic = [props.annTopic, "enterTrigger"].join('/');
-    const enterTrigCtrlTopic = [props.ctrlTopic, "enterTrigger"].join('/');
+    const enterTrigAnnTopic = [annTopic, "enterTrigger"].join('/');
+    const enterTrigCtrlTopic = [ctrlTopic, "enterTrigger"].join('/');
     mqttEnterTriggerPublisher = (level) => {getMqttClient().publish(enterTrigCtrlTopic, level);};
     mqttEnterTriggerSubscriber = (setEnterTrigger) => {
       const mqttClient = getMqttClient();
@@ -183,8 +193,8 @@ function TimerConfig(props) {
       };
     };
 
-    const exitTrigAnnTopic = [props.annTopic, "exitTrigger"].join('/');
-    const exitTrigCtrlTopic = [props.ctrlTopic, "exitTrigger"].join('/');
+    const exitTrigAnnTopic = [annTopic, "exitTrigger"].join('/');
+    const exitTrigCtrlTopic = [ctrlTopic, "exitTrigger"].join('/');
     mqttExitTriggerPublisher = (level) => {getMqttClient().publish(exitTrigCtrlTopic, level);};
     mqttExitTriggerSubscriber = (setExitTrigger) => {
       const mqttClient = getMqttClient();
@@ -204,7 +214,7 @@ function TimerConfig(props) {
       onChange={mqttFrequencyPublisher}
       frequencyChangesHook={mqttFrequencySubscriber}
       bandChannelChangesHook={mqttBandChannelSubscriber}
-      vtxTable={props.vtxTable}
+      vtxTable={vtxTable}
     />
     <EnterExitTriggers enterTrigger={enterTrigger.toString()} exitTrigger={exitTrigger.toString()}
       onEnterTriggerChange={mqttEnterTriggerPublisher}
@@ -225,20 +235,32 @@ function getTimerConfigFactory(type) {
 }
 
 function TrackConfig(props) {
-  const [location, setLocation] = useState(props.location ?? 'Start/finish');
-  const [seat, setSeat] = useState(props.seat ?? 0);
+  const {location: givenLocation, seat: givenSeat,
+    onLocationChange, onSeatChange,
+    trackLayout} = props;
+  const [location, setLocation] = useState(givenLocation ?? 'Start/finish');
+  const [seat, setSeat] = useState(givenSeat ?? 0);
+
+  useEffect(() => {
+    setLocation(givenLocation);
+  }, [givenLocation]);
+
+
+  useEffect(() => {
+    setSeat(givenSeat);
+  }, [givenSeat]);
 
   const changeLocation = (v) => {
     setLocation(v);
-    if (props?.onLocationChange) {
-      props.onLocationChange(v);
+    if (onLocationChange) {
+      onLocationChange(v);
     }
   };
 
   const changeSeat = (s) => {
     setSeat(s);
-    if (props?.onSeatChange) {
-      props.onSeatChange(s);
+    if (onSeatChange) {
+      onSeatChange(s);
     }
   };
 
@@ -249,7 +271,7 @@ function TrackConfig(props) {
     <Select labelId="location-label" value={location} defaultValue=""
       onChange={(evt) => changeLocation(evt.target.value)}>
       {
-        props.trackLayout.map((loc) => {
+        trackLayout.map((loc) => {
           return (
             <MenuItem key={loc.name} value={loc.name}>
               <ListItemIcon><FlagIcon/></ListItemIcon>

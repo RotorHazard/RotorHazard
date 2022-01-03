@@ -53,9 +53,16 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         return json.dumps(results), 200, {'Content-Type': 'application/json'}
 
     @APP.route('/raceMetrics')
-    def race_metrics():
+    def race_metrics_get():
         msgs = core.export_results(RHData)
         results = core.pilot_results(msgs)
+        event_data = core.export_event(RHData)
+        results = core.calculate_metrics(results, event_data)
+        return json.dumps(results, default=core.json_numpy_converter), 200, {'Content-Type': 'application/json'}
+
+    @APP.route('/raceMetrics', methods=['POST'])
+    def race_metrics_post():
+        results = request.get_json()
         event_data = core.export_event(RHData)
         results = core.calculate_metrics(results, event_data)
         return json.dumps(results, default=core.json_numpy_converter), 200, {'Content-Type': 'application/json'}

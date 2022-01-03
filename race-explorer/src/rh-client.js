@@ -138,6 +138,11 @@ export function getMqttClient() {
   return mqttClient;
 }
 
+export async function calculateMetrics(pilotResults, setMetrics) {
+  const body = (await axios.post(config.raceMetricsEndpoint, pilotResults)).data;
+  setMetrics(body);
+}
+
 export async function generateHeats(endpoint, params, setRaces) {
   const body = (await axios.post(endpoint, params)).data;
   setRaces(body);

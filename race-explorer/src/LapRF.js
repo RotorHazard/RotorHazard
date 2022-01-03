@@ -6,17 +6,27 @@ import { getMqttClient } from './rh-client.js';
 
 
 function ThresholdGain(props) {
-  const [threshold, setThreshold] = useState(props.threshold);
-  const [gain, setGain] = useState(props.gain);
+  const {threshold: givenThreshold, gain: givenGain,
+    thresholdChangesHook, gainChangesHook,
+    onThresholdChange, onGainChange
+  } = props;
+  const [threshold, setThreshold] = useState(givenThreshold);
+  const [gain, setGain] = useState(givenGain);
 
-  const thresholdChangesHook = props.thresholdChangesHook;
+  useEffect(() => {
+    setThreshold(givenThreshold);
+  }, [givenThreshold]);
+
+  useEffect(() => {
+    setGain(givenGain);
+  }, [givenGain]);
+
   useEffect(() => {
     if (thresholdChangesHook) {
       return thresholdChangesHook((level) => {setThreshold(level);});
     }
   }, [thresholdChangesHook]);
 
-  const gainChangesHook = props.gainChangesHook;
   useEffect(() => {
     if (gainChangesHook) {
       return gainChangesHook((level) => {setGain(level);});
@@ -25,15 +35,15 @@ function ThresholdGain(props) {
 
   const changeThreshold = (level) => {
     setThreshold(level);
-    if (props.onThresholdChange) {
-      props.onThresholdChange(level);
+    if (onThresholdChange) {
+      onThresholdChange(level);
     }
   };
 
   const changeGain = (level) => {
     setGain(level);
-    if (props.onGainChange) {
-      props.onGainChange(level);
+    if (onGainChange) {
+      onGainChange(level);
     }
   };
 
@@ -60,7 +70,8 @@ function ThresholdGain(props) {
 }
 
 export default function LapRFConfig(props) {
-  const node = props.node;
+  const {node, annTopic, ctrlTopic, vtxTable} = props;
+
   const freq = node.frequency;
   const bc = node?.bandChannel ?? null;
   const threshold = node.threshold;
@@ -73,11 +84,11 @@ export default function LapRFConfig(props) {
   let mqttThresholdSubscriber = null;
   let mqttGainPublisher = null;
   let mqttGainSubscriber = null;
-  if (props.annTopic && props.ctrlTopic) {
-    const freqAnnTopic = [props.annTopic, "frequency"].join('/');
-    const freqCtrlTopic = [props.ctrlTopic, "frequency"].join('/');
-    const bcAnnTopic = [props.annTopic, "bandChannel"].join('/');
-    const bcCtrlTopic = [props.ctrlTopic, "bandChannel"].join('/');
+  if (annTopic && ctrlTopic) {
+    const freqAnnTopic = [annTopic, "frequency"].join('/');
+    const freqCtrlTopic = [ctrlTopic, "frequency"].join('/');
+    const bcAnnTopic = [annTopic, "bandChannel"].join('/');
+    const bcCtrlTopic = [ctrlTopic, "bandChannel"].join('/');
     mqttFrequencyPublisher = debounce((freq, bc) => {
       getMqttClient().publish(bcCtrlTopic, bc);
       getMqttClient().publish(freqCtrlTopic, freq+','+bc);
@@ -103,8 +114,8 @@ export default function LapRFConfig(props) {
       };
     };
 
-    const thresholdAnnTopic = [props.annTopic, "threshold"].join('/');
-    const thresholdCtrlTopic = [props.ctrlTopic, "threshold"].join('/');
+    const thresholdAnnTopic = [annTopic, "threshold"].join('/');
+    const thresholdCtrlTopic = [ctrlTopic, "threshold"].join('/');
     mqttThresholdPublisher = (level) => {getMqttClient().publish(thresholdCtrlTopic, level);};
     mqttThresholdSubscriber = (setThreshold) => {
       const mqttClient = getMqttClient();
@@ -117,8 +128,8 @@ export default function LapRFConfig(props) {
       };
     };
 
-    const gainAnnTopic = [props.annTopic, "gain"].join('/');
-    const gainCtrlTopic = [props.ctrlTopic, "gain"].join('/');
+    const gainAnnTopic = [annTopic, "gain"].join('/');
+    const gainCtrlTopic = [ctrlTopic, "gain"].join('/');
     mqttGainPublisher = (level) => {getMqttClient().publish(gainCtrlTopic, level);};
     mqttGainSubscriber = (setGain) => {
       const mqttClient = getMqttClient();
@@ -138,7 +149,7 @@ export default function LapRFConfig(props) {
       onChange={mqttFrequencyPublisher}
       frequencyChangesHook={mqttFrequencySubscriber}
       bandChannelChangesHook={mqttBandChannelSubscriber}
-      vtxTable={props.vtxTable}
+      vtxTable={vtxTable}
     />
     <ThresholdGain threshold={threshold.toString()} gain={gain.toString()}
       onThresholdChange={mqttThresholdPublisher}

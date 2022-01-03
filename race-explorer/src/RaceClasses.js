@@ -18,25 +18,26 @@ let newClassCounter = 1;
 const saveRaceClasses = debounce(storeRaceClasses, 2000);
 
 function RaceClassPanel(props) {
+  const {raceClass, onChange} = props;
   const [raceClassName, setRaceClassName] = useState('');
   const [raceClassDesc, setRaceClassDesc] = useState('');
 
   useEffect(() => {
-    setRaceClassName(props.raceClass?.[0] ?? '');
-    setRaceClassDesc(props.raceClass?.[1]?.description ?? '');
-  }, [props.raceClass]);
+    setRaceClassName(raceClass?.[0] ?? '');
+    setRaceClassDesc(raceClass?.[1]?.description ?? '');
+  }, [raceClass]);
 
   const changeName = (newName) => {
     setRaceClassName(newName);
-    if (props.onChange) {
-      props.onChange(newName, {});
+    if (onChange) {
+      onChange(newName, {});
     }
     return '';
   };
   const changeDesc = (newDesc) => {
     setRaceClassDesc(newDesc);
-    if (props.onChange) {
-      props.onChange(raceClassName, {description: newDesc});
+    if (onChange) {
+      onChange(raceClassName, {description: newDesc});
     }
     return '';
   };

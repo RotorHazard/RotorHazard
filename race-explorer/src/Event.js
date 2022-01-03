@@ -69,8 +69,9 @@ function updateRace(races, idx, newVals) {
 
 
 function DraggableSeat(props) {
+  const {id, race, seat, children} = props;
   const data = {
-    race: props.race, seat: props.seat,
+    race: race, seat: seat,
     source: 'seat'
   };
   const style = {
@@ -79,15 +80,16 @@ function DraggableSeat(props) {
     minWidth: '5em',
     minHeight: '1em'
   };
-  return <Draggable id={props.id} data={data} style={style}>{props.children}</Draggable>;
+  return <Draggable id={id} data={data} style={style}>{children}</Draggable>;
 }
 
 
 function DroppableSeat(props) {
+  const {id, race, seat, children} = props;
   const {isOver, setNodeRef} = useDroppable({
-    id: props.id,
+    id: id,
     data: {
-      race: props.race, seat: props.seat
+      race: race, seat: seat
     }
   });
   const style = {
@@ -101,7 +103,7 @@ function DroppableSeat(props) {
     minHeight: isOver ? '4em' : '2em'
   };
   return (
-    <div ref={setNodeRef} style={style}>{props.children}</div>
+    <div ref={setNodeRef} style={style}>{children}</div>
   );
 }
 
@@ -117,13 +119,14 @@ function createRace(raceClasses, seats) {
 
 
 function RaceClassSelector(props) {
+  const {label, value, raceClasses, onSelect} = props;
   const labelId = nanoid()+"-raceclass-label";
   return (
     <FormControl>
-    {props.label && <InputLabel id={labelId}>{props.label}</InputLabel>}
-    <Select labelId={props.label ? labelId : null} value={props.value} onChange={(evt) => props.onSelect(evt.target.value)}>
+    {label && <InputLabel id={labelId}>{label}</InputLabel>}
+    <Select labelId={label ? labelId : null} value={value} onChange={(evt) => onSelect(evt.target.value)}>
     {
-      Object.keys(props.raceClasses).map((cls) => {
+      Object.keys(raceClasses).map((cls) => {
         return <MenuItem key={cls} value={cls}>{cls}</MenuItem>;
       })
     }
@@ -133,24 +136,25 @@ function RaceClassSelector(props) {
 }
 
 function RacesTable(props) {
-  const [races, setRaces] = useState([]);
+  const {races: givenRaces, onChange, raceClasses, seats} = props;
+  const [races, setRaces] = useState(givenRaces ?? []);
 
   useEffect(() => {
-    setRaces(props.races);
-  }, [props.races]);
+    setRaces(givenRaces);
+  }, [givenRaces]);
 
   const updateRaces = (updater) => {
     const newRaces = updater(races);
     setRaces(newRaces);
-    if (props.onChange) {
-      props.onChange(newRaces);
+    if (onChange) {
+      onChange(newRaces);
     }
   };
 
   const addRace = () => {
     updateRaces((old) => {
       const newRaces = [...old];
-      const newRace = createRace(props.raceClasses, props.seats);
+      const newRace = createRace(raceClasses, seats);
       if (old.length > 0) {
         newRace.class = old[old.length-1].class;
       }
@@ -171,7 +175,7 @@ function RacesTable(props) {
           </IconButton></TableCell>
           <TableCell>Race</TableCell>
           <TableCell>Class</TableCell>
-          {props.seats?.map((fbc, idx) => {
+          {seats?.map((fbc, idx) => {
             return <TableCell key={idx}>Seat {idx+1}</TableCell>;
           })}
           </TableRow>
@@ -206,7 +210,7 @@ function RacesTable(props) {
                 <ValidatingTextField value={race.name} sx={{minWidth: "5em"}} validateChange={changeRaceName}/>
               </TableCell>
               <TableCell>
-                <RaceClassSelector value={race.class} raceClasses={props.raceClasses} onSelect={selectRaceClass}/>
+                <RaceClassSelector value={race.class} raceClasses={raceClasses} onSelect={selectRaceClass}/>
               </TableCell>
               {
                 race.seats.map((pilot, seatIdx) => {
@@ -226,7 +230,7 @@ function RacesTable(props) {
             );
           })
         }
-        <TableRow><TableCell colSpan={(props.seats?.length ?? 0)+3}><IconButton onClick={addRace}><AddIcon/></IconButton></TableCell></TableRow>
+        <TableRow><TableCell colSpan={(seats?.length ?? 0)+3}><IconButton onClick={addRace}><AddIcon/></IconButton></TableCell></TableRow>
         </TableBody>
       </Table>
     </TableContainer>
@@ -318,21 +322,22 @@ function initiateUiState(genDesc, seats, raceClasses, setGeneratorUiState) {
 }
 
 function RaceStagePanel(props) {
+  const {generators, seats, raceClasses, pilots, stage, stageIdx, onChange} = props;
   const [generator, setGenerator] = useState('');
   const [generatorDesc, setGeneratorDesc] = useState({parameters: []});
   const [generatorUi, setGeneratorUi] = useState({'render': ()=>null});
   const [generatorUiState, setGeneratorUiState] = useState({});
 
   useEffect(() => {
-    setGenerator(Object.keys(props.generators)[0]);
-  }, [props.generators]);
+    setGenerator(Object.keys(generators)[0]);
+  }, [generators]);
 
   useEffect(() => {
-    const endpoint = props.generators[generator];
+    const endpoint = generators[generator];
     const loader = createHeatGeneratorLoader(endpoint);
     loader.load(null, setGeneratorDesc);
     return () => loader.cancel();
-  }, [props.generators, generator]);
+  }, [generators, generator]);
 
   useEffect(() => {
     const ui = buildUi(generatorDesc);
@@ -340,17 +345,17 @@ function RaceStagePanel(props) {
   }, [generatorDesc]);
 
   useEffect(() => {
-    initiateUiState(generatorDesc, props.seats, props.raceClasses, setGeneratorUiState);
-  }, [generatorDesc, props.seats, props.raceClasses]);
+    initiateUiState(generatorDesc, seats, raceClasses, setGeneratorUiState);
+  }, [generatorDesc, seats, raceClasses]);
 
   const generate = () => {
-    const endpoint = props.generators[generator];
+    const endpoint = generators[generator];
     const data = Object.fromEntries(generatorDesc.parameters.map((param) => {
       const paramName = param.name;
       let value = null;
       switch (param.type) {
         case 'pilots':
-          value = Object.keys(props.pilots);
+          value = Object.keys(pilots);
           break;
         default:
           value = generatorUiState[paramName];
@@ -358,15 +363,15 @@ function RaceStagePanel(props) {
       }
       return [paramName, value];
     }));
-    data.stage = props.stageIdx;
+    data.stage = stageIdx;
     generateHeats(endpoint, data, (stageData) => {
       const races = stageData.heats;
       idifyRaces(races);
-      let newStageName = props.stage.name;
+      let newStageName = stage.name;
       if (newStageName !== 'Qualifying' && stageData.type) {
         newStageName = stageData.type;
       }
-      props.onChange({...stageData, name: newStageName, heats: props.stage.heats.concat(races)});
+      onChange({...stageData, name: newStageName, heats: stage.heats.concat(races)});
     });
   };
 
@@ -376,7 +381,7 @@ function RaceStagePanel(props) {
     <InputLabel id="method-label">Method</InputLabel>
     <Select labelId="method-label" value={generator} onChange={(evt) => setGenerator(evt.target.value)}>
     {
-      Object.keys(props.generators).map((gen) => {
+      Object.keys(generators).map((gen) => {
         return <MenuItem key={gen} value={gen}>{gen}</MenuItem>
       })
     }
@@ -384,8 +389,8 @@ function RaceStagePanel(props) {
     </FormControl>
     {generatorUi.render(props, generatorUiState, setGeneratorUiState)}
     <Button onClick={generate}>Generate</Button>
-    <RacesTable races={props.stage.heats} seats={props.seats}
-      raceClasses={props.raceClasses} onChange={(races) => props.onChange({heats: races})}
+    <RacesTable races={stage.heats} seats={seats}
+      raceClasses={raceClasses} onChange={(races) => onChange({heats: races})}
     />
     </div>
   );
@@ -404,18 +409,19 @@ const MAINS_GENS = {
 };
 
 function DraggableEntry(props) {
-  const data = {pilot: props.pilot, source: 'rooster'};
+  const {id, pilot, children} = props;
+  const data = {pilot: pilot, source: 'rooster'};
   const style = {
     display: 'block',
     minWidth: '5em',
     minHeight: '1em'
   };
-  return <Draggable id={props.id} data={data} style={style}>{props.children}</Draggable>;
+  return <Draggable id={id} data={data} style={style}>{children}</Draggable>;
 }
 
 
 function PilotRooster(props) {
-  const pilots = props.pilots;
+  const {pilots} = props;
   return (
     <div>
     <div>Pilots</div>

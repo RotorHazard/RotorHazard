@@ -61,15 +61,15 @@ function updateLocation(layout, locIdx, newVals) {
 }
 
 function ClickOnMapButton(props) {
+  const {map, onClick} = props;
   const [state, setState] = useState('Inactive');
-  const map = props.map;
   const addMapListener = (evt) => {
     setState('Active');
     map._container.style.cursor = 'auto';
     map.once('click', (evt) => {
       map._container.style.cursor = '';
       setState('Inactive');
-      props.onClick(evt);
+      onClick(evt);
     });
   };
   const disabled = (state === 'Active');
@@ -79,15 +79,15 @@ function ClickOnMapButton(props) {
 }
 
 function GpsButton(props) {
+  const {map, onClick, locateOptions} = props;
   const [state, setState] = useState('Not fixed');
-  const map = props.map;
   const getCurrentPosition = () => {
     setState('Fixing');
     map.once('locationfound', (evt) => {
       setState('Fixed');
-      props.onClick(evt);
+      onClick(evt);
     });
-    map.locate(props?.locateOptions ?? {});
+    map.locate(locateOptions ?? {});
   };
   const icon = (state === 'Fixed') ? <GpsFixedIcon/> : <GpsNotFixedIcon/>;
   const disabled = (state === 'Fixing');
