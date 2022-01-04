@@ -320,7 +320,7 @@ def calculate_metrics(results, event_data):
 
 
 def calculate_race_metrics(race, race_format):
-    laps = race['laps']
+    laps = [lap for lap in race['laps'] if lap['location'] == 0]
     if race_format.get('start', 'first-pass') == 'start-line':
         start_time = 0
     else:
