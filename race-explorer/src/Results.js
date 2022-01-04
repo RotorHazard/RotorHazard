@@ -14,6 +14,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import { debounce } from 'lodash';
 import { TrackMapContainer, Map } from './TrackMap.js';
 import * as util from './util.js';
 import { createMqttConfigLoader, createTrackDataLoader, createTimerMappingLoader,
@@ -276,6 +277,64 @@ function LapStatsTable(props) {
   );
 }
 
+const calculateLapStats = debounce(function calculateLapStats(resultData, setStatsData) {
+  const pilotResults = {pilots: {}};
+  for (const eventEntry of Object.entries(resultData)) {
+    const eventName = eventEntry[0];
+    for (const stageEntry of Object.entries(eventEntry[1])) {
+      const stageId = stageEntry[0];
+      for (let roundIdx=0; roundIdx < stageEntry[1].length; roundIdx++) {
+        const round = stageEntry[1][roundIdx];
+        for (const heatEntry of Object.entries(round)) {
+          const heatId = heatEntry[0];
+          for (const pilotEntry of Object.entries(heatEntry[1].pilots)) {
+            const callsign = pilotEntry[0];
+            const laps = pilotEntry[1].laps;
+            pilotResults.pilots[callsign] = pilotResults.pilots[callsign] ?? {events: {}};
+            const events = pilotResults.pilots[callsign].events;
+            events[eventName] = events[eventName] ?? {stages: {}};
+            const stages = events[eventName].stages;
+            stages[stageId] = stages[stageId] ?? {heats: {}};
+            const heats = stages[stageId].heats;
+            heats[heatId] = heats[heatId] ?? {rounds: []};
+            const rounds = heats[heatId].rounds;
+            rounds[roundIdx] = rounds[roundIdx] ?? {laps: laps};
+          }
+        }
+      }
+    }
+  }
+  calculateMetrics(pilotResults, (metricData) => {
+    const statsData = {};
+    for (const pilotEntry of Object.entries(metricData.pilots)) {
+      const callsign = pilotEntry[0];
+      for (const eventEntry of Object.entries(pilotEntry[1].events)) {
+        const eventName = eventEntry[0];
+        for (const stageEntry of Object.entries(eventEntry[1].stages)) {
+          const stageId = stageEntry[0];
+          for (const heatEntry of Object.entries(stageEntry[1].heats)) {
+            const heatId = heatEntry[0];
+            const heatRounds = heatEntry[1].rounds;
+            for (let roundIdx=0; roundIdx < heatRounds.length; roundIdx++) {
+              const round = heatRounds[roundIdx];
+              statsData[eventName] = statsData[eventName] ?? {};
+              const statsEvent = statsData[eventName];
+              statsEvent[stageId] = statsEvent[stageId] ?? [];
+              const statsStage = statsEvent[stageId];
+              statsStage[roundIdx] = statsStage[roundIdx] ?? {};
+              const statsRound = statsStage[roundIdx];
+              statsRound[heatId] = statsRound[heatId] ?? {pilots: {}};
+              const statsPilot = statsRound[heatId].pilots;
+              statsPilot[callsign] = {name: callsign, metrics: round.metrics};
+            }
+          }
+        }
+      }
+    }
+    setStatsData(statsData);
+  });
+}, 5000);
+
 export default function Results(props) {
   const [mqttConfig, setMqttConfig] = useState({});
   const [trackData, setTrackData] = useState({});
@@ -411,61 +470,7 @@ export default function Results(props) {
 
   useEffect(() => {
     if (resultTabIndex === 1) {
-      const pilotResults = {pilots: {}};
-      for (const eventEntry of Object.entries(resultData)) {
-        const eventName = eventEntry[0];
-        for (const stageEntry of Object.entries(eventEntry[1])) {
-          const stageId = stageEntry[0];
-          for (let roundIdx=0; roundIdx < stageEntry[1].length; roundIdx++) {
-            const round = stageEntry[1][roundIdx];
-            for (const heatEntry of Object.entries(round)) {
-              const heatId = heatEntry[0];
-              for (const pilotEntry of Object.entries(heatEntry[1].pilots)) {
-                const callsign = pilotEntry[0];
-                const laps = pilotEntry[1].laps;
-                pilotResults.pilots[callsign] = pilotResults.pilots[callsign] ?? {events: {}};
-                const events = pilotResults.pilots[callsign].events;
-                events[eventName] = events[eventName] ?? {stages: {}};
-                const stages = events[eventName].stages;
-                stages[stageId] = stages[stageId] ?? {heats: {}};
-                const heats = stages[stageId].heats;
-                heats[heatId] = heats[heatId] ?? {rounds: []};
-                const rounds = heats[heatId].rounds;
-                rounds[roundIdx] = rounds[roundIdx] ?? {laps: laps};
-              }
-            }
-          }
-        }
-      }
-      calculateMetrics(pilotResults, (metricData) => {
-        const statsData = {};
-        for (const pilotEntry of Object.entries(metricData.pilots)) {
-          const callsign = pilotEntry[0];
-          for (const eventEntry of Object.entries(pilotEntry[1].events)) {
-            const eventName = eventEntry[0];
-            for (const stageEntry of Object.entries(eventEntry[1].stages)) {
-              const stageId = stageEntry[0];
-              for (const heatEntry of Object.entries(stageEntry[1].heats)) {
-                const heatId = heatEntry[0];
-                const heatRounds = heatEntry[1].rounds;
-                for (let roundIdx=0; roundIdx < heatRounds.length; roundIdx++) {
-                  const round = heatRounds[roundIdx];
-                  statsData[eventName] = statsData[eventName] ?? {};
-                  const statsEvent = statsData[eventName];
-                  statsEvent[stageId] = statsEvent[stageId] ?? [];
-                  const statsStage = statsEvent[stageId];
-                  statsStage[roundIdx] = statsStage[roundIdx] ?? {};
-                  const statsRound = statsStage[roundIdx];
-                  statsRound[heatId] = statsRound[heatId] ?? {pilots: {}};
-                  const statsPilot = statsRound[heatId].pilots;
-                  statsPilot[callsign] = {name: callsign, metrics: round.metrics};
-                }
-              }
-            }
-          }
-        }
-        setStatsData(statsData);
-      });
+      calculateLapStats(resultData, setStatsData);
     }
   }, [resultData, resultTabIndex]);
 
