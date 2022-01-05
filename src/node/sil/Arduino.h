@@ -8,6 +8,7 @@
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -135,6 +136,15 @@ public:
     }
     size_t write(const uint8_t* buf, size_t size) override;
     void stop() { _close(); }
+    int setNoDelay(bool nodelay) {
+#ifdef _WIN32
+        BOOL flag = nodelay;
+        return setsockopt(hSock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+#else
+        int flag = nodelay;
+        return setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+#endif
+    }
     int _performIo();
     void _close();
 };

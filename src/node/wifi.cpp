@@ -36,6 +36,10 @@ void wifiInit() {
 #endif
 #endif
 
+#ifdef WIFI_SERVER
+    wifiClient.setNoDelay(true);
+#endif
+
 #ifdef USE_MQTT
     mqttInit(mqttWifiClient);
 #endif

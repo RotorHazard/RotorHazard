@@ -45,6 +45,7 @@ def discover(idxOffset, config, *args, **kwargs):
         for port in config_sock_ports:
             with socket.socket() as server:
                 server.bind(('', port))
+                server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 server.settimeout(5)
                 logger.info("Listening on {}".format(port))
                 server.listen()
