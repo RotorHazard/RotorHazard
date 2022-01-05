@@ -149,7 +149,7 @@ class LapRFInterface(BaseHardwareInterface):
             node.pass_peak_rssi = record.peak_height
             node.node_peak_rssi = max(record.peak_height, node.node_peak_rssi)
             lap_ts = (record.rtc_time - node_manager.race_start_rtc_time)/1000000
-            if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
+            if self.is_racing:
                 node.pass_history.append((lap_ts + self.race_start_time, node.pass_peak_rssi))
             node.node_lap_id += 1
             self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
@@ -193,13 +193,12 @@ class LapRFInterface(BaseHardwareInterface):
         else:
             logger.warning("Unsupported record: {}".format(record))
 
-    def set_race_status(self, race_status):
-        if race_status == BaseHardwareInterface.RACE_STATUS_RACING:
-            data = laprf.encode_get_rtc_time_record()
-            for node_manager in self.node_managers:
-                node_manager.race_start_time_request_ts = monotonic()
-                node_manager.write(data)
-        super().set_race_status(race_status)
+    def on_race_start(self):
+        super().on_race_start()
+        data = laprf.encode_get_rtc_time_record()
+        for node_manager in self.node_managers:
+            node_manager.race_start_time_request_ts = monotonic()
+            node_manager.write(data)
 
     def set_enter_at_level(self, node_index, level):
         self.set_threshold(node_index, level)

@@ -138,21 +138,21 @@ class ChorusInterface(BaseHardwareInterface):
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 
-    def set_race_status(self, race_status):
-        if race_status == BaseHardwareInterface.RACE_STATUS_RACING:
-            # reset timers to zero
-            for node_manager in self.node_managers:
-                with node_manager:
-                    # mode = lap times relative to start time
-                    node_manager.write('R*R2\n')
-                    node_manager.read()
-        elif race_status == BaseHardwareInterface.RACE_STATUS_DONE:
-            for node_manager in self.node_managers:
-                with node_manager:
-                    node_manager.write('R*R0\n')
-                    node_manager.read()
+    def on_race_start(self):
+        super().on_race_start()
+        # reset timers to zero
+        for node_manager in self.node_managers:
+            with node_manager:
+                # mode = lap times relative to start time
+                node_manager.write('R*R2\n')
+                node_manager.read()
 
-        super().set_race_status(race_status)
+    def on_race_stop(self):
+        for node_manager in self.node_managers:
+            with node_manager:
+                node_manager.write('R*R0\n')
+                node_manager.read()
+        super().on_race_stop()
 
     def transmit_frequency(self, node, frequency):
         return node.set_and_validate_value_4x('F', frequency)

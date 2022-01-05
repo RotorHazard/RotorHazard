@@ -5,9 +5,8 @@ import logging
 from monotonic import monotonic  # to capture read timing
 import random
 
-from .Node import NodeManager
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
-from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE
+from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE, RHNodeManager, RHNode
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 
-class MockNodeManager(NodeManager):
+class MockNodeManager(RHNodeManager):
     TYPE = "Mock"
 
     def __init__(self, index):
@@ -26,6 +25,15 @@ class MockNodeManager(NodeManager):
         self.firmware_version_str = 'Mock'
         self.firmware_proctype_str = 'Mock'
         self.firmware_timestamp_str = ''
+
+    def _create_node(self, index, multi_node_index):
+        node = MockNode(index, multi_node_index, self)
+        return node
+
+
+class MockNode(RHNode):
+    def __init__(self, index, multi_node_index, manager):
+        super().__init__(index, multi_node_index, manager)
 
 
 class MockInterface(BaseHardwareInterface):

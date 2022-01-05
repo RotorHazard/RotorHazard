@@ -22,7 +22,6 @@ class BaseHardwareInterface:
     LAP_SOURCE_RECALC = 2
 
     RACE_STATUS_READY = 0
-    RACE_STATUS_STAGING = 3
     RACE_STATUS_RACING = 1
     RACE_STATUS_DONE = 2
 
@@ -35,7 +34,7 @@ class BaseHardwareInterface:
         self.start_time = None  # millis
         self.environmental_data_update_tracker = 0
         self.race_start_time = 0
-        self.race_status = BaseHardwareInterface.RACE_STATUS_READY
+        self.is_racing = False
         self.pass_record_callback = None  # Function added in server.py
         self.new_enter_or_exit_at_callback = None  # Function added in server.py
         self.node_crossing_callback = None  # Function added in server.py
@@ -266,7 +265,7 @@ class BaseHardwareInterface:
             if prev_lap_id != -1:  # if -1 then just initialising node_lap_id
                 if lap_id != prev_lap_id + 1:
                     logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_lap_id, lap_id))
-                if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
+                if self.is_racing:
                     node.pass_history.append((lap_timestamp, node.pass_peak_rssi))
                 # NB: update lap timestamps are relative to start time
                 upd_list.append((node, lap_timestamp - self.race_start_time))
@@ -299,7 +298,7 @@ class BaseHardwareInterface:
         self.prune_history(node)
 
         # get and process history data (except when race is over)
-        if pn_history and self.race_status != BaseHardwareInterface.RACE_STATUS_DONE:
+        if pn_history and self.is_racing:
             if not pn_history.isEmpty():
                 pn_history.addTo(readtime, node.history)
                 node.used_history_count += 1
@@ -308,7 +307,7 @@ class BaseHardwareInterface:
 
     def prune_history(self, node):
         # prune history data if race is not running (keep last 60s)
-        if self.race_status == BaseHardwareInterface.RACE_STATUS_READY:
+        if not self.is_racing:
             node.history.prune(monotonic()-60)
 
     def process_crossings(self, cross_list):
@@ -411,18 +410,19 @@ class BaseHardwareInterface:
     def force_end_crossing(self, node_index):
         pass
 
-    def set_race_status(self, race_status):
-        self.race_status = race_status
-        if race_status == BaseHardwareInterface.RACE_STATUS_DONE:
-            for node in self.nodes:
-                node.history.merge(node.pass_history)
-                node.pass_history = []
-            gevent.spawn(self.ai_calibrate_nodes)
-            msg = ['RSSI history buffering utilisation:']
-            for node in self.nodes:
-                total_count = node.used_history_count + node.empty_history_count
-                msg.append("\tNode {} {:.2%}".format(node, node.used_history_count/total_count if total_count > 0 else 0))
-            logger.debug('\n'.join(msg))
+    def on_race_start(self):
+        for node in self.nodes:
+            node.reset()
+        self.is_racing = True
+
+    def on_race_stop(self):
+        self.is_racing = False
+        for node in self.nodes:
+            node.history.merge(node.pass_history)
+            node.pass_history = []
+        gevent.spawn(self.ai_calibrate_nodes)
+        for node in self.nodes:
+            node.summary_stats()
 
     def set_frequency(self, node_index, frequency, band=None, channel=None):
         node = self.nodes[node_index]

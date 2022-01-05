@@ -2117,7 +2117,6 @@ def on_stage_race():
 
         RACE.init_node_finished_flags(heatNodes)
 
-        INTERFACE.set_race_status(RHRace.RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
@@ -2331,7 +2330,7 @@ def race_start_thread(start_token):
 
         # do time-critical tasks
         RACE.race_status = RHRace.RaceStatus.RACING # To enable registering passed laps
-        INTERFACE.set_race_status(RHRace.RaceStatus.RACING)
+        INTERFACE.on_race_start()
         RACE.timer_running = True # indicate race timer is running
 
         Events.trigger(Evt.RACE_START, {
@@ -2342,7 +2341,6 @@ def race_start_thread(start_token):
         # do secondary start tasks (small delay is acceptable)
 
         for node in INTERFACE.nodes:
-            node.reset()
             # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
             if node.crossing_flag and node.frequency > 0 and (
                 getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
@@ -2423,8 +2421,8 @@ def do_stop_race_actions():
         if len(min_laps_list) > 0:
             logger.info('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
+        INTERFACE.on_race_stop()
         RACE.race_status = RHRace.RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
-        INTERFACE.set_race_status(RHRace.RaceStatus.DONE)
         Events.trigger(Evt.RACE_STOP, {
             'race': RACE,
             'color': ColorVal.RED
@@ -2437,7 +2435,6 @@ def do_stop_race_actions():
     else:
         logger.debug('No active race to stop')
         RACE.race_status = RHRace.RaceStatus.READY # Go back to ready state
-        INTERFACE.set_race_status(RHRace.RaceStatus.READY)
         Events.trigger(Evt.LAPS_CLEAR)
         delta_time = 0
 
@@ -2633,7 +2630,6 @@ def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
     clear_laps()
     RACE.race_status = RHRace.RaceStatus.READY # Flag status as ready to start next race
-    INTERFACE.set_race_status(RHRace.RaceStatus.READY)
     RACE.win_status = RHRace.WinStatus.NONE
     RACE.status_message = ''
     emit_current_laps() # Race page, blank laps to the web client
@@ -4878,7 +4874,6 @@ def init_interface_state(startup=False):
     # Cancel current race
     if startup:
         RACE.race_status = RHRace.RaceStatus.READY # Go back to ready state
-        INTERFACE.set_race_status(RHRace.RaceStatus.READY)
         Events.trigger(Evt.LAPS_CLEAR)
         RACE.timer_running = False # indicate race timer not running
         RACE.scheduled = False # also stop any deferred start

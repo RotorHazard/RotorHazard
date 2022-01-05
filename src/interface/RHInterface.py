@@ -255,6 +255,8 @@ class RHNodeManager(NodeManager):
 class RHNode(Node):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index, multi_node_index, manager)
+        self.min_server_roundtrip = float('inf')
+        self.max_server_roundtrip = 0
 
     def read_slot_index(self):
         # read node slot index (physical slot position of node on S32_BPill PCB)
@@ -263,6 +265,14 @@ class RHNode(Node):
         except Exception:
             logger.exception('Error fetching READ_NODE_SLOTIDX from node {}'.format(self))
         return self.multi_node_slot_index
+
+    def summary_stats(self):
+        msg = ["Node {}".format(self)]
+        msg.append("\tServer round-trip: min {}ms, max {}ms".format(1000*self.min_server_roundtrip, 1000*self.max_server_roundtrip))
+        msg.append("\tLoop time: min {}us, max {}us".format(self.min_loop_time, self.max_loop_time))
+        total_count = self.used_history_count + self.empty_history_count
+        msg.append("\tRSSI history buffering utilisation: {:.2%}".format(self.used_history_count/total_count if total_count > 0 else 0))
+        logger.debug('\n'.join(msg))
 
 
 class RHInterface(BaseHardwareInterface):
@@ -357,6 +367,8 @@ class RHInterface(BaseHardwareInterface):
 
                 if data is not None and len(data) > 0:
                     server_roundtrip = node.io_response - node.io_request
+                    node.min_server_roundtrip = min(server_roundtrip, node.min_server_roundtrip)
+                    node.max_server_roundtrip = max(server_roundtrip, node.max_server_roundtrip)
                     server_oneway = server_roundtrip / 2
                     readtime = node.io_response - server_oneway
 

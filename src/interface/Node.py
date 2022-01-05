@@ -263,6 +263,9 @@ class Node(CommandsWithRetry):
         self.empty_history_count = 0
         self.node_lap_id = -1
         self.under_min_lap_count = 0
+        self._loop_time = 0 # microseconds
+        self.min_loop_time = float('inf')
+        self.max_loop_time = 0
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.manager.max_rssi_value
@@ -291,6 +294,9 @@ class Node(CommandsWithRetry):
         with self.manager:  # only allow one greenlet at a time
             if self.manager.select(self):
                 return super().set_and_validate_value(write_func, write_command, read_func, read_command, val, size, max_retries)
+
+    def summary_stats(self):
+        pass
 
     def __str__(self):
         return "{}@{}".format(self.index+1, self.addr)

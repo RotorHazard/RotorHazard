@@ -2,7 +2,7 @@
 
 from enum import IntEnum
 from . import RHUtils
-from interface.BaseHardwareInterface import BaseHardwareInterface
+
 
 class RHRace():
     '''Class to hold race management variables.'''
@@ -201,8 +201,8 @@ class WinStatus:
 
 
 class RaceStatus:
-    READY = BaseHardwareInterface.RACE_STATUS_READY
-    STAGING = BaseHardwareInterface.RACE_STATUS_STAGING
-    RACING = BaseHardwareInterface.RACE_STATUS_RACING
-    DONE = BaseHardwareInterface.RACE_STATUS_DONE
+    READY = 0
+    STAGING = 3
+    RACING = 1
+    DONE = 2
 
