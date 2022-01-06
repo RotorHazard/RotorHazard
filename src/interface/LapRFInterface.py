@@ -1,3 +1,5 @@
+'''LapRF interface layer.'''
+
 import logging
 import gevent
 import serial
@@ -112,8 +114,13 @@ class LapRFInterface(BaseHardwareInterface):
         super().start()
 
     def _update(self):
-        for node_manager in self.node_managers:
-            self._poll(node_manager)
+        nm_sleep_interval = self.update_sleep/max(len(self.node_managers), 1)
+        if self.node_managers:
+            for node_manager in self.node_managers:
+                self._poll(node_manager)
+                gevent.sleep(nm_sleep_interval)
+        else:
+            gevent.sleep(nm_sleep_interval)
 
     def _poll(self, node_manager):
         with node_manager:

@@ -1,6 +1,7 @@
 '''Chorus hardware interface layer.'''
 
 import logging
+import gevent
 import serial
 from monotonic import monotonic
 
@@ -111,11 +112,16 @@ class ChorusInterface(BaseHardwareInterface):
     #
 
     def _update(self):
-        for node_manager in self.node_managers:
-            with node_manager:
-                data = node_manager.read()
-            if data:
-                self._process_message(node_manager, data)
+        nm_sleep_interval = self.update_sleep/max(len(self.node_managers), 1)
+        if self.node_managers:
+            for node_manager in self.node_managers:
+                with node_manager:
+                    data = node_manager.read()
+                if data:
+                    self._process_message(node_manager, data)
+                gevent.sleep(nm_sleep_interval)
+        else:
+            gevent.sleep(nm_sleep_interval)
 
     def _process_message(self, node_manager, data):
         if data[0] == 'S':

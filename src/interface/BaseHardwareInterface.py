@@ -235,7 +235,6 @@ class BaseHardwareInterface:
         while True:
             try:
                 self._update()
-                gevent.sleep(self.update_sleep)
             except KeyboardInterrupt:
                 logger.info("Update thread terminated by keyboard interrupt")
                 raise
@@ -245,9 +244,10 @@ class BaseHardwareInterface:
                 raise
             except Exception:
                 logger.exception('Exception in {} _update_loop():'.format(type(self).__name__))
-                gevent.sleep(self.update_sleep*10)
 
-    def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
+    def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history):
+        crossing_updated = False
+        new_lap = False
         if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
             node.crossing_flag = cross_flag
             if cross_flag:
@@ -255,7 +255,7 @@ class BaseHardwareInterface:
                 node.enter_at_timestamp = readtime
             else:
                 node.exit_at_timestamp = readtime
-            cross_list.append(node)
+            crossing_updated = True
 
         # calc lap timestamp
         if ms_val < 0 or ms_val > 9999999:
@@ -273,8 +273,13 @@ class BaseHardwareInterface:
                     logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_lap_id, lap_id))
                 if self.is_racing:
                     node.pass_history.append((lap_timestamp, node.pass_peak_rssi))
-                # NB: update lap timestamps are relative to start time
-                upd_list.append((node, lap_timestamp - self.race_start_time))
+                new_lap = True
+
+        if crossing_updated:
+            self._notify_trigger(node)
+        if new_lap:
+            # NB: lap pass timestamps are relative to race start time
+            self._notify_pass(node, lap_timestamp - self.race_start_time, BaseHardwareInterface.LAP_SOURCE_REALTIME)
 
         # check if capturing enter-at level for node
         if node.cap_enter_at_flag:
@@ -315,31 +320,6 @@ class BaseHardwareInterface:
         # prune history data if race is not running (keep last 60s)
         if not self.is_racing:
             node.history.prune(monotonic()-60)
-
-    def process_crossings(self, cross_list):
-        '''
-        cross_list - list of node objects
-        '''
-        if len(cross_list) > 0:
-            for node in cross_list:
-                self._notify_trigger(node)
-
-    def process_updates(self, upd_list):
-        '''
-        upd_list - list of (node, lap_timestamp) tuples
-        '''
-        if len(upd_list) == 1:  # list contains single item
-            item = upd_list[0]
-            node = item[0]
-            lap_timestamp = item[1]
-            self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
-
-        elif len(upd_list) > 1:  # list contains multiple items; sort so processed in order by lap time
-            upd_list.sort(key=lambda i: i[1])
-            for item in upd_list:
-                node = item[0]
-                lap_timestamp = item[1]
-                self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
 
     def ai_calibrate_nodes(self):
         for node in self.nodes:
