@@ -1054,8 +1054,8 @@ def on_set_frequency_preset(data):
         "f": freqs
     }
     set_all_frequencies(payload)
-    emit_frequency_data()
     hardware_set_all_frequencies(payload)
+    emit_frequency_data()
 
 
 def set_all_frequencies(freqs):

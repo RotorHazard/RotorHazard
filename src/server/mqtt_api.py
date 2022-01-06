@@ -110,25 +110,32 @@ class MqttAPI:
         node = self._get_node_from_topic(msg.topic)
         if node:
             try:
-                freq_bandChannel = msg.payload.decode('utf-8').split(',')
-                if len(freq_bandChannel) >= 1:
+                if msg.payload:
+                    freq_bandChannel = msg.payload.decode('utf-8').split(',')
                     freq = int(freq_bandChannel[0])
                     set_data = {'node': node.index, 'frequency': freq}
                     if len(freq_bandChannel) >= 2:
                         bandChannel = freq_bandChannel[1]
                         set_data['band'] = bandChannel[0]
                         set_data['channel'] = int(bandChannel[1])
-                    self.on_set_frequency(set_data)
+                else:
+                    set_data = {'node': node.index, 'frequency': 0}
+                self.on_set_frequency(set_data)
             except:
-                logger.warn('Invalid frequency message')
+                logger.warning('Invalid frequency message')
 
     def set_bandChannel_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            bc = msg.payload.decode('utf-8')
-            if bc in FREQS:
-                freq = FREQS[bc]
-                self.on_set_frequency({'node': node.index, 'frequency': freq, 'band': bc[0], 'channel': int(bc[1])})
+            if msg.payload:
+                bandChannel = msg.payload.decode('utf-8')
+                if bandChannel in FREQS:
+                    freq = FREQS[bandChannel]
+                    band = bandChannel[0]
+                    channel = int(bandChannel[1])
+                    self.on_set_frequency({'node': node.index, 'frequency': freq, 'band': band, 'channel': channel})
+            else:
+                self.on_set_frequency({'node': node.index, 'frequency': node.frequency})
 
     def set_enter_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
@@ -137,7 +144,7 @@ class MqttAPI:
                 level = int(msg.payload.decode('utf-8'))
                 self.on_set_enter_at_level({'node': node.index, 'enter_at_level': level})
             except:
-                logger.warn('Invalid enter trigger message')
+                logger.warning('Invalid enter trigger message')
 
     def set_exit_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
@@ -146,4 +153,4 @@ class MqttAPI:
                 level = int(msg.payload.decode('utf-8'))
                 self.on_set_exit_at_level({'node': node.index, 'exit_at_level': level})
             except:
-                logger.warn('Invalid exit trigger message')
+                logger.warning('Invalid exit trigger message')

@@ -124,24 +124,29 @@ class BaseHardwareInterface:
     def _mqtt_set_frequency(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
         if node:
-            freq_bandChannel = msg.payload.decode('utf-8').split(',')
-            if len(freq_bandChannel) >= 1:
+            if msg.payload:
+                freq_bandChannel = msg.payload.decode('utf-8').split(',')
                 freq = int(freq_bandChannel[0])
                 if len(freq_bandChannel) >= 2:
                     bandChannel = freq_bandChannel[1]
                     self.set_frequency(node.index, freq, bandChannel[0], int(bandChannel[1]))
                 else:
                     self.set_frequency(node.index, freq)
+            else:
+                self.set_frequency(node.index, 0)
 
     def _mqtt_set_bandChannel(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
         if node:
-            bandChannel = msg.payload.decode('utf-8')
-            if bandChannel in FREQS:
-                freq = FREQS[bandChannel]
-                band = bandChannel[0]
-                channel = int(bandChannel[1])
-                self.set_frequency(node.index, freq, band, channel)
+            if msg.payload:
+                bandChannel = msg.payload.decode('utf-8')
+                if bandChannel in FREQS:
+                    freq = FREQS[bandChannel]
+                    band = bandChannel[0]
+                    channel = int(bandChannel[1])
+                    self.set_frequency(node.index, freq, band, channel)
+            else:
+                self.set_frequency(node.index, node.frequency)
 
     def _mqtt_set_enter_trigger(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
@@ -150,7 +155,7 @@ class BaseHardwareInterface:
                 level = int(msg.payload.decode('utf-8'))
                 self.set_enter_at_level(node.index, level)
             except:
-                logger.warn('Invalid enter trigger message')
+                logger.warning('Invalid enter trigger message')
 
     def _mqtt_set_exit_trigger(self, node_manager, client, userdata, msg):
         node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
@@ -159,20 +164,21 @@ class BaseHardwareInterface:
                 level = int(msg.payload.decode('utf-8'))
                 self.set_exit_at_level(node.index, level)
             except:
-                logger.warn('Invalid exit trigger message')
+                logger.warning('Invalid exit trigger message')
 
     def _mqtt_publish_frequency(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "frequency"), str(node.frequency), retain=True)
+        freq = str(node.frequency) if node.frequency else ''
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "frequency"), freq)
 
     def _mqtt_publish_bandChannel(self, node):
-        if node.bandChannel:
-            self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "bandChannel"), node.bandChannel, retain=True)
+        bc = node.bandChannel if node.bandChannel else ''
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "bandChannel"), bc)
 
     def _mqtt_publish_enter_trigger(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "enterTrigger"), str(node.enter_at_level), retain=True)
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "enterTrigger"), str(node.enter_at_level))
 
     def _mqtt_publish_exit_trigger(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exitTrigger"), str(node.exit_at_level), retain=True)
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exitTrigger"), str(node.exit_at_level))
 
     def _mqtt_publish_enter(self, node):
         msg = {'lap': node.node_lap_id+1, 'timestamp': str(node.enter_at_timestamp), 'rssi': node.current_rssi}

@@ -570,13 +570,20 @@ class RHInterface(BaseHardwareInterface):
         '''Frequency scanning protocol'''
         node = self.nodes[node_index]
         if scan_enabled != node.scan_enabled:
-            self.set_mode(node_index, SCANNER_MODE if scan_enabled else TIMER_MODE)
-            node.scan_enabled = scan_enabled
-            # reset/clear data
-            node.scan_data = {}
-            # restore original frequency
-            if not scan_enabled:
-                self.set_frequency(node_index, node.frequency)
+            if scan_enabled:
+                node.scan_enabled = scan_enabled
+                # reset/clear data
+                node.scan_data = {}
+                self.set_mode(node_index, SCANNER_MODE)
+            else:
+                self.set_mode(node_index, TIMER_MODE)
+                # reset/clear data
+                node.scan_data = {}
+                # restore original frequency
+                original_freq = node.frequency
+                node.frequency = 0
+                self.set_frequency(node_index, original_freq)
+                node.scan_enabled = scan_enabled
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]

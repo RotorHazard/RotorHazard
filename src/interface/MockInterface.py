@@ -5,6 +5,7 @@ import logging
 from monotonic import monotonic  # to capture read timing
 import random
 
+from server.RHUtils import FREQUENCY_ID_NONE
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE, RHNodeManager, RHNode
 
@@ -154,13 +155,21 @@ class MockInterface(BaseHardwareInterface):
         '''Frequency scanning protocol'''
         node = self.nodes[node_index]
         if scan_enabled != node.scan_enabled:
-            self.set_mode(node_index, SCANNER_MODE if scan_enabled else TIMER_MODE)
-            node.scan_enabled = scan_enabled
-            # reset/clear data
-            node.scan_data = {}
-            # restore original frequency
-            if not scan_enabled:
-                self.set_frequency(node_index, node.frequency)
+            if scan_enabled:
+                node.scan_enabled = scan_enabled
+                node.saved_frequency = node.frequency
+                self.set_frequency(node_index, FREQUENCY_ID_NONE)
+                # reset/clear data
+                node.scan_data = {}
+                self.set_mode(node_index, SCANNER_MODE)
+            else:
+                self.set_mode(node_index, TIMER_MODE)
+                # reset/clear data
+                node.scan_data = {}
+                # restore original frequency
+                self.set_frequency(node_index, node.saved_frequency)
+                del node.saved_frequency
+                node.scan_enabled = scan_enabled
 
     def read_scan_history(self, node_index):
         freqs = list(range(5645, 5945, 5))

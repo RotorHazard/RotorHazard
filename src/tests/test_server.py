@@ -18,6 +18,8 @@ import tests as tests_pkg
 class ServerTest(unittest.TestCase):
     def setUp(self):
         self.client = server.SOCKET_IO.test_client(server.APP)
+        self.get_response('load_all')
+        self.wait_for_response('heartbeat', 1)
 
     def tearDown(self):
         self.client.disconnect()
@@ -43,14 +45,15 @@ class ServerTest(unittest.TestCase):
         evt_resps = filter(lambda resp: resp['name'] in events, responses)
         return [resp['args'][0] for resp in evt_resps]
 
-    def wait_for_response(self, event, max_wait):
+    def wait_for_response(self, event, max_wait, filter_func=None):
         expiry_time = monotonic() + max_wait
         while monotonic() < expiry_time:
             responses = self.client.get_received()
             for resp in reversed(responses):
-                if resp['name'] == event:
+                if resp['name'] == event and (filter_func is None or filter_func(resp['args'][0])):
                     return resp['args'][0]
-        self.fail('No response of type {0}'.format(event))
+            gevent.sleep(0.1)
+        self.fail('No response of type {0} within {1}secs'.format(event, max_wait))
 
     def test_sensors(self):
         server.SENSORS.clear()
@@ -220,11 +223,11 @@ class ServerTest(unittest.TestCase):
         self.client.emit('set_race_format', {'race_format': 5})
         self.client.emit('stage_race')
         self.get_response('stage_ready')
-        gevent.sleep(0.5)
-        self.get_response('race_status')
+        resp = self.wait_for_response('race_status', 1)
+        self.assertEquals(resp['race_status'], RHRace.RaceStatus.RACING)
         server.INTERFACE.simulate_lap(0)
-        gevent.sleep(0.1)
-        self.get_response('pass_record')
+        resp = self.wait_for_response('pass_record', 1)
+        self.assertEqual(resp['node'], 0)
         self.client.emit('stop_race')
 
 
@@ -235,13 +238,16 @@ class ServerTest(unittest.TestCase):
             'node': 0,
             'frequency': 5888
         })
+        is_freq_set = lambda f: lambda d:d['frequency'][0] == f
+        self.wait_for_response('heartbeat', 1, is_freq_set(5888))
+
         self.client.emit('set_scan', {
             'node': 0,
             'scan': True,
         })
         # allow some scanning to happen
         gevent.sleep(1)
-        resp = self.get_response('scan_data')
+        resp = self.wait_for_response('scan_data', 1)
         num_freqs = len(resp['frequency'])
         self.assertGreater(num_freqs, 0)
         self.assertEqual(len(resp['rssi']), num_freqs)
@@ -251,9 +257,7 @@ class ServerTest(unittest.TestCase):
             'scan': False,
         })
         # check original frequency is restored
-        gevent.sleep(0.5)
-        resp = self.get_response('heartbeat')
-        self.assertEqual(resp['frequency'][0], 5888)
+        resp = self.wait_for_response('heartbeat', 1, is_freq_set(5888))
 
 # verify LiveTime compatibility
 
@@ -289,7 +293,6 @@ class ServerTest(unittest.TestCase):
         })
 
     def test_livetime_set_frequency(self):
-        self.client.get_received() # clear received buffer
         data = {
             'node': 0,
             'frequency': 5800
@@ -298,25 +301,20 @@ class ServerTest(unittest.TestCase):
         self.client.emit('get_version')
         self.client.emit('set_frequency', data)
 
-        responses = self.client.get_received()
-        for resp in responses:
-            if resp['name'] == 'frequency_set':
-                if resp['args'][0]['node'] == 0:
-                    self.assertEqual(resp['args'][0], data)
-                    return
-
-        self.fail('No valid responses')
+        is_same_node = lambda d: d['node'] == 0
+        resp = self.wait_for_response('frequency_set', 0.1, is_same_node)
+        self.assertEqual(resp, data)
 
     def test_livetime_reset_auto_calibration(self):
         self.client.emit('reset_auto_calibration', {
             'node': -1
         })
+        self.client.emit('stop_race')
 
     def test_livetime_heartbeat(self):
         # trigger livetime client mode
         self.client.emit('get_version')
-        gevent.sleep(0.5)
-        resp = self.get_response('heartbeat')
+        resp = self.wait_for_response('heartbeat', 1)
         self.assertIn('current_rssi', resp)
         self.assertTrue(len(resp['current_rssi']) > 0)
 
@@ -328,8 +326,7 @@ class ServerTest(unittest.TestCase):
         server.RACE.start_time_monotonic = 10
         server.RACE.start_time_epoch_ms = server.PROGRAM_START.monotonic_to_epoch_millis(server.RACE.start_time_monotonic)
         server.pass_record_callback(node, 19.8, 0)
-        gevent.sleep(0.1)
-        resp = self.get_response('pass_record')
+        resp = self.wait_for_response('pass_record', 1)
         self.assertIn('node', resp)
         self.assertIn('frequency', resp)
         self.assertIn('timestamp', resp)

@@ -259,10 +259,10 @@ class LapRFInterface(BaseHardwareInterface):
         self._mqtt_publish_gain(node)
 
     def _mqtt_publish_threshold(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "threshold"), str(node.threshold), retain=True)
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "threshold"), str(node.threshold))
 
     def _mqtt_publish_gain(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "gain"), str(node.gain), retain=True)
+        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "gain"), str(node.gain))
 
 
 class SocketStream:
