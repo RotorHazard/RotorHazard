@@ -9,7 +9,7 @@ from interface import RHInterface, MockInterface
 def start(port, freq, write_buffer):
     if port == 'MOCK':
         INTERFACE = MockInterface.get_hardware_interface()
-    elif port.startswith('COM'):
+    elif port.startswith('COM') or port.startswith('/dev/'):
         config = Config()
         config.SERIAL_PORTS = [port]
         INTERFACE = RHInterface.get_hardware_interface(config=config)
