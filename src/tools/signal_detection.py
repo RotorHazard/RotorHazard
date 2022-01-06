@@ -25,9 +25,8 @@ def load_races(db_file):
 			DB.func.count(Database.SavedRaceLap.id), \
 			Database.SavedPilotRace.history_times,
 			Database.SavedPilotRace.history_values) \
-		.filter(Database.SavedRaceMeta.id==Database.SavedPilotRace.race_id) \
-		.filter(Database.SavedRaceMeta.id==Database.SavedRaceLap.race_id) \
-		.filter(Database.SavedPilotRace.id==Database.SavedRaceLap.pilotrace_id) \
+		.join(Database.SavedRaceMeta, Database.SavedPilotRace.race_id==Database.SavedRaceMeta.id) \
+		.outerjoin(Database.SavedRaceLap, (Database.SavedPilotRace.id==Database.SavedRaceLap.pilotrace_id) & (Database.SavedRaceMeta.id==Database.SavedRaceLap.race_id)) \
 		.group_by(Database.SavedRaceMeta.round_id,Database.SavedRaceMeta.heat_id,Database.SavedPilotRace.pilot_id,Database.SavedPilotRace.history_values)
 	for rec in q:
 		history_times = json.loads(rec[-2])
@@ -44,21 +43,26 @@ def list_races(races):
 
 def analyze_race(race, show_plots=True):
 	print("ID {} round {} heat {} node {} pilot {} laps {}".format(*race[0:-2]))
-	ccs = ph.calculatePeakPersistentHomology(race[-1])
-	ccs = ph.sortByLifetime(ccs)
-	laps = race[-3]
-	print("Lap peaks:\n{}".format([str(cc) for cc in ccs[0:laps]]))
-	min_bound, max_bound = ph.findBreak(ccs)
-	threshold = (min_bound + max_bound)/2
-	print("Estimated peaks ({}): {}\n".format(threshold, len([cc for cc in ccs if cc.lifetime()>threshold])))
-	if show_plots:
-		_fig, axs = plt.subplots(1, 3, figsize=(8,4))
-		axs[0].plot(race[-2], race[-1])
-		ph.plotPersistenceDiagram(axs[1], ccs)
-		ph.plotLifetimes(axs[2], ccs)
-		plt.show()
-	return (race[3], min_bound, max_bound)
-	
+	rssi_values = race[-1]
+	if rssi_values:
+		ccs = ph.calculatePeakPersistentHomology(rssi_values)
+		ccs = ph.sortByLifetime(ccs)
+		lap_count = race[-3]
+		n = lap_count if lap_count else len(ccs)
+		print("Top {} peaks:\n{}".format(n, [str(cc) for cc in ccs[0:n]]))
+		min_bound, max_bound = ph.findBreak(ccs)
+		threshold = (min_bound + max_bound)/2
+		print("Estimated laps ({}): {}\n".format(threshold, len([cc for cc in ccs if cc.lifetime()>threshold])))
+		if show_plots:
+			_fig, axs = plt.subplots(1, 3, figsize=(8,4))
+			axs[0].plot(race[-2], race[-1])
+			ph.plotPersistenceDiagram(axs[1], ccs)
+			ph.plotLifetimes(axs[2], ccs)
+			plt.show()
+		return (race[3], min_bound, max_bound)
+	else:
+		return (race[3], 0, 255)
+
 
 def export(race, csv_path):
 	with open(csv_path, 'w', newline='') as f:
