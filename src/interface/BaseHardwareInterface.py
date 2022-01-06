@@ -453,12 +453,10 @@ class BaseHardwareInterface:
             # just changing band/channel values
             if band and channel:
                 node.bandChannel = band + str(channel)
-            else:
-                node.bandChannel = None
-        if node.frequency != old_frequency:
-            self._notify_frequency_changed(node)
         if node.bandChannel != old_bandChannel:
             self._notify_bandChannel_changed(node)
+        if node.frequency != old_frequency:
+            self._notify_frequency_changed(node)
 
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
