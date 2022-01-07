@@ -4758,29 +4758,6 @@ def node_crossing_callback(node):
                     node.show_crossing_flag = True
 
 
-def default_frequencies():
-    '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
-    if RACE.num_nodes < 5:
-        freqs = {
-            'b': ['R', 'R', 'R', 'R', None, None, None, None],
-            'c': [1, 3, 6, 7, None, None, None, None],
-            'f': [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
-        }
-    else:
-        freqs = {
-            'b': ['R', 'R', 'F', 'F', 'R', 'R', None, None],
-            'c': [1, 2, 2, 4, 7, 8, None, None],
-            'f': [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
-        }
-
-        while RACE.num_nodes > len(freqs['f']):
-            freqs['b'].append(None)
-            freqs['c'].append(None)
-            freqs['f'].append(RHUtils.FREQUENCY_ID_NONE)
-
-    return freqs
-
-
 def assign_frequencies():
     '''Assign frequencies to nodes'''
     profile = getCurrentProfile()
