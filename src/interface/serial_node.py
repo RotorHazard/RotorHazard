@@ -21,7 +21,7 @@ class SerialNodeManager(rhi.RHNodeManager):
         self.addr = 'serial:'+self.serial_io.port
 
     def _read_command(self, command, size):
-        self.serial_io.flushInput()
+        self.serial_io.reset_input_buffer()
         self.serial_io.write(bytearray([command]))
         return bytearray(self.serial_io.read(size + 1))
 
@@ -39,10 +39,10 @@ class SerialNodeManager(rhi.RHNodeManager):
             if self.api_level >= 32:
                 logger.info('Sending JUMP_TO_BOOTLOADER message to serial node {0}'.format(self))
                 self.write_command(rhi.JUMP_TO_BOOTLOADER, pack_8(0))
-                self.serial_io.flushInput()
+                self.serial_io.reset_input_buffer()
                 time.sleep(0.1)
-                self.serial_io.flushInput()
-                self.serial_io.flushOutput()
+                self.serial_io.reset_input_buffer()
+                self.serial_io.reset_output_buffer()
                 self.serial_io.close()
         except Exception as ex:
             logger.error('Error sending JUMP_TO_BOOTLOADER message to serial node {0}: {1}'.format(self, ex))
