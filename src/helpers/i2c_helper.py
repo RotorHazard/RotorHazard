@@ -8,7 +8,7 @@ from . import i2c_url
 import gevent.lock
 import os
 import logging
-from monotonic import monotonic
+from time import perf_counter
 
 I2C_CHILL_TIME = float(os.environ.get('RH_I2C_SLEEP', '0.015')) # Delay after i2c read/write
 
@@ -26,12 +26,12 @@ class I2CBus(object):
         return i2c_url(self.id, addr)
 
     def i2c_end(self):
-        self.i2c_timestamp = monotonic()
+        self.i2c_timestamp = perf_counter()
 
     def i2c_sleep(self):
         if self.i2c_timestamp == -1:
             return
-        time_remaining = self.i2c_timestamp + I2C_CHILL_TIME - monotonic()
+        time_remaining = self.i2c_timestamp + I2C_CHILL_TIME - perf_counter()
         if (time_remaining > 0):
             # print("i2c sleep {0}".format(time_remaining))
             gevent.sleep(time_remaining)

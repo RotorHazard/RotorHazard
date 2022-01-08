@@ -4,7 +4,7 @@ Command agnostic behaviour only.
 '''
 
 import logging
-from monotonic import monotonic
+from time import perf_counter
 import gevent.lock
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
                         calculate_checksum, RssiHistory
@@ -45,9 +45,9 @@ class CommandsWithRetry:
         while success is False and retry_count <= max_retries:
             try:
                 self.io_response = None
-                self.io_request = monotonic()
+                self.io_request = perf_counter()
                 data = self.manager._read_command(command, size)
-                self.io_response = monotonic()
+                self.io_response = perf_counter()
                 if data and len(data) == size + 1:
                     # validate checksum
                     expected_checksum = calculate_checksum(data[:-1])
