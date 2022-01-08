@@ -61,14 +61,16 @@ def calculatePeakPersistentHomology(data):
 
 
 def sortByLifetime(ccs):
+	'''Sorts in descending order (i.e. most prominent first)'''
 	return sorted(ccs, key=lambda cc: cc.lifetime(), reverse=True)
 
 
 def findBreak(ccs):
-	lifetimes = np.unique([cc.lifetime() for cc in ccs])
+	lifetimes = [cc.lifetime() for cc in ccs]
 	breaks = jenkspy.jenks_breaks(lifetimes, nb_class=2)
-	i = np.flatnonzero(lifetimes==breaks[1])[0]
-	return (lifetimes[i], lifetimes[i+1])
+	levels = np.unique(lifetimes)
+	i = np.min(np.nonzero(levels==breaks[1])[0])
+	return (levels[i], levels[i+1])
 
 
 def plotPersistenceDiagram(axs, ccs):

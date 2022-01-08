@@ -100,4 +100,4 @@ if __name__ == '__main__':
 		lower_bound = max(bounds[0])
 		upper_bound = min(bounds[1])
 		threshold = (lower_bound + upper_bound)/2
-		print("Node {}: threshold {}".format(node, threshold))
+		print("Node {}: threshold {} ({}-{})".format(node, threshold, lower_bound, upper_bound))
