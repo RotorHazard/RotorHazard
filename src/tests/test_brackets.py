@@ -2,6 +2,7 @@ import unittest
 import json
 import server.race_explorer_core as racex
 import server.heat_generator_endpoints as heatgen
+from server.util import StrictJsonEncoder
 
 
 class BracketsTest(unittest.TestCase):
@@ -86,7 +87,7 @@ class BracketsTest(unittest.TestCase):
     def debugJson(self, filename, data):
         if BracketsTest.DEBUG:
             with open(filename, 'wt') as f:
-                f.write(json.dumps(data, default=racex.json_numpy_converter))
+                f.write(json.dumps(data, cls=StrictJsonEncoder))
 
 
 if __name__ == '__main__':

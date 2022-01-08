@@ -54,7 +54,7 @@ from .RHUtils import catchLogExceptionsWrapper
 from .ClusterNodeSet import SecondaryNode, ClusterNodeSet
 from .util.SendAckQueue import SendAckQueue
 from .util.ButtonInputHandler import ButtonInputHandler
-from .util import stm32loader
+from .util import StrictJsonEncoder, stm32loader
 
 # Events manager
 from .eventmanager import Evt, EventManager
@@ -76,6 +76,7 @@ from data_export import DataExportManager
 
 
 APP = Flask(__name__, static_url_path='/static')
+APP.json_encoder = StrictJsonEncoder
 Compress(APP)
 APP.config['SWAGGER'] = {
     'title': 'Race explorer API',
@@ -162,7 +163,7 @@ Database.DB.app = APP
 # start SocketIO service
 SOCKET_IO.server_options['async_mode'] = 'gevent'
 SOCKET_IO.server_options['cors_allowed_origins'] = rhconfig.GENERAL['CORS_ALLOWED_HOSTS']
-SOCKET_IO.init_app(APP)
+SOCKET_IO.init_app(APP, json=json)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.

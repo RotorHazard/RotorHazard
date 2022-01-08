@@ -57,19 +57,19 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
         results = core.pilot_results(msgs)
         event_data = core.export_event(RHData)
         results = core.calculate_metrics(results, event_data)
-        return json.dumps(results, default=core.json_numpy_converter), 200, {'Content-Type': 'application/json'}
+        return results, 200, {'Content-Type': 'application/json'}
 
     @APP.route('/raceMetrics', methods=['POST'])
     def race_metrics_post():
         results = request.get_json()
         event_data = core.export_event(RHData)
         results = core.calculate_metrics(results, event_data)
-        return json.dumps(results, default=core.json_numpy_converter), 200, {'Content-Type': 'application/json'}
+        return results, 200, {'Content-Type': 'application/json'}
 
     @APP.route('/eventLeaderboard')
     def event_leaderboard():
         leaderboard = core.export_leaderboard(RHData)
-        return json.dumps(leaderboard, default=core.json_numpy_converter), 200, {'Content-Type': 'application/json'}
+        return leaderboard, 200, {'Content-Type': 'application/json'}
 
     @APP.route('/raceEvent')
     def race_event_get():

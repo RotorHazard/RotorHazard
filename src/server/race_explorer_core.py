@@ -504,9 +504,3 @@ def export_leaderboard(RHData):
     results = calculate_metrics(results, event_data)
     leaderboard = calculate_leaderboard(results, event_data)
     return leaderboard
-
-
-def json_numpy_converter(o):
-    if isinstance(o, np.generic):
-        return o.item()
-    raise TypeError(type(o))
