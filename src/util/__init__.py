@@ -4,8 +4,11 @@ import math
 class Averager:
     """Tracks a running average, and min/max/last values"""
     def __init__(self, maxNumItems):
-        self._data = deque()
         self._n = maxNumItems
+        self._reset()
+
+    def _reset(self):
+        self._data = deque()
         self._minVal = None
         self._maxVal = None
         self._lastVal = None
@@ -43,7 +46,7 @@ class Averager:
                 self._minVal = self._maxVal = self._avgVal = value
 
     def clear(self):
-        self._data.clear()
+        self._reset()
 
     @property
     def min(self):
