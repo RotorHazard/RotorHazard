@@ -8,7 +8,7 @@ from monotonic import monotonic
 from .RHRace import RaceStatus
 from .eventmanager import Evt
 from .util.RunningMedian import RunningMedian
-from .util.Averager import Averager
+from util import Averager
 
 logger = logging.getLogger(__name__)
 
@@ -291,9 +291,9 @@ class SecondaryNode:
         upDownTotal = totUpSecs + totDownSecs
         return "secondary {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, contacts={7}, " \
                "timeDiff={8}ms, {9}={10}, totalUp={11}, totalDown={12}, avail={13:.1%}{14})".\
-                    format(self.id+1, self.address, self.latencyAveragerObj.minVal, \
-                           self.latencyAveragerObj.getIntAvgVal(), self.latencyAveragerObj.maxVal, \
-                           self.latencyAveragerObj.lastVal, self.numDisconnects, self.numContacts, \
+                    format(self.id+1, self.address, self.latencyAveragerObj.min, \
+                           int(round(self.latencyAveragerObj.mean)), self.latencyAveragerObj.max, \
+                           self.latencyAveragerObj.last, self.numDisconnects, self.numContacts, \
                            self.timeDiffMedianMs, upDownStr, timeSecs, totUpSecs, totDownSecs, \
                            (float(totUpSecs)/upDownTotal if upDownTotal > 0 else 0),
                            ((", numDisconnsDuringRace=" + str(self.numDisconnsDuringRace)) if \
@@ -343,7 +343,7 @@ class SecondaryNode:
                 self.numContacts += 1
                 transitTime = nowTime - self.lastCheckQueryTime if self.lastCheckQueryTime > 0 else 0
                 if transitTime > 0:
-                    self.latencyAveragerObj.addItem(int(round(transitTime * 1000)))
+                    self.latencyAveragerObj.append(int(round(transitTime * 1000)))
                     if data:
                         secondaryTimestamp = data.get('timestamp', 0)
                         if secondaryTimestamp:
@@ -482,10 +482,10 @@ class ClusterNodeSet:
             payload.append(
                 {'address': secondary.address, \
                  'modeIndicator': ('M' if secondary.isMirrorMode else 'S'), \
-                 'minLatencyMs':  secondary.latencyAveragerObj.minVal, \
-                 'avgLatencyMs': secondary.latencyAveragerObj.getIntAvgVal(), \
-                 'maxLatencyMs': secondary.latencyAveragerObj.maxVal, \
-                 'lastLatencyMs': secondary.latencyAveragerObj.lastVal, \
+                 'minLatencyMs':  secondary.latencyAveragerObj.min, \
+                 'avgLatencyMs': int(round(self.latencyAveragerObj.mean)), \
+                 'maxLatencyMs': secondary.latencyAveragerObj.max, \
+                 'lastLatencyMs': secondary.latencyAveragerObj.last, \
                  'numDisconnects': secondary.numDisconnects, \
                  'numContacts': secondary.numContacts, \
                  'timeDiffMs': secondary.timeDiffMedianMs, \

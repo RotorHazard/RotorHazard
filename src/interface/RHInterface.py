@@ -9,6 +9,7 @@ from .Plugins import Plugins
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .Node import Node, NodeManager
+from util import Averager
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_MODE = 0x02
@@ -255,8 +256,17 @@ class RHNodeManager(NodeManager):
 class RHNode(Node):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index, multi_node_index, manager)
-        self.min_server_roundtrip = float('inf')
-        self.max_server_roundtrip = 0
+        self._loop_time_stats = Averager(100)
+        self._roundtrip_stats = Averager(100)
+
+    @Node.loop_time.setter
+    def loop_time(self, v):
+        Node.loop_time.fset(self, v)
+        self._loop_time_stats.append(v)
+
+    def reset(self):
+        super().reset()
+        self._loop_time_stats.clear()
 
     def read_slot_index(self):
         # read node slot index (physical slot position of node on S32_BPill PCB)
@@ -268,8 +278,8 @@ class RHNode(Node):
 
     def summary_stats(self):
         msg = ["Node {}".format(self)]
-        msg.append("\tServer round-trip: min {}ms, max {}ms".format(1000*self.min_server_roundtrip, 1000*self.max_server_roundtrip))
-        msg.append("\tLoop time: min {}us, max {}us".format(self.min_loop_time, self.max_loop_time))
+        msg.append("\tComm round-trip (ms): {}".format(self._roundtrip_stats.formatted(1)))
+        msg.append("\tLoop time (us): {}".format(self._loop_time_stats.formatted(0)))
         total_count = self.used_history_count + self.empty_history_count
         msg.append("\tRSSI history buffering utilisation: {:.2%}".format(self.used_history_count/total_count if total_count > 0 else 0))
         logger.debug('\n'.join(msg))
@@ -366,8 +376,7 @@ class RHInterface(BaseHardwareInterface):
     
                     if data is not None and len(data) > 0:
                         server_roundtrip = node.io_response - node.io_request
-                        node.min_server_roundtrip = min(server_roundtrip, node.min_server_roundtrip)
-                        node.max_server_roundtrip = max(server_roundtrip, node.max_server_roundtrip)
+                        node._roundtrip_stats.append(1000*server_roundtrip)
                         server_oneway = server_roundtrip / 2
                         readtime = node.io_response - server_oneway
     
@@ -503,7 +512,7 @@ class RHInterface(BaseHardwareInterface):
                         node.start_thresh_lower_time = 0
     
                     if node.loop_time > self.warn_loop_time:
-                        logger.warning("Abnormal loop time for node {}: {}us (min {}us, max {}us)".format(node.index+1, node.loop_time, node.min_loop_time, node.max_loop_time))
+                        logger.warning("Abnormal loop time for node {}: {}us ({})".format(node.index+1, node.loop_time, node._loop_time_stats.formatted(0)))
     
                 gevent.sleep(node_sleep_interval)
         else:

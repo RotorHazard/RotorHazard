@@ -3,7 +3,7 @@ import csv
 from server import Database
 from flask import Flask
 import json
-from interface import persistent_homology as ph
+from util import persistent_homology as ph
 import matplotlib.pyplot as plt
 
 def load_races(db_file):

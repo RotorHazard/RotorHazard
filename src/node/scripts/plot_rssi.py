@@ -3,7 +3,7 @@ from scipy.fft import rfft, rfftfreq
 import matplotlib.pyplot as plt
 import sys
 import csv
-sys.path.append('interface')
+sys.path.append('util')
 import persistent_homology as ph
 
 rssis = []

@@ -88,6 +88,8 @@ class MockInterface(BaseHardwareInterface):
                     for freq, rssi in zip(freqs, rssis):
                         node.scan_data[freq] = rssi
                 elif node.frequency:
+                    server_roundtrip = 0
+                    node._roundtrip_stats.append(1000*server_roundtrip)
                     readtime = monotonic()
 
                     data_file = self.data_files[index] if self.data_files is not None else None
@@ -132,7 +134,7 @@ class MockInterface(BaseHardwareInterface):
                         node.start_thresh_lower_time = 0
 
                     if node.loop_time > self.warn_loop_time:
-                        logger.warning("Abnormal loop time for node {}: {}us (min {}us, max {}us)".format(node.index+1, node.loop_time, node.min_loop_time, node.max_loop_time))
+                        logger.warning("Abnormal loop time for node {}: {}us ({})".format(node.index+1, node.loop_time, node._loop_time_stats.formatted(0)))
 
                 gevent.sleep(node_sleep_interval)
         else:

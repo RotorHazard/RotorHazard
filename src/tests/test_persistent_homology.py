@@ -1,4 +1,4 @@
-from interface import persistent_homology as ph
+from util import persistent_homology as ph
 import unittest
 
 class PersistentHomologyTest(unittest.TestCase):

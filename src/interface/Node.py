@@ -210,8 +210,6 @@ class Node(CommandsWithRetry):
         self.first_cross_flag = False
         self.show_crossing_flag = False
         self._loop_time = 0 # microseconds
-        self.min_loop_time = float('inf')
-        self.max_loop_time = 0
         self.crossing_flag = False
         self.pass_crossing_flag = False
         self.enter_at_timestamp = 0
@@ -253,8 +251,6 @@ class Node(CommandsWithRetry):
     @loop_time.setter
     def loop_time(self, v):
         self._loop_time = v
-        self.min_loop_time = min(v, self.min_loop_time)
-        self.max_loop_time = max(v, self.max_loop_time)
 
     def reset(self):
         self.pass_history = []
@@ -264,8 +260,6 @@ class Node(CommandsWithRetry):
         self.node_lap_id = -1
         self.under_min_lap_count = 0
         self._loop_time = 0 # microseconds
-        self.min_loop_time = float('inf')
-        self.max_loop_time = 0
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.manager.max_rssi_value

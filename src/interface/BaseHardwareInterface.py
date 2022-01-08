@@ -2,7 +2,7 @@ import os
 import gevent
 import logging
 from monotonic import monotonic
-from interface import persistent_homology as ph
+from util import persistent_homology as ph
 from server import RHTimeFns
 from server.RHUtils import FREQS, FREQUENCY_ID_NONE
 from helpers.mqtt_helper import make_topic, split_topic
@@ -72,6 +72,8 @@ class BaseHardwareInterface:
                     self._mqtt_node_manager_stop(node_manager)
 
     def close(self):
+        for node in self.nodes:
+            node.summary_stats()
         for manager in self.node_managers:
             manager.close()
 
