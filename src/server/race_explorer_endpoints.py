@@ -1,5 +1,4 @@
-import json
-from flask import request
+from flask import request, json
 from flask.blueprints import Blueprint
 from .RHUtils import VTX_TABLE
 from . import web
@@ -50,7 +49,7 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
     def race_results_json():
         msgs = core.export_results(RHData)
         results = core.pilot_results(msgs)
-        return json.dumps(results), 200, {'Content-Type': 'application/json'}
+        return results, 200, {'Content-Type': 'application/json'}
 
     @APP.route('/raceMetrics')
     def race_metrics_get():

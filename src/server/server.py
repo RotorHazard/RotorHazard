@@ -38,11 +38,10 @@ import socket
 import random
 import string
 import math
-import json
 from collections import OrderedDict
 from six import unichr, string_types
 
-from flask import Flask, send_file, request, Response, session, templating, redirect
+from flask import Flask, send_file, request, Response, session, templating, redirect, json
 from flask_compress import Compress
 from flask_socketio import emit
 from flasgger import Swagger
@@ -75,6 +74,7 @@ from interface.Plugins import Plugins, search_modules
 from sensors import Sensors
 from data_export import DataExportManager
 
+
 APP = Flask(__name__, static_url_path='/static')
 Compress(APP)
 APP.config['SWAGGER'] = {
@@ -83,6 +83,7 @@ APP.config['SWAGGER'] = {
     'openapi': '3.0.3'
 }
 Swagger(APP)
+
 
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True

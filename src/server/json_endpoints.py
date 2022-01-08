@@ -1,7 +1,7 @@
 # JSON API
-import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from flask.blueprints import Blueprint
+from flask import json
 from . import Results
 
 class AlchemyEncoder(json.JSONEncoder):

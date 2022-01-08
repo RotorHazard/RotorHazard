@@ -202,9 +202,9 @@ class Node(CommandsWithRetry):
         self.bandChannel = None
         self.current_rssi = 0
         self.node_peak_rssi = 0
-        self.node_nadir_rssi = float('inf')
+        self.node_nadir_rssi = manager.max_rssi_value
         self.pass_peak_rssi = 0
-        self.pass_nadir_rssi = float('inf')
+        self.pass_nadir_rssi = manager.max_rssi_value
         self.node_lap_id = -1
         self.current_pilot_id = 0
         self.first_cross_flag = False

@@ -3,6 +3,7 @@ import unittest
 import gevent
 from datetime import datetime
 from monotonic import monotonic
+import json
 
 os.environ['RH_CONFIG'] = 'config-dist.json'
 TEST_DB = 'test-database.db'
@@ -14,10 +15,17 @@ os.environ['RH_INTERFACE'] = 'Mock'
 from server import server, RHRace
 import tests as tests_pkg
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ServerTest(unittest.TestCase):
+
     def setUp(self):
+        logger.info('Starting test '+self._testMethodName)
         self.client = server.SOCKET_IO.test_client(server.APP)
+        gevent.sleep(0.1)
         self.get_response('load_all')
         self.wait_for_response('heartbeat', 1)
 
@@ -55,6 +63,10 @@ class ServerTest(unittest.TestCase):
             gevent.sleep(0.1)
         self.fail('No response of type {0} within {1}secs'.format(event, max_wait))
 
+    def test_node_data(self):
+        resp = self.wait_for_response('node_data', 4)
+        json.dumps(resp, allow_nan=False)
+ 
     def test_sensors(self):
         server.SENSORS.clear()
 
