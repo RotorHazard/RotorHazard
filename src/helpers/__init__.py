@@ -10,6 +10,15 @@ def parse_i2c_url(url):
     return (int(bus_addr[0]), int(bus_addr[1], 16))
 
 
+def serial_url(port):
+    if port.startswith('/'):
+        # linux
+        return "file:{}".format(port)
+    else:
+        # windows
+        return "serial:{}".format(port)
+
+
 def socket_url(ip, port):
     return "socket://{}:{}/".format(ip, port)
 

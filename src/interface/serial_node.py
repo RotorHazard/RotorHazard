@@ -5,6 +5,7 @@ import gevent
 import time
 
 from interface import pack_8
+from helpers import serial_url
 from . import RHInterface as rhi
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
@@ -18,7 +19,7 @@ class SerialNodeManager(rhi.RHNodeManager):
     def __init__(self, serial_obj):
         super().__init__()
         self.serial_io = serial_obj
-        self.addr = 'serial:'+self.serial_io.port
+        self.addr = serial_url(self.serial_io.port)
 
     def _read_command(self, command, size):
         self.serial_io.reset_input_buffer()

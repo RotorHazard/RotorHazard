@@ -11,6 +11,7 @@ from .Node import Node, NodeManager
 from sensors import Sensor, Reading
 import interface.laprf_protocol as laprf
 from interface import ExtremumFilter, ensure_iter
+from helpers import serial_url, socket_url
 
 logger = logging.getLogger(__name__)
 
@@ -292,11 +293,16 @@ SOCKET_SCHEME = 'socket://'
 
 def _normalize_addr(addr):
     if not addr.startswith(SERIAL_SCHEME) and not addr.startswith(SOCKET_SCHEME):
-        # assume simple <host>[:<port>]
-        host_port = addr.split(':')
-        if len(host_port) == 1:
-            host_port = (host_port[0], 5403)
-        addr = "socket://{}:{}/".format(host_port[0], host_port[1])
+        # addr is not a url
+        if addr.startswith('/'):
+            # assume serial/file
+            addr = serial_url(addr)
+        else:
+            # assume simple <host>[:<port>]
+            host_port = addr.split(':')
+            if len(host_port) == 1:
+                host_port = (host_port[0], 5403)
+            addr = socket_url(host_port[0], host_port[1])
     return addr
 
 

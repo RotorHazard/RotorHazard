@@ -9,6 +9,7 @@ from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from sensors import Sensor, Reading
 from interface import ExtremumFilter, ensure_iter
+from helpers import serial_url
 
 RETRY_COUNT=5
 
@@ -22,7 +23,7 @@ class ChorusNodeManager(NodeManager):
         super().__init__()
         self.serial_io = serial_io
         self.max_rssi_value = 2700
-        self.addr = 'serial:'+self.serial_io.port
+        self.addr = serial_url(self.serial_io.port)
         self.voltage = None
 
     def _create_node(self, index, multi_node_index):
