@@ -156,7 +156,7 @@ function TimerConfig(props) {
     const bcCtrlTopic = [ctrlTopic, "bandChannel"].join('/');
     mqttFrequencyPublisher = debounce((freq, bc) => {
       getMqttClient().publish(bcCtrlTopic, bc);
-      getMqttClient().publish(freqCtrlTopic, freq+','+bc);
+      getMqttClient().publish(freqCtrlTopic, bc ? freq+','+bc : freq);
      }, 1500);
     mqttFrequencySubscriber = (setFreq) => {
       const mqttClient = getMqttClient();

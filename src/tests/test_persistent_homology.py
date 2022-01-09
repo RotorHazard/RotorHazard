@@ -1,4 +1,4 @@
-from util import persistent_homology as ph
+import util.persistent_homology as ph
 import unittest
 import numpy as np
 

@@ -24,7 +24,7 @@ export default function Frequency(props) {
   const frequencyChangesHook = props.frequencyChangesHook;
   useEffect(() => {
     if (frequencyChangesHook) {
-      return frequencyChangesHook((freq) => {setFrequency(freq); setBand(''); setChannel('');});
+      return frequencyChangesHook((freq) => {setFrequency(freq);});
     }
   }, [frequencyChangesHook]);
 

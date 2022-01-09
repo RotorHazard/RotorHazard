@@ -174,6 +174,7 @@ SENSORS = Sensors()
 CLUSTER = None    # initialized later
 CHORUS_API = None    # initialized later
 MQTT_API = None    # initialized later
+STARTABLES = []
 ClusterSendAckQueueObj = None
 serverInfo = None
 serverInfoItems = None
@@ -2073,7 +2074,6 @@ def on_get_pi_time():
 def on_stage_race():
     global LAST_RACE
     valid_pilots = False
-    heat_data = RHData.get_heat(RACE.current_heat)
     heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
     for heatNode in heatNodes:
         if heatNode.node_index < RACE.num_nodes:
@@ -2101,6 +2101,7 @@ def on_stage_race():
     if RACE.race_status == RHRace.RaceStatus.READY: # only initiate staging if ready
         # common race start events (do early to prevent processing delay when start is called)
 
+        heat_data = RHData.get_heat(RACE.current_heat)
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
             if class_format_id != RHUtils.FORMAT_ID_NONE:
@@ -2108,10 +2109,11 @@ def on_stage_race():
                 setCurrentRaceFormat(class_format)
                 logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
 
-        clear_laps() # Clear laps before race start
-        init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
-        LAST_RACE = None # clear all previous race data
-        RACE.timer_running = False # indicate race timer not running
+        clear_laps()  # Clear laps before race start
+        heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)  # reload after potential commit
+        init_node_cross_fields(heatNodes)  # set 'cur_pilot_id' and 'cross' fields on nodes
+        LAST_RACE = None  # clear all previous race data
+        RACE.timer_running = False  # indicate race timer not running
         RACE.race_status = RHRace.RaceStatus.STAGING
         RACE.win_status = RHRace.WinStatus.NONE
         RACE.status_message = ''
@@ -2119,12 +2121,12 @@ def on_stage_race():
 
         RACE.init_node_finished_flags(heatNodes)
 
-        emit_current_laps() # Race page, blank laps to the web client
-        emit_current_leaderboard() # Race page, blank leaderboard to the web client
+        emit_current_laps()  # Race page, blank laps to the web client
+        emit_current_leaderboard()  # Race page, blank leaderboard to the web client
         emit_race_status()
         emit_race_format()
 
-        MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
+        MIN = min(race_format.start_delay_min, race_format.start_delay_max)  # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
         RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
 
@@ -2153,7 +2155,7 @@ def on_stage_race():
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE.start_time_monotonic
-        }) # Announce staging with chosen delay
+        })  # Announce staging with chosen delay
 
     else:
         logger.info("Attempted to stage race while status is not 'ready'")
@@ -2661,16 +2663,14 @@ def clear_laps():
     logger.info('Current laps cleared')
 
 
-def init_node_cross_fields():
+def init_node_cross_fields(heatNodes):
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    heatnodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
-
     for node in INTERFACE.nodes:
         node.current_pilot_id = RHUtils.PILOT_ID_NONE
         if node.frequency and node.frequency > 0:
-            for heatnode in heatnodes:
-                if heatnode.node_index == node.index:
-                    node.current_pilot_id = heatnode.pilot_id
+            for heatNode in heatNodes:
+                if heatNode.node_index == node.index:
+                    node.current_pilot_id = heatNode.pilot_id
                     break
 
         node.first_cross_flag = False
@@ -5357,11 +5357,16 @@ try:
 except Exception:
     logger.exception("Exception while discovering sensors")
 
+
 mqtt_clients = serviceHelpers.get('mqtt_helper')
-INTERFACE.mqtt_client = mqtt_clients['timer'] if mqtt_clients else None
-INTERFACE.mqtt_ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
-INTERFACE.mqtt_ctrl_topic = rhconfig.MQTT['TIMER_CTRL_TOPIC']
-INTERFACE.timer_id = TIMER_ID
+if mqtt_clients:
+    from interface.MqttInterface import get_mqtt_interface_for
+    mqtt_interface_class = get_mqtt_interface_for(INTERFACE.__class__)
+    mqtt_interface = mqtt_interface_class(mqtt_clients['timer'], INTERFACE)
+    mqtt_interface.ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
+    mqtt_interface.ctrl_topic = rhconfig.MQTT['TIMER_CTRL_TOPIC']
+    mqtt_interface.timer_id = TIMER_ID
+    STARTABLES.append(mqtt_interface)
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
@@ -5520,6 +5525,7 @@ if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     chorusPort = rhconfig.CHORUS['API_PORT']
     chorusSerial = serial.Serial(port=chorusPort, baudrate=115200, timeout=0.1)
     CHORUS_API = ChorusAPI(chorusSerial, INTERFACE, SENSORS, connect_handler, on_stop_race, lambda : on_reset_auto_calibration({}))
+    STARTABLES.append(CHORUS_API)
 
 if mqtt_clients:
     from .mqtt_api import MqttAPI
@@ -5531,6 +5537,7 @@ if mqtt_clients:
                        on_set_frequency,
                        on_set_enter_at_level,
                        on_set_exit_at_level)
+    STARTABLES.append(MQTT_API)
 
 CLUSTER = ClusterNodeSet(Language, Events)
 hasMirrors = False
@@ -5618,10 +5625,8 @@ update_timer_mapping()
 
 def start():
     gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
-    if CHORUS_API:
-        CHORUS_API.start()
-    if MQTT_API:
-        MQTT_API.start()
+    for startable in STARTABLES:
+        startable.start()
     init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP, {
         'color': ColorVal.ORANGE,
@@ -5637,10 +5642,9 @@ def stop():
     if rep_str:
         logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
 
-    if CHORUS_API:
-        CHORUS_API.stop()
-    if MQTT_API:
-        MQTT_API.stop()
+    for startable in STARTABLES:
+        startable.stop()
+
     stop_background_threads()
     INTERFACE.close()
     for service in serviceHelpers.values():

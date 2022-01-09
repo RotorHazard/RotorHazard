@@ -2,12 +2,9 @@ import os
 import gevent
 import logging
 from monotonic import monotonic
-from util import persistent_homology as ph
-from server import RHTimeFns
-from server.RHUtils import FREQS, FREQUENCY_ID_NONE
-from helpers.mqtt_helper import make_topic, split_topic
+import util.persistent_homology as ph
+from server.RHUtils import FREQUENCY_ID_NONE
 import bisect
-import json
 
 ENTER_AT_PEAK_MARGIN = 5  # closest that captured enter-at level can be to node peak RSSI
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
@@ -57,10 +54,6 @@ class BaseHardwareInterface:
         self.is_racing = False
         self.listener = listener if listener is not None else BaseHardwareInterfaceListener()
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
-        self.mqtt_client = None
-        self.mqtt_ann_topic = None
-        self.mqtt_ctrl_topic = None
-        self.timer_id = None
 
     def milliseconds(self):
         '''
@@ -73,11 +66,6 @@ class BaseHardwareInterface:
             logger.info('Starting {} background thread'.format(type(self).__name__))
             self.update_thread = gevent.spawn(self._update_loop)
             self.start_time = 1000*monotonic()  # millis
-            if self.mqtt_client:
-                for node_manager in self.node_managers:
-                    self._mqtt_node_manager_start(node_manager)
-                    for node in node_manager.nodes:
-                        self._mqtt_node_start(node)
 
     def stop(self):
         if self.update_thread:
@@ -85,9 +73,6 @@ class BaseHardwareInterface:
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
             self.start_time = None
-            if self.mqtt_client:
-                for node_manager in self.node_managers:
-                    self._mqtt_node_manager_stop(node_manager)
 
     def close(self):
         for node in self.nodes:
@@ -95,168 +80,26 @@ class BaseHardwareInterface:
         for manager in self.node_managers:
             manager.close()
 
-    def _mqtt_node_manager_start(self, node_manager):
-        self._mqtt_node_subscribe_to(node_manager, "frequency", self._mqtt_set_frequency)
-        self._mqtt_node_subscribe_to(node_manager, "bandChannel", self._mqtt_set_bandChannel)
-        self._mqtt_node_subscribe_to(node_manager, "enterTrigger", self._mqtt_set_enter_trigger)
-        self._mqtt_node_subscribe_to(node_manager, "exitTrigger", self._mqtt_set_exit_trigger)
-        msg = {'type': node_manager.__class__.TYPE, 'startTime': RHTimeFns.getEpochTimeNow()}
-        self.mqtt_client.publish(make_topic(self.mqtt_ann_topic, [self.timer_id, node_manager.addr]), json.dumps(msg))
+    def _notify_enter_triggered(self, node):
+        self.listener.on_enter_triggered(node)
 
-    def _mqtt_node_subscribe_to(self, node_manager, node_topic, handler):
-        ctrlTopicFilter = make_topic(self.mqtt_ctrl_topic, [self.timer_id, node_manager.addr, '+', node_topic])
-        self.mqtt_client.message_callback_add(ctrlTopicFilter, lambda client, userdata, msg: handler(node_manager, client, userdata, msg))
-        self.mqtt_client.subscribe(ctrlTopicFilter)
+    def _notify_exit_triggered(self, node):
+        self.listener.on_exit_triggered(node)
 
-    def _mqtt_node_manager_stop(self, node_manager):
-        msg = {'stopTime': RHTimeFns.getEpochTimeNow()}
-        self.mqtt_client.publish(make_topic(self.mqtt_ann_topic, [self.timer_id, node_manager.addr]), json.dumps(msg))
-        self._mqtt_node_unsubscribe_from(node_manager, "frequency")
-        self._mqtt_node_unsubscribe_from(node_manager, "bandChannel")
-        self._mqtt_node_unsubscribe_from(node_manager, "enterTrigger")
-        self._mqtt_node_unsubscribe_from(node_manager, "exitTrigger")
-
-    def _mqtt_node_unsubscribe_from(self, node_manager, node_topic):
-        ctrlTopicFilter = make_topic(self.mqtt_ctrl_topic, [self.timer_id, node_manager.addr, '+', node_topic])
-        self.mqtt_client.unsubscribe(ctrlTopicFilter)
-        self.mqtt_client.message_callback_remove(ctrlTopicFilter)
-
-    def _mqtt_node_start(self, node):
-        self._mqtt_publish_frequency(node)
-        self._mqtt_publish_bandChannel(node)
-        self._mqtt_publish_enter_trigger(node)
-        self._mqtt_publish_exit_trigger(node)
-
-    def _mqtt_create_node_topic(self, parent_topic, node, sub_topic=None):
-        node_topic = make_topic(parent_topic, [self.timer_id, node.manager.addr, str(node.multi_node_index)])
-        return node_topic+'/'+sub_topic if sub_topic else node_topic
-
-    def _mqtt_get_node_from_topic(self, node_manager, topic):
-        topicNames = split_topic(topic)
-        if len(topicNames) >= 4:
-            timer_id = topicNames[-4]
-            nm_name = topicNames[-3]
-            multi_node_index = int(topicNames[-2])
-            if timer_id == self.timer_id and nm_name == node_manager.addr and multi_node_index < len(node_manager.nodes):
-                return node_manager.nodes[multi_node_index]
-        return None
-
-    def _mqtt_set_frequency(self, node_manager, client, userdata, msg):
-        node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
-        if node:
-            if msg.payload:
-                freq_bandChannel = msg.payload.decode('utf-8').split(',')
-                freq = int(freq_bandChannel[0])
-                if len(freq_bandChannel) >= 2:
-                    bandChannel = freq_bandChannel[1]
-                    self.set_frequency(node.index, freq, bandChannel[0], int(bandChannel[1]))
-                else:
-                    self.set_frequency(node.index, freq)
-            else:
-                self.set_frequency(node.index, 0)
-
-    def _mqtt_set_bandChannel(self, node_manager, client, userdata, msg):
-        node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
-        if node:
-            if msg.payload:
-                bandChannel = msg.payload.decode('utf-8')
-                if bandChannel in FREQS:
-                    freq = FREQS[bandChannel]
-                    band = bandChannel[0]
-                    channel = int(bandChannel[1])
-                    self.set_frequency(node.index, freq, band, channel)
-            else:
-                self.set_frequency(node.index, node.frequency)
-
-    def _mqtt_set_enter_trigger(self, node_manager, client, userdata, msg):
-        node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
-        if node:
-            try:
-                level = int(msg.payload.decode('utf-8'))
-                self.set_enter_at_level(node.index, level)
-            except:
-                logger.warning('Invalid enter trigger message')
-
-    def _mqtt_set_exit_trigger(self, node_manager, client, userdata, msg):
-        node = self._mqtt_get_node_from_topic(node_manager, msg.topic)
-        if node:
-            try:
-                level = int(msg.payload.decode('utf-8'))
-                self.set_exit_at_level(node.index, level)
-            except:
-                logger.warning('Invalid exit trigger message')
-
-    def _mqtt_publish_frequency(self, node):
-        freq = str(node.frequency) if node.frequency else ''
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "frequency"), freq)
-
-    def _mqtt_publish_bandChannel(self, node):
-        bc = node.bandChannel if node.bandChannel else ''
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "bandChannel"), bc)
-
-    def _mqtt_publish_enter_trigger(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "enterTrigger"), str(node.enter_at_level))
-
-    def _mqtt_publish_exit_trigger(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exitTrigger"), str(node.exit_at_level))
-
-    def _mqtt_publish_enter(self, node):
-        msg = {'lap': node.node_lap_id+1, 'timestamp': str(node.enter_at_timestamp), 'rssi': node.current_rssi}
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "enter"), json.dumps(msg))
-
-    def _mqtt_publish_exit(self, node):
-        msg = {'lap': node.node_lap_id, 'timestamp': str(node.exit_at_timestamp), 'rssi': node.current_rssi}
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "exit"), json.dumps(msg))
-
-    def _mqtt_publish_pass(self, node, lap_ts, lap_source):
-        if lap_source == BaseHardwareInterface.LAP_SOURCE_REALTIME:
-            lap_source_type = 'realtime'
-        elif lap_source == BaseHardwareInterface.LAP_SOURCE_MANUAL:
-            lap_source_type = 'manual'
-        else:
-            lap_source_type = None
-        msg = {'lap': node.node_lap_id, 'timestamp': str(lap_ts), 'source': lap_source_type}
-        if hasattr(node, 'pass_peak_rssi'):
-            msg['rssi'] = node.pass_peak_rssi
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "pass"), json.dumps(msg))
+    def _notify_pass(self, node, lap_ts, lap_source):
+        self.listener.on_pass(node, lap_ts, lap_source)
 
     def _notify_frequency_changed(self, node):
-        self.listener.on_frequency_changed(node, node.frequency)
-        if self.mqtt_client:
-            self._mqtt_publish_frequency(node)
-
-    def _notify_bandChannel_changed(self, node):
         if node.bandChannel:
             self.listener.on_frequency_changed(node, node.frequency, band=node.bandChannel[0], channel=int(node.bandChannel[1]))
         else:
             self.listener.on_frequency_changed(node, node.frequency)
-        if self.mqtt_client:
-            self._mqtt_publish_bandChannel(node)
 
     def _notify_enter_trigger_changed(self, node):
         self.listener.on_enter_trigger_changed(node, node.enter_at_level)
-        if self.mqtt_client:
-            self._mqtt_publish_enter_trigger(node)
 
     def _notify_exit_trigger_changed(self, node):
         self.listener.on_exit_trigger_changed(node, node.exit_at_level)
-        if self.mqtt_client:
-            self._mqtt_publish_exit_trigger(node)
-
-    def _notify_enter_triggered(self, node):
-        self.listener.on_enter_triggered(node)
-        if self.mqtt_client:
-            self._mqtt_publish_enter(node)
-
-    def _notify_exit_triggered(self, node):
-        self.listener.on_exit_triggered(node)
-        if self.mqtt_client:
-            self._mqtt_publish_exit(node)
-
-    def _notify_pass(self, node, lap_ts, lap_source):
-        self.listener.on_pass(node, lap_ts, lap_source)
-        if self.mqtt_client:
-            self._mqtt_publish_pass(node, lap_ts, lap_source)
 
     def _update_loop(self):
         while True:
@@ -465,9 +308,7 @@ class BaseHardwareInterface:
             # just changing band/channel values
             if band and channel:
                 node.bandChannel = band + str(channel)
-        if node.bandChannel != old_bandChannel:
-            self._notify_bandChannel_changed(node)
-        if node.frequency != old_frequency:
+        if node.frequency != old_frequency or node.bandChannel != old_bandChannel:
             self._notify_frequency_changed(node)
 
     def set_enter_at_level(self, node_index, level):

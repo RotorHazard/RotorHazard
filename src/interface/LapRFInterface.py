@@ -86,10 +86,10 @@ class LapRFNode(Node):
 
 
 class LapRFInterfaceListener(BaseHardwareInterfaceListener):
-    def on_threshold_changed(self, threshold):
+    def on_threshold_changed(self, node, threshold):
         pass
 
-    def on_gain_changed(self, gain):
+    def on_gain_changed(self, node, gain):
         pass
 
 
@@ -265,24 +265,9 @@ class LapRFInterface(BaseHardwareInterface):
 
     def _notify_threshold_changed(self, node):
         self.listener.on_threshold_changed(node, node.threshold)
-        if self.mqtt_client:
-            self._mqtt_publish_threshold(node)
 
     def _notify_gain_changed(self, node):
         self.listener.on_gain_changed(node, node.gain)
-        if self.mqtt_client:
-            self._mqtt_publish_gain(node)
-
-    def _mqtt_node_start(self, node):
-        super()._mqtt_node_start(node)
-        self._mqtt_publish_threshold(node)
-        self._mqtt_publish_gain(node)
-
-    def _mqtt_publish_threshold(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "threshold"), str(node.threshold))
-
-    def _mqtt_publish_gain(self, node):
-        self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "gain"), str(node.gain))
 
 
 class SocketStream:
