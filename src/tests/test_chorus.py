@@ -45,7 +45,7 @@ class ChorusTest(unittest.TestCase):
         api_io = ChorusTest.DummySerial(lambda data : api._process_message(data))
         intf = ChorusInterface(api_io)
         api.serial_io = ChorusTest.DummySerial(lambda data : intf._process_message(intf.node_managers[0], data))
-        intf.pass_record_callback = on_pass
+        intf.listener.on_pass = on_pass
         self.assertTrue(started)
         for sensor in intf.sensors:
             sensor.update()

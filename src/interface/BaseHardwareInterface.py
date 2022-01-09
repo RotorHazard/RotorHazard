@@ -15,6 +15,26 @@ CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at lev
 logger = logging.getLogger(__name__)
 
 
+class BaseHardwareInterfaceListener:
+    def on_enter_triggered(self, node):
+        pass
+
+    def on_exit_triggered(self, node):
+        pass
+
+    def on_pass(self, node, lap_ts, lap_source):
+        pass
+
+    def on_frequency_changed(self, node, frequency, band=None, channel=None):
+        pass
+
+    def on_enter_trigger_changed(self, node, level):
+        pass
+
+    def on_exit_trigger_changed(self, node, level):
+        pass
+
+
 class BaseHardwareInterface:
 
     LAP_SOURCE_REALTIME = 0
@@ -25,7 +45,7 @@ class BaseHardwareInterface:
     RACE_STATUS_RACING = 1
     RACE_STATUS_DONE = 2
 
-    def __init__(self, update_sleep=0.1):
+    def __init__(self, listener=None, update_sleep=0.1):
         self.node_managers = []
         self.nodes = []
         # Main update loop delay
@@ -35,9 +55,7 @@ class BaseHardwareInterface:
         self.environmental_data_update_tracker = 0
         self.race_start_time = 0
         self.is_racing = False
-        self.pass_record_callback = None  # Function added in server.py
-        self.new_enter_or_exit_at_callback = None  # Function added in server.py
-        self.node_crossing_callback = None  # Function added in server.py
+        self.listener = listener if listener is not None else BaseHardwareInterfaceListener()
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
         self.mqtt_client = None
         self.mqtt_ann_topic = None
@@ -203,33 +221,40 @@ class BaseHardwareInterface:
         self.mqtt_client.publish(self._mqtt_create_node_topic(self.mqtt_ann_topic, node, "pass"), json.dumps(msg))
 
     def _notify_frequency_changed(self, node):
+        self.listener.on_frequency_changed(node, node.frequency)
         if self.mqtt_client:
             self._mqtt_publish_frequency(node)
 
     def _notify_bandChannel_changed(self, node):
+        if node.bandChannel:
+            self.listener.on_frequency_changed(node, node.frequency, band=node.bandChannel[0], channel=int(node.bandChannel[1]))
+        else:
+            self.listener.on_frequency_changed(node, node.frequency)
         if self.mqtt_client:
             self._mqtt_publish_bandChannel(node)
 
     def _notify_enter_trigger_changed(self, node):
+        self.listener.on_enter_trigger_changed(node, node.enter_at_level)
         if self.mqtt_client:
             self._mqtt_publish_enter_trigger(node)
 
     def _notify_exit_trigger_changed(self, node):
+        self.listener.on_exit_trigger_changed(node, node.exit_at_level)
         if self.mqtt_client:
             self._mqtt_publish_exit_trigger(node)
 
-    def _notify_trigger(self, node):
-        if callable(self.node_crossing_callback):
-            gevent.spawn(self.node_crossing_callback, node)
+    def _notify_enter_triggered(self, node):
+        self.listener.on_enter_triggered(node)
         if self.mqtt_client:
-            if node.crossing_flag:
-                self._mqtt_publish_enter(node)
-            else:
-                self._mqtt_publish_exit(node)
+            self._mqtt_publish_enter(node)
+
+    def _notify_exit_triggered(self, node):
+        self.listener.on_exit_triggered(node)
+        if self.mqtt_client:
+            self._mqtt_publish_exit(node)
 
     def _notify_pass(self, node, lap_ts, lap_source):
-        if callable(self.pass_record_callback):
-            gevent.spawn(self.pass_record_callback, node, lap_ts, lap_source)
+        self.listener.on_pass(node, lap_ts, lap_source)
         if self.mqtt_client:
             self._mqtt_publish_pass(node, lap_ts, lap_source)
 
@@ -278,7 +303,10 @@ class BaseHardwareInterface:
                 new_lap = True
 
         if crossing_updated:
-            self._notify_trigger(node)
+            if node.crossing_flag:
+                self._notify_enter_triggered(node)
+            else:
+                self._notify_exit_triggered(node)
         if new_lap:
             # NB: lap pass timestamps are relative to race start time
             self._notify_pass(node, lap_timestamp - self.race_start_time, BaseHardwareInterface.LAP_SOURCE_REALTIME)
@@ -294,8 +322,7 @@ class BaseHardwareInterface:
                 if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
                     node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
                 logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
-                if callable(self.new_enter_or_exit_at_callback):
-                    gevent.spawn(self.new_enter_or_exit_at_callback, node.index, enter_at_level=node.enter_at_level)
+                self._notify_enter_trigger_changed(node)
 
         # check if capturing exit-at level for node
         if node.cap_exit_at_flag:
@@ -305,8 +332,7 @@ class BaseHardwareInterface:
                 node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
                 node.cap_exit_at_flag = False
                 logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
-                if callable(self.new_enter_or_exit_at_callback):
-                    gevent.spawn(self.new_enter_or_exit_at_callback, node.index, exit_at_level=node.exit_at_level)
+                self._notify_exit_trigger_changed(node)
 
         self.prune_history(node)
 
@@ -334,12 +360,14 @@ class BaseHardwareInterface:
                 if diff > 1:
                     # cap changes to 50%
                     learning_rate = 0.5
-                    enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
+                    new_enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
                     # set exit a bit lower to register a pass sooner
-                    exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
-                    logger.info('AI calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
-                    if callable(self.new_enter_or_exit_at_callback):
-                        self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
+                    new_exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
+                    logger.info('AI calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, new_enter_level, new_exit_level))
+                    node.enter_at_level = new_enter_level
+                    node.exit_at_level = new_exit_level
+                    self._notify_enter_trigger_changed(node)
+                    self._notify_exit_trigger_changed(node)
                 else:
                     logger.info('AI calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 
@@ -367,11 +395,13 @@ class BaseHardwareInterface:
                     lo = max([cc.lifetime() for cc in ccs if cc.lifetime() < hi]+[0])
                     diff = hi - lo
                     if diff > 1:
-                        enter_level = lo + diff//2
-                        exit_level = lo + diff//4
-                        logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
-                        if callable(self.new_enter_or_exit_at_callback):
-                            self.new_enter_or_exit_at_callback(node.index, enter_level, exit_level)
+                        new_enter_level = lo + diff//2
+                        new_exit_level = lo + diff//4
+                        logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, new_enter_level, new_exit_level))
+                        node.enter_at_level = new_enter_level
+                        node.exit_at_level = new_exit_level
+                        self._notify_enter_trigger_changed(node)
+                        self._notify_exit_trigger_changed(node)
                     else:
                         logger.info('Calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 

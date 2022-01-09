@@ -27,7 +27,7 @@ class RHInterfaceTest(unittest.TestCase):
             config.SOCKET_PORTS = [7881]
             intf = RHInterface(config=config, warn_loop_time=66000)
             try:
-                intf.pass_record_callback = on_pass
+                intf.listener.on_pass = on_pass
                 self.assertEqual(len(intf.nodes), 1)
                 for i in range(len(intf.nodes)):
                     self.assertEqual(intf.nodes[i].index, i)
@@ -73,7 +73,7 @@ class RHInterfaceTest(unittest.TestCase):
             config.SOCKET_PORTS = [7884]
             intf = RHInterface(config=config, warn_loop_time=66000)
             try:
-                intf.pass_record_callback = on_pass
+                intf.listener.on_pass = on_pass
                 self.assertEqual(len(intf.nodes), 4)
                 for i in range(len(intf.nodes)):
                     self.assertEqual(intf.nodes[i].index, i)

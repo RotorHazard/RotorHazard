@@ -84,11 +84,14 @@ class InterfaceTest(unittest.TestCase):
         node.history.set(list(range(len(rssis))), rssis)
         new_enter_at_level = None
         new_exit_at_level = None
-        def new_enter_or_exit_at_mock_callback(node_idx, enter_level, exit_level):
-            nonlocal new_enter_at_level, new_exit_at_level
+        def new_enter_callback(node, enter_level):
+            nonlocal new_enter_at_level
             new_enter_at_level = enter_level
+        def new_exit_callback(node, exit_level):
+            nonlocal new_exit_at_level
             new_exit_at_level = exit_level
-        intf.new_enter_or_exit_at_callback = new_enter_or_exit_at_mock_callback
+        intf.listener.on_enter_trigger_changed = new_enter_callback
+        intf.listener.on_exit_trigger_changed = new_exit_callback
         intf.ai_calibrate_nodes()
         self.assertEqual(new_enter_at_level, 11)
         self.assertEqual(new_exit_at_level, 9)
@@ -101,11 +104,14 @@ class InterfaceTest(unittest.TestCase):
         history_times = list(range(len(history_values)))
         new_enter_at_level = None
         new_exit_at_level = None
-        def new_enter_or_exit_at_mock_callback(node_idx, enter_level, exit_level):
-            nonlocal new_enter_at_level, new_exit_at_level
+        def new_enter_callback(node, enter_level):
+            nonlocal new_enter_at_level
             new_enter_at_level = enter_level
+        def new_exit_callback(node, exit_level):
+            nonlocal new_exit_at_level
             new_exit_at_level = exit_level
-        intf.new_enter_or_exit_at_callback = new_enter_or_exit_at_mock_callback
+        intf.listener.on_enter_trigger_changed = new_enter_callback
+        intf.listener.on_exit_trigger_changed = new_exit_callback
         intf.calibrate_nodes(0, {
             0: ([{'lap_time_stamp': 7000, 'deleted': False}], history_times, history_values)
         })

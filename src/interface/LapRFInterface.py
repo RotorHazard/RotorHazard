@@ -6,7 +6,7 @@ import serial
 import socket
 from monotonic import monotonic
 
-from .BaseHardwareInterface import BaseHardwareInterface
+from .BaseHardwareInterface import BaseHardwareInterface, BaseHardwareInterfaceListener
 from .Node import Node, NodeManager
 from sensors import Sensor, Reading
 import interface.laprf_protocol as laprf
@@ -85,9 +85,19 @@ class LapRFNode(Node):
         self.exit_at_level = value
 
 
+class LapRFInterfaceListener(BaseHardwareInterfaceListener):
+    def on_threshold_changed(self, threshold):
+        pass
+
+    def on_gain_changed(self, gain):
+        pass
+
+
 class LapRFInterface(BaseHardwareInterface):
-    def __init__(self, addr_streams):
-        super().__init__()
+    def __init__(self, addr_streams, listener=None):
+        super().__init__(
+            listener=listener if listener is not None else LapRFInterfaceListener()
+        )
         addr_streams = ensure_iter(addr_streams)
         for addr_stream in addr_streams:
             node_manager = LapRFNodeManager(*addr_stream)
@@ -254,10 +264,12 @@ class LapRFInterface(BaseHardwareInterface):
             logger.error("LapRF ignored our request to change the threshold of node {} (requested {}, is {})".format(node, threshold, node.threshold))
 
     def _notify_threshold_changed(self, node):
+        self.listener.on_threshold_changed(node, node.threshold)
         if self.mqtt_client:
             self._mqtt_publish_threshold(node)
 
     def _notify_gain_changed(self, node):
+        self.listener.on_gain_changed(node, node.gain)
         if self.mqtt_client:
             self._mqtt_publish_gain(node)
 

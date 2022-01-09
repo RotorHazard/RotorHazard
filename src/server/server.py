@@ -4716,18 +4716,22 @@ def check_win_condition(**kwargs):
 
 
 @catchLogExcDBCloseWrapper
-def new_enter_or_exit_at_callback(node_idx, enter_at_level=None, exit_at_level=None):
+def new_enter_at_callback(node, enter_at_level):
     gevent.sleep(0.025)  # delay to avoid potential I/O error
-    node = INTERFACE.nodes[node_idx]
-    if enter_at_level:
+    if enter_at_level > 0:
         on_set_enter_at_level({
-            'node': node_idx,
+            'node': node.index,
             'enter_at_level': enter_at_level
         })
         emit_enter_at_level(node)
-    if exit_at_level:
+
+
+@catchLogExcDBCloseWrapper
+def new_exit_at_callback(node, exit_at_level):
+    gevent.sleep(0.025)  # delay to avoid potential I/O error
+    if exit_at_level > 0:
         on_set_exit_at_level({
-            'node': node_idx,
+            'node': node.index,
             'exit_at_level': exit_at_level
         })
         emit_exit_at_level(node)
@@ -5070,7 +5074,6 @@ def initialize_hardware_interface():
                         subclass='no-library'
                         )
                 RACE.num_nodes = 0
-                INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
@@ -5112,8 +5115,6 @@ def initialize_hardware_interface():
                     return False
 
         RACE.num_nodes = len(INTERFACE.nodes)  # save number of nodes found
-        # set callback functions invoked by interface module
-        INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
         return True
     except:
         logger.exception("Error initializing hardware interface")
