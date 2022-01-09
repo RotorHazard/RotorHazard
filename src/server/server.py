@@ -4366,7 +4366,7 @@ def pass_record_callback(node, lap_race_time, source):
 
     location_id, seat = get_local_location_id_and_seat(node)
     if location_id > 0:
-        track = json.loads(RHData.get_option('trackLayout', None))
+        track = RHData.get_optionJson('trackLayout')
         add_split(location_id, seat, lap_time_stamp, track)
         return
 
@@ -4526,8 +4526,8 @@ def pass_record_callback(node, lap_race_time, source):
 
 
 def get_local_location_id_and_seat(node):
-    timer_mapping = json.loads(RHData.get_option('timerMapping', None))
-    track = json.loads(RHData.get_option('trackLayout', None))
+    timer_mapping = RHData.get_optionJson('timerMapping')
+    track = RHData.get_optionJson('trackLayout')
     return get_location_id_and_seat(TIMER_ID, node.manager.addr, node.multi_node_index, track, timer_mapping)
 
 
@@ -4540,19 +4540,19 @@ def get_location_id_and_seat(timer_id, nm, n, track, timer_mapping):
 
 
 def join_cluster_callback(split_timer_id, nms):
-    timer_mapping = json.loads(RHData.get_option('timerMapping', None))
+    timer_mapping = RHData.get_optionJson('timerMapping')
     timer_map_info = timer_mapping.get(split_timer_id)
     if not timer_map_info:
         timer_mapping[split_timer_id] = {
             nm.addr: [{'location': '', 'seat': node_index} for node_index in nodes]
             for nm,nodes in nms.items()
         }
-        RHData.set_option('timerMapping', json.dumps(timer_mapping))
+        RHData.set_optionJson('timerMapping', timer_mapping)
 
 
 def split_record_callback(split_timer_id, nm, n, split_ts):
-    track = json.loads(RHData.get_option('trackLayout', None))
-    timer_mapping = json.loads(RHData.get_option('timerMapping', None))
+    track = RHData.get_optionJson('trackLayout')
+    timer_mapping = RHData.get_optionJson('timerMapping')
     location_id, seat = get_location_id_and_seat(split_timer_id, nm, n, track, timer_mapping)
     add_split(location_id, seat, split_ts, track)
 
@@ -5593,10 +5593,26 @@ except:
 if CLUSTER and CLUSTER.hasRecEventsSecondaries():
     CLUSTER.init_repeater()
 
-if RHData.get_option('trackLayout', None) is None:
-    RHData.set_option('trackLayout', json.dumps(DEFAULT_TRACK))
-if RHData.get_option('timerMapping', None) is None:
-    RHData.set_option('timerMapping', json.dumps(DEFAULT_TIMER_MAPPING))
+if RHData.get_optionJson('trackLayout') is None:
+    RHData.set_optionJson('trackLayout', DEFAULT_TRACK)
+if RHData.get_optionJson('timerMapping') is None:
+    RHData.set_optionJson('timerMapping', DEFAULT_TIMER_MAPPING)
+
+
+def update_timer_mapping():
+    timer_mapping = RHData.get_optionJson('timerMapping')
+    mapped_nms = timer_mapping[TIMER_ID]
+    for nm in INTERFACE.node_managers:
+        mapped_nm = mapped_nms.get(nm.addr, None)
+        if not mapped_nm:
+            mapped_nm = [{'location': 'Start/finish', 'seat': node.index} for node in nm.nodes]
+            mapped_nms[nm.addr] = mapped_nm
+        for node in nm.nodes[len(mapped_nm):]:
+            mapped_nm.append({'location': 'Start/finish', 'seat': node.index})
+    RHData.set_optionJson('timerMapping', timer_mapping)
+
+
+update_timer_mapping()
 
 
 def start():
