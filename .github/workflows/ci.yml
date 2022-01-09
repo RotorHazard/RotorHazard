@@ -108,11 +108,11 @@ jobs:
           - board: "esp32:esp32:esp32:PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none"
             platform: "esp32:esp32"
             opts: "--additional-urls https://dl.espressif.com/dl/package_esp32_index.json"
-            flags: "-DUSE_WIFI -DUSE_MQTT"
+            flags: "-DUSE_WIFI -DUSE_MQTT -DUSE_NTP"
           - board: "esp8266:esp8266:generic:xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,ResetMethod=nodemcu,CrystalFreq=26,FlashFreq=40,FlashMode=dout,eesz=1M64,led=2,sdk=nonosdk_190703,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=115200"
             platform: "esp8266:esp8266"
             opts: "--additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json"
-            flags: "-DUSE_WIFI -DUSE_MQTT"
+            flags: "-DUSE_WIFI -DUSE_MQTT -DUSE_NTP"
           - board: "m5stack:esp32:stamp-pico"
             platform: "m5stack:esp32"
             opts: "--additional-urls https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_index.json"
@@ -122,8 +122,10 @@ jobs:
     - uses: actions/checkout@v2
     - uses: arduino/setup-arduino-cli@v1.1.1
     - run: |
+        export ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL=true
         arduino-cli update ${{ matrix.opts }}
         arduino-cli core install ${{ matrix.platform }} ${{ matrix.opts }}
-        arduino-cli lib install MQTT
+        arduino-cli lib install --git-url https://github.com/256dpi/arduino-mqtt
+        arduino-cli lib install --git-url https://github.com/gmag11/ESPNtpClient
         arduino-cli compile -b ${{ matrix.board }} --build-property "compiler.cpp.extra_flags=${{ matrix.flags }}" src/node
   

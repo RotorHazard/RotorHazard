@@ -7,6 +7,11 @@
 
 static int sprintNodeTopic(char* dest);
 
+inline int sprints(char* dest, const char* src) {
+  strcpy(dest, src);
+  return strlen(src);
+}
+
 #ifndef __TEST__
 #include <MQTT.h>
 
@@ -158,12 +163,6 @@ bool copyNonNegativeInteger(char* dst, const char* src, int len) {
     }
     dst[i] = '\0';
     return true;
-}
-
-
-int sprints(char* dest, const char* src) {
-  strcpy(dest, src);
-  return strlen(src);
 }
 
 #endif

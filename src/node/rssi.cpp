@@ -4,6 +4,8 @@
 #ifdef USE_MQTT
 #include "mqtt.h"
 #include <stdio.h>
+#include <sys/time.h>
+#include "json.h"
 #endif
 
 constexpr uint16_t MIN_TUNETIME = 35;  // after set freq need to wait this long before read RSSI
@@ -240,7 +242,16 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
     if (!triggered && lifetimeSample != 0 && state.rssiTimestamp % MQTT_SAMPLE_INTERVAL == 0)
     {
         char json[64] = "";
-        int n = sprintf(json, "{\"rssi\": %u, \"timestamp\": \"%u\", \"lifetime\": %u}", state.rssi, state.rssiTimestamp, lifetimeSample);
+        int n = jsonStart(json);
+        n += jsonPropertyUInt(json, "rssi", state.rssi);
+        n += jsonPropertyUInt(json, "timestamp", state.rssiTimestamp);
+        n += jsonPropertyUInt(json, "lifetime", lifetimeSample);
+#ifdef USE_NTP
+        timeval currentTime;
+        gettimeofday(&currentTime, NULL);
+        n += jsonPropertyTime(json, "utc", &currentTime);
+#endif
+        n += jsonEnd(json);
         mqttPublish(*this, "sample", json, n);
     }
 #endif
@@ -290,7 +301,15 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
     else if (state.rssiTimestamp % MQTT_SAMPLE_INTERVAL == 0)
     {
         char json[64] = "";
-        int n = sprintf(json, "{\"rssi\": %u, \"timestamp\": \"%u\"}", state.rssi, state.rssiTimestamp);
+        int n = jsonStart(json);
+        n += jsonPropertyUInt(json, "rssi", state.rssi);
+        n += jsonPropertyUInt(json, "timestamp", state.rssiTimestamp);
+#ifdef USE_NTP
+        timeval currentTime;
+        gettimeofday(&currentTime, NULL);
+        n += jsonPropertyTime(json, "utc", &currentTime);
+#endif
+        n += jsonEnd(json);
         mqttPublish(*this, "sample", json, n);
     }
 #endif
@@ -308,11 +327,19 @@ void RssiNode::startCrossing(uint8_t trigger)
     state.crossing = true;
 #ifdef USE_MQTT
     char json[64] = "";
+    int n = jsonStart(json);
+    n += jsonPropertyUInt(json, "lap", lastPass.lap+1);
+    n += jsonPropertyUInt(json, "rssi", state.rssi);
+    n += jsonPropertyUInt(json, "timestamp", state.rssiTimestamp);
 #if defined(USE_PH)
-    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\", \"lifetime\": %u}", lastPass.lap+1, state.rssi, state.rssiTimestamp, trigger);
-#else
-    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\"}", lastPass.lap+1, state.rssi, state.rssiTimestamp);
+    n += jsonPropertyUInt(json, "lifetime", trigger);
 #endif
+#ifdef USE_NTP
+        timeval currentTime;
+        gettimeofday(&currentTime, NULL);
+        n += jsonPropertyTime(json, "utc", &currentTime);
+#endif
+    n += jsonEnd(json);
     mqttPublish(*this, "enter", json, n);
 #endif
 }
@@ -334,14 +361,30 @@ void RssiNode::endCrossing(uint8_t trigger)
 
 #ifdef USE_MQTT
     char json[64] = "";
+    int n = jsonStart(json);
+    n += jsonPropertyUInt(json, "lap", lastPass.lap);
+    n += jsonPropertyUInt(json, "rssi", state.rssi);
+    n += jsonPropertyUInt(json, "timestamp", state.rssiTimestamp);
 #if defined(USE_PH)
-    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\", \"lifetime\": -%u}", lastPass.lap, state.rssi, state.rssiTimestamp, trigger);
-#else
-    int n = sprintf(json, "{\"lap\": %u, \"rssi\": %u, \"timestamp\": \"%u\"}", lastPass.lap, state.rssi, state.rssiTimestamp);
+    n += jsonPropertyNegUInt(json, "lifetime", trigger);
 #endif
+#ifdef USE_NTP
+        timeval currentTime;
+        gettimeofday(&currentTime, NULL);
+        n += jsonPropertyTime(json, "utc", &currentTime);
+#endif
+    n += jsonEnd(json);
     mqttPublish(*this, "exit", json, n);
 
-    n = sprintf(json, "{\"rssi\": %u, \"lap\": %u, \"timestamp\": \"%u\"}", lastPass.rssiPeak, lastPass.lap, lastPass.timestamp);
+    n = jsonStart(json);
+    n += jsonPropertyUInt(json, "lap", lastPass.lap);
+    n += jsonPropertyUInt(json, "rssi", lastPass.rssiPeak);
+    n += jsonPropertyUInt(json, "timestamp", lastPass.timestamp);
+#ifdef USE_NTP
+        gettimeofday(&currentTime, NULL);
+        n += jsonPropertyTime(json, "utc", &currentTime);
+#endif
+    n += jsonEnd(json);
     mqttPublish(*this, "pass", json, n);
 #endif
 }

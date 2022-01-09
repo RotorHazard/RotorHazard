@@ -20,6 +20,11 @@ static Message wifiMessage;
 static WiFiClient mqttWifiClient;
 #endif
 
+#ifdef USE_NTP
+#include <ESPNtpClient.h>
+#endif
+
+
 void wifiInit() {
     WiFi.setHostname(WIFI_HOSTNAME);
     WiFi.enableSTA(true);
@@ -42,6 +47,10 @@ void wifiInit() {
 
 #ifdef USE_MQTT
     mqttInit(mqttWifiClient);
+#endif
+
+#ifdef USE_NTP
+    NTP.begin(NTP_SERVER, false);
 #endif
 }
 

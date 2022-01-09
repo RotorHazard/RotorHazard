@@ -144,6 +144,13 @@
 #define MQTT_SAMPLE_INTERVAL 100
 #define MQTT_TOPIC "node_managers/timer"
 
+#ifndef USE_NTP
+// uncomment to activate ntp
+//#define USE_NTP
+#endif
+
+#define NTP_SERVER "pool.ntp.org"
+
 
 // Pins
 

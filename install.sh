@@ -23,6 +23,9 @@ mosquitto_passwd -c -b mosquitto-bh.pwd race-admin fu56rg20
 sudo cp mosquitto-bh.* /etc/mosquitto/conf.d/
 sudo systemctl restart mosquitto
 
+# NTP
+sudo apt install -y ntp
+
 # Build json schema docs
 python3 -m pip install --upgrade json-schema-for-humans
 mkdir -p doc/schemas
