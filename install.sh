@@ -70,4 +70,9 @@ cd build
 ../configure --enable-faststream --enable-mp3lame --enable-msbc --enable-upower --enable-a2dpconf --enable-cli --enable-rfcomm --enable-hcitop
 make
 sudo make install
-sudo ln -s -f /etc/alsa/conf.d/20-bluealsa.conf /usr/share/alsa/alsa.conf.d/20-bluealsa.conf
+# backwards compatibility with older versions
+if [ -d /usr/share/alsa/alsa.conf.d ]; then
+  sudo ln -s -f /etc/alsa/conf.d/20-bluealsa.conf /usr/share/alsa/alsa.conf.d/20-bluealsa.conf
+fi
+
+echo Install completed!
