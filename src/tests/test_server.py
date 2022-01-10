@@ -236,7 +236,7 @@ class ServerTest(unittest.TestCase):
         self.client.emit('stage_race')
         self.get_response('stage_ready')
         resp = self.wait_for_response('race_status', 1)
-        self.assertEquals(resp['race_status'], RHRace.RaceStatus.RACING)
+        self.assertEqual(resp['race_status'], RHRace.RaceStatus.RACING)
         server.INTERFACE.simulate_lap(0)
         resp = self.wait_for_response('pass_record', 1)
         self.assertEqual(resp['node'], 0)

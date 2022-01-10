@@ -44,6 +44,7 @@ def get_pilot_data(url):
                 web_data['logo'] = url
     except BaseException as err:
         logger.debug("Error connecting to '{}': {}".format(url, err))
+        web_data = {}
     return web_data
 
 
