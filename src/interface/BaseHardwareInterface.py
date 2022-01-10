@@ -53,6 +53,7 @@ class BaseHardwareInterface:
         self.race_start_time = 0
         self.is_racing = False
         self.listener = listener if listener is not None else BaseHardwareInterfaceListener()
+        self.lap_id_mask = 0xFF
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
 
     def milliseconds(self):
@@ -132,7 +133,8 @@ class BaseHardwareInterface:
         if lap_id != prev_lap_id:
             node.node_lap_id = lap_id
             if prev_lap_id != -1:  # if -1 then just initialising node_lap_id
-                if lap_id != prev_lap_id + 1:
+                lap_change = (lap_id - prev_lap_id) & self.lap_id_mask  # handle unsigned roll-over
+                if lap_change != 1:
                     logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_lap_id, lap_id))
                 # calc lap timestamp
                 if ms_since_lap < 0 or ms_since_lap > 9999999:
