@@ -3933,11 +3933,11 @@ def emit_exit_at_level(node, **params):
         SOCKET_IO.emit('node_exit_at_level', emit_payload)
 
 
-def emit_node_crossing_change(node, **params):
+def emit_node_crossing_change(node, crossing_flag, **params):
     '''Emits crossing-flag change for given node.'''
     emit_payload = {
         'node_index': node.index,
-        'crossing_flag': node.crossing_flag
+        'crossing_flag': crossing_flag
     }
     if ('nobroadcast' in params):
         emit('node_crossing_change', emit_payload)
@@ -4738,8 +4738,8 @@ def new_exit_at_callback(node, exit_at_level):
 
 
 @catchLogExcDBCloseWrapper
-def node_crossing_callback(node):
-    emit_node_crossing_change(node)
+def node_crossing_callback(node, crossing_flag):
+    emit_node_crossing_change(node, crossing_flag)
     # handle LED gate-status indicators:
 
     if RACE.race_status == RHRace.RaceStatus.RACING:  # if race is in progress
@@ -4748,7 +4748,7 @@ def node_crossing_callback(node):
             node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.first_cross_flag):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
-            if node.crossing_flag:
+            if crossing_flag:
                 Events.trigger(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
                     'color': led_manager.getDisplayColor(node.index)

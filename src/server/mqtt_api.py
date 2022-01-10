@@ -71,14 +71,12 @@ class MqttAPI:
     def enter_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            node.crossing_flag = True
-            self.node_crossing_callback(node)
+            self.node_crossing_callback(node, True)
 
     def exit_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            node.crossing_flag = False
-            self.node_crossing_callback(node)
+            self.node_crossing_callback(node, False)
 
     def pass_handler(self, client, userdata, msg):
         topicNames = split_topic(msg.topic)
@@ -97,8 +95,8 @@ class MqttAPI:
                             lap_source = BaseHardwareInterface.LAP_SOURCE_MANUAL
                         else:
                             lap_source = None
-            
-                        if lap_source:
+
+                        if lap_source is not None:
                             lap_ts = float(pass_info['timestamp'])
                             self.pass_record_callback(node, lap_ts, lap_source)
             else:
