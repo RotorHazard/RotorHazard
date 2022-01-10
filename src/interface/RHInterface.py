@@ -428,18 +428,18 @@ class RHInterface(BaseHardwareInterface):
                             cross_flag = None
                             pn_history = None
                             if node.manager.api_level >= 18:
-                                ms_val = unpack_16(data[1:])
+                                ms_since_lap = unpack_16(data[1:])
                                 pn_history = PeakNadirHistory(node.index)
                                 if node.manager.api_level >= 21:
                                     if data[offset_lapStatsFlags] & LAPSTATS_FLAG_PEAK:
                                         rssi_val = unpack_rssi(node, data[offset_peakRssi:])
                                         if node.is_valid_rssi(rssi_val):
                                             pn_history.peakRssi = rssi_val
-                                            pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                                            pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:])  # ms *since* the first peak time
                                             if node.manager.api_level >= 33:
-                                                pn_history.peakLastTime = pn_history.peakFirstTime - unpack_16(data[offset_peakDuration:])   # ms *since* the last peak time
+                                                pn_history.peakLastTime = pn_history.peakFirstTime - unpack_16(data[offset_peakDuration:])  # ms *since* the last peak time
                                             else:
-                                                pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                                pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])  # ms *since* the last peak time
                                         elif rssi_val > 0:
                                             logger.info('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
                                     else:
@@ -457,15 +457,15 @@ class RHInterface(BaseHardwareInterface):
                                     rssi_val = unpack_rssi(node, data[offset_peakRssi:])
                                     if node.is_valid_rssi(rssi_val):
                                         pn_history.peakRssi = rssi_val
-                                        pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                                        pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                        pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:])  # ms *since* the first peak time
+                                        pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])  # ms *since* the last peak time
                                     rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
                                     if node.is_valid_rssi(rssi_val):
                                         pn_history.nadirRssi = rssi_val
                                         pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
                                         pn_history.nadirLastTime = pn_history.nadirFirstTime
                             else:
-                                ms_val = unpack_32(data[1:])
+                                ms_since_lap = unpack_32(data[1:])
     
                             rssi_val = unpack_rssi(node, data[offset_nodePeakRssi:])
                             if node.is_valid_rssi(rssi_val):
@@ -490,9 +490,9 @@ class RHInterface(BaseHardwareInterface):
                             if node.manager.api_level >= 18:
                                 data_logger = self.data_loggers[node.index]
                                 if data_logger:
-                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,lap_id, int(ms_val), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
+                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,lap_id, int(ms_since_lap), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
     
-                            self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history)
+                            self.process_lap_stats(node, readtime, lap_id, ms_since_lap, cross_flag, pn_history)
     
                         else:
                             node.bad_rssi_count += 1

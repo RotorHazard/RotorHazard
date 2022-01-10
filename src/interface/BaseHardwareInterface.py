@@ -115,9 +115,8 @@ class BaseHardwareInterface:
             except Exception:
                 logger.exception('Exception in {} _update_loop():'.format(type(self).__name__))
 
-    def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history):
+    def process_lap_stats(self, node, readtime, lap_id, ms_since_lap, cross_flag, pn_history):
         crossing_updated = False
-        new_lap = False
         if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
             node.crossing_flag = cross_flag
             if cross_flag:
@@ -127,30 +126,29 @@ class BaseHardwareInterface:
                 node.exit_at_timestamp = readtime
             crossing_updated = True
 
-        # calc lap timestamp
-        if ms_val < 0 or ms_val > 9999999:
-            ms_val = 0  # don't allow negative or too-large value
-            lap_timestamp = 0
-        else:
-            lap_timestamp = readtime - (ms_val / 1000.0)
-
         # if new lap detected for node then append item to updates list
+        lap_timestamp = None
         prev_lap_id = node.node_lap_id
         if lap_id != prev_lap_id:
             node.node_lap_id = lap_id
             if prev_lap_id != -1:  # if -1 then just initialising node_lap_id
                 if lap_id != prev_lap_id + 1:
                     logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_lap_id, lap_id))
+                # calc lap timestamp
+                if ms_since_lap < 0 or ms_since_lap > 9999999:
+                    logger.warning("Invalid time since lap {} - estimating lap timestamp to be {}".format(ms_since_lap, readtime))
+                    lap_timestamp = readtime
+                else:
+                    lap_timestamp = readtime - (ms_since_lap / 1000.0)
                 if self.is_racing:
                     node.pass_history.append((lap_timestamp, node.pass_peak_rssi))
-                new_lap = True
 
         if crossing_updated:
             if node.crossing_flag:
                 self._notify_enter_triggered(node)
             else:
                 self._notify_exit_triggered(node)
-        if new_lap:
+        if lap_timestamp is not None:
             # NB: lap pass timestamps are relative to race start time
             self._notify_pass(node, lap_timestamp - self.race_start_time, BaseHardwareInterface.LAP_SOURCE_REALTIME)
 

@@ -4392,10 +4392,13 @@ def pass_record_callback(node, lap_race_time, source):
 
                     if lap_number: # This is a normal completed lap
                         # Find the time stamp of the last lap completed (including "late" laps for timing)
-                        last_lap_time_stamp = RACE.get_active_laps(True)[seat][-1]['lap_time_stamp']
+                        last_lap = RACE.get_active_laps(True)[seat][-1]
+                        last_lap_time_stamp = last_lap['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
+                        if lap_time < 0:
+                            logger.warning("New lap timestamp {} is older than previous {}".format(lap_time_stamp, last_lap_time_stamp))
 
                     else: # No previous laps, this is the first pass
                         # Lap zero represents the time from the launch pad to flying through the gate
@@ -5367,6 +5370,9 @@ if mqtt_clients:
     mqtt_interface.ctrl_topic = rhconfig.MQTT['TIMER_CTRL_TOPIC']
     mqtt_interface.timer_id = TIMER_ID
     STARTABLES.append(mqtt_interface)
+else:
+    logger.error("MQTT not available")
+    sys.exit(1)
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
@@ -5541,12 +5547,6 @@ if mqtt_clients:
 
 CLUSTER = ClusterNodeSet(Language, Events)
 hasMirrors = False
-DEFAULT_TIMER_MAPPING = {
-    TIMER_ID: {
-        nm.addr: [{'location': 'Start/finish', 'seat': node.index} for node in nm.nodes]
-        for nm in INTERFACE.node_managers
-    }
-}
 DEFAULT_TRACK = {
     'crs': 'Local grid',
     'units': 'm',
@@ -5603,13 +5603,16 @@ if CLUSTER and CLUSTER.hasRecEventsSecondaries():
 
 if RHData.get_optionJson('trackLayout') is None:
     RHData.set_optionJson('trackLayout', DEFAULT_TRACK)
-if RHData.get_optionJson('timerMapping') is None:
-    RHData.set_optionJson('timerMapping', DEFAULT_TIMER_MAPPING)
 
 
 def update_timer_mapping():
     timer_mapping = RHData.get_optionJson('timerMapping')
-    mapped_nms = timer_mapping[TIMER_ID]
+    if not timer_mapping:
+        timer_mapping = {}
+    mapped_nms = timer_mapping.get(TIMER_ID, None)
+    if not mapped_nms:
+        mapped_nms = {}
+        timer_mapping[TIMER_ID] = mapped_nms
     for nm in INTERFACE.node_managers:
         mapped_nm = mapped_nms.get(nm.addr, None)
         if not mapped_nm:
