@@ -4,10 +4,10 @@ import functools
 import requests
 import re as regex
 import logging
-from .socketio import SOCKET_IO
+from rh.app import SOCKET_IO
 from flask import current_app
 import json
-from .RHUtils import FREQS
+from rh.util.RHUtils import FREQS
 from .race_explorer_core import import_event
 
 logger = logging.getLogger(__name__)

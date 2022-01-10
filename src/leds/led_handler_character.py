@@ -12,7 +12,8 @@ import gevent
 from PIL import Image, ImageFont, ImageDraw
 from monotonic import monotonic
 
-FONT_PATH = 'server/static/fonts'
+FONT_PATH = 'rh/static/fonts'
+
 
 def dataHandler(args):
     if 'data' in args:
@@ -62,6 +63,7 @@ def dataHandler(args):
     else:
         return False
 
+
 def printCharacter(args):
     if 'strip' in args:
         strip = args['strip']
@@ -102,6 +104,7 @@ def printCharacter(args):
 
     setPixels(strip, img, args['invertedPanelRows'])
     strip.show()
+
 
 def scrollText(args):
     if 'strip' in args:
@@ -144,6 +147,7 @@ def scrollText(args):
         setPixels(strip, img, args['invertedPanelRows'])
         strip.show()
         gevent.sleep(10/1000.0)
+
 
 def multiLapGrid(args):
     if 'strip' in args:
@@ -222,12 +226,15 @@ def multiLapGrid(args):
     setPixels(strip, img, args['invertedPanelRows'])
     strip.show()
 
+
 def clearPixels(strip):
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, ColorVal.NONE)
 
+
 def convertColor(color):
     return color >> 16, (color >> 8) % 256, color % 256
+
 
 def discover(config, *args, **kwargs):
     effects = [

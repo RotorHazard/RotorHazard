@@ -1,6 +1,6 @@
 from flask import request, json
 from flask.blueprints import Blueprint
-from .RHUtils import VTX_TABLE
+from rh.util.RHUtils import VTX_TABLE
 from . import web
 from . import race_explorer_core as core
 

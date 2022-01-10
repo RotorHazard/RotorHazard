@@ -66,7 +66,7 @@ To install/upgrade:
 To run the server:
 ```
 cd src
-python3 -m server.server
+python3 -m rh.server
 ```
 
 To run the scanner tool:

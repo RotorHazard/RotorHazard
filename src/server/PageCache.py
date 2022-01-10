@@ -10,7 +10,7 @@ if new data becomes available during the build process.
 
 import logging
 from monotonic import monotonic
-from . import RHUtils
+from rh.util import RHUtils
 import gevent
 
 logger = logging.getLogger(__name__)

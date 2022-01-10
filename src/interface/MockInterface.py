@@ -6,7 +6,7 @@ import logging
 from monotonic import monotonic  # to capture read timing
 import random
 
-from server.RHUtils import FREQUENCY_ID_NONE
+from rh.util.RHUtils import FREQUENCY_ID_NONE
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE, RHNodeManager, RHNode
 

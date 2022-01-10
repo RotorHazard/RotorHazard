@@ -9,7 +9,7 @@ from .Plugins import Plugins
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .Node import Node, NodeManager
-from util import Averager
+from rh.util import Averager
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_MODE = 0x02

@@ -2,7 +2,7 @@ import sys
 import logging
 import unittest
 from interface.RHInterface import RHInterface
-from server import Config
+from rh.app.config import Config
 import gevent
 import platform
 import subprocess

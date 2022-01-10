@@ -15,7 +15,7 @@ import jsonschema
 import glob
 from uuid import uuid4
 from types import MappingProxyType
-from . import RHUtils
+from rh.util import RHUtils
 from .eventmanager import Evt
 from .RHRace import RaceStatus, RaceMode, WinCondition, StagingTones, StartBehavior
 

@@ -1,5 +1,5 @@
 import unittest
-from util import Averager
+from rh.util import Averager
 import numpy as np
 
 class UtilTest(unittest.TestCase):

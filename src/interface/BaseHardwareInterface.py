@@ -2,8 +2,8 @@ import os
 import gevent
 import logging
 from monotonic import monotonic
-import util.persistent_homology as ph
-from server.RHUtils import FREQUENCY_ID_NONE
+import rh.util.persistent_homology as ph
+from rh.util.RHUtils import FREQUENCY_ID_NONE
 import bisect
 
 ENTER_AT_PEAK_MARGIN = 5  # closest that captured enter-at level can be to node peak RSSI

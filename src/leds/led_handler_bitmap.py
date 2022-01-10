@@ -10,6 +10,9 @@ from server.led_event_manager import LEDEffect
 import gevent
 from PIL import Image
 
+IMAGE_PATH = 'rh/static/image/'
+
+
 def showBitmap(args):
     if 'strip' in args:
         strip = args['strip']
@@ -29,9 +32,9 @@ def showBitmap(args):
             strip.show()
             gevent.sleep(delay/1000.0)
 
+
 def discover(config, *args, **kwargs):
     # state bitmaps
-    IMAGE_PATH = 'server/static/image/'
     return [
     LEDEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, {
             'include': [Evt.SHUTDOWN],

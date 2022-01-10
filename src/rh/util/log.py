@@ -45,6 +45,7 @@ CONFIG_FILE_STR = "CONFIG_FILE"
 socket_handler_obj = None
 queued_handler_obj = None
 
+
 # Log handler that distributes log records to one or more destination handlers via a gevent queue.
 class QueuedLogEventHandler(logging.Handler):
 
@@ -108,6 +109,7 @@ class QueuedLogEventHandler(logging.Handler):
             super(QueuedLogEventHandler, self).close()
         except Exception as ex:
             print("Error closing QueuedLogEventHandler: " + str(ex))
+
 
 class SocketForwardHandler(logging.Handler):
 

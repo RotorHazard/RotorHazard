@@ -3,7 +3,7 @@ Database module
 '''
 
 from pathlib import Path
-from . import RHUtils
+from rh.util import RHUtils
 from flask_sqlalchemy import SQLAlchemy
 
 #pylint: disable=no-member

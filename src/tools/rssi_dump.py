@@ -3,7 +3,7 @@ gevent.monkey.patch_all()
 
 import logging
 import sys
-from server import Config
+from rh.app.config import Config
 from interface import RHInterface, MockInterface
 
 def start(port, freq, write_buffer):

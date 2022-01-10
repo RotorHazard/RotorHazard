@@ -1,7 +1,7 @@
 '''Class to hold race management variables.'''
 
 from enum import IntEnum
-from . import RHUtils
+from rh.util import RHUtils
 
 
 class RHRace():

@@ -2,7 +2,7 @@
 
 import logging
 logger = logging.getLogger(__name__)
-from server import RHUtils
+from rh.util import RHUtils
 import io
 import csv
 from . import DataExporter

@@ -1,7 +1,7 @@
 from .BaseHardwareInterface import BaseHardwareInterface, BaseHardwareInterfaceListener
 from helpers.mqtt_helper import make_topic, split_topic
-from server import RHTimeFns
-from server.RHUtils import FREQS
+from rh.util import RHTimeFns
+from rh.util.RHUtils import FREQS
 import logging
 import json
 

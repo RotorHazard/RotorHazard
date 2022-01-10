@@ -3,7 +3,7 @@ import subprocess
 import logging
 from .eventmanager import Evt
 from .RHRace import RaceMode, StagingTones, StartBehavior
-from . import RHUtils
+from rh.util import RHUtils
 
 logger = logging.getLogger(__name__)
 

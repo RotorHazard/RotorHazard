@@ -2,7 +2,7 @@
 
 import logging
 logger = logging.getLogger(__name__)
-from server import RHUtils
+from rh.util import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from . import DataExporter

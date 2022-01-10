@@ -12,7 +12,8 @@ if os.path.isfile(TEST_DB):
 os.environ['RH_DATABASE'] = TEST_DB
 os.environ['RH_INTERFACE'] = 'Mock'
 
-from server import server, RHRace
+from rh import server
+from server import RHRace
 import tests as tests_pkg
 
 import logging

@@ -11,10 +11,10 @@ JSON_API = 3 # JSON API version
 # because there is a lot of code run through imports, and
 # we would miss messages otherwise.
 import logging
-from . import log
+from rh.util import log
 from datetime import datetime
 from monotonic import monotonic
-from . import RHTimeFns
+from rh.util import RHTimeFns
 
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
@@ -45,27 +45,29 @@ from flask import Flask, send_file, request, Response, session, templating, redi
 from flask_compress import Compress
 from flask_socketio import emit
 from flasgger import Swagger
-from .socketio import SOCKET_IO
+from rh.app import SOCKET_IO
 
-from . import Config, Database, Results, Language, \
-    RHData, RHRace, RHUtils, PageCache, RHGPIO, \
+from rh.app.config import Config
+from server import Database, Results, Language, \
+    RHData, RHRace, PageCache, RHGPIO, \
     web
-from .RHUtils import catchLogExceptionsWrapper
-from .ClusterNodeSet import SecondaryNode, ClusterNodeSet
-from .util.SendAckQueue import SendAckQueue
-from .util.ButtonInputHandler import ButtonInputHandler
-from .util import StrictJsonEncoder, stm32loader
+from rh.util import RHUtils
+from rh.util.RHUtils import catchLogExceptionsWrapper
+from server.ClusterNodeSet import SecondaryNode, ClusterNodeSet
+from server.util.SendAckQueue import SendAckQueue
+from server.util.ButtonInputHandler import ButtonInputHandler
+from server.util import StrictJsonEncoder, stm32loader
 
 # Events manager
-from .eventmanager import Evt, EventManager
+from server.eventmanager import Evt, EventManager
 
 Events = EventManager()
 
 # LED imports
 from leds import Color, ColorVal, hexToColor
-from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
-from .audio_event_manager import AudioEventManager
-from .mqtt_event_manager import MqttEventManager
+from server.led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
+from server.audio_event_manager import AudioEventManager
+from server.mqtt_event_manager import MqttEventManager
 
 import helpers as helper_pkg
 import sensors as sensor_pkg
@@ -5515,17 +5517,17 @@ mqtt_manager.install_default_messages()
 export_manager = DataExportManager(RHData, PageCache, Language)
 
 # register endpoints
-from . import json_endpoints
-from . import ota
-from . import race_explorer_endpoints
-from . import heat_generator_endpoints
+from server import json_endpoints
+from server import ota
+from server import race_explorer_endpoints
+from server import heat_generator_endpoints
 APP.register_blueprint(json_endpoints.createBlueprint(RESULTS, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota.createBlueprint())
 APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, APP.rhserver))
 APP.register_blueprint(heat_generator_endpoints.createBlueprint(RHData))
 
 if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
-    from .chorus_api import ChorusAPI
+    from server.chorus_api import ChorusAPI
     import serial
 
     chorusPort = rhconfig.CHORUS['API_PORT']
@@ -5534,7 +5536,7 @@ if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     STARTABLES.append(CHORUS_API)
 
 if mqtt_clients:
-    from .mqtt_api import MqttAPI
+    from server.mqtt_api import MqttAPI
 
     MQTT_API = MqttAPI(mqtt_clients['timer'], rhconfig.MQTT['TIMER_ANN_TOPIC'], TIMER_ID, INTERFACE,
                        node_crossing_callback,

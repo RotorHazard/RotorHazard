@@ -8,7 +8,7 @@ from monotonic import monotonic
 from .RHRace import RaceStatus
 from .eventmanager import Evt
 from .util.RunningMedian import RunningMedian
-from util import Averager
+from rh.util import Averager
 
 logger = logging.getLogger(__name__)
 

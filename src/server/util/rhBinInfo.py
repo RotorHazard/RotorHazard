@@ -9,7 +9,7 @@
 import sys
 
 from interface import RHInterface
-from server import RHUtils
+from rh.util import RHUtils
 from . import stm32loader as stm32loader
 
 def showFirmwareBinInfo(fileStr):

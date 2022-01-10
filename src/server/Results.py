@@ -3,7 +3,7 @@
 #
 
 import copy
-from . import RHUtils
+from rh.util import RHUtils
 import logging
 import cachetools
 from threading import Lock
