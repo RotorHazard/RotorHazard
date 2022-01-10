@@ -20,8 +20,13 @@ rssi_t inputSignal[N];
 size_t inputSize = 0;
 
 void loadSignal(const char* filename) {
-    unsigned int x;
     FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        fprintf(stderr, "Cannot open %s\n", filename);
+        return;
+    }
+
+    unsigned int x;
     for (inputSize = 0; inputSize < sizeof(inputSignal) && fscanf(fp, "%u\n", &x) > 0; inputSize++) {
         inputSignal[inputSize] = x;
     }
@@ -29,11 +34,13 @@ void loadSignal(const char* filename) {
 }
 
 int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
-    int offset = -1;
     FILE *fp = fopen(name, "wt");
     if (!fp) {
-        printf("Cannot write to %s\n", name);
+        fprintf(stderr, "Cannot write to %s\n", name);
+        return -1;
     }
+
+    int offset = -1;
     fprintf(fp, "t, in, out\n");
     int n = (inputSize > 0) ? inputSize : N;
     for(int t=0; t<n; t++) {
@@ -60,6 +67,7 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
 
 #define assertMaxMin(output, offset, freq) \
 { \
+    assertNotEqual(-1, offset); \
     int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq); \
     int t_zero = ONE_SEC + offset + (int)(1000.0/freq); \
     rssi_t maxVal = output[t_max]; \
@@ -165,6 +173,7 @@ unittest(composite2_with_20hz_signal)
   double freq = 20;
   rssi_t output[N];
   int offset = filter("composite2_with_20hz_signal.csv", lpf, freq, output);
+  assertNotEqual(-1, offset); \
 
   int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq);
   int t_zero = ONE_SEC + offset + (int)(1000.0/freq);
@@ -190,6 +199,7 @@ unittest(composite3_with_20hz_signal)
   double freq = 20;
   rssi_t output[N];
   int offset = filter("composite3_with_20hz_signal.csv", lpf, freq, output);
+  assertNotEqual(-1, offset); \
 
   int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq);
   int t_zero = ONE_SEC + offset + (int)(1000.0/freq);
