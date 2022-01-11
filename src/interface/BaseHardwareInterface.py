@@ -19,7 +19,7 @@ class BaseHardwareInterfaceListener:
     def on_exit_triggered(self, node):
         pass
 
-    def on_pass(self, node, lap_ts, lap_source):
+    def on_pass(self, node, lap_ts, lap_source, pass_rssi):
         pass
 
     def on_frequency_changed(self, node, frequency, band=None, channel=None):
@@ -53,7 +53,7 @@ class BaseHardwareInterface:
         self.race_start_time = 0
         self.is_racing = False
         self.listener = listener if listener is not None else BaseHardwareInterfaceListener()
-        self.lap_id_mask = 0xFF
+        self.pass_id_mask = 0xFF
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
 
     def milliseconds(self):
@@ -87,8 +87,8 @@ class BaseHardwareInterface:
     def _notify_exit_triggered(self, node):
         self.listener.on_exit_triggered(node)
 
-    def _notify_pass(self, node, lap_ts, lap_source):
-        self.listener.on_pass(node, lap_ts, lap_source)
+    def _notify_pass(self, node, lap_ts, lap_source, pass_rssi):
+        self.listener.on_pass(node, lap_ts, lap_source, pass_rssi)
 
     def _notify_frequency_changed(self, node):
         if node.bandChannel:
@@ -116,44 +116,59 @@ class BaseHardwareInterface:
             except Exception:
                 logger.exception('Exception in {} _update_loop():'.format(type(self).__name__))
 
-    def process_lap_stats(self, node, readtime, lap_id, ms_since_lap, cross_flag, pn_history):
+    def process_lap_stats(self, node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, cross_ts):
         crossing_updated = False
         if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
             node.crossing_flag = cross_flag
             if cross_flag:
                 node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
-                node.enter_at_timestamp = readtime
+                node.enter_at_timestamp = cross_ts
             else:
-                node.exit_at_timestamp = readtime
+                node.exit_at_timestamp = cross_ts
             crossing_updated = True
 
-        # if new lap detected for node then append item to updates list
-        lap_timestamp = None
-        prev_lap_id = node.node_lap_id
-        if lap_id != prev_lap_id:
-            node.node_lap_id = lap_id
-            if prev_lap_id != -1:  # if -1 then just initialising node_lap_id
-                lap_change = (lap_id - prev_lap_id) & self.lap_id_mask  # handle unsigned roll-over
+        node.pass_peak_rssi = pass_peak_rssi
+
+        lap_race_time = None
+        prev_pass_id = node.pass_id
+        if pass_id != prev_pass_id:
+            node.pass_id = pass_id
+            if prev_pass_id is not None:  # if None then just initialising pass_id
+                lap_change = pass_id - prev_pass_id
+                # handle unsigned roll-over
+                if self.pass_id_mask is not None:
+                    lap_change = lap_change & self.pass_id_mask
                 if lap_change != 1:
-                    logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_lap_id, lap_id))
-                # calc lap timestamp
-                if ms_since_lap < 0 or ms_since_lap > 9999999:
-                    logger.warning("Invalid time since lap {} - estimating lap timestamp to be {}".format(ms_since_lap, readtime))
-                    lap_timestamp = readtime
-                else:
-                    lap_timestamp = readtime - (ms_since_lap / 1000.0)
-                if self.is_racing:
-                    node.pass_history.append((lap_timestamp, node.pass_peak_rssi))
+                    logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_pass_id, pass_id))
+                # NB: lap race times are relative to the race start time
+                lap_race_time = pass_timestamp - self.race_start_time
+                if lap_race_time < 0:
+                    logger.warning("Lap before race start: {} < {}".format(pass_timestamp, self.race_start_time))
+                if self.is_racing and pass_peak_rssi:
+                    node.pass_history.append((pass_timestamp, pass_peak_rssi))
 
-        if crossing_updated:
-            if node.crossing_flag:
-                self._notify_enter_triggered(node)
+        # ensure correct ordering
+        if crossing_updated and node.crossing_flag:
+            self._notify_enter_triggered(node)
+        if lap_race_time is not None:
+            self._notify_pass(node, lap_race_time, BaseHardwareInterface.LAP_SOURCE_REALTIME, pass_peak_rssi)
+        if crossing_updated and not node.crossing_flag:
+            self._notify_exit_triggered(node)
+
+    def process_history(self, node, pn_history):
+        # get and process history data (except when race is over)
+        if self.is_racing:
+            if not pn_history.isEmpty():
+                pn_history.addTo(node.history)
+                node.used_history_count += 1
             else:
-                self._notify_exit_triggered(node)
-        if lap_timestamp is not None:
-            # NB: lap pass timestamps are relative to race start time
-            self._notify_pass(node, lap_timestamp - self.race_start_time, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+                node.empty_history_count += 1
 
+    def append_history(self, node, timestamp, rssi):
+        if self.is_racing:
+            node.history.append(timestamp, rssi)
+
+    def process_capturing(self, node):
         # check if capturing enter-at level for node
         if node.cap_enter_at_flag:
             node.cap_enter_at_total += node.current_rssi
@@ -164,7 +179,7 @@ class BaseHardwareInterface:
                 # if too close node peak then set a bit below node-peak RSSI value:
                 if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
                     node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
-                logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
+                logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node, node.enter_at_level, node.cap_enter_at_count))
                 self._notify_enter_trigger_changed(node)
 
         # check if capturing exit-at level for node
@@ -174,23 +189,19 @@ class BaseHardwareInterface:
             if self.milliseconds() >= node.cap_exit_at_millis:
                 node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
                 node.cap_exit_at_flag = False
-                logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
+                logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node, node.exit_at_level, node.cap_exit_at_count))
                 self._notify_exit_trigger_changed(node)
 
-        self.prune_history(node)
-
-        # get and process history data (except when race is over)
-        if pn_history and self.is_racing:
-            if not pn_history.isEmpty():
-                pn_history.addTo(readtime, node.history)
-                node.used_history_count += 1
-            else:
-                node.empty_history_count += 1
-
-    def prune_history(self, node):
-        # prune history data if race is not running (keep last 60s)
-        if not self.is_racing:
-            node.history.prune(monotonic()-60)
+    def _restore_lowered_thresholds(self, node):
+        # check if node is set to temporary lower EnterAt/ExitAt values
+        if node.start_thresh_lower_flag and monotonic() >= node.start_thresh_lower_time:
+            logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
+                    .format(node.index+1, node.enter_at_level, \
+                            node.exit_at_level))
+            self.transmit_enter_at_level(node, node.enter_at_level)
+            self.transmit_exit_at_level(node, node.exit_at_level)
+            node.start_thresh_lower_flag = False
+            node.start_thresh_lower_time = 0
 
     def ai_calibrate_nodes(self):
         for node in self.nodes:
@@ -263,10 +274,9 @@ class BaseHardwareInterface:
 
     def simulate_lap(self, node_index):
         node = self.nodes[node_index]
-        lap_timestamp = monotonic() - self.race_start_time  # relative to start time
+        lap_race_time = monotonic() - self.race_start_time  # relative to start time
         node.enter_at_timestamp = node.exit_at_timestamp = 0
-        node.node_lap_id += 1
-        self._notify_pass(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
+        self._notify_pass(node, lap_race_time, BaseHardwareInterface.LAP_SOURCE_MANUAL, None)
 
     def force_end_crossing(self, node_index):
         pass
@@ -440,8 +450,9 @@ class BaseHardwareInterface:
 
 
 class PeakNadirHistory:
-    def __init__(self, node_index=-1):
-        self.nodeIndex = node_index
+    def __init__(self, node, timestamp):
+        self.node = node
+        self.timestamp = timestamp
         self.peakRssi = 0
         self.peakFirstTime = 0
         self.peakLastTime = 0
@@ -453,64 +464,64 @@ class PeakNadirHistory:
         return self.peakRssi == 0 and self.peakFirstTime == 0 and self.peakLastTime == 0 \
             and self.nadirRssi == 0 and self.nadirFirstTime == 0 and self.nadirLastTime == 0
 
-    def addTo(self, readtime, history):
+    def addTo(self, history):
         if self.peakRssi > 0:
             if self.nadirRssi > 0:
                 # both
                 if self.peakLastTime > self.nadirFirstTime:
                     # process peak first
                     if self.peakFirstTime > self.peakLastTime:
-                        history.append(readtime - (self.peakFirstTime / 1000.0), self.peakRssi)
-                        history.append(readtime - (self.peakLastTime / 1000.0), self.peakRssi)
+                        history.append(self.timestamp - (self.peakFirstTime / 1000.0), self.peakRssi)
+                        history.append(self.timestamp - (self.peakLastTime / 1000.0), self.peakRssi)
                     elif self.peakFirstTime == self.peakLastTime:
-                        history.append(readtime - (self.peakLastTime / 1000.0), self.peakRssi)
+                        history.append(self.timestamp - (self.peakLastTime / 1000.0), self.peakRssi)
                     else:
-                        logger.warning('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.nodeIndex+1))
+                        logger.warning('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.node))
 
                     if self.nadirFirstTime > self.nadirLastTime:
-                        history.append(readtime - (self.nadirFirstTime / 1000.0), self.nadirRssi)
-                        history.append(readtime - (self.nadirLastTime / 1000.0), self.nadirRssi)
+                        history.append(self.timestamp - (self.nadirFirstTime / 1000.0), self.nadirRssi)
+                        history.append(self.timestamp - (self.nadirLastTime / 1000.0), self.nadirRssi)
                     elif self.nadirFirstTime == self.nadirLastTime:
-                        history.append(readtime - (self.nadirLastTime / 1000.0), self.nadirRssi)
+                        history.append(self.timestamp - (self.nadirLastTime / 1000.0), self.nadirRssi)
                     else:
-                        logger.warning('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.nodeIndex+1))
+                        logger.warning('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.node))
 
                 else:
                     # process nadir first
                     if self.nadirFirstTime > self.nadirLastTime:
-                        history.append(readtime - (self.nadirFirstTime / 1000.0), self.nadirRssi)
-                        history.append(readtime - (self.nadirLastTime / 1000.0), self.nadirRssi)
+                        history.append(self.timestamp - (self.nadirFirstTime / 1000.0), self.nadirRssi)
+                        history.append(self.timestamp - (self.nadirLastTime / 1000.0), self.nadirRssi)
                     elif self.nadirFirstTime == self.nadirLastTime:
-                        history.append(readtime - (self.nadirLastTime / 1000.0), self.nadirRssi)
+                        history.append(self.timestamp - (self.nadirLastTime / 1000.0), self.nadirRssi)
                     else:
-                        logger.warning('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.nodeIndex+1))
+                        logger.warning('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.node))
 
                     if self.peakFirstTime > self.peakLastTime:
-                        history.append(readtime - (self.peakFirstTime / 1000.0), self.peakRssi)
-                        history.append(readtime - (self.peakLastTime / 1000.0), self.peakRssi)
+                        history.append(self.timestamp - (self.peakFirstTime / 1000.0), self.peakRssi)
+                        history.append(self.timestamp - (self.peakLastTime / 1000.0), self.peakRssi)
                     elif self.peakFirstTime == self.peakLastTime:
-                        history.append(readtime - (self.peakLastTime / 1000.0), self.peakRssi)
+                        history.append(self.timestamp - (self.peakLastTime / 1000.0), self.peakRssi)
                     else:
-                        logger.warning('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.nodeIndex+1))
+                        logger.warning('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.node))
 
             else:
                 # peak, no nadir
                 # process peak only
                 if self.peakFirstTime > self.peakLastTime:
-                    history.append(readtime - (self.peakFirstTime / 1000.0), self.peakRssi)
-                    history.append(readtime - (self.peakLastTime / 1000.0), self.peakRssi)
+                    history.append(self.timestamp - (self.peakFirstTime / 1000.0), self.peakRssi)
+                    history.append(self.timestamp - (self.peakLastTime / 1000.0), self.peakRssi)
                 elif self.peakFirstTime == self.peakLastTime:
-                    history.append(readtime - (self.peakLastTime / 1000.0), self.peakRssi)
+                    history.append(self.timestamp - (self.peakLastTime / 1000.0), self.peakRssi)
                 else:
-                    logger.warning('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.nodeIndex+1))
+                    logger.warning('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.node))
 
         elif self.nadirRssi > 0:
             # no peak, nadir
             # process nadir only
             if self.nadirFirstTime > self.nadirLastTime:
-                history.append(readtime - (self.nadirFirstTime / 1000.0), self.nadirRssi)
-                history.append(readtime - (self.nadirLastTime / 1000.0), self.nadirRssi)
+                history.append(self.timestamp - (self.nadirFirstTime / 1000.0), self.nadirRssi)
+                history.append(self.timestamp - (self.nadirLastTime / 1000.0), self.nadirRssi)
             elif self.nadirFirstTime == self.nadirLastTime:
-                history.append(readtime - (self.nadirLastTime / 1000.0), self.nadirRssi)
+                history.append(self.timestamp - (self.nadirLastTime / 1000.0), self.nadirRssi)
             else:
-                logger.warning('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.nodeIndex+1))
+                logger.warning('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.node))

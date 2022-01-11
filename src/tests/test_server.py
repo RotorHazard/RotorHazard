@@ -231,16 +231,57 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['heats'][1]['note'], data['note'])
         self.assertEqual(resp['heats'][1]['class_id'], data['class'])
 
+    def test_no_race(self):
+        node_index = 1
+        node = server.INTERFACE.nodes[node_index]
+        self.assertIsNone(node.pass_id)
+
+        gevent.sleep(1)
+
+        # simulate a lap
+        server.INTERFACE.simulate_lap(node_index)
+        self.assertIsNone(node.pass_id)
+
+        gevent.sleep(1)
+
+        # hardware lap
+        now = monotonic()
+        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None)
+        self.assertEqual(node.pass_id, 1)
+
     def test_run_a_race(self):
-        self.client.emit('alter_heat', {'heat':1, 'node':0, 'pilot':1})
+        node_index = 1
+        node = server.INTERFACE.nodes[node_index]
+        self.client.emit('alter_heat', {'heat':1, 'node':node_index, 'pilot':1})
         self.client.emit('set_race_format', {'race_format': 5})
+        self.client.emit('set_min_lap', {'min_lap': 0})
         self.client.emit('stage_race')
         self.get_response('stage_ready')
         resp = self.wait_for_response('race_status', 1)
         self.assertEqual(resp['race_status'], RHRace.RaceStatus.RACING)
-        server.INTERFACE.simulate_lap(0)
+
+        gevent.sleep(1)
+
+        # simulate a lap
+        server.INTERFACE.simulate_lap(node_index)
+        self.assertIsNone(node.pass_id)
         resp = self.wait_for_response('pass_record', 1)
-        self.assertEqual(resp['node'], 0)
+        self.assertEqual(resp['node'], node_index)
+
+        # initialize hardware stats
+        now = monotonic()
+        server.INTERFACE.process_lap_stats(node, 0, now, 25, None, None)
+        self.assertEqual(node.pass_id, 0)
+
+        gevent.sleep(1)
+
+        # hardware lap
+        now = monotonic()
+        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None)
+        self.assertEqual(node.pass_id, 1)
+        resp = self.wait_for_response('pass_record', 1)
+        self.assertEqual(resp['node'], node_index)
+
         self.client.emit('stop_race')
 
 

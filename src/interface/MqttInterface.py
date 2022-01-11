@@ -34,8 +34,8 @@ class MqttInterface(BaseHardwareInterfaceListener):
     def on_exit_triggered(self, node):
         self._mqtt_publish_exit(node)
 
-    def on_pass(self, node, lap_ts, lap_source):
-        self._mqtt_publish_pass(node, lap_ts, lap_source)
+    def on_pass(self, node, lap_ts, lap_source, pass_rssi):
+        self._mqtt_publish_pass(node, lap_ts, lap_source, pass_rssi)
 
     def on_frequency_changed(self, node, frequency, band=None, channel=None):
         self._mqtt_publish_bandChannel(node, band+str(channel) if band and channel else None)
@@ -160,23 +160,23 @@ class MqttInterface(BaseHardwareInterfaceListener):
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exitTrigger"), str(level))
 
     def _mqtt_publish_enter(self, node):
-        msg = {'lap': node.node_lap_id+1, 'timestamp': str(node.enter_at_timestamp), 'rssi': node.current_rssi}
+        msg = {'lap': node.pass_id+1, 'timestamp': str(node.enter_at_timestamp), 'rssi': node.current_rssi}
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "enter"), json.dumps(msg))
 
     def _mqtt_publish_exit(self, node):
-        msg = {'lap': node.node_lap_id, 'timestamp': str(node.exit_at_timestamp), 'rssi': node.current_rssi}
+        msg = {'lap': node.pass_id, 'timestamp': str(node.exit_at_timestamp), 'rssi': node.current_rssi}
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exit"), json.dumps(msg))
 
-    def _mqtt_publish_pass(self, node, lap_ts, lap_source):
+    def _mqtt_publish_pass(self, node, lap_ts, lap_source, pass_rssi):
         if lap_source == BaseHardwareInterface.LAP_SOURCE_REALTIME:
             lap_source_type = 'realtime'
         elif lap_source == BaseHardwareInterface.LAP_SOURCE_MANUAL:
             lap_source_type = 'manual'
         else:
             lap_source_type = None
-        msg = {'lap': node.node_lap_id, 'timestamp': str(lap_ts), 'source': lap_source_type}
-        if hasattr(node, 'pass_peak_rssi'):
-            msg['rssi'] = node.pass_peak_rssi
+        msg = {'lap': node.pass_id, 'timestamp': str(lap_ts), 'source': lap_source_type}
+        if pass_rssi:
+            msg['rssi'] = pass_rssi
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "pass"), json.dumps(msg))
 
 

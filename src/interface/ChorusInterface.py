@@ -58,6 +58,10 @@ class ChorusNode(Node):
         super().__init__(index=index, multi_node_index=multi_node_index, manager=manager)
         self.history_filter = ExtremumFilter()
 
+    def reset(self):
+        super().reset()
+        self.history_filter = ExtremumFilter()
+
     def send_command(self, command, in_value):
         with self.manager:
             self.manager.write('R{0}{1}{2:04x}\n'.format(self.index, command, in_value))
@@ -130,18 +134,18 @@ class ChorusInterface(BaseHardwareInterface):
             node = node_manager.nodes[multi_node_idx]
             cmd = data[2]
             if cmd == 'L':
-                node.node_lap_id = int(data[3:5], 16)
-                lap_ts = int(data[5:13], 16) # relative to start time
-                self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+                node.pass_id = int(data[3:5], 16)  # lap count
+                lap_ts = int(data[5:13], 16)  # relative to start time
+                self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
             elif cmd == 'r':
                 rssi = int(data[3:7], 16)
                 node.current_rssi = rssi
                 node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                 node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
-                filtered_rssi = node.history_filter.filter(rssi)
+                ts = monotonic()
+                filtered_ts, filtered_rssi = node.history_filter.filter(ts, rssi)
                 if filtered_rssi is not None:
-                    self.prune_history(node)
-                    node.history.append(monotonic(), filtered_rssi)
+                    self.append_history(node, filtered_ts, filtered_rssi)
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 

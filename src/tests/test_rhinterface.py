@@ -18,7 +18,7 @@ class RHInterfaceTest(unittest.TestCase):
         self.node_proc = subprocess.Popen(["node/build_ci/rhnode1", "adcClock=COUNTER", "127.0.0.1:7881"])
         try:
             laps = 0
-            def on_pass(node, lap_ts, source):
+            def on_pass(node, lap_ts, source, rssi):
                 nonlocal laps
                 laps += 1
     
@@ -64,7 +64,7 @@ class RHInterfaceTest(unittest.TestCase):
         self.node_proc = subprocess.Popen(["node/build_ci/rhnode4", "adcClock=COUNTER", "127.0.0.1:7884"])
         try:
             laps = 0
-            def on_pass(node, lap_ts, source):
+            def on_pass(node, lap_ts, source, rssi):
                 nonlocal laps
                 laps += 1
     

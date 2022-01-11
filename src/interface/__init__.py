@@ -104,21 +104,28 @@ class RssiHistory:
 
 class ExtremumFilter:
     def __init__(self):
-        self.previous = 0
-        self.delta = 0
+        self.prev_t = None
+        self.prev_x = None
+        self.delta = None
 
-    def filter(self, x):
+    def filter(self, t, x):
         '''Includes inflexion points'''
-        new_delta = x - self.previous
-        if self.delta > 0 and new_delta <= 0:
-            y = self.previous
-        elif self.delta < 0 and new_delta >= 0:
-            y = self.previous
-        elif self.delta == 0 and new_delta != 0:
-            y = self.previous
+        if self.prev_x is not None:
+            new_delta = x - self.prev_x
+            if self.delta > 0 and new_delta <= 0:
+                next_x = self.prev_x
+            elif self.delta < 0 and new_delta >= 0:
+                next_x = self.prev_x
+            elif self.delta == 0 and new_delta != 0:
+                next_x = self.prev_x
+            else:
+                next_x = None
         else:
-            y = None
-        self.previous = x
+            new_delta = 0
+            next_x = self.prev_x
+        next_t = self.prev_t
+        self.prev_t = t
+        self.prev_x = x
         self.delta = new_delta
-        return y
+        return next_t, next_x
 

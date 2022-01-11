@@ -73,6 +73,11 @@ class LapRFNode(Node):
         super().__init__(index=index, multi_node_index=multi_node_index, manager=manager)
         self.is_configured = False
         self.history_filter = ExtremumFilter()
+        self.pass_count = 0
+
+    def reset(self):
+        super().reset()
+        self.history_filter = ExtremumFilter()
 
     @property
     def threshold(self):
@@ -119,11 +124,6 @@ class LapRFInterface(BaseHardwareInterface):
                 raise Exception("LapRF did not respond with RF setup information")
             self.sensors.append(LapRFSensor(node_manager))
 
-    def start(self):
-        for node in self.nodes:
-            node.node_lap_id = 0
-        super().start()
-
     def _update(self):
         nm_sleep_interval = self.update_sleep/max(len(self.node_managers), 1)
         if self.node_managers:
@@ -157,20 +157,19 @@ class LapRFInterface(BaseHardwareInterface):
                     node.current_rssi = rssi
                     node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                     node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
-                    filtered_rssi = node.history_filter.filter(rssi)
+                    filtered_ts, filtered_rssi = node.history_filter.filter(rssi_ts, rssi)
                     if filtered_rssi is not None:
-                        self.prune_history(node)
-                        node.history.append(rssi_ts, filtered_rssi)
+                        self.append_history(node, filtered_ts, filtered_rssi)
         elif isinstance(record, laprf.PassingEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
-            node.pass_peak_rssi = record.peak_height
+            pass_peak_rssi = record.peak_height
             node.node_peak_rssi = max(record.peak_height, node.node_peak_rssi)
             lap_ts = (record.rtc_time - node_manager.race_start_rtc_time)/1000000
             if self.is_racing:
-                node.pass_history.append((lap_ts + self.race_start_time, node.pass_peak_rssi))
-            node.node_lap_id += 1
-            self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME)
+                node.pass_history.append((lap_ts + self.race_start_time, pass_peak_rssi))
+            node.pass_count += 1
+            self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
         elif isinstance(record, laprf.RFSetupEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]

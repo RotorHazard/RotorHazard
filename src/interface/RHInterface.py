@@ -380,7 +380,7 @@ class RHInterface(BaseHardwareInterface):
                         server_oneway = server_roundtrip / 2
                         readtime = node.io_response - server_oneway
     
-                        lap_id = data[0]
+                        pass_id = data[0]
     
                         if node.manager.api_level >= 18:
                             offset_rssi = 3
@@ -425,11 +425,9 @@ class RHInterface(BaseHardwareInterface):
                         rssi_val = unpack_rssi(node, data[offset_rssi:])
                         node.current_rssi = rssi_val  # save value (even if invalid so displayed in GUI)
                         if node.is_valid_rssi(rssi_val):
-                            cross_flag = None
-                            pn_history = None
+                            pn_history = PeakNadirHistory(node, readtime)
                             if node.manager.api_level >= 18:
                                 ms_since_lap = unpack_16(data[1:])
-                                pn_history = PeakNadirHistory(node.index)
                                 if node.manager.api_level >= 21:
                                     if data[offset_lapStatsFlags] & LAPSTATS_FLAG_PEAK:
                                         rssi_val = unpack_rssi(node, data[offset_peakRssi:])
@@ -472,7 +470,9 @@ class RHInterface(BaseHardwareInterface):
                                 node.node_peak_rssi = rssi_val
                             rssi_val = unpack_rssi(node, data[offset_passPeakRssi:])
                             if node.is_valid_rssi(rssi_val):
-                                node.pass_peak_rssi = rssi_val
+                                pass_peak_rssi = rssi_val
+                            else:
+                                pass_peak_rssi = None
                             node.loop_time = unpack_16(data[offset_loopTime:])
                             if data[offset_lapStatsFlags] & LAPSTATS_FLAG_CROSSING:
                                 cross_flag = True
@@ -490,30 +490,25 @@ class RHInterface(BaseHardwareInterface):
                             if node.manager.api_level >= 18:
                                 data_logger = self.data_loggers[node.index]
                                 if data_logger:
-                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,lap_id, int(ms_since_lap), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
-    
-                            self.process_lap_stats(node, readtime, lap_id, ms_since_lap, cross_flag, pn_history)
-    
+                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,pass_id, int(ms_since_lap), node.current_rssi, node.node_peak_rssi, pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
+
+                            pass_timestamp = readtime - (ms_since_lap / 1000.0)
+                            self.process_lap_stats(node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, readtime)
+                            self.process_history(node, pn_history)
+                            self.process_capturing(node)
+
                         else:
                             node.bad_rssi_count += 1
                             # log the first ten, but then only 1 per 100 after that
                             if node.bad_rssi_count <= 10 or node.bad_rssi_count % 100 == 0:
                                 logger.info('RSSI reading ({}) out of range on Node {}; rejected; count={}'.\
                                          format(rssi_val, node, node.bad_rssi_count))
-    
-                    # check if node is set to temporary lower EnterAt/ExitAt values
-                    if node.start_thresh_lower_flag and readtime >= node.start_thresh_lower_time:
-                        logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
-                                .format(node.index+1, node.enter_at_level, \
-                                        node.exit_at_level))
-                        self.transmit_enter_at_level(node, node.enter_at_level)
-                        self.transmit_exit_at_level(node, node.exit_at_level)
-                        node.start_thresh_lower_flag = False
-                        node.start_thresh_lower_time = 0
-    
+
+                    self._restore_lowered_thresholds(node)
+
                     if node.loop_time > self.warn_loop_time:
-                        logger.warning("Abnormal loop time for node {}: {}us ({})".format(node.index+1, node.loop_time, node._loop_time_stats.formatted(0)))
-    
+                        logger.warning("Abnormal loop time for node {}: {}us ({})".format(node, node.loop_time, node._loop_time_stats.formatted(0)))
+
                 gevent.sleep(node_sleep_interval)
         else:
             gevent.sleep(node_sleep_interval)

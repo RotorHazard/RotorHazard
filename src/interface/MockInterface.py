@@ -53,8 +53,6 @@ class MockInterface(BaseHardwareInterface):
             self.nodes.append(node)
 
     def start(self):
-        for node in self.nodes:
-            node.node_lap_id = 0
         if self.data_files is not None:
             for node in self.nodes:
                 if not self.data_files[node.index]:
@@ -99,16 +97,16 @@ class MockInterface(BaseHardwareInterface):
                             data_file.seek(0)
                             data_line = data_file.readline()
                         data_columns = data_line.split(',')
-                        lap_id = int(data_columns[1])
-                        ms_val = int(data_columns[2])
+                        pass_id = int(data_columns[1])
+                        ms_since_lap = int(data_columns[2])
                         rssi_val = int(data_columns[3])
                         node.node_peak_rssi = int(data_columns[4])
-                        node.pass_peak_rssi = int(data_columns[5])
+                        pass_peak_rssi = int(data_columns[5])
                         node.loop_time = int(data_columns[6])
                         cross_flag = True if data_columns[7]=='T' else False
                         node.pass_nadir_rssi = int(data_columns[8])
                         node.node_nadir_rssi = int(data_columns[9])
-                        pn_history = PeakNadirHistory(node.index)
+                        pn_history = PeakNadirHistory(node, readtime)
                         pn_history.peakRssi = int(data_columns[10])
                         pn_history.peakFirstTime = int(data_columns[11])
                         pn_history.peakLastTime = int(data_columns[12])
@@ -117,21 +115,16 @@ class MockInterface(BaseHardwareInterface):
                         pn_history.nadirLastTime = int(data_columns[15])
                         if node.is_valid_rssi(rssi_val):
                             node.current_rssi = rssi_val
-                            self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history)
+                            pass_timestamp = readtime - (ms_since_lap / 1000.0)
+                            self.process_lap_stats(node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, readtime)
+                            self.process_history(node, pn_history)
+                            self.process_capturing(node)
                         else:
                             node.bad_rssi_count += 1
                             logger.info('RSSI reading ({}) out of range on Node {}; rejected; count={}'.\
                                      format(rssi_val, node, node.bad_rssi_count))
 
-                    # check if node is set to temporary lower EnterAt/ExitAt values
-                    if node.start_thresh_lower_flag and readtime >= node.start_thresh_lower_time:
-                        logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
-                                .format(node.index+1, node.enter_at_level, \
-                                        node.exit_at_level))
-                        self.transmit_enter_at_level(node, node.enter_at_level)
-                        self.transmit_exit_at_level(node, node.exit_at_level)
-                        node.start_thresh_lower_flag = False
-                        node.start_thresh_lower_time = 0
+                    self._restore_lowered_thresholds(node)
 
                     if node.loop_time > self.warn_loop_time:
                         logger.warning("Abnormal loop time for node {}: {}us ({})".format(node.index+1, node.loop_time, node._loop_time_stats.formatted(0)))

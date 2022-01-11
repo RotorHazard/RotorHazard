@@ -37,7 +37,7 @@ class ChorusTest(unittest.TestCase):
             race_stopped = True
         def on_reset_race():
             pass
-        def on_pass(node, lap_ts, source):
+        def on_pass(node, lap_ts, source, rssi):
             nonlocal laps
             laps += 1
 
