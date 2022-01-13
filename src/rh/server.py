@@ -2872,6 +2872,8 @@ def on_delete_lap(data):
     # delete any split laps for deleted lap
     RACE.node_splits[node_index] = list(filter(lambda split: split['lap_id'] != lap_index, RACE.node_splits[node_index]))
 
+    RACE.modification_count += 1
+
     Events.trigger(Evt.LAP_DELETE, {
         #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
         'node_index': node_index,
@@ -2912,6 +2914,8 @@ def on_restore_deleted_lap(data):
                 lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], RHData.get_option('timeFormat'))
             last_lap_ts = lap['lap_time_stamp']
             lap_number += 1
+
+    RACE.modification_count += 1
 
     Events.trigger(Evt.LAP_RESTORE_DELETED, {
         #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
@@ -4461,7 +4465,7 @@ def pass_record_callback(node, lap_race_time, source):
                             'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
                             'late_lap': lap_late_flag
                         }
-                        RACE.node_laps[seat].append(lap_data)
+                        RACE.add_new_lap(seat, lap_data)
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': seat,
@@ -4511,7 +4515,7 @@ def pass_record_callback(node, lap_race_time, source):
 
                     else:
                         # record lap as 'deleted'
-                        RACE.node_laps[seat].append({
+                        RACE.add_new_lap(seat, {
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,

@@ -113,6 +113,10 @@ class RHRace():
     def check_all_nodes_finished(self):
         return False not in self.node_has_finished.values()
 
+    def add_new_lap(self, node_index, lap_data):
+        self.node_laps[node_index].append(lap_data)
+        self.modification_count += 1
+
     def get_active_laps(self, late_lap_flag=False):
         # return active (non-deleted) laps objects
         filtered = {}
