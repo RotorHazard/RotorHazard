@@ -1,6 +1,6 @@
 import unittest
 import gevent
-from tools import rssi_dump
+from rh.tools import rssi_dump
 
 class RssiDumpTest(unittest.TestCase):
     def test(self):

@@ -72,13 +72,13 @@ python3 -m rh.server
 To run the scanner tool:
 ```
 cd src
-python3 -m tools.scanner COM3
+python3 -m rh.tools.scanner COM3
 ```
 
 To run the RSSI dump tool:
 ```
 cd src
-python3 -m tools.rssi_dump COM3 5890
+python3 -m rh.tools.rssi_dump COM3 5890
 ```
 
 To run the tests:

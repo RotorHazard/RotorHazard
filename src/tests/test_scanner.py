@@ -1,6 +1,6 @@
 import unittest
 import gevent
-from tools import scanner
+from rh.tools import scanner
 
 class ScannerTest(unittest.TestCase):
     class DummySocket():
