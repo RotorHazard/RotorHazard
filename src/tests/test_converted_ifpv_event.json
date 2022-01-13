@@ -25,67 +25,83 @@
 	"pilots": {
 		"P1": {
 			"name": "Pilot 1",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+			"ifpvId": 1
 		},
 		"P2": {
 			"name": "Pilot 2",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 2
 		},
 		"P3": {
 			"name": "Pilot 3",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 3
 		},
 		"P4": {
 			"name": "Pilot 4",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 4
 		},
 		"P5": {
 			"name": "Pilot 5",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 5
 		},
 		"P6": {
 			"name": "Pilot 6",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 6
 		},
 		"P7": {
 			"name": "Pilot 7",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 7
 		},
 		"P8": {
 			"name": "Pilot 8",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 8
 		},
 		"P9": {
 			"name": "Pilot 9",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 9
 		},
 		"P10": {
 			"name": "Pilot 10",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 10
 		},
 		"P11": {
 			"name": "Pilot 11",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 11
 		},
 		"P12": {
 			"name": "Pilot 12",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 12
 		},
 		"P13": {
 			"name": "Pilot 13",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 13
 		},
 		"P14": {
 			"name": "Pilot 14",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 14
 		},
 		"P15": {
 			"name": "Pilot 15",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 15
 		},
 		"P16": {
 			"name": "Pilot 16",
-			"url": "https://some.url.com"
+			"url": "https://some.url.com",
+      "ifpvId": 16
 		}
 	},
 	"stages": [

@@ -20,6 +20,7 @@ def search_modules(pkg, prefix=None, suffix=None):
                 logger.debug('Module {0} not imported (not supported or may require additional dependencies)\n\t{1}'.format(name, ex))
     return plugin_modules
 
+
 class Plugins(UserList):
     def __init__(self, prefix=None, suffix=None):
         UserList.__init__(self)

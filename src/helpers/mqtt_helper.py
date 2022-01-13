@@ -1,5 +1,4 @@
-import gevent.monkey
-gevent.monkey.patch_all()
+import gevent
 import paho.mqtt.client as mqtt_client
 from collections import UserDict
 

@@ -2,6 +2,7 @@ export let resultDataEndpoint;
 export let raceMetricsEndpoint;
 export let eventDataEndpoint;
 export let syncEventEndpoint;
+export let uploadResultEndpoint;
 export let setupDataEndpoint;
 export let trackDataEndpoint;
 export let pilotDataEndpoint;
@@ -24,6 +25,7 @@ if (process.env.NODE_ENV === 'development') {
   raceMetricsEndpoint = '/raceMetrics';
   eventDataEndpoint = '/raceEvent';
   syncEventEndpoint = '/raceEvent?sync';
+  uploadResultEndpoint = '/raceEvent?results';
   setupDataEndpoint = '/timerSetup';
   trackDataEndpoint = '/trackLayout';
   pilotDataEndpoint = '/pilots';

@@ -1,6 +1,9 @@
 import unittest
 import json
 from server import web
+from rh.orgs import ifpv_org
+
+web.init(None)
 
 class WebTest(unittest.TestCase):
     def test_ifpv_pilot(self):
@@ -17,7 +20,8 @@ class WebTest(unittest.TestCase):
     def test_ifpv_event(self):
         with open('tests/test_ifpv_event.json') as f:
             ifpv_json = json.loads(f.read())
-        actual_json = web.convert_ifpv_json(ifpv_json)
+        ifpv = ifpv_org.Ifpv()
+        actual_json = ifpv.convert_ifpv_json(ifpv_json)
         with open('tests/test_converted_ifpv_event.json') as f:
             expected_json = json.loads(f.read())
         self.assertDictEqual(actual_json, expected_json)

@@ -108,6 +108,9 @@ def createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, rhserver):
             web.sync_event(rhserver)
             data = core.export_event(RHData)
             return data
+        elif 'results' in request.args:
+            web.upload_results(rhserver)
+            return ''
 
     @APP.route("/raceClasses")
     def race_classes_get():

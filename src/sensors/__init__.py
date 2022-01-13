@@ -1,5 +1,5 @@
 '''Sensor class for the hardware interface.'''
-from interface.Plugins import Plugins
+from rh.util.Plugins import Plugins
 import logging
 
 logger = logging.getLogger(__name__)

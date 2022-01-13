@@ -5,7 +5,7 @@ import gevent
 import logging
 
 import interface as node_pkg
-from .Plugins import Plugins
+from rh.util.Plugins import Plugins
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .Node import Node, NodeManager

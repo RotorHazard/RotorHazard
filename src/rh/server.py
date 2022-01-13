@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
 RELEASE_VERSION = "3.1.2-dev.1" # Public release version code
-SERVER_API = 32+7 # Server API version
+SERVER_API = 32+8 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -72,7 +72,7 @@ from server.mqtt_event_manager import MqttEventManager
 import helpers as helper_pkg
 import sensors as sensor_pkg
 import leds as led_pkg
-from interface.Plugins import Plugins, search_modules
+from rh.util.Plugins import Plugins, search_modules
 from sensors import Sensors
 from data_export import DataExportManager
 
@@ -128,6 +128,8 @@ if not config_file_name:
 
 rhconfig = Config()
 rhconfig.load(config_file_name)
+
+web.init(rhconfig)
 
 TIMER_ID = 'http://' + socket.gethostname() + ':' + str(rhconfig.GENERAL['HTTP_PORT'])
 

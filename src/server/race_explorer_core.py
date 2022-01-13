@@ -66,15 +66,14 @@ def pilot_results(msgs):
 
 
 def export_event(RHData):
-    event_name = RHData.get_option('eventName', "")
-    event_desc = RHData.get_option('eventDescription', "")
-    event_url = RHData.get_option('eventURL', "")
-
     pilots = {}
     pilots_by_id = {}
-    for pilot in RHData.get_pilots():
-        pilots[pilot.callsign] = {'name': pilot.name}
-        pilots_by_id[pilot.id] = pilot
+    for rhpilot in RHData.get_pilots():
+        pilot_data = {'name': rhpilot.name}
+        if rhpilot.data:
+            pilot_data.update(rhpilot.data)
+        pilots[rhpilot.callsign] = pilot_data
+        pilots_by_id[rhpilot.id] = rhpilot
 
     race_formats = {'Free': {'start': 'first-pass', 'duration': 0}}
     race_formats_by_id = {0: 'Free'}
@@ -136,17 +135,27 @@ def export_event(RHData):
             prev_stage_name = stage_name
         races.append(race)
     event_classes = RHData.get_optionJson('eventClasses', event_classes)
-    data = {
-        'name': event_name,
-        'description': event_desc,
-        'url': event_url,
+    data = export_event_basic(RHData)
+    data.update({
         'pilots': pilots,
         'formats': event_formats,
         'classes': event_classes,
         'seats': seats,
         'stages': stages
-    }
+    })
     data.update(RHData.get_optionJson('eventMetadata', {}))
+    return data
+
+
+def export_event_basic(RHData):
+    event_name = RHData.get_option('eventName', "")
+    event_desc = RHData.get_option('eventDescription', "")
+    event_url = RHData.get_option('eventURL', "")
+    data = {
+        'name': event_name,
+        'description': event_desc,
+        'url': event_url,
+    }
     return data
 
 
@@ -233,6 +242,12 @@ def import_event(data, rhserver):
             }
             if 'url' in pilot:
                 pilot_data['url'] = pilot['url']
+            extra_data = {}
+            for extra_field in ['ifpvId', 'multigpId']:
+                if extra_field in pilot:
+                    extra_data[extra_field] = pilot[extra_field]
+            if extra_data:
+                pilot_data['data'] = extra_data
             rhpilot = RHData.add_pilot(pilot_data)
             pilot_ids[callsign] = rhpilot.id
 
@@ -392,19 +407,22 @@ def calculate_leaderboard(results, event_data):
         for heat_idx, heat_info in enumerate(stage_info['heats']):
             heat_id = ID_PREFIX + heat_info['id'] if 'id' in heat_info else heat_idx
             race_class_name = heat_info['class']
-            race_class_info = event_data['classes'][race_class_name]
-            if 'formats' in event_data:
-                race_format = event_data['formats'][race_class_info['format']]
-                heat_psrs = []
-                for pilot in heat_info['seats']:
-                    if pilot:
-                        pilot_stages = results['pilots'][pilot]['events'][event_name]['stages']
-                        if stage_id in pilot_stages:
-                            pilot_heats = pilot_stages[stage_id]['heats']
-                            if heat_id in pilot_heats:
-                                metrics = pilot_heats[heat_id]['metrics']
-                                heat_psrs.append(to_psr(pilot, metrics, race_format))
-                heat_info['ranking'] = rank_psrs(heat_psrs)
+            race_class_info = event_data['classes'].get(race_class_name)
+            if race_class_info and 'formats' in event_data:
+                race_format = event_data['formats'].get(race_class_info.get('format'))
+            else:
+                race_format = {}
+            heat_psrs = []
+            for pilot in heat_info['seats']:
+                pilot_results = results['pilots'].get(pilot)
+                if pilot_results:
+                    pilot_stages = pilot_results['events'][event_name]['stages']
+                    if stage_id in pilot_stages:
+                        pilot_heats = pilot_stages[stage_id]['heats']
+                        if heat_id in pilot_heats:
+                            metrics = pilot_heats[heat_id]['metrics']
+                            heat_psrs.append(to_psr(pilot, metrics, race_format))
+            heat_info['ranking'] = rank_psrs(heat_psrs)
 
         stage_psrs_by_class = {}
         for pilot, pilot_result in results['pilots'].items():
@@ -412,14 +430,16 @@ def calculate_leaderboard(results, event_data):
             if stage_id in pilot_stages:
                 stage_metrics_by_class = pilot_stages[stage_id]['metrics']
                 for race_class_name, metrics in stage_metrics_by_class.items():
-                    race_class_info = event_data['classes'][race_class_name]
-                    if 'formats' in event_data:
-                        race_format = event_data['formats'][race_class_info['format']]
-                        class_psrs = stage_psrs_by_class.get(race_class_name)
-                        if not class_psrs:
-                            class_psrs = []
-                            stage_psrs_by_class[race_class_name] = class_psrs
-                        class_psrs.append(to_psr(pilot, metrics, race_format))
+                    race_class_info = event_data['classes'].get(race_class_name)
+                    if race_class_info and 'formats' in event_data:
+                        race_format = event_data['formats'].get(race_class_info.get('format'))
+                    else:
+                        race_format = {}
+                    class_psrs = stage_psrs_by_class.get(race_class_name)
+                    if not class_psrs:
+                        class_psrs = []
+                        stage_psrs_by_class[race_class_name] = class_psrs
+                    class_psrs.append(to_psr(pilot, metrics, race_format))
 
         if not stage_info.get('leaderboards'):
             # default if no leaderboard config is present
@@ -437,8 +457,8 @@ def calculate_leaderboard(results, event_data):
             while q:
                 race_class_name = q.pop()
                 race_class_names.append(race_class_name)
-                race_class = race_classes_by_name[race_class_name]
-                if 'children' in race_class:
+                race_class = race_classes_by_name.get(race_class_name)
+                if race_class and 'children' in race_class:
                     q.extend(race_class['children'].keys())
 
             method = leaderboard['method']
@@ -479,10 +499,11 @@ def get_previous_n_races(stages, stage_idx, race_class_names, n):
 
 
 def to_psr(pilot, metrics, race_format):
-    if race_format['objective'] == RACE_FORMAT_MOST_LAPS_QUICKEST_TIME:
+    race_objective = race_format.get('objective', RACE_FORMAT_MOST_LAPS_QUICKEST_TIME)
+    if race_objective == RACE_FORMAT_MOST_LAPS_QUICKEST_TIME:
         score = (-metrics['lapCount'], metrics['time'])
         result = (metrics['lapCount'], metrics['time'])
-    elif race_format['objective'] == RACE_FORMAT_FASTEST_CONSECUTIVE:
+    elif race_objective == RACE_FORMAT_FASTEST_CONSECUTIVE:
         n = race_format['consecutiveLaps']
         metric_name = 'fastest' + str(n) + 'Consecutive'
         score = metrics[metric_name]

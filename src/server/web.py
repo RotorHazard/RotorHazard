@@ -1,163 +1,49 @@
-import gevent.monkey
-gevent.monkey.patch_all()
 import functools
 import requests
-import re as regex
 import logging
 from rh.app import SOCKET_IO
 from flask import current_app
-import json
-from rh.util.RHUtils import FREQS
-from .race_explorer_core import import_event
+import server.race_explorer_core as racex
+from rh.util.Plugins import Plugins
+import rh.orgs as org_pkg
 
 logger = logging.getLogger(__name__)
 
 TIMEOUT = 5
 
 
+ORGS = Plugins(suffix='org')
+
+
+def init(rhconfig):
+    ORGS.discover(org_pkg, config=rhconfig)
+
+
 @functools.lru_cache(maxsize=128)
 def get_pilot_data(url):
-    web_data = {}
-    try:
-        if url.startswith('https://league.ifpv.co.uk/pilots/'):
-            resp = requests.get(url, timeout=TIMEOUT)
-            name_match = regex.search("<div class=\"row vertical-center\">\s+<div class=\"col-md-3\">\s+<h1>(.*)(?=<)</h1>\s+<p>(.*)(?=<)</p>", resp.text)
-            if name_match:
-                web_data['callsign'] = name_match.group(1)
-                web_data['name'] = name_match.group(2)
-            logo_match = regex.search('https://league.ifpv.co.uk/storage/images/pilots/[0-9]+\.(jpg|png|gif)', resp.text)
-            if logo_match:
-                web_data['logo'] = logo_match.group(0)
-        elif url.startswith('https://www.multigp.com/pilots/view/?pilot='):
-            # bypass CORS
-            mgp_id = regex.search("\?pilot=(.*)", url).group(1)
-            web_data['callsign'] = mgp_id
-            profile_url = 'https://www.multigp.com/mgp/user/view/'+mgp_id
-            headers = {'Referer': url, 'Host': 'www.multigp.com', 'X-Requested-With': 'XMLHttpRequest'}
-            resp = requests.get(profile_url, headers=headers, timeout=TIMEOUT)
-            logo_match = regex.search("<img id=\"profileImage\"(?:.*)(?=src)src=\"([^\"]*)\"", resp.text)
-            if logo_match:
-                web_data['logo'] = logo_match.group(1)
-        else:
-            resp = requests.head(url, timeout=TIMEOUT)
-            if resp.headers['Content-Type'].startswith('image/'):
-                web_data['logo'] = url
-    except BaseException as err:
-        logger.debug("Error connecting to '{}': {}".format(url, err))
-        web_data = {}
-    return web_data
+    for org in ORGS:
+        pilot_id = org.is_pilot_url(url)
+        if pilot_id:
+            try:
+                return org.get_pilot_data(url, pilot_id)
+            except BaseException as err:
+                logger.warning("Error connecting to '{}'".format(url), exc_info=err)
+                return {}
+    return {}
 
 
-IFPV_BANDS = {
-    'rb': 'R',
-    'fs': 'F'
-}
+def get_event_data(url):
+    for org in ORGS:
+        event_id = org.is_event_url(url)
+        if event_id:
+            try:
+                return org.get_event_data(url, event_id)
+            except BaseException as err:
+                logger.warning("Error connecting to '{}'".format(url), exc_info=err)
+                return {}
 
-
-def convert_ifpv_freq(ifpv_bc):
-    groups = regex.search("([a-z]+)([0-9]+)", ifpv_bc)
-    b = IFPV_BANDS[groups.group(1)]
-    c = int(groups.group(2))
-    f = FREQS[b+str(c)]
-    return b, c, f
-
-
-def convert_ifpv_json(ifpv_data):
-    event_name = ifpv_data['event']['name']
-    event_date = ifpv_data['event']['date']
-    num_heats = ifpv_data['event']['heats']
-    race_class_name = 'BDRA Open'
-    race_format_name = 'BDRA Qualifying'
-
-    freqs = json.loads(ifpv_data['event']['frequencies'])
-    rhfreqs = [convert_ifpv_freq(f) for f in freqs]
-    seats = [
-        {'frequency': f,
-         'bandChannel': b+str(c)
-         } for b,c,f in rhfreqs
-        ]
-
-    pilots = {
-        pilot['callsign']: {'name': pilot['name'], 'url': pilot['pilot_url']}
-        for pilot in ifpv_data['pilots']
-    }
-
-    heats = [None] * num_heats
-    for pilot in ifpv_data['pilots']:
-        heat = pilot['heat']-1
-        seat = pilot['car']-1
-        if heats[heat] is None:
-            heats[heat] = {'name': 'Heat '+str(heat+1),
-                           'class': race_class_name,
-                           'seats': [None] * len(seats)}
-        heats[heat]['seats'][seat] = pilot['callsign']
-
-    event_data = {
-        'name': event_name,
-        'date': event_date,
-        'classes': {race_class_name: {'format': race_format_name}},
-        'seats': seats,
-        'pilots': pilots,
-        'stages': [
-            {'name': 'Qualifying',
-             'heats': heats}
-        ]
-    }
-
-    return event_data
-
-
-def convert_multigp_json(mgp_data):
-    data = mgp_data['data']
-    event_name = data['name']
-    event_date = data['startDate']
-    race_class_name = 'Open'
-
-    seats = []
-    pilots = {}
-    heats = []
-
-    for entry in data['entries']:
-        callsign = entry['userName']
-        name = entry['firstName'] + ' ' + entry['lastName']
-        pilots[callsign] = {'name': name}
-        freq = entry['frequency']
-        band = entry['band']
-        channel = entry['channel']
-        heat_idx = int(entry['group']) - 1
-        seat_idx = int(entry['groupSlot']) - 1
-        if heat_idx == 0:
-            while seat_idx >= len(seats):
-                seats.append(None)
-            seat = {'frequency': freq}
-            if band and channel:
-                seat['bandChannel'] = band+str(channel)
-            seats[seat_idx] = seat
-
-        while heat_idx >= len(heats):
-            heats.append(None)
-        heat = heats[heat_idx]
-        if not heat:
-            heat = {'name': 'Heat '+str(heat_idx+1),
-                    'class': race_class_name,
-                    'seats': []}
-            heats[heat_idx] = heat
-        heat_seats = heat['seats']
-        while seat_idx >= len(heat_seats):
-            heat_seats.append(None)
-        heat_seats[seat_idx] = callsign
-
-    event_data = {
-        'name': event_name,
-        'date': event_date,
-        'classes': {race_class_name: {}},
-        'seats': seats,
-        'pilots': pilots,
-        'stages': [
-            {'name': 'Qualifying',
-             'heats': heats}
-        ]
-    }
+    resp = requests.get(url, timeout=TIMEOUT)
+    event_data = resp.json()
     return event_data
 
 
@@ -168,18 +54,35 @@ def on_sync_event():
 
 def sync_event(rhserver):
     rhdata = rhserver['RHData']
-    event_url = rhdata.get_option('eventURL', '')
-    if not event_url:
+    event_info = racex.export_event_basic(rhdata)
+    url = event_info['url']
+    if not url:
         return
 
     logging.info("Syncing event...")
-    if '.multigp.com/' in event_url:
-        data = {'apiKey': rhserver['rhconfig'].GENERAL['MULTIGP_API_KEY']}
-        resp = requests.post(event_url, json=data, timeout=TIMEOUT)
-        mgp_data = resp.json()
-        event_data = convert_multigp_json(mgp_data)
+    event_data = get_event_data(url)
+    if event_data:
+        racex.import_event(event_data, rhserver)
+        logging.info("Syncing completed")
     else:
-        resp = requests.get(event_url, timeout=TIMEOUT)
-        ifpv_data = resp.json()
-        event_data = convert_ifpv_json(ifpv_data)
-    import_event(event_data, rhserver)
+        logging.info("Nothing to sync")
+
+
+def upload_results(rhserver):
+    rhdata = rhserver['RHData']
+    event_info = racex.export_event_basic(rhdata)
+    url = event_info['url']
+    if not url:
+        return
+
+    logging.info("Uploading results...")
+    leaderboard = racex.export_leaderboard(rhdata)
+    for org in ORGS:
+        event_id = org.is_event_url(url)
+        if event_id:
+            try:
+                org.upload_results(event_id, leaderboard)
+                logger.info("Upload completed")
+            except BaseException as err:
+                logger.warning("Error connecting to '{}'".format(url), exc_info=err)
+                return {}

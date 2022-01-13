@@ -548,7 +548,8 @@ class RHData():
             team=init['team'] if 'team' in init else RHUtils.DEF_TEAM_NAME,
             phonetic=init['phonetic'] if 'phonetic' in init else '',
             color=init['color'] if init and 'color' in init else default_color,
-            url=init['url'] if init and 'url' in init else None)
+            url=init['url'] if init and 'url' in init else None,
+            data=init['data'] if init and 'data' in init else None)
 
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()

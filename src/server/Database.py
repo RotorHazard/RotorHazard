@@ -42,6 +42,7 @@ class Pilot(DB.Model):
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
     url = DB.Column(DB.String(255), nullable=True)
+    data = DB.Column(DB.PickleType, nullable=True)
 
     def __repr__(self):
         return '<Pilot %r>' % self.id

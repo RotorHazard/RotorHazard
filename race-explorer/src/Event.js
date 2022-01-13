@@ -19,10 +19,12 @@ import TableRow from '@mui/material/TableRow';
 import TreeItem from '@mui/lab/TreeItem';
 import TreeView from '@mui/lab/TreeView';
 import Paper from '@mui/material/Paper';
+import CircularProgress from '@mui/material/CircularProgress';
 import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CloudSyncIcon from '@mui/icons-material/CloudSync';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
@@ -40,7 +42,7 @@ import {
   createEventDataLoader, storeEventData,
   createHeatGeneratorLoader, generateHeats,
   createRaceClassLoader,
-  syncEvent
+  syncEvent, uploadResults
 } from './rh-client.js';
 
 const saveEventData = debounce(storeEventData, 2000);
@@ -490,6 +492,8 @@ export default function Event(props) {
   const [stageIndex, setStageIndex] = useState(0);
   const [draggingPilot, setDraggingPilot] = useState(null);
   const [raceClassTree, setRaceClassTree] = useState({});
+  const [isSyncing, setSyncing] = useState(false);
+  const [isUploading, setUploading] = useState(false);
 
   const sensors = useDnDSensors();
 
@@ -660,12 +664,38 @@ export default function Event(props) {
     }
   };
 
+  const doSync = () => {
+    setSyncing(true);
+    syncEvent((data) => {
+      loadEvent(data);
+      setSyncing(false);
+    });
+  };
+
+  const doUpload = () => {
+    setUploading(true);
+    uploadResults(() => {
+      setUploading(false);
+    });
+  };
+
   return (
     <Stack>
     <ValidatingTextField label="Event name" value={eventName} validateChange={changeEventName}/>
     <ValidatingTextField label="Event description" multiline value={eventDesc} validateChange={changeEventDesc}/>
     <ValidatingTextField label="Event URL" value={eventUrl} validateChange={changeEventUrl} inputProps={{type: 'url'}}/>
-    <IconButton onClick={(evt) => {syncEvent(loadEvent)}}><CloudSyncIcon/></IconButton>
+    <Stack direction="row">
+    {isSyncing ?
+    <CircularProgress/>
+    :
+    <IconButton onClick={(evt) => {doSync();}}><CloudDownloadIcon/></IconButton>
+    }
+    {isUploading ?
+    <CircularProgress/>
+    :
+    <IconButton onClick={(evt) => {doUpload();}}><CloudUploadIcon/></IconButton>
+    }
+    </Stack>
 
     <TreeView multiSelect selected={Object.keys(raceClasses)} defaultCollapseIcon={<ExpandMoreIcon />} defaultExpandIcon={<ChevronRightIcon />} onNodeSelect={raceClassNodeSelected}>
     {raceClassTreeRenderer(raceClassTree)}

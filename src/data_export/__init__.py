@@ -15,7 +15,7 @@
 #
 
 import logging
-from interface.Plugins import Plugins
+from rh.util.Plugins import Plugins
 import data_export as export_pkg
 
 logger = logging.getLogger(__name__)
