@@ -989,31 +989,37 @@ def on_set_frequency(data):
     freqs = json.loads(profile.frequencies)
 
     # handle case where more nodes were added
+    modified = False
     while node_index >= len(freqs["f"]):
         freqs["b"].append(None)
         freqs["c"].append(None)
         freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
+        modified = True
 
-    freqs["b"][node_index] = band
-    freqs["c"][node_index] = channel
-    freqs["f"][node_index] = frequency
-    logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
+    if frequency != freqs["f"][node_index] or (band is not None and channel is not None):
+        freqs["b"][node_index] = band
+        freqs["c"][node_index] = channel
+        freqs["f"][node_index] = frequency
+        modified = True
 
-    RHData.alter_profile({
-        'profile_id': profile.id,
-        'frequencies': freqs
-        })
+    if modified:
+        logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
 
-    INTERFACE.set_frequency(node_index, frequency, band, channel)
+        RHData.alter_profile({
+            'profile_id': profile.id,
+            'frequencies': freqs
+            })
 
-    Events.trigger(Evt.FREQUENCY_SET, {
-        'nodeIndex': node_index,
-        'frequency': frequency,
-        'band': band,
-        'channel': channel
-        })
+        INTERFACE.set_frequency(node_index, frequency, band, channel)
 
-    emit_frequency_data()
+        Events.trigger(Evt.FREQUENCY_SET, {
+            'nodeIndex': node_index,
+            'frequency': frequency,
+            'band': band,
+            'channel': channel
+            })
+
+        emit_frequency_data()
 
 
 @SOCKET_IO.on('set_frequency_preset')
