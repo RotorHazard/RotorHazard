@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class BaseHardwareInterfaceListener:
-    def on_enter_triggered(self, node):
+    def on_enter_triggered(self, node, cross_ts, cross_rssi):
         pass
 
-    def on_exit_triggered(self, node):
+    def on_exit_triggered(self, node, cross_ts, cross_rssi):
         pass
 
     def on_pass(self, node, lap_ts, lap_source, pass_rssi):
@@ -81,11 +81,11 @@ class BaseHardwareInterface:
         for manager in self.node_managers:
             manager.close()
 
-    def _notify_enter_triggered(self, node):
-        self.listener.on_enter_triggered(node)
+    def _notify_enter_triggered(self, node, cross_ts, cross_rssi):
+        self.listener.on_enter_triggered(node, cross_ts, cross_rssi)
 
-    def _notify_exit_triggered(self, node):
-        self.listener.on_exit_triggered(node)
+    def _notify_exit_triggered(self, node, cross_ts, cross_rssi):
+        self.listener.on_exit_triggered(node, cross_ts, cross_rssi)
 
     def _notify_pass(self, node, lap_ts, lap_source, pass_rssi):
         self.listener.on_pass(node, lap_ts, lap_source, pass_rssi)
@@ -116,7 +116,7 @@ class BaseHardwareInterface:
             except Exception:
                 logger.exception('Exception in {} _update_loop():'.format(type(self).__name__))
 
-    def process_lap_stats(self, node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, cross_ts):
+    def process_lap_stats(self, node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, cross_ts, cross_rssi):
         crossing_updated = False
         if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
             node.crossing_flag = cross_flag
@@ -148,12 +148,13 @@ class BaseHardwareInterface:
                     node.pass_history.append((pass_timestamp, pass_peak_rssi))
 
         # ensure correct ordering
-        if crossing_updated and node.crossing_flag:
-            self._notify_enter_triggered(node)
+        if crossing_updated:
+            if node.crossing_flag:
+                self._notify_enter_triggered(node, cross_ts, cross_rssi)
+            else:
+                self._notify_exit_triggered(node, cross_ts, cross_rssi)
         if lap_race_time is not None:
             self._notify_pass(node, lap_race_time, BaseHardwareInterface.LAP_SOURCE_REALTIME, pass_peak_rssi)
-        if crossing_updated and not node.crossing_flag:
-            self._notify_exit_triggered(node)
 
     def process_history(self, node, pn_history):
         # get and process history data (except when race is over)

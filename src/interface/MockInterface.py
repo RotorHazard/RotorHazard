@@ -116,7 +116,7 @@ class MockInterface(BaseHardwareInterface):
                         if node.is_valid_rssi(rssi_val):
                             node.current_rssi = rssi_val
                             pass_timestamp = readtime - (ms_since_lap / 1000.0)
-                            self.process_lap_stats(node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, readtime)
+                            self.process_lap_stats(node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
                             self.process_history(node, pn_history)
                             self.process_capturing(node)
                         else:

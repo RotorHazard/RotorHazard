@@ -71,12 +71,14 @@ class MqttAPI:
     def enter_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            self.node_crossing_callback(node, True)
+            enter_info = json.loads(msg.payload.decode('utf-8'))
+            self.node_crossing_callback(node, True, float(enter_info['timestamp']), enter_info['rssi'])
 
     def exit_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)
         if node:
-            self.node_crossing_callback(node, False)
+            exit_info = json.loads(msg.payload.decode('utf-8'))
+            self.node_crossing_callback(node, False, float(exit_info['timestamp']), exit_info['rssi'])
 
     def pass_handler(self, client, userdata, msg):
         topicNames = split_topic(msg.topic)

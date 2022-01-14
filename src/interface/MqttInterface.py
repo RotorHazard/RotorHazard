@@ -28,11 +28,11 @@ class MqttInterface(BaseHardwareInterfaceListener):
         for node_manager in self.hw_interface.node_managers:
             self._mqtt_node_manager_stop(node_manager)
 
-    def on_enter_triggered(self, node):
-        self._mqtt_publish_enter(node)
+    def on_enter_triggered(self, node, cross_ts, cross_rssi):
+        self._mqtt_publish_enter(node, cross_ts, cross_rssi)
 
-    def on_exit_triggered(self, node):
-        self._mqtt_publish_exit(node)
+    def on_exit_triggered(self, node, cross_ts, cross_rssi):
+        self._mqtt_publish_exit(node, cross_ts, cross_rssi)
 
     def on_pass(self, node, lap_ts, lap_source, pass_rssi):
         self._mqtt_publish_pass(node, lap_ts, lap_source, pass_rssi)
@@ -159,12 +159,12 @@ class MqttInterface(BaseHardwareInterfaceListener):
     def _mqtt_publish_exit_trigger(self, node, level):
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exitTrigger"), str(level))
 
-    def _mqtt_publish_enter(self, node):
-        msg = {'lap': node.pass_id+1, 'timestamp': str(node.enter_at_timestamp), 'rssi': node.current_rssi}
+    def _mqtt_publish_enter(self, node, cross_ts, cross_rssi):
+        msg = {'lap': node.pass_id+1, 'timestamp': str(cross_ts), 'rssi': cross_rssi}
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "enter"), json.dumps(msg))
 
-    def _mqtt_publish_exit(self, node):
-        msg = {'lap': node.pass_id, 'timestamp': str(node.exit_at_timestamp), 'rssi': node.current_rssi}
+    def _mqtt_publish_exit(self, node, cross_ts, cross_rssi):
+        msg = {'lap': node.pass_id, 'timestamp': str(cross_ts), 'rssi': cross_rssi}
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exit"), json.dumps(msg))
 
     def _mqtt_publish_pass(self, node, lap_ts, lap_source, pass_rssi):

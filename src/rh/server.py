@@ -3947,11 +3947,13 @@ def emit_exit_at_level(node, **params):
         SOCKET_IO.emit('node_exit_at_level', emit_payload)
 
 
-def emit_node_crossing_change(node, crossing_flag, **params):
+def emit_node_crossing_change(node, crossing_flag, ts, rssi, **params):
     '''Emits crossing-flag change for given node.'''
     emit_payload = {
         'node_index': node.index,
-        'crossing_flag': crossing_flag
+        'crossing_flag': crossing_flag,
+        'timestamp': ts,
+        'rssi': rssi
     }
     if ('nobroadcast' in params):
         emit('node_crossing_change', emit_payload)
@@ -4755,8 +4757,8 @@ def new_exit_at_callback(node, exit_at_level):
 
 
 @catchLogExcDBCloseWrapper
-def node_crossing_callback(node, crossing_flag):
-    emit_node_crossing_change(node, crossing_flag)
+def node_crossing_callback(node, crossing_flag, ts, rssi):
+    emit_node_crossing_change(node, crossing_flag, ts, rssi)
     # handle LED gate-status indicators:
 
     if RACE.race_status == RHRace.RaceStatus.RACING:  # if race is in progress

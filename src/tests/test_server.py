@@ -231,6 +231,30 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['heats'][1]['note'], data['note'])
         self.assertEqual(resp['heats'][1]['class_id'], data['class'])
 
+    def test_node_crossing(self):
+        node_index = 1
+        node = server.INTERFACE.nodes[node_index]
+        enter_ts = monotonic()
+        server.INTERFACE.process_lap_stats(node, 3, 0, 0, True, enter_ts, 60)
+        self.assertEqual(node.pass_id, 3)
+        self.assertEqual(node.enter_at_timestamp, enter_ts)
+        resp = self.wait_for_response('node_crossing_change', 0.5)
+        self.assertEqual(resp['node_index'], node_index)
+        self.assertTrue(resp['crossing_flag'])
+        self.assertEqual(resp['timestamp'], enter_ts)
+        self.assertEqual(resp['rssi'], 60)
+        pass_ts = enter_ts + 1
+        exit_ts = pass_ts + 1
+        server.INTERFACE.process_lap_stats(node, 4, pass_ts, 65, False, exit_ts, 58)
+        self.assertEqual(node.pass_id, 4)
+        self.assertEqual(node.pass_peak_rssi, 65)
+        self.assertEqual(node.exit_at_timestamp, exit_ts)
+        resp = self.wait_for_response('node_crossing_change', 0.5)
+        self.assertEqual(resp['node_index'], node_index)
+        self.assertFalse(resp['crossing_flag'])
+        self.assertEqual(resp['timestamp'], exit_ts)
+        self.assertEqual(resp['rssi'], 58)
+
     def test_no_race(self):
         node_index = 1
         node = server.INTERFACE.nodes[node_index]
@@ -246,8 +270,9 @@ class ServerTest(unittest.TestCase):
 
         # hardware lap
         now = monotonic()
-        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None)
+        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None, None)
         self.assertEqual(node.pass_id, 1)
+        self.assertEqual(node.pass_peak_rssi, 89)
 
     def test_run_a_race(self):
         node_index = 1
@@ -268,17 +293,18 @@ class ServerTest(unittest.TestCase):
         resp = self.wait_for_response('pass_record', 1)
         self.assertEqual(resp['node'], node_index)
 
-        # initialize hardware stats
+        # initialize hardware lap stats
         now = monotonic()
-        server.INTERFACE.process_lap_stats(node, 0, now, 25, None, None)
+        server.INTERFACE.process_lap_stats(node, 0, now, 25, None, None, None)
         self.assertEqual(node.pass_id, 0)
 
         gevent.sleep(1)
 
         # hardware lap
         now = monotonic()
-        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None)
+        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None, None)
         self.assertEqual(node.pass_id, 1)
+        self.assertEqual(node.pass_peak_rssi, 89)
         resp = self.wait_for_response('pass_record', 1)
         self.assertEqual(resp['node'], node_index)
 
