@@ -2,6 +2,7 @@ import itertools
 import json
 from . import RHRace
 import numpy as np
+from collections import namedtuple
 
 
 UNCLASSIFIED = 'Unclassified'
@@ -29,10 +30,10 @@ def export_results(RHData):
                 pilotlaps = RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id)
                 laps = []
                 for lap_id,pilotlap in enumerate(pilotlaps):
-                    laps.append({'lap': lap_id, 'timestamp': pilotlap.lap_time_stamp, 'location': 0})
+                    laps.append({'lap': lap_id, 'timestamp': pilotlap.lap_time_stamp, 'location': 0, 'seat': pilotlap.node_index})
                     lapsplits = RHData.get_lapSplits_by_lap(race_id, pilotrace.node_index, lap_id)
                     for lapsplit in lapsplits:
-                        laps.append({'lap': lap_id, 'timestamp': lapsplit.split_time_stamp, 'location': lapsplit.split_id+1})
+                        laps.append({'lap': lap_id, 'timestamp': lapsplit.split_time_stamp, 'location': lapsplit.split_id+1, 'seat': lapsplit.node_index})
                 msg = {'event': event_name, 'stage': 'id:'+str(stage_id), 'round': round_idx, 'heat': 'id:'+str(heat_id), 'pilot': pilot.callsign, 'laps': laps}
                 msgs.append(msg)
     return msgs
@@ -58,10 +59,15 @@ def pilot_results(msgs):
         heats = event_stages[stageIdx]['heats']
         if heatIdx not in heats:
             heats[heatIdx] = {'rounds': []}
-        rounds = heats[heatIdx]['rounds']
-        while roundIdx >= len(rounds):
-            rounds.append(None)
-        rounds[roundIdx] = {'laps': msg['laps']}
+        heat_rounds = heats[heatIdx]['rounds']
+        while roundIdx >= len(heat_rounds):
+            heat_rounds.append(None)
+        heat_round = heat_rounds[roundIdx]
+        if heat_round is None:
+            heat_round = {'laps': []}
+            heat_rounds[roundIdx] = heat_round
+        laps = heat_round['laps']
+        laps.extend(msg['laps'])
     return results
 
 
@@ -334,23 +340,43 @@ def calculate_metrics(results, event_data):
     return results
 
 
+INTER_SEAT_THRESHOLD = 1000 # ms
+
+
 def calculate_race_metrics(race, race_format):
-    laps = [lap for lap in race['laps'] if lap['location'] == 0]
+    Lap = namedtuple('Lap', ['timestamps', 'seats'])
+    laps_t = []
+    for lap in race['laps']:
+        if lap['location'] == 0:
+            ts = lap['timestamp']
+            seat = lap['seat']
+            if len(laps_t) > 0:
+                prev_lap_t = laps_t[-1]
+                if ts - prev_lap_t.timestamps[-1] < INTER_SEAT_THRESHOLD and seat not in prev_lap_t.seats:
+                    # merge into previous lap
+                    prev_lap_t.timestamps.append(ts)
+                    prev_lap_t.seats[seat] = lap
+                    lap = None
+            if lap is not None:
+                laps_t.append(Lap(timestamps=[ts], seats={seat: lap}))
+
+    lap_timestamps = [round(np.mean(lap_t.timestamps)) for lap_t in laps_t]
+
     if race_format.get('start', 'first-pass') == 'start-line':
         start_time = 0
     else:
-        start_time = laps[0]['timestamp'] if laps else None
-        laps = laps[1:]
-    lap_count = len(laps)
-    race_time = laps[-1]['timestamp'] - start_time if lap_count else 0
-    lap_times = [laps[i]['timestamp'] - (laps[i-1]['timestamp'] if i-1 >= 0 else start_time) for i in range(len(laps))]
+        start_time = lap_timestamps[0] if lap_timestamps else None
+        lap_timestamps = lap_timestamps[1:]
+    lap_count = len(lap_timestamps)
+    race_time = lap_timestamps[-1] - start_time if lap_count else 0
+    lap_times = [lap_timestamps[i] - (lap_timestamps[i-1] if i-1 >= 0 else start_time) for i in range(len(lap_timestamps))]
     metrics = {
         'lapCount': lap_count,
         'time': race_time,
         'lapTimes': lap_times,
         'fastest': np.min(lap_times) if lap_times else None,
-        'mean': np.mean(lap_times) if lap_times else None,
-        'stdDev': np.std(lap_times) if lap_times else None
+        'mean': round(np.mean(lap_times)) if lap_times else None,
+        'stdDev': round(np.std(lap_times)) if lap_times else None
     }
     if race_format.get('objective') == RACE_FORMAT_FASTEST_CONSECUTIVE:
         n = race_format['consecutiveLaps']
@@ -367,8 +393,8 @@ def aggregate_metrics(metrics, race_format):
         'time': race_time,
         'lapTimes': lap_times,
         'fastest': np.min(lap_times) if lap_times else None,
-        'mean': np.mean(lap_times) if lap_times else None,
-        'stdDev': np.std(lap_times) if lap_times else None
+        'mean': round(np.mean(lap_times)) if lap_times else None,
+        'stdDev': round(np.std(lap_times)) if lap_times else None
     }
     if race_format.get('objective') == RACE_FORMAT_FASTEST_CONSECUTIVE:
         n = race_format['consecutiveLaps']

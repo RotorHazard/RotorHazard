@@ -205,7 +205,7 @@ class Node(CommandsWithRetry):
         self.node_nadir_rssi = manager.max_rssi_value
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = manager.max_rssi_value
-        self.pass_id = None
+        self.pass_count = None
         self.current_pilot_id = 0
         self.first_cross_flag = False
         self.show_crossing_flag = False
@@ -257,7 +257,7 @@ class Node(CommandsWithRetry):
         self.history = RssiHistory() # clear race history
         self.used_history_count = 0
         self.empty_history_count = 0
-        self.pass_id = None
+        self.pass_count = None
         self.under_min_lap_count = 0
         self._loop_time = 0 # microseconds
 

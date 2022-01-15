@@ -9,25 +9,33 @@
                                 "0": {
                                     "rounds": [{
                                             "laps": [{
-                                                    "timestamp": 0.6,
+                                                    "timestamp": 580,
                                                     "lap": 0,
-                                                    "location": 0
+                                                    "location": 0,
+                                                    "seat": 0
                                                 }, {
-                                                    "timestamp": 1.1,
+                                                    "timestamp": 620,
                                                     "lap": 0,
-                                                    "location": 1
+                                                    "location": 0,
+                                                    "seat": 3
                                                 }, {
-                                                    "timestamp": 1.75,
+                                                    "timestamp": 1100,
+                                                    "lap": 0,
+                                                    "location": 1,
+                                                    "seat": 0
+                                                }, {
+                                                    "timestamp": 1750,
                                                     "lap": 1,
-                                                    "location": 0
+                                                    "location": 0,
+                                                    "seat": 0
                                                 }
                                             ],
                                             "metrics": {
                                                 "lapCount": 1,
-                                                "time": 1.15,
-                                                "lapTimes": [1.15],
-                                                "fastest": 1.15,
-                                                "mean": 1.15,
+                                                "time": 1150,
+                                                "lapTimes": [1150],
+                                                "fastest": 1150,
+                                                "mean": 1150,
                                                 "stdDev": 0.0,
                                                 "fastest3Consecutive": []
                                             }
@@ -36,10 +44,10 @@
                                     "class": "Open",
                                     "metrics": {
                                         "lapCount": 1,
-                                        "time": 1.15,
-                                        "lapTimes": [1.15],
-                                        "fastest": 1.15,
-                                        "mean": 1.15,
+                                        "time": 1150,
+                                        "lapTimes": [1150],
+                                        "fastest": 1150,
+                                        "mean": 1150,
                                         "stdDev": 0.0,
                                         "fastest3Consecutive": []
                                     }
@@ -48,10 +56,10 @@
                             "metrics": {
                                 "Open": {
                                   "lapCount": 1,
-                                  "time": 1.15,
-                                  "lapTimes": [1.15],
-                                  "fastest": 1.15,
-                                  "mean": 1.15,
+                                  "time": 1150,
+                                  "lapTimes": [1150],
+                                  "fastest": 1150,
+                                  "mean": 1150,
                                   "stdDev": 0.0,
                                   "fastest3Consecutive": []
                                 }
@@ -61,10 +69,10 @@
                     "metrics": {
                         "Open": {
                           "lapCount": 1,
-                          "time": 1.15,
-                          "lapTimes": [1.15],
-                          "fastest": 1.15,
-                          "mean": 1.15,
+                          "time": 1150,
+                          "lapTimes": [1150],
+                          "fastest": 1150,
+                          "mean": 1150,
                           "stdDev": 0.0,
                           "fastest3Consecutive": []
                         }
@@ -81,59 +89,64 @@
                                 "0": {
                                     "rounds": [{
                                             "laps": [{
-                                                    "timestamp": 1,
+                                                    "timestamp": 1000,
                                                     "lap": 0,
-                                                    "location": 0
+                                                    "location": 0,
+                                                    "seat": 1
                                                 }, {
-                                                    "timestamp": 1.5,
+                                                    "timestamp": 1500,
                                                     "lap": 1,
-                                                    "location": 0
+                                                    "location": 0,
+                                                    "seat": 1
                                                 }, {
-                                                    "timestamp": 2.1,
+                                                    "timestamp": 2100,
                                                     "lap": 2,
-                                                    "location": 0
+                                                    "location": 0,
+                                                    "seat": 1
                                                 }, {
-                                                    "timestamp": 2.6,
+                                                    "timestamp": 2600,
                                                     "lap": 3,
-                                                    "location": 0
+                                                    "location": 0,
+                                                    "seat": 1
                                                 }, {
-                                                    "timestamp": 3.8,
+                                                    "timestamp": 3800,
                                                     "lap": 4,
-                                                    "location": 0
+                                                    "location": 0,
+                                                    "seat": 1
                                                 }
                                             ],
                                             "metrics": {
                                                 "lapCount": 4,
-                                                "time": 2.8,
-                                                "lapTimes": [0.5,0.6000000000000001,0.5,1.1999999999999997],
-                                                "fastest": 0.5,
-                                                "mean": 0.7,
-                                                "stdDev": 0.29154759474226494,
-                                                "fastest3Consecutive": [0.5,0.6000000000000001,0.5]
+                                                "time": 2800,
+                                                "lapTimes": [500,600,500,1200],
+                                                "fastest": 500,
+                                                "mean": 700,
+                                                "stdDev": 292,
+                                                "fastest3Consecutive": [500,600,500]
                                             }
                                         }
                                     ],
                                     "class": "Open",
                                     "metrics": {
                                         "lapCount": 4,
-                                        "time": 2.8,
-                                        "lapTimes": [0.5,0.6000000000000001,0.5,1.1999999999999997],
-                                        "fastest": 0.5,
-                                        "mean": 0.7,
-                                        "stdDev": 0.29154759474226494,
-                                        "fastest3Consecutive": [0.5,0.6000000000000001,0.5]
+                                        "time": 2800,
+                                        "lapTimes": [500,600,500,1200],
+                                        "fastest": 500,
+                                        "mean": 700,
+                                        "stdDev": 292,
+                                        "fastest3Consecutive": [500,600,500]
                                     }
                                 }
                             },
                             "metrics": {
                               "Open": {
-                                  "lapCount": 4,
-                                  "time": 2.8,
-                                  "lapTimes": [0.5,0.6000000000000001,0.5,1.1999999999999997],
-                                  "fastest": 0.5,
-                                  "mean": 0.7,
-                                  "stdDev": 0.29154759474226494,
-                                  "fastest3Consecutive": [0.5,0.6000000000000001,0.5]
+                                "lapCount": 4,
+                                "time": 2800,
+                                "lapTimes": [500,600,500,1200],
+                                "fastest": 500,
+                                "mean": 700,
+                                "stdDev": 292,
+                                "fastest3Consecutive": [500,600,500]
                                 }
                             }
                         }
@@ -141,12 +154,12 @@
                     "metrics": {
                       "Open": {
                           "lapCount": 4,
-                          "time": 2.8,
-                          "lapTimes": [0.5,0.6000000000000001,0.5,1.1999999999999997],
-                          "fastest": 0.5,
-                          "mean": 0.7,
-                          "stdDev": 0.29154759474226494,
-                          "fastest3Consecutive": [0.5,0.6000000000000001,0.5]
+                          "time": 2800,
+                          "lapTimes": [500,600,500,1200],
+                          "fastest": 500,
+                          "mean": 700,
+                          "stdDev": 292,
+                          "fastest3Consecutive": [500,600,500]
                         }
                     }
                 }

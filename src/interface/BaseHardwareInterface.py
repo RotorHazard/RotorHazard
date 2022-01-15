@@ -53,7 +53,7 @@ class BaseHardwareInterface:
         self.race_start_time = 0
         self.is_racing = False
         self.listener = listener if listener is not None else BaseHardwareInterfaceListener()
-        self.pass_id_mask = 0xFF
+        self.pass_count_mask = 0xFF
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
 
     def milliseconds(self):
@@ -116,7 +116,7 @@ class BaseHardwareInterface:
             except Exception:
                 logger.exception('Exception in {} _update_loop():'.format(type(self).__name__))
 
-    def process_lap_stats(self, node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, cross_ts, cross_rssi):
+    def process_lap_stats(self, node, pass_count, pass_timestamp, pass_peak_rssi, cross_flag, cross_ts, cross_rssi):
         crossing_updated = False
         if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
             node.crossing_flag = cross_flag
@@ -130,16 +130,16 @@ class BaseHardwareInterface:
         node.pass_peak_rssi = pass_peak_rssi
 
         lap_race_time = None
-        prev_pass_id = node.pass_id
-        if pass_id != prev_pass_id:
-            node.pass_id = pass_id
-            if prev_pass_id is not None:  # if None then just initialising pass_id
-                lap_change = pass_id - prev_pass_id
+        prev_pass_count = node.pass_count
+        if pass_count != prev_pass_count:
+            node.pass_count = pass_count
+            if prev_pass_count is not None:  # if None then just initialising pass_count
+                lap_change = pass_count - prev_pass_count
                 # handle unsigned roll-over
-                if self.pass_id_mask is not None:
-                    lap_change = lap_change & self.pass_id_mask
+                if self.pass_count_mask is not None:
+                    lap_change = lap_change & self.pass_count_mask
                 if lap_change != 1:
-                    logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_pass_id, pass_id))
+                    logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_pass_count, pass_count))
                 # NB: lap race times are relative to the race start time
                 lap_race_time = pass_timestamp - self.race_start_time
                 if lap_race_time < 0:

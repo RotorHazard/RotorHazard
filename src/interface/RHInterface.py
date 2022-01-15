@@ -380,7 +380,7 @@ class RHInterface(BaseHardwareInterface):
                         server_oneway = server_roundtrip / 2
                         readtime = node.io_response - server_oneway
     
-                        pass_id = data[0]
+                        pass_count = data[0]
     
                         if node.manager.api_level >= 18:
                             offset_rssi = 3
@@ -490,10 +490,10 @@ class RHInterface(BaseHardwareInterface):
                             if node.manager.api_level >= 18:
                                 data_logger = self.data_loggers[node.index]
                                 if data_logger:
-                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,pass_id, int(ms_since_lap), node.current_rssi, node.node_peak_rssi, pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
+                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,pass_count, int(ms_since_lap), node.current_rssi, node.node_peak_rssi, pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
 
                             pass_timestamp = readtime - (ms_since_lap / 1000.0)
-                            self.process_lap_stats(node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
+                            self.process_lap_stats(node, pass_count, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
                             self.process_history(node, pn_history)
                             self.process_capturing(node)
 

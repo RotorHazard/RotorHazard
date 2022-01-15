@@ -74,7 +74,7 @@ function processMessage(msg, raceEvents) {
     pilots[msg.pilot] = pilots[msg.pilot] ?? {name: msg.pilot, laps: []};
     const pilot = pilots[msg.pilot];
     if ('lap' in msg) {
-      const lapData = {lap: msg.lap, timestamp: msg.timestamp, location: msg.location};
+      const lapData = {lap: msg.lap, timestamp: msg.timestamp, location: msg.location, seat: msg.seat};
       pilot.laps.push(lapData);
     } else if ('laps' in msg) {
       pilot.laps.push(...msg['laps']);
@@ -100,15 +100,13 @@ function getRaceListener(setMqttData) {
 function getLapListener(setMqttData) {
   return (topic, payload) => {
     const parts = util.splitTopic(topic);
-    const event = parts[parts.length-7];
-    const stage = parts[parts.length-6];
-    const heat = parts[parts.length-5];
-    const round = parts[parts.length-4];
-    const pilot = parts[parts.length-3];
-    const lap = Number(parts[parts.length-2]);
-    const location = Number(parts[parts.length-1]);
+    const event = parts[parts.length-5];
+    const stage = parts[parts.length-4];
+    const heat = parts[parts.length-3];
+    const round = parts[parts.length-2];
+    const pilot = parts[parts.length-1];
     const msg = JSON.parse(new TextDecoder('UTF-8').decode(payload));
-    setMqttData((old) => [...old, {event, stage, heat, round, pilot, lap, location, ...msg}]);
+    setMqttData((old) => [...old, {event, stage, heat, round, pilot, ...msg}]);
   };
 }
 
@@ -121,6 +119,18 @@ function lookupByIndexOrId(arr, key) {
   } else {
     return arr?.[key];
   }
+}
+
+function mean(arr) {
+  let sum = 0;
+  let n = 0;
+  for (const x of arr) {
+    if (x !== undefined) {
+      sum += x;
+      n++;
+    }
+  }
+  return sum/n;
 }
 
 
@@ -154,17 +164,17 @@ function LapTable(props) {
           for (let lapId=maxLaps; lapId>=minLaps; lapId--) {
             let lapInfo = [];
             if (lapSplits[lapId]) {
-              const timestamps = lapSplits[lapId];
+              const seatTimestamps = lapSplits[lapId];
               for (const locId of timedLocations) {
                 let delta = null;
                 let timestamp = null;
                 if (locId === 0) {
-                  if (timestamps[locId]) {
-                    timestamp = timestamps[locId];
+                  if (seatTimestamps[locId]) {
+                    timestamp = mean(seatTimestamps[locId]);
                     if (lapId === 0) {
                       delta = timestamp;
                     } else if (lapId > 0 && lapSplits[lapId-1]?.[0]) {
-                      delta = timestamp - lapSplits[lapId-1][0];
+                      delta = timestamp - mean(lapSplits[lapId-1][0]);
                     }
                   }
                   lapInfo.push(
@@ -175,10 +185,10 @@ function LapTable(props) {
                     </div>
                   );
                 } else if (locId > 0) {
-                  if (timestamps[locId]) {
-                    timestamp = timestamps[locId];
-                    if (timestamps[locId-1]) {
-                      delta = timestamp - timestamps[locId-1];
+                  if (seatTimestamps[locId]) {
+                    timestamp = mean(seatTimestamps[locId]);
+                    if (seatTimestamps[locId-1]) {
+                      delta = timestamp - mean(seatTimestamps[locId-1]);
                     }
                   }
                   lapInfo.push(
@@ -195,9 +205,9 @@ function LapTable(props) {
                 let delta = null;
                 let timestamp = null;
                 if (lapSplits[lapId+1]?.[0]) {
-                  timestamp = lapSplits[lapId+1][0];
-                  if (timestamps[timedLocations[timedLocations.length-1]]) {
-                    delta = timestamp - timestamps[timedLocations[timedLocations.length-1]];
+                  timestamp = mean(lapSplits[lapId+1][0]);
+                  if (seatTimestamps[timedLocations[timedLocations.length-1]]) {
+                    delta = timestamp - mean(seatTimestamps[timedLocations[timedLocations.length-1]]);
                   }
                 }
                 lapInfo.push(
@@ -417,6 +427,7 @@ export default function Results(props) {
 
   useEffect(() => {
     if (mqttConfig?.raceAnnTopic) {
+      // any event, stage, heat, round
       const raceTopic = util.makeTopic(mqttConfig.raceAnnTopic, ['+', '+', '+', '+']);
       const mqttSubscriber = (setMqttData) => {
         const raceListener = getRaceListener(setMqttData);
@@ -435,7 +446,7 @@ export default function Results(props) {
 
   useEffect(() => {
     if (mqttConfig?.raceAnnTopic && selectedEvent && selectedStage && selectedRound && selectedHeat) {
-      const lapTopic = util.makeTopic(mqttConfig.raceAnnTopic, [selectedEvent, selectedStage, selectedHeat, selectedRound, '+', '+', '+']);
+      const lapTopic = util.makeTopic(mqttConfig.raceAnnTopic, [selectedEvent, selectedStage, selectedHeat, selectedRound, '+']);
       const mqttSubscriber = (setMqttData) => {
         const lapListener = getLapListener(setMqttData);
         const mqttClient = getMqttClient();
@@ -497,7 +508,7 @@ export default function Results(props) {
   const trackLayout = trackData.layout;
   let minLaps = Number.MAX_SAFE_INTEGER;
   let maxLaps = 0;
-  // pilot callsign -> array of laps -> array of splits -> timestamps
+  // pilot callsign -> array of laps -> array of splits -> array of seats -> timestamps
   const pilotLapDetails = {};
   const pilotPositions = {}
   const heat = heatData?.[selectedHeat] ?? {pilots: {}};
@@ -509,7 +520,8 @@ export default function Results(props) {
       minLaps = Math.min(lapNumber, minLaps);
       maxLaps = Math.max(lapNumber, maxLaps);
       lapSplits[lap.lap] = lapSplits[lap.lap] ?? [];
-      lapSplits[lap.lap][lap.location] = lap.timestamp;
+      lapSplits[lap.lap][lap.location] = lapSplits[lap.lap][lap.location] ?? [];
+      lapSplits[lap.lap][lap.location][lap.seat] = lap.timestamp;
     }
     pilotLapDetails[pilotHeat.name] = lapSplits;
 

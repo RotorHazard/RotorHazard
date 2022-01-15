@@ -97,7 +97,7 @@ class MockInterface(BaseHardwareInterface):
                             data_file.seek(0)
                             data_line = data_file.readline()
                         data_columns = data_line.split(',')
-                        pass_id = int(data_columns[1])
+                        pass_count = int(data_columns[1])
                         ms_since_lap = int(data_columns[2])
                         rssi_val = int(data_columns[3])
                         node.node_peak_rssi = int(data_columns[4])
@@ -116,7 +116,7 @@ class MockInterface(BaseHardwareInterface):
                         if node.is_valid_rssi(rssi_val):
                             node.current_rssi = rssi_val
                             pass_timestamp = readtime - (ms_since_lap / 1000.0)
-                            self.process_lap_stats(node, pass_id, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
+                            self.process_lap_stats(node, pass_count, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
                             self.process_history(node, pn_history)
                             self.process_capturing(node)
                         else:

@@ -134,7 +134,7 @@ class ChorusInterface(BaseHardwareInterface):
             node = node_manager.nodes[multi_node_idx]
             cmd = data[2]
             if cmd == 'L':
-                node.pass_id = int(data[3:5], 16)  # lap count
+                node.pass_count = int(data[3:5], 16)  # lap count
                 lap_ts = int(data[5:13], 16)  # relative to start time
                 self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
             elif cmd == 'r':

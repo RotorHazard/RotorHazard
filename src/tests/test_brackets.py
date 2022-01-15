@@ -76,7 +76,7 @@ class BracketsTest(unittest.TestCase):
                 lap_time = 1/laps_to_assign
                 laps = []
                 for i in range(laps_to_assign):
-                    laps.append({'timestamp': i*lap_time, 'lap': i, 'location': 0})
+                    laps.append({'timestamp': i*lap_time, 'lap': i, 'location': 0, 'seat': 0})
                 round_results = {'laps': laps}
                 heat_results = {'rounds': [round_results]}
                 stage_results = {'heats': {heat_idx: heat_results}}

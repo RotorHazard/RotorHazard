@@ -47,14 +47,14 @@ def race_start(client, race_topic, raceEvent, RACE, **kwargs):
 
 def race_lap(client, race_topic, raceEvent, RACE, node_index, lap, location_id, **kwargs):
     pilot = RACE.node_pilots[node_index]
-    msg = {'timestamp': lap['lap_time_stamp']}
-    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_stage), str(RACE.current_heat), str(RACE.current_round), pilot.callsign, str(lap['lap_number']), str(location_id)]), json.dumps(msg))
+    msg = {'lap': lap['lap_number'], 'timestamp': lap['lap_time_stamp'], 'location': location_id, 'seat': node_index}
+    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_stage), str(RACE.current_heat), str(RACE.current_round), pilot.callsign]), json.dumps(msg))
 
 
 def race_split(client, race_topic, raceEvent, RACE, node_index, split, location_id, **kwargs):
     pilot = RACE.node_pilots[node_index]
-    msg = {'timestamp': split['split_time_stamp']}
-    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_stage), str(RACE.current_heat), str(RACE.current_round), pilot.callsign, str(split['lap_number']), str(location_id)]), json.dumps(msg))
+    msg = {'lap': split['lap_number'], 'timestamp': split['split_time_stamp'], 'location': location_id, 'seat': node_index}
+    client.publish(make_topic(race_topic, [raceEvent, str(RACE.current_stage), str(RACE.current_heat), str(RACE.current_round), pilot.callsign]), json.dumps(msg))
 
 
 def race_finish(client, race_topic, raceEvent, RACE, **kwargs):

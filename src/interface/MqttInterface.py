@@ -160,11 +160,11 @@ class MqttInterface(BaseHardwareInterfaceListener):
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exitTrigger"), str(level))
 
     def _mqtt_publish_enter(self, node, cross_ts, cross_rssi):
-        msg = {'lap': node.pass_id+1, 'timestamp': str(cross_ts), 'rssi': cross_rssi}
+        msg = {'count': node.pass_count+1, 'timestamp': str(cross_ts), 'rssi': cross_rssi}
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "enter"), json.dumps(msg))
 
     def _mqtt_publish_exit(self, node, cross_ts, cross_rssi):
-        msg = {'lap': node.pass_id, 'timestamp': str(cross_ts), 'rssi': cross_rssi}
+        msg = {'count': node.pass_count, 'timestamp': str(cross_ts), 'rssi': cross_rssi}
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exit"), json.dumps(msg))
 
     def _mqtt_publish_pass(self, node, lap_ts, lap_source, pass_rssi):
@@ -174,7 +174,7 @@ class MqttInterface(BaseHardwareInterfaceListener):
             lap_source_type = 'manual'
         else:
             lap_source_type = None
-        msg = {'lap': node.pass_id, 'timestamp': str(lap_ts), 'source': lap_source_type}
+        msg = {'count': node.pass_count, 'timestamp': str(lap_ts), 'source': lap_source_type}
         if pass_rssi:
             msg['rssi'] = pass_rssi
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "pass"), json.dumps(msg))
