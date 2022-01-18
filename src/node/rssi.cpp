@@ -55,6 +55,10 @@ RssiResult RssiNode::process(rssi_t rssi, mtime_t ms)
     if (filter->isFilled()) {
         const int rssiChange = state.readRssiFromFilter(filter);
 
+        LOG_DEBUG("RSSI timestamp: ", state.rssiTimestamp, DEC);
+        LOG_DEBUG("RSSI: ", state.rssi, DEC);
+        LOG_DEBUG("RSSI change: ", rssiChange, DEC);
+
         // wait until after-tune-delay time is fulfilled
         if (!needsToSettle)
         {  //don't start operations until after first WRITE_FREQUENCY command is received
@@ -174,16 +178,19 @@ ExtremumType RssiNode::updateHistory(const int rssiChange)
 bool RssiNode::checkForCrossing(const ExtremumType t, const int rssiChange)
 {
 #if defined(USE_PH)
-    return checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
+    const bool isCrossing = checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
 #elif defined(__TEST__)
+    bool isCrossing;
     if (settings.usePh) {
-        return checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
+        isCrossing = checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
     } else {
-        return checkForCrossing_old(settings.enterAtLevel, settings.exitAtLevel);
+        isCrossing = checkForCrossing_old(settings.enterAtLevel, settings.exitAtLevel);
     }
 #else
-    return checkForCrossing_old(settings.enterAtLevel, settings.exitAtLevel);
+    const bool isCrossing = checkForCrossing_old(settings.enterAtLevel, settings.exitAtLevel);
 #endif
+    LOG_DEBUG("Is crossing: ", isCrossing, DEC);
+    return isCrossing;
 }
 
 #if defined(USE_PH) || defined(__TEST__)
@@ -195,7 +202,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         return state.crossing;
     }
 
-#ifdef USE_MQTT
+#if defined(USE_MQTT) || defined(DEBUG)
     int_fast16_t lifetimeSample = 0;
     bool triggered = false;
 #endif
@@ -208,12 +215,12 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLifetime = cc.nadirLifetime(phData);
-#ifdef USE_MQTT
+#if defined(USE_MQTT) || defined(DEBUG)
             lifetimeSample = -lastLifetime;
 #endif
             if (lastLifetime > exitThreshold) {
                 endCrossing(lastLifetime);
-#ifdef USE_MQTT
+#if defined(USE_MQTT) || defined(DEBUG)
                 triggered = true;
 #endif
             }
@@ -226,17 +233,20 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLifetime = cc.peakLifetime(phData);
-#ifdef USE_MQTT
+#if defined(USE_MQTT) || defined(DEBUG)
             lifetimeSample = lastLifetime;
 #endif
             if (lastLifetime > enterThreshold) {
                 startCrossing(lastLifetime);
-#ifdef USE_MQTT
+#if defined(USE_MQTT) || defined(DEBUG)
                 triggered = true;
 #endif
             }
         }
     }
+
+    LOG_DEBUG("Lifetime: ", lifetimeSample, DEC);
+    LOG_DEBUG("Is triggered: ", triggered, DEC);
 
 #ifdef USE_MQTT
     if (!triggered && lifetimeSample != 0 && state.rssiTimestamp % MQTT_SAMPLE_INTERVAL == 0)
@@ -450,7 +460,8 @@ int State::readRssiFromFilter(Filter<rssi_t>* filter)
     rssiTimestamp = filter->getFilterTimestamp();
 
     // ensure signed arithmetic
-    return (int)rssi - (int)lastRssi;
+    int delta = (int)rssi - (int)lastRssi;
+    return delta;
 }
 
 /*** node lifetime RSSI max/min ***/

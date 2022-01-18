@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "util/rhtypes.h"
 
-#define FIRMWARE_VERSION "B1.4"
+#define FIRMWARE_VERSION "B1.5"
 #define AVR_TARGET 1
 #define STM32_TARGET 2
 #define ESP32_TARGET 3

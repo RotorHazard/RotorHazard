@@ -43,6 +43,7 @@ public:
     virtual uint8_t readADC(uint8_t pin) {
         // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
         int raw = analogRead(pin);
+        LOG_DEBUG("Raw ADC: ", raw, DEC);
         // clamp upper range to fit scaling
         if (raw > 0x01FF) {
             raw = 0x01FF;

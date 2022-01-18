@@ -77,7 +77,9 @@ void RxModule::powerDown()
 // Read the RSSI value for the current channel
 rssi_t RxModule::readRssi()
 {
-    return hardware.readADC(rssiPin);
+    const rssi_t value = hardware.readADC(rssiPin);
+    LOG_DEBUG("ADC: ", value, DEC);
+    return value;
 }
 
 
