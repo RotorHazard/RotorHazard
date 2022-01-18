@@ -117,8 +117,8 @@
 			if(raceStatus==3){ //race is counting down, lets double check were on the right scene and have the right feeds
 				if (lastHeat!=null){
 					setScene(launchSceneName);
-					setTimeout(() => {setScene(FPVFeedSceneName);}, 8000);
-			    setTimeout(() => {applyHeatToOBS(lastHeat);}, 100);
+					setTimeout(() => {setScene(FPVFeedSceneName);}, (launchDelay*1000));
+			    setTimeout(() => {applyHeatToOBS(lastHeat);}, (launchDelay*1000)+100);
 				}
 			}
 			if(raceStatus==0){ //Race Director hit save, lets switch back to FPV feeds in 10 seconds and update
