@@ -1,4 +1,5 @@
-{% extends "layout.html" %} {% block title %}{% endblock %} {% block head %}
+{% extends "layout-basic.html" %} {% block title %}{% endblock %} {% block head %}
+<link rel="stylesheet" href="/static/streetleague.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
@@ -32,12 +33,6 @@
 			}
 		});
 
-
-
-
-
-
-
 		function calculateRoundPoints(raceResults){
 		        var SLRounds = {};
 		        var raceClasses = raceResults["classes"];
@@ -45,7 +40,7 @@
 							var roundNumber = raceClasses[key];
 							var pilotHeats = roundNumber['leaderboard']['by_race_time'];
 							var points = pilotHeats.length;
-							SLRounds[key] = [];
+							SLRounds[key] = []; //{"1":[{"callsign":"Vanover","points":32,"laps":3,"heatTime":123}],"2":[],"3":[]}
 							for(var pilotHeatKey in pilotHeats){
 								var pilotHeat = pilotHeats[pilotHeatKey];
 								var callsign = pilotHeat['callsign'];
@@ -53,19 +48,50 @@
 								var laps = pilotHeat['laps'];
 								var pilotID = pilotHeat['pilot_id'];
 								SLRounds[key].push({"callsign":String(callsign),"points":String(points),"laps":String(laps),"heatTime":String(heatTime)});
-								console.log(SLRounds[key][SLRounds[key].length-1]);
 								points -= 1;
 							}
 						}
-						console.log("SL Rounds");
 						//CAN'T FIGURE OUT HOW TO DO JAVASCRIPT JSON SHIT....
-						console.log(JSON.stringify(SLRounds, null, 4));
 		        return SLRounds;
 		}
 
 		function getPilotPointsByRound(rounds){
-			var pilotPoints = {}
-	    //create a list of pilots containing the points they earned in each round
+			var pilotPoints = {};
+
+			//Let's get a list of pilots who have scored points
+			var scoringPilots = [];
+			var roundNumber = 0;
+			for (var roundKey in rounds) {
+				var round = rounds[roundKey];
+				roundNumber+=1;
+				for (var i = 0; i < round.length; i++) {
+					var pilotHeat = round[i];
+					var callsign = pilotHeat['callsign'];
+					if(scoringPilots.includes(callsign)){
+					}else{
+						scoringPilots.push(callsign);
+					}
+				}
+			}
+
+			for (var roundKey in rounds) {
+				var round = rounds[roundKey];
+				var pilotsInThisRound = [];
+				for (var i = 0; i < round.length; i++) {
+					var pilotHeat = round[i];
+					var callsign = pilotHeat['callsign'];
+					pilotsInThisRound.push(callsign);
+				}
+				//this gets a list of pilots who never made a wholeshot in this round
+				let missingPilots = scoringPilots.filter(x => !pilotsInThisRound.includes(x));
+				for (var k = 0; k < missingPilots.length; k++) {
+					var missingPilotCallsign = missingPilots[k];
+					round.push({callsign: missingPilotCallsign, points: '0', laps: '0', heatTime: 'dnf'})
+				}
+			}
+
+			//create a list of pilots containing the points they earned in each round
+
 			for (var roundKey in rounds) {
 				var round = rounds[roundKey];
 				for (var i = 0; i < round.length; i++) {
@@ -80,8 +106,6 @@
 				}
 			}
 
-			console.log("Pilot Round Points");
-			console.log(pilotPoints);
 			return pilotPoints;
 		}
 
@@ -100,8 +124,6 @@
 
 			//sort the list
 			pilotTotalPoints.sort((a,b) => b.points - a.points);
-			console.log("sorted pilot total points");
-			console.log(pilotTotalPoints);
 	    return pilotTotalPoints;
 		}
 
@@ -122,8 +144,6 @@
 		}
 
 		function createSLTable(roundData, raceData){
-			console.log("createSLTable");
-			console.log(roundData);
 			var headers = ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5", "Round 6"];
 			var table = document.getElementsByClassName('scoreTable')[0];
 			var headerRow = document.createElement("tr");
@@ -146,11 +166,12 @@
 					headerRow.appendChild(cell);
 				}
 			}
+
 			table.appendChild(headerRow);
 			var rank = 1;
-			for(var callsign in roundData){
+			for (var i = 0; i < raceData.length; i++) {
+				var callsign = raceData[i]['callsign'];
 				var row = document.createElement("tr");
-				console.log("callsign is "+callsign);
 				for (var rowIndex = -2; rowIndex < roundData[callsign].length+1; rowIndex++) {
 					var roundNumber = rowIndex;
 					if(rowIndex==-2){
@@ -160,18 +181,14 @@
 						rank+=1;
 					}else if(roundNumber<0){
 						cell = document.createElement("td");
-						console.log("callsign is "+callsign);
 						cell.innerHTML = callsign;
 						row.appendChild(cell);
 					}else if(roundNumber==roundData[callsign].length){
 						cell = document.createElement("td");
-						console.log("total points");
 						cell.innerHTML = getPilotTotal(callsign,raceData)['points'];
 						row.appendChild(cell);
 					}else{
-						console.log("round number is "+roundNumber);
 						cell = document.createElement("td");
-						console.log(roundData[callsign][roundNumber]);
 						cell.innerHTML = roundData[callsign][roundNumber]['points'];
 						row.appendChild(cell);
 					}
@@ -180,6 +197,74 @@
 
 			}
 		}
+
+		//make headers sortable
+		$('.sortButton').click(sortTable);
+
+		function sortTable(n) {
+			var n = Number(document.getElementById("quantity").value);
+			if(n==0){
+				console.log("n="+n);
+				n=7;
+			}
+			n+=1;
+		  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+		  table = document.getElementsByClassName("scoreTable")[0];
+		  switching = true;
+		  // Set the sorting direction to ascending:
+		  dir = "desc";
+		  /* Make a loop that will continue until
+		  no switching has been done: */
+		  while (switching) {
+		    // Start by saying: no switching is done:
+		    switching = false;
+		    rows = table.rows;
+		    /* Loop through all table rows (except the
+		    first, which contains table headers): */
+		    for (i = 1; i < (rows.length - 1); i++) {
+		      // Start by saying there should be no switching:
+		      shouldSwitch = false;
+		      /* Get the two elements you want to compare,
+		      one from current row and one from the next: */
+		      x = rows[i].getElementsByTagName("TD")[n];
+		      y = rows[i + 1].getElementsByTagName("TD")[n];
+		      /* Check if the two rows should switch place,
+		      based on the direction, asc or desc: */
+		      if (dir == "asc") {
+		        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+		          // If so, mark as a switch and break the loop:
+		          shouldSwitch = true;
+		          break;
+		        }
+		      } else if (dir == "desc") {
+		        if (Number(x.innerHTML.toLowerCase()) < Number(y.innerHTML.toLowerCase())) {
+		          // If so, mark as a switch and break the loop:
+		          shouldSwitch = true;
+		          break;
+		        }
+		      }
+		    }
+		    if (shouldSwitch) {
+		      /* If a switch has been marked, make the switch
+		      and mark that a switch has been done: */
+		      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+		      switching = true;
+		      // Each time a switch is done, increase this count by 1:
+		      switchcount ++;
+		    } else {
+		      /* If no switching has been done AND the direction is "asc",
+		      set the direction to "desc" and run the while loop again. */
+		      if (switchcount == 0 && dir == "asc") {
+		        dir = "desc";
+		        switching = true;
+		      }
+		    }
+		  }
+		}
+
+		socket.on('result_data', function(msg){
+			location.reload();
+		});
 
 		socket.on('exported_data', function (msg) {
 			var data = msg.data
@@ -201,19 +286,17 @@
 
 		var exportData = {exporter: 'json_complete_results'};
 		socket.emit('export_database', exportData);
-
-		$('button#export_database').click(function (event) {
-			var data = {
-				exporter: $('#exporter_list').val()
-			};
-			socket.emit('export_database', data);
-			return false;
-		});
 	});
-
 </script>
 {% endblock %} {% block content %}
-<table class="scoreTable" style="overflow: hidden;">
-
+<table class="scoreTable" id="scoreTable" style="overflow: hidden;">
 </table>
+<p>
+	<button class="sortButton">Sort</button>
+	<label for="quantity">Round Number to Sort (0=total)</label>
+	<input type="number" id="quantity" name="quantity" min="1" max="10" value="0">
+</p>
+
+
+
 {% endblock %}

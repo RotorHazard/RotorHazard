@@ -1,0 +1,75 @@
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/BarlowRH-Light.woff2') format('woff2'),
+       url('fonts/BarlowRH-Light.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: italic;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/Barlow-LightItalic.woff2') format('woff2'),
+       url('fonts/Barlow-LightItalic.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/BarlowRH-Bold.woff2') format('woff2'),
+       url('fonts/BarlowRH-Bold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: italic;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/Barlow-BoldItalic.woff2') format('woff2'),
+       url('fonts/Barlow-BoldItalic.woff') format('woff');
+}
+
+html {
+	color: #000;
+	margin: 0;
+	padding: 0;
+	font-family: 'Barlow', sans-serif;
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+}
+
+body {
+	font-size: 1.2em;
+	margin: 0;
+	padding: 0;
+}
+
+
+.scoreTable {
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.scoreTable td, #scoreTable th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.scoreTable tr:nth-child(even){background-color: #f2f2f2ff;}
+.scoreTable tr:nth-child(odd){background-color: #ffffffff;}
+
+.scoreTable tr:hover {background-color: #ddd;}
+
+.scoreTable th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #04AA6Dff;
+  color: white;
+}

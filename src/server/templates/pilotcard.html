@@ -23,7 +23,7 @@
 			}
 		});
 
-		/*
+
 		socket.on('current_heat', function (msg) {
 			for (var idx in msg.heatNodes) {
 				hn = msg.heatNodes[streamnode];
@@ -45,7 +45,6 @@
 				}
 			}
 		});
-		*/
 
 		socket.on('current_laps', function (msg) {
 			current_laps = msg.current;
@@ -125,14 +124,14 @@
 					pilot_data = leaderboard[i];
 					var pilotName = pilot_data.callsign;
 					var pilotPicURL = '../../static/image/pilotcards/'+pilotName+'.jpg';
-					
+
 					function checkImage(imageSrc, good, bad) {
 						    var img = new Image();
-						    img.onload = good; 
+						    img.onload = good;
 						    img.onerror = bad;
 						    img.src = imageSrc;
 					}
-					
+
 					checkImage(pilotPicURL, function(){
 						$('.pilot-picture').attr({
 							'src':pilotPicURL

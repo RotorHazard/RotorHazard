@@ -17,15 +17,17 @@
 	var currentScene = "";
 	var FPVFeedSceneName = "4Box";
 	var resultsSceneName = "Results";
+	var raceResultsSceneName = "Race Results";
 	var pilotCardsSceneName = "Pilot Intro";
+	var launchSceneName = "Launch";
 	var FPVSourceNames = "Node{N}-{analog,HD0,DJI}"
 	var obsURL = "ws://localhost:4444";
-	
+
 	var obsSocket = new WebSocket(obsURL);
 	var obsRecvListeners = [];
 	$(document).ready(function () {
 		rotorhazard.show_messages = false;
-		
+
 
 		(function () {
 			var old = console.log;
@@ -40,10 +42,12 @@
 				}
 			}
 		})();
-		
+
 		console.log("FPV feed source names: "+FPVSourceNames);
 		console.log("FPV feed scene name: "+FPVFeedSceneName);
 		console.log("Results scene name: "+resultsSceneName);
+		console.log("Race Results scene name: "+raceResultsSceneName);
+		console.log("Launch scene name: "+launchSceneName);
 		console.log("Next heat pilot cards scene name: "+pilotCardsSceneName);
 		console.log("URL to the remote (or local) OBS instance: "+obsURL);
 		console.log("");
@@ -65,20 +69,20 @@
 			var raceStatus = msg['race_status'];
 			if(raceStatus==3){ //race is counting down, lets double check were on the right scene and have the right feeds
 				if (lastHeat!=null){
-					setScene(FPVFeedSceneName);
-			      		setTimeout(() => {applyHeatToOBS(lastHeat);}, 100);
+					setScene(launchSceneName);
+					setTimeout(() => {setScene(FPVFeedSceneName);}, 8000);
+			    setTimeout(() => {applyHeatToOBS(lastHeat);}, 100);
 				}
 			}
 			if(raceStatus==0){ //Race Director hit save, lets switch back to FPV feeds in 10 seconds and update
 				if (lastHeat!=null){
-					setTimeout(() => { if(currentScene!=FPVFeedSceneName){setScene(pilotCardsSceneName);} }, 10000);
+					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(raceResultsSceneName);} }, 10000);
+					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(pilotCardsSceneName);} }, 20000);
 				}
 			}
 			if(msg['race_status']==2){ //race just stopped
 				setScene(resultsSceneName);
 			}
-			
-
 		});
 
 		//the race director has selected a new heat
@@ -131,7 +135,7 @@
 		};
 
 		async function sha256(message) {
-			const msgBuffer = new TextEncoder().encode(message);                    
+			const msgBuffer = new TextEncoder().encode(message);
 			const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
 			const hashArray = Array.from(new Uint8Array(hashBuffer));
 			const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -151,7 +155,7 @@
 		function sendOBSCommand(requestType, data){
 			var payload = data;
 			//var payload = {"message-id":crypto.randomUUID(), "request-type":"GetVersion"};
-			data["message-id"] = crypto.randomUUID();
+			data["message-id"] = new Date().getTime();
 			data["request-type"] = requestType;
 			obsSocket.send(JSON.stringify(data));
 
