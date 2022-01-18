@@ -15,6 +15,7 @@
 	var streamnode = 1;
 	var lastHeat = null;
 	var currentScene = "";
+	var launchDelay = 7;
 	var FPVFeedSceneName = "4Box";
 	var resultsSceneName = "Results";
 	var raceResultsSceneName = "Race Results";
@@ -44,6 +45,7 @@
 			}
 		})();
 
+		console.log("Launch Delay: "+launchDelay);
 		console.log("FPV feed source names: "+FPVSourceNames);
 		console.log("FPV feed scene name: "+FPVFeedSceneName);
 		console.log("Results scene name: "+resultsSceneName);
@@ -54,29 +56,37 @@
 		console.log("URL to the remote (or local) OBS instance: "+obsURL);
 		console.log("");
 
+		$('#launchDelayField').val(launchDelay);
 		$('#commentatorField').val(commentatorSceneName);
 		$('#heatResultsField').val(resultsSceneName);
 		$('#raceResultsField').val(raceResultsSceneName);
 		$('#launchField').val(launchSceneName);
 
 		//let the user update the scene names we are switching to
+		const launchDelayInput = document.querySelector('#launchDelayField');
+		launchDelayInput.addEventListener('input', updateLaunchDelayValue);
+		function updateLaunchDelayValue(e) {
+		  launchDelay = e.target.value;
+			console.log("updating launch delay: "+launchDelay);
+		}
+
 		const commentatorInput = document.querySelector('#commentatorField');
-		commentatorInput.addEventListener('input', updateValue);
-		function updateValue(e) {
+		commentatorInput.addEventListener('input', updateCommentatorSceneValue);
+		function updateCommentatorSceneValue(e) {
 		  commentatorSceneName = e.target.value;
 			console.log("updating launch commentator scene name: "+commentatorSceneName);
 		}
 
 		const heatResultsInput = document.querySelector('#heatResultsField');
-		heatResultsInput.addEventListener('input', updateValue);
-		function updateValue(e) {
+		heatResultsInput.addEventListener('input', updateHeatResultsValue);
+		function updateHeatResultsValue(e) {
 		  resultsSceneName = e.target.value;
 			console.log("updating heat results scene name: "+resultsSceneName);
 		}
 
 		const raceResultsInput = document.querySelector('#raceResultsField');
-		raceResultsInput.addEventListener('input', updateValue);
-		function updateValue(e) {
+		raceResultsInput.addEventListener('input', updateRaceResultsValue);
+		function updateRaceResultsValue(e) {
 		  raceResultsSceneName = e.target.value;
 			console.log("updating race results scene name: "+raceResultsSceneName);
 		}
@@ -249,6 +259,10 @@
 </script>
 {% endblock %} {% block content %}
 <p>
+	<label for="launchDelayField">Launch Cam Delay</label>
+	<input type="number" id="launchDelayField" name="launchDelayField" min="1" max="15">
+</p>
+<p>
 	<label for="commentatorField">Commentator Scene</label>
 	<input type="text" id="commentatorField" name="commentatorField">
 </p>
@@ -261,7 +275,7 @@
 	<input type="text" id="raceResultsField" name="raceResultsField">
 </p>
 <p>
-	<label for="launchField">Launch Scene</label>
+	<label for="launchField">Launch Cam Scene</label>
 	<input type="text" id="launchField" name="launchField">
 </p>
 <div id="pilot-info" style="left: auto;">
