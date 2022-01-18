@@ -20,6 +20,7 @@
 	var raceResultsSceneName = "Race Results";
 	var pilotCardsSceneName = "Pilot Intro";
 	var launchSceneName = "Launch";
+	var commentatorSceneName = "Commentators";
 	var FPVSourceNames = "Node{N}-{analog,HD0,DJI}"
 	var obsURL = "ws://localhost:4444";
 
@@ -48,9 +49,41 @@
 		console.log("Results scene name: "+resultsSceneName);
 		console.log("Race Results scene name: "+raceResultsSceneName);
 		console.log("Launch scene name: "+launchSceneName);
+		console.log("Commentator scene name: "+commentatorSceneName);
 		console.log("Next heat pilot cards scene name: "+pilotCardsSceneName);
 		console.log("URL to the remote (or local) OBS instance: "+obsURL);
 		console.log("");
+
+		$('#commentatorField').val(commentatorSceneName);
+		$('#heatResultsField').val(resultsSceneName);
+		$('#raceResultsField').val(raceResultsSceneName);
+		$('#launchField').val(launchSceneName);
+
+		//let the user update the scene names we are switching to
+		const commentatorInput = document.querySelector('#commentatorField');
+		commentatorInput.addEventListener('input', updateValue);
+		function updateValue(e) {
+		  commentatorSceneName = e.target.value;
+		}
+
+		const heatResultsInput = document.querySelector('#heatResultsField');
+		heatResultsInput.addEventListener('input', updateValue);
+		function updateValue(e) {
+		  resultsSceneName = e.target.value;
+		}
+
+		const raceResultsInput = document.querySelector('#raceResultsField');
+		raceResultsInput.addEventListener('input', updateValue);
+		function updateValue(e) {
+		  raceResultsSceneName = e.target.value;
+		}
+
+		const launchInput = document.querySelector('#launchField');
+		launchInput.addEventListener('input', updateValue);
+		function updateValue(e) {
+		  launchSceneName = e.target.value;
+		}
+
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -78,6 +111,7 @@
 				if (lastHeat!=null){
 					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(raceResultsSceneName);} }, 10000);
 					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(pilotCardsSceneName);} }, 20000);
+					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(commentatorSceneName);} }, 30000);
 				}
 			}
 			if(msg['race_status']==2){ //race just stopped
@@ -210,6 +244,22 @@
 
 </script>
 {% endblock %} {% block content %}
+<p>
+	<label for="commentatorField">Commentator Scene</label>
+	<input type="text" id="commentatorField" name="commentatorField">
+</p>
+<p>
+	<label for="heatResultsField">Heat Results Scene</label>
+	<input type="text" id="heatResultsField" name="heatResultsField">
+</p>
+<p>
+	<label for="raceResultsField">Race Results Scene</label>
+	<input type="text" id="raceResultsField" name="raceResultsField">
+</p>
+<p>
+	<label for="launchField">Launch Scene</label>
+	<input type="text" id="launchField" name="launchField">
+</p>
 <div id="pilot-info" style="left: auto;">
 	<div id="callsign"></div>
 </div>

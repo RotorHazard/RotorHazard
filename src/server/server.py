@@ -476,6 +476,20 @@ def render_streetleague():
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=Config.GENERAL['DEBUG'])
 
+@APP.route('/streetleaguesimple')
+def render_streetleaguesimple():
+    '''Route to streetleague format page.'''
+
+    return render_template('streetleaguesimple.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
+        led_events_enabled=led_manager.isEnabled(),
+        vrx_enabled=vrx_controller!=None,
+        num_nodes=RACE.num_nodes,
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
+        node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
+        Debug=Config.GENERAL['DEBUG'])
+
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
