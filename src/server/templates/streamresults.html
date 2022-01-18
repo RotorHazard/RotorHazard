@@ -88,6 +88,11 @@
 			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
 		});
 
+		function updateWinnerColor(){
+			$('.race_status_message').css('background', winnerColor);
+			$('.race_status_message').css('color', winnerContrastColor);
+		}
+
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -168,12 +173,6 @@
 			}
 			updateWinnerColor();
 		});
-
-		function updateWinnerColor(){
-			$('.race_status_message').css('background', winnerColor);
-			$('.race_status_message').css('color', winnerContrastColor);
-		}
-
 
 		socket.on('leaderboard', function (msg) {
 			if (msg && 'last_race' in msg) {
