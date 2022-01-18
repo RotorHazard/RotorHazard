@@ -64,24 +64,28 @@
 		commentatorInput.addEventListener('input', updateValue);
 		function updateValue(e) {
 		  commentatorSceneName = e.target.value;
+			console.log("updating launch commentator scene name: "+commentatorSceneName);
 		}
 
 		const heatResultsInput = document.querySelector('#heatResultsField');
 		heatResultsInput.addEventListener('input', updateValue);
 		function updateValue(e) {
 		  resultsSceneName = e.target.value;
+			console.log("updating heat results scene name: "+resultsSceneName);
 		}
 
 		const raceResultsInput = document.querySelector('#raceResultsField');
 		raceResultsInput.addEventListener('input', updateValue);
 		function updateValue(e) {
 		  raceResultsSceneName = e.target.value;
+			console.log("updating race results scene name: "+raceResultsSceneName);
 		}
 
 		const launchInput = document.querySelector('#launchField');
 		launchInput.addEventListener('input', updateValue);
 		function updateValue(e) {
 		  launchSceneName = e.target.value;
+			console.log("updating launch cam scene name: "+launchSceneName);
 		}
 
 		socket.on('language', function (msg) {
