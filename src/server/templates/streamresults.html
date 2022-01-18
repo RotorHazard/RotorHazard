@@ -192,10 +192,13 @@
       console.log(primary_leaderboard);
       console.log(race.leaderboard[primary_leaderboard]);
       var winner = race.leaderboard[primary_leaderboard][0].callsign;
-			var winnerColor = pilotColors[winner];
-			var winnerContrastColor = contrastColor(pilotColors[winner]);
-			$('.race_status_message').css('background', winnerColor);
-			$('.race_status_message').css('color', winnerContrastColor);
+			if(winner in pilotColors){
+				var winnerColor = pilotColors[winner];
+				var winnerContrastColor = contrastColor(pilotColors[winner]);
+				$('.race_status_message').css('background', winnerColor);
+				$('.race_status_message').css('color', winnerContrastColor);
+			}
+
 			if (race.status_msg){
 
 				$('.race_status_message').html(race.status_msg);
