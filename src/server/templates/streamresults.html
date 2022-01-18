@@ -9,6 +9,9 @@
 		'race_status',
 	];
 
+	var pilotColors = {};
+
+
 	rotorhazard.show_messages = false;
 
 	var request_time;
@@ -30,28 +33,6 @@
 	$(document).ready(function () {// get pi time
 		rotorhazard.pi_time_request = window.performance.now();
 		socket.emit('get_pi_time');
-
-		socket.on('current_heat', function (msg) {
-			for (var idx in msg.heatNodes) {
-				hn = msg.heatNodes[streamnode];
-				if (hn.activeColor) {
-					color = colorvalToHex(hn.activeColor)
-					$('html').css('--pilot_color', color);
-					$('html').css('--contrast_pilot_color', contrastColor(color));
-					$('html').css('--position_foreground_color', color);
-					$('html').css('--position_background_color', contrastColor(color));
-					$('html').css('--fast_lap_color', color);
-					$('html').css('--contrast_fast_lap_color', contrastColor(color));
-				} else {
-					$('html').css('--pilot_color', 'hsl(var(--hue_0), var(--sat_0), var(--lum_0_low))');
-					$('html').css('--contrast_pilot_color', 'var(--contrast_0_low)');
-					$('html').css('--position_background_color', 'hsl(var(--hue_1), var(--sat_1), var(--lum_1_high))');
-					$('html').css('--position_foreground_color', 'var(--contrast_1_high)');
-					$('html').css('--fast_lap_color', 'hsl(var(--hue_1), var(--sat_1), var(--lum_1_high))');
-					$('html').css('--contrast_fast_lap_color', 'var(--contrast_1_high)');
-				}
-			}
-		});
 
 		socket.on('pi_time', function (msg) {
 			var response_time = window.performance.now();
@@ -169,13 +150,27 @@
 		socket.on('heartbeat', function (msg) {
 		});
 
+		socket.emit('load_data', {'load_types': ['pilot_data']}
+		);
+
+		socket.on('pilot_data', function (msg) {
+			console.log("got pilot data");
+			for (var i in msg.pilots) {
+				var pilot = msg.pilots[i];
+				pilotColors[pilot.callsign] = pilot.color;
+			}
+			console.log(pilotColors);
+		});
+
+
 		socket.on('leaderboard', function (msg) {
 			if (msg && 'last_race' in msg) {
 				var race = msg.last_race;
 			} else {
 				var race = msg.current;
-			}
 
+			}
+			console.log(race);
 			var heatname = __('Heat') + ' ' + race.heat;
 			if (race.heat_note)
 				heatname = race.heat_note;
@@ -193,15 +188,20 @@
 			} else {
 				$('#team_leaderboard').hide();
 			}
+			var primary_leaderboard = race.leaderboard.meta.primary_leaderboard;
+      console.log(primary_leaderboard);
+      console.log(race.leaderboard[primary_leaderboard]);
+      var winner = race.leaderboard[primary_leaderboard][0].callsign;
+			var winnerColor = pilotColors[winner];
+			var winnerContrastColor = contrastColor(pilotColors[winner]);
+			$('.race_status_message').css('background', winnerColor);
+			$('.race_status_message').css('color', winnerContrastColor);
 			if (race.status_msg){
-				$('.race_status_message').css('background', 'var(--pilot_color)');
-				$('.race_status_message').css('color', 'var(--contrast_pilot_color)');
+
 				$('.race_status_message').html(race.status_msg);
 				$('.race_status_message').slideDown();
 
 			} else {
-				$('.race_status_message').css('background', 'var(--pilot_color)');
-				$('.race_status_message').css('color', 'var(--contrast_pilot_color)');
 				$('.race_status_message').slideUp();
 
 			}
