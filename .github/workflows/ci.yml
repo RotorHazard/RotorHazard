@@ -104,7 +104,7 @@ jobs:
             flags: "-DUSE_I2C"
           - board: "STMicroelectronics:stm32:GenF1:pnum=BLUEPILL_F103C8,xserial=generic,usb=none,xusb=FS,opt=osstd,rtlib=nano"
             platform: "STMicroelectronics:stm32"
-            opts: "--additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stmicroelectronics_index.json"
+            opts: "--additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json"
           - board: "esp32:esp32:esp32:PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none"
             platform: "esp32:esp32"
             opts: "--additional-urls https://dl.espressif.com/dl/package_esp32_index.json"
