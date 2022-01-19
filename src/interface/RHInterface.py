@@ -3,6 +3,7 @@
 import os
 import gevent
 import logging
+from collections import deque
 
 import interface as node_pkg
 from rh.util.Plugins import Plugins
@@ -10,6 +11,11 @@ from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .Node import Node, NodeManager
 from rh.util import Averager
+
+DEFAULT_WARN_LOOP_TIME = 1500
+DEFAULT_RECORD_BUFFER_SIZE = 10000
+DEFAULT_RECORD_FORMAT = 'csv'
+STATS_WINDOW_SIZE = 100
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_MODE = 0x02
@@ -256,8 +262,8 @@ class RHNodeManager(NodeManager):
 class RHNode(Node):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index, multi_node_index, manager)
-        self._loop_time_stats = Averager(100)
-        self._roundtrip_stats = Averager(100)
+        self._loop_time_stats = Averager(STATS_WINDOW_SIZE)
+        self._roundtrip_stats = Averager(STATS_WINDOW_SIZE)
 
     @Node.loop_time.setter
     def loop_time(self, v):
@@ -288,7 +294,7 @@ class RHNode(Node):
 class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         super().__init__()
-        self.warn_loop_time = kwargs['warn_loop_time'] if 'warn_loop_time' in kwargs else 1500
+        self.warn_loop_time = kwargs['warn_loop_time'] if 'warn_loop_time' in kwargs else DEFAULT_WARN_LOOP_TIME
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -300,6 +306,9 @@ class RHInterface(BaseHardwareInterface):
         self.discover_nodes(*args, **kwargs)
 
         self.data_loggers = [None]*len(self.nodes)
+        self.data_logger_buffer_size = int(os.environ.get('RH_RECORD_BUFFER', DEFAULT_RECORD_BUFFER_SIZE))
+        self.data_logger_format = os.environ.get('RH_RECORD_FORMAT', DEFAULT_RECORD_FORMAT)
+
         for node in self.nodes:
             node.frequency = node.get_value_16(READ_FREQUENCY)
             if not node.frequency:
@@ -333,15 +342,29 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.manager.api_level >= 18 and not self.data_loggers[node.index]:
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                    f = open("data_{0}.csv".format(node.index+1), 'a')
+                    file_format = 'b' if self.data_logger_format == 'binary' else 't'
+                    f = open("node_data_{0}.csv".format(node.index+1), 'a'+file_format)
                     logger.info("Data logging enabled for node {0} ({1})".format(node, f.name))
+                    f.data_buffer = deque([], self.data_logger_buffer_size)
                     self.data_loggers[node.index] = f
         super().start()
+
+    def _flush_data_logger(self, f):
+        buf = f.data_buffer
+        if len(buf) == buf.maxlen:
+            for r in buf:
+                r_bytes, r_values = r
+                if self.data_logger_format == 'binary':
+                    f.write(r_bytes)
+                else:
+                    f.write(','.join([str(v) for v in r_values]))
+            buf.clear()
 
     def stop(self):
         super().stop()
         for i,f in enumerate(self.data_loggers):
             if f is not None:
+                self._flush_data_logger(f)
                 f.close()
                 logger.info("Stopped data logging for node {0} ({1})".format(self.nodes[i], f.name))
                 self.data_loggers[i] = None
@@ -373,15 +396,15 @@ class RHInterface(BaseHardwareInterface):
                             data = node.read_command(READ_LAP_STATS, 18, max_retries=0, log_level=logging.DEBUG)
                     else:
                         data = node.read_command(READ_LAP_STATS, 17, max_retries=0, log_level=logging.DEBUG)
-    
+
                     if data is not None and len(data) > 0:
                         server_roundtrip = node.io_response - node.io_request
                         node._roundtrip_stats.append(1000*server_roundtrip)
                         server_oneway = server_roundtrip / 2
                         readtime = node.io_response - server_oneway
-    
+
                         pass_count = data[0]
-    
+
                         if node.manager.api_level >= 18:
                             offset_rssi = 3
                             offset_nodePeakRssi = 4
@@ -421,7 +444,7 @@ class RHInterface(BaseHardwareInterface):
                             offset_peakFirstTime = 22
                             offset_nadirRssi = 24
                             offset_nadirFirstTime = 26
-    
+
                         rssi_val = unpack_rssi(node, data[offset_rssi:])
                         node.current_rssi = rssi_val  # save value (even if invalid so displayed in GUI)
                         if node.is_valid_rssi(rssi_val):
@@ -464,7 +487,7 @@ class RHInterface(BaseHardwareInterface):
                                         pn_history.nadirLastTime = pn_history.nadirFirstTime
                             else:
                                 ms_since_lap = unpack_32(data[1:])
-    
+
                             rssi_val = unpack_rssi(node, data[offset_nodePeakRssi:])
                             if node.is_valid_rssi(rssi_val):
                                 node.node_peak_rssi = rssi_val
@@ -481,16 +504,20 @@ class RHInterface(BaseHardwareInterface):
                             rssi_val = unpack_rssi(node, data[offset_passNadirRssi:])
                             if node.is_valid_rssi(rssi_val):
                                 node.pass_nadir_rssi = rssi_val
-    
+
                             if node.manager.api_level >= 13:
                                 rssi_val = unpack_rssi(node, data[offset_nodeNadirRssi:])
                                 if node.is_valid_rssi(rssi_val):
                                     node.node_nadir_rssi = rssi_val
-    
+
                             if node.manager.api_level >= 18:
                                 data_logger = self.data_loggers[node.index]
                                 if data_logger:
-                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,pass_count, int(ms_since_lap), node.current_rssi, node.node_peak_rssi, pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
+                                    data_logger.data_buffer.append((
+                                        data,
+                                        (readtime, pass_count, ms_since_lap, node.current_rssi, node.node_peak_rssi, pass_peak_rssi, node.loop_time, cross_flag, node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime)
+                                    ))
+                                    self._flush_data_logger(data_logger)
 
                             pass_timestamp = readtime - (ms_since_lap / 1000.0)
                             self.process_lap_stats(node, pass_count, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
