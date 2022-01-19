@@ -29,9 +29,15 @@ constexpr uint8_t HISTORY_SIZE = 6;
 constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd, +1 to allow for current value
 constexpr uint8_t CCS_SIZE = (PH_HISTORY_SIZE+1)/2;
 #if TARGET == ESP32_TARGET && MULTI_RHNODE_MAX == 1
-constexpr uint16_t RSSI_HISTORY_SIZE = 65535;
+    constexpr uint16_t RSSI_HISTORY_SIZE = 65535;
+#elif TARGET == STM32_TARGET && MULTI_RHNODE_MAX == 1
+    #if VARIANT == STM32F4_VARIANT
+        constexpr uint16_t RSSI_HISTORY_SIZE = 65535;
+    #else
+        constexpr uint16_t RSSI_HISTORY_SIZE = 16383;
+    #endif
 #else
-constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
+    constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
 #endif
 constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 
