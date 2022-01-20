@@ -16,7 +16,12 @@ public:
     }
     void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
-        printf("Initializing RX module %d\n", nIdx);
+        uint8_t dataPin = 31;
+        uint8_t clkPin = 32;
+        uint8_t selPin = 41 + nIdx;
+        uint8_t rssiPin = 61 + nIdx;
+        printf("Initializing RX module %d with SPI pins: data=%u, clock=%u, chip-select=%u\n", nIdx, dataPin, clkPin, selPin);
+        rx.init(dataPin, clkPin, selPin, rssiPin);
         isRxInit[nIdx] = true;
     }
     void initSettings(uint_fast8_t nIdx, Settings& settings)

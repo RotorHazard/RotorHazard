@@ -71,7 +71,7 @@ void loop()
 {
     const utime_t us = usclock.tickMicros();
     // unsigned arithmetic to handle roll-over
-    if ((us - previousTick) > 1000)  // limit to once per millisecond
+    if ((us - previousTick) >= 1000)  // limit to once per millisecond
     {
         const mtime_t ms = usclock.millis();
         const bool crossingFlag = rssiRxs.readRssi(ms, usclock);

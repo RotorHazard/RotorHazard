@@ -113,7 +113,7 @@
 //#define RSSI_HISTORY
 #endif
 
-#ifdef __TEST__
+#if TARGET == TEST_TARGET
 #undef USE_PH
 #define SCAN_HISTORY
 #define RSSI_HISTORY

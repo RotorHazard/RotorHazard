@@ -165,7 +165,7 @@ unittest(command_nodeIndex_invalid)
     assertEqual(0, cmdRssiNodeIndex);
 }
 
-unittest(command_scan)
+unittest(command_scanner)
 {
     GodmodeState* nano = GODMODE();
     nano->reset();
@@ -174,10 +174,10 @@ unittest(command_scan)
     assertFalse(rssiRxs.getRssiNode(0).active);
     assertEqual(0, rssiRxs.getRssiNode(0).getSettings().mode);
 
-    char modeCmd[] = {WRITE_MODE, 1, 0};
+    char modeCmd[] = {WRITE_MODE, SCANNER, 0};
     setChecksum(modeCmd, sizeof(modeCmd));
     sendData(nano, modeCmd, sizeof(modeCmd), serialMessage);
-    assertEqual(1, rssiRxs.getRssiNode(0).getSettings().mode);
+    assertEqual(SCANNER, rssiRxs.getRssiNode(0).getSettings().mode);
     assertEqual(MIN_SCAN_FREQ, rssiRxs.getRssiNode(0).getSettings().vtxFreq);
     // wait for some frequency changes
     for (int i=0; i<200; i++) {
@@ -194,6 +194,41 @@ unittest(command_scan)
     assertEqual(MIN_SCAN_FREQ, read16(nano->serialPort[0].dataOut, 0));
     assertEqual(MIN_SCAN_FREQ+SCAN_FREQ_INCR, read16(nano->serialPort[0].dataOut, 3));
     assertEqual(MIN_SCAN_FREQ+2*SCAN_FREQ_INCR, read16(nano->serialPort[0].dataOut, 6));
+}
+
+unittest(command_raw)
+{
+    GodmodeState* nano = GODMODE();
+    nano->reset();
+    Message serialMessage;
+    setup();
+    rssiRxs.getRssiNode(0).active = true;
+    rssiRxs.getRssiNode(0).getSettings().mode = TIMER;
+
+    char modeCmd[] = {WRITE_MODE, RAW, 0};
+    setChecksum(modeCmd, sizeof(modeCmd));
+    sendData(nano, modeCmd, sizeof(modeCmd), serialMessage);
+    assertEqual(RAW, rssiRxs.getRssiNode(0).getSettings().mode);
+    // settle time
+    for (int i=0; i<36; i++) {
+        nano->analogPin[61] = 2*30;
+        loop();
+        nano->micros += 1000;
+    }
+    // feed some rssi values
+    for (int i=0; i<10; i++) {
+        nano->analogPin[61] = 2*(30 + i);
+        loop();
+        nano->micros += 1000;
+    }
+    assertEqual(10, (int)rssiRxs.getRssiNode(0).rssiHistory.size());
+
+    const char readCmd[] = {READ_NODE_RSSI_HISTORY};
+    sendData(nano, readCmd, sizeof(readCmd), serialMessage);
+    assertEqual(17, nano->serialPort[0].dataOut.length());
+    for (int i=0; i<10; i++) {
+        assertEqual(30 + i, (int)read8(nano->serialPort[0].dataOut, i));
+    }
 }
 
 unittest_main()
