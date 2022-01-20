@@ -36,6 +36,8 @@ constexpr uint8_t CCS_SIZE = (PH_HISTORY_SIZE+1)/2;
     #else
         constexpr uint16_t RSSI_HISTORY_SIZE = 16383;
     #endif
+#elif TARGET == SIL_TARGET
+    constexpr uint16_t RSSI_HISTORY_SIZE = 65535;
 #else
     constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
 #endif

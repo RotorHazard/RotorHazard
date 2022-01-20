@@ -105,8 +105,13 @@
 // uncomment to activate scanner mode
 //#define SCAN_HISTORY
 #endif
+
+#if TARGET == SIL_TARGET
+#define RSSI_HISTORY
+#else
 // uncomment to activate raw mode
 //#define RSSI_HISTORY
+#endif
 
 #ifdef __TEST__
 #undef USE_PH
