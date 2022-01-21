@@ -8,10 +8,10 @@ template <typename  T> class SendBuffer : public Collection<uint_fast8_t> {
         virtual bool addPeak(const T& peak, bool force = false) = 0;
         virtual bool addNadir(const T& nadir, bool force = false) = 0;
         /** mainly used for testing */
-        virtual const T nextPeak() = 0;
+        virtual const T nextPeak() const = 0;
         /** mainly used for testing */
-        virtual const T nextNadir() = 0;
-        virtual const ExtremumType nextType() = 0;
+        virtual const T nextNadir() const = 0;
+        virtual const ExtremumType nextType() const = 0;
         virtual const T popNext() = 0;
         virtual void clear() = 0;
 };
@@ -29,8 +29,8 @@ class ExtremumSendBuffer : public Collection<uint_fast8_t> {
             }
         }
         virtual void addOrDiscard(const Extremum& e, bool wasLast) = 0;
-        virtual const Extremum first() = 0;
-        virtual const Extremum last() = 0;
+        virtual const Extremum first() const = 0;
+        virtual const Extremum last() const = 0;
         virtual void removeFirst() = 0;
         virtual void clear() = 0;
     protected:
@@ -82,13 +82,13 @@ class DualSendBuffer: public SendBuffer<Extremum> {
             }
             return buffered;
         }
-        const Extremum nextPeak() {
+        const Extremum nextPeak() const {
             return peakBuffer->first();
         }
-        const Extremum nextNadir() {
+        const Extremum nextNadir() const {
             return nadirBuffer->first();
         }
-        const ExtremumType nextType() {
+        const ExtremumType nextType() const {
             if (!peakBuffer->isEmpty() && (nadirBuffer->isEmpty() || (peakBuffer->first().firstTime < nadirBuffer->first().firstTime)))
             {
                 return PEAK;

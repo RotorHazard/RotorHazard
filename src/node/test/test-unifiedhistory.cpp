@@ -238,7 +238,7 @@ unittest(historyBuffer_unified1_withReads) {
 }
 
 unittest(historyBuffer_sorted) {
-    SortedUnifiedSendBuffer<3> testBuffer;
+    SortedUnifiedSendBuffer<Extremum,3> testBuffer;
     Extremum e1 = {80,0,0};
     testBuffer.addPeak(e1);
     Extremum e2 = {30,0,0};
@@ -280,6 +280,47 @@ unittest(historyBuffer_sorted) {
     assertEqual(1, (int)testBuffer.size());
     e2 = testBuffer[testBuffer.sortedIdxs[0]];
     assertEqual(30, (int)e2.rssi);
+}
+
+unittest(historyBuffer_prefers_biggest_peak_smallest_nadir) {
+    GodmodeState* nano = GODMODE();
+    nano->reset();
+    RssiNode rssiNode;
+    configureTestRssiNode(rssiNode);
+    State& state = rssiNode.getState();
+    LastPass& lastPass = rssiNode.getLastPass();
+    History& history = rssiNode.getHistory();
+    UnifiedSendBuffer<Extremum,9> testBuffer;
+    history.setSendBuffer(&testBuffer);
+    rssiNode.start(millis(), micros());
+    nano->micros += 40000; // settle time
+    assertEqual(NONE, history.nextToSendType());
+
+    // prime the state with some background signal
+    sendSignal(nano, rssiNode, 60);
+    sendSignal(nano, rssiNode, 30);
+    sendSignal(nano, rssiNode, 30);
+
+    sendSignal(nano, rssiNode, 61);
+    sendSignal(nano, rssiNode, 41);
+    sendSignal(nano, rssiNode, 72);
+    sendSignal(nano, rssiNode, 52);
+    sendSignal(nano, rssiNode, 83);
+    sendSignal(nano, rssiNode, 33);
+    sendSignal(nano, rssiNode, 74);
+    sendSignal(nano, rssiNode, 24);
+    sendSignal(nano, rssiNode, 65);
+    sendSignal(nano, rssiNode, 35);
+    assertEqual(PEAK, history.nextToSendType());
+    assertEqual(61, (int)testBuffer.firstAvailable().rssi);
+    assertEqual(83, (int)history.sendBuffer->nextPeak().rssi);
+    assertEqual(9, testBuffer.remainingToSend());
+    Extremum e = history.popNextToSend();
+    assertEqual(83, e.rssi);
+    assertEqual(4, (int)testBuffer.remainingToSend());
+    assertEqual(NADIR, history.nextToSendType());
+    assertEqual(33, (int)testBuffer.firstAvailable().rssi);
+    assertEqual(24, (int)history.sendBuffer->nextNadir().rssi);
 }
 
 unittest_main()

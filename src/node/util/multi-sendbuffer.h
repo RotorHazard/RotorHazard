@@ -22,10 +22,10 @@ template <uint8_t N> class MultiExtremumSendBuffer : public ExtremumSendBuffer
       void addOrDiscard(const Extremum& e, bool wasLast) {
           add(e);
       }
-      const Extremum first() {
+      const Extremum first() const {
           return buffer.first();
       }
-      const Extremum last() {
+      const Extremum last() const {
           return buffer.first();
       }
       void removeFirst() {

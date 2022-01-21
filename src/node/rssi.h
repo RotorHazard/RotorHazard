@@ -49,7 +49,7 @@ constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 #endif
 
 #if defined(USE_PH) || defined(__TEST__)
-#define SENDBUFFER SortedUnifiedSendBuffer<HISTORY_SIZE>
+#define SENDBUFFER SortedUnifiedSendBuffer<Extremum,HISTORY_SIZE>
 #else
 #define SENDBUFFER UnifiedSendBuffer<Extremum,HISTORY_SIZE>
 #endif
