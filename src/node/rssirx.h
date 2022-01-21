@@ -6,7 +6,7 @@
 #include "rx.h"
 #include "microclock.h"
 
-constexpr rssi_t MIN_RSSI_DETECT = 5; //value for detecting node as installed
+constexpr rssi_t MIN_RSSI_DETECT = 5;  //value for detecting node as installed
 
 
 class RssiReceivers {

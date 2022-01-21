@@ -104,7 +104,7 @@ void loop()
             int ti = (int)(ms / 100);
             hardware.setStatusLed(ti != 3 && ti != 7);
         }
-        else if ((int)(ms % 20) == 0)
+        else if ((ms & 0xF) == 0)
         {  //only run every 20ms so flashes last longer (brighter)
 
             // if crossing or communications activity then LED on
@@ -119,7 +119,7 @@ void loop()
             }
             else
             {
-                hardware.setStatusLed(ms % 2000 == 0);  // blink
+                hardware.setStatusLed((ms & 0x7FF) == 0);  // blink
             }
         }
     }

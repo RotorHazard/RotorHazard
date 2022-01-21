@@ -21,8 +21,8 @@ static uint16_t freqMhzToRegVal(freq_t freqInMhz)
 {
     uint16_t tf, N, A;
     tf = (freqInMhz - 479) / 2;
-    N = tf / 32;
-    A = tf % 32;
+    N = tf >> 5;
+    A = tf & 0x1F;
     return (N << 7) + A;
 }
 

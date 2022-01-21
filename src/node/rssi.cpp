@@ -249,7 +249,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
     LOG_DEBUG("Is triggered: ", triggered, DEC);
 
 #ifdef USE_MQTT
-    if (!triggered && lifetimeSample != 0 && state.rssiTimestamp % MQTT_SAMPLE_INTERVAL == 0)
+    if (!triggered && lifetimeSample != 0 && (state.rssiTimestamp & MQTT_SAMPLE_INTERVAL_MASK) == 0)
     {
         char json[64] = "";
         int n = jsonStart(json);
@@ -308,7 +308,7 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
         endCrossing(state.rssi);
     }
 #ifdef USE_MQTT
-    else if (state.rssiTimestamp % MQTT_SAMPLE_INTERVAL == 0)
+    else if ((state.rssiTimestamp & MQTT_SAMPLE_INTERVAL_MASK) == 0)
     {
         char json[64] = "";
         int n = jsonStart(json);

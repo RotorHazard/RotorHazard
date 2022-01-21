@@ -146,7 +146,7 @@
 #define MQTT_PORT 1883
 #define MQTT_USERNAME "test"
 #define MQTT_PASSWORD "test"
-#define MQTT_SAMPLE_INTERVAL 100
+#define MQTT_SAMPLE_INTERVAL_MASK 0x7F  // must be 2^n - 1
 #define MQTT_TOPIC "node_managers/timer"
 
 #ifndef USE_NTP
