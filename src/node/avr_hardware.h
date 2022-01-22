@@ -102,8 +102,10 @@ public:
         // init pin used to reset paired Arduino via RESET_PAIRED_NODE command
         pinMode(NODE_RESET_PIN, INPUT_PULLUP);
 
+#ifdef ENABLE_SERIAL_PIN
         // init pin that can be pulled low (to GND) to disable serial port
-        pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
+        pinMode(ENABLE_SERIAL_PIN, INPUT_PULLUP);
+#endif
 
     #if defined(USE_I2C) && (!defined(NODE_NUMBER) || !NODE_NUMBER)
         configI2cAddress();
@@ -111,7 +113,9 @@ public:
         delay(100);  // delay a bit a let pin level settle before reading input
     #endif
 
-        if (digitalRead(DISABLE_SERIAL_PIN) == HIGH)
+#ifdef ENABLE_SERIAL_PIN
+        if (digitalRead(ENABLE_SERIAL_PIN) == HIGH)
+#endif
         {
             Serial.begin(SERIAL_BAUD_RATE);  // Start serial interface
             while (!Serial) {
@@ -178,11 +182,16 @@ public:
                 {  //I2C communications activity detected; update comms monitor time
                     i2cMonitorLastResetTime = ms;
                 }
-                else if (ms - i2cMonitorLastResetTime > COMMS_MONITOR_TIME_MS)
-                {  //too long since last communications activity detected
-                    i2cMonitorEnabledFlag = false;
-                    // redo init, which should release I2C pins (SDA & SCL) if "stuck"
-                    i2cInit(i2cAddress, true);
+                else
+                {
+                    const mtime_t durationWithoutComms = ms - i2cMonitorLastResetTime;
+                    if (durationWithoutComms > COMMS_MONITOR_TIME_MS)
+                    {  //too long since last communications activity detected
+                        LOG_DEBUG("Resetting I2C - no activity period: ", durationWithoutComms, DEC);
+                        i2cMonitorEnabledFlag = false;
+                        // redo init, which should release I2C pins (SDA & SCL) if "stuck"
+                        i2cInit(i2cAddress, true);
+                    }
                 }
             }
             else if ((statusFlags & POLLING) &&

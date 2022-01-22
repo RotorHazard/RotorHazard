@@ -68,8 +68,7 @@
 #endif
 
 #if TARGET == STM32_TARGET
-    // currently, STM32F1 is not fast enough to support more than 4 nodes at 1ms loop time
-    #define MULTI_RHNODE_MAX 4
+    #define MULTI_RHNODE_MAX 8
     // ensure U(S)ART support is "Enabled (generic Serial)"
     // use USB support "None" (or "CDC (no generic Serial)") to use serial over UART pins
     // use USB support "CDC (generic Serial)" to use serial over USB port
@@ -191,7 +190,7 @@
         #define NODE_RESET_PIN A1              //Pin to reset paired Arduino via command for ISP
     #endif
 
-    #define DISABLE_SERIAL_PIN 9  //pull pin low (to GND) to disable serial port
+    #define ENABLE_SERIAL_PIN 9  //pull pin low (to GND) to disable serial port, comment out to always enable
     #define HARDWARE_SELECT_PIN_1 2
     #define HARDWARE_SELECT_PIN_2 3
     #define HARDWARE_SELECT_PIN_3 4

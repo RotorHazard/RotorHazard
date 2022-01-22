@@ -24,7 +24,7 @@ inline uint16_t toDuration(uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_D
 #if TARGET == AVR_TARGET
 constexpr uint8_t HISTORY_SIZE = 12;
 #else
-constexpr uint8_t HISTORY_SIZE = 6;
+constexpr uint8_t HISTORY_SIZE = 12;
 #endif
 constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd, +1 to allow for current value
 constexpr uint8_t CCS_SIZE = (PH_HISTORY_SIZE+1)/2;

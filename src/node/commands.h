@@ -86,7 +86,7 @@ public:
 };
 
 void handleStreamEvent(Stream& stream, Message& msg, CommSource src);
-void sendReadCommandResponse(Stream& stream, Message& msg);
+void sendReadCommandResponse(Stream& stream, Message& msg, CommSource src);
 void validateAndProcessWriteCommand(Message& msg, CommSource src);
 
 enum StatusFlag: uint8_t

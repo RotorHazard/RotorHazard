@@ -502,7 +502,7 @@ void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
         else
         {
             msg.handleReadCommand(src);
-            sendReadCommandResponse(stream, msg);
+            sendReadCommandResponse(stream, msg, src);
         }
     }
     else
@@ -513,10 +513,16 @@ void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
     }
 }
 
-void sendReadCommandResponse(Stream& stream, Message& msg) {
+void sendReadCommandResponse(Stream& stream, Message& msg, CommSource src) {
     // if there is pending data, send it
     if (msg.buffer.size > 0) {
+// don't write to serial in debug mode
+#ifdef DEBUG
+        if (src != SERIAL_SOURCE)
+#endif
+        {
         stream.write(msg.buffer.data, msg.buffer.size);
+        }
         msg.buffer.size = 0;
     }
 }

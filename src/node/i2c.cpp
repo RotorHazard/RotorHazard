@@ -10,7 +10,7 @@ static void i2cOnRequest();
 
 static volatile bool i2cReadyForReceive;
 static volatile Command i2cCommand = INVALID_COMMAND;
-static volatile uint8_t i2cPayload[BUFFER_LENGTH-1]; // BUFFER_LENGTH declared in Wire.h
+static volatile uint8_t i2cPayload[BUFFER_LENGTH-1];  // BUFFER_LENGTH declared in Wire.h
 static volatile uint8_t i2cPayloadSize;
 
 void i2cInit(uint8_t i2cAddress, bool reset) {
@@ -61,7 +61,7 @@ void i2cOnRequest() {
     Message msg;
     msg.command = i2cCommand;
     msg.handleReadCommand(I2C_SOURCE);
-    sendReadCommandResponse(Wire, msg);
+    sendReadCommandResponse(Wire, msg, I2C_SOURCE);
     i2cCommand = INVALID_COMMAND;
 }
 
