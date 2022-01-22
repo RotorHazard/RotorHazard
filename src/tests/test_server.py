@@ -382,7 +382,7 @@ class ServerTest(unittest.TestCase):
         self.client.emit('set_frequency', data)
 
         is_same_node = lambda d: d['node'] == 0
-        resp = self.wait_for_response('frequency_set', 0.1, is_same_node)
+        resp = self.wait_for_response('frequency_set', 1, is_same_node)
         self.assertEqual(resp, data)
 
     def test_livetime_reset_auto_calibration(self):

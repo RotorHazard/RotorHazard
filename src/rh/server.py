@@ -969,6 +969,14 @@ def on_broadcast_message(data):
 # Settings socket io events
 
 @SOCKET_IO.on('set_frequency')
+def ws_on_set_frequency(data):
+    node_index = data['node']
+    frequency = int(data['frequency'])
+    band = str(data['band']) if 'band' in data and data['band'] is not None else None
+    channel = int(data['channel']) if 'channel' in data and data['channel'] is not None else None
+    INTERFACE.set_frequency(node_index, frequency, band, channel)
+
+
 @catchLogExceptionsWrapper
 def on_set_frequency(data):
     '''Set node frequency.'''
@@ -1009,8 +1017,6 @@ def on_set_frequency(data):
             'profile_id': profile.id,
             'frequencies': freqs
             })
-
-        INTERFACE.set_frequency(node_index, frequency, band, channel)
 
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': node_index,
@@ -1115,6 +1121,12 @@ def hardware_set_all_frequencies(freqs):
 
 
 @SOCKET_IO.on('set_enter_at_level')
+def ws_on_set_enter_at_level(data):
+    node_index = data['node']
+    enter_at_level = data['enter_at_level']
+    INTERFACE.set_enter_at_level(node_index, enter_at_level)
+
+
 @catchLogExceptionsWrapper
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
@@ -1143,8 +1155,6 @@ def on_set_enter_at_level(data):
         'enter_ats': enter_ats
         })
 
-    INTERFACE.set_enter_at_level(node_index, enter_at_level)
-
     Events.trigger(Evt.ENTER_AT_LEVEL_SET, {
         'nodeIndex': node_index,
         'enter_at_level': enter_at_level,
@@ -1154,6 +1164,12 @@ def on_set_enter_at_level(data):
 
 
 @SOCKET_IO.on('set_exit_at_level')
+def ws_on_set_exit_at_level(data):
+    node_index = data['node']
+    exit_at_level = data['exit_at_level']
+    INTERFACE.set_exit_at_level(node_index, exit_at_level)
+
+
 @catchLogExceptionsWrapper
 def on_set_exit_at_level(data):
     '''Set node exit-at level.'''
@@ -1181,8 +1197,6 @@ def on_set_exit_at_level(data):
         'profile_id': profile.id,
         'exit_ats': exit_ats
         })
-
-    INTERFACE.set_exit_at_level(node_index, exit_at_level)
 
     Events.trigger(Evt.EXIT_AT_LEVEL_SET, {
         'nodeIndex': node_index,
