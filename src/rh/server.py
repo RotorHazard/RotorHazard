@@ -1251,6 +1251,19 @@ def on_set_calibration_mode(data):
         else:
             logger.info('Unable to set calibration mode ({0}) on node {1}; node index out of range'.format(ai_calibrate, node_index+1))
 
+
+@SOCKET_IO.on('set_data_logger')
+def on_set_data_logger(data):
+    node_index = data['node']
+    enable_flag = data['data_logger']
+    if enable_flag:
+        if hasattr(INTERFACE, 'start_data_logger'):
+            INTERFACE.start_data_logger(node_index)
+    else:
+        if hasattr(INTERFACE, 'stop_data_logger'):
+            INTERFACE.stop_data_logger(node_index)
+
+
 @SOCKET_IO.on("set_start_thresh_lower_amount")
 @catchLogExceptionsWrapper
 def on_set_start_thresh_lower_amount(data):

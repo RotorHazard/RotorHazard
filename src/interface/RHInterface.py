@@ -340,14 +340,26 @@ class RHInterface(BaseHardwareInterface):
 
     def start(self):
         for node in self.nodes:
-            if node.manager.api_level >= 18 and not self.data_loggers[node.index]:
-                if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                    file_format = 'b' if self.data_logger_format == 'binary' else 't'
-                    f = open("node_data_{0}.csv".format(node.index+1), 'a'+file_format)
-                    logger.info("Data logging enabled for node {0} ({1})".format(node, f.name))
-                    f.data_buffer = deque([], self.data_logger_buffer_size)
-                    self.data_loggers[node.index] = f
+            if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
+                self.start_data_logger(node.index)
         super().start()
+
+    def start_data_logger(self, node_index):
+        node = self.nodes[node_index]
+        if node.manager.api_level >= 18 and not self.data_loggers[node.index]:
+            file_format = 'b' if self.data_logger_format == 'binary' else 't'
+            f = open("node_data_{0}.csv".format(node.index+1), 'a'+file_format)
+            logger.info("Data logging enabled for node {0} ({1})".format(node, f.name))
+            f.data_buffer = deque([], self.data_logger_buffer_size)
+            self.data_loggers[node.index] = f
+
+    def stop_data_logger(self, node_index):
+        f = self.data_loggers[node_index]
+        if f is not None:
+            self._flush_data_logger(f)
+            f.close()
+            logger.info("Stopped data logging for node {0} ({1})".format(self.nodes[node_index], f.name))
+            self.data_loggers[node_index] = None
 
     def _flush_data_logger(self, f):
         buf = f.data_buffer
@@ -362,12 +374,8 @@ class RHInterface(BaseHardwareInterface):
 
     def stop(self):
         super().stop()
-        for i,f in enumerate(self.data_loggers):
-            if f is not None:
-                self._flush_data_logger(f)
-                f.close()
-                logger.info("Stopped data logging for node {0} ({1})".format(self.nodes[i], f.name))
-                self.data_loggers[i] = None
+        for node in self.nodes:
+            self.stop_data_logger(node.index)
 
     #
     # Update Loop

@@ -699,6 +699,15 @@
 			rotorhazard.nodes[data.node].calibrate = data.calibrate;
 		});
 
+		$('.set_data_logger').change(function (event) {
+      var data = {
+        node: parseInt($(this).data('node')),
+        data_logger: $(this).prop('checked'),
+      };
+      socket.emit('set_data_logger', data);
+      rotorhazard.nodes[data.node].data_logger = data.data_logger;
+    });
+
 		$('button.cap_enter_at_btn').click(function (event) {
 			var data = {
 				node_index: parseInt($(this).data('node_index')),
@@ -2293,6 +2302,11 @@
 						<label for="set_ai_calibrate_{{ node }}">{{ __('AI calibration') }}</label>
 						<input type="checkbox" id="set_ai_calibrate_{{ node }}" class="set_ai_calibrate" data-node="{{ node }}">
 					</div>
+
+          <div class="enter-exit-control">
+            <label for="set_data_logger_{{ node }}">{{ __('Data logger') }}</label>
+            <input type="checkbox" id="set_data_logger_{{ node }}" class="set_data_logger" data-node="{{ node }}">
+          </div>
 				</div>
 				<table>
 					<tr class="datarow">
