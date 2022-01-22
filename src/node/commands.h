@@ -9,10 +9,16 @@
 #include "hardware.h"
 
 // API level for node; increment when commands are modified
-constexpr uint16_t NODE_API_LEVEL = 35;
+constexpr uint16_t NODE_API_LEVEL = 36;
 
-constexpr freq_t MIN_FREQ = 100;
-constexpr freq_t MAX_FREQ = 9999;
+#ifdef __TEST__
+// unit tests dont supporting send 0/null
+constexpr freq_t POWER_OFF_FREQ = 1111;
+#else
+constexpr freq_t POWER_OFF_FREQ = 0;  // frequency value to power down rx module
+#endif
+constexpr freq_t MIN_FREQ = 5645;
+constexpr freq_t MAX_FREQ = 5945;
 
 enum CommSource
 {
@@ -23,18 +29,19 @@ enum CommSource
 
 enum Command: uint8_t
 {
-    READ_ADDRESS = 0x00,
+    READ_ADDRESS = 0x01,
     READ_MODE = 0x02,
     READ_FREQUENCY = 0x03,
-    READ_LAP_STATS = 0x05,
-    READ_LAP_PASS_STATS = 0x0D,
-    READ_LAP_EXTREMUMS = 0x0E,
+    READ_RSSI = 0x04,
+    READ_LAP_STATS = 0x08,
+    READ_ENTER_STATS = 0x09,
+    READ_EXIT_STATS = 0x10,
     READ_RHFEAT_FLAGS = 0x11,    // read feature flags value
     READ_REVISION_CODE = 0x22,   // read NODE_API_LEVEL and verification value
-    READ_NODE_RSSI_PEAK = 0x23,  // read 'state.nodeRssiPeak' value
-    READ_NODE_RSSI_NADIR = 0x24, // read 'state.nodeRssiNadir' value
-    READ_NODE_RSSI_HISTORY = 0x25,
-    READ_NODE_SCAN_HISTORY = 0x26,
+    READ_RSSI_STATS = 0x23,
+    READ_ANALYTICS = 0x24,
+    READ_RSSI_HISTORY = 0x25,
+    READ_SCAN_HISTORY = 0x26,
     READ_ENTER_AT_LEVEL = 0x31,
     READ_EXIT_AT_LEVEL = 0x32,
     READ_TIME_MILLIS = 0x33,     // read current 'millis()' value
@@ -70,8 +77,6 @@ constexpr bool isWriteCommand(uint8_t cmd) { return cmd > 0x50; };
 class Message
 {
 private:
-    void handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal);
-    void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
     void handleReadRssiHistory(RssiNode& rssiNode);
     void handleReadScanHistory(RssiNode& rssiNode);
     void setMode(Mode mode) const;
@@ -95,12 +100,6 @@ enum StatusFlag: uint8_t
     COMM_ACTIVITY   = 0x1,
     POLLING         = 0x2,
     SERIAL_CMD_MSG  = 0x4
-};
-
-enum LapStatsFlag: uint8_t
-{
-    LAPSTATS_FLAG_CROSSING = 0x01, // crossing is in progress
-    LAPSTATS_FLAG_PEAK     = 0x02  // reported extremum is peak
 };
 
 extern uint8_t volatile cmdStatusFlags;

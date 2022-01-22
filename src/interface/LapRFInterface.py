@@ -158,8 +158,7 @@ class LapRFInterface(BaseHardwareInterface):
                     node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                     node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
                     filtered_ts, filtered_rssi = node.history_filter.filter(rssi_ts, rssi)
-                    if filtered_rssi is not None:
-                        self.append_history(node, filtered_ts, filtered_rssi)
+                    self.append_history(node, filtered_ts, filtered_rssi)
         elif isinstance(record, laprf.PassingEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]

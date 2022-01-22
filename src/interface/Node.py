@@ -5,6 +5,7 @@ Command agnostic behaviour only.
 
 import logging
 from time import perf_counter
+from enum import IntEnum
 import gevent.lock
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
                         calculate_checksum, RssiHistory
@@ -12,6 +13,12 @@ from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, 
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
 logger = logging.getLogger(__name__)
+
+
+class DataStatus(IntEnum):
+    NOT_AVAILABLE = 0
+    AVAILABLE = 1
+    RETRIEVED = 2
 
 
 class CommandsWithRetry:
@@ -177,7 +184,7 @@ class NodeManager(CommandsWithRetry):
         pass
 
     def get_disabled_frequency(self):
-        return 5800
+        return 0
 
     def __enter__(self):
         self.lock.__enter__()
@@ -201,19 +208,12 @@ class Node(CommandsWithRetry):
         self.frequency = 0
         self.bandChannel = None
         self.current_rssi = 0
+        self.current_lifetime = 0  # ph
         self.node_peak_rssi = 0
         self.node_nadir_rssi = manager.max_rssi_value
-        self.pass_peak_rssi = 0
-        self.pass_nadir_rssi = manager.max_rssi_value
-        self.pass_count = None
         self.current_pilot_id = 0
         self.first_cross_flag = False
         self.show_crossing_flag = False
-        self._loop_time = 0 # microseconds
-        self.crossing_flag = False
-        self.pass_crossing_flag = False
-        self.enter_at_timestamp = 0
-        self.exit_at_timestamp = 0
         self.debug_pass_count = 0
         self.bad_rssi_count = 0
 
@@ -234,15 +234,28 @@ class Node(CommandsWithRetry):
         self.cap_exit_at_count = 0
         self.cap_exit_at_end_ts = 0
 
-        self.under_min_lap_count = 0
-
-        self.pass_history = []
-        self.history = RssiHistory()
-        self.used_history_count = 0
-        self.empty_history_count = 0
-
         self.scan_enabled = False
         self.scan_data = {}
+
+        self._init()
+
+    def _init(self):
+        self.pass_history = []
+        self.history = RssiHistory() # clear race history
+        self.used_history_count = 0
+        self.empty_history_count = 0
+        self.pass_count = None
+        self.pass_peak_rssi = 0
+        self.pass_nadir_rssi = self.manager.max_rssi_value
+        self.pass_crossing_flag = False
+        self.is_crossing = False
+        self.enter_at_timestamp = 0
+        self.exit_at_timestamp = 0
+        self.lap_stats_status = DataStatus.NOT_AVAILABLE
+        self.enter_stats_status = DataStatus.NOT_AVAILABLE
+        self.exit_stats_status = DataStatus.NOT_AVAILABLE
+        self.under_min_lap_count = 0
+        self._loop_time = 0 # microseconds
 
     @property
     def loop_time(self):
@@ -253,13 +266,7 @@ class Node(CommandsWithRetry):
         self._loop_time = v
 
     def reset(self):
-        self.pass_history = []
-        self.history = RssiHistory() # clear race history
-        self.used_history_count = 0
-        self.empty_history_count = 0
-        self.pass_count = None
-        self.under_min_lap_count = 0
-        self._loop_time = 0 # microseconds
+        self._init()
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.manager.max_rssi_value

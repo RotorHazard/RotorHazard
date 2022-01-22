@@ -18,7 +18,7 @@ inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
         rssiNode.active = false;
     } else if (freq > 0) {
         if (rx.isPoweredDown()) {
-            rx.reset(); // reset and power-up
+            rx.reset();  // reset and power-up
         }
         rx.setFrequency(freq);
         rssiNode.active = true;
@@ -57,7 +57,7 @@ void Message::handleWriteCommand(CommSource src)
 {
     buffer.flipForRead();
     bool activityFlag = true;
-    uint8_t statusFlags = cmdStatusFlags; // non-volatile copy
+    uint8_t statusFlags = cmdStatusFlags;  // non-volatile copy
 
     switch (command)
     {
@@ -65,7 +65,7 @@ void Message::handleWriteCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 freq_t freq = buffer.read16();
-                if (freq >= MIN_FREQ && freq <= MAX_FREQ)
+                if ((freq >= MIN_FREQ && freq <= MAX_FREQ) || (freq == POWER_OFF_FREQ))
                 {
                     RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                     Settings& settings = rssiNode.getSettings();
@@ -215,7 +215,7 @@ void Message::handleReadCommand(CommSource src)
 {
     buffer.flipForWrite();
     bool activityFlag = true;
-    uint8_t statusFlags = cmdStatusFlags; // non-volatile copy
+    uint8_t statusFlags = cmdStatusFlags;  // non-volatile copy
 
     switch (command)
     {
@@ -245,31 +245,115 @@ void Message::handleReadCommand(CommSource src)
             }
             break;
 
+        case READ_RSSI:
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                State& state = rssiNode.getState();
+                LastPass& lastPass = rssiNode.getLastPass();
+                ioBufferWriteRssi(buffer, state.rssi);
+                buffer.write8(lastPass.lap);
+                buffer.write8(rssiNode.isCrossing());
+                statusFlags |= POLLING;
+            } else {
+                ioBufferWriteRssi(buffer, 0);
+                buffer.write8(0);
+                buffer.write8(0xFF);
+            }
+            break;
+
+        case READ_RSSI_STATS:
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                State& state = rssiNode.getState();
+                ioBufferWriteRssi(buffer, state.nodeRssiPeak);
+                ioBufferWriteRssi(buffer, state.nodeRssiNadir);
+            } else {
+                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, MAX_RSSI);
+            }
+            break;
+
         case READ_LAP_STATS:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                LastPass& lastPass = rssiNode.getLastPass();
                 mtime_t timeNowVal = usclock.millis();
-                handleReadLapPassStats(rssiNode, timeNowVal);
-                handleReadLapExtremums(rssiNode, timeNowVal);
-                statusFlags |= POLLING;
+                buffer.write8(lastPass.lap);
+                buffer.write16(toDuration(timeNowVal - lastPass.timestamp));  // ms since lap
+                ioBufferWriteRssi(buffer, lastPass.rssiPeak);
+                ioBufferWriteRssi(buffer, lastPass.rssiNadir);
+            } else {
+                buffer.write8(0);
+                buffer.write16(0xFFFF);
+                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, MAX_RSSI);
             }
             break;
 
-        case READ_LAP_PASS_STATS:
+        case READ_ENTER_STATS:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                handleReadLapPassStats(rssiNode, usclock.millis());
-                statusFlags |= POLLING;
+                LastTrigger& lastEnter = rssiNode.getLastEnter();
+                mtime_t timeNowVal = usclock.millis();
+                buffer.write8(lastEnter.lap);
+                buffer.write16(toDuration(timeNowVal - lastEnter.timestamp));  // ms since enter
+                ioBufferWriteRssi(buffer, lastEnter.rssi);
+                buffer.write8(lastEnter.lifetime);
+            } else {
+                buffer.write8(0);
+                buffer.write16(0xFFFF);
+                ioBufferWriteRssi(buffer, 0);
+                buffer.write8(0);
             }
             break;
 
-        case READ_LAP_EXTREMUMS:
+        case READ_EXIT_STATS:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                handleReadLapExtremums(rssiNode, usclock.millis());
+                LastTrigger& lastExit = rssiNode.getLastExit();
+                mtime_t timeNowVal = usclock.millis();
+                buffer.write8(lastExit.lap);
+                buffer.write16(toDuration(timeNowVal - lastExit.timestamp));  // ms since exit
+                ioBufferWriteRssi(buffer, lastExit.rssi);
+                buffer.write8(lastExit.lifetime);
+            } else {
+                buffer.write8(0);
+                buffer.write16(0xFFFF);
+                ioBufferWriteRssi(buffer, 0);
+                buffer.write8(0);
+            }
+            break;
+
+        case READ_ANALYTICS:
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                State& state = rssiNode.getState();
+                History& history = rssiNode.getHistory();
+                buffer.write8(state.lifetime);  // NB: signed
+                buffer.write16(toDuration(state.loopTimeMicros));
+                ExtremumType extremumType = history.nextToSendType();
+                if (extremumType != NONE) {
+                    Extremum extremum = history.popNextToSend();
+                    mtime_t timeNowVal = usclock.millis();
+                    ioBufferWriteExtremum(buffer, extremum, timeNowVal);
+                } else {
+                    ioBufferWriteRssi(buffer, 0);
+                    buffer.write16(0);
+                    buffer.write16(0);
+                }
+            } else {
+                buffer.write8(0);
+                buffer.write16(0);
+                buffer.write8(0);
+                ioBufferWriteRssi(buffer, 0);
+                buffer.write16(0);
+                buffer.write16(0);
             }
             break;
 
@@ -299,29 +383,7 @@ void Message::handleReadCommand(CommSource src)
             buffer.write16((0x25 << 8) + (uint16_t)NODE_API_LEVEL);
             break;
 
-        case READ_NODE_RSSI_PEAK:
-            if (cmdRssiNodeIndex < rssiRxs.getCount())
-            {
-                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
-                ioBufferWriteRssi(buffer, state.nodeRssiPeak);
-            } else {
-                ioBufferWriteRssi(buffer, 0);
-            }
-            break;
-
-        case READ_NODE_RSSI_NADIR:
-            if (cmdRssiNodeIndex < rssiRxs.getCount())
-            {
-                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
-                ioBufferWriteRssi(buffer, state.nodeRssiNadir);
-            } else {
-                ioBufferWriteRssi(buffer, MAX_RSSI);
-            }
-            break;
-
-        case READ_NODE_RSSI_HISTORY:
+        case READ_RSSI_HISTORY:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
@@ -330,7 +392,7 @@ void Message::handleReadCommand(CommSource src)
             }
             break;
 
-        case READ_NODE_SCAN_HISTORY:
+        case READ_SCAN_HISTORY:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
@@ -343,7 +405,7 @@ void Message::handleReadCommand(CommSource src)
             buffer.write32(usclock.millis());
             break;
 
-        case READ_RHFEAT_FLAGS:   // reply with feature flags value
+        case READ_RHFEAT_FLAGS:  // reply with feature flags value
             buffer.write16(hardware.getFeatureFlags());
             break;
 
@@ -398,7 +460,7 @@ void Message::handleReadCommand(CommSource src)
             statusFlags |= SERIAL_CMD_MSG;
         }
     }
-    cmdStatusFlags = statusFlags; // update volatile
+    cmdStatusFlags = statusFlags;  // update volatile
 
     if (!buffer.isEmpty())
     {
@@ -406,45 +468,6 @@ void Message::handleReadCommand(CommSource src)
     }
 
     command = INVALID_COMMAND;  // Clear previous command
-}
-
-void Message::handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal)
-{
-    State& state = rssiNode.getState();
-    LastPass& lastPass = rssiNode.getLastPass();
-    buffer.write8(lastPass.lap);
-    buffer.write16(toDuration(timeNowVal - lastPass.timestamp));  // ms since lap
-    ioBufferWriteRssi(buffer, state.rssi);
-    ioBufferWriteRssi(buffer, state.nodeRssiPeak);
-    ioBufferWriteRssi(buffer, lastPass.rssiPeak);  // RSSI peak for last lap pass
-    buffer.write16(toDuration(state.loopTimeMicros));
-}
-
-void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)
-{
-    State& state = rssiNode.getState();
-    LastPass& lastPass = rssiNode.getLastPass();
-    History& history = rssiNode.getHistory();
-    // set flag if 'crossing' in progress
-    uint8_t flags = rssiNode.isCrossing() ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
-    ExtremumType extremumType = history.nextToSendType();
-    if (extremumType == PEAK)
-    {
-        flags |= LAPSTATS_FLAG_PEAK;
-    }
-
-    buffer.write8(flags);
-    ioBufferWriteRssi(buffer, lastPass.rssiNadir);  // lowest rssi since end of last pass
-    ioBufferWriteRssi(buffer, state.nodeRssiNadir);
-
-    if (extremumType != NONE) {
-        Extremum extremum = history.popNextToSend();
-        ioBufferWriteExtremum(buffer, extremum, timeNowVal);
-    } else {
-        ioBufferWriteRssi(buffer, 0);
-        buffer.write16(0);
-        buffer.write16(0);
-    }
 }
 
 void Message::handleReadRssiHistory(RssiNode& rssiNode)

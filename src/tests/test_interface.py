@@ -1,7 +1,6 @@
 import unittest
 from interface import calculate_checksum, ExtremumFilter, RssiHistory
 from interface.MockInterface import MockInterface
-from interface.BaseHardwareInterface import PeakNadirHistory
 
 
 class InterfaceTest(unittest.TestCase):
@@ -36,44 +35,146 @@ class InterfaceTest(unittest.TestCase):
         self.assertListEqual(actual_times, [0,0.5,1,2,3])
         self.assertListEqual(actual_values, [5,8,3,9,7])
 
-    def test_peak_nadir_history_empty(self):
+    def test_is_new_lap(self):
         intf = MockInterface(1)
         node = intf.nodes[0]
-        now = 100
-        pn = PeakNadirHistory(node, now)
-        self.assertTrue(pn.isEmpty())
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
 
-    def test_peak_nadir_history_peak_before_nadir(self):
-        intf = MockInterface(1)
-        node = intf.nodes[0]
-        now = 100
-        pn = PeakNadirHistory(node, now)
-        pn.peakRssi = 10
-        pn.nadirRssi = 1
-        pn.peakFirstTime = pn.peakLastTime = 8000
-        pn.nadirFirstTime = pn.nadirLastTime = 5000
-        history = RssiHistory()
-        pn.addTo(history)
-        history_times, history_values = history.get()
-        self.assertListEqual(history_times, [92, 95])
-        self.assertListEqual(history_values, [10, 1])
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (False, True, False))
+        intf.process_crossing(node, True, 1, 10, 22, 8)
 
-    def test_peak_nadir_history_peak_before_nadir_extended(self):
+        lap_enter_exit = intf.is_new_lap(node, 0, False)  # exit
+        self.assertTupleEqual(lap_enter_exit, (False, False, True))
+        intf.process_crossing(node, False, 1, 20, 22, 8)
+
+        lap_enter_exit = intf.is_new_lap(node, 1, False)  # lap
+        self.assertTupleEqual(lap_enter_exit, (True, False, False))
+        intf.process_lap_stats(node, 1, 30, 40, 5)
+
+        self.assertEqual(node.pass_count, 1)
+
+    def test_is_new_lap_init(self):
         intf = MockInterface(1)
         node = intf.nodes[0]
-        now = 100
-        pn = PeakNadirHistory(node, now)
-        pn.peakRssi = 10
-        pn.nadirRssi = 1
-        pn.peakFirstTime = 9000
-        pn.peakLastTime = 8000
-        pn.nadirFirstTime = 6000
-        pn.nadirLastTime = 5000
-        history = RssiHistory()
-        pn.addTo(history)
-        history_times, history_values = history.get()
-        self.assertListEqual(history_times, [91, 92, 94, 95])
-        self.assertListEqual(history_values, [10, 10, 1, 1])
+        intf.is_new_lap(node, 4, False)
+        self.assertEqual(node.pass_count, 4)
+
+    def test_is_new_lap_retry_enter(self):
+        intf = MockInterface(1)
+        node = intf.nodes[0]
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (False, True, False))
+        intf.process_crossing(node, True, 1, 100, 22, 8)
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        self.assertEqual(node.pass_count, 0)
+
+    def test_is_new_lap_missed_enter(self):
+        intf = MockInterface(1)
+        node = intf.nodes[0]
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, False)  # exit
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 1, False)  # lap
+        self.assertTupleEqual(lap_enter_exit, (True, True, True))
+        intf.process_lap_stats(node, 1, 100, 40, 5)
+
+        self.assertEqual(node.pass_count, 1)
+
+    def test_is_new_lap_missed_exit(self):
+        intf = MockInterface(1)
+        node = intf.nodes[0]
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (False, True, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 1, False)  # lap
+        self.assertTupleEqual(lap_enter_exit, (True, True, True))
+        intf.process_lap_stats(node, 1, 100, 40, 5)
+
+        self.assertEqual(node.pass_count, 1)
+
+    def test_is_new_lap_missed_lap(self):
+        intf = MockInterface(1)
+        node = intf.nodes[0]
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, False)  # exit
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 1, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (True, True, True))
+        intf.process_lap_stats(node, 1, 100, 40, 5)
+
+        self.assertEqual(node.pass_count, 1)
+
+    def test_is_new_lap_missed_enter_stats(self):
+        intf = MockInterface(1)
+        node = intf.nodes[0]
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (False, True, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, False)  # exit
+        self.assertTupleEqual(lap_enter_exit, (False, True, True))
+        intf.process_crossing(node, False, 1, 100, 22, 8)
+
+        lap_enter_exit = intf.is_new_lap(node, 1, False)  # lap
+        self.assertTupleEqual(lap_enter_exit, (True, True, False))
+        intf.process_lap_stats(node, 1, 200, 40, 5)
+
+        self.assertEqual(node.pass_count, 1)
+
+    def test_is_new_lap_missed_exit_stats(self):
+        intf = MockInterface(1)
+        node = intf.nodes[0]
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (False, True, False))
+        intf.process_crossing(node, True, 1, 100, 22, 8)
+
+        lap_enter_exit = intf.is_new_lap(node, 0, False)  # exit
+        self.assertTupleEqual(lap_enter_exit, (False, False, True))
+
+        lap_enter_exit = intf.is_new_lap(node, 1, False)  # lap
+        self.assertTupleEqual(lap_enter_exit, (True, False, True))
+        intf.process_lap_stats(node, 1, 200, 40, 5)
+
+        self.assertEqual(node.pass_count, 1)
+
+    def test_is_new_lap_missed_all(self):
+        intf = MockInterface(1)
+        node = intf.nodes[0]
+        lap_enter_exit = intf.is_new_lap(node, 0, False)
+        self.assertTupleEqual(lap_enter_exit, (False, False, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, True)  # enter
+        self.assertTupleEqual(lap_enter_exit, (False, True, False))
+
+        lap_enter_exit = intf.is_new_lap(node, 0, False)  # exit
+        self.assertTupleEqual(lap_enter_exit, (False, True, True))
+
+        lap_enter_exit = intf.is_new_lap(node, 1, False)  # lap
+        self.assertTupleEqual(lap_enter_exit, (True, True, True))
+
+        self.assertEqual(node.pass_count, 0)
 
     def test_ai_calibrate_nodes(self):
         intf = MockInterface(1)

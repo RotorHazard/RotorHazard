@@ -3,17 +3,17 @@
 import os
 import gevent
 import logging
+import json
 from monotonic import monotonic  # to capture read timing
 import random
 
 from rh.util.RHUtils import FREQUENCY_ID_NONE
-from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
-from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE, RHNodeManager, RHNode
+from .BaseHardwareInterface import BaseHardwareInterface
+from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE, RHNodeManager, RHNode, \
+    DEFAULT_RECORD_FORMAT, BINARY_RECORD_FORMAT, \
+    READ_RSSI, READ_RSSI_STATS, READ_ENTER_STATS, READ_EXIT_STATS, READ_LAP_STATS, READ_ANALYTICS
 
 logger = logging.getLogger(__name__)
-
-MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
-MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 
 class MockNodeManager(RHNodeManager):
@@ -36,42 +36,45 @@ class MockNodeManager(RHNodeManager):
 class MockNode(RHNode):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index, multi_node_index, manager)
+        self.enter_at_level = 20
+        self.exit_at_level = 15
+        self.data_reader = None
 
 
 class MockInterface(BaseHardwareInterface):
     def __init__(self, num_nodes=8, use_datafiles=False, *args, **kwargs):
         super().__init__(update_sleep=0.5)
         self.warn_loop_time = kwargs['warn_loop_time'] if 'warn_loop_time' in kwargs else 1500
+        self.use_datafiles = use_datafiles
+        self.data_logger_format = os.environ.get('RH_RECORD_FORMAT', DEFAULT_RECORD_FORMAT)
 
-        self.data_files = [None]*num_nodes if use_datafiles else None
         for index in range(num_nodes):
             manager = MockNodeManager(index)
             node = manager.add_node(index)  # New node instance
-            node.enter_at_level = 90
-            node.exit_at_level = 80
             self.node_managers.append(manager)
             self.nodes.append(node)
 
     def start(self):
-        if self.data_files is not None:
+        if self.use_datafiles:
             for node in self.nodes:
-                if not self.data_files[node.index]:
+                if node.data_reader is None:
+                    file_format = 'b' if self.data_logger_format == BINARY_RECORD_FORMAT else 't'
                     try:
-                        f = open("mock_data_{0}.csv".format(node.index+1))
+                        f = open("mock_data_{}.{}".format(node.index+1, self.data_logger_format, 'r'+file_format))
                         logger.info("Loaded {}".format(f.name))
                     except IOError:
                         f = None
-                    self.data_files[node.index] = f
+                    node.data_reader = f
         super().start()
 
     def stop(self):
         super().stop()
-        if self.data_files is not None:
-            for i,f in enumerate(self.data_files):
-                if f is not None:
-                    f.close()
-                    logger.info("Closed {}".format(f.name))
-                    self.data_files[i] = None
+        for node in self.nodes:
+            f = node.data_reader
+            if f is not None:
+                f.close()
+                logger.info("Closed {}".format(f.name))
+                node.data_reader = None
 
     #
     # Update Loop
@@ -80,7 +83,7 @@ class MockInterface(BaseHardwareInterface):
     def _update(self):
         node_sleep_interval = self.update_sleep/max(len(self.nodes), 1)
         if self.nodes:
-            for index, node in enumerate(self.nodes):
+            for node in self.nodes:
                 if node.scan_enabled and callable(self.read_scan_history):
                     freqs, rssis = self.read_scan_history(node.index)
                     for freq, rssi in zip(freqs, rssis):
@@ -88,46 +91,66 @@ class MockInterface(BaseHardwareInterface):
                 elif node.frequency:
                     server_roundtrip = 0
                     node._roundtrip_stats.append(1000*server_roundtrip)
-                    readtime = monotonic()
 
-                    data_file = self.data_files[index] if self.data_files is not None else None
-                    if data_file:
-                        data_line = data_file.readline()
-                        if data_line == '':
-                            data_file.seek(0)
-                            data_line = data_file.readline()
-                        data_columns = data_line.split(',')
-                        pass_count = int(data_columns[1])
-                        ms_since_lap = int(data_columns[2])
-                        rssi_val = int(data_columns[3])
-                        node.node_peak_rssi = int(data_columns[4])
-                        pass_peak_rssi = int(data_columns[5])
-                        node.loop_time = int(data_columns[6])
-                        cross_flag = True if data_columns[7]=='T' else False
-                        node.pass_nadir_rssi = int(data_columns[8])
-                        node.node_nadir_rssi = int(data_columns[9])
-                        pn_history = PeakNadirHistory(node, readtime)
-                        pn_history.peakRssi = int(data_columns[10])
-                        pn_history.peakFirstTime = int(data_columns[11])
-                        pn_history.peakLastTime = int(data_columns[12])
-                        pn_history.nadirRssi = int(data_columns[13])
-                        pn_history.nadirFirstTime = int(data_columns[14])
-                        pn_history.nadirLastTime = int(data_columns[15])
-                        if node.is_valid_rssi(rssi_val):
-                            node.current_rssi = rssi_val
-                            pass_timestamp = readtime - (ms_since_lap / 1000.0)
-                            self.process_lap_stats(node, pass_count, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
-                            self.process_history(node, pn_history)
-                            self.process_capturing(node)
+                    data_file = node.data_reader
+                    if data_file is not None:
+                        now = monotonic()
+                        if self.data_logger_format == BINARY_RECORD_FORMAT:
+                            cmd = data_file.read(1)
+                            if cmd == '':
+                                data_file.seek(0)
+                                cmd = data_file.read(1)
+                            cmd_size = data_file.read(1)
+                            cmd_data = data_file.read(cmd_size)
+                            node.io_response = node.io_request = now
+                            if cmd == READ_RSSI:
+                                cmd_values = node.unpack_rssi(cmd_data)
+                            elif cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
+                                cmd_values = node.unpack_trigger_stats(cmd, cmd_data)
+                            elif cmd == READ_LAP_STATS:
+                                cmd_values = node.unpack_lap_stats(cmd_data)
+                            elif cmd == READ_ANALYTICS:
+                                cmd_values = node.unpack_analytics(cmd_data)
+                            elif cmd == READ_RSSI_STATS:
+                                cmd_values = node.unpack_rssi_stats(cmd_data)
+                            else:
+                                raise ValueError("Unsupported command: {}".format(cmd))
                         else:
-                            node.bad_rssi_count += 1
-                            logger.info('RSSI reading ({}) out of range on Node {}; rejected; count={}'.\
-                                     format(rssi_val, node, node.bad_rssi_count))
+                            data_line = data_file.readline()
+                            if data_line == '':
+                                data_file.seek(0)
+                                data_line = data_file.readline()
+                            json_data = json.loads(data_line)
+                            cmd = json_data['cmd']
+                            cmd_values = json_data['data']
+                            if cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
+                                cmd_values[1] = now - cmd_values[1]
+                            elif cmd == READ_LAP_STATS:
+                                cmd_values[1] = now - cmd_values[1]
+                            elif cmd == READ_ANALYTICS:
+                                cmd_values[4] = now - cmd_values[4]
+
+                        if cmd == READ_RSSI:
+                            self.is_new_lap(node, *cmd_values)
+                        elif cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
+                            is_crossing = (cmd == READ_ENTER_STATS)
+                            self.processing_crossing(node, is_crossing, *cmd_values)
+                        elif cmd == READ_LAP_STATS:
+                            self.process_lap_stats(node, *cmd_values)
+                        elif cmd == READ_ANALYTICS:
+                            node.current_lifetime, node.loop_time, extremum_rssi, extremum_timestamp, extremum_duration = cmd_values
+                            self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
+                        elif cmd == READ_RSSI_STATS:
+                            node.node_peak_rssi, node.node_nadir_rssi = cmd_values
+                        else:
+                            raise ValueError("Unsupported command: {}".format(cmd))
+
+                    self.process_capturing(node)
 
                     self._restore_lowered_thresholds(node)
 
                     if node.loop_time > self.warn_loop_time:
-                        logger.warning("Abnormal loop time for node {}: {}us ({})".format(node.index+1, node.loop_time, node._loop_time_stats.formatted(0)))
+                        logger.warning("Abnormal loop time for node {}: {}us ({})".format(node, node.loop_time, node._loop_time_stats.formatted(0)))
 
                 gevent.sleep(node_sleep_interval)
         else:

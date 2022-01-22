@@ -144,8 +144,7 @@ class ChorusInterface(BaseHardwareInterface):
                 node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
                 ts = monotonic()
                 filtered_ts, filtered_rssi = node.history_filter.filter(ts, rssi)
-                if filtered_rssi is not None:
-                    self.append_history(node, filtered_ts, filtered_rssi)
+                self.append_history(node, filtered_ts, filtered_rssi)
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 

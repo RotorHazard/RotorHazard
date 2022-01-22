@@ -4,32 +4,36 @@ import os
 import gevent
 import logging
 from collections import deque
+import json
 
 import interface as node_pkg
 from rh.util.Plugins import Plugins
-from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
-from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
+from interface import pack_8, unpack_8, unpack_8_signed, pack_16, unpack_16
+from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from rh.util import Averager
 
+
 DEFAULT_WARN_LOOP_TIME = 1500
 DEFAULT_RECORD_BUFFER_SIZE = 10000
-DEFAULT_RECORD_FORMAT = 'csv'
+JSONL_RECORD_FORMAT = 'jsonl'
+BINARY_RECORD_FORMAT = 'bin'
+DEFAULT_RECORD_FORMAT = JSONL_RECORD_FORMAT
 STATS_WINDOW_SIZE = 100
 
-READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
+READ_ADDRESS = 0x01         # Gets i2c address of arduino (1 byte)
 READ_MODE = 0x02
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
-READ_LAP_STATS = 0x05
-READ_LAP_PASS_STATS = 0x0D
-READ_LAP_EXTREMUMS = 0x0E
+READ_RSSI = 0x04
+READ_LAP_STATS = 0x08
+READ_ENTER_STATS = 0x09
+READ_EXIT_STATS = 0x10
 READ_RHFEAT_FLAGS = 0x11     # read feature flags value
-# READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
 READ_REVISION_CODE = 0x22    # read NODE_API_LEVEL and verification value
-READ_NODE_RSSI_PEAK = 0x23   # read 'nodeRssiPeak' value
-READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
-READ_NODE_RSSI_HISTORY = 0x25
-READ_NODE_SCAN_HISTORY = 0x26
+READ_RSSI_STATS = 0x23
+READ_ANALYTICS = 0x24
+READ_RSSI_HISTORY = 0x25
+READ_SCAN_HISTORY = 0x26
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33      # read current 'millis()' time value
@@ -43,7 +47,6 @@ READ_FW_PROCTYPE = 0x40      # read node processor type
 
 WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
 WRITE_MODE = 0x52
-# WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 WRITE_CURNODE_INDEX = 0x7A  # write index of current node for processor
@@ -54,9 +57,6 @@ JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
 TIMER_MODE = 0
 SCANNER_MODE = 1
 RSSI_HISTORY_MODE = 2
-
-LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
-LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
 
 # upper-byte values for SEND_STATUS_MESSAGE payload (lower byte is data)
 STATMSG_SDBUTTON_STATE = 0x01    # shutdown button state (1=pressed, 0=released)
@@ -83,10 +83,18 @@ logger = logging.getLogger(__name__)
 
 
 def unpack_rssi(node, data):
-    if node.manager.api_level >= 18:
-        return unpack_8(data)
-    else:
-        return unpack_16(data) / 2
+    return unpack_8(data)
+
+
+def unpack_time_since(node, cmd, data):
+    ms_since = unpack_16(data)
+    if ms_since >= 0xFFFF:
+        logger.warning("Command {}: maximum lookback time exceeded on node {}".format(cmd, node))
+    return ms_since
+
+
+def has_data(data):
+    return data is not None and len(data) > 0
 
 
 class RHNodeManager(NodeManager):
@@ -118,9 +126,6 @@ class RHNodeManager(NodeManager):
             self.curr_multi_node_index = node.set_and_validate_value_8(WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, node.multi_node_index)
             self.select = curr_select
         return self.curr_multi_node_index == node.multi_node_index
-
-    def get_disabled_frequency(self):
-        return 1111 if self.api_level >= 24 else super().get_disabled_frequency()
 
     def read_revision_code(self):
         self.api_level = 0
@@ -199,45 +204,36 @@ class RHNodeManager(NodeManager):
     def send_status_message(self, msgTypeVal, msgDataVal):
         # send status message to node
         try:
-            if self.api_level >= 35:
-                data = ((msgTypeVal & 0xFF) << 8) | (msgDataVal & 0xFF)
-                self.set_value_16(SEND_STATUS_MESSAGE, data)
-                return True
+            data = ((msgTypeVal & 0xFF) << 8) | (msgDataVal & 0xFF)
+            self.set_value_16(SEND_STATUS_MESSAGE, data)
+            return True
         except Exception:
             logger.exception('Error sending status message to {}'.format(self.addr))
         return False
 
     def discover_nodes(self, next_index):
         self.read_revision_code()
-        if self.api_level >= 10:
-            if self.api_level >= 18:
-                self.max_rssi_value = 255
-            else:
-                self.max_rssi_value = 999
-    
-            if self.api_level >= 32:  # check node API level
-                self.read_feature_flags()
-                multi_count = self.read_multinode_count()
-                if multi_count is None or multi_count > 32:
-                    logger.error('Bad READ_MULTINODE_COUNT value {} fetched from {}'.format(multi_count, self.addr))
-                    multi_count = 1
-                elif multi_count == 0:
-                    logger.warning('Fetched READ_MULTINODE_COUNT value of zero from {} (no vrx modules detected)'.format(self.addr))
-            else:
+        if self.api_level >= 36:
+            self.max_rssi_value = 255
+
+            self.read_feature_flags()
+            multi_count = self.read_multinode_count()
+            if multi_count is None or multi_count > 32:
+                logger.error('Bad READ_MULTINODE_COUNT value {} fetched from {}'.format(multi_count, self.addr))
                 multi_count = 1
+            elif multi_count == 0:
+                logger.warning('Fetched READ_MULTINODE_COUNT value of zero from {} (no vrx modules detected)'.format(self.addr))
 
             if multi_count > 0:
                 self.select = self._select_multi if multi_count > 1 else self._select_one
 
             info_strs = ["API level={}".format(self.api_level)]
-            if self.api_level >= 34:  # read firmware version and build timestamp strings
-                if self.read_firmware_version():
-                    info_strs.append("fw version={}".format(self.firmware_version_str))
-                    if self.api_level >= 35:
-                        if self.read_firmware_proctype():
-                            info_strs.append("fw type={}".format(self.firmware_proctype_str))
-                if self.read_firmware_timestamp():
-                    info_strs.append("fw timestamp: {}".format(self.firmware_timestamp_str))
+            if self.read_firmware_version():
+                info_strs.append("fw version={}".format(self.firmware_version_str))
+                if self.read_firmware_proctype():
+                    info_strs.append("fw type={}".format(self.firmware_proctype_str))
+            if self.read_firmware_timestamp():
+                info_strs.append("fw timestamp: {}".format(self.firmware_timestamp_str))
     
             if multi_count == 0:
                 logger.info("Device (with zero modules) found at {}: {}".format(self.addr, ', '.join(info_strs)))
@@ -264,6 +260,7 @@ class RHNode(Node):
         super().__init__(index, multi_node_index, manager)
         self._loop_time_stats = Averager(STATS_WINDOW_SIZE)
         self._roundtrip_stats = Averager(STATS_WINDOW_SIZE)
+        self.data_logger = None
 
     @Node.loop_time.setter
     def loop_time(self, v):
@@ -282,6 +279,148 @@ class RHNode(Node):
             logger.exception('Error fetching READ_NODE_SLOTIDX from node {}'.format(self))
         return self.multi_node_slot_index
 
+    def get_sent_time(self):
+        server_roundtrip = self.io_response - self.io_request
+        server_oneway = server_roundtrip / 2
+        sent_timestamp = self.io_response - server_oneway
+        return sent_timestamp, server_roundtrip
+
+    def unpack_rssi(self, data):
+        node_rssi = None
+        lap_count = None
+        is_crossing = None
+        if has_data(data):
+            rssi_val = unpack_rssi(self, data)
+            # save value (even if invalid so displayed in GUI)
+            self.current_rssi = rssi_val
+            if self.is_valid_rssi(rssi_val):
+                node_rssi = rssi_val
+            else:
+                self.bad_rssi_count += 1
+                # log the first ten, but then only 1 per 100 after that
+                if self.bad_rssi_count <= 10 or self.bad_rssi_count % 100 == 0:
+                    logger.warning("RSSI reading ({}) out of range on node {}; rejected; count={}".\
+                             format(rssi_val, self, self.bad_rssi_count))
+            lap_count = unpack_8(data[1:])
+            is_crossing = (unpack_8(data[2:]) == 1)
+
+            if self.data_logger is not None:
+                self.data_logger.data_buffer.append((
+                    READ_RSSI,
+                    data,
+                    (node_rssi, lap_count, is_crossing)
+                ))
+        return node_rssi, lap_count, is_crossing
+
+    def unpack_rssi_stats(self, data):
+        peak_rssi = None
+        nadir_rssi = None
+        if has_data(data):
+            rssi_val = unpack_rssi(self, data)
+            if self.is_valid_rssi(rssi_val):
+                peak_rssi = rssi_val
+                self.node_peak_rssi = peak_rssi
+            rssi_val = unpack_rssi(self, data[1:])
+            if self.is_valid_rssi(rssi_val):
+                nadir_rssi = rssi_val
+                self.node_nadir_rssi = nadir_rssi
+
+            if self.data_logger is not None:
+                self.data_logger.data_buffer.append((
+                    READ_RSSI_STATS,
+                    data,
+                    (peak_rssi, nadir_rssi)
+                ))
+        return peak_rssi, nadir_rssi
+
+    def unpack_trigger_stats(self, cmd, data):
+        trigger_count = None
+        trigger_timestamp = None
+        trigger_rssi = None
+        trigger_lifetime = None
+        if has_data(data):
+            sent_timestamp, _ = self.get_sent_time()
+
+            trigger_count = unpack_8(data)
+            ms_since_trigger = unpack_time_since(self, cmd, data[1:])
+            trigger_timestamp = sent_timestamp - (ms_since_trigger / 1000.0)
+
+            rssi_val = unpack_rssi(self, data[3:])
+            if self.is_valid_rssi(rssi_val):
+                trigger_rssi = rssi_val
+
+            trigger_lifetime = unpack_8(data[4:])
+
+            if self.data_logger is not None:
+                self.data_logger.data_buffer.append((
+                    cmd,
+                    data,
+                    (trigger_count, ms_since_trigger, trigger_rssi, trigger_lifetime)
+                ))
+        return trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime
+
+    def unpack_lap_stats(self, data):
+        lap_count = None
+        lap_timestamp = None
+        lap_peak_rssi = None
+        lap_nadir_rssi = None
+        if has_data(data):
+            sent_timestamp, server_roundtrip = self.get_sent_time()
+            self._roundtrip_stats.append(1000*server_roundtrip)
+
+            lap_count = unpack_8(data)
+            ms_since_lap = unpack_time_since(self, READ_LAP_STATS, data[1:])
+            lap_timestamp = sent_timestamp - (ms_since_lap / 1000.0)
+
+            rssi_val = unpack_rssi(self, data[3:])
+            if self.is_valid_rssi(rssi_val):
+                lap_peak_rssi = rssi_val
+
+            rssi_val = unpack_rssi(self, data[4:])
+            if self.is_valid_rssi(rssi_val):
+                lap_nadir_rssi = rssi_val
+
+            if self.data_logger is not None:
+                self.data_logger.data_buffer.append((
+                    READ_LAP_STATS,
+                    data,
+                    (lap_count, ms_since_lap, lap_peak_rssi, lap_nadir_rssi)
+                ))
+        return lap_count, lap_timestamp, lap_peak_rssi, lap_nadir_rssi
+
+    def unpack_analytics(self, data):
+        lifetime = None
+        loop_time = None
+        extremum_rssi = None
+        extremum_timestamp = None
+        extremum_duration = None
+        if has_data(data):
+            sent_timestamp, _ = self.get_sent_time()
+
+            lifetime = unpack_8_signed(data)
+            self.current_lifetime = lifetime
+            loop_time = unpack_16(data[1:])
+            self.loop_time = loop_time
+            extremum_rssi = unpack_rssi(self, data[3:])
+            if self.is_valid_rssi(extremum_rssi):
+                ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
+                extremum_timestamp = sent_timestamp - (ms_since_first_time / 1000.0)
+                extremum_duration = unpack_16(data[6:])
+            elif extremum_rssi != 0:
+                logger.warning("History RSSI reading ({}) out of range on node {}; rejected".format(extremum_rssi, self))
+
+            if self.data_logger is not None:
+                self.data_logger.data_buffer.append((
+                    READ_ANALYTICS,
+                    data,
+                    (lifetime, loop_time, extremum_rssi, ms_since_first_time, extremum_duration)
+                ))
+        return lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration
+
+    def poll_command(self, command, size):
+        # as we are continually polling, no need to retry command
+        return self.read_command(command, size, max_retries=0, log_level=logging.DEBUG)
+
     def summary_stats(self):
         msg = ["Node {}".format(self)]
         msg.append("\tComm round-trip (ms): {}".format(self._roundtrip_stats.formatted(1)))
@@ -294,18 +433,18 @@ class RHNode(Node):
 class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         super().__init__()
+        self.update_count = 0
         self.warn_loop_time = kwargs['warn_loop_time'] if 'warn_loop_time' in kwargs else DEFAULT_WARN_LOOP_TIME
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
         self.FW_BUILDTIME_PREFIXSTR = FW_BUILDTIME_PREFIXSTR
         self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
-        self.fwupd_serial_port = None   # serial port for in-app update of node firmware
+        self.fwupd_serial_port = None  # serial port for in-app update of node firmware
 
         self.node_managers = Plugins(suffix='node')
         self.discover_nodes(*args, **kwargs)
 
-        self.data_loggers = [None]*len(self.nodes)
         self.data_logger_buffer_size = int(os.environ.get('RH_RECORD_BUFFER', DEFAULT_RECORD_BUFFER_SIZE))
         self.data_logger_format = os.environ.get('RH_RECORD_FORMAT', DEFAULT_RECORD_FORMAT)
 
@@ -314,10 +453,10 @@ class RHInterface(BaseHardwareInterface):
             if not node.frequency:
                 raise RuntimeError('Unable to read frequency value from node {0}'.format(node))
 
-            if node.manager.api_level >= 10:
-                node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
-                if node.manager.api_level >= 13:
-                    node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
+            if node.manager.api_level >= 36:
+                rssi_stats_data = node.read_command(READ_RSSI_STATS, 2)
+                node.unpack_rssi_stats(rssi_stats_data)
+
                 node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
                 node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
                 logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
@@ -344,38 +483,41 @@ class RHInterface(BaseHardwareInterface):
                 self.start_data_logger(node.index)
         super().start()
 
+    def stop(self):
+        super().stop()
+        for node in self.nodes:
+            self.stop_data_logger(node.index)
+
     def start_data_logger(self, node_index):
         node = self.nodes[node_index]
-        if node.manager.api_level >= 18 and not self.data_loggers[node.index]:
-            file_format = 'b' if self.data_logger_format == 'binary' else 't'
-            f = open("node_data_{0}.csv".format(node.index+1), 'a'+file_format)
-            logger.info("Data logging enabled for node {0} ({1})".format(node, f.name))
+        if node.data_logger is None:
+            file_format = 'b' if self.data_logger_format == BINARY_RECORD_FORMAT else 't'
+            f = open("node_data_{}.{}".format(node.index+1, self.data_logger_format), 'a'+file_format)
+            logger.info("Data logging started for node {0} ({1})".format(node, f.name))
             f.data_buffer = deque([], self.data_logger_buffer_size)
-            self.data_loggers[node.index] = f
+            node.data_logger = f
 
     def stop_data_logger(self, node_index):
-        f = self.data_loggers[node_index]
+        node = self.nodes[node_index]
+        f = node.data_logger
         if f is not None:
             self._flush_data_logger(f)
             f.close()
-            logger.info("Stopped data logging for node {0} ({1})".format(self.nodes[node_index], f.name))
-            self.data_loggers[node_index] = None
+            logger.info("Stopped data logging for node {0} ({1})".format(node, f.name))
+            node.data_logger = None
 
     def _flush_data_logger(self, f):
         buf = f.data_buffer
         if len(buf) == buf.maxlen:
             for r in buf:
-                r_bytes, r_values = r
-                if self.data_logger_format == 'binary':
+                r_cmd, r_bytes, r_values = r
+                if self.data_logger_format == BINARY_RECORD_FORMAT:
+                    f.write(r_cmd)
+                    f.write(len(r_bytes))
                     f.write(r_bytes)
                 else:
-                    f.write(','.join([str(v) for v in r_values]))
+                    f.write(json.dumps({'cmd': r_cmd, 'data': r_values})+'\n')
             buf.clear()
-
-    def stop(self):
-        super().stop()
-        for node in self.nodes:
-            self.stop_data_logger(node.index)
 
     #
     # Update Loop
@@ -384,186 +526,72 @@ class RHInterface(BaseHardwareInterface):
     def _update(self):
         node_sleep_interval = self.update_sleep/max(len(self.nodes), 1)
         if self.nodes:
+            rssi_stats_node_idx = self.update_count % len(self.nodes)
             for node in self.nodes:
                 if node.scan_enabled and callable(self.read_scan_history):
                     freqs, rssis = self.read_scan_history(node.index)
                     for freq, rssi in zip(freqs, rssis):
                         node.scan_data[freq] = rssi
                 elif node.frequency:
-                    # as we are continually polling, no need to retry command
-                    if node.manager.api_level >= 10:
-                        if node.manager.api_level >= 21:
-                            data = node.read_command(READ_LAP_STATS, 16, max_retries=0, log_level=logging.DEBUG)
-                        elif node.manager.api_level >= 18:
-                            data = node.read_command(READ_LAP_STATS, 19, max_retries=0, log_level=logging.DEBUG)
-                        elif node.manager.api_level >= 17:
-                            data = node.read_command(READ_LAP_STATS, 28, max_retries=0, log_level=logging.DEBUG)
-                        elif node.manager.api_level >= 13:
-                            data = node.read_command(READ_LAP_STATS, 20, max_retries=0, log_level=logging.DEBUG)
-                        else:
-                            data = node.read_command(READ_LAP_STATS, 18, max_retries=0, log_level=logging.DEBUG)
-                    else:
-                        data = node.read_command(READ_LAP_STATS, 17, max_retries=0, log_level=logging.DEBUG)
+                    rssi_data = node.poll_command(READ_RSSI, 3)
+                    _rssi, pass_count, is_crossing = node.unpack_rssi(rssi_data)
+                    if pass_count is not None and is_crossing is not None:
+                        has_new_lap, has_entered, has_exited = self.is_new_lap(node, pass_count, is_crossing)
+    
+                        if has_entered:
+                            cmd = READ_ENTER_STATS
+                            crossing_data = node.poll_command(cmd, 5)
+                            trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime = node.unpack_trigger_stats(cmd, crossing_data)
+                            if trigger_count is not None and trigger_timestamp is not None and trigger_rssi is not None and trigger_lifetime is not None:
+                                self.process_crossing(node, True, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime)
+    
+                        if has_exited:
+                            cmd = READ_EXIT_STATS
+                            crossing_data = node.poll_command(cmd, 5)
+                            trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime = node.unpack_trigger_stats(cmd, crossing_data)
+                            if trigger_count is not None and trigger_timestamp is not None and trigger_rssi is not None and trigger_lifetime is not None:
+                                self.process_crossing(node, False, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime)
+    
+                        if has_new_lap:
+                            lap_stats_data = node.poll_command(READ_LAP_STATS, 5)
+                            lap_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi = node.unpack_lap_stats(lap_stats_data)
+                            if lap_count is not None and pass_timestamp is not None and pass_peak_rssi is not None and pass_nadir_rssi is not None:
+                                self.process_lap_stats(node, lap_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi)
 
-                    if data is not None and len(data) > 0:
-                        server_roundtrip = node.io_response - node.io_request
-                        node._roundtrip_stats.append(1000*server_roundtrip)
-                        server_oneway = server_roundtrip / 2
-                        readtime = node.io_response - server_oneway
+                    analytic_data = node.poll_command(READ_ANALYTICS, 8)
+                    _lifetime, _loop_time, extremum_rssi, extremum_timestamp, extremum_duration = node.unpack_analytics(analytic_data)
+                    if extremum_timestamp is not None and extremum_rssi is not None and extremum_duration is not None:
+                        self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
-                        pass_count = data[0]
+                    if node.index == rssi_stats_node_idx:
+                        rssi_stats_data = node.poll_command(READ_RSSI_STATS, 2)
+                        node.unpack_rssi_stats(rssi_stats_data)
 
-                        if node.manager.api_level >= 18:
-                            offset_rssi = 3
-                            offset_nodePeakRssi = 4
-                            offset_passPeakRssi = 5
-                            offset_loopTime = 6
-                            offset_lapStatsFlags = 8
-                            offset_passNadirRssi = 9
-                            offset_nodeNadirRssi = 10
-                            if node.manager.api_level >= 21:
-                                offset_peakRssi = 11
-                                offset_peakFirstTime = 12
-                                if node.manager.api_level >= 33:
-                                    offset_peakDuration = 14
-                                else:
-                                    offset_peakLastTime = 14
-                                offset_nadirRssi = 11
-                                offset_nadirFirstTime = 12
-                                if node.manager.api_level >= 33:
-                                    offset_nadirDuration = 14
-                                else:
-                                    offset_nadirLastTime = 14
-                            else:
-                                offset_peakRssi = 11
-                                offset_peakFirstTime = 12
-                                offset_peakLastTime = 14
-                                offset_nadirRssi = 16
-                                offset_nadirFirstTime = 17
-                        else:
-                            offset_rssi = 5
-                            offset_nodePeakRssi = 7
-                            offset_passPeakRssi = 9
-                            offset_loopTime = 11
-                            offset_lapStatsFlags = 15
-                            offset_passNadirRssi = 16
-                            offset_nodeNadirRssi = 18
-                            offset_peakRssi = 20
-                            offset_peakFirstTime = 22
-                            offset_nadirRssi = 24
-                            offset_nadirFirstTime = 26
-
-                        rssi_val = unpack_rssi(node, data[offset_rssi:])
-                        node.current_rssi = rssi_val  # save value (even if invalid so displayed in GUI)
-                        if node.is_valid_rssi(rssi_val):
-                            pn_history = PeakNadirHistory(node, readtime)
-                            if node.manager.api_level >= 18:
-                                ms_since_lap = unpack_16(data[1:])
-                                if node.manager.api_level >= 21:
-                                    if data[offset_lapStatsFlags] & LAPSTATS_FLAG_PEAK:
-                                        rssi_val = unpack_rssi(node, data[offset_peakRssi:])
-                                        if node.is_valid_rssi(rssi_val):
-                                            pn_history.peakRssi = rssi_val
-                                            pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:])  # ms *since* the first peak time
-                                            if node.manager.api_level >= 33:
-                                                pn_history.peakLastTime = pn_history.peakFirstTime - unpack_16(data[offset_peakDuration:])  # ms *since* the last peak time
-                                            else:
-                                                pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])  # ms *since* the last peak time
-                                        elif rssi_val > 0:
-                                            logger.info('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
-                                    else:
-                                        rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
-                                        if node.is_valid_rssi(rssi_val):
-                                            pn_history.nadirRssi = rssi_val
-                                            pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                            if node.manager.api_level >= 33:
-                                                pn_history.nadirLastTime = pn_history.nadirFirstTime - unpack_16(data[offset_nadirDuration:])
-                                            else:
-                                                pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
-                                        elif rssi_val > 0:
-                                            logger.info('History nadir RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
-                                else:
-                                    rssi_val = unpack_rssi(node, data[offset_peakRssi:])
-                                    if node.is_valid_rssi(rssi_val):
-                                        pn_history.peakRssi = rssi_val
-                                        pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:])  # ms *since* the first peak time
-                                        pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])  # ms *since* the last peak time
-                                    rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
-                                    if node.is_valid_rssi(rssi_val):
-                                        pn_history.nadirRssi = rssi_val
-                                        pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                        pn_history.nadirLastTime = pn_history.nadirFirstTime
-                            else:
-                                ms_since_lap = unpack_32(data[1:])
-
-                            rssi_val = unpack_rssi(node, data[offset_nodePeakRssi:])
-                            if node.is_valid_rssi(rssi_val):
-                                node.node_peak_rssi = rssi_val
-                            rssi_val = unpack_rssi(node, data[offset_passPeakRssi:])
-                            if node.is_valid_rssi(rssi_val):
-                                pass_peak_rssi = rssi_val
-                            else:
-                                pass_peak_rssi = None
-                            node.loop_time = unpack_16(data[offset_loopTime:])
-                            if data[offset_lapStatsFlags] & LAPSTATS_FLAG_CROSSING:
-                                cross_flag = True
-                            else:
-                                cross_flag = False
-                            rssi_val = unpack_rssi(node, data[offset_passNadirRssi:])
-                            if node.is_valid_rssi(rssi_val):
-                                node.pass_nadir_rssi = rssi_val
-
-                            if node.manager.api_level >= 13:
-                                rssi_val = unpack_rssi(node, data[offset_nodeNadirRssi:])
-                                if node.is_valid_rssi(rssi_val):
-                                    node.node_nadir_rssi = rssi_val
-
-                            if node.manager.api_level >= 18:
-                                data_logger = self.data_loggers[node.index]
-                                if data_logger:
-                                    data_logger.data_buffer.append((
-                                        data,
-                                        (readtime, pass_count, ms_since_lap, node.current_rssi, node.node_peak_rssi, pass_peak_rssi, node.loop_time, cross_flag, node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime)
-                                    ))
-                                    self._flush_data_logger(data_logger)
-
-                            pass_timestamp = readtime - (ms_since_lap / 1000.0)
-                            self.process_lap_stats(node, pass_count, pass_timestamp, pass_peak_rssi, cross_flag, readtime, rssi_val)
-                            self.process_history(node, pn_history)
-                            self.process_capturing(node)
-
-                        else:
-                            node.bad_rssi_count += 1
-                            # log the first ten, but then only 1 per 100 after that
-                            if node.bad_rssi_count <= 10 or node.bad_rssi_count % 100 == 0:
-                                logger.info('RSSI reading ({}) out of range on Node {}; rejected; count={}'.\
-                                         format(rssi_val, node, node.bad_rssi_count))
+                    self.process_capturing(node)
 
                     self._restore_lowered_thresholds(node)
 
                     if node.loop_time > self.warn_loop_time:
                         logger.warning("Abnormal loop time for node {}: {}us ({})".format(node, node.loop_time, node._loop_time_stats.formatted(0)))
 
+                    if node.data_logger is not None:
+                        self._flush_data_logger(node.data_logger)
+                # end mode specific code
                 gevent.sleep(node_sleep_interval)
+            # end for each node
+            self.update_count += 1
         else:
             gevent.sleep(node_sleep_interval)
-
 
     #
     # Internal helper functions for setting single values
     #
 
     def set_and_validate_value_rssi(self, node, write_command, read_command, in_value):
-        if node.manager.api_level >= 18:
-            return node.set_and_validate_value_8(write_command, read_command, in_value)
-        else:
-            return node.set_and_validate_value_16(write_command, read_command, in_value)
+        return node.set_and_validate_value_8(write_command, read_command, in_value)
 
     def get_value_rssi(self, node, command):
-        if node.manager.api_level >= 18:
-            return node.get_value_8(command)
-        else:
-            return node.get_value_16(command)
+        return node.get_value_8(command)
 
     def transmit_frequency(self, node, frequency):
         return node.set_and_validate_value_16(
@@ -615,8 +643,7 @@ class RHInterface(BaseHardwareInterface):
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
-        if node.manager.api_level >= 14:
-            node.set_value_8(FORCE_END_CROSSING, 0)
+        node.set_value_8(FORCE_END_CROSSING, 0)
 
     def jump_to_bootloader(self):
         for node_manager in self.node_managers:
@@ -627,7 +654,7 @@ class RHInterface(BaseHardwareInterface):
 
     def read_scan_history(self, node_index):
         node = self.nodes[node_index]
-        data = node.read_command(READ_NODE_SCAN_HISTORY, 9)
+        data = node.read_command(READ_SCAN_HISTORY, 9)
         freqs = []
         rssis = []
         if data is not None and len(data) > 0:
@@ -641,7 +668,7 @@ class RHInterface(BaseHardwareInterface):
 
     def read_rssi_history(self, node_index):
         node = self.nodes[node_index]
-        return node.read_command(READ_NODE_RSSI_HISTORY, 16)
+        return node.read_command(READ_RSSI_HISTORY, 16)
 
     def send_status_message(self, msgTypeVal, msgDataVal):
         sent_count = 0

@@ -47,6 +47,17 @@ inline int jsonPropertyNegUInt(char *buf, const char *key, int value) {
     return n;
 }
 
+inline int jsonPropertyULong(char *buf, const char *key, uint32_t value) {
+    int n = 0;
+    buf[n++] = '\"';
+    n += sprints(buf+n, key);
+    buf[n++] = '\"';
+    buf[n++] = ':';
+    buf[n++] = ' ';
+    n += sprintf(buf+n, "%lu", value);
+    return n;
+}
+
 inline int jsonPropertyTime(char *buf, const char *key, const timeval *t) {
     int n = 0;
     buf[n++] = '\"';

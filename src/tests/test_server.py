@@ -25,6 +25,8 @@ class ServerTest(unittest.TestCase):
 
     def setUp(self):
         logger.info('Starting test '+self._testMethodName)
+        for node in server.INTERFACE.nodes:
+            node.reset()
         self.client = server.SOCKET_IO.test_client(server.APP)
         gevent.sleep(0.1)
         self.get_response('load_all')
@@ -235,8 +237,9 @@ class ServerTest(unittest.TestCase):
         node_index = 1
         node = server.INTERFACE.nodes[node_index]
         enter_ts = monotonic()
-        server.INTERFACE.process_lap_stats(node, 3, 0, 0, True, enter_ts, 60)
+        server.INTERFACE.is_new_lap(node, 3, True)
         self.assertEqual(node.pass_count, 3)
+        server.INTERFACE.process_crossing(node, True, 4, enter_ts, 60, 6)
         self.assertEqual(node.enter_at_timestamp, enter_ts)
         resp = self.wait_for_response('node_crossing_change', 0.5)
         self.assertEqual(resp['node_index'], node_index)
@@ -245,10 +248,11 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['rssi'], 60)
         pass_ts = enter_ts + 1
         exit_ts = pass_ts + 1
-        server.INTERFACE.process_lap_stats(node, 4, pass_ts, 65, False, exit_ts, 58)
+        server.INTERFACE.process_crossing(node, False, 4, exit_ts, 58, 5)
+        self.assertEqual(node.exit_at_timestamp, exit_ts)
+        server.INTERFACE.process_lap_stats(node, 4, pass_ts, 65, 5)
         self.assertEqual(node.pass_count, 4)
         self.assertEqual(node.pass_peak_rssi, 65)
-        self.assertEqual(node.exit_at_timestamp, exit_ts)
         resp = self.wait_for_response('node_crossing_change', 0.5)
         self.assertEqual(resp['node_index'], node_index)
         self.assertFalse(resp['crossing_flag'])
@@ -268,9 +272,11 @@ class ServerTest(unittest.TestCase):
 
         gevent.sleep(1)
 
+        server.INTERFACE.is_new_lap(node, 0, False)
+        self.assertEqual(node.pass_count, 0)
         # hardware lap
         now = monotonic()
-        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None, None)
+        server.INTERFACE.process_lap_stats(node, 1, now, 89, 43)
         self.assertEqual(node.pass_count, 1)
         self.assertEqual(node.pass_peak_rssi, 89)
 
@@ -295,14 +301,14 @@ class ServerTest(unittest.TestCase):
 
         # initialize hardware lap stats
         now = monotonic()
-        server.INTERFACE.process_lap_stats(node, 0, now, 25, None, None, None)
+        server.INTERFACE.is_new_lap(node, 0, False)
         self.assertEqual(node.pass_count, 0)
 
         gevent.sleep(1)
 
         # hardware lap
         now = monotonic()
-        server.INTERFACE.process_lap_stats(node, 1, now, 89, None, None, None)
+        server.INTERFACE.process_lap_stats(node, 1, now, 89, 43)
         self.assertEqual(node.pass_count, 1)
         self.assertEqual(node.pass_peak_rssi, 89)
         resp = self.wait_for_response('pass_record', 1)

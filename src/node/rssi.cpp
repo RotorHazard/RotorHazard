@@ -51,6 +51,8 @@ RssiResult RssiNode::process(rssi_t rssi, mtime_t ms)
 {
     RssiResult result;
 
+    currentMillis = ms;
+
     filter->addRawValue(ms, rssi);
     if (filter->isFilled()) {
         const int rssiChange = state.readRssiFromFilter(filter);
@@ -111,7 +113,7 @@ RssiResult RssiNode::timerHandler(const int rssiChange) {
     }
     else
     {
-        // track lowest rssi seen since end of last pass
+        // track lowest RSSI seen between passes
         state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
     }
 
@@ -203,7 +205,6 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
     }
 
 #if defined(USE_MQTT) || defined(DEBUG)
-    int_fast16_t lifetimeSample = 0;
     bool triggered = false;
 #endif
     const ExtremumType prevType = sendBuffer.typeAt(sendBuffer.size()-1);
@@ -215,9 +216,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLifetime = cc.nadirLifetime(phData);
-#if defined(USE_MQTT) || defined(DEBUG)
-            lifetimeSample = -lastLifetime;
-#endif
+            state.lifetime = -constrain((int)lastLifetime, 0, 127);
             if (lastLifetime > exitThreshold) {
                 endCrossing(lastLifetime);
 #if defined(USE_MQTT) || defined(DEBUG)
@@ -233,9 +232,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLifetime = cc.peakLifetime(phData);
-#if defined(USE_MQTT) || defined(DEBUG)
-            lifetimeSample = lastLifetime;
-#endif
+            state.lifetime = constrain((int)lastLifetime, 0, 127);
             if (lastLifetime > enterThreshold) {
                 startCrossing(lastLifetime);
 #if defined(USE_MQTT) || defined(DEBUG)
@@ -245,17 +242,17 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         }
     }
 
-    LOG_DEBUG("Lifetime: ", lifetimeSample, DEC);
+    LOG_DEBUG("Lifetime: ", state.lifetime, DEC);
     LOG_DEBUG("Is triggered: ", triggered, DEC);
 
 #ifdef USE_MQTT
-    if (!triggered && lifetimeSample != 0 && (state.rssiTimestamp & MQTT_SAMPLE_INTERVAL_MASK) == 0)
+    if (!triggered && state.lifetime != 0 && (state.rssiTimestamp & MQTT_SAMPLE_INTERVAL_MASK) == 0)
     {
         char json[64] = "";
         int n = jsonStart(json);
         n += jsonPropertyUInt(json, "rssi", state.rssi);
         n += jsonPropertyUInt(json, "timestamp", state.rssiTimestamp);
-        n += jsonPropertyUInt(json, "lifetime", lifetimeSample);
+        n += jsonPropertyUInt(json, "lifetime", state.lifetime);
 #ifdef USE_NTP
         timeval currentTime;
         gettimeofday(&currentTime, NULL);
@@ -318,6 +315,7 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
         timeval currentTime;
         gettimeofday(&currentTime, NULL);
         n += jsonPropertyTime(json, "utc", &currentTime);
+        n += jsonPropertyULong(json, "clock", currentMillis);
 #endif
         n += jsonEnd(json);
         mqttPublish(*this, "sample", json, n);
@@ -334,29 +332,36 @@ bool RssiNode::isCrossing()
 
 void RssiNode::startCrossing(uint8_t trigger)
 {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        lastEnter.rssi = state.rssi;
+        lastEnter.timestamp = state.rssiTimestamp;
+#ifdef USE_PH
+        lastEnter.lifetime = trigger;
+#endif
+        lastEnter.lap = lastPass.lap + 1;
+    }
+
     state.crossing = true;
+
 #ifdef USE_MQTT
-    char json[64] = "";
-    int n = jsonStart(json);
-    n += jsonPropertyUInt(json, "lap", lastPass.lap+1);
-    n += jsonPropertyUInt(json, "rssi", state.rssi);
-    n += jsonPropertyUInt(json, "timestamp", state.rssiTimestamp);
-#if defined(USE_PH)
-    n += jsonPropertyUInt(json, "lifetime", trigger);
-#endif
-#ifdef USE_NTP
-        timeval currentTime;
-        gettimeofday(&currentTime, NULL);
-        n += jsonPropertyTime(json, "utc", &currentTime);
-#endif
-    n += jsonEnd(json);
-    mqttPublish(*this, "enter", json, n);
+    publishTrigger("enter", lastEnter);
 #endif
 }
 
 /*** Function called when crossing ends (by RSSI or I2C command). */
 void RssiNode::endCrossing(uint8_t trigger)
 {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        lastExit.rssi = state.rssi;
+        lastExit.timestamp = state.rssiTimestamp;
+#ifdef USE_PH
+        lastEnter.lifetime = trigger;
+#endif
+        lastExit.lap = lastPass.lap + 1;
+    }
+
     // save values for lap pass
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
@@ -366,38 +371,50 @@ void RssiNode::endCrossing(uint8_t trigger)
         lastPass.rssiNadir = state.passRssiNadir;
         lastPass.lap = lastPass.lap + 1;
     }
+
     // reset lap-pass variables
     state.resetPass();
 
 #ifdef USE_MQTT
+    publishTrigger("exit", lastExit);
+
     char json[64] = "";
     int n = jsonStart(json);
-    n += jsonPropertyUInt(json, "lap", lastPass.lap);
-    n += jsonPropertyUInt(json, "rssi", state.rssi);
-    n += jsonPropertyUInt(json, "timestamp", state.rssiTimestamp);
-#if defined(USE_PH)
-    n += jsonPropertyNegUInt(json, "lifetime", trigger);
-#endif
-#ifdef USE_NTP
-        timeval currentTime;
-        gettimeofday(&currentTime, NULL);
-        n += jsonPropertyTime(json, "utc", &currentTime);
-#endif
-    n += jsonEnd(json);
-    mqttPublish(*this, "exit", json, n);
-
-    n = jsonStart(json);
     n += jsonPropertyUInt(json, "lap", lastPass.lap);
     n += jsonPropertyUInt(json, "rssi", lastPass.rssiPeak);
     n += jsonPropertyUInt(json, "timestamp", lastPass.timestamp);
 #ifdef USE_NTP
-        gettimeofday(&currentTime, NULL);
-        n += jsonPropertyTime(json, "utc", &currentTime);
+    timeval currentTime;
+    gettimeofday(&currentTime, NULL);
+    n += jsonPropertyTime(json, "utc", &currentTime);
+    n += jsonPropertyULong(json, "clock", currentMillis);
 #endif
     n += jsonEnd(json);
     mqttPublish(*this, "pass", json, n);
 #endif
 }
+
+#ifdef USE_MQTT
+void RssiNode::publishTrigger(const char* topic, LastTrigger& trigger)
+{
+    char json[64] = "";
+    int n = jsonStart(json);
+    n += jsonPropertyUInt(json, "lap", trigger.lap);
+    n += jsonPropertyUInt(json, "rssi", trigger.rssi);
+    n += jsonPropertyUInt(json, "timestamp", trigger.timestamp);
+    #if defined(USE_PH)
+    n += jsonPropertyUInt(json, "lifetime", trigger.lifetime);
+    #endif
+    #ifdef USE_NTP
+    timeval currentTime;
+    gettimeofday(&currentTime, NULL);
+    n += jsonPropertyTime(json, "utc", &currentTime);
+    n += jsonPropertyULong(json, "clock", currentMillis);
+    #endif
+    n += jsonEnd(json);
+    mqttPublish(*this, topic, json, n);
+}
+#endif
 
 RssiResult RssiNode::scannerHandler(const int rssiChange) {
     freq_t nextFreq = updateScanHistory(settings.vtxFreq);

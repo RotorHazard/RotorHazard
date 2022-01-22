@@ -40,6 +40,15 @@ void sendData(GodmodeState* state, const char data[], int len, Message& msg) {
     }
 }
 
+void reset(RssiReceivers& rssiRxs) {
+    for (int i=0; i<rssiRxs.getCount(); i++) {
+        Settings& settings = rssiRxs.getSettings(i);
+        settings.mode = TIMER;
+        RssiNode& node = rssiRxs.getRssiNode(i);
+        node.active = false;
+    }
+}
+
 unittest(command_getPayloadSize)
 {
     Message serialMessage;
@@ -169,6 +178,7 @@ unittest(command_scanner)
 {
     GodmodeState* nano = GODMODE();
     nano->reset();
+    reset(rssiRxs);
     Message serialMessage;
     setup();
     assertFalse(rssiRxs.getRssiNode(0).active);
@@ -187,7 +197,7 @@ unittest(command_scanner)
     assertTrue(rssiRxs.getRssiNode(0).active);
     assertEqual(4, (int)rssiRxs.getRssiNode(0).scanHistory.size());
 
-    const char readCmd[] = {READ_NODE_SCAN_HISTORY};
+    const char readCmd[] = {READ_SCAN_HISTORY};
     sendData(nano, readCmd, sizeof(readCmd), serialMessage);
     assertEqual(10, nano->serialPort[0].dataOut.length());
     assertEqual(1, (int)rssiRxs.getRssiNode(0).scanHistory.size());
@@ -200,11 +210,12 @@ unittest(command_raw)
 {
     GodmodeState* nano = GODMODE();
     nano->reset();
+    reset(rssiRxs);
     Message serialMessage;
     setup();
-    rssiRxs.getRssiNode(0).active = true;
-    rssiRxs.getRssiNode(0).getSettings().mode = TIMER;
 
+    assertFalse(rssiRxs.getRssiNode(0).active);
+    assertEqual(0, rssiRxs.getRssiNode(0).getSettings().mode);
     char modeCmd[] = {WRITE_MODE, RAW, 0};
     setChecksum(modeCmd, sizeof(modeCmd));
     sendData(nano, modeCmd, sizeof(modeCmd), serialMessage);
@@ -223,7 +234,7 @@ unittest(command_raw)
     }
     assertEqual(10, (int)rssiRxs.getRssiNode(0).rssiHistory.size());
 
-    const char readCmd[] = {READ_NODE_RSSI_HISTORY};
+    const char readCmd[] = {READ_RSSI_HISTORY};
     sendData(nano, readCmd, sizeof(readCmd), serialMessage);
     assertEqual(17, nano->serialPort[0].dataOut.length());
     for (int i=0; i<10; i++) {

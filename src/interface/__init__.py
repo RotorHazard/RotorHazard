@@ -5,6 +5,15 @@ def unpack_8(data):
     return data[0]
 
 
+def unpack_8_signed(data):
+    v = data[0]
+    mag = v & 0x7F
+    if v & 0x80:
+        return mag - 128
+    else:
+        return mag
+
+
 def pack_8(data):
     return [int(data & 0xFF)]
 

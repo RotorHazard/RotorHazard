@@ -26,7 +26,7 @@ constexpr uint8_t HISTORY_SIZE = 12;
 #else
 constexpr uint8_t HISTORY_SIZE = 12;
 #endif
-constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd, +1 to allow for current value
+constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1);  // should be odd, +1 to allow for current value
 constexpr uint8_t CCS_SIZE = (PH_HISTORY_SIZE+1)/2;
 #if TARGET == ESP32_TARGET && MULTI_RHNODE_MAX == 1
     constexpr uint16_t RSSI_HISTORY_SIZE = 65535;
@@ -39,7 +39,7 @@ constexpr uint8_t CCS_SIZE = (PH_HISTORY_SIZE+1)/2;
 #elif TARGET == SIL_TARGET
     constexpr uint16_t RSSI_HISTORY_SIZE = 65535;
 #else
-    constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
+    constexpr uint16_t RSSI_HISTORY_SIZE = 800;  // NB: need to leave about a 100 bytes free RAM
 #endif
 constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 
@@ -63,8 +63,6 @@ constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_MULTI
 #define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_MULTI
 
-constexpr freq_t POWER_OFF_FREQ = 1111; // frequency value to power down rx module
-
 constexpr freq_t MIN_SCAN_FREQ = 5645;
 constexpr freq_t MAX_SCAN_FREQ = 5945;
 constexpr uint16_t SCAN_FREQ_INCR = 5;
@@ -77,8 +75,8 @@ enum Mode
 };
 
 #ifdef USE_PH
-#define DEFAULT_ENTER_AT_LEVEL 40
-#define DEFAULT_EXIT_AT_LEVEL 40
+#define DEFAULT_ENTER_AT_LEVEL 15
+#define DEFAULT_EXIT_AT_LEVEL 15
 #else
 #define DEFAULT_ENTER_AT_LEVEL 96
 #define DEFAULT_EXIT_AT_LEVEL 80
@@ -105,21 +103,22 @@ public:
 #else
 private:
 #endif
-    bool volatile crossing = false; // True when the quad is going through the gate
+    bool volatile crossing = false;  // True when the quad is going through the gate
 public:
     // variables to track the loop time
     utime_t volatile loopTimeMicros = 0;
     utime_t lastloopMicros = 0;
 
-    rssi_t volatile rssi = 0; // Smoothed rssi value
-    mtime_t rssiTimestamp = 0; // timestamp of the smoothed value
+    rssi_t volatile rssi = 0;  // Smoothed rssi value
+    mtime_t rssiTimestamp = 0;  // timestamp of the smoothed value
     rssi_t lastRssi = 0;
+    int8_t volatile lifetime = 0;  // ph lifetime
 
-    Extremum passPeak = {0, 0, 0}; // peak seen during current pass - only valid if pass.rssi != 0
-    rssi_t passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
+    Extremum passPeak = {0, 0, 0};  // peak seen during current pass - only valid if pass.rssi != 0
+    rssi_t passRssiNadir = MAX_RSSI;  // lowest smoothed rssi seen since end of last pass
 
-    rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
-    rssi_t volatile nodeRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since the node frequency was set
+    rssi_t volatile nodeRssiPeak = 0;  // peak smoothed rssi seen since the node frequency was set
+    rssi_t volatile nodeRssiNadir = MAX_RSSI;  // lowest smoothed rssi seen since the node frequency was set
 
     /**
      * Returns the RSSI change since the last reading.
@@ -159,7 +158,7 @@ private:
 public:
 #endif
     SendBuffer<Extremum> *sendBuffer = nullptr;
-    int8_t prevRssiChange = 0; // >0 for raising, <0 for falling
+    int8_t prevRssiChange = 0;  // >0 for raising, <0 for falling
 public:
     ExtremumType extremumType = NONE;
     Extremum peak = {0, 0, 0};
@@ -201,6 +200,14 @@ struct LastPass
     uint8_t volatile lap = 0;
 };
 
+struct LastTrigger
+{
+    rssi_t volatile rssi = 0;
+    mtime_t volatile timestamp = 0;
+    uint8_t volatile lap = 0;
+    uint8_t volatile lifetime = 0;
+};
+
 struct RssiResult
 {
     Mode mode;
@@ -226,12 +233,16 @@ private:
 #endif
 #endif
 
+    mtime_t currentMillis = 0;
     bool needsToSettle = true;
     mtime_t lastResetTimeMs;
     Settings settings;
     State state;
     History history;
     LastPass lastPass;
+
+    LastTrigger lastEnter;
+    LastTrigger lastExit;
 
     Filter<rssi_t> *filter;
 
@@ -266,7 +277,7 @@ public:
     bool volatile rssiHistoryComplete = false;
 #endif
 
-    bool active = DEFAULT_NODE_ACTIVE; // Set true after initial frequency is set
+    bool active = DEFAULT_NODE_ACTIVE;  // Set true after initial frequency is set
 
     RssiNode();
     RssiNode(const RssiNode&) = delete;
@@ -290,5 +301,11 @@ public:
     State& getState() { return state; }
     History& getHistory() { return history; }
     LastPass& getLastPass() { return lastPass; }
+    LastTrigger& getLastEnter() { return lastEnter; }
+    LastTrigger& getLastExit() { return lastExit; }
+
+#ifdef USE_MQTT
+    void publishTrigger(const char* topic, LastTrigger& lastTrigger);
+#endif
 };
 #endif
