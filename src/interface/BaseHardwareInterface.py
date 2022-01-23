@@ -7,7 +7,7 @@ from rh.util.RHUtils import FREQUENCY_ID_NONE
 import bisect
 
 ENTER_AT_PEAK_MARGIN = 5  # closest that captured enter-at level can be to node peak RSSI
-CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
+CAP_ENTER_EXIT_AT_SECS = 3  # number of secs for capture of enter/exit-at levels
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,6 @@ class BaseHardwareInterface:
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
         self.update_thread = None  # Thread for running the main update loop
-        self.start_time = None  # millis
         self.environmental_data_update_tracker = 0
         self.race_start_time = 0
         self.is_racing = False
@@ -56,24 +55,16 @@ class BaseHardwareInterface:
         self.pass_count_mask = 0xFF
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
 
-    def milliseconds(self):
-        '''
-        Returns the elapsed milliseconds since this interface was started.
-        '''
-        return 1000*monotonic() - self.start_time if self.start_time is not None else None
-
     def start(self):
         if self.update_thread is None:
             logger.info('Starting {} background thread'.format(type(self).__name__))
             self.update_thread = gevent.spawn(self._update_loop)
-            self.start_time = 1000*monotonic()  # millis
 
     def stop(self):
         if self.update_thread:
             logger.info('Stopping {} background thread'.format(type(self).__name__))
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
-            self.start_time = None
 
     def close(self):
         for node in self.nodes:
@@ -174,7 +165,7 @@ class BaseHardwareInterface:
         if node.cap_enter_at_flag:
             node.cap_enter_at_total += node.current_rssi
             node.cap_enter_at_count += 1
-            if self.milliseconds() >= node.cap_enter_at_millis:
+            if monotonic() >= node.cap_enter_at_end_ts:
                 node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
                 node.cap_enter_at_flag = False
                 # if too close node peak then set a bit below node-peak RSSI value:
@@ -187,7 +178,7 @@ class BaseHardwareInterface:
         if node.cap_exit_at_flag:
             node.cap_exit_at_total += node.current_rssi
             node.cap_exit_at_count += 1
-            if self.milliseconds() >= node.cap_exit_at_millis:
+            if monotonic() >= node.cap_exit_at_end_ts:
                 node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
                 node.cap_exit_at_flag = False
                 logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node, node.exit_at_level, node.cap_exit_at_count))
@@ -344,7 +335,7 @@ class BaseHardwareInterface:
             node.cap_enter_at_total = 0
             node.cap_enter_at_count = 0
             # set end time for capture of RSSI level:
-            node.cap_enter_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
+            node.cap_enter_at_end_ts = monotonic() + CAP_ENTER_EXIT_AT_SECS
             node.cap_enter_at_flag = True
             return True
         return False
@@ -355,7 +346,7 @@ class BaseHardwareInterface:
             node.cap_exit_at_total = 0
             node.cap_exit_at_count = 0
             # set end time for capture of RSSI level:
-            node.cap_exit_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
+            node.cap_exit_at_end_ts = monotonic() + CAP_ENTER_EXIT_AT_SECS
             node.cap_exit_at_flag = True
             return True
         return False

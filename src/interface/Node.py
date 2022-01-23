@@ -228,11 +228,11 @@ class Node(CommandsWithRetry):
         self.cap_enter_at_flag = False
         self.cap_enter_at_total = 0
         self.cap_enter_at_count = 0
-        self.cap_enter_at_millis = 0
+        self.cap_enter_at_end_ts = 0
         self.cap_exit_at_flag = False
         self.cap_exit_at_total = 0
         self.cap_exit_at_count = 0
-        self.cap_exit_at_millis = 0
+        self.cap_exit_at_end_ts = 0
 
         self.under_min_lap_count = 0
 
