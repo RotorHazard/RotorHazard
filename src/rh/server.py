@@ -2168,7 +2168,6 @@ def on_stage_race():
         RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
 
         RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
-        INTERFACE.race_start_time = RACE.start_time_monotonic
         RACE.start_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
@@ -2371,7 +2370,7 @@ def race_start_thread(start_token):
 
         # do time-critical tasks
         RACE.race_status = RHRace.RaceStatus.RACING # To enable registering passed laps
-        INTERFACE.on_race_start()
+        INTERFACE.on_race_start(RACE.start_time_monotonic)
         RACE.timer_running = True # indicate race timer is running
 
         Events.trigger(Evt.RACE_START, {

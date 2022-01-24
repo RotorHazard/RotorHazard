@@ -210,8 +210,8 @@ class LapRFInterface(BaseHardwareInterface):
         else:
             logger.warning("Unsupported record: {}".format(record))
 
-    def on_race_start(self):
-        super().on_race_start()
+    def on_race_start(self, race_start_time):
+        super().on_race_start(race_start_time)
         data = laprf.encode_get_rtc_time_record()
         for node_manager in self.node_managers:
             node_manager.race_start_time_request_ts = monotonic()

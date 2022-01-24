@@ -149,8 +149,8 @@ class ChorusInterface(BaseHardwareInterface):
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 
-    def on_race_start(self):
-        super().on_race_start()
+    def on_race_start(self, race_start_time):
+        super().on_race_start(race_start_time)
         # reset timers to zero
         for node_manager in self.node_managers:
             with node_manager:

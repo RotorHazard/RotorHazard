@@ -273,9 +273,10 @@ class BaseHardwareInterface:
     def force_end_crossing(self, node_index):
         pass
 
-    def on_race_start(self):
+    def on_race_start(self, race_start_time):
         for node in self.nodes:
             node.reset()
+        self.race_start_time = race_start_time
         self.is_racing = True
 
     def on_race_stop(self):
