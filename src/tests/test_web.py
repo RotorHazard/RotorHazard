@@ -1,6 +1,6 @@
 import unittest
 import json
-from server import web
+from rh.app import web
 from rh.orgs import ifpv_org
 
 web.init(None)
@@ -27,7 +27,7 @@ class WebTest(unittest.TestCase):
         self.assertDictEqual(actual_json, expected_json)
 
     def test_multigp(self):
-        url  = 'https://www.multigp.com/pilots/view/?pilot=SeekND'
+        url = 'https://www.multigp.com/pilots/view/?pilot=SeekND'
         data = web.get_pilot_data(url)
         if not data:
             print("Skipping test - could not connect to {}".format(url))

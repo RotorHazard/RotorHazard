@@ -1,7 +1,7 @@
 import sys
 import logging
 import unittest
-from interface.RHInterface import RHInterface
+from rh.interface.RHInterface import RHInterface
 from rh.app.config import Config
 import gevent
 import platform
@@ -10,6 +10,7 @@ import subprocess
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 logger.addHandler(logging.StreamHandler(sys.stdout))
+
 
 @unittest.skipUnless(platform.system() == 'Linux', 'Test is only supported on Linux currently')
 class RHInterfaceTest(unittest.TestCase):
@@ -21,7 +22,7 @@ class RHInterfaceTest(unittest.TestCase):
             def on_pass(node, lap_ts, source, rssi):
                 nonlocal laps
                 laps += 1
-    
+
             config = Config()
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7881]
@@ -35,11 +36,11 @@ class RHInterfaceTest(unittest.TestCase):
                     self.assertEqual(intf.nodes[i].multi_node_slot_index, i)
                 self.check_settings(intf)
                 intf.start()
-    
+
                 # test laps
                 gevent.sleep(10)
                 self.assertGreater(laps, 0)
-    
+
                 # test scan
                 node = intf.nodes[0]
                 intf.set_frequency_scan(0, True)
@@ -49,7 +50,7 @@ class RHInterfaceTest(unittest.TestCase):
                 intf.set_frequency_scan(0, False)
                 self.assertEqual(node.scan_enabled, False)
                 self.assertEqual(len(node.scan_data), 0)
-    
+
                 intf.send_shutdown_started_message()
             finally:
                 intf.stop()
@@ -67,7 +68,7 @@ class RHInterfaceTest(unittest.TestCase):
             def on_pass(node, lap_ts, source, rssi):
                 nonlocal laps
                 laps += 1
-    
+
             config = Config()
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7884]

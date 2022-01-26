@@ -1,6 +1,6 @@
 import sys
 import csv
-from server import Database
+from rh.app import Database
 from flask import Flask
 import json
 import rh.util.persistent_homology as ph

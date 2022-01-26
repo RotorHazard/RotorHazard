@@ -14,5 +14,6 @@ class ScannerTest(unittest.TestCase):
         self.assertIn('frequency', socket_io.last_data)
         self.assertTrue(len(socket_io.last_data['frequency']) > 0)
 
+
 if __name__ == '__main__':
     unittest.main()

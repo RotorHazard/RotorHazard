@@ -8,7 +8,7 @@ from flask_socketio import SocketIO
 import webbrowser
 
 from rh.app.config import Config
-from interface import RHInterface, MockInterface
+from rh.interface import RHInterface, MockInterface
 
 def scan(port, socket):
     if port == 'MOCK':

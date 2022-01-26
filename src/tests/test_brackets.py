@@ -1,8 +1,8 @@
 import unittest
 import json
-import server.race_explorer_core as racex
-import server.heat_generator_endpoints as heatgen
-from server.util import StrictJsonEncoder
+import rh.app.race_explorer_core as racex
+import rh.endpoints.heat_generator_endpoints as heatgen
+from rh.util import StrictJsonEncoder
 
 
 class BracketsTest(unittest.TestCase):

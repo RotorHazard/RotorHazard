@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-from interface.RHInterface import RHInterface, RHFEAT_PH
+
 RELEASE_VERSION = "3.1.2-dev.1"  # Public release version code
 SERVER_API = 32+8  # Server API version
 NODE_API_SUPPORTED = 36  # Minimum supported node version
@@ -48,33 +48,35 @@ from flasgger import Swagger
 from rh.app import SOCKET_IO
 
 from rh.app.config import Config
-from server import Database, Results, Language, \
-    RHData, RHRace, PageCache, RHGPIO, \
-    web
-from rh.util import RHUtils
+from rh.app import Database, Language, PageCache, Results, RHData, RHRace, web
+from rh.util import RHGPIO, RHUtils
 from rh.util.RHUtils import catchLogExceptionsWrapper
-from server.ClusterNodeSet import SecondaryNode, ClusterNodeSet
-from server.util.SendAckQueue import SendAckQueue
-from server.util.ButtonInputHandler import ButtonInputHandler
-from server.util import StrictJsonEncoder, stm32loader
+from rh.cluster.ClusterNodeSet import SecondaryNode, ClusterNodeSet
+from rh.cluster.SendAckQueue import SendAckQueue
+from rh.util.ButtonInputHandler import ButtonInputHandler
+from rh.util import StrictJsonEncoder, stm32loader
+from rh.interface.RHInterface import RHInterface, RHFEAT_PH
 
 # Events manager
-from server.eventmanager import Evt, EventManager
+from rh.events.eventmanager import Evt, EventManager
 
 Events = EventManager()
 
 # LED imports
-from leds import Color, ColorVal, hexToColor
-from server.led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
-from server.audio_event_manager import AudioEventManager
-from server.mqtt_event_manager import MqttEventManager
+from rh.leds import Color, ColorVal, hexToColor
+from rh.events.led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
+from rh.events.audio_event_manager import AudioEventManager
+from rh.events.mqtt_event_manager import MqttEventManager
+from rh.interface.MqttInterface import get_mqtt_interface_for
 
-import helpers as helper_pkg
-import sensors as sensor_pkg
-import leds as led_pkg
+import rh.helpers as helper_pkg
+import rh.interface as interface_pkg
+import rh.sensors as sensor_pkg
+import rh.leds as led_pkg
+import rh.data_export as export_pkg
 from rh.util.Plugins import Plugins, search_modules
-from sensors import Sensors
-from data_export import DataExportManager
+from rh.sensors import Sensors
+from rh.data_export import DataExportManager
 
 
 APP = Flask(__name__, static_url_path='/static')
@@ -4956,7 +4958,7 @@ def initVRxController():
             vrx_enabled = vrx_config["ENABLED"]
             if vrx_enabled:
                 try:
-                    from .VRxController import VRxController
+                    from rh.vrx.VRxController import VRxController
                 except ImportError as e:
                     logger.error("VRxController unable to be imported")
                     logger.error(e)
@@ -5089,13 +5091,13 @@ def initialize_hardware_interface():
     try:
         global INTERFACE
         if 'RH_INTERFACE' in os.environ:
-            rh_interface_name = 'interface.' + os.environ.get('RH_INTERFACE') + "Interface"
+            rh_interface_name = interface_pkg.__name__ + '.' + os.environ.get('RH_INTERFACE') + "Interface"
         elif 'ADDRESS' in rhconfig.LAPRF and rhconfig.LAPRF['ADDRESS']:
-            rh_interface_name = 'interface.LapRFInterface'
+            rh_interface_name = interface_pkg.__name__ + '..LapRFInterface'
         elif 'HARDWARE_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['HARDWARE_PORT']:
-            rh_interface_name = 'interface.ChorusInterface'
+            rh_interface_name = interface_pkg.__name__ + '.ChorusInterface'
         else:
-            rh_interface_name = 'interface.RHInterface'
+            rh_interface_name = interface_pkg.__name__ + '.RHInterface'
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
@@ -5123,12 +5125,12 @@ def initialize_hardware_interface():
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
             # if interface was explicitly configured
-            if 'RH_INTERFACE' in os.environ or rh_interface_name != 'interface.RHInterface':
+            if 'RH_INTERFACE' in os.environ or rh_interface_name != 'rh.interface.RHInterface':
                 return False
 
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
             if (not rhconfig.SERIAL_PORTS) or len(rhconfig.SERIAL_PORTS) <= 0:
-                interfaceModule = importlib.import_module('interface.MockInterface')
+                interfaceModule = importlib.import_module(interface_pkg.__name__ + '.MockInterface')
                 INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, **serviceHelpers)
                 for node_manager in INTERFACE.node_managers:  # put mock nodes at latest API level
                     node_manager.api_level = NODE_API_BEST
@@ -5405,7 +5407,6 @@ except Exception:
 
 mqtt_clients = serviceHelpers.get('mqtt_helper')
 if mqtt_clients:
-    from interface.MqttInterface import get_mqtt_interface_for
     mqtt_interface_class = get_mqtt_interface_for(INTERFACE.__class__)
     mqtt_interface = mqtt_interface_class(mqtt_clients['timer'], INTERFACE)
     mqtt_interface.ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
@@ -5555,19 +5556,17 @@ mqtt_manager.install_default_messages()
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language)
+export_manager.discover(export_pkg)
 
 # register endpoints
-from server import json_endpoints
-from server import ota
-from server import race_explorer_endpoints
-from server import heat_generator_endpoints
+from rh.endpoints import json_endpoints, ota_endpoints, race_explorer_endpoints, heat_generator_endpoints
 APP.register_blueprint(json_endpoints.createBlueprint(RESULTS, RACE, serverInfo, getCurrentProfile))
-APP.register_blueprint(ota.createBlueprint())
+APP.register_blueprint(ota_endpoints.createBlueprint())
 APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHData, APP.rhserver))
 APP.register_blueprint(heat_generator_endpoints.createBlueprint(RHData))
 
 if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
-    from server.chorus_api import ChorusAPI
+    from rh.apis.chorus_api import ChorusAPI
     import serial
 
     chorusPort = rhconfig.CHORUS['API_PORT']
@@ -5576,7 +5575,7 @@ if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     STARTABLES.append(CHORUS_API)
 
 if mqtt_clients:
-    from server.mqtt_api import MqttAPI
+    from rh.apis.mqtt_api import MqttAPI
 
     MQTT_API = MqttAPI(mqtt_clients['timer'], rhconfig.MQTT['TIMER_ANN_TOPIC'], TIMER_ID, INTERFACE,
                        node_crossing_callback,

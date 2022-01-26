@@ -1,6 +1,6 @@
 import unittest
-from interface import calculate_checksum, ExtremumFilter, RssiHistory
-from interface.MockInterface import MockInterface
+from rh.interface import calculate_checksum, ExtremumFilter, RssiHistory
+from rh.interface.MockInterface import MockInterface
 
 
 class InterfaceTest(unittest.TestCase):

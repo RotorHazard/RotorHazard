@@ -1,7 +1,7 @@
 import unittest
-from interface.ChorusInterface import ChorusInterface
-from server.chorus_api import ChorusAPI
-from interface.MockInterface import MockInterface
+from rh.interface.ChorusInterface import ChorusInterface
+from rh.apis.chorus_api import ChorusAPI
+from rh.interface.MockInterface import MockInterface
 from . import stub_sensor
 import gevent
 

@@ -1,8 +1,8 @@
 import unittest
 
-from leds import led_handler_strip, led_handler_bitmap, led_handler_character, led_handler_graph
-from server.RHRace import RHRace
-from interface.MockInterface import MockInterface
+from rh.leds import led_handler_strip, led_handler_bitmap, led_handler_character, led_handler_graph
+from rh.app.RHRace import RHRace
+from rh.interface.MockInterface import MockInterface
 
 class MockPixel:
     def __init__(self, count):

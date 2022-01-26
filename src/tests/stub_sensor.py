@@ -1,4 +1,5 @@
-from sensors import Sensor, Reading
+from rh.sensors import Sensor, Reading
+
 
 class StubSensor(Sensor):
     def __init__(self):

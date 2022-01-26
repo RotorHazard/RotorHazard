@@ -1,8 +1,8 @@
 import unittest
-from interface.BaseHardwareInterface import BaseHardwareInterface
-from interface.MockInterface import MockInterface
-from interface.MqttInterface import MqttInterface
-from server.mqtt_api import MqttAPI
+from rh.interface.BaseHardwareInterface import BaseHardwareInterface
+from rh.interface.MockInterface import MockInterface
+from rh.interface.MqttInterface import MqttInterface
+from rh.apis.mqtt_api import MqttAPI
 import json
 
 

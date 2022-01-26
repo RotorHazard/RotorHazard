@@ -1,6 +1,6 @@
 import unittest
 
-from sensors import Sensors, I2CSensor
+from rh.sensors import Sensors, I2CSensor
 import sys
 
 try:
@@ -9,7 +9,7 @@ except:
     import fake_rpi
     sys.modules['smbus2'] = fake_rpi.smbus
 
-from helpers.i2c_helper import I2CBus
+from rh.helpers.i2c_helper import I2CBus
 import tests as tests_pkg
 
 class SensorsTest(unittest.TestCase):

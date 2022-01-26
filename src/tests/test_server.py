@@ -13,7 +13,7 @@ os.environ['RH_DATABASE'] = TEST_DB
 os.environ['RH_INTERFACE'] = 'Mock'
 
 from rh import server
-from server import RHRace
+from rh.app import RHRace
 import tests as tests_pkg
 
 import logging

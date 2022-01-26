@@ -4,7 +4,13 @@ gevent.monkey.patch_all()
 import logging
 import sys
 from rh.app.config import Config
-from interface import RHInterface, MockInterface
+from rh.interface import RHInterface, MockInterface
+from rh.helpers import parse_i2c_url
+try:
+    from rh.helpers.i2c_helper import I2CBus
+except:
+    I2CBus = None
+
 
 def start(port, freq, write_buffer):
     if port == 'MOCK':
@@ -14,9 +20,8 @@ def start(port, freq, write_buffer):
         config.SERIAL_PORTS = [port]
         INTERFACE = RHInterface.get_hardware_interface(config=config)
     elif port.startswith('i2c:'):
-        from helpers import parse_i2c_url
-        from helpers.i2c_helper import I2CBus
-
+        if not I2CBus:
+            raise ValueError("No I2C bus support available")
         bus_addr = parse_i2c_url(port)
         params = {}
         params['idxOffset'] = 0

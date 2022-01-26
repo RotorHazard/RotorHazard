@@ -1,5 +1,5 @@
 import unittest
-from server import Database
+from rh.app import Database
 
 class DatabaseTest(unittest.TestCase):
     def test_db_uri_1(self):

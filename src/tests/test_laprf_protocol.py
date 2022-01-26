@@ -1,6 +1,6 @@
 import unittest
-from interface.laprf_protocol import SOR, EOR, ESC, ESC_OFFSET
-import interface.laprf_protocol as protocol
+from rh.interface.laprf_protocol import SOR, EOR, ESC, ESC_OFFSET
+import rh.interface.laprf_protocol as protocol
 
 
 mock_data = {
