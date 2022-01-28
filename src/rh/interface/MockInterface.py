@@ -121,14 +121,18 @@ class MockInterface(BaseHardwareInterface):
                                 data_file.seek(0)
                                 data_line = data_file.readline()
                             json_data = json.loads(data_line)
+                            ts = monotonic()
                             cmd = json_data['cmd']
                             cmd_values = json_data['data']
-                            if cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
+                            if cmd == READ_RSSI:
+                                cmd_values = (ts,) + cmd_values
+                            elif cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
                                 cmd_values[1] = now - cmd_values[1]
                             elif cmd == READ_LAP_STATS:
                                 cmd_values[1] = now - cmd_values[1]
                             elif cmd == READ_ANALYTICS:
                                 cmd_values[4] = now - cmd_values[4]
+                                cmd_values = (ts,) + cmd_values
 
                         if cmd == READ_RSSI:
                             self.is_new_lap(node, *cmd_values)
@@ -138,10 +142,9 @@ class MockInterface(BaseHardwareInterface):
                         elif cmd == READ_LAP_STATS:
                             self.process_lap_stats(node, *cmd_values)
                         elif cmd == READ_ANALYTICS:
-                            node.current_lifetime, node.loop_time, extremum_rssi, extremum_timestamp, extremum_duration = cmd_values
-                            self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
+                            self.process_analytics(node, *cmd_values)
                         elif cmd == READ_RSSI_STATS:
-                            node.node_peak_rssi, node.node_nadir_rssi = cmd_values
+                            self.process_rssi_stats(node, *cmd_values)
                         else:
                             raise ValueError("Unsupported command: {}".format(cmd))
 

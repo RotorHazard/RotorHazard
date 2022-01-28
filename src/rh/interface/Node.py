@@ -8,7 +8,7 @@ from time import perf_counter
 from enum import IntEnum
 import gevent.lock
 from . import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
-                        calculate_checksum, RssiHistory
+                        calculate_checksum, RssiHistory, RssiSample, LifetimeSample
 
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
@@ -207,8 +207,8 @@ class Node(CommandsWithRetry):
 
         self.frequency = 0
         self.bandChannel = None
-        self.current_rssi = 0
-        self.current_lifetime = 0  # ph
+        self.current_rssi = RssiSample()
+        self.current_lifetime = LifetimeSample()  # ph
         self.node_peak_rssi = 0
         self.node_nadir_rssi = manager.max_rssi_value
         self.current_pilot_id = 0

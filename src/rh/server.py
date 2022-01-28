@@ -2303,9 +2303,9 @@ def race_start_thread(start_token):
     for node in INTERFACE.nodes:
         if node.is_crossing and node.frequency > 0 and \
             (getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or
-            (node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.current_rssi < node.enter_at_level)):
+            (node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.current_rssi.rssi < node.enter_at_level)):
             logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
-                       format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                       format(node.index+1, node.current_rssi.rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
 
     if CLUSTER and CLUSTER.hasSecondaries():
@@ -2319,7 +2319,7 @@ def race_start_thread(start_token):
         lower_end_time = RACE.start_time_monotonic + RHDATA.get_optionInt('startThreshLowerDuration')
         for node in INTERFACE.nodes:
             if node.frequency > 0 and (getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
-                if node.current_rssi < node.enter_at_level:
+                if node.current_rssi.rssi < node.enter_at_level:
                     diff_val = int((node.enter_at_level-node.exit_at_level)*lower_amount/100)
                     if diff_val > 0:
                         new_enter_at = node.enter_at_level - diff_val
@@ -2337,7 +2337,7 @@ def race_start_thread(start_token):
                                 .format(node.index+1, node.enter_at_level))
                 else:
                     logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
-                            .format(node.index+1, node.current_rssi, node.enter_at_level))
+                            .format(node.index+1, node.current_rssi.rssi, node.enter_at_level))
 
     RACE.current_round = RHDATA.get_max_round(RACE.current_heat) + 1
     heat_data = RHDATA.get_heat(RACE.current_heat)
@@ -2389,7 +2389,7 @@ def race_start_thread(start_token):
             if node.is_crossing and node.frequency > 0 and (
                 getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                 logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
-                           format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                           format(node.index+1, node.current_rssi.rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
 
         # kick off race expire processing
@@ -2440,7 +2440,7 @@ def on_stop_race():
         if node.is_crossing and node.frequency > 0 and \
                         node.current_pilot_id != RHUtils.PILOT_ID_NONE:
             logger.info("Forcing end crossing for node {} at race stop (rssi={}, enterAt={}, exitAt={})".\
-                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                        format(node.index+1, node.current_rssi.rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
             any_forced_flag = True
     if any_forced_flag:  # give forced end-crossings a chance to complete before stopping race

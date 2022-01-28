@@ -8,7 +8,7 @@ from monotonic import monotonic
 from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from rh.sensors import Sensor, Reading
-from . import ExtremumFilter, ensure_iter
+from . import ExtremumFilter, ensure_iter, RssiSample
 from rh.helpers import serial_url
 
 RETRY_COUNT=5
@@ -137,10 +137,10 @@ class ChorusInterface(BaseHardwareInterface):
                 self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
             elif cmd == 'r':
                 rssi = int(data[3:7], 16)
-                node.current_rssi = rssi
+                ts = monotonic()
+                node.current_rssi = RssiSample(ts, rssi)
                 node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                 node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
-                ts = monotonic()
                 filtered_ts, filtered_rssi = node.history_filter.filter(ts, rssi)
                 self.append_history(node, filtered_ts, filtered_rssi)
             elif cmd == 'v':

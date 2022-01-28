@@ -8,7 +8,7 @@ import json
 
 import rh.interface.nodes as node_pkg
 from rh.util.Plugins import Plugins
-from . import pack_8, unpack_8, unpack_8_signed, pack_16, unpack_16
+from . import pack_8, unpack_8, unpack_8_signed, pack_16, unpack_16, RssiSample
 from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from rh.util import Averager
@@ -286,21 +286,19 @@ class RHNode(Node):
         return sent_timestamp, server_roundtrip
 
     def unpack_rssi(self, data):
+        sent_timestamp = None
         node_rssi = None
         lap_count = None
         is_crossing = None
         if has_data(data):
-            rssi_val = unpack_rssi(self, data)
-            # save value (even if invalid so displayed in GUI)
-            self.current_rssi = rssi_val
-            if self.is_valid_rssi(rssi_val):
-                node_rssi = rssi_val
-            else:
+            sent_timestamp, _ = self.get_sent_time()
+            node_rssi = unpack_rssi(self, data)
+            if not self.is_valid_rssi(node_rssi):
                 self.bad_rssi_count += 1
                 # log the first ten, but then only 1 per 100 after that
                 if self.bad_rssi_count <= 10 or self.bad_rssi_count % 100 == 0:
                     logger.warning("RSSI reading ({}) out of range on node {}; rejected; count={}".\
-                             format(rssi_val, self, self.bad_rssi_count))
+                             format(node_rssi, self, self.bad_rssi_count))
             lap_count = unpack_8(data[1:])
             is_crossing = (unpack_8(data[2:]) == 1)
 
@@ -310,7 +308,7 @@ class RHNode(Node):
                     data,
                     (node_rssi, lap_count, is_crossing)
                 ))
-        return node_rssi, lap_count, is_crossing
+        return sent_timestamp, node_rssi, lap_count, is_crossing
 
     def unpack_rssi_stats(self, data):
         peak_rssi = None
@@ -319,11 +317,9 @@ class RHNode(Node):
             rssi_val = unpack_rssi(self, data)
             if self.is_valid_rssi(rssi_val):
                 peak_rssi = rssi_val
-                self.node_peak_rssi = peak_rssi
             rssi_val = unpack_rssi(self, data[1:])
             if self.is_valid_rssi(rssi_val):
                 nadir_rssi = rssi_val
-                self.node_nadir_rssi = nadir_rssi
 
             if self.data_logger is not None:
                 self.data_logger.data_buffer.append((
@@ -389,6 +385,7 @@ class RHNode(Node):
         return lap_count, lap_timestamp, lap_peak_rssi, lap_nadir_rssi
 
     def unpack_analytics(self, data):
+        sent_timestamp = None
         lifetime = None
         loop_time = None
         extremum_rssi = None
@@ -398,11 +395,10 @@ class RHNode(Node):
             sent_timestamp, _ = self.get_sent_time()
 
             lifetime = unpack_8_signed(data)
-            self.current_lifetime = lifetime
             loop_time = unpack_16(data[1:])
-            self.loop_time = loop_time
-            extremum_rssi = unpack_rssi(self, data[3:])
-            if self.is_valid_rssi(extremum_rssi):
+            rssi_val = unpack_rssi(self, data[3:])
+            if self.is_valid_rssi(rssi_val):
+                extremum_rssi = rssi_val
                 ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
                 extremum_timestamp = sent_timestamp - (ms_since_first_time / 1000.0)
                 extremum_duration = unpack_16(data[6:])
@@ -415,7 +411,7 @@ class RHNode(Node):
                     data,
                     (lifetime, loop_time, extremum_rssi, ms_since_first_time, extremum_duration)
                 ))
-        return lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration
+        return sent_timestamp, lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration
 
     def poll_command(self, command, size):
         # as we are continually polling, no need to retry command
@@ -534,9 +530,9 @@ class RHInterface(BaseHardwareInterface):
                         node.scan_data[freq] = rssi
                 elif node.frequency:
                     rssi_data = node.poll_command(READ_RSSI, 3)
-                    _rssi, pass_count, is_crossing = node.unpack_rssi(rssi_data)
-                    if pass_count is not None and is_crossing is not None:
-                        has_new_lap, has_entered, has_exited = self.is_new_lap(node, pass_count, is_crossing)
+                    timestamp, rssi, pass_count, is_crossing = node.unpack_rssi(rssi_data)
+                    if timestamp is not None and rssi is not None and pass_count is not None and is_crossing is not None:
+                        has_new_lap, has_entered, has_exited = self.is_new_lap(node, timestamp, rssi, pass_count, is_crossing)
     
                         if has_entered:
                             cmd = READ_ENTER_STATS
@@ -555,17 +551,18 @@ class RHInterface(BaseHardwareInterface):
                         if has_new_lap:
                             lap_stats_data = node.poll_command(READ_LAP_STATS, 5)
                             lap_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi = node.unpack_lap_stats(lap_stats_data)
-                            if lap_count is not None and pass_timestamp is not None and pass_peak_rssi is not None and pass_nadir_rssi is not None:
+                            if lap_count is not None and pass_timestamp is not None:
                                 self.process_lap_stats(node, lap_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi)
 
                     analytic_data = node.poll_command(READ_ANALYTICS, 8)
-                    _lifetime, _loop_time, extremum_rssi, extremum_timestamp, extremum_duration = node.unpack_analytics(analytic_data)
-                    if extremum_timestamp is not None and extremum_rssi is not None and extremum_duration is not None:
-                        self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
+                    timestamp, lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration = node.unpack_analytics(analytic_data)
+                    if timestamp is not None and lifetime is not None and loop_time is not None:
+                        self.process_analytics(node, timestamp, lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration)
 
                     if node.index == rssi_stats_node_idx:
                         rssi_stats_data = node.poll_command(READ_RSSI_STATS, 2)
-                        node.unpack_rssi_stats(rssi_stats_data)
+                        peak_rssi, nadir_rssi = node.unpack_rssi_stats(rssi_stats_data)
+                        self.process_rssi_stats(node, peak_rssi, nadir_rssi)
 
                     self.process_capturing(node)
 

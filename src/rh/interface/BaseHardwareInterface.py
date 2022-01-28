@@ -5,6 +5,7 @@ from monotonic import monotonic
 import rh.util.persistent_homology as ph
 from rh.util.RHUtils import FREQUENCY_ID_NONE
 from .Node import DataStatus
+from . import RssiSample, LifetimeSample
 import bisect
 
 
@@ -117,7 +118,9 @@ class BaseHardwareInterface:
             delta = delta & self.pass_count_mask
         return delta
 
-    def is_new_lap(self, node, pass_count, is_crossing):
+    def is_new_lap(self, node, timestamp, rssi, pass_count, is_crossing):
+        '''Parameter order must match order in packet'''
+        node.current_rssi = RssiSample(timestamp, rssi)
         prev_pass_count = node.pass_count
         if prev_pass_count is None:
             # if None then initialize
@@ -154,6 +157,7 @@ class BaseHardwareInterface:
         return has_new_lap, has_entered, has_exited
 
     def process_crossing(self, node, is_crossing, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime):
+        '''Parameter order must match order in packet'''
         logger.debug("{}: node={}, trigger_count={}, trigger_timestamp={}, trigger_rssi={}, trigger_lifetime={}".format("ENTER" if is_crossing else "EXIT", node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime))
         if is_crossing:
             if self.lap_count_change(trigger_count, node.pass_count) > 1:
@@ -178,12 +182,15 @@ class BaseHardwareInterface:
             self._notify_exit_triggered(node, crossing_race_time, trigger_rssi)
 
     def process_lap_stats(self, node, pass_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi):
+        '''Parameter order must match order in packet'''
         logger.debug("PASS: node={}, pass_count={}, pass_timestamp={}, pass_peak_rssi={}, pass_nadir_rssi={}".format(node, pass_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi))
         if self.lap_count_change(pass_count, node.pass_count) != 1:
             logger.warning("Missed pass on node {}!!! (count was {}, now is {})".format(node, node.pass_count, pass_count))
         node.pass_count = pass_count
-        node.pass_peak_rssi = pass_peak_rssi
-        node.pass_nadir_rssi = pass_nadir_rssi
+        if pass_peak_rssi is not None:
+            node.pass_peak_rssi = pass_peak_rssi
+        if pass_nadir_rssi is not None:
+            node.pass_nadir_rssi = pass_nadir_rssi
         node.is_crossing = False
         node.lap_stats_status = DataStatus.NOT_AVAILABLE
         node.enter_stats_status = DataStatus.NOT_AVAILABLE
@@ -197,6 +204,20 @@ class BaseHardwareInterface:
             node.pass_history.append((pass_timestamp, pass_peak_rssi))
 
         self._notify_pass(node, lap_race_time, BaseHardwareInterface.LAP_SOURCE_REALTIME, pass_peak_rssi)
+
+    def process_rssi_stats(self, node, peak_rssi, nadir_rssi):
+        '''Parameter order must match order in packet'''
+        if peak_rssi is not None:
+            node.node_peak_rssi = peak_rssi
+        if nadir_rssi is not None:
+            node.node_nadir_rssi = nadir_rssi
+
+    def process_analytics(self, node, timestamp, lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration):
+        '''Parameter order must match order in packet'''
+        node.current_lifetime = LifetimeSample(timestamp, lifetime)
+        node.loop_time = loop_time
+        if extremum_rssi is not None and extremum_timestamp is not None and extremum_duration is not None:
+            self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
     def append_history(self, node, timestamp, rssi, duration=0):
         # append history data (except when race is over)
@@ -213,7 +234,7 @@ class BaseHardwareInterface:
     def process_capturing(self, node):
         # check if capturing enter-at level for node
         if node.cap_enter_at_flag:
-            node.cap_enter_at_total += node.current_rssi
+            node.cap_enter_at_total += node.current_rssi.rssi
             node.cap_enter_at_count += 1
             if monotonic() >= node.cap_enter_at_end_ts:
                 node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
@@ -226,7 +247,7 @@ class BaseHardwareInterface:
 
         # check if capturing exit-at level for node
         if node.cap_exit_at_flag:
-            node.cap_exit_at_total += node.current_rssi
+            node.cap_exit_at_total += node.current_rssi.rssi
             node.cap_exit_at_count += 1
             if monotonic() >= node.cap_exit_at_end_ts:
                 node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
@@ -411,8 +432,8 @@ class BaseHardwareInterface:
 
     def get_heartbeat_json(self):
         json = {
-            'current_rssi': [node.current_rssi if not node.scan_enabled else 0 for node in self.nodes],
-            'current_lifetime': [node.current_lifetime if not node.scan_enabled else 0 for node in self.nodes],
+            'current_rssi': [node.current_rssi.rssi if not node.scan_enabled else 0 for node in self.nodes],
+            'current_lifetime': [node.current_lifetime.lifetime if not node.scan_enabled else 0 for node in self.nodes],
             'frequency': self.get_node_frequencies(),
             'loop_time': [node.loop_time if not node.scan_enabled else 0 for node in self.nodes],
             'crossing_flag': [node.is_crossing if not node.scan_enabled else False for node in self.nodes]

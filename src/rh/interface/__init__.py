@@ -1,5 +1,11 @@
 import gevent
 import bisect
+from collections import namedtuple
+
+
+RssiSample = namedtuple('RssiSample', ['timestamp', 'rssi'], defaults=[0,0])
+LifetimeSample = namedtuple('LifetimeSample', ['timestamp', 'lifetime'], defaults=[0,0])
+
 
 def unpack_8(data):
     return data[0]

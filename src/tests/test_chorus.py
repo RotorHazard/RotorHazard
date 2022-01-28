@@ -66,13 +66,13 @@ class ChorusTest(unittest.TestCase):
         self.assertEqual(laps, 1)
 
         intf.start()
-        mock_intf.nodes[0].current_rssi = 66
-        mock_intf.nodes[3].current_rssi = 67
+        mock_intf.nodes[0].current_rssi.rssi = 66
+        mock_intf.nodes[3].current_rssi.rssi = 67
         api.emit_rssi('*')
         gevent.sleep(0.5)
         intf.stop()
-        self.assertEqual(intf.nodes[0].current_rssi, 66)
-        self.assertEqual(intf.nodes[3].current_rssi, 67)
+        self.assertEqual(intf.nodes[0].current_rssi.rssi, 66)
+        self.assertEqual(intf.nodes[3].current_rssi.rssi, 67)
 
 if __name__ == '__main__':
     unittest.main()

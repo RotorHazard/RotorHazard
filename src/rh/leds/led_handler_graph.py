@@ -41,7 +41,7 @@ def rssiGraph(args):
         for node in INTERFACE.nodes:
             rssi_min = node.node_nadir_rssi
             rssi_max = node.node_peak_rssi
-            rssi_val = node.current_rssi
+            rssi_val = node.current_rssi.rssi
 
             color = convertColor(args['manager'].getDisplayColor(node.index))
 

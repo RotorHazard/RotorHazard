@@ -10,7 +10,7 @@ from .BaseHardwareInterface import BaseHardwareInterface, BaseHardwareInterfaceL
 from .Node import Node, NodeManager
 from rh.sensors import Sensor, Reading
 from . import laprf_protocol as laprf
-from . import ExtremumFilter, ensure_iter
+from . import ExtremumFilter, ensure_iter, RssiSample
 from rh.helpers import serial_url, socket_url
 
 logger = logging.getLogger(__name__)
@@ -152,7 +152,7 @@ class LapRFInterface(BaseHardwareInterface):
             for idx, rssi in enumerate(record.last_rssi):
                 if rssi is not None:
                     node = node_manager.nodes[idx]
-                    node.current_rssi = rssi
+                    node.current_rssi = RssiSample(rssi_ts, rssi)
                     node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                     node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
                     filtered_ts, filtered_rssi = node.history_filter.filter(rssi_ts, rssi)
