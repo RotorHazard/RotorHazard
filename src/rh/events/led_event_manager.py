@@ -12,6 +12,7 @@ Wires events to handlers
 
 import copy
 import json
+from typing import Any, Dict, List
 from rh.app import RHRace
 import gevent
 from rh.leds import hexToColor
@@ -22,12 +23,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 class LEDEventManager:
-    events = {}
-    idleArgs = {}
-    eventEffects = {}
-    eventThread = None
-    displayColorCache = []
-
     def __init__(self, eventmanager, strip, RHData, RACE, Language, INTERFACE):
         self.Events = eventmanager
         self.strip = strip
@@ -35,6 +30,11 @@ class LEDEventManager:
         self.RACE = RACE
         self.Language = Language
         self.INTERFACE = INTERFACE
+        self.events: Dict[Evt,Any] = {}
+        self.idleArgs: Dict[Evt,Any] = {}
+        self.eventEffects: Dict[str,Any] = {}
+        self.eventThread = None
+        self.displayColorCache: List[int] = []
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None, {
@@ -236,12 +236,12 @@ class NoLEDManager():
             return False
         return nothing
 
+
 # Similar to NoLEDManager but with enough support to send 'effect' events to cluster timers
 class ClusterLEDManager():
-    eventEffects = {}
 
     def __init__(self):
-        pass
+        self.eventEffects: Dict[str,Any] = {}
 
     def isEnabled(self):
         return False
@@ -268,6 +268,7 @@ class ColorPattern:
     TWO_OUT_OF_THREE = [2, 1]
     MOD_SEVEN = [1, 6]
     FOUR_ON_FOUR_OFF = [4, 4]
+
 
 class LEDEvent:
     IDLE_READY = 'ledIdleReady'
@@ -344,6 +345,7 @@ class LEDEvent:
             "label": "Idle: Race Stopped"
         },
     ]
+
 
 class LEDEffect(UserDict):
     def __init__(self, name, label, handlerFn, validEvents, defaultArgs=None):

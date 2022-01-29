@@ -15,13 +15,14 @@ import jsonschema
 import glob
 from uuid import uuid4
 from types import MappingProxyType
+from typing import Any, Dict, Mapping
 from rh.util import RHUtils
 from rh.events.eventmanager import Evt
 from .RHRace import RaceStatus, RaceMode, WinCondition, StagingTones, StartBehavior
 
 QUALIFYING_STAGE = 'Qualifying'
 MAINS_STAGE = 'Mains'
-EMPTY_DICT = MappingProxyType({})
+EMPTY_DICT: Mapping[Any,Any] = MappingProxyType({})
 
 
 def unique_id():
@@ -29,7 +30,7 @@ def unique_id():
 
 
 class RHData():
-    _OptionsCache = {} # Local Python cache for global settings
+    _OptionsCache: Dict[str,Any] = {} # Local Python cache for global settings
 
     def __init__(self, Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME, RESULTS_CACHE):
         self._Database = Database

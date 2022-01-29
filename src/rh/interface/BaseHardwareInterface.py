@@ -47,6 +47,7 @@ class BaseHardwareInterface:
     def __init__(self, listener=None, update_sleep=0.1):
         self.node_managers = []
         self.nodes = []
+        self.sensors = []
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
         self.update_thread = None  # Thread for running the main update loop

@@ -8,7 +8,7 @@
 
 import sys
 
-from interface import RHInterface
+from rh.interface import RHInterface
 from rh.util import RHUtils
 from . import stm32loader as stm32loader
 

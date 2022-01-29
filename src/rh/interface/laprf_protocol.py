@@ -89,7 +89,7 @@ class TimeField(IntEnum):
 
 
 class LapRFEvent():
-    timestamp: int = monotonic()
+    timestamp: Optional[int] = monotonic()
     rec_type: str
 
     def __init__(self: "LapRFEvent", rec_type: str):
@@ -98,13 +98,13 @@ class LapRFEvent():
 
 class RFSetupEvent(LapRFEvent):
     "A LapRF receiver radio frequency setup event"
-    slot_index: int = None
-    enabled: bool = None
-    band: int = None
-    channel: int = None
-    frequency: int = None
-    threshold: float = None
-    gain: int = None
+    slot_index: Optional[int] = None
+    enabled: Optional[bool] = None
+    band: Optional[int] = None
+    channel: Optional[int] = None
+    frequency: Optional[int] = None
+    threshold: Optional[float] = None
+    gain: Optional[int] = None
 
     def __init__(self: "RFSetupEvent"):
         super().__init__("slot_config")
@@ -121,14 +121,14 @@ class RFSetupEvent(LapRFEvent):
 
 class PassingEvent(LapRFEvent):
     "A LapRF passing event"
-    slot_index: int = None
-    rtc_time: int = None
-    decoder_id: int = None
-    passing_number: int = None
-    peak_height: int = None
-    flags: int = None
+    slot_index: Optional[int] = None
+    rtc_time: Optional[int] = None
+    decoder_id: Optional[int] = None
+    passing_number: Optional[int] = None
+    peak_height: Optional[int] = None
+    flags: Optional[int] = None
 
-    def __init__(self: "RFSetupEvent"):
+    def __init__(self: "PassingEvent"):
         super().__init__("passing")
 
     def is_valid(self: "PassingEvent") -> bool:
@@ -143,10 +143,10 @@ class PassingEvent(LapRFEvent):
 # Haven't encounter this type of record.
 class RSSIEvent(LapRFEvent):
     "A LapRF RSSI event"
-    slot_index: int = None
-    min_rssi: float = None
-    max_rssi: float = None
-    mean_rssi: float = None
+    slot_index: Optional[int] = None
+    min_rssi: Optional[float] = None
+    max_rssi: Optional[float] = None
+    mean_rssi: Optional[float] = None
 
     def __init__(self: "RSSIEvent"):
         super().__init__("rssi")
@@ -160,8 +160,8 @@ class RSSIEvent(LapRFEvent):
 
 class SettingsEvent(LapRFEvent):
     "A LapRF settings event"
-    status_interval: int = None
-    min_lap_time: int = None
+    status_interval: Optional[int] = None
+    min_lap_time: Optional[int] = None
 
     def __init__(self: "SettingsEvent"):
         super().__init__("settings")
@@ -176,11 +176,11 @@ class SettingsEvent(LapRFEvent):
 
 class StatusEvent(LapRFEvent):
     "A LapRF status event"
-    battery_voltage: int = None
-    gate_state: int = None
-    detection_count: int = None
-    flags: int = None
-    last_rssi: int = [None] * MAX_SLOTS
+    battery_voltage: Optional[int] = None
+    gate_state: Optional[int] = None
+    detection_count: Optional[int] = None
+    flags: Optional[int] = None
+    last_rssi: List[Optional[float]] = [None] * MAX_SLOTS
 
     def __init__(self: "StatusEvent"):
         super().__init__("status")
@@ -197,8 +197,8 @@ class StatusEvent(LapRFEvent):
 
 class TimeEvent(LapRFEvent):
     "A LapRF time event"
-    rtc_time: int = None
-    time_rtc_time: int = None
+    rtc_time: Optional[int] = None
+    time_rtc_time: Optional[int] = None
 
     def __init__(self: "TimeEvent"):
         super().__init__("time")
@@ -331,7 +331,7 @@ def _compute(buffer: bytes) -> int:
     return _reflect(remainder, 16)
 
 
-def _verify_crc(buffer: bytearray) -> None:
+def _verify_crc(buffer: bytes) -> None:
     """Verify a LapRF record by performing a cyclic redundancy check (CRC).
 
     WARNING: The `buffer` is modified in order to verify the CRC. Its required to remove
@@ -347,8 +347,9 @@ def _verify_crc(buffer: bytearray) -> None:
       CrcError: An error of a CRC mismatch.
     """
     crc_record, = unpack_from("<H", buffer, 3)
-    pack_into("<H", buffer, 3, 0)
-    crc_computed = _compute(buffer)
+    buffer_no_crc = bytearray(buffer)
+    pack_into("<H", buffer_no_crc, 3, 0)
+    crc_computed = _compute(buffer_no_crc)
     if (crc_record != crc_computed):
         raise CrcMismatchError()
 
@@ -463,7 +464,7 @@ class Decoder:
       length: An integer byte length of the record.
     """
 
-    def __init__(self, buffer: bytearray):
+    def __init__(self, buffer: bytes):
         length, _, rec_type = unpack_from("<HHH", buffer, 1)
         if len(buffer) != length:
             raise InvalidRecordError(f"Invalid record length of {len(buffer)}, expected {length}")
@@ -609,7 +610,7 @@ def _decode_passing_record(record: Decoder) -> PassingEvent:
 
 
 def _decode_status_record(record: Decoder) -> StatusEvent:
-    slot_index: int = None
+    slot_index: Optional[int] = None
     event = StatusEvent()
     while record.pos < record.length:
         signature = record.decode_field_signature()
@@ -680,7 +681,7 @@ def _decode_record(buffer: bytes):
 def decode(packet: bytes):
     """Deserialize a LapRF packet.
     """
-    records: list[Event] = []
+    records: List[Event] = []
     buffers = _split_records(packet)
     for buffer in buffers:
         try:

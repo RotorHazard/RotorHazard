@@ -52,11 +52,18 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
         cd ..
 
+    - name: Type checking
+      run: |
+        python3 -m pip install mypy lxml
+        cd src
+        mypy --cobertura-xml mypy-report --install-types --non-interactive -p rh
+        cd ..
+
     - name: Python tests
       run: |
         cd src
         coverage run --branch -m unittest discover -v
-        coverage xml
+        coverage xml -o test-reports/coverage.xml
         cd ..
 
     - name: Install Arduino CI
@@ -85,8 +92,24 @@ jobs:
         npm run build
         cd ..
 
-    - name: Upload code coverage
+    - name: Upload server code coverage
       uses: codecov/codecov-action@v2
+      with:
+        directory: src/test-reports/
+        flags: server
+
+    - name: Upload node code coverage
+      uses: codecov/codecov-action@v2
+      with:
+        directory: src/node/
+        flags: node
+
+    - name: Upload mypy code coverage
+      uses: codecov/codecov-action@v2
+      with:
+        files: src/mypy-report/cobertura.xml
+        flags: type-checking
+
 
   node-build:
     runs-on: ubuntu-latest

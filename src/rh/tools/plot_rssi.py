@@ -4,23 +4,23 @@ import matplotlib.pyplot as plt
 import sys
 import csv
 import rh.util.persistent_homology as ph
+from scipy.ndimage import median_filter
 
-rssis = []
+rssi_list = []
 with open(sys.argv[1]) as f:
     reader = csv.reader(f)
     for r in reader:
-        rssis.append(float(r[0]))
+        rssi_list.append(float(r[0]))
 
 fs = 1000 # sample freq
-ts = np.arange(len(rssis))/fs
-rssis = np.array(rssis)
+ts = np.arange(len(rssi_list))/fs
+rssis = np.array(rssi_list)
 
-from scipy.ndimage import median_filter
 window_size = 5 # should be odd
 rssis = median_filter(rssis, window_size, origin=(window_size-1)//2)
 
 F = rfft(rssis, norm='forward')
-freqs = rfftfreq(rssis.size, 1/fs)
+freqs = rfftfreq(len(rssis), 1/fs)
 
 fig, axs = plt.subplots(1, 2, figsize=(12,6))
 axs[0].set_title('Signal')

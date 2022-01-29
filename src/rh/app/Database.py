@@ -5,10 +5,11 @@ Database module
 from pathlib import Path
 from rh.util import RHUtils
 from flask_sqlalchemy import SQLAlchemy
+from typing import Any
 
 #pylint: disable=no-member
 
-DB = SQLAlchemy()
+DB: Any = SQLAlchemy()
 
 
 def db_uri(basedir, dbname):

@@ -60,7 +60,7 @@ class MockInterface(BaseHardwareInterface):
                 if node.data_reader is None:
                     file_format = 'b' if self.data_logger_format == BINARY_RECORD_FORMAT else 't'
                     try:
-                        f = open("mock_data_{}.{}".format(node.index+1, self.data_logger_format, 'r'+file_format))
+                        f = open("mock_data_{}.{}".format(node.index+1, self.data_logger_format), 'r'+file_format)
                         logger.info("Loaded {}".format(f.name))
                     except IOError:
                         f = None

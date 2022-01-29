@@ -91,8 +91,6 @@ class ChorusInterface(BaseHardwareInterface):
             node_manager = ChorusNodeManager(serial_io)
             self.node_managers.append(node_manager)
 
-        self.sensors = []
-
         for node_manager in self.node_managers:
             with node_manager:
                 node_manager.write('N0\n')

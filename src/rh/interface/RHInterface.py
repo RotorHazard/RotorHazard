@@ -262,7 +262,7 @@ class RHNode(Node):
         self._roundtrip_stats = Averager(STATS_WINDOW_SIZE)
         self.data_logger = None
 
-    @Node.loop_time.setter
+    @Node.loop_time.setter  # type: ignore
     def loop_time(self, v):
         Node.loop_time.fset(self, v)
         self._loop_time_stats.append(v)

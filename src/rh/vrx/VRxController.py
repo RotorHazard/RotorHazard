@@ -5,8 +5,8 @@ import traceback
 
 from .mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
 from .VRxCV1_emulator import MQTT_Client
-from .eventmanager import Evt
-from .RHRace import WinCondition
+from rh.events.eventmanager import Evt
+from rh.app.RHRace import WinCondition
 from rh.util import RHUtils
 
 # Sample configuration:

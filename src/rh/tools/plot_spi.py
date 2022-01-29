@@ -1,8 +1,9 @@
 import csv
 import sys
+from typing import List, Dict, Tuple
 import matplotlib.pyplot as plt
 
-pins = {}
+pins: Dict[int,Tuple[List[int],List[int]]] = {}
 with open(sys.argv[1]) as f:
     reader = csv.reader(f)
     header = next(reader)
@@ -11,9 +12,8 @@ with open(sys.argv[1]) as f:
         pin = int(r[1])
         v = int(r[2])
         if pin >= 18: # SPI pins
-            if pin in pins:
-                pin_data = pins[pin]
-            else:
+            pin_data = pins.get(pin)
+            if not pin_data:
                 pin_data = ([], [])
                 pins[pin] = pin_data
             pin_data[0].append(i)

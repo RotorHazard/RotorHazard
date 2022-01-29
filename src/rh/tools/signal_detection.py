@@ -5,6 +5,8 @@ from flask import Flask
 import json
 import rh.util.persistent_homology as ph
 import matplotlib.pyplot as plt
+from typing import Dict, List, Tuple
+
 
 def load_races(db_file):
 	APP = Flask(__name__)
@@ -89,7 +91,7 @@ def export(race, csv_path):
 if __name__ == '__main__':
 	db_file = sys.argv[1] if len(sys.argv) > 1 else 'database.db'
 	races = load_races(db_file)
-	node_bounds = {}
+	node_bounds: Dict[int,Tuple[List[int],List[int]]] = {}
 	for race in races:
 		node, min_bound, max_bound = analyze_race(race, show_plots=False)
 		if node not in node_bounds:

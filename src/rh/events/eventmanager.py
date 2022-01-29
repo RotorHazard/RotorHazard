@@ -6,18 +6,18 @@ import logging
 import gevent.event
 import copy
 from monotonic import monotonic
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
+
 
 class EventManager:
     processEventObj = gevent.event.Event()
 
-    events = {}
-    eventOrder = {}
-    eventThreads = {}
-
     def __init__(self):
-        pass
+        self.events: Dict["Evt",Dict[str,Dict[str,Any]]] = {}
+        self.eventOrder: Dict["Evt", List[str]] = {}
+        self.eventThreads: Dict[str,Dict[str,Any]] = {}
 
     def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
         if defaultArgs == None:

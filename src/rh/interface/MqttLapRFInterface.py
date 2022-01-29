@@ -1,6 +1,6 @@
 import logging
-from interface.MqttInterface import MqttInterface
-from interface.LapRFInterface import LapRFInterfaceListener
+from .MqttInterface import MqttInterface
+from .LapRFInterface import LapRFInterfaceListener
 
 logger = logging.getLogger(__name__)
 

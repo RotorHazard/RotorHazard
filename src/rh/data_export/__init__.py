@@ -15,6 +15,7 @@
 #
 
 import logging
+from typing import Dict
 from rh.util.Plugins import Plugins
 
 
@@ -22,12 +23,11 @@ logger = logging.getLogger(__name__)
 
 
 class DataExportManager():
-    exporters = {}
-
     def __init__(self, RHData, PageCache, Language):
         self._RHData = RHData
         self._PageCache = PageCache
         self._Language = Language
+        self.exporters: Dict[str,"DataExporter"] = {}
 
     def discover(self, export_pkg):
         exporter_plugins = Plugins(prefix='data_export')

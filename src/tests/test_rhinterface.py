@@ -129,7 +129,8 @@ class RHInterfaceTest(unittest.TestCase):
 
     def gcov(self, testname):
         subprocess.run("gcov -b -c *.cpp", cwd='node', shell=True)
-        subprocess.run("mkdir -p {0}; mv *.gcov {0}; rm *.gcda; rm *.gcno".format(testname), cwd='node', shell=True)
+        gcov_dst_path = '../test-reports/' + testname
+        subprocess.run("mkdir -p {0}; mv *.gcov {0}; rm *.gcda; rm *.gcno".format(gcov_dst_path), cwd='node', shell=True)
 
 
 if __name__ == '__main__':

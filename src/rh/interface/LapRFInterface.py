@@ -108,8 +108,6 @@ class LapRFInterface(BaseHardwareInterface):
             node_manager = LapRFNodeManager(*addr_stream)
             self.node_manager.append(node_manager)
 
-        self.sensors = []
-
         for node_manager in self.node_managers:
             with node_manager:
                 for index in range(laprf.MAX_SLOTS):

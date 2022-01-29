@@ -18,8 +18,8 @@ def scan(port, socket):
         config.SERIAL_PORTS = [port]
         INTERFACE = RHInterface.get_hardware_interface(config=config)
     elif port.startswith('i2c:'):
-        from helpers import parse_i2c_url
-        from helpers.i2c_helper import I2CBus
+        from rh.helpers import parse_i2c_url
+        from rh.helpers.i2c_helper import I2CBus
 
         bus_addr = parse_i2c_url(port)
         params = {}
