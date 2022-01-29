@@ -279,19 +279,19 @@ class RHNode(Node):
             logger.exception('Error fetching READ_NODE_SLOTIDX from node {}'.format(self))
         return self.multi_node_slot_index
 
-    def get_sent_time(self):
-        server_roundtrip = self.io_response - self.io_request
-        server_oneway = server_roundtrip / 2
-        sent_timestamp = self.io_response - server_oneway
-        return sent_timestamp, server_roundtrip
+    def get_sent_time_ms(self):
+        server_roundtrip_ms = self.io_response_ms - self.io_request_ms
+        server_oneway_ms = round(server_roundtrip_ms / 2)
+        sent_timestamp_ms = self.io_response_ms - server_oneway_ms
+        return sent_timestamp_ms, server_roundtrip_ms
 
     def unpack_rssi(self, data):
-        sent_timestamp = None
+        sent_timestamp_ms = None
         node_rssi = None
         lap_count = None
         is_crossing = None
         if has_data(data):
-            sent_timestamp, _ = self.get_sent_time()
+            sent_timestamp_ms, _ = self.get_sent_time_ms()
             node_rssi = unpack_rssi(self, data)
             if not self.is_valid_rssi(node_rssi):
                 self.bad_rssi_count += 1
@@ -308,7 +308,7 @@ class RHNode(Node):
                     data,
                     (node_rssi, lap_count, is_crossing)
                 ))
-        return sent_timestamp, node_rssi, lap_count, is_crossing
+        return sent_timestamp_ms, node_rssi, lap_count, is_crossing
 
     def unpack_rssi_stats(self, data):
         peak_rssi = None
@@ -331,15 +331,15 @@ class RHNode(Node):
 
     def unpack_trigger_stats(self, cmd, data):
         trigger_count = None
-        trigger_timestamp = None
+        trigger_timestamp_ms = None
         trigger_rssi = None
         trigger_lifetime = None
         if has_data(data):
-            sent_timestamp, _ = self.get_sent_time()
+            sent_timestamp_ms, _ = self.get_sent_time_ms()
 
             trigger_count = unpack_8(data)
             ms_since_trigger = unpack_time_since(self, cmd, data[1:])
-            trigger_timestamp = sent_timestamp - (ms_since_trigger / 1000.0)
+            trigger_timestamp_ms = sent_timestamp_ms - ms_since_trigger
 
             rssi_val = unpack_rssi(self, data[3:])
             if self.is_valid_rssi(rssi_val):
@@ -353,20 +353,20 @@ class RHNode(Node):
                     data,
                     (trigger_count, ms_since_trigger, trigger_rssi, trigger_lifetime)
                 ))
-        return trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime
+        return trigger_count, trigger_timestamp_ms, trigger_rssi, trigger_lifetime
 
     def unpack_lap_stats(self, data):
         lap_count = None
-        lap_timestamp = None
+        lap_timestamp_ms = None
         lap_peak_rssi = None
         lap_nadir_rssi = None
         if has_data(data):
-            sent_timestamp, server_roundtrip = self.get_sent_time()
-            self._roundtrip_stats.append(1000*server_roundtrip)
+            sent_timestamp_ms, server_roundtrip_ms = self.get_sent_time_ms()
+            self._roundtrip_stats.append(server_roundtrip_ms)
 
             lap_count = unpack_8(data)
             ms_since_lap = unpack_time_since(self, READ_LAP_STATS, data[1:])
-            lap_timestamp = sent_timestamp - (ms_since_lap / 1000.0)
+            lap_timestamp_ms = sent_timestamp_ms - ms_since_lap
 
             rssi_val = unpack_rssi(self, data[3:])
             if self.is_valid_rssi(rssi_val):
@@ -382,17 +382,17 @@ class RHNode(Node):
                     data,
                     (lap_count, ms_since_lap, lap_peak_rssi, lap_nadir_rssi)
                 ))
-        return lap_count, lap_timestamp, lap_peak_rssi, lap_nadir_rssi
+        return lap_count, lap_timestamp_ms, lap_peak_rssi, lap_nadir_rssi
 
     def unpack_analytics(self, data):
-        sent_timestamp = None
+        sent_timestamp_ms = None
         lifetime = None
         loop_time = None
         extremum_rssi = None
-        extremum_timestamp = None
-        extremum_duration = None
+        extremum_timestamp_ms = None
+        extremum_duration_ms = None
         if has_data(data):
-            sent_timestamp, _ = self.get_sent_time()
+            sent_timestamp_ms, _ = self.get_sent_time_ms()
 
             lifetime = unpack_8_signed(data)
             loop_time = unpack_16(data[1:])
@@ -400,8 +400,8 @@ class RHNode(Node):
             if self.is_valid_rssi(rssi_val):
                 extremum_rssi = rssi_val
                 ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
-                extremum_timestamp = sent_timestamp - (ms_since_first_time / 1000.0)
-                extremum_duration = unpack_16(data[6:])
+                extremum_timestamp_ms = sent_timestamp_ms - ms_since_first_time
+                extremum_duration_ms = unpack_16(data[6:])
             elif extremum_rssi != 0:
                 logger.warning("History RSSI reading ({}) out of range on node {}; rejected".format(extremum_rssi, self))
 
@@ -409,9 +409,9 @@ class RHNode(Node):
                 self.data_logger.data_buffer.append((
                     READ_ANALYTICS,
                     data,
-                    (lifetime, loop_time, extremum_rssi, ms_since_first_time, extremum_duration)
+                    (lifetime, loop_time, extremum_rssi, ms_since_first_time, extremum_duration_ms)
                 ))
-        return sent_timestamp, lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration
+        return sent_timestamp_ms, lifetime, loop_time, extremum_rssi, extremum_timestamp_ms, extremum_duration_ms
 
     def poll_command(self, command, size):
         # as we are continually polling, no need to retry command

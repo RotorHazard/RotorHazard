@@ -3,11 +3,11 @@
 import logging
 import gevent
 import serial
-from monotonic import monotonic
 
 from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from rh.sensors import Sensor, Reading
+from rh.util import ms_counter
 from . import ExtremumFilter, ensure_iter, RssiSample
 from rh.helpers import serial_url
 
@@ -133,21 +133,21 @@ class ChorusInterface(BaseHardwareInterface):
             cmd = data[2]
             if cmd == 'L':
                 node.pass_count = int(data[3:5], 16)  # lap count
-                lap_ts = int(data[5:13], 16)  # relative to start time
-                self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
+                lap_ts_ms = int(data[5:13], 16)  # relative to start time
+                self._notify_pass(node, lap_ts_ms, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
             elif cmd == 'r':
                 rssi = int(data[3:7], 16)
-                ts = monotonic()
-                node.current_rssi = RssiSample(ts, rssi)
+                ts_ms = ms_counter()
+                node.current_rssi = RssiSample(ts_ms, rssi)
                 node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                 node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
-                filtered_ts, filtered_rssi = node.history_filter.filter(ts, rssi)
+                filtered_ts, filtered_rssi = node.history_filter.filter(ts_ms, rssi)
                 self.append_history(node, filtered_ts, filtered_rssi)
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 
-    def on_race_start(self, race_start_time):
-        super().on_race_start(race_start_time)
+    def on_race_start(self, race_start_time_ms):
+        super().on_race_start(race_start_time_ms)
         # reset timers to zero
         for node_manager in self.node_managers:
             with node_manager:

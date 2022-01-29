@@ -12,7 +12,7 @@ class ChorusAPI():
         self.on_start = on_start
         self.on_stop_race = on_stop_race
         self.on_reset_race = on_reset_race
-        self.rssi_interval = 0
+        self.rssi_push_interval_ms = 0
         self.thread = None
 
     def start(self):
@@ -26,7 +26,7 @@ class ChorusAPI():
             self.thread = None
         logger.info('Chorus API stopped')
 
-    def emit_pass_record(self, node, lap_number, lap_time_stamp):
+    def emit_pass_record(self, node, lap_number: int, lap_time_stamp: int):
         self.serial_io.write("S{0}L{1:02x}{2:08x}\n".format(node.index, lap_number, lap_time_stamp).encode("UTF-8"))
 
     def emit_rssi(self, node_addr):
@@ -103,10 +103,10 @@ class ChorusAPI():
                     response = 'S{0}F{1:04x}\n'.format(node_index, freq)
                 elif cmd == 'I':
                     if is_setter:
-                        self.rssi_interval = int(data[3:7], 16)/1000.0
+                        self.rssi_push_interval_ms = int(data[3:7], 16)
                         response = ''
                         for i in range(num_nodes):
-                            response += 'S{0}I{1:04x}\n'.format(i, int(self.rssi_interval*1000.0))
+                            response += 'S{0}I{1:04x}\n'.format(i, int(self.rssi_push_interval_ms))
                 elif cmd == '1':
                     node_index = int(node_addr)
                     if is_setter:
@@ -144,8 +144,8 @@ class ChorusAPI():
                         response = ''
                         for i in range(num_nodes):
                             response += 'S{0}R2\n'.format(i)
-        elif self.rssi_interval > 0:
-            gevent.sleep(self.rssi_interval)
+        elif self.rssi_push_interval_ms > 0:
+            gevent.sleep(self.rssi_push_interval_ms)
             response = self._getRssiResponse('*')
         else:
             gevent.sleep(0.1)

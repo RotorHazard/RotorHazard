@@ -99,12 +99,12 @@ class MqttAPI:
                             lap_source = None
 
                         if lap_source is not None:
-                            lap_ts = float(pass_info['timestamp'])
-                            self.pass_record_callback(node, lap_ts, lap_source)
+                            lap_ts_ms = int(pass_info['timestamp'])
+                            self.pass_record_callback(node, lap_ts_ms, lap_source)
             else:
                 pass_info = json.loads(msg.payload.decode('utf-8'))
-                lap_ts = float(pass_info['timestamp'])
-                self.split_record_callback(timer_id, nm_name, multi_node_index, lap_ts)
+                lap_ts_ms = int(pass_info['timestamp'])
+                self.split_record_callback(timer_id, nm_name, multi_node_index, lap_ts_ms)
 
     def set_frequency_handler(self, client, userdata, msg):
         node = self._get_node_from_topic(msg.topic)

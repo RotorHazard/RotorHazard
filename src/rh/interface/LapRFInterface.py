@@ -12,11 +12,20 @@ from rh.sensors import Sensor, Reading
 from . import laprf_protocol as laprf
 from . import ExtremumFilter, ensure_iter, RssiSample
 from rh.helpers import serial_url, socket_url
+from rh.util import ms_counter
 
 logger = logging.getLogger(__name__)
 
 RESPONSE_WAIT = 0.5  # secs
 WRITE_CHILL_TIME = 0.010
+
+
+def micros_to_millis(t: int) -> int:
+    return round(t/1000)
+
+
+def millivolts_to_volts(v: int) -> float:
+    return v/1000
 
 
 class LapRFNodeManager(NodeManager):
@@ -30,8 +39,8 @@ class LapRFNodeManager(NodeManager):
         self.stream_buffer = bytearray()
         self.voltage = None
         self.min_lap_time = None
-        self.race_start_rtc_time = 0  # usecs
-        self.race_start_time_request_ts = None
+        self.race_start_rtc_time_ms = 0
+        self.race_start_time_request_ts_ms = None
         self.last_write_ts = 0
 
     def _create_node(self, index, multi_node_index):
@@ -147,26 +156,26 @@ class LapRFInterface(BaseHardwareInterface):
 
     def _process_message(self, node_manager, record):
         if isinstance(record, laprf.StatusEvent):
-            node_manager.voltage = record.battery_voltage/1000
-            rssi_ts = monotonic()
+            node_manager.voltage = millivolts_to_volts(record.battery_voltage)
+            rssi_ts_ms = ms_counter()
             for idx, rssi in enumerate(record.last_rssi):
                 if rssi is not None:
                     node = node_manager.nodes[idx]
-                    node.current_rssi = RssiSample(rssi_ts, rssi)
+                    node.current_rssi = RssiSample(rssi_ts_ms, rssi)
                     node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                     node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
-                    filtered_ts, filtered_rssi = node.history_filter.filter(rssi_ts, rssi)
-                    self.append_history(node, filtered_ts, filtered_rssi)
+                    filtered_ts_ms, filtered_rssi = node.history_filter.filter(rssi_ts_ms, rssi)
+                    self.append_history(node, filtered_ts_ms, filtered_rssi)
         elif isinstance(record, laprf.PassingEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
             pass_peak_rssi = record.peak_height
             node.node_peak_rssi = max(record.peak_height, node.node_peak_rssi)
-            lap_ts = (record.rtc_time - node_manager.race_start_rtc_time)/1000000
+            lap_ts_ms = micros_to_millis(record.rtc_time) - node_manager.race_start_rtc_time_ms
             if self.is_racing:
-                node.pass_history.append((lap_ts + self.race_start_time, pass_peak_rssi))
+                node.pass_history.append(RssiSample(lap_ts_ms + self.race_start_time_ms, pass_peak_rssi))
             node.pass_count += 1
-            self._notify_pass(node, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
+            self._notify_pass(node, lap_ts_ms, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
         elif isinstance(record, laprf.RFSetupEvent):
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
@@ -197,21 +206,21 @@ class LapRFInterface(BaseHardwareInterface):
             if node.gain != old_gain:
                 self._notify_gain_changed(node)
         elif isinstance(record, laprf.TimeEvent):
-            if node_manager.race_start_time_request_ts is not None:
-                server_oneway = (monotonic() - node_manager.race_start_time_request_ts)/2
-                node_manager.race_start_rtc_time = record.rtc_time - server_oneway*1000000  # usecs
-                node_manager.race_start_time_request_ts = None
+            if node_manager.race_start_time_request_ts_ms is not None:
+                server_oneway_ms = round((ms_counter() - node_manager.race_start_time_request_ts_ms)/2)
+                node_manager.race_start_rtc_time_ms = micros_to_millis(record.rtc_time) - server_oneway_ms
+                node_manager.race_start_time_request_ts_ms = None
         elif isinstance(record, laprf.SettingsEvent):
             if record.min_lap_time:
                 node_manager.min_lap_time = record.min_lap_time
         else:
             logger.warning("Unsupported record: {}".format(record))
 
-    def on_race_start(self, race_start_time):
-        super().on_race_start(race_start_time)
+    def on_race_start(self, race_start_time_ms):
+        super().on_race_start(race_start_time_ms)
         data = laprf.encode_get_rtc_time_record()
         for node_manager in self.node_managers:
-            node_manager.race_start_time_request_ts = monotonic()
+            node_manager.race_start_time_request_ts = ms_counter()
             node_manager.write(data)
 
     def set_enter_at_level(self, node_index, level):

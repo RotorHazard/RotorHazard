@@ -8,7 +8,7 @@ from monotonic import monotonic
 from rh.app.RHRace import RaceStatus
 from rh.events.eventmanager import Evt
 from rh.util.RunningMedian import RunningMedian
-from rh.util import Averager
+from rh.util import Averager, ms_counter
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,8 @@ class SecondaryNode:
                                                 self.emit_cluster_connect_change(False)  # play one disconnect tone
                                             return  # exit worker thread
                 else:  # if current status is connected
-                    now_time = monotonic()
+                    now_ms = ms_counter()
+                    now_time = now_ms/1000
                     if not self.freqsSentFlag:
                         try:
                             self.freqsSentFlag = True
@@ -138,7 +139,7 @@ class SecondaryNode:
                                     self.lastCheckQueryTime = now_time
                                     # timestamp not actually used by secondary, but send to make query and response symmetrical
                                     payload = {
-                                        'timestamp': self.PROGRAM_START.monotonic_to_epoch_millis(now_time) \
+                                        'timestamp': self.PROGRAM_START.monotonic_to_epoch_millis(now_ms) \
                                                          if self.PROGRAM_START else 0
                                     }
                                     # don't update 'lastContactTime' value until response received
@@ -349,7 +350,7 @@ class SecondaryNode:
                         if secondaryTimestamp:
                             # calculate local-time value midway between before and after network query
                             localTimestamp = self.PROGRAM_START.monotonic_to_epoch_millis(\
-                                             self.lastCheckQueryTime + transitTime/2) \
+                                             1000*(self.lastCheckQueryTime + transitTime/2)) \
                                              if self.PROGRAM_START else 0
                             # calculate clock-time difference in ms and add to running median
                             self.timeDiffMedianObj.insert(int(round(secondaryTimestamp - localTimestamp)))

@@ -1,5 +1,11 @@
 from collections import deque
 import math
+from time import perf_counter_ns
+
+
+def ms_counter() -> int:
+    return round(perf_counter_ns()/1000000)
+
 
 class Averager:
     """Tracks a running average, and min/max/last values"""

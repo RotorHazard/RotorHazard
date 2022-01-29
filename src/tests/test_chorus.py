@@ -1,7 +1,8 @@
 import unittest
 from rh.interface.ChorusInterface import ChorusInterface
-from rh.apis.chorus_api import ChorusAPI
 from rh.interface.MockInterface import MockInterface
+from rh.interface import RssiSample
+from rh.apis.chorus_api import ChorusAPI
 from . import stub_sensor
 import gevent
 
@@ -66,13 +67,15 @@ class ChorusTest(unittest.TestCase):
         self.assertEqual(laps, 1)
 
         intf.start()
-        mock_intf.nodes[0].current_rssi.rssi = 66
-        mock_intf.nodes[3].current_rssi.rssi = 67
+        sample_0 = RssiSample(0, 66)  # timestamp value is unused
+        sample_3 = RssiSample(0, 67)  # timestamp value is unused
+        mock_intf.nodes[0].current_rssi = sample_0
+        mock_intf.nodes[3].current_rssi = sample_3
         api.emit_rssi('*')
         gevent.sleep(0.5)
         intf.stop()
-        self.assertEqual(intf.nodes[0].current_rssi.rssi, 66)
-        self.assertEqual(intf.nodes[3].current_rssi.rssi, 67)
+        self.assertEqual(intf.nodes[0].current_rssi.rssi, sample_0.rssi)
+        self.assertEqual(intf.nodes[3].current_rssi.rssi, sample_3.rssi)
 
 if __name__ == '__main__':
     unittest.main()

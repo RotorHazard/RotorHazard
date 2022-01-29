@@ -3,7 +3,7 @@
 from struct import pack_into, unpack_from
 from enum import IntEnum
 from typing import Optional, Union, List
-from monotonic import monotonic
+from time import perf_counter_ns
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ MAX_THRESHOLD = 3000
 MAX_GAIN = 63
 
 LIVE_TIME_BANDS = ['F','R', 'E', 'B', 'A', 'L']
+
 
 class RecordType(IntEnum):
     RSSI = 0xda01
@@ -89,25 +90,23 @@ class TimeField(IntEnum):
 
 
 class LapRFEvent():
-    timestamp: Optional[int] = monotonic()
-    rec_type: str
-
     def __init__(self: "LapRFEvent", rec_type: str):
+        self.timestamp: int = round(perf_counter_ns()/1000000)
         self.rec_type = rec_type
 
 
 class RFSetupEvent(LapRFEvent):
     "A LapRF receiver radio frequency setup event"
-    slot_index: Optional[int] = None
-    enabled: Optional[bool] = None
-    band: Optional[int] = None
-    channel: Optional[int] = None
-    frequency: Optional[int] = None
-    threshold: Optional[float] = None
-    gain: Optional[int] = None
 
     def __init__(self: "RFSetupEvent"):
         super().__init__("slot_config")
+        self.slot_index: Optional[int] = None
+        self.enabled: Optional[bool] = None
+        self.band: Optional[int] = None
+        self.channel: Optional[int] = None
+        self.frequency: Optional[int] = None
+        self.threshold: Optional[float] = None
+        self.gain: Optional[int] = None
 
     def is_valid(self: "RFSetupEvent") -> bool:
         return (isinstance(self.slot_index, int) and
@@ -121,15 +120,15 @@ class RFSetupEvent(LapRFEvent):
 
 class PassingEvent(LapRFEvent):
     "A LapRF passing event"
-    slot_index: Optional[int] = None
-    rtc_time: Optional[int] = None
-    decoder_id: Optional[int] = None
-    passing_number: Optional[int] = None
-    peak_height: Optional[int] = None
-    flags: Optional[int] = None
 
     def __init__(self: "PassingEvent"):
         super().__init__("passing")
+        self.slot_index: Optional[int] = None
+        self.rtc_time: Optional[int] = None
+        self.decoder_id: Optional[int] = None
+        self.passing_number: Optional[int] = None
+        self.peak_height: Optional[int] = None
+        self.flags: Optional[int] = None
 
     def is_valid(self: "PassingEvent") -> bool:
         return (isinstance(self.slot_index, int) and
@@ -143,13 +142,13 @@ class PassingEvent(LapRFEvent):
 # Haven't encounter this type of record.
 class RSSIEvent(LapRFEvent):
     "A LapRF RSSI event"
-    slot_index: Optional[int] = None
-    min_rssi: Optional[float] = None
-    max_rssi: Optional[float] = None
-    mean_rssi: Optional[float] = None
 
     def __init__(self: "RSSIEvent"):
         super().__init__("rssi")
+        self.slot_index: Optional[int] = None
+        self.min_rssi: Optional[float] = None
+        self.max_rssi: Optional[float] = None
+        self.mean_rssi: Optional[float] = None
 
     def is_valid(self: "RSSIEvent") -> bool:
         return (isinstance(self.slot_index, int) and
@@ -160,11 +159,11 @@ class RSSIEvent(LapRFEvent):
 
 class SettingsEvent(LapRFEvent):
     "A LapRF settings event"
-    status_interval: Optional[int] = None
-    min_lap_time: Optional[int] = None
 
     def __init__(self: "SettingsEvent"):
         super().__init__("settings")
+        self.status_interval: Optional[int] = None
+        self.min_lap_time: Optional[int] = None
 
     def is_valid(self: "SettingsEvent") -> bool:
         if self.status_interval and not isinstance(self.status_interval, int):
@@ -176,14 +175,14 @@ class SettingsEvent(LapRFEvent):
 
 class StatusEvent(LapRFEvent):
     "A LapRF status event"
-    battery_voltage: Optional[int] = None
-    gate_state: Optional[int] = None
-    detection_count: Optional[int] = None
-    flags: Optional[int] = None
-    last_rssi: List[Optional[float]] = [None] * MAX_SLOTS
 
     def __init__(self: "StatusEvent"):
         super().__init__("status")
+        self.battery_voltage: Optional[int] = None
+        self.gate_state: Optional[int] = None
+        self.detection_count: Optional[int] = None
+        self.flags: Optional[int] = None
+        self.last_rssi: List[Optional[float]] = [None] * MAX_SLOTS
 
     def is_valid(self: "StatusEvent") -> bool:
         for slot in self.last_rssi:
@@ -197,11 +196,11 @@ class StatusEvent(LapRFEvent):
 
 class TimeEvent(LapRFEvent):
     "A LapRF time event"
-    rtc_time: Optional[int] = None
-    time_rtc_time: Optional[int] = None
 
     def __init__(self: "TimeEvent"):
         super().__init__("time")
+        self.rtc_time: Optional[int] = None
+        self.time_rtc_time: Optional[int] = None
 
     def is_valid(self: "TimeEvent") -> bool:
         return (isinstance(self.rtc_time, int) and

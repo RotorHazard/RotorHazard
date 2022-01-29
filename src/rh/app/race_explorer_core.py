@@ -340,7 +340,7 @@ def calculate_metrics(results, event_data):
     return results
 
 
-INTER_SEAT_THRESHOLD = 1000 # ms
+INTER_SEAT_LAP_THRESHOLD = 1000  # ms
 
 
 def calculate_race_metrics(race, race_format):
@@ -352,7 +352,7 @@ def calculate_race_metrics(race, race_format):
             seat = lap['seat']
             if len(laps_t) > 0:
                 prev_lap_t = laps_t[-1]
-                if ts - prev_lap_t.timestamps[-1] < INTER_SEAT_THRESHOLD and seat not in prev_lap_t.seats:
+                if ts - prev_lap_t.timestamps[-1] < INTER_SEAT_LAP_THRESHOLD and seat not in prev_lap_t.seats:
                     # merge into previous lap
                     prev_lap_t.timestamps.append(ts)
                     prev_lap_t.seats[seat] = lap

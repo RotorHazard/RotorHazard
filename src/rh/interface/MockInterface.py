@@ -4,10 +4,10 @@ import os
 import gevent
 import logging
 import json
-from monotonic import monotonic  # to capture read timing
 import random
 
 from rh.util.RHUtils import FREQUENCY_ID_NONE
+from rh.util import ms_counter
 from .BaseHardwareInterface import BaseHardwareInterface
 from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE, RHNodeManager, RHNode, \
     DEFAULT_RECORD_FORMAT, BINARY_RECORD_FORMAT, \
@@ -89,12 +89,12 @@ class MockInterface(BaseHardwareInterface):
                     for freq, rssi in zip(freqs, rssis):
                         node.scan_data[freq] = rssi
                 elif node.frequency:
-                    server_roundtrip = 0
-                    node._roundtrip_stats.append(1000*server_roundtrip)
+                    server_roundtrip_ms = 0
+                    node._roundtrip_stats.append(server_roundtrip_ms)
 
                     data_file = node.data_reader
                     if data_file is not None:
-                        now = monotonic()
+                        now_ms = ms_counter()
                         if self.data_logger_format == BINARY_RECORD_FORMAT:
                             cmd = data_file.read(1)
                             if cmd == '':
@@ -102,7 +102,7 @@ class MockInterface(BaseHardwareInterface):
                                 cmd = data_file.read(1)
                             cmd_size = data_file.read(1)
                             cmd_data = data_file.read(cmd_size)
-                            node.io_response = node.io_request = now
+                            node.io_response_ms = node.io_request_ms = now_ms
                             if cmd == READ_RSSI:
                                 cmd_values = node.unpack_rssi(cmd_data)
                             elif cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
@@ -121,18 +121,17 @@ class MockInterface(BaseHardwareInterface):
                                 data_file.seek(0)
                                 data_line = data_file.readline()
                             json_data = json.loads(data_line)
-                            ts = monotonic()
                             cmd = json_data['cmd']
                             cmd_values = json_data['data']
                             if cmd == READ_RSSI:
-                                cmd_values = (ts,) + cmd_values
+                                cmd_values = (now_ms,) + cmd_values
                             elif cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
-                                cmd_values[1] = now - cmd_values[1]
+                                cmd_values[1] = now_ms - cmd_values[1]
                             elif cmd == READ_LAP_STATS:
-                                cmd_values[1] = now - cmd_values[1]
+                                cmd_values[1] = now_ms - cmd_values[1]
                             elif cmd == READ_ANALYTICS:
-                                cmd_values[4] = now - cmd_values[4]
-                                cmd_values = (ts,) + cmd_values
+                                cmd_values[4] = now_ms - cmd_values[4]
+                                cmd_values = (now_ms,) + cmd_values
 
                         if cmd == READ_RSSI:
                             self.is_new_lap(node, *cmd_values)

@@ -14,7 +14,7 @@ import logging
 from rh.util import log
 from datetime import datetime
 from monotonic import monotonic
-from rh.util import RHTimeFns
+from rh.util import RHTimeFns, ms_counter
 
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
@@ -747,9 +747,9 @@ def on_get_version():
 @catchLogExceptionsWrapper
 def on_get_timestamp():
     if RACE.race_status == RHRace.RaceStatus.STAGING:
-        now = RACE.start_time_monotonic
+        now = RACE.start_time_ms
     else:
-        now = monotonic()
+        now = ms_counter()
     return {'timestamp': PROGRAM_START.monotonic_to_epoch_millis(now)}
 
 
@@ -843,7 +843,7 @@ def on_join_cluster_ex(data=None):
 def on_check_secondary_query(data):
     ''' Check-query received from primary; return response. '''
     payload = {
-        'timestamp': PROGRAM_START.monotonic_to_epoch_millis(monotonic())
+        'timestamp': PROGRAM_START.monotonic_to_epoch_millis(ms_counter())
     }
     SOCKET_IO.emit('check_secondary_response', payload)
 
@@ -2171,14 +2171,14 @@ def on_stage_race():
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
         RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
 
-        RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
-        RACE.start_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.start_time_monotonic)
+        RACE.start_time_ms = ms_counter() + 1000*round(RACE.start_time_delay_secs)
+        RACE.start_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.start_time_ms)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
 
         eventPayload = {
             'hide_stage_timer': MIN != MAX,
-            'pi_starts_at_s': RACE.start_time_monotonic,
+            'pi_starts_at_s': RACE.start_time_ms/1000,
             'color': ColorVal.ORANGE,
         }
 
@@ -2194,7 +2194,7 @@ def on_stage_race():
             'delay': RACE.start_time_delay_secs,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
-            'pi_starts_at_s': RACE.start_time_monotonic
+            'pi_starts_at_s': RACE.start_time_ms/1000
         })  # Announce staging with chosen delay
 
     else:
@@ -2316,7 +2316,7 @@ def race_start_thread(start_token):
         lower_amount = RHDATA.get_optionInt('startThreshLowerAmount')
         logger.info("Lowering EnterAt/ExitAt values at start of race, amount={0}%, duration={1} secs".\
                     format(lower_amount, RHDATA.get_optionInt('startThreshLowerDuration')))
-        lower_end_time = RACE.start_time_monotonic + RHDATA.get_optionInt('startThreshLowerDuration')
+        lower_end_time = RACE.start_time_ms/1000 + RHDATA.get_optionInt('startThreshLowerDuration')
         for node in INTERFACE.nodes:
             if node.frequency > 0 and (getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                 if node.current_rssi.rssi < node.enter_at_level:
@@ -2345,16 +2345,16 @@ def race_start_thread(start_token):
 
 
     # do non-blocking delay before time-critical code
-    time_remaining = RACE.start_time_monotonic - monotonic()
-    countdown_time = int(time_remaining)
-    for secs_remaining in range(countdown_time, 0, -1):
-        gevent.sleep(time_remaining - secs_remaining) # sleep until next whole second
+    time_remaining_ms = RACE.start_time_ms - ms_counter()
+    countdown_time_secs = int(time_remaining_ms/1000)
+    for secs_remaining in range(countdown_time_secs, 0, -1):
+        gevent.sleep((time_remaining_ms - 1000*secs_remaining)/1000)  # sleep until next whole second
         evt_data = {'time_remaining': secs_remaining,
-                    'countdown_time': countdown_time}
+                    'countdown_time': countdown_time_secs}
         Events.trigger(Evt.RACE_START_COUNTDOWN, evt_data)
-        time_remaining = RACE.start_time_monotonic - monotonic()
+        time_remaining_ms = RACE.start_time_ms - ms_counter()
 
-    while (monotonic() < RACE.start_time_monotonic - 0.5):
+    while (ms_counter() < RACE.start_time_ms - 500):
         gevent.sleep(0.1)
 
     if RACE.race_status == RHRace.RaceStatus.STAGING and \
@@ -2366,7 +2366,7 @@ def race_start_thread(start_token):
         RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
 
         # do blocking delay until race start
-        while monotonic() < RACE.start_time_monotonic:
+        while ms_counter() < RACE.start_time_ms:
             pass
 
         # !!! RACE STARTS NOW !!!
@@ -2374,7 +2374,7 @@ def race_start_thread(start_token):
 
         # do time-critical tasks
         RACE.race_status = RHRace.RaceStatus.RACING # To enable registering passed laps
-        INTERFACE.on_race_start(RACE.start_time_monotonic)
+        INTERFACE.on_race_start(RACE.start_time_ms)
         RACE.timer_running = True # indicate race timer is running
 
         Events.trigger(Evt.RACE_START, {
@@ -2398,7 +2398,7 @@ def race_start_thread(start_token):
             gevent.spawn(race_expire_thread, start_token)
 
         emit_race_status() # Race page, to set race button states
-        logger.info('Race started at {0:.3f} ({1:.0f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
+        logger.info('Race started at {} ({})'.format(RACE.start_time_ms, RACE.start_time_epoch_ms))
 
 
 @catchLogExceptionsWrapper
@@ -2406,18 +2406,18 @@ def race_expire_thread(start_token):
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == RHRace.RaceMode.FIXED_TIME: # count down
         race_duration_sec = race_format.race_time_sec + race_format.lap_grace_sec
-        race_end_time = RACE.start_time_monotonic + race_duration_sec
-        race_tick_time = RACE.start_time_monotonic
-        while RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token and race_tick_time < race_end_time:
-            race_tick_time += 1
-            gevent.sleep(race_tick_time - monotonic())
-            Events.trigger(Evt.RACE_TICK, {'timer_sec': int(race_tick_time - RACE.start_time_monotonic)})
+        race_end_time_ms = RACE.start_time_ms + 1000*race_duration_sec
+        race_tick_time_ms = RACE.start_time_ms
+        while RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token and race_tick_time_ms < race_end_time_ms:
+            race_tick_time_ms += 1000  # 1 second ticks
+            gevent.sleep(race_tick_time_ms - ms_counter())
+            Events.trigger(Evt.RACE_TICK, {'timer_sec': round((race_tick_time_ms - RACE.start_time_ms)/1000)})
 
         # if race still in progress and is still same race
         if RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token:
             RACE.timer_running = False # indicate race timer no longer running
-            RACE.finish_time = monotonic()
-            RACE.finish_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.finish_time)
+            RACE.finish_time_ms = ms_counter()
+            RACE.finish_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.finish_time_ms)
             Events.trigger(Evt.RACE_FINISH, {
                 'race': RACE
             })
@@ -2451,12 +2451,11 @@ def on_stop_race():
 @catchLogExceptionsWrapper
 def do_stop_race_actions():
     if RACE.race_status == RHRace.RaceStatus.RACING:
-        RACE.end_time = monotonic() # Update the race end time stamp
-        RACE.end_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.end_time)
-        delta_time = RACE.end_time - RACE.start_time_monotonic
-        duration_ms = delta_time * 1000.0
+        RACE.end_time_ms = ms_counter()  # Update the race end time stamp
+        RACE.end_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.end_time_ms)
+        duration_ms = RACE.end_time_ms - RACE.start_time_ms
 
-        logger.info('Race stopped at {0:.3f} ({1:.0f}), duration {2:.0f}ms'.format(RACE.end_time, RACE.end_time_epoch_ms, duration_ms))
+        logger.info('Race stopped at {} ({}), duration {}ms'.format(RACE.end_time_ms, RACE.end_time_epoch_ms, duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -2480,18 +2479,18 @@ def do_stop_race_actions():
         logger.debug('No active race to stop')
         RACE.race_status = RHRace.RaceStatus.READY # Go back to ready state
         Events.trigger(Evt.LAPS_CLEAR)
-        delta_time = 0
+        duration_ms = 0
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
     if RHDATA.get_optionInt('startThreshLowerAmount') > 0 and \
-            delta_time < RHDATA.get_optionInt('startThreshLowerDuration'):
+            duration_ms < 1000*RHDATA.get_optionInt('startThreshLowerDuration'):
         for node in INTERFACE.nodes:
             # if node EnterAt/ExitAt values need to be restored then do it soon
             if node.frequency > 0 and (
                 getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or (
                     node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
                     node.start_thresh_lower_flag)):
-                node.start_thresh_lower_time = RACE.end_time + 0.1
+                node.start_thresh_lower_time = (RACE.end_time_ms + 100)/1000
 
     RACE.timer_running = False # indicate race timer not running
     RACE.scheduled = False # also stop any deferred start
@@ -2530,7 +2529,7 @@ def on_save_laps():
         'heat_id': RACE.current_heat,
         'class_id': heat.class_id,
         'format_id': RHDATA.get_option('currentFormat'),
-        'start_time': RACE.start_time_monotonic,
+        'start_time': RACE.start_time_ms,
         'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
@@ -2567,7 +2566,7 @@ def on_save_laps():
     gevent.spawn(build_atomic_result_caches, cache_params)
 
     history_times, history_values = INTERFACE.nodes[node_index].history.get()
-    gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_monotonic,
+    gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_ms,
                  {node_idx: (laps, history_times, history_values) for node_idx,laps in RACE.node_laps.items()}
                  )
 
@@ -2648,7 +2647,7 @@ def on_resave_laps(data):
     pilotrace_obj = RHDATA.get_savedPilotRace(pilotrace_id)
     history_values = json.loads(pilotrace_obj.history_values)
     history_times = json.loads(pilotrace_obj.history_times)
-    gevent.spawn(INTERFACE.calibrate_nodes, race_meta.start_time,
+    gevent.spawn(INTERFACE.calibrate_nodes, 1000*race_meta.start_time,
                  {node_idx: (new_laps, history_times, history_values)}
                  )
 
@@ -3160,7 +3159,7 @@ def emit_race_status(**params):
             'race_time_sec': race_format.race_time_sec,
             'race_staging_tones': race_format.staging_tones,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
-            'pi_starts_at_s': RACE.start_time_monotonic
+            'pi_starts_at_s': RACE.start_time_ms/1000
         }
     if ('nobroadcast' in params):
         emit('race_status', emit_payload)
@@ -4218,7 +4217,7 @@ def set_vrx_node(data):
 
 
 @catchLogExceptionsWrapper
-def emit_pass_record(node, lap_number : int, lap_time_stamp : int):
+def emit_pass_record(node, lap_number: int, lap_time_stamp: int):
     '''Emits 'pass_record' message (will be consumed by primary timer in cluster, livetime, etc).'''
     if CHORUS_API:
         CHORUS_API.emit_pass_record(node, lap_number, lap_time_stamp)
@@ -4351,11 +4350,11 @@ def clock_check_thread_function():
             diff_ms = sync_now.diff(PROGRAM_START)
             if abs(diff_ms) > 30000:
                 PROGRAM_START.adjustBy(sync_now, diff_ms)
-                logger.info("Adjusting PROGRAM_START for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
-                            format(diff_ms/1000, PROGRAM_START.epochTime))
+                logger.info("Adjusting PROGRAM_START for shift in system clock ({0:.1f} secs) to: {1}".\
+                            format(diff_ms/1000, PROGRAM_START.epoch_ms))
                 # update values that will be reported if running as cluster timer
-                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START.epochTime)
-                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START.epochTime/1000.0))
+                serverInfoItems['prog_start_epoch'] = "{}".format(PROGRAM_START.epoch_ms)
+                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START.epoch_ms/1000.0))
                 if has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
                     emit_join_cluster_response()
@@ -4370,9 +4369,7 @@ def clock_check_thread_function():
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
-    delta_time = monotonic() - RACE.start_time_monotonic
-    milli_sec = delta_time * 1000.0
-    return milli_sec
+    return ms_counter() - RACE.start_time_ms
 
 
 def ms_to_race_start():
@@ -4387,27 +4384,25 @@ def ms_to_race_start():
 
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
-    delta_time = monotonic() - PROGRAM_START.monotonicTime
-    milli_sec = delta_time * 1000.0
-    return milli_sec
+    return ms_counter() - PROGRAM_START.monotonic_ms
 
 
 @catchLogExcDBCloseWrapper
-def pass_record_callback(node, lap_race_time, source):
+def pass_record_callback(node, lap_race_time_ms: int, source):
     '''Handles pass records from the nodes.'''
     # lap_race_time is lap timestamp relative to start time
-    lap_timestamp_absolute = lap_race_time + RACE.start_time_monotonic
-    lap_time_stamp = round(lap_race_time * 1000) # store as milliseconds
+    lap_timestamp_ms = lap_race_time_ms + RACE.start_time_ms
 
     if logger.getEffectiveLevel() <= logging.DEBUG:
         enter_fmtstr = RHUtils.time_format(node.enter_at_timestamp*1000, \
                                            RHDATA.get_option('timeFormat')) \
-                       if node.enter_at_timestamp else "-"
+                       if node.enter_at_timestamp is not None else "-"
         exit_fmtstr = RHUtils.time_format(node.exit_at_timestamp*1000, \
                                           RHDATA.get_option('timeFormat')) \
-                       if node.exit_at_timestamp else "-"
+                       if node.exit_at_timestamp is not None else "-"
+        duration_fmtstr = (node.exit_at_timestamp-node.enter_at_timestamp)*1000 if node.enter_at_timestamp is not None and node.exit_at_timestamp is not None else "_"
         logger.debug('Raw pass record: node: {0}, lap timestamp: {1} (enter: {3}, exit: {4}, duration: {5}), source: {2}' \
-                     .format(node.index+1, lap_time_stamp, source, enter_fmtstr, exit_fmtstr, (node.exit_at_timestamp-node.enter_at_timestamp)*1000))
+                     .format(node.index+1, lap_race_time_ms, source, enter_fmtstr, exit_fmtstr, duration_fmtstr))
     node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
@@ -4415,7 +4410,7 @@ def pass_record_callback(node, lap_race_time, source):
     location_id, seat = get_local_location_id_and_seat(node)
     if location_id > 0:
         track = RHDATA.get_optionJson('trackLayout')
-        add_split(location_id, seat, lap_time_stamp, track)
+        add_split(location_id, seat, lap_race_time_ms, track)
         return
 
     profile_freqs = json.loads(getCurrentProfile().frequencies)
@@ -4423,14 +4418,14 @@ def pass_record_callback(node, lap_race_time, source):
         # always count laps if race is running, otherwise test if lap should have counted before race end
         if RACE.race_status == RHRace.RaceStatus.RACING \
             or (RACE.race_status == RHRace.RaceStatus.DONE and \
-                lap_timestamp_absolute < RACE.end_time):
+                lap_timestamp_ms < RACE.end_time_ms):
 
             # Get the current pilot on the node
             pilot = RACE.node_pilots[seat]
             race_format = getCurrentRaceFormat()
             # reject passes before race start and with disabled (no-pilot) nodes
             if pilot or race_format is SECONDARY_RACE_FORMAT:
-                if lap_timestamp_absolute >= RACE.start_time_monotonic:
+                if lap_timestamp_ms >= RACE.start_time_ms:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon
                     if node.start_thresh_lower_flag:
@@ -4444,13 +4439,13 @@ def pass_record_callback(node, lap_race_time, source):
                         last_lap_time_stamp = last_lap['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
-                        lap_time = lap_time_stamp - last_lap_time_stamp
-                        if lap_time < 0:
-                            logger.warning("New lap timestamp {} is older than previous {}".format(lap_time_stamp, last_lap_time_stamp))
+                        lap_time_ms = lap_race_time_ms - last_lap_time_stamp
+                        if lap_time_ms < 0:
+                            logger.warning("New lap timestamp {} is older than previous {}".format(lap_race_time_ms, last_lap_time_stamp))
 
                     else: # No previous laps, this is the first pass
                         # Lap zero represents the time from the launch pad to flying through the gate
-                        lap_time = lap_time_stamp
+                        lap_time_ms = lap_race_time_ms
                         node.first_cross_flag = True  # indicate first crossing completed
 
                     if race_format is SECONDARY_RACE_FORMAT:
@@ -4467,19 +4462,19 @@ def pass_record_callback(node, lap_race_time, source):
                                     (race_format.race_mode == RHRace.RaceMode.FIXED_TIME and RACE.timer_running is False):
                         RACE.set_node_finished_flag(seat)
 
-                    lap_time_fmtstr = RHUtils.time_format(lap_time, RHDATA.get_option('timeFormat'))
+                    lap_time_fmtstr = RHUtils.time_format(lap_time_ms, RHDATA.get_option('timeFormat'))
 
                     lap_ok_flag = True
                     lap_late_flag = False
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
-                        if lap_time < (min_lap * 1000):  # if lap time less than minimum
+                        if lap_time_ms < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
                             logger.info('Pass record under lap minimum ({3}): Seat={0}, Lap={1}, LapTime={2}, Count={4}' \
                                        .format(seat+1, lap_number, lap_time_fmtstr, min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
-                        if race_format.lap_grace_sec and lap_time_stamp > race_format.race_time_sec*1000 and lap_time_stamp <= (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
+                        if race_format.lap_grace_sec and lap_race_time_ms > race_format.race_time_sec*1000 and lap_race_time_ms <= (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
                             if not node_finished_flag:
                                 RACE.set_node_finished_flag(seat)
                                 logger.info('Pilot {} done'.format(pilot.callsign))
@@ -4495,13 +4490,13 @@ def pass_record_callback(node, lap_race_time, source):
                                        .format(seat+1, lap_number, lap_time_fmtstr))
 
                         # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
-                        emit_pass_record(node, lap_number, lap_time_stamp)
+                        emit_pass_record(node, lap_number, lap_race_time_ms)
 
                         # Add the new lap to the database
                         lap_data = {
                             'lap_number': lap_number,
-                            'lap_time_stamp': lap_time_stamp,
-                            'lap_time': lap_time,
+                            'lap_time_stamp': lap_race_time_ms,
+                            'lap_time': lap_time_ms,
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
                             'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
@@ -4543,11 +4538,11 @@ def pass_record_callback(node, lap_race_time, source):
                                     # if winning team has been declared then don't announce team lap number
                                     if RACE.win_status == RHRace.WinStatus.DECLARED:
                                         team_laps = None
-                                    emit_phonetic_data(pilot.id, lap_id, lap_time, lap_time_stamp, team_name, team_laps, \
+                                    emit_phonetic_data(pilot.id, lap_id, lap_time_ms, lap_race_time_ms, team_name, team_laps, \
                                                     (check_leader and \
                                                      team_name == Results.get_leading_team_name(RACE.team_results)))
                                 else:
-                                    emit_phonetic_data(pilot.id, lap_id, lap_time, lap_time_stamp, None, None, \
+                                    emit_phonetic_data(pilot.id, lap_id, lap_time_ms, lap_race_time_ms, None, None, \
                                                     (check_leader and \
                                                      pilot.id == Results.get_leading_pilot_id(RACE.results)))
 
@@ -4559,8 +4554,8 @@ def pass_record_callback(node, lap_race_time, source):
                         # record lap as 'deleted'
                         RACE.add_new_lap(seat, {
                             'lap_number': lap_number,
-                            'lap_time_stamp': lap_time_stamp,
-                            'lap_time': lap_time,
+                            'lap_time_stamp': lap_race_time_ms,
+                            'lap_time': lap_time_ms,
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
                             'deleted': True
@@ -4601,11 +4596,11 @@ def join_cluster_callback(split_timer_id, nms):
         RHDATA.set_optionJson('timerMapping', timer_mapping)
 
 
-def split_record_callback(split_timer_id, nm, n, split_ts):
+def split_record_callback(split_timer_id, nm, n, split_ts_ms):
     track = RHDATA.get_optionJson('trackLayout')
     timer_mapping = RHDATA.get_optionJson('timerMapping')
     location_id, seat = get_location_id_and_seat(split_timer_id, nm, n, track, timer_mapping)
-    add_split(location_id, seat, split_ts, track)
+    add_split(location_id, seat, split_ts_ms, track)
 
 
 def add_split(location_id, seat, split_ts, track):
@@ -4907,10 +4902,10 @@ def init_race_state():
 def init_interface_state(startup=False):
     # Cancel current race
     if startup:
-        RACE.race_status = RHRace.RaceStatus.READY # Go back to ready state
+        RACE.race_status = RHRace.RaceStatus.READY  # Go back to ready state
         Events.trigger(Evt.LAPS_CLEAR)
-        RACE.timer_running = False # indicate race timer not running
-        RACE.scheduled = False # also stop any deferred start
+        RACE.timer_running = False  # indicate race timer not running
+        RACE.scheduled = False  # also stop any deferred start
         SOCKET_IO.emit('stop_timer')
     else:
         on_stop_race()
@@ -5265,8 +5260,8 @@ def buildServerInfo():
         # create version of 'serverInfo' without 'about_html' entry
         serverInfoItems = serverInfo.copy()
         serverInfoItems.pop('about_html', None)
-        serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START.epochTime)
-        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START.epochTime/1000.0))
+        serverInfoItems['prog_start_epoch'] = "{}".format(PROGRAM_START.epoch_ms)
+        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START.epoch_ms/1000.0))
 
         return serverInfo
 
@@ -5308,7 +5303,7 @@ def reportServerInfo():
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:.0f}'.format(PROGRAM_START.epochTime))
+logger.debug('Program started at {}'.format(PROGRAM_START.epoch_ms))
 RHUtils.idAndLogSystemInfo()
 
 if RHUtils.isVersionPython2():

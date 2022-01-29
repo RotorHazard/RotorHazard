@@ -1,17 +1,18 @@
 import gevent
 import bisect
 from collections import namedtuple
+from typing import List
 
 
 RssiSample = namedtuple('RssiSample', ['timestamp', 'rssi'], defaults=[0,0])
 LifetimeSample = namedtuple('LifetimeSample', ['timestamp', 'lifetime'], defaults=[0,0])
 
 
-def unpack_8(data):
+def unpack_8(data: bytes) -> int:
     return data[0]
 
 
-def unpack_8_signed(data):
+def unpack_8_signed(data: bytes) -> int:
     v = data[0]
     mag = v & 0x7F
     if v & 0x80:
@@ -20,25 +21,25 @@ def unpack_8_signed(data):
         return mag
 
 
-def pack_8(data):
+def pack_8(data: int):
     return [int(data & 0xFF)]
 
 
-def unpack_16(data):
+def unpack_16(data: bytes) -> int:
     '''Returns the full variable from 2 bytes input.'''
     result = data[0]
     result = (result << 8) | data[1]
     return result
 
 
-def pack_16(data):
+def pack_16(data: int):
     '''Returns a 2 part array from the full variable.'''
     part_a = (data >> 8) & 0xFF
     part_b = (data & 0xFF)
     return [int(part_a), int(part_b)]
 
 
-def unpack_32(data):
+def unpack_32(data: bytes) -> int:
     '''Returns the full variable from 4 bytes input.'''
     result = data[0]
     result = (result << 8) | data[1]
@@ -47,7 +48,7 @@ def unpack_32(data):
     return result
 
 
-def pack_32(data):
+def pack_32(data: int):
     '''Returns a 4 part array from the full variable.'''
     part_a = (data >> 24) & 0xFF
     part_b = (data >> 16) & 0xFF
@@ -69,16 +70,16 @@ def ensure_iter(l):
 
 class RssiHistory:
     def __init__(self):
-        # monotonic timestamps (secs)
-        self._times = []
-        self._values = []
+        # timestamps (ms)
+        self._times: List[int] = []
+        self._values: List[int] = []
         self.lock = gevent.lock.RLock()
 
     def __len__(self):
         assert len(self._times) == len(self._values)
         return len(self._times)
 
-    def append(self, ts, rssi):
+    def append(self, ts: int, rssi: int):
         with self.lock:
             n = len(self._times)
             # if previous two entries have same value then just extend time on last entry
@@ -88,7 +89,7 @@ class RssiHistory:
                 self._times.append(ts)
                 self._values.append(rssi)
 
-    def merge(self, new_entries):
+    def merge(self, new_entries: List[RssiSample]):
         with self.lock:
             for ts_rssi in new_entries:
                 idx = bisect.bisect_left(self._times, ts_rssi[0])
@@ -123,7 +124,7 @@ class ExtremumFilter:
         self.prev_x = None
         self.delta = None
 
-    def filter(self, t, x):
+    def filter(self, t: int, x: int):
         '''Includes inflexion points'''
         if self.prev_x is not None:
             new_delta = x - self.prev_x

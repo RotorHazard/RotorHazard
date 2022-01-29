@@ -2,8 +2,9 @@ import os
 import unittest
 import gevent
 from datetime import datetime
-from monotonic import monotonic
 import json
+from monotonic import monotonic
+from rh.util import ms_counter
 
 os.environ['RH_CONFIG'] = 'config-dist.json'
 TEST_DB = 'test-database.db'
@@ -236,8 +237,8 @@ class ServerTest(unittest.TestCase):
     def test_node_crossing(self):
         node_index = 1
         node = server.INTERFACE.nodes[node_index]
-        enter_ts = monotonic()
-        server.INTERFACE.is_new_lap(node, 3, True)
+        enter_ts = ms_counter()
+        server.INTERFACE.is_new_lap(node, 0, 20, 3, True)
         self.assertEqual(node.pass_count, 3)
         server.INTERFACE.process_crossing(node, True, 4, enter_ts, 60, 6)
         self.assertEqual(node.enter_at_timestamp, enter_ts)
@@ -272,10 +273,10 @@ class ServerTest(unittest.TestCase):
 
         gevent.sleep(1)
 
-        server.INTERFACE.is_new_lap(node, 0, False)
+        server.INTERFACE.is_new_lap(node, 0, 20, 0, False)
         self.assertEqual(node.pass_count, 0)
         # hardware lap
-        now = monotonic()
+        now = ms_counter()
         server.INTERFACE.process_lap_stats(node, 1, now, 89, 43)
         self.assertEqual(node.pass_count, 1)
         self.assertEqual(node.pass_peak_rssi, 89)
@@ -288,7 +289,7 @@ class ServerTest(unittest.TestCase):
         self.client.emit('set_min_lap', {'min_lap': 0})
         self.client.emit('stage_race')
         self.get_response('stage_ready')
-        resp = self.wait_for_response('race_status', 1)
+        resp = self.wait_for_response('race_status', 2)
         self.assertEqual(resp['race_status'], RHRace.RaceStatus.RACING)
 
         gevent.sleep(1)
@@ -300,19 +301,19 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['node'], node_index)
 
         # initialize hardware lap stats
-        now = monotonic()
-        server.INTERFACE.is_new_lap(node, 0, False)
+        server.INTERFACE.is_new_lap(node, 100, 20, 0, False)
         self.assertEqual(node.pass_count, 0)
 
         gevent.sleep(1)
 
         # hardware lap
-        now = monotonic()
+        now = ms_counter()
         server.INTERFACE.process_lap_stats(node, 1, now, 89, 43)
         self.assertEqual(node.pass_count, 1)
         self.assertEqual(node.pass_peak_rssi, 89)
         resp = self.wait_for_response('pass_record', 1)
         self.assertEqual(resp['node'], node_index)
+        self.assertEqual(resp['timestamp'], server.PROGRAM_START.monotonic_to_epoch_millis(now))
 
         self.client.emit('stop_race')
 
@@ -409,14 +410,14 @@ class ServerTest(unittest.TestCase):
         self.client.emit('get_version')
         server.RACE.race_status = 1
         node = server.INTERFACE.nodes[0]
-        server.RACE.start_time_monotonic = 10
-        server.RACE.start_time_epoch_ms = server.PROGRAM_START.monotonic_to_epoch_millis(server.RACE.start_time_monotonic)
-        server.pass_record_callback(node, 19.8, 0)
+        server.RACE.start_time_ms = 10000
+        server.RACE.start_time_epoch_ms = server.PROGRAM_START.monotonic_to_epoch_millis(server.RACE.start_time_ms)
+        server.pass_record_callback(node, 19800, 0)
         resp = self.wait_for_response('pass_record', 1)
         self.assertIn('node', resp)
         self.assertIn('frequency', resp)
         self.assertIn('timestamp', resp)
-        self.assertEqual(resp['timestamp'], server.PROGRAM_START.monotonic_to_epoch_millis(server.RACE.start_time_monotonic) + 19800)
+        self.assertEqual(resp['timestamp'], server.PROGRAM_START.monotonic_to_epoch_millis(server.RACE.start_time_ms) + 19800)
 
 
 if __name__ == '__main__':

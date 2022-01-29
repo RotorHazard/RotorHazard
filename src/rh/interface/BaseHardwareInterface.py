@@ -4,9 +4,12 @@ import logging
 from monotonic import monotonic
 import rh.util.persistent_homology as ph
 from rh.util.RHUtils import FREQUENCY_ID_NONE
-from .Node import DataStatus
+from rh.util import ms_counter
+from .Node import DataStatus, Node, NodeManager
+from rh.sensors import Sensor
 from . import RssiSample, LifetimeSample
 import bisect
+from typing import Any, Dict, List, Tuple
 
 
 ENTER_AT_PEAK_MARGIN = 5  # closest that captured enter-at level can be to node peak RSSI
@@ -16,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class BaseHardwareInterfaceListener:
-    def on_enter_triggered(self, node, cross_ts, cross_rssi):
+    def on_enter_triggered(self, node, cross_ts: int, cross_rssi: int):
         pass
 
-    def on_exit_triggered(self, node, cross_ts, cross_rssi):
+    def on_exit_triggered(self, node, cross_ts: int , cross_rssi: int):
         pass
 
-    def on_pass(self, node, lap_ts, lap_source, pass_rssi):
+    def on_pass(self, node, lap_ts: int, lap_source, pass_rssi: int):
         pass
 
     def on_frequency_changed(self, node, frequency, band=None, channel=None):
@@ -46,14 +49,14 @@ class BaseHardwareInterface:
     RACE_STATUS_DONE = 2
 
     def __init__(self, listener=None, update_sleep=0.1):
-        self.node_managers = []
-        self.nodes = []
-        self.sensors = []
+        self.node_managers: List[NodeManager] = []
+        self.nodes: List[Node] = []
+        self.sensors: List[Sensor] = []
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
         self.update_thread = None  # Thread for running the main update loop
         self.environmental_data_update_tracker = 0
-        self.race_start_time = 0
+        self.race_start_time_ms: int = 0
         self.is_racing = False
         self.listener = listener if listener is not None else BaseHardwareInterfaceListener()
         self.pass_count_mask = 0xFF
@@ -76,14 +79,14 @@ class BaseHardwareInterface:
         for manager in self.node_managers:
             manager.close()
 
-    def _notify_enter_triggered(self, node, cross_ts, cross_rssi):
-        self.listener.on_enter_triggered(node, cross_ts, cross_rssi)
+    def _notify_enter_triggered(self, node, trigger_ts: int, trigger_rssi: int):
+        self.listener.on_enter_triggered(node, trigger_ts, trigger_rssi)
 
-    def _notify_exit_triggered(self, node, cross_ts, cross_rssi):
-        self.listener.on_exit_triggered(node, cross_ts, cross_rssi)
+    def _notify_exit_triggered(self, node, trigger_ts: int, trigger_rssi: int):
+        self.listener.on_exit_triggered(node, trigger_ts, trigger_rssi)
 
-    def _notify_pass(self, node, lap_ts, lap_source, pass_rssi):
-        self.listener.on_pass(node, lap_ts, lap_source, pass_rssi)
+    def _notify_pass(self, node, lap_ts_ms: int, lap_source, pass_rssi: int):
+        self.listener.on_pass(node, lap_ts_ms, lap_source, pass_rssi)
 
     def _notify_frequency_changed(self, node):
         if node.bandChannel:
@@ -118,7 +121,7 @@ class BaseHardwareInterface:
             delta = delta & self.pass_count_mask
         return delta
 
-    def is_new_lap(self, node, timestamp, rssi, pass_count, is_crossing):
+    def is_new_lap(self, node, timestamp: int, rssi: int, pass_count, is_crossing):
         '''Parameter order must match order in packet'''
         node.current_rssi = RssiSample(timestamp, rssi)
         prev_pass_count = node.pass_count
@@ -156,7 +159,7 @@ class BaseHardwareInterface:
         has_exited = (node.exit_stats_status == DataStatus.AVAILABLE)
         return has_new_lap, has_entered, has_exited
 
-    def process_crossing(self, node, is_crossing, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime):
+    def process_crossing(self, node, is_crossing, trigger_count, trigger_timestamp: int, trigger_rssi: int, trigger_lifetime: int):
         '''Parameter order must match order in packet'''
         logger.debug("{}: node={}, trigger_count={}, trigger_timestamp={}, trigger_rssi={}, trigger_lifetime={}".format("ENTER" if is_crossing else "EXIT", node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime))
         if is_crossing:
@@ -169,9 +172,9 @@ class BaseHardwareInterface:
             node.exit_stats_status = DataStatus.RETRIEVED
 
         # NB: crossing race times are relative to the race start time
-        crossing_race_time = trigger_timestamp - self.race_start_time
+        crossing_race_time = trigger_timestamp - self.race_start_time_ms
         if crossing_race_time < 0:
-            logger.warning("{} crossing before race start: {} < {}".format("Enter" if is_crossing else "Exit", trigger_timestamp, self.race_start_time))
+            logger.warning("{} crossing before race start: {} < {}".format("Enter" if is_crossing else "Exit", trigger_timestamp, self.race_start_time_ms))
 
         if is_crossing:
             node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
@@ -181,7 +184,7 @@ class BaseHardwareInterface:
             node.exit_at_timestamp = crossing_race_time
             self._notify_exit_triggered(node, crossing_race_time, trigger_rssi)
 
-    def process_lap_stats(self, node, pass_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi):
+    def process_lap_stats(self, node, pass_count, pass_timestamp: int, pass_peak_rssi: int, pass_nadir_rssi: int):
         '''Parameter order must match order in packet'''
         logger.debug("PASS: node={}, pass_count={}, pass_timestamp={}, pass_peak_rssi={}, pass_nadir_rssi={}".format(node, pass_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi))
         if self.lap_count_change(pass_count, node.pass_count) != 1:
@@ -191,35 +194,42 @@ class BaseHardwareInterface:
             node.pass_peak_rssi = pass_peak_rssi
         if pass_nadir_rssi is not None:
             node.pass_nadir_rssi = pass_nadir_rssi
+        if node.enter_stats_status == DataStatus.RETRIEVED and node.enter_at_timestamp > pass_timestamp:
+            logger.warning("Enter timestamp {} is after pass timestamp {}!!! ".format(node.enter_at_timestamp, pass_timestamp))
+        if node.exit_stats_status == DataStatus.RETRIEVED and node.exit_at_timestamp < pass_timestamp:
+            logger.warning("Exit timestamp {} is before pass timestamp {}!!! ".format(node.exit_at_timestamp, pass_timestamp))
+            assert False
         node.is_crossing = False
+        node.enter_at_timestamp = None
+        node.exit_at_timestamp = None
         node.lap_stats_status = DataStatus.NOT_AVAILABLE
         node.enter_stats_status = DataStatus.NOT_AVAILABLE
         node.exit_stats_status = DataStatus.NOT_AVAILABLE
 
         # NB: lap race times are relative to the race start time
-        lap_race_time = pass_timestamp - self.race_start_time
-        if lap_race_time < 0:
-            logger.warning("Lap before race start: {} < {}".format(pass_timestamp, self.race_start_time))
+        lap_race_time_ms = pass_timestamp - self.race_start_time_ms
+        if lap_race_time_ms < 0:
+            logger.warning("Lap before race start: {} < {}".format(pass_timestamp, self.race_start_time_ms))
         if self.is_racing and pass_peak_rssi:
-            node.pass_history.append((pass_timestamp, pass_peak_rssi))
+            node.pass_history.append(RssiSample(pass_timestamp, pass_peak_rssi))
 
-        self._notify_pass(node, lap_race_time, BaseHardwareInterface.LAP_SOURCE_REALTIME, pass_peak_rssi)
+        self._notify_pass(node, lap_race_time_ms, BaseHardwareInterface.LAP_SOURCE_REALTIME, pass_peak_rssi)
 
-    def process_rssi_stats(self, node, peak_rssi, nadir_rssi):
+    def process_rssi_stats(self, node, peak_rssi: int, nadir_rssi: int):
         '''Parameter order must match order in packet'''
         if peak_rssi is not None:
             node.node_peak_rssi = peak_rssi
         if nadir_rssi is not None:
             node.node_nadir_rssi = nadir_rssi
 
-    def process_analytics(self, node, timestamp, lifetime, loop_time, extremum_rssi, extremum_timestamp, extremum_duration):
+    def process_analytics(self, node, timestamp: int, lifetime: int, loop_time: int, extremum_rssi: int, extremum_timestamp: int, extremum_duration: int):
         '''Parameter order must match order in packet'''
         node.current_lifetime = LifetimeSample(timestamp, lifetime)
         node.loop_time = loop_time
         if extremum_rssi is not None and extremum_timestamp is not None and extremum_duration is not None:
             self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
-    def append_history(self, node, timestamp, rssi, duration=0):
+    def append_history(self, node, timestamp: int, rssi: int, duration=0):
         # append history data (except when race is over)
         if self.is_racing:
             node.history.append(timestamp, rssi)
@@ -288,21 +298,23 @@ class BaseHardwareInterface:
                 else:
                     logger.info('AI calibrating node {}: break {}-{} too narrow'.format(node.index, lo, hi))
 
-    def calibrate_nodes(self, start_time, race_laps_history):
+    def calibrate_nodes(self, start_time_ms: int, race_laps_history: Dict[int,Tuple[List[Dict[str,Any]],List[int],List[int]]]):
         for node_idx, node_laps_history in race_laps_history.items():
             node = self.nodes[node_idx]
             node_laps, history_times, history_values = node_laps_history
             assert len(history_times) == len(history_values)
             if node.calibrate and history_values:
-                lap_ts = [start_time + lap['lap_time_stamp']/1000 for lap in node_laps if not lap['deleted']]
-                if lap_ts:
+                lap_ts_ms = [start_time_ms + lap['lap_time_stamp'] for lap in node_laps if not lap['deleted']]
+                if lap_ts_ms:
                     ccs = ph.calculatePeakPersistentHomology(history_values)
                     ccs.sort(key=lambda cc: history_times[cc.birth[0]])
                     birth_ts = [history_times[cc.birth[0]] for cc in ccs]
                     pass_idxs = []
-                    for lap_timestamp in lap_ts:
+                    for lap_timestamp in lap_ts_ms:
                         idx = bisect.bisect_left(birth_ts, lap_timestamp)
-                        if idx == 0 or birth_ts[idx] == lap_timestamp:
+                        if idx == len(birth_ts):
+                            pass_idxs.append(idx-1)
+                        elif idx == 0 or birth_ts[idx] == lap_timestamp:
                             pass_idxs.append(idx)
                         elif ccs[idx].lifetime() > ccs[idx-1].lifetime():
                             pass_idxs.append(idx)
@@ -337,17 +349,17 @@ class BaseHardwareInterface:
 
     def simulate_lap(self, node_index):
         node = self.nodes[node_index]
-        lap_race_time = monotonic() - self.race_start_time  # relative to start time
-        node.enter_at_timestamp = node.exit_at_timestamp = 0
-        self._notify_pass(node, lap_race_time, BaseHardwareInterface.LAP_SOURCE_MANUAL, None)
+        lap_race_time_ms = ms_counter() - self.race_start_time_ms  # relative to start time
+        node.enter_at_timestamp = node.exit_at_timestamp = None
+        self._notify_pass(node, lap_race_time_ms, BaseHardwareInterface.LAP_SOURCE_MANUAL, None)
 
     def force_end_crossing(self, node_index):
         pass
 
-    def on_race_start(self, race_start_time):
+    def on_race_start(self, race_start_time_ms: int):
         for node in self.nodes:
             node.reset()
-        self.race_start_time = race_start_time
+        self.race_start_time_ms = race_start_time_ms
         self.is_racing = True
 
     def on_race_stop(self):

@@ -1,22 +1,15 @@
 # RHTimeFns:  Helpers for datetime and timezone functions.
-#             Supports python 2 and python 3
 
-from datetime import datetime
-from monotonic import monotonic
-
-useTimezoneFlag = hasattr(datetime, "timezone")
+from datetime import datetime, timedelta, timezone
+from . import ms_counter
 
 
 def getEpochStartTime():
-    if useTimezoneFlag:
-        return datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
-    return datetime.utcfromtimestamp(0)
+    return datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 def getUtcDateTimeNow():
-    if useTimezoneFlag:
-        return datetime.now(datetime.timezone.utc)
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 EPOCH_START = getEpochStartTime()
@@ -26,28 +19,29 @@ def getEpochTimeNow():
     '''
     Returns the current time in milliseconds since 1970-01-01.
     '''
-    return int((getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
+    td = getUtcDateTimeNow() - EPOCH_START
+    return round(td/timedelta(milliseconds=1))
 
 
 class MonotonicEpochSync:
     def __init__(self):
-        epochTime = getEpochTimeNow() # ms
-        monotonicTime = monotonic() # s
+        epochTime_ms = getEpochTimeNow()
+        monotonicTime_ms = ms_counter()
         # offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
-        offset = epochTime - 1000.0*monotonicTime
-        self.epochTime = epochTime
-        self.monotonicTime = monotonicTime
-        self.offset = offset
+        offset_ms = epochTime_ms - monotonicTime_ms
+        self.epoch_ms = epochTime_ms
+        self.monotonic_ms = monotonicTime_ms
+        self.offset_ms = offset_ms
 
-    def monotonic_to_epoch_millis(self, secs):
+    def monotonic_to_epoch_millis(self, clock_ms: int) -> int:
         '''
-        Converts 'monotonic' time to epoch milliseconds since 1970-01-01.
+        Converts millisecond 'monotonic' time to epoch milliseconds since 1970-01-01.
         '''
-        return round(1000.0*secs + self.offset)
+        return clock_ms + self.offset_ms
 
     def diff(self, other):
-        return self.epochTime - other.monotonic_to_epoch_millis(self.monotonicTime)
+        return self.epoch_ms - other.monotonic_to_epoch_millis(self.monotonic_ms)
 
     def adjustBy(self, other, diff_ms):
-        self.epochTime += diff_ms
-        self.offset = other.offset
+        self.epoch_ms += diff_ms
+        self.offset_ms = other.offset_ms

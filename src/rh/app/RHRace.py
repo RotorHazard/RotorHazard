@@ -9,37 +9,37 @@ class RHRace():
     def __init__(self):
         # setup/options
         self._num_nodes = 0
-        self.current_heat = 1 # heat ID
+        self.current_heat = 1  # heat ID
         self.current_round = 1
         self.current_stage = None
-        self.node_pilots = {} # current race pilots, by node, filled on heat change
-        self._format = None # raceformat object
+        self.node_pilots = {}  # current race pilots, by node, filled on heat change
+        self._format = None  # raceformat object
         # sequence
-        self.scheduled = False # Whether to start a race when time
-        self.scheduled_time = 0 # Start race when time reaches this value
-        self.start_token = False # Check start thread matches correct stage sequence
+        self.scheduled = False  # Whether to start a race when time
+        self.scheduled_time = 0  # Start race when time reaches this value
+        self.start_token = False  # Check start thread matches correct stage sequence
         # status
         self.race_status = RaceStatus.READY
         self.timer_running = False
-        self.start_time = 0 # datetime
-        self.start_time_monotonic = 0 # monotonic
-        self.start_time_epoch_ms = 0 # ms since 1970-01-01
-        self.start_time_delay_secs = 0 # random-length race-start delay
-        self.node_laps = {} # current race lap objects, by node
+        self.start_time = 0  # datetime
+        self.start_time_ms = 0  # monotonic
+        self.start_time_epoch_ms = 0  # ms since 1970-01-01
+        self.start_time_delay_secs = 0  # random-length race-start delay
+        self.node_laps = {}  # current race lap objects, by node
         self.node_splits = {}
         self.node_has_finished = {}
         self.any_races_started = False
         # concluded
-        self.finish_time = 0 # Monotonic, updated when race finishes
-        self.finish_time_epoch_ms = 0 # ms since 1970-01-01
-        self.end_time = 0 # Monotonic, updated when race is stopped
-        self.end_time_epoch_ms = 0 # ms since 1970-01-01
+        self.finish_time_ms = 0  # Monotonic, updated when race finishes
+        self.finish_time_epoch_ms = 0  # ms since 1970-01-01
+        self.end_time_ms =  0  # Monotonic, updated when race is stopped
+        self.end_time_epoch_ms = 0  # ms since 1970-01-01
         # leaderboard/cache
         self.result_fn = lambda race: None
         self.team_result_fn = lambda race: None
-        self.status_message = '' # Race status message (winner, team info)
+        self.status_message = ''  # Race status message (winner, team info)
 
-        self.win_status = WinStatus.NONE # whether race is won
+        self.win_status = WinStatus.NONE  # whether race is won
         self.modification_count = 0
 
         '''
@@ -188,12 +188,12 @@ class StagingTones(IntEnum):
 
 class WinCondition(IntEnum):
     NONE = 0
-    MOST_PROGRESS = 1 # most laps in fastest time
+    MOST_PROGRESS = 1  # most laps in fastest time
     FIRST_TO_LAP_X = 2
     FASTEST_LAP = 3
     FASTEST_3_CONSECUTIVE = 4
-    MOST_LAPS = 5 # lap count only
-    MOST_LAPS_OVERTIME = 6 # lap count only, laps and time after T=0
+    MOST_LAPS = 5  # lap count only
+    MOST_LAPS_OVERTIME = 6  # lap count only, laps and time after T=0
 
 
 class WinStatus:
