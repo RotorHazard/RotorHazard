@@ -4,7 +4,6 @@ import logging
 import gevent
 import serial
 import socket
-from monotonic import monotonic
 
 from .BaseHardwareInterface import BaseHardwareInterface, BaseHardwareInterfaceListener
 from .Node import Node, NodeManager
@@ -12,12 +11,12 @@ from rh.sensors import Sensor, Reading
 from . import laprf_protocol as laprf
 from . import ExtremumFilter, ensure_iter, RssiSample
 from rh.helpers import serial_url, socket_url
-from rh.util import ms_counter
+from rh.util import ms_counter, millis_to_secs
 
 logger = logging.getLogger(__name__)
 
-RESPONSE_WAIT = 0.5  # secs
-WRITE_CHILL_TIME = 0.010
+RESPONSE_WAIT_MS = 500
+WRITE_CHILL_TIME_MS = 10
 
 
 def micros_to_millis(t: int) -> int:
@@ -41,11 +40,12 @@ class LapRFNodeManager(NodeManager):
         self.min_lap_time = None
         self.race_start_rtc_time_ms = 0
         self.race_start_time_request_ts_ms = None
-        self.last_write_ts = 0
+        self.last_write_ts_ms = 0
 
     def _create_node(self, index, multi_node_index):
         return LapRFNode(index, multi_node_index, self)
 
+    @property
     def is_configured(self):
         for node in self.nodes:
             if not node.is_configured:
@@ -53,11 +53,11 @@ class LapRFNodeManager(NodeManager):
         return True
 
     def write(self, data):
-        chill_remaining = self.last_write_ts + WRITE_CHILL_TIME - monotonic()
-        if chill_remaining > 0:
-            gevent.sleep(chill_remaining)
+        chill_remaining_ms = self.last_write_ts_ms + WRITE_CHILL_TIME_MS - ms_counter()
+        if chill_remaining_ms > 0:
+            gevent.sleep(millis_to_secs(chill_remaining_ms))
         self.io_stream.write(data)
-        self.last_write_ts = monotonic()
+        self.last_write_ts_ms = ms_counter()
 
     def read(self):
         return self.io_stream.read(512)
@@ -124,12 +124,18 @@ class LapRFInterface(BaseHardwareInterface):
                     self.nodes.append(node)
             node_manager.write(laprf.encode_set_min_lap_time_record(1))
             node_manager.write(laprf.encode_get_rf_setup_record())
-            config_start_ts = monotonic()
-            while not node_manager.is_configured() and monotonic() < config_start_ts + RESPONSE_WAIT:
-                self._poll(node_manager)
-            if not node_manager.is_configured():
+            self._wait_for_configuration(node_manager, node_manager)
+            if not node_manager.is_configured:
                 raise Exception("LapRF did not respond with RF setup information")
             self.sensors.append(LapRFSensor(node_manager))
+
+    def _wait_for_configuration(self, configurable_obj, node_manager):
+        config_start_ts_ms = ms_counter()
+        while not configurable_obj.is_configured and ms_counter() < config_start_ts_ms + RESPONSE_WAIT_MS:
+            if self.update_thread:
+                gevent.sleep(millis_to_secs(RESPONSE_WAIT_MS))
+            else:
+                self._poll(node_manager)
 
     def _update(self):
         nm_sleep_interval = self.update_sleep/max(len(self.node_managers), 1)
@@ -255,12 +261,7 @@ class LapRFInterface(BaseHardwareInterface):
         node_manager.write(laprf.encode_set_rf_setup_record(slot_index, enabled, band_idx, channel_idx, frequency if frequency else 0, gain, threshold))
         node.is_configured = False
         node_manager.write(laprf.encode_get_rf_setup_record(slot_index))
-        config_start_ts = monotonic()
-        while not node.is_configured and monotonic() < config_start_ts + RESPONSE_WAIT:
-            if self.update_thread:
-                gevent.sleep(RESPONSE_WAIT)
-            else:
-                self._poll(node_manager)
+        self._wait_for_configuration(node)
         if not node.is_configured:
             logger.error("LapRF did not respond with RF setup information for node {}".format(node))
         if node.frequency != frequency:

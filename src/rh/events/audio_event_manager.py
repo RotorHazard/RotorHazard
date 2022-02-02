@@ -3,7 +3,7 @@ import subprocess
 import logging
 from rh.events.eventmanager import Evt
 from rh.app.RHRace import RaceMode, StagingTones, StartBehavior
-from rh.util import RHUtils
+from rh.util import RHUtils, secs_to_millis
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ def say_lap_time(node_index, lap, RHData, RACE, say, **kwargs):
         phonetic_time = RHUtils.phonetictime_format(lap['lap_time'], RHData.get_option('timeFormatPhonetic'))
         lap_time_stamp = lap['lap_time_stamp']
         msg = "{}".format(pilot.phonetic if pilot.phonetic else pilot.callsign)
-        if race_format.lap_grace_sec and lap_time_stamp > race_format.race_time_sec*1000 and lap_time_stamp <= (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
+        if race_format.lap_grace_sec and lap_time_stamp > secs_to_millis(race_format.race_time_sec) and lap_time_stamp <= secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec):
             msg += " done"
         msg += ", lap {}, {}".format(lap_num, phonetic_time)
         say(msg)

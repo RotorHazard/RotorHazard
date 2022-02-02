@@ -1376,7 +1376,7 @@ function init_popup_generics() {
 function race_kickoff(msg) {
 	rotorhazard.timer.stopAll();
 
-	rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
+	rotorhazard.race_start_pi = msg.pi_starts_at_ms;
 
 	rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
 	rotorhazard.timer.race.count_up = Boolean(msg.race_mode);

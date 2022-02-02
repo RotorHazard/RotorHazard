@@ -4,11 +4,10 @@ import logging
 import gevent
 import json
 import socketio
-from monotonic import monotonic
 from rh.app.RHRace import RaceStatus
 from rh.events.eventmanager import Evt
 from rh.util.RunningMedian import RunningMedian
-from rh.util import Averager, ms_counter
+from rh.util import Averager, ms_counter, millis_to_secs
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +39,15 @@ class SecondaryNode:
         self.isMirrorMode = (str(info.get('mode', SecondaryNode.SPLIT_MODE)) == SecondaryNode.MIRROR_MODE)
         self.secondaryModeStr = SecondaryNode.MIRROR_MODE if self.isMirrorMode else SecondaryNode.SPLIT_MODE
         self.recEventsFlag = info.get('recEventsFlag', self.isMirrorMode)
-        self.queryInterval = info['queryInterval'] if 'queryInterval' in info else 0
-        if self.queryInterval <= 0:
-            self.queryInterval = 10
-        self.firstQueryInterval = 3 if self.queryInterval >= 3 else 1
-        self.startConnectTime = 0
-        self.lastContactTime = -1
-        self.firstContactTime = 0
-        self.lastCheckQueryTime = 0
-        self.secsSinceDisconnect = 0
+        self.queryInterval = 1000*info['queryInterval'] if 'queryInterval' in info else 0
+        if self.queryInterval_ms <= 0:
+            self.queryInterval_ms = 10000
+        self.firstQueryInterval_ms = 3000 if self.queryInterval_ms >= 3000 else 1000
+        self.startConnectTime_ms = 0
+        self.lastContactTime_ms = -1
+        self.firstContactTime_ms = 0
+        self.lastCheckQueryTime_ms = 0
+        self.msSinceDisconnect = 0
         self.freqsSentFlag = False
         self.numDisconnects = 0
         self.numDisconnsDuringRace = 0
@@ -70,35 +69,35 @@ class SecondaryNode:
         gevent.spawn(self.secondary_worker_thread)
 
     def secondary_worker_thread(self):
-        self.startConnectTime = monotonic()
+        self.startConnectTime_ms = ms_counter()
         gevent.sleep(0.1)
         while self.runningFlag:
             try:
                 gevent.sleep(1)
-                if self.lastContactTime <= 0:  # if current status is not connected
-                    oldSecsSinceDis = self.secsSinceDisconnect
-                    self.secsSinceDisconnect = monotonic() - self.startConnectTime
-                    if self.secsSinceDisconnect >= 1.0:  # if disconnect just happened then wait a second before reconnect
+                if self.lastContactTime_ms <= 0:  # if current status is not connected
+                    oldMsSinceDis = self.msSinceDisconnect
+                    self.msSinceDisconnect = ms_counter() - self.startConnectTime_ms
+                    if self.msSinceDisconnect >= 1.0:  # if disconnect just happened then wait a second before reconnect
                         # if never connected then only retry if race not in progress
                         if self.numDisconnects > 0 or (self.RACE.race_status != RaceStatus.STAGING and \
                                                         self.RACE.race_status != RaceStatus.RACING):
                             # if first-ever attempt or was previously connected then show log msg
-                            if oldSecsSinceDis == 0 or self.numDisconnects > 0:
-                                logger.log((logging.INFO if self.secsSinceDisconnect <= self.info['timeout'] else logging.DEBUG), \
+                            if oldMsSinceDis == 0 or self.numDisconnects > 0:
+                                logger.log((logging.INFO if self.msSinceDisconnect <= self.info['timeout'] else logging.DEBUG), \
                                            "Attempting to connect to secondary {0} at {1}...".format(self.id+1, self.address))
                             try:
                                 self.sio.connect(self.address)
                             except socketio.exceptions.ConnectionError as ex:
-                                if self.lastContactTime > 0:  # if current status is connected
+                                if self.lastContactTime_ms > 0:  # if current status is connected
                                     logger.info("Error connecting to secondary {0} at {1}: {2}".format(self.id+1, self.address, ex))
                                     if not self.sio.connected:  # if not connected then
                                         self.on_disconnect()    # invoke disconnect function to update status
                                 else:
                                     err_msg = "Unable to connect to secondary {0} at {1}: {2}".format(self.id+1, self.address, ex)
-                                    if monotonic() <= self.startConnectTime + self.info['timeout']:
+                                    if ms_counter() <= self.startConnectTime_ms + self.info['timeout']:
                                         if self.numDisconnects > 0:  # if previously connected then always log failure
                                             logger.info(err_msg)
-                                        elif oldSecsSinceDis == 0:   # if not previously connected then only log once
+                                        elif oldMsSinceDis == 0:   # if not previously connected then only log once
                                             err_msg += " (will continue attempts until timeout)"
                                             logger.info(err_msg)
                                     else:  # if beyond timeout period
@@ -114,7 +113,6 @@ class SecondaryNode:
                                             return  # exit worker thread
                 else:  # if current status is connected
                     now_ms = ms_counter()
-                    now_time = now_ms/1000
                     if not self.freqsSentFlag:
                         try:
                             self.freqsSentFlag = True
@@ -132,11 +130,11 @@ class SecondaryNode:
                         try:
                             if self.sio.connected:
                                 # send heartbeat-query every 'queryInterval' seconds, or that long since last contact
-                                if (now_time > self.lastContactTime + self.queryInterval and \
-                                            now_time > self.lastCheckQueryTime + self.queryInterval) or \
-                                            (self.lastCheckQueryTime == 0 and \
-                                             now_time > self.lastContactTime + self.firstQueryInterval):  # if first query do it sooner
-                                    self.lastCheckQueryTime = now_time
+                                if (now_ms > self.lastContactTime_ms + self.queryInterval_ms and \
+                                            now_ms > self.lastCheckQueryTime_ms + self.queryInterval_ms) or \
+                                            (self.lastCheckQueryTime_ms == 0 and \
+                                             now_ms > self.lastContactTime_ms + self.firstQueryInterval_ms):  # if first query do it sooner
+                                    self.lastCheckQueryTime_ms = now_ms
                                     # timestamp not actually used by secondary, but send to make query and response symmetrical
                                     payload = {
                                         'timestamp': self.PROGRAM_START.monotonic_to_epoch_millis(now_ms) \
@@ -145,8 +143,8 @@ class SecondaryNode:
                                     # don't update 'lastContactTime' value until response received
                                     self.sio.emit('check_secondary_query', payload)
                                 # if there was no response to last query then disconnect (and reconnect next loop)
-                                elif self.lastCheckQueryTime > self.lastContactTime:
-                                    if self.lastCheckQueryTime - self.lastContactTime > 3.9:
+                                elif self.lastCheckQueryTime_ms > self.lastContactTime_ms:
+                                    if self.lastCheckQueryTime_ms - self.lastContactTime_ms > 3900:
                                         if len(self.timeDiffMedianObj.sorted_) > 0:
                                             logger.warning("Disconnecting after no response for 'check_secondary_query'" \
                                                      " received for secondary {0} at {1}".format(self.id+1, self.address))
@@ -161,11 +159,11 @@ class SecondaryNode:
                                             logger.warning("No response for 'check_secondary_query'" \
                                                            " received for secondary {0} at {1} (may need upgrade)".\
                                                            format(self.id+1, self.address))
-                                            self.lastCheckQueryTime = self.lastContactTime = now_time
+                                            self.lastCheckQueryTime_ms = self.lastContactTime_ms = now_ms
                                     else:
                                         logger.debug("No response for 'check_secondary_query' received "\
                                                      "after {0:.1f} secs for secondary {1} at {2}".\
-                                                     format(self.lastCheckQueryTime - self.lastContactTime, \
+                                                     format(self.lastCheckQueryTime_ms - self.lastContactTime_ms, \
                                                             self.id+1, self.address))
                             else:
                                 logger.info("Invoking 'on_disconnect()' fn for secondary {0} at {1}".\
@@ -182,7 +180,7 @@ class SecondaryNode:
                 raise
             except Exception as ex:
                 if type(ex) is ValueError and "connected" in str(ex):  # if error was because already connected
-                    if self.lastContactTime <= 0:  # if current tracked status is not connected
+                    if self.lastContactTime_ms <= 0:  # if current tracked status is not connected
                         logger.debug("Ignoring connect error from sio-already-connected on secondary {0}".\
                                      format(self.id+1))
                     else:
@@ -196,9 +194,9 @@ class SecondaryNode:
 
     def emit(self, event, data = None):
         try:
-            if self.lastContactTime > 0:
+            if self.lastContactTime_ms > 0:
                 self.sio.emit(event, data)
-                self.lastContactTime = monotonic()
+                self.lastContactTime_ms = ms_counter()
                 self.numContacts += 1
             elif self.numDisconnects > 0:  # only warn if previously connected
                 logger.warning("Unable to emit to disconnected secondary {0} at {1}, event='{2}'".\
@@ -213,14 +211,14 @@ class SecondaryNode:
 
     def on_connect(self):
         try:
-            if self.lastContactTime <= 0:
-                self.lastContactTime = monotonic()
-                self.firstContactTime = self.lastContactTime
+            if self.lastContactTime_ms <= 0:
+                self.lastContactTime_ms = ms_counter()
+                self.firstContactTime_ms = self.lastContactTime_ms
                 if self.numDisconnects <= 0:
                     logger.info("Connected to secondary {0} at {1} (mode: {2})".format(\
                                         self.id+1, self.address, self.secondaryModeStr))
                 else:
-                    downSecs = int(round(self.lastContactTime - self.startConnectTime)) if self.startConnectTime > 0 else 0
+                    downSecs = round(millis_to_secs(self.lastContactTime_ms - self.startConnectTime_ms)) if self.startConnectTime_ms > 0 else 0
                     logger.info("Reconnected to " + self.get_log_str(downSecs, False))
                     self.totalDownTimeSecs += downSecs
                 payload = {
@@ -233,7 +231,7 @@ class SecondaryNode:
                 if self.runningFlag and self.emit_cluster_connect_change:
                     self.emit_cluster_connect_change(True)
             else:
-                self.lastContactTime = monotonic()
+                self.lastContactTime_ms = ms_counter()
                 logger.debug("Received extra 'on_connect' event for secondary {0} at {1}".format(self.id+1, self.address))
         except Exception:
             logger.exception("Error handling Cluster 'on_connect' for secondary {0} at {1}".\
@@ -241,12 +239,12 @@ class SecondaryNode:
 
     def on_disconnect(self):
         try:
-            if self.lastContactTime > 0:
-                self.startConnectTime = monotonic()
-                self.lastContactTime = -1
+            if self.lastContactTime_ms > 0:
+                self.startConnectTime_ms = ms_counter()
+                self.lastContactTime_ms = -1
                 self.numDisconnects += 1
                 self.numDisconnsDuringRace += 1
-                upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
+                upSecs = round(millis_to_secs(self.startConnectTime_ms - self.firstContactTime_ms)) if self.firstContactTime_ms > 0 else 0
                 logger.warning("Disconnected from " + self.get_log_str(upSecs))
                 self.totalUpTimeSecs += upSecs
                 if self.runningFlag and self.emit_cluster_connect_change:
@@ -280,7 +278,7 @@ class SecondaryNode:
 
     def get_log_str(self, timeSecs=None, upTimeFlag=True, stoppedRaceFlag=False):
         if timeSecs is None:
-            timeSecs = int(round(monotonic() - self.firstContactTime)) if self.lastContactTime > 0 else 0
+            timeSecs = round(millis_to_secs(ms_counter() - self.firstContactTime_ms)) if self.lastContactTime_ms > 0 else 0
         totUpSecs = self.totalUpTimeSecs
         totDownSecs = self.totalDownTimeSecs
         if upTimeFlag:
@@ -310,7 +308,7 @@ class SecondaryNode:
 
     def on_pass_record(self, data):
         try:
-            self.lastContactTime = monotonic()
+            self.lastContactTime_ms = ms_counter()
             self.numContacts += 1
             # if secondary-timer clock was detected as not synchronized then apply correction
             if self.timeCorrectionMs != 0:
@@ -338,19 +336,19 @@ class SecondaryNode:
 
     def on_check_secondary_response(self, data):
         try:
-            if self.lastContactTime > 0:
-                nowTime = monotonic()
-                self.lastContactTime = nowTime
+            if self.lastContactTime_ms > 0:
+                now_ms = ms_counter()
+                self.lastContactTime_ms = now_ms
                 self.numContacts += 1
-                transitTime = nowTime - self.lastCheckQueryTime if self.lastCheckQueryTime > 0 else 0
+                transitTime = now_ms - self.lastCheckQueryTime_ms if self.lastCheckQueryTime_ms > 0 else 0
                 if transitTime > 0:
-                    self.latencyAveragerObj.append(int(round(transitTime * 1000)))
+                    self.latencyAveragerObj.append(transitTime)
                     if data:
                         secondaryTimestamp = data.get('timestamp', 0)
                         if secondaryTimestamp:
                             # calculate local-time value midway between before and after network query
                             localTimestamp = self.PROGRAM_START.monotonic_to_epoch_millis(\
-                                             1000*(self.lastCheckQueryTime + transitTime/2)) \
+                                             (self.lastCheckQueryTime_ms + transitTime/2)) \
                                              if self.PROGRAM_START else 0
                             # calculate clock-time difference in ms and add to running median
                             self.timeDiffMedianObj.insert(int(round(secondaryTimestamp - localTimestamp)))
@@ -457,7 +455,7 @@ class ClusterNodeSet:
     def isSplitSecondaryAvailable(self, secondary_index):
         return (secondary_index < len(self.secondaries)) and \
                (not self.secondaries[secondary_index].isMirrorMode) and \
-                    (self.secondaries[secondary_index].lastContactTime > 0 or \
+                    (self.secondaries[secondary_index].lastContactTime_ms > 0 or \
                      self.secondaries[secondary_index].numDisconnects > 0)
 
     def emit(self, event, data = None):
@@ -473,11 +471,11 @@ class ClusterNodeSet:
             gevent.spawn(secondary.emit, 'cluster_event_trigger', data)
 
     def getClusterStatusInfo(self):
-        nowTime = monotonic()
+        now_ms = ms_counter()
         payload = []
         for secondary in self.secondaries:
-            upTimeSecs = int(round(nowTime - secondary.firstContactTime)) if secondary.lastContactTime > 0 else 0
-            downTimeSecs = int(round(secondary.secsSinceDisconnect)) if secondary.lastContactTime <= 0 else 0
+            upTimeSecs = round(millis_to_secs(now_ms - secondary.firstContactTime_ms)) if secondary.lastContactTime_ms > 0 else 0
+            downTimeSecs = int(round(secondary.msSinceDisconnect)) if secondary.lastContactTime_ms <= 0 else 0
             totalUpSecs = secondary.totalUpTimeSecs + upTimeSecs
             totalDownSecs = secondary.totalDownTimeSecs + downTimeSecs
             payload.append(
@@ -494,7 +492,7 @@ class ClusterNodeSet:
                  'downTimeSecs': downTimeSecs, \
                  'availability': round((100.0*totalUpSecs/(totalUpSecs+totalDownSecs) \
                                        if totalUpSecs+totalDownSecs > 0 else 0), 1), \
-                 'last_contact': int(nowTime-secondary.lastContactTime) if secondary.lastContactTime >= 0 else \
+                 'last_contact': int(now_ms-secondary.lastContactTime_ms) if secondary.lastContactTime_ms >= 0 else \
                                  (self.__("connection lost") if secondary.numDisconnects > 0 else self.__("never connected"))
                  })
         return {'secondaries': payload}
@@ -502,7 +500,7 @@ class ClusterNodeSet:
     def doClusterRaceStart(self):
         for secondary in self.secondaries:
             secondary.numDisconnsDuringRace = 0
-            if secondary.lastContactTime > 0:
+            if secondary.lastContactTime_ms > 0:
                 logger.info("Connected at race start to " + secondary.get_log_str())
                 if abs(secondary.timeDiffMedianMs) > SecondaryNode.TIMEDIFF_CORRECTION_THRESH_MS:
                     secondary.timeCorrectionMs = secondary.timeDiffMedianMs
@@ -517,11 +515,10 @@ class ClusterNodeSet:
 
     def doClusterRaceStop(self):
         for secondary in self.secondaries:
-            if secondary.lastContactTime > 0:
+            if secondary.lastContactTime_ms > 0:
                 logger.info("Connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True))
             elif secondary.numDisconnects > 0:
                 logger.warning("Not connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True))
 
     def __(self, *args, **kwargs):
         return self._Language.__(*args, **kwargs)
-        

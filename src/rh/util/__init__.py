@@ -7,6 +7,14 @@ def ms_counter() -> int:
     return round(perf_counter_ns()/1000000)
 
 
+def secs_to_millis(secs: float) -> int:
+    return round(1000*secs)
+
+
+def millis_to_secs(ms: int) -> float:
+    return ms/1000
+
+
 class Averager:
     """Tracks a running average, and min/max/last values"""
     def __init__(self, maxNumItems):

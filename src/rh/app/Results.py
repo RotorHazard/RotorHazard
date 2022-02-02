@@ -3,7 +3,7 @@
 #
 
 import copy
-from rh.util import RHUtils
+from rh.util import RHUtils, secs_to_millis
 import logging
 import cachetools
 from threading import Lock
@@ -959,7 +959,7 @@ class Results:
             leaderboard = raceObj.results['by_race_time']
 
             if len(leaderboard):
-                race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
+                race_duration_ms = secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec)
                 pilot_crossed_after_time = False
                 for line in leaderboard:
                     if line['total_time_raw'] > race_duration_ms:
@@ -1048,7 +1048,7 @@ class Results:
                 if fast_lap > 0: # must have at least one lap
                     max_ttc = 0
 
-                    race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
+                    race_duration_ms = secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec)
                     for node in raceObj.node_laps:
                         if len(raceObj.node_laps[node]) > 0:
                             most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
@@ -1298,7 +1298,7 @@ class Results:
             leaderboard = raceObj.results['by_race_time']
 
             if len(leaderboard):
-                race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
+                race_duration_ms = secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec)
                 pilot_crossed_after_time = False
                 for line in leaderboard:
                     if line['total_time_raw'] > race_duration_ms:
@@ -1392,7 +1392,7 @@ class Results:
                                 'members': line['members'],
                             }
 
-                        race_duration_ms = (race_format.race_time_sec + race_format.lap_grace_sec) * 1000
+                        race_duration_ms = secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec)
                         for node in raceObj.node_laps:
                             if len(raceObj.node_laps[node]) > 0:
                                 team = raceObj.node_pilots[node].team

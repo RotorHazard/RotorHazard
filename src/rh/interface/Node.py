@@ -224,16 +224,16 @@ class Node(CommandsWithRetry):
         self.calibrate = True
 
         self.start_thresh_lower_flag = False  # True while EnterAt/ExitAt lowered at start of race
-        self.start_thresh_lower_time = 0      # time when EnterAt/ExitAt should be restored
+        self.start_thresh_lower_time_ms = 0      # time when EnterAt/ExitAt should be restored
 
         self.cap_enter_at_flag = False
         self.cap_enter_at_total = 0
         self.cap_enter_at_count = 0
-        self.cap_enter_at_end_ts = 0
+        self.cap_enter_at_end_ts_ms = 0
         self.cap_exit_at_flag = False
         self.cap_exit_at_total = 0
         self.cap_exit_at_count = 0
-        self.cap_exit_at_end_ts = 0
+        self.cap_exit_at_end_ts_ms = 0
 
         self.scan_enabled = False
         self.scan_data = {}
@@ -250,8 +250,8 @@ class Node(CommandsWithRetry):
         self.pass_nadir_rssi = self.manager.max_rssi_value
         self.pass_crossing_flag = False
         self.is_crossing = False
-        self.enter_at_timestamp = None
-        self.exit_at_timestamp = None
+        self.enter_at_sample: Optional[RssiSample] = None
+        self.exit_at_sample: Optional[RssiSample] = None
         self.lap_stats_status = DataStatus.NOT_AVAILABLE
         self.enter_stats_status = DataStatus.NOT_AVAILABLE
         self.exit_stats_status = DataStatus.NOT_AVAILABLE

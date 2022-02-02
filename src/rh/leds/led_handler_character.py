@@ -4,13 +4,13 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
-from . import ColorVal, setPixels
+from . import ColorVal, setPixels, stagingEffects
 from rh.events.eventmanager import Evt
 from rh.events.led_event_manager import LEDEffect, LEDEvent
 from rh.app.RHRace import RaceStatus
 import gevent
 from PIL import Image, ImageFont, ImageDraw
-from monotonic import monotonic
+
 
 FONT_PATH = 'rh/static/fonts'
 
@@ -20,18 +20,12 @@ def dataHandler(args):
         if args['data'] == 'staging':
             args['time'] = 0
             if 'hide_stage_timer' not in args or not args['hide_stage_timer']:
-                if 'pi_starts_at_s' in args:
-                    start_time = args['pi_starts_at_s']
-    
-                    while monotonic() < start_time:
-                        diff = start_time - monotonic()
-                        diff_to_s = diff % 1
-                        if diff:
-                            gevent.sleep(diff_to_s)
-                            args['text'] = int(diff)
-                            printCharacter(args)
-                        else:
-                            break
+                if 'pi_starts_at_ms' in args:
+                    def effect_fn(diff_ms):
+                        args['text'] = int(diff_ms/1000)
+                        printCharacter(args)
+
+                    stagingEffects(args['pi_starts_at_ms'], effect_fn)
 
             else:
                 args['text'] = 'X'

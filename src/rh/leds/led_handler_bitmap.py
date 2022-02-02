@@ -4,7 +4,7 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
-from . import setPixels
+from . import setPixels, millis_to_secs
 from rh.events.eventmanager import Evt
 from rh.events.led_event_manager import LEDEffect
 import gevent
@@ -23,14 +23,14 @@ def showBitmap(args):
     if bitmaps and bitmaps is not None:
         for bitmap in bitmaps:
             img = Image.open(bitmap['image'])
-            delay = bitmap['delay']
+            delay_ms = bitmap['delay']
 
             img = img.rotate(90 * args['panelRotate'])
             img = img.resize((strip.numPixels() // args['ledRows'], args['ledRows']))
 
             setPixels(strip, img, args['invertedPanelRows'])
             strip.show()
-            gevent.sleep(delay/1000.0)
+            gevent.sleep(millis_to_secs(delay_ms))
 
 
 def discover(config, *args, **kwargs):

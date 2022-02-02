@@ -4,6 +4,7 @@ from rh.leds import led_handler_strip, led_handler_bitmap, led_handler_character
 from rh.app.RHRace import RHRace
 from rh.interface.MockInterface import MockInterface
 
+
 class MockPixel:
     def __init__(self, count):
         self.pixels = [0 for _i in range(count)]
@@ -24,9 +25,11 @@ class MockPixel:
     def show(self):
         self.frames.append(self.pixels.copy())
 
+
 class MockManager:
     def getDisplayColor(self, n, from_result=False):
         return 1
+
 
 class LedsTest(unittest.TestCase):
     def test_strip(self):
@@ -70,6 +73,7 @@ class LedsTest(unittest.TestCase):
             strip.frames = []
             effect['handlerFn'](args)
             self.assertGreater(len(strip.frames), 0, effect)
+
 
 if __name__ == '__main__':
     unittest.main()

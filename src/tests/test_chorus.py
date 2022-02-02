@@ -77,5 +77,6 @@ class ChorusTest(unittest.TestCase):
         self.assertEqual(intf.nodes[0].current_rssi.rssi, sample_0.rssi)
         self.assertEqual(intf.nodes[3].current_rssi.rssi, sample_3.rssi)
 
+
 if __name__ == '__main__':
     unittest.main()

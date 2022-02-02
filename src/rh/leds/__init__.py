@@ -1,3 +1,7 @@
+import  gevent
+from rh.util import ms_counter, millis_to_secs
+
+
 def Color(red, green, blue):
     """Convert the provided red, green, blue color to a 24-bit color value.
     Each color component should be a value 0-255 where 0 is the lowest intensity
@@ -5,8 +9,10 @@ def Color(red, green, blue):
     """
     return (red << 16) | (green << 8) | blue
 
+
 def hexToColor(hexColor):
     return int(hexColor.replace('#', ''), 16)
+
 
 class ColorVal:
     NONE = Color(0,0,0)
@@ -25,6 +31,7 @@ class ColorVal:
     WHITE = Color(255,255,255)
     YELLOW = Color(255,255,0)
 
+
 def setPixels(strip, img, invertRows=False):
     pos = 0
     for row in range(0, img.height):
@@ -40,3 +47,15 @@ def setPixels(strip, img, invertRows=False):
             px = img.getpixel((c, row))
             strip.setPixelColor(pos, Color(px[0], px[1], px[2]))
             pos += 1
+
+
+def stagingEffects(start_time_ms, callback):
+    if start_time_ms is not None:
+        while ms_counter() < start_time_ms:
+            diff_ms = start_time_ms - ms_counter()
+            if diff_ms:
+                diff_to_s = millis_to_secs(diff_ms % 1000)
+                gevent.sleep(diff_to_s)
+                callback(diff_ms)
+            else:
+                break

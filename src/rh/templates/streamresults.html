@@ -26,7 +26,7 @@
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
 
 			var pi_time_diff = {
-				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
+				'differential': msg.pi_time_ms - response_time - server_oneway,
 				'response': parseFloat(server_delay)
 			}
 

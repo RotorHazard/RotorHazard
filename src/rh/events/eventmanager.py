@@ -5,8 +5,8 @@ RotorHazard event manager
 import logging
 import gevent.event
 import copy
-from monotonic import monotonic
 from typing import Any, Dict, List
+from rh.util import ms_counter
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class EventManager:
                     args['_eventName'] = event
 
                 if handler['unique']:
-                    threadName = name + str(monotonic())
+                    threadName = name + str(ms_counter())
                 else:
                     threadName = name
 

@@ -1,7 +1,6 @@
 import os
 import gevent
 import logging
-from monotonic import monotonic
 import rh.util.persistent_homology as ph
 from rh.util.RHUtils import FREQUENCY_ID_NONE
 from rh.util import ms_counter
@@ -13,12 +12,15 @@ from typing import Any, Dict, List, Tuple
 
 
 ENTER_AT_PEAK_MARGIN = 5  # closest that captured enter-at level can be to node peak RSSI
-CAP_ENTER_EXIT_AT_SECS = 3  # number of secs for capture of enter/exit-at levels
+CAP_ENTER_EXIT_AT_MS = 3000  # number of milliseconds for capture of enter/exit-at levels
 
 logger = logging.getLogger(__name__)
 
 
 class BaseHardwareInterfaceListener:
+    def on_rssi_sample(self, node, ts: int, rssi: int):
+        pass
+
     def on_enter_triggered(self, node, cross_ts: int, cross_rssi: int):
         pass
 
@@ -78,6 +80,9 @@ class BaseHardwareInterface:
             node.summary_stats()
         for manager in self.node_managers:
             manager.close()
+
+    def _notify_rssi_sample(self, node, ts: int, rssi: int):
+        self.listener.on_rssi_sample(node, ts, rssi)
 
     def _notify_enter_triggered(self, node, trigger_ts: int, trigger_rssi: int):
         self.listener.on_enter_triggered(node, trigger_ts, trigger_rssi)
@@ -154,6 +159,8 @@ class BaseHardwareInterface:
                     node.enter_stats_status = DataStatus.AVAILABLE
                 node.exit_stats_status = DataStatus.AVAILABLE
 
+        self._notify_rssi_sample(node, timestamp, rssi)
+
         has_new_lap = (node.lap_stats_status == DataStatus.AVAILABLE)
         has_entered = (node.enter_stats_status == DataStatus.AVAILABLE)
         has_exited = (node.exit_stats_status == DataStatus.AVAILABLE)
@@ -178,10 +185,10 @@ class BaseHardwareInterface:
 
         if is_crossing:
             node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
-            node.enter_at_timestamp = crossing_race_time
+            node.enter_at_sample = RssiSample(crossing_race_time, trigger_rssi)
             self._notify_enter_triggered(node, crossing_race_time, trigger_rssi)
         else:
-            node.exit_at_timestamp = crossing_race_time
+            node.exit_at_sample = RssiSample(crossing_race_time, trigger_rssi)
             self._notify_exit_triggered(node, crossing_race_time, trigger_rssi)
 
     def process_lap_stats(self, node, pass_count, pass_timestamp: int, pass_peak_rssi: int, pass_nadir_rssi: int):
@@ -194,14 +201,13 @@ class BaseHardwareInterface:
             node.pass_peak_rssi = pass_peak_rssi
         if pass_nadir_rssi is not None:
             node.pass_nadir_rssi = pass_nadir_rssi
-        if node.enter_stats_status == DataStatus.RETRIEVED and node.enter_at_timestamp > pass_timestamp:
-            logger.warning("Enter timestamp {} is after pass timestamp {}!!! ".format(node.enter_at_timestamp, pass_timestamp))
-        if node.exit_stats_status == DataStatus.RETRIEVED and node.exit_at_timestamp < pass_timestamp:
-            logger.warning("Exit timestamp {} is before pass timestamp {}!!! ".format(node.exit_at_timestamp, pass_timestamp))
-            assert False
+        if node.enter_stats_status == DataStatus.RETRIEVED and node.enter_at_sample.timestamp > pass_timestamp:
+            logger.warning("Enter timestamp {} is after pass timestamp {}!!! ".format(node.enter_at_sample.timestamp, pass_timestamp))
+        if node.exit_stats_status == DataStatus.RETRIEVED and node.exit_at_sample.timestamp < pass_timestamp:
+            logger.warning("Exit timestamp {} is before pass timestamp {}!!! ".format(node.exit_at_sample.timestamp, pass_timestamp))
         node.is_crossing = False
-        node.enter_at_timestamp = None
-        node.exit_at_timestamp = None
+        node.enter_at_sample = None
+        node.exit_at_sample = None
         node.lap_stats_status = DataStatus.NOT_AVAILABLE
         node.enter_stats_status = DataStatus.NOT_AVAILABLE
         node.exit_stats_status = DataStatus.NOT_AVAILABLE
@@ -246,7 +252,7 @@ class BaseHardwareInterface:
         if node.cap_enter_at_flag:
             node.cap_enter_at_total += node.current_rssi.rssi
             node.cap_enter_at_count += 1
-            if monotonic() >= node.cap_enter_at_end_ts:
+            if ms_counter() >= node.cap_enter_at_end_ts_ms:
                 node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
                 node.cap_enter_at_flag = False
                 # if too close node peak then set a bit below node-peak RSSI value:
@@ -259,7 +265,7 @@ class BaseHardwareInterface:
         if node.cap_exit_at_flag:
             node.cap_exit_at_total += node.current_rssi.rssi
             node.cap_exit_at_count += 1
-            if monotonic() >= node.cap_exit_at_end_ts:
+            if ms_counter() >= node.cap_exit_at_end_ts_ms:
                 node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
                 node.cap_exit_at_flag = False
                 logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node, node.exit_at_level, node.cap_exit_at_count))
@@ -267,14 +273,14 @@ class BaseHardwareInterface:
 
     def _restore_lowered_thresholds(self, node):
         # check if node is set to temporary lower EnterAt/ExitAt values
-        if node.start_thresh_lower_flag and monotonic() >= node.start_thresh_lower_time:
+        if node.start_thresh_lower_flag and ms_counter() >= node.start_thresh_lower_time_ms:
             logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
                     .format(node.index+1, node.enter_at_level, \
                             node.exit_at_level))
             self.transmit_enter_at_level(node, node.enter_at_level)
             self.transmit_exit_at_level(node, node.exit_at_level)
             node.start_thresh_lower_flag = False
-            node.start_thresh_lower_time = 0
+            node.start_thresh_lower_time_ms = 0
 
     def ai_calibrate_nodes(self):
         for node in self.nodes:
@@ -350,7 +356,7 @@ class BaseHardwareInterface:
     def simulate_lap(self, node_index):
         node = self.nodes[node_index]
         lap_race_time_ms = ms_counter() - self.race_start_time_ms  # relative to start time
-        node.enter_at_timestamp = node.exit_at_timestamp = None
+        node.enter_at_sample = node.exit_at_sample = None
         self._notify_pass(node, lap_race_time_ms, BaseHardwareInterface.LAP_SOURCE_MANUAL, None)
 
     def force_end_crossing(self, node_index):
@@ -419,7 +425,7 @@ class BaseHardwareInterface:
             node.cap_enter_at_total = 0
             node.cap_enter_at_count = 0
             # set end time for capture of RSSI level:
-            node.cap_enter_at_end_ts = monotonic() + CAP_ENTER_EXIT_AT_SECS
+            node.cap_enter_at_end_ts_ms = ms_counter() + CAP_ENTER_EXIT_AT_MS
             node.cap_enter_at_flag = True
             return True
         return False
@@ -430,7 +436,7 @@ class BaseHardwareInterface:
             node.cap_exit_at_total = 0
             node.cap_exit_at_count = 0
             # set end time for capture of RSSI level:
-            node.cap_exit_at_end_ts = monotonic() + CAP_ENTER_EXIT_AT_SECS
+            node.cap_exit_at_end_ts_ms = ms_counter() + CAP_ENTER_EXIT_AT_MS
             node.cap_exit_at_flag = True
             return True
         return False
