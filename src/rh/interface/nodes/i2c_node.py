@@ -30,6 +30,7 @@ def discover(idxOffset, i2c_helper, i2c_addrs=[8, 10, 12, 14, 16, 18, 20, 22], *
     # Scans provided i2c_addrs to populate nodes array
     next_index = idxOffset
     for i2c_bus in i2c_helper:
+        logger.info("...scanning I2C bus {}...".format(i2c_bus.id))
         for i2c_addr in i2c_addrs:
             node_manager = I2CNodeManager(i2c_addr, i2c_bus)
             try:
