@@ -8,7 +8,7 @@ import json
 
 import rh.interface.nodes as node_pkg
 from rh.util.Plugins import Plugins
-from . import pack_8, unpack_8, unpack_8_signed, pack_16, unpack_16, RssiSample
+from . import pack_8, unpack_8, unpack_8_signed, pack_16, unpack_16
 from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from rh.util import Averager
@@ -402,8 +402,8 @@ class RHNode(Node):
                 ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
                 extremum_timestamp_ms = sent_timestamp_ms - ms_since_first_time
                 extremum_duration_ms = unpack_16(data[6:])
-            elif extremum_rssi != 0:
-                logger.warning("History RSSI reading ({}) out of range on node {}; rejected".format(extremum_rssi, self))
+            elif rssi_val != 0:
+                logger.warning("History RSSI reading ({}) out of range on node {}; rejected".format(rssi_val, self))
 
             if self.data_logger is not None:
                 self.data_logger.data_buffer.append((
