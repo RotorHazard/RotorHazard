@@ -1,4 +1,5 @@
 import logging
+from .BaseHardwareInterface import BaseHardwareInterface
 from .MqttInterface import MqttInterface
 from .LapRFInterface import LapRFInterfaceListener
 
@@ -7,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 class MqttLapRFInterface(MqttInterface, LapRFInterfaceListener):
 
-    def __init__(self, mqtt_client, hw_interface):
-        super().__init__(mqtt_client=mqtt_client, hw_interface=hw_interface)
+    def __init__(self, mqtt_client, ann_topic: str, ctrl_topic: str, timer_id: str, hw_interface: BaseHardwareInterface):
+        super().__init__(mqtt_client=mqtt_client, ann_topic=ann_topic, ctrl_topic=ctrl_topic, timer_id=timer_id, hw_interface=hw_interface)
 
     def on_threshold_changed(self, node, threshold):
         self._mqtt_publish_threshold(node, threshold)

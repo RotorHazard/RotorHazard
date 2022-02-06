@@ -5407,10 +5407,11 @@ except Exception:
 mqtt_clients = serviceHelpers.get('mqtt_helper')
 if mqtt_clients:
     mqtt_interface_class = get_mqtt_interface_for(INTERFACE.__class__)
-    mqtt_interface = mqtt_interface_class(mqtt_clients['timer'], INTERFACE)
-    mqtt_interface.ann_topic = rhconfig.MQTT['TIMER_ANN_TOPIC']
-    mqtt_interface.ctrl_topic = rhconfig.MQTT['TIMER_CTRL_TOPIC']
-    mqtt_interface.timer_id = TIMER_ID
+    mqtt_interface = mqtt_interface_class(mqtt_clients['timer'],
+                                          rhconfig.MQTT['TIMER_ANN_TOPIC'],
+                                          rhconfig.MQTT['TIMER_CTRL_TOPIC'],
+                                          TIMER_ID,
+                                          INTERFACE)
     STARTABLES.append(mqtt_interface)
 else:
     logger.error("MQTT not available")
@@ -5573,15 +5574,21 @@ if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     STARTABLES.append(CHORUS_API)
 
 if mqtt_clients:
+    from rh.apis import RHListener
     from rh.apis.mqtt_api import MqttAPI
 
-    MQTT_API = MqttAPI(mqtt_clients['timer'], rhconfig.MQTT['TIMER_ANN_TOPIC'], TIMER_ID, INTERFACE,
+    mqtt_listener = RHListener(
                        node_crossing_callback,
                        pass_record_callback,
                        split_record_callback,
                        on_set_frequency,
                        on_set_enter_at_level,
                        on_set_exit_at_level)
+    assert INTERFACE is not None
+    MQTT_API = MqttAPI(mqtt_clients['timer'],
+                       rhconfig.MQTT['TIMER_ANN_TOPIC'],
+                       TIMER_ID,
+                       INTERFACE, mqtt_listener)
     STARTABLES.append(MQTT_API)
 
 CLUSTER = ClusterNodeSet(LANGUAGE, Events)

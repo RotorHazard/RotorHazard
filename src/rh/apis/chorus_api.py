@@ -1,8 +1,11 @@
 '''Chorus API serial endpoints.'''
 import logging
 import gevent
+from rh.util.RHUtils import FREQS
+
 
 logger = logging.getLogger(__name__)
+
 
 class ChorusAPI():
     def __init__(self, serial_io, hwInterface, sensors, on_start, on_stop_race, on_reset_race):
@@ -77,21 +80,35 @@ class ChorusAPI():
                         response += 'S{0}#0004\n'.format(i)
                 elif cmd == 'B':
                     node_index = int(node_addr)
+                    bandChannel = self.INTERFACE.nodes[node_index].bandChannel
                     if is_setter:
                         band = data[3]
+                        chan = int(bandChannel[1]) if bandChannel is not None else 0
                         freq = self.INTERFACE.nodes[node_index].frequency
+                        if chan > 0:
+                            bandChannel = band + str(chan)
+                            if bandChannel in FREQS:
+                                freq = FREQS[bandChannel]
+                                self.INTERFACE.set_frequency(node_index, freq, band, chan)
                         response = 'S{0}B{1}\nS{0}F{2:04x}\n'.format(node_index, band, freq)
                     else:
-                        band = 0
+                        band = bandChannel[0] if bandChannel is not None else 0
                         response = 'S{0}B{1}'.format(node_index, band)
                 elif cmd == 'C':
                     node_index = int(node_addr)
+                    bandChannel = self.INTERFACE.nodes[node_index].bandChannel
                     if is_setter:
+                        band = bandChannel[0] if bandChannel is not None else ''
                         chan = data[3]
                         freq = self.INTERFACE.nodes[node_index].frequency
+                        if band:
+                            bandChannel = band + str(chan)
+                            if bandChannel in FREQS:
+                                freq = FREQS[bandChannel]
+                                self.INTERFACE.set_frequency(node_index, freq, band, chan)
                         response = 'S{0}C{1}\nS{0}F{2:04x}\n'.format(node_index, chan, freq)
                     else:
-                        chan = 0
+                        chan = int(bandChannel[1]) if bandChannel is not None else 0
                         response = 'S{0}C{1}'.format(node_index, chan)
                 elif cmd == 'F':
                     node_index = int(node_addr)

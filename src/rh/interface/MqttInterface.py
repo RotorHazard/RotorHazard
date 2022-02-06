@@ -4,6 +4,7 @@ from rh.util import RHTimeFns
 from rh.util.RHUtils import FREQS
 import logging
 import json
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +17,13 @@ def json_timestamp(t: int) -> str:
 
 class MqttInterface(BaseHardwareInterfaceListener):
 
-    def __init__(self, mqtt_client, hw_interface):
+    def __init__(self, mqtt_client, ann_topic: str, ctrl_topic: str, timer_id: str, hw_interface: BaseHardwareInterface):
         self.hw_interface = hw_interface
         self.hw_interface.listener = self
         self.client = mqtt_client
-        self.ann_topic = None
-        self.ctrl_topic = None
-        self.timer_id = None
+        self.ann_topic = ann_topic
+        self.ctrl_topic = ctrl_topic
+        self.timer_id = timer_id
 
     def start(self):
         for node_manager in self.hw_interface.node_managers:
@@ -34,23 +35,26 @@ class MqttInterface(BaseHardwareInterfaceListener):
         for node_manager in self.hw_interface.node_managers:
             self._mqtt_node_manager_stop(node_manager)
 
-    def on_enter_triggered(self, node, cross_ts, cross_rssi):
+    def on_rssi_sample(self, node, ts: int, rssi: int):
+        self._mqtt_publish_rssi(node, ts, rssi)
+
+    def on_enter_triggered(self, node, cross_ts: int, cross_rssi: int):
         self._mqtt_publish_enter(node, cross_ts, cross_rssi)
 
-    def on_exit_triggered(self, node, cross_ts, cross_rssi):
+    def on_exit_triggered(self, node, cross_ts: int , cross_rssi: int):
         self._mqtt_publish_exit(node, cross_ts, cross_rssi)
 
-    def on_pass(self, node, lap_ts, lap_source, pass_rssi):
+    def on_pass(self, node, lap_ts: int, lap_source, pass_rssi: int):
         self._mqtt_publish_pass(node, lap_ts, lap_source, pass_rssi)
 
-    def on_frequency_changed(self, node, frequency, band=None, channel=None):
+    def on_frequency_changed(self, node, frequency: int, band: Optional[str]=None, channel: Optional[int]=None):
         self._mqtt_publish_bandChannel(node, band+str(channel) if band and channel else None)
         self._mqtt_publish_frequency(node, frequency)
 
-    def on_enter_trigger_changed(self, node, level):
+    def on_enter_trigger_changed(self, node, level: int):
         self._mqtt_publish_enter_trigger(node, level)
 
-    def on_exit_trigger_changed(self, node, level):
+    def on_exit_trigger_changed(self, node, level: int):
         self._mqtt_publish_exit_trigger(node, level)
 
     def _mqtt_node_manager_start(self, node_manager):
@@ -164,6 +168,10 @@ class MqttInterface(BaseHardwareInterfaceListener):
 
     def _mqtt_publish_exit_trigger(self, node, level):
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exitTrigger"), str(level))
+
+    def _mqtt_publish_rssi(self, node, ts: int, rssi: int):
+        msg = {'timestamp': json_timestamp(ts), 'rssi': rssi}
+        self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "sample"), json.dumps(msg))
 
     def _mqtt_publish_enter(self, node, cross_ts: int, cross_rssi: int):
         msg = {'count': node.pass_count+1, 'timestamp': json_timestamp(cross_ts), 'rssi': cross_rssi}

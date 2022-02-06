@@ -1,6 +1,8 @@
 import os
 import gevent
+import inspect
 import logging
+from collections import UserList
 import rh.util.persistent_homology as ph
 from rh.util.RHUtils import FREQUENCY_ID_NONE
 from rh.util import ms_counter
@@ -8,7 +10,7 @@ from .Node import DataStatus, Node, NodeManager
 from rh.sensors import Sensor
 from . import RssiSample, LifetimeSample
 import bisect
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 
 ENTER_AT_PEAK_MARGIN = 5  # closest that captured enter-at level can be to node peak RSSI
@@ -30,14 +32,31 @@ class BaseHardwareInterfaceListener:
     def on_pass(self, node, lap_ts: int, lap_source, pass_rssi: int):
         pass
 
-    def on_frequency_changed(self, node, frequency, band=None, channel=None):
+    def on_frequency_changed(self, node, frequency: int, band: Optional[str]=None, channel: Optional[int]=None):
         pass
 
-    def on_enter_trigger_changed(self, node, level):
+    def on_enter_trigger_changed(self, node, level: int):
         pass
 
-    def on_exit_trigger_changed(self, node, level):
+    def on_exit_trigger_changed(self, node, level: int):
         pass
+
+
+class BaseHardwareInterfaceEventBroadcaster(UserList):
+    def __init__(self):
+        super().__init__()
+
+
+def _broadcast_wrap(attr):
+    def _broadcast(self: BaseHardwareInterfaceEventBroadcaster, *args):
+        for l in self.data:
+            return getattr(l, attr)(*args)
+    return _broadcast
+
+
+for attr, value in inspect.getmembers(BaseHardwareInterfaceListener, callable):
+    if attr.startswith('on_'):
+        setattr(BaseHardwareInterfaceEventBroadcaster, attr, _broadcast_wrap(attr))
 
 
 class BaseHardwareInterface:

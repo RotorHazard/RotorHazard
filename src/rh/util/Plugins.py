@@ -23,7 +23,7 @@ def search_modules(pkg, prefix=None, suffix=None):
 
 class Plugins(UserList):
     def __init__(self, prefix=None, suffix=None):
-        UserList.__init__(self)
+        super().__init__()
         self.prefix = prefix
         self.suffix = suffix
 
