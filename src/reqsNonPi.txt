@@ -27,4 +27,6 @@ Pillow>=8.3.2
 jenkspy==0.2.*
 psutil==5.8.*
 numpy==1.*
+scipy==1.*
+matplotlib==3.*
 fake-rpi==0.7.*

@@ -20,6 +20,7 @@ paho-mqtt==1.5.*
 websocket-client==0.57.*
 requests==2.26.*
 numpy>=1.19
+scipy==1.*
 jsonschema==4.*
 flasgger==0.9.*
 cffi==1.14.*

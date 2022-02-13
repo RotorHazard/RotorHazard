@@ -1,5 +1,7 @@
 import numpy as np
 import jenkspy
+import scipy.signal as signal
+
 
 class ConnectedComponent:
 	def __init__(self, idx, birth, death):
@@ -23,14 +25,33 @@ class ConnectedComponent:
 
 	def lifetime(self):
 		return abs(self.birth[1] - self.death[1])
-	
+
 
 def calculatePeakPersistentHomology(data):
 	ccs = []
 	N = len(data)
 	idxToCC = [None]*N
-	sorted_idxs = sorted(range(N), key=lambda i: data[i], reverse=True)
+	sorted_idxs = sorted(range(N), key=lambda i: (data[i], -i), reverse=True)
 	min_idx = sorted_idxs[-1]
+
+	def arrange_peak_centers():
+		k = 0
+		while k < N:
+			# prefer peak centers
+			end = k
+			while end < N-1 and sorted_idxs[end+1] == sorted_idxs[end] + 1 and data[sorted_idxs[end+1]] == data[sorted_idxs[end]]:
+				end += 1
+			end += 1  # exclusive
+			if end - k > 2:
+				mid = (k + end - 1)//2
+				# rearrange to do the peak center first
+				left_part = sorted_idxs[k:mid]
+				left_part.reverse()
+				right_part = sorted_idxs[mid:end]
+				sorted_idxs[k:end] = right_part + left_part
+			k = end
+
+	arrange_peak_centers()
 
 	for i in sorted_idxs:
 		leftCC = idxToCC[i-1] if i > 0 else None
@@ -65,12 +86,45 @@ def sortByLifetime(ccs):
 	return sorted(ccs, key=lambda cc: cc.lifetime(), reverse=True)
 
 
+def calculateRealtimePeakPersistentHomology(rssi_history, window_size):
+	'''rssi_history is a list containing all past RSSIs up-to and including the current time'''
+	if not type(rssi_history) is np.ndarray:
+		rssi_history = np.array(rssi_history)
+	n = len(rssi_history)
+	current_rssi = rssi_history[-1]
+	peak_idxs = signal.find_peaks(rssi_history)[0]
+	nadir_idxs = signal.find_peaks(-rssi_history)[0]
+	idxs = np.sort(np.hstack([peak_idxs, nadir_idxs]))
+	window_idxs = idxs[-window_size:]
+	rssi_window = np.hstack([rssi_history[window_idxs], [current_rssi]])
+	ccs = calculatePeakPersistentHomology(rssi_window)
+	last_pos = len(rssi_window) - 1
+	for cc in ccs:
+		if cc.birth[0] == last_pos:
+			if cc.death < cc.birth:
+				cc.death = (window_idxs[cc.death[0]], cc.death[1])
+			else:
+				cc.death = (n - 1, cc.death[1])
+			cc.birth = (n - 1, cc.birth[1])
+			return cc
+	return None
+
+
 def findBreak(ccs):
 	lifetimes = [cc.lifetime() for cc in ccs]
 	breaks = jenkspy.jenks_breaks(lifetimes, nb_class=2)
 	levels = np.unique(lifetimes)
 	i = np.min(np.nonzero(levels==breaks[1])[0])
 	return (levels[i], levels[i+1])
+
+
+def plotSampleLifetimes(axs, ts, ccs):
+	ccs = sorted(ccs, key=lambda cc: cc.birth[0])
+	data = np.array([[ts[cc.birth[0]], cc.lifetime()] for cc in ccs])
+	axs.set_xlim((ts[0], ts[-1]))
+	axs.set_xlabel('Time / s')
+	axs.set_ylabel('Lifetime')
+	axs.plot(data[:,0], data[:,1])
 
 
 def plotPersistenceDiagram(axs, ccs):

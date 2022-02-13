@@ -22,9 +22,32 @@ function calculatePeakPersistentHomology(data) {
 		sorted_idxs[i] = i;
 	}
 	sorted_idxs = sorted_idxs.sort(function(i, j) {
-		return data[j] - data[i];
+		let diff = data[j] - data[i];
+		if (diff === 0) {
+			diff = i - j;
+		}
+		return diff;
 	});
 	const min_idx = sorted_idxs[N-1];
+
+	let k = 0;
+	while (k < N) {
+		let end = k;
+		while (end < N-1 && sorted_idxs[end+1] === sorted_idxs[end]+1 && data[sorted_idxs[end+1]] === data[sorted_idxs[end]]) {
+			end++;
+		}
+		end++;
+		if (end - k > 2) {
+			const mid = Math.floor((k + end - 1)/2);
+			const leftPart = sorted_idxs.slice(k, mid).reverse();
+			const rightPart = sorted_idxs.slice(mid, end);
+			const newOrder = rightPart.concat(leftPart);
+			for (let j=0; j<newOrder.length; j++) {
+				sorted_idxs[k+j] = newOrder[j];
+			}
+		}
+		k = end;
+	}
 
 	for (let i of sorted_idxs) {
 		const leftCC = (i > 0) ? idxToCC[i-1] : null;

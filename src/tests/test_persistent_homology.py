@@ -9,6 +9,13 @@ class PersistentHomologyTest(unittest.TestCase):
         ccs = ph.sortByLifetime(ccs)
         self.assertEqual(str(ccs), '[(12, 118) -> (5, 1), (4, 114) -> (5, 1), (10, 112) -> (11, 40), (2, 41) -> (3, 4), (8, 33) -> (9, 9), (0, 30) -> (1, 29), (6, 3) -> (7, 2)]')
 
+    def test_RealtimePeakPersistentHomology(self):
+        data = [30, 29, 41, 4, 114, 1, 3, 2, 33, 9, 112, 40, 118]
+        ccs = [ph.calculateRealtimePeakPersistentHomology(data[:i+1], 6) for i in range(len(data))]
+        ccs = [cc for cc in ccs if cc is not None and cc.lifetime() > 0]
+        ccs = ph.sortByLifetime(ccs)
+        self.assertEqual(str(ccs), '[(12, 118) -> (7, 2), (10, 112) -> (5, 1), (4, 114) -> (3, 4), (8, 33) -> (5, 1), (2, 41) -> (1, 29), (6, 3) -> (5, 1)]')
+
     def test_findBreak_1(self):
         data = [2,0,5,0,2,0,8,2,4,0,6,0,9,0,15,6,10,8]
         ccs = ph.calculatePeakPersistentHomology(data)
