@@ -1,11 +1,23 @@
 from collections import namedtuple
-from rh.interface.BaseHardwareInterface import BaseHardwareInterfaceListener
+from threading import Lock
+from rh.interface import RssiSample, LifetimeSample
+from rh.interface.BaseHardwareInterface import BaseHardwareInterface, BaseHardwareInterfaceListener
+from rh.helpers.mqtt_helper import make_topic
 from typing import Optional
 
 
 RESET_FREQUENCY = -1
 
-NodeRef = namedtuple('NodeRef', ['timer', 'address', 'index', 'node'])
+
+class NodeRef(namedtuple('NodeRef', ['timer', 'address', 'index', 'node'])):
+    def __hash__(self):
+        return hash(self[:3])
+
+    def __eq__(self, other):
+        return self[:3] == other[:3]
+
+    def __str__(self):
+        return make_topic('', [self.timer, self.address, str(self.index)])
 
 
 class RHListener(BaseHardwareInterfaceListener):
@@ -26,11 +38,11 @@ class RHListener(BaseHardwareInterfaceListener):
     def on_rssi_sample(self, node_ref, ts: int, rssi: int):
         pass
 
-    def on_enter_triggered(self, node_ref, cross_ts: int, cross_rssi: int):
+    def on_enter_triggered(self, node_ref, cross_ts: int, cross_rssi: int, cross_lifetime: Optional[int]=None):
         if node_ref.node:
             self.node_crossing_callback(node_ref.node, True, cross_ts, cross_rssi)
 
-    def on_exit_triggered(self, node_ref, cross_ts: int , cross_rssi: int):
+    def on_exit_triggered(self, node_ref, cross_ts: int , cross_rssi: int, cross_lifetime: Optional[int]=None):
         if node_ref.node:
             self.node_crossing_callback(node_ref.node, False, cross_ts, cross_rssi)
 
@@ -59,3 +71,92 @@ class RHListener(BaseHardwareInterfaceListener):
     def on_exit_trigger_changed(self, node_ref, level: int):
         if node_ref.node:
             self.on_set_exit_at_level({'node': node_ref.node.index, 'exit_at_level': level})
+
+
+class RssiSampleListener(BaseHardwareInterfaceListener):
+    MAX_SAMPLES = 20
+
+    def __init__(self):
+        self.lock = Lock()
+        self.rssi_samples_by_node = {}
+        self.lifetime_samples_by_node = {}
+
+    def get_rssis(self):
+        with self.lock:
+            for samples in self.rssi_samples_by_node.values():
+                samples.sort(key=lambda s: s.timestamp)
+            return self.rssi_samples_by_node
+
+    def get_lifetimes(self):
+        with self.lock:
+            for samples in self.lifetime_samples_by_node.values():
+                samples.sort(key=lambda s: s.timestamp)
+            return self.lifetime_samples_by_node
+
+    def _get_rssi_samples(self, node_ref):
+        rssi_samples = self.rssi_samples_by_node.get(node_ref)
+        if rssi_samples is None:
+            rssi_samples = []
+            self.rssi_samples_by_node[node_ref] = rssi_samples
+        return rssi_samples
+
+    def _get_lifetime_samples(self, node_ref):
+        lifetime_samples = self.lifetime_samples_by_node.get(node_ref)
+        if lifetime_samples is None:
+            lifetime_samples = []
+            self.lifetime_samples_by_node[node_ref] = lifetime_samples
+        return lifetime_samples
+
+    def _truncate_samples(self, samples):
+        if len(samples) > RssiSampleListener.MAX_SAMPLES:
+            samples.sort(key=lambda s: s.timestamp)
+            del samples[:-RssiSampleListener.MAX_SAMPLES]
+
+    def on_rssi_sample(self, node_ref, ts: int, rssi: int):
+        with self.lock:
+            rssi_samples = self._get_rssi_samples(node_ref)
+            rssi_samples.append(RssiSample(ts, rssi))
+            self._truncate_samples(rssi_samples)
+
+    def on_enter_triggered(self, node_ref, cross_ts: int, cross_rssi: int, cross_lifetime: Optional[int]=None):
+        with self.lock:
+            rssi_samples = self._get_rssi_samples(node_ref)
+            rssi_samples.append(RssiSample(cross_ts, cross_rssi))
+            self._truncate_samples(rssi_samples)
+            if cross_lifetime is not None:
+                lifetime_samples = self._get_lifetime_samples(node_ref)
+                lifetime_samples.append(LifetimeSample(cross_ts, cross_lifetime))
+                self._truncate_samples(lifetime_samples)
+
+    def on_exit_triggered(self, node_ref, cross_ts: int , cross_rssi: int, cross_lifetime: Optional[int]=None):
+        with self.lock:
+            rssi_samples = self._get_rssi_samples(node_ref)
+            rssi_samples.append(RssiSample(cross_ts, cross_rssi))
+            self._truncate_samples(rssi_samples)
+            if cross_lifetime is not None:
+                lifetime_samples = self._get_lifetime_samples(node_ref)
+                # store nadir lifetimes as negatives
+                lifetime_samples.append(LifetimeSample(cross_ts, -cross_lifetime))
+                self._truncate_samples(lifetime_samples)
+
+    def on_pass(self, node_ref, lap_ts: int, lap_source, pass_rssi: int):
+        if lap_source == BaseHardwareInterface.LAP_SOURCE_REALTIME:
+            with self.lock:
+                rssi_samples = self._get_rssi_samples(node_ref)
+                rssi_samples.append(RssiSample(lap_ts, pass_rssi))
+                self._truncate_samples(rssi_samples)
+
+    def on_lifetime_sample(self, node_ref, ts: int, lifetime: int):
+        with self.lock:
+            # lifetimes are negatives for nadirs
+            lifetime_samples = self._get_lifetime_samples(node_ref)
+            lifetime_samples.append(LifetimeSample(ts, lifetime))
+            self._truncate_samples(lifetime_samples)
+
+    def on_extremum_history(self, node_ref, extremum_timestamp: int, extremum_rssi: int, extremum_duration: int):
+        with self.lock:
+            rssi_samples = self._get_rssi_samples(node_ref)
+            rssi_samples.append(RssiSample(extremum_timestamp, extremum_rssi))
+            rssi_samples.append(RssiSample(extremum_timestamp + extremum_duration, extremum_rssi))
+            self._truncate_samples(rssi_samples)
+

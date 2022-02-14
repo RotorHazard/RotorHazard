@@ -56,7 +56,7 @@ from rh.cluster.ClusterNodeSet import SecondaryNode, ClusterNodeSet
 from rh.cluster.SendAckQueue import SendAckQueue
 from rh.util.ButtonInputHandler import ButtonInputHandler
 from rh.util import StrictJsonEncoder, stm32loader
-from rh.interface.BaseHardwareInterface import BaseHardwareInterface
+from rh.interface.BaseHardwareInterface import BaseHardwareInterface, BaseHardwareInterfaceEventBroadcaster
 from rh.interface.RHInterface import RHInterface, RHFEAT_PH
 
 # Events manager
@@ -193,8 +193,8 @@ ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 
 RACE = RHRace.RHRace() # For storing race management variables
-LAST_RACE = None
-SECONDARY_RACE_FORMAT = None
+LAST_RACE: Optional[RHRace.RHRace] = None
+SECONDARY_RACE_FORMAT: Optional['RHRaceFormat'] = None
 RESULTS_CACHE = Results.ResultsCache()
 RHDATA = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME, RESULTS_CACHE) # Primary race data storage
 RESULTS = Results.Results(RHDATA, RESULTS_CACHE)
@@ -5130,7 +5130,7 @@ def initialize_hardware_interface():
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
             if (not rhconfig.SERIAL_PORTS) or len(rhconfig.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module(interface_pkg.__name__ + '.MockInterface')
-                INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, **serviceHelpers)
+                INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, use_random=True, **serviceHelpers)
                 for node_manager in INTERFACE.node_managers:  # put mock nodes at latest API level
                     node_manager.api_level = NODE_API_BEST
                 set_ui_message(
@@ -5558,7 +5558,7 @@ export_manager = DataExportManager(RHDATA, PAGE_CACHE, LANGUAGE)
 export_manager.discover(export_pkg)
 
 # register endpoints
-from rh.endpoints import json_endpoints, ota_endpoints, race_explorer_endpoints, heat_generator_endpoints
+from rh.endpoints import json_endpoints, ota_endpoints, race_explorer_endpoints, heat_generator_endpoints, rssi_endpoints
 APP.register_blueprint(json_endpoints.createBlueprint(RESULTS, RACE, serverInfo, getCurrentProfile))
 APP.register_blueprint(ota_endpoints.createBlueprint())
 APP.register_blueprint(race_explorer_endpoints.createBlueprint(rhconfig, TIMER_ID, INTERFACE, RHDATA, APP.rhserver))
@@ -5574,7 +5574,7 @@ if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     STARTABLES.append(CHORUS_API)
 
 if mqtt_clients:
-    from rh.apis import RHListener
+    from rh.apis import RHListener, RssiSampleListener
     from rh.apis.mqtt_api import MqttAPI
 
     mqtt_listener = RHListener(
@@ -5584,11 +5584,14 @@ if mqtt_clients:
                        on_set_frequency,
                        on_set_enter_at_level,
                        on_set_exit_at_level)
+    sample_listener = RssiSampleListener()
+    APP.register_blueprint(rssi_endpoints.createBlueprint(sample_listener))
+
     assert INTERFACE is not None
     MQTT_API = MqttAPI(mqtt_clients['timer'],
                        rhconfig.MQTT['TIMER_ANN_TOPIC'],
                        TIMER_ID,
-                       INTERFACE, mqtt_listener)
+                       INTERFACE, BaseHardwareInterfaceEventBroadcaster([mqtt_listener, sample_listener]))
     STARTABLES.append(MQTT_API)
 
 CLUSTER = ClusterNodeSet(LANGUAGE, Events)

@@ -42,9 +42,10 @@ class MockNode(RHNode):
 
 
 class MockInterface(BaseHardwareInterface):
-    def __init__(self, num_nodes=8, use_datafiles=False, *args, **kwargs):
+    def __init__(self, num_nodes=8, use_random=False, use_datafiles=False, *args, **kwargs):
         super().__init__(update_sleep=0.5)
         self.warn_loop_time = kwargs['warn_loop_time'] if 'warn_loop_time' in kwargs else 1500
+        self.use_random = use_random
         self.use_datafiles = use_datafiles
         self.data_logger_format = os.environ.get('RH_RECORD_FORMAT', DEFAULT_RECORD_FORMAT)
 
@@ -147,6 +148,9 @@ class MockInterface(BaseHardwareInterface):
                         else:
                             raise ValueError("Unsupported command: {}".format(cmd))
 
+                    elif self.use_random:
+                        self.is_new_lap(node, ms_counter(), random.randint(0, 10), 0, False)
+
                     self.process_capturing(node)
 
                     self._restore_lowered_thresholds(node)
@@ -212,4 +216,4 @@ def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
     logger.info('Using mock hardware interface')
     num_nodes = int(os.environ.get('RH_NODES', '8'))
-    return MockInterface(num_nodes=num_nodes, use_datafiles=True, *args, **kwargs)
+    return MockInterface(num_nodes=num_nodes, use_random=False, use_datafiles=True, *args, **kwargs)

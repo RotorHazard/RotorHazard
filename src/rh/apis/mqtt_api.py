@@ -1,5 +1,5 @@
 from rh.helpers.mqtt_helper import make_topic, split_topic
-from rh.interface import RssiSample
+from rh.interface import RssiSample, LifetimeSample
 from rh.interface.BaseHardwareInterface import BaseHardwareInterface, BaseHardwareInterfaceListener
 from rh.util.RHUtils import FREQS
 from . import NodeRef, RESET_FREQUENCY
@@ -14,6 +14,12 @@ def get_rssi_sample(payload):
     ts = int(payload['timestamp'])
     rssi = int(payload['rssi']) if 'rssi' in payload else None
     return RssiSample(ts, rssi)
+
+
+def get_lifetime_sample(payload):
+    ts = int(payload['timestamp'])
+    lifetime = int(payload['lifetime']) if 'lifetime' in payload else None
+    return LifetimeSample(ts, lifetime)
 
 
 class MqttAPI:
@@ -42,6 +48,7 @@ class MqttAPI:
         self._subscribe_to('exit', self.exit_handler)
         self._subscribe_to('pass', self.pass_handler)
         self._subscribe_to('sample', self.sample_handler)
+        self._subscribe_to('history', self.history_handler)
         self._subscribe_to('frequency', self.set_frequency_handler)
         self._subscribe_to('bandChannel', self.set_bandChannel_handler)
         self._subscribe_to('enterTrigger', self.set_enter_handler)
@@ -52,6 +59,7 @@ class MqttAPI:
         self._unsubscibe_from('exit')
         self._unsubscibe_from('pass')
         self._unsubscibe_from('sample')
+        self._unsubscibe_from('history')
         self._unsubscibe_from('frequency')
         self._unsubscibe_from('bandChannel')
         self._unsubscibe_from('enterTrigger')
@@ -78,14 +86,16 @@ class MqttAPI:
         if node_ref:
             enter_info = json.loads(msg.payload.decode('utf-8'))
             ts, rssi = get_rssi_sample(enter_info)
-            self.listener.on_enter_triggered(node_ref, ts, rssi)
+            lifetime = enter_info.get('lifetime') 
+            self.listener.on_enter_triggered(node_ref, ts, rssi, lifetime)
 
     def exit_handler(self, client, userdata, msg):
         node_ref = self._get_node_ref_from_topic(msg.topic)
         if node_ref:
             exit_info = json.loads(msg.payload.decode('utf-8'))
             ts, rssi = get_rssi_sample(exit_info)
-            self.listener.on_exit_triggered(node_ref, ts, rssi)
+            lifetime = exit_info.get('lifetime') 
+            self.listener.on_exit_triggered(node_ref, ts, rssi, lifetime)
 
     def pass_handler(self, client, userdata, msg):
         node_ref = self._get_node_ref_from_topic(msg.topic)
@@ -105,8 +115,21 @@ class MqttAPI:
         node_ref = self._get_node_ref_from_topic(msg.topic)
         if node_ref:
             sample_info = json.loads(msg.payload.decode('utf-8'))
-            ts, rssi = get_rssi_sample(sample_info)
-            self.listener.on_rssi_sample(node_ref, ts, rssi)
+            if 'rssi' in sample_info:
+                ts, rssi = get_rssi_sample(sample_info)
+                self.listener.on_rssi_sample(node_ref, ts, rssi)
+            elif 'lifetime' in sample_info:
+                ts, lifetime = get_lifetime_sample(sample_info)
+                self.listener.on_lifetime_sample(node_ref, ts, lifetime)
+
+    def history_handler(self, client, userdata, msg):
+        node_ref = self._get_node_ref_from_topic(msg.topic)
+        if node_ref:
+            history_info = json.loads(msg.payload.decode('utf-8'))
+            ts = int(history_info['timestamp'])
+            rssi = int(history_info['rssi'])
+            duration = int(history_info['duration'])
+            self.listener.on_extremum_history(node_ref, ts, rssi, duration)
 
     def set_frequency_handler(self, client, userdata, msg):
         node_ref = self._get_node_ref_from_topic(msg.topic)

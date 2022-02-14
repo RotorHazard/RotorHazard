@@ -3,7 +3,7 @@ import paho.mqtt.client as mqtt_client
 from collections import UserDict
 
 
-def make_topic(root, parts):
+def make_topic(root: str, parts: list):
     topic = root
     if root and parts:
         topic += '/'
@@ -14,7 +14,7 @@ def make_topic(root, parts):
     return topic
 
 
-def split_topic(topic):
+def split_topic(topic: str):
     parts = topic.split('/')
     return [p.replace('%2B', '+').
             replace('%23', '#').

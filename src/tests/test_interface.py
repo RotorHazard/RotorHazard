@@ -49,7 +49,7 @@ class InterfaceTest(unittest.TestCase):
 
         enter_timestamp = 0
         enter_rssi = 0
-        def on_enter_triggered(node, cross_ts, cross_rssi):
+        def on_enter_triggered(node, cross_ts, cross_rssi, cross_lifetime):
             nonlocal enter_timestamp
             nonlocal enter_rssi
             enter_timestamp = cross_ts
@@ -57,7 +57,7 @@ class InterfaceTest(unittest.TestCase):
 
         exit_timestamp = 0
         exit_rssi = 0
-        def on_exit_triggered(node, cross_ts, cross_rssi):
+        def on_exit_triggered(node, cross_ts, cross_rssi, cross_lifetime):
             nonlocal exit_timestamp
             nonlocal exit_rssi
             exit_timestamp = cross_ts

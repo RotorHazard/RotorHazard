@@ -38,14 +38,20 @@ class MqttInterface(BaseHardwareInterfaceListener):
     def on_rssi_sample(self, node, ts: int, rssi: int):
         self._mqtt_publish_rssi(node, ts, rssi)
 
-    def on_enter_triggered(self, node, cross_ts: int, cross_rssi: int):
-        self._mqtt_publish_enter(node, cross_ts, cross_rssi)
+    def on_lifetime_sample(self, node, ts: int, lifetime: int):
+        self._mqtt_publish_lifetime(node, ts, lifetime)
 
-    def on_exit_triggered(self, node, cross_ts: int , cross_rssi: int):
-        self._mqtt_publish_exit(node, cross_ts, cross_rssi)
+    def on_enter_triggered(self, node, cross_ts: int, cross_rssi: int, cross_lifetime: Optional[int]=None):
+        self._mqtt_publish_enter(node, cross_ts, cross_rssi, cross_lifetime)
+
+    def on_exit_triggered(self, node, cross_ts: int , cross_rssi: int, cross_lifetime: Optional[int]=None):
+        self._mqtt_publish_exit(node, cross_ts, cross_rssi, cross_lifetime)
 
     def on_pass(self, node, lap_ts: int, lap_source, pass_rssi: int):
         self._mqtt_publish_pass(node, lap_ts, lap_source, pass_rssi)
+
+    def on_extremum_history(self, node, extremum_timestamp: int, extremum_rssi: int, extremum_duration: int):
+        self._mqtt_publish_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
     def on_frequency_changed(self, node, frequency: int, band: Optional[str]=None, channel: Optional[int]=None):
         self._mqtt_publish_bandChannel(node, band+str(channel) if band and channel else None)
@@ -173,12 +179,20 @@ class MqttInterface(BaseHardwareInterfaceListener):
         msg = {'timestamp': json_timestamp(ts), 'rssi': rssi}
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "sample"), json.dumps(msg))
 
-    def _mqtt_publish_enter(self, node, cross_ts: int, cross_rssi: int):
+    def _mqtt_publish_lifetime(self, node, ts: int, lifetime: int):
+        msg = {'timestamp': json_timestamp(ts), 'lifetime': lifetime}
+        self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "sample"), json.dumps(msg))
+
+    def _mqtt_publish_enter(self, node, cross_ts: int, cross_rssi: int, cross_lifetime: Optional[int]=None):
         msg = {'count': node.pass_count+1, 'timestamp': json_timestamp(cross_ts), 'rssi': cross_rssi}
+        if cross_lifetime is not None:
+            msg['lifetime'] = cross_lifetime
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "enter"), json.dumps(msg))
 
-    def _mqtt_publish_exit(self, node, cross_ts: int, cross_rssi: int):
+    def _mqtt_publish_exit(self, node, cross_ts: int, cross_rssi: int, cross_lifetime: Optional[int]=None):
         msg = {'count': node.pass_count, 'timestamp': json_timestamp(cross_ts), 'rssi': cross_rssi}
+        if cross_lifetime is not None:
+            msg['lifetime'] = cross_lifetime
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "exit"), json.dumps(msg))
 
     def _mqtt_publish_pass(self, node, lap_ts: int, lap_source, pass_rssi: int):
@@ -192,6 +206,10 @@ class MqttInterface(BaseHardwareInterfaceListener):
         if pass_rssi:
             msg['rssi'] = pass_rssi
         self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "pass"), json.dumps(msg))
+
+    def _mqtt_publish_history(self, node, extremum_timestamp, extremum_rssi, extremum_duration):
+        msg = {'timestamp': json_timestamp(extremum_timestamp), 'rssi': extremum_rssi, 'duration': str(extremum_duration)}
+        self.client.publish(self._mqtt_create_node_topic(self.ann_topic, node, "history"), json.dumps(msg))
 
 
 def get_mqtt_interface_for(hw_cls):

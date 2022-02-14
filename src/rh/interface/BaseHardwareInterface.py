@@ -23,13 +23,19 @@ class BaseHardwareInterfaceListener:
     def on_rssi_sample(self, node, ts: int, rssi: int):
         pass
 
-    def on_enter_triggered(self, node, cross_ts: int, cross_rssi: int):
+    def on_lifetime_sample(self, node, ts: int, lifetime: int):
         pass
 
-    def on_exit_triggered(self, node, cross_ts: int , cross_rssi: int):
+    def on_enter_triggered(self, node, cross_ts: int, cross_rssi: int, cross_lifetime: Optional[int]=None):
+        pass
+
+    def on_exit_triggered(self, node, cross_ts: int , cross_rssi: int, cross_lifetime: Optional[int]=None):
         pass
 
     def on_pass(self, node, lap_ts: int, lap_source, pass_rssi: int):
+        pass
+
+    def on_extremum_history(self, node, extremum_timestamp: int, extremum_rssi: int, extremum_duration: int):
         pass
 
     def on_frequency_changed(self, node, frequency: int, band: Optional[str]=None, channel: Optional[int]=None):
@@ -42,15 +48,14 @@ class BaseHardwareInterfaceListener:
         pass
 
 
-class BaseHardwareInterfaceEventBroadcaster(UserList):
-    def __init__(self):
-        super().__init__()
+class BaseHardwareInterfaceEventBroadcaster(UserList,BaseHardwareInterfaceListener):
+    pass
 
 
 def _broadcast_wrap(attr):
     def _broadcast(self: BaseHardwareInterfaceEventBroadcaster, *args):
         for l in self.data:
-            return getattr(l, attr)(*args)
+            getattr(l, attr)(*args)
     return _broadcast
 
 
@@ -103,14 +108,21 @@ class BaseHardwareInterface:
     def _notify_rssi_sample(self, node, ts: int, rssi: int):
         self.listener.on_rssi_sample(node, ts, rssi)
 
-    def _notify_enter_triggered(self, node, trigger_ts: int, trigger_rssi: int):
-        self.listener.on_enter_triggered(node, trigger_ts, trigger_rssi)
+    def _notify_lifetime_sample(self, node, ts: int, lifetime: int):
+        self.listener.on_lifetime_sample(node, ts, lifetime)
 
-    def _notify_exit_triggered(self, node, trigger_ts: int, trigger_rssi: int):
-        self.listener.on_exit_triggered(node, trigger_ts, trigger_rssi)
+    def _notify_enter_triggered(self, node, trigger_ts: int, trigger_rssi: int, trigger_lifetime: int):
+        self.listener.on_enter_triggered(node, trigger_ts, trigger_rssi, trigger_lifetime)
+
+    def _notify_exit_triggered(self, node, trigger_ts: int, trigger_rssi: int, trigger_lifetime: int):
+        self.listener.on_exit_triggered(node, trigger_ts, trigger_rssi, trigger_lifetime)
 
     def _notify_pass(self, node, lap_ts_ms: int, lap_source, pass_rssi: int):
         self.listener.on_pass(node, lap_ts_ms, lap_source, pass_rssi)
+
+    def _notify_extremum_history(self, node, extremum_timestamp, extremum_rssi, extremum_duration):
+        self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
+        self.listener.on_extremum_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
     def _notify_frequency_changed(self, node):
         if node.bandChannel:
@@ -205,10 +217,10 @@ class BaseHardwareInterface:
         if is_crossing:
             node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
             node.enter_at_sample = RssiSample(crossing_race_time, trigger_rssi)
-            self._notify_enter_triggered(node, crossing_race_time, trigger_rssi)
+            self._notify_enter_triggered(node, crossing_race_time, trigger_rssi, trigger_lifetime)
         else:
             node.exit_at_sample = RssiSample(crossing_race_time, trigger_rssi)
-            self._notify_exit_triggered(node, crossing_race_time, trigger_rssi)
+            self._notify_exit_triggered(node, crossing_race_time, trigger_rssi, trigger_lifetime)
 
     def process_lap_stats(self, node, pass_count, pass_timestamp: int, pass_peak_rssi: int, pass_nadir_rssi: int):
         '''Parameter order must match order in packet'''
@@ -250,9 +262,10 @@ class BaseHardwareInterface:
     def process_analytics(self, node, timestamp: int, lifetime: int, loop_time: int, extremum_rssi: int, extremum_timestamp: int, extremum_duration: int):
         '''Parameter order must match order in packet'''
         node.current_lifetime = LifetimeSample(timestamp, lifetime)
+        self._notify_lifetime_sample(node, timestamp, lifetime)
         node.loop_time = loop_time
         if extremum_rssi is not None and extremum_timestamp is not None and extremum_duration is not None:
-            self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
+            self._notify_extremum_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
     def append_history(self, node, timestamp: int, rssi: int, duration=0):
         # append history data (except when race is over)
