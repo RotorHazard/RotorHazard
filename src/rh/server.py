@@ -608,6 +608,7 @@ def render_vrxstatus():
 # Documentation Viewer
 
 @APP.route('/docs')
+@requires_auth
 def render_viewDocs():
     '''Route to doc viewer.'''
 
@@ -642,6 +643,7 @@ def render_viewDocs():
 
 
 @APP.route('/img/<path:imgfile>')
+@requires_auth
 def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
 
