@@ -48,6 +48,7 @@ from six import unichr, string_types
 
 from flask import Flask, send_file, request, Response, session, templating, redirect
 from flask_socketio import SocketIO, emit
+from werkzeug.utils import secure_filename
 
 import socket
 import random
@@ -599,7 +600,9 @@ def render_viewImg(imgfile):
 
     while imgfile[0:2] == '../':
         imgfile = imgfile[3:]
-
+    
+    imgfile = secure_filename(imgfile)
+    
     imgPath = folderBase + folderImg + imgfile
 
     language = RHData.get_option("currentLanguage")
