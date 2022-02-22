@@ -93,9 +93,9 @@ class MockInterface(BaseHardwareInterface):
                     server_roundtrip_ms = 0
                     node._roundtrip_stats.append(server_roundtrip_ms)
 
+                    now_ms = ms_counter()
                     data_file = node.data_reader
                     if data_file is not None:
-                        now_ms = ms_counter()
                         if self.data_logger_format == BINARY_RECORD_FORMAT:
                             cmd = data_file.read(1)
                             if cmd == '':
@@ -149,7 +149,8 @@ class MockInterface(BaseHardwareInterface):
                             raise ValueError("Unsupported command: {}".format(cmd))
 
                     elif self.use_random:
-                        self.is_new_lap(node, ms_counter(), random.randint(0, 10), 0, False)
+                        self.is_new_lap(node, now_ms, random.randint(0, 20), 0, False)
+                        self.process_analytics(node, now_ms, random.randint(-5, 5), 1000, None, None, None)
 
                     self.process_capturing(node)
 
@@ -216,4 +217,4 @@ def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
     logger.info('Using mock hardware interface')
     num_nodes = int(os.environ.get('RH_NODES', '8'))
-    return MockInterface(num_nodes=num_nodes, use_random=False, use_datafiles=True, *args, **kwargs)
+    return MockInterface(num_nodes=num_nodes, use_datafiles=True, *args, **kwargs)

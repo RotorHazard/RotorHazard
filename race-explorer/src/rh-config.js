@@ -10,6 +10,7 @@ export let timerMappingEndpoint;
 export let raceClassEndpoint;
 export let vtxTableEndpoint;
 export let mqttConfigEndpoint;
+export let rssiDataEndpoint;
 
 if (process.env.NODE_ENV === 'development') {
   resultDataEndpoint = '/race-explorer/dev/resultData.jsonl';
@@ -20,6 +21,7 @@ if (process.env.NODE_ENV === 'development') {
   raceClassEndpoint = '/race-explorer/dev/raceClasses.json';
   vtxTableEndpoint = '/race-explorer/dev/vtx_table.json';
   mqttConfigEndpoint = '/race-explorer/dev/mqttConfig.json';
+  rssiDataEndpoint = '/race-explorer/dev/rssiData.json';
 } else {
   resultDataEndpoint = '/raceResults';
   raceMetricsEndpoint = '/raceMetrics';
@@ -33,6 +35,7 @@ if (process.env.NODE_ENV === 'development') {
   raceClassEndpoint = '/raceClasses';
   vtxTableEndpoint = '/vtxTable';
   mqttConfigEndpoint = '/mqttConfig';
+  rssiDataEndpoint = '/rssi';
 }
 
 export const mqttBroker = '';

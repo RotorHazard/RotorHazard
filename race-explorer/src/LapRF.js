@@ -69,7 +69,7 @@ function ThresholdGain(props) {
   );
 }
 
-export default function LapRFConfig(props) {
+function LapRFNodeConfig(props) {
   const {node, annTopic, ctrlTopic, vtxTable} = props;
 
   const freq = node.frequency;
@@ -160,3 +160,8 @@ export default function LapRFConfig(props) {
     </div>
   );
 }
+
+export default function LapRFNodeConfigFactory(node, vtxTable, annTopic, ctrlTopic) {
+  return <LapRFNodeConfig node={node} vtxTable={vtxTable} annTopic={annTopic} ctrlTopic={ctrlTopic}/>;
+};
+

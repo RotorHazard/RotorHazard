@@ -1,4 +1,7 @@
 from flask.blueprints import Blueprint
+from rh.util import RHTimeFns
+
+EPOCH_SYNC = RHTimeFns.MonotonicEpochSync()
 
 
 def createBlueprint(sample_listener):
@@ -16,10 +19,10 @@ def createBlueprint(sample_listener):
             node_samples = {}
             rssi_samples = rssis_by_node.get(node)
             if rssi_samples:
-                node_samples['rssi'] = [{'t': s[0], 'y': s[1]} for s in rssi_samples]
+                node_samples['rssi'] = [{'t': EPOCH_SYNC.monotonic_to_epoch_millis(s[0]), 'y': s[1]} for s in rssi_samples]
             lifetime_samples = lifetimes_by_node.get(node)
             if lifetime_samples:
-                node_samples['lifetime'] = [{'t': s[0], 'y': s[1]} for s in lifetime_samples]
+                node_samples['lifetime'] = [{'t': EPOCH_SYNC.monotonic_to_epoch_millis(s[0]), 'y': s[1]} for s in lifetime_samples]
             payload[str(node)] = node_samples
         return payload
 

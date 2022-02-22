@@ -71,7 +71,9 @@ export function makeTopic(root, parts) {
     } else {
       encodedPart = part.replaceAll('%', '%25').replaceAll('/', '%2F').replaceAll('#', '%23').replaceAll('+', '%2B');
     }
-    topic += '/';
+    if (topic) {
+      topic += '/';
+    }
     topic += encodedPart;
   }
   return topic;

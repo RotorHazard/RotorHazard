@@ -20,10 +20,11 @@ import MemoryIcon from '@mui/icons-material/Memory';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import FlagIcon from '@mui/icons-material/Flag';
 import { debounce } from 'lodash';
-import Frequency, { processVtxTable } from './Frequency.js';
-import LapRFConfig from './LapRF.js';
+import { processVtxTable } from './Frequency.js';
+import RHNodeConfigFactory from './RotorHazard.js';
+import LapRFNodeConfigFactory from './LapRF.js';
 import * as util from './util.js';
-import { createSetupDataLoader, createVtxTableLoader, createTimerMappingLoader, storeTimerMapping, createTrackDataLoader, createMqttConfigLoader, getMqttClient } from './rh-client.js';
+import { createSetupDataLoader, createVtxTableLoader, createTimerMappingLoader, storeTimerMapping, createTrackDataLoader, createMqttConfigLoader } from './rh-client.js';
 
 function processSetup(data, setupData) {
   const jsonl = data.split('\n');
@@ -41,7 +42,7 @@ function processSetup(data, setupData) {
               nm.type = msg.type;
             }
             if ('node' in msg) {
-              nm.nodes[msg.node] = nm.nodes[msg.node] ?? {id: msg.node};
+              nm.nodes[msg.node] = nm.nodes[msg.node] ?? {};
               const node = nm.nodes[msg.node];
               if ('frequency' in msg) {
                 node.frequency = msg.frequency;
@@ -71,166 +72,11 @@ function processSetup(data, setupData) {
   }
 }
 
-function EnterExitTriggers(props) {
-  const {enterTrigger: givenEnterTrigger, exitTrigger: givenExitTrigger,
-    enterTriggerChangesHook, exitTriggerChangesHook,
-    onEnterTriggerChange, onExitTriggerChange} = props;
-  const [enterTrigger, setEnterTrigger] = useState(givenEnterTrigger);
-  const [exitTrigger, setExitTrigger] = useState(givenExitTrigger);
-
-  useEffect(() => {
-    setEnterTrigger(givenEnterTrigger);
-  }, [givenEnterTrigger]);
-
-  useEffect(() => {
-    setExitTrigger(givenExitTrigger);
-  }, [givenExitTrigger]);
-
-  useEffect(() => {
-    if (enterTriggerChangesHook) {
-      return enterTriggerChangesHook((level) => {setEnterTrigger(level);});
-    }
-  }, [enterTriggerChangesHook]);
-
-  useEffect(() => {
-    if (exitTriggerChangesHook) {
-      return exitTriggerChangesHook((level) => {setExitTrigger(level);});
-    }
-  }, [exitTriggerChangesHook]);
-
-  const changeEnterTrigger = (level) => {
-    setEnterTrigger(level);
-    if (onEnterTriggerChange) {
-      onEnterTriggerChange(level);
-    }
-  };
-
-  const changeExitTrigger = (level) => {
-    setExitTrigger(level);
-    if (onExitTriggerChange) {
-      onExitTriggerChange(level);
-    }
-  };
-
-  return (
-    <div>
-    <TextField label="Enter trigger" value={enterTrigger}
-      onChange={(evt) => changeEnterTrigger(evt.target.value)}
-      inputProps={{
-      step: 1,
-      min: 0,
-      max: 255,
-      type: 'number'
-    }}/>
-    <TextField label="Exit trigger" value={exitTrigger}
-      onChange={(evt) => changeExitTrigger(evt.target.value)}
-      inputProps={{
-      step: 1,
-      min: 0,
-      max: 255,
-      type: 'number'
-    }}/>
-    </div>
-  );
-}
-
-function TimerConfig(props) {
-  const {node, annTopic, ctrlTopic, vtxTable} = props;
-
-  const freq = node.frequency;
-  const bc = node?.bandChannel ?? null;
-  const enterTrigger = node.enterTrigger;
-  const exitTrigger = node.exitTrigger;
-  
-  let mqttFrequencyPublisher = null;
-  let mqttFrequencySubscriber = null;
-  let mqttBandChannelSubscriber = null;
-  let mqttEnterTriggerPublisher = null;
-  let mqttEnterTriggerSubscriber = null;
-  let mqttExitTriggerPublisher = null;
-  let mqttExitTriggerSubscriber = null;
-  if (annTopic && ctrlTopic) {
-    const freqAnnTopic = [annTopic, "frequency"].join('/');
-    const freqCtrlTopic = [ctrlTopic, "frequency"].join('/');
-    const bcAnnTopic = [annTopic, "bandChannel"].join('/');
-    const bcCtrlTopic = [ctrlTopic, "bandChannel"].join('/');
-    mqttFrequencyPublisher = debounce((freq, bc) => {
-      getMqttClient().publish(bcCtrlTopic, bc);
-      getMqttClient().publish(freqCtrlTopic, bc ? freq+','+bc : freq);
-     }, 1500);
-    mqttFrequencySubscriber = (setFreq) => {
-      const mqttClient = getMqttClient();
-      mqttClient.subscribeTo(freqAnnTopic, (payload) => {
-        const newFreq = new TextDecoder('UTF-8').decode(payload);
-        setFreq(newFreq);
-      });
-      return () => {
-        mqttClient.unsubscribeFrom(freqAnnTopic);
-      };
-    };
-    mqttBandChannelSubscriber = (setBandChannel) => {
-      const mqttClient = getMqttClient();
-      mqttClient.subscribeTo(bcAnnTopic, (payload) => {
-        const newBandChannel = new TextDecoder('UTF-8').decode(payload);
-        setBandChannel(newBandChannel);
-      });
-      return () => {
-        mqttClient.unsubscribeFrom(bcAnnTopic);
-      };
-    };
-
-    const enterTrigAnnTopic = [annTopic, "enterTrigger"].join('/');
-    const enterTrigCtrlTopic = [ctrlTopic, "enterTrigger"].join('/');
-    mqttEnterTriggerPublisher = (level) => {getMqttClient().publish(enterTrigCtrlTopic, level);};
-    mqttEnterTriggerSubscriber = (setEnterTrigger) => {
-      const mqttClient = getMqttClient();
-      mqttClient.subscribeTo(enterTrigAnnTopic, (payload) => {
-        const newLevel = new TextDecoder('UTF-8').decode(payload);
-        setEnterTrigger(newLevel);
-      });
-      return () => {
-        mqttClient.unsubscribeFrom(enterTrigAnnTopic);
-      };
-    };
-
-    const exitTrigAnnTopic = [annTopic, "exitTrigger"].join('/');
-    const exitTrigCtrlTopic = [ctrlTopic, "exitTrigger"].join('/');
-    mqttExitTriggerPublisher = (level) => {getMqttClient().publish(exitTrigCtrlTopic, level);};
-    mqttExitTriggerSubscriber = (setExitTrigger) => {
-      const mqttClient = getMqttClient();
-      mqttClient.subscribeTo(exitTrigAnnTopic, (payload) => {
-        const newLevel = new TextDecoder('UTF-8').decode(payload);
-        setExitTrigger(newLevel);
-      });
-      return () => {
-        mqttClient.unsubscribeFrom(exitTrigAnnTopic);
-      };
-    };
-  }
-  
-  return (
-    <div>
-    <Frequency frequency={freq.toString()} bandChannel={bc}
-      onChange={mqttFrequencyPublisher}
-      frequencyChangesHook={mqttFrequencySubscriber}
-      bandChannelChangesHook={mqttBandChannelSubscriber}
-      vtxTable={vtxTable}
-    />
-    <EnterExitTriggers enterTrigger={enterTrigger.toString()} exitTrigger={exitTrigger.toString()}
-      onEnterTriggerChange={mqttEnterTriggerPublisher}
-      enterTriggerChangesHook={mqttEnterTriggerSubscriber}
-      onExitTriggerChange={mqttExitTriggerPublisher}
-      exitTriggerChangesHook={mqttExitTriggerSubscriber}
-    />
-    </div>
-  );
-}
-
 function getTimerConfigFactory(type) {
   if (type === 'LapRF') {
-    return (node, vtxTable, annTopic, ctrlTopic) => <LapRFConfig node={node} vtxTable={vtxTable} annTopic={annTopic} ctrlTopic={ctrlTopic}/>;
+    return LapRFNodeConfigFactory;
   } else {
-    return (node, vtxTable, annTopic, ctrlTopic) => <TimerConfig node={node} vtxTable={vtxTable} annTopic={annTopic} ctrlTopic={ctrlTopic}/>;
+    return RHNodeConfigFactory;
   }
 }
 
@@ -242,12 +88,12 @@ function TrackConfig(props) {
   const [seat, setSeat] = useState(givenSeat ?? 0);
 
   useEffect(() => {
-    setLocation(givenLocation);
+    setLocation(givenLocation ?? 'Start/finish');
   }, [givenLocation]);
 
 
   useEffect(() => {
-    setSeat(givenSeat);
+    setSeat(givenSeat ?? 0);
   }, [givenSeat]);
 
   const changeLocation = (v) => {
@@ -367,39 +213,40 @@ export default function Setup(props) {
               const nm = nmEntry[1];
               const nodes = Object.entries(nm.nodes);
               let nmCell = <TableCell rowSpan={nodes.length}><DeveloperBoardIcon/>{nmAddr}</TableCell>;
-              const createTimerConfig = getTimerConfigFactory(nm.type);
+              const createNodeConfig = getTimerConfigFactory(nm.type);
               return nodes.map((nodeEntry) => {
-                const nodeId = nodeEntry[0];
-                const node = nodeEntry[1];
-                const annTopic = mqttConfig ? util.makeTopic(mqttConfig.timerAnnTopic, [timerId, nmAddr, nodeId]) : null;
-                const ctrlTopic = mqttConfig ? util.makeTopic(mqttConfig.timerCtrlTopic, [timerId, nmAddr, nodeId]) : null;
-                const timerConfig = createTimerConfig(node, vtxTable, annTopic, ctrlTopic);
+                const nodeIdx = nodeEntry[0];
+                const nodeData = nodeEntry[1];
+                const annTopic = mqttConfig ? util.makeTopic(mqttConfig.timerAnnTopic, [timerId, nmAddr, nodeIdx]) : null;
+                const ctrlTopic = mqttConfig ? util.makeTopic(mqttConfig.timerCtrlTopic, [timerId, nmAddr, nodeIdx]) : null;
+                const node = {...nodeData, timer: timerId, address: nmAddr, index: nodeIdx};
+                const nodeConfig = createNodeConfig(node, vtxTable, annTopic, ctrlTopic);
                 const firstCell = timerCell;
                 timerCell = null;
                 const secondCell = nmCell;
                 nmCell = null;
-                const trackLocation = timerMapping[timerId]?.[nmAddr]?.[nodeId]?.location;
-                const seat = timerMapping[timerId]?.[nmAddr]?.[nodeId]?.seat;
+                const trackLocation = timerMapping[timerId]?.[nmAddr]?.[nodeIdx]?.location;
+                const seat = timerMapping[timerId]?.[nmAddr]?.[nodeIdx]?.seat;
                 const updateLocation = (loc) => {
                   const mappingInfo = timerMapping[timerId] ?? {};
                   mappingInfo[nmAddr] = mappingInfo[nmAddr] ?? [];
-                  mappingInfo[nmAddr][nodeId] = mappingInfo[nmAddr][nodeId] ?? {};
-                  mappingInfo[nmAddr][nodeId].location = loc;
+                  mappingInfo[nmAddr][nodeIdx] = mappingInfo[nmAddr][nodeIdx] ?? {};
+                  mappingInfo[nmAddr][nodeIdx].location = loc;
                   setTimerMapping({...timerMapping, [timerId]: mappingInfo});
                 };
                 const updateSeat = (s) => {
                   const mappingInfo = timerMapping[timerId] ?? {};
                   mappingInfo[nmAddr] = mappingInfo[nmAddr] ?? [];
-                  mappingInfo[nmAddr][nodeId] = mappingInfo[nmAddr][nodeId] ?? {};
-                  mappingInfo[nmAddr][nodeId].seat = s;
+                  mappingInfo[nmAddr][nodeIdx] = mappingInfo[nmAddr][nodeIdx] ?? {};
+                  mappingInfo[nmAddr][nodeIdx].seat = s;
                   setTimerMapping({...timerMapping, [timerId]: mappingInfo});
                 };
                 return (
-                  <TableRow key={nodeId}>
+                  <TableRow key={nodeIdx}>
                   {firstCell}
                   {secondCell}
-                  <TableCell><MemoryIcon/>{node.id}</TableCell>
-                  <TableCell>{timerConfig}</TableCell>
+                  <TableCell><MemoryIcon/>{nodeIdx}</TableCell>
+                  <TableCell>{nodeConfig}</TableCell>
                   <TableCell>
                     <TrackConfig location={trackLocation} seat={seat} trackLayout={trackLayout}
                     onLocationChange={updateLocation} onSeatChange={updateSeat}/>

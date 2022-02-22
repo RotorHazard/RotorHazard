@@ -1,13 +1,18 @@
 import mqtt from 'mqtt';
 import axios from 'axios';
-import { createBaseLoader } from './util.js';
+import { throttle } from 'lodash';
+import { createBaseLoader, makeTopic } from './util.js';
 import * as config from './rh-config.js';
 
 function createLoader(endpoint, opts={}) {
   const loader = createBaseLoader();
   loader.endpoint = endpoint;
+  loader._doRequest = async function() {
+    const resp = (await axios.get(this.endpoint, {...opts, signal: this.aborter.signal}));
+    return resp.data;
+  };
   loader._load = async function(processor) {
-    const body = (await axios.get(this.endpoint, {...opts, signal: this.aborter.signal})).data;
+    const body = await this._doRequest();
     let data;
     if (processor !== null) {
       data = {};
@@ -160,4 +165,23 @@ export async function uploadResults(onComplete) {
 
 export function createHeatGeneratorLoader(endpoint) {
   return createLoader(endpoint);
+}
+
+
+const rssiDataLoader = createLoader(config.rssiDataEndpoint);
+rssiDataLoader._doRequest = throttle(rssiDataLoader._doRequest, 500);
+
+export function createRssiDataLoader(timerId, address, index) {
+	const nodeTopic = makeTopic('', [timerId, address, index]);
+  return {
+    load: (nodeProcessor, setNodeData) => {
+       const processor= nodeProcessor ? (body, data) => {
+         const nodeData = {};
+         nodeProcessor(body?.[nodeTopic] ?? {}, nodeData);
+         data[nodeTopic] = nodeData;
+       } : null;
+       const setData = (data) => {setNodeData(data?.[nodeTopic] ?? {});};
+       rssiDataLoader.load(processor, setData);
+    }
+  }
 }

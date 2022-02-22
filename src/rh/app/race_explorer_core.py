@@ -193,7 +193,7 @@ def import_event(data, rhserver):
     pilots = data['pilots']
     stages = data['stages']
 
-    RHData = rhserver['RHData']
+    RHData = rhserver['RHDATA']
     RHData.set_option('eventName', event_name)
     RHData.set_optionJson('eventClasses', race_classes)
     if 'description' in data:
