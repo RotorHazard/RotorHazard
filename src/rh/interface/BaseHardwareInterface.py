@@ -212,7 +212,7 @@ class BaseHardwareInterface:
         # NB: crossing race times are relative to the race start time
         crossing_race_time = trigger_timestamp - self.race_start_time_ms
         if crossing_race_time < 0:
-            logger.warning("{} crossing before race start: {} < {}".format("Enter" if is_crossing else "Exit", trigger_timestamp, self.race_start_time_ms))
+            logger.warning("Node {}: {} crossing before race start: {} < {}".format(node, "Enter" if is_crossing else "Exit", trigger_timestamp, self.race_start_time_ms))
 
         if is_crossing:
             node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
@@ -233,9 +233,9 @@ class BaseHardwareInterface:
         if pass_nadir_rssi is not None:
             node.pass_nadir_rssi = pass_nadir_rssi
         if node.enter_stats_status == DataStatus.RETRIEVED and node.enter_at_sample.timestamp > pass_timestamp:
-            logger.warning("Enter timestamp {} is after pass timestamp {}!!! ".format(node.enter_at_sample.timestamp, pass_timestamp))
+            logger.warning("Node {}: Enter timestamp {} is after pass timestamp {}!!! ".format(node, node.enter_at_sample.timestamp, pass_timestamp))
         if node.exit_stats_status == DataStatus.RETRIEVED and node.exit_at_sample.timestamp < pass_timestamp:
-            logger.warning("Exit timestamp {} is before pass timestamp {}!!! ".format(node.exit_at_sample.timestamp, pass_timestamp))
+            logger.warning("Node {}: Exit timestamp {} is before pass timestamp {}!!! ".format(node, node.exit_at_sample.timestamp, pass_timestamp))
         node.is_crossing = False
         node.enter_at_sample = None
         node.exit_at_sample = None
@@ -246,7 +246,7 @@ class BaseHardwareInterface:
         # NB: lap race times are relative to the race start time
         lap_race_time_ms = pass_timestamp - self.race_start_time_ms
         if lap_race_time_ms < 0:
-            logger.warning("Lap before race start: {} < {}".format(pass_timestamp, self.race_start_time_ms))
+            logger.warning("Node {}: Lap before race start: {} < {}".format(node, pass_timestamp, self.race_start_time_ms))
         if self.is_racing and pass_peak_rssi:
             node.pass_history.append(RssiSample(pass_timestamp, pass_peak_rssi))
 

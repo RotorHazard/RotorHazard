@@ -89,7 +89,7 @@ def unpack_rssi(node, data):
 def unpack_time_since(node, cmd, data):
     ms_since = unpack_16(data)
     if ms_since >= 0xFFFF:
-        logger.warning("Command {}: maximum lookback time exceeded on node {}".format(cmd, node))
+        logger.warning("Command {:#04x}: maximum lookback time exceeded on node {}".format(cmd, node))
     return ms_since
 
 
