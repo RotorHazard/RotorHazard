@@ -357,7 +357,7 @@ void RssiNode::endCrossing(uint8_t trigger)
         lastExit.rssi = state.rssi;
         lastExit.timestamp = state.rssiTimestamp;
 #ifdef USE_PH
-        lastEnter.lifetime = trigger;
+        lastExit.lifetime = trigger;
 #endif
         lastExit.lap = lastPass.lap + 1;
     }
