@@ -836,6 +836,7 @@
 				node: parseInt($(this).data('node')),
 				pilot: parseInt($(this).val())
 			};
+			console.log(parseInt($(this).val()));
 			socket.emit('alter_heat', data);
 		});
 
@@ -883,6 +884,7 @@
 				suffix: $('#generator_suffix').val(),
 				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
 			};
+			console.log(data);
 			$('button#generate_heats').prop('disabled', true);
 			socket.emit('generate_heats', data);
 			return false;

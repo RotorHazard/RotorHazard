@@ -1,0 +1,513 @@
+ {% extends "layout-basic.html" %} {% block title %}{% endblock %} {% block head %}
+<link rel="stylesheet" href="/static/streetleague.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'exporter_list',
+	];
+
+	$(document).ready(function () {
+		var heartbeatCounter = 0;
+		var pilotCount = 0;
+		var pilots;
+		var pilotRaceTotalPoints;
+		var exportData;
+		var classes;
+		var pilotsLoaded = false;
+		var exportLoaded = false;
+		var classesLoaded = false;
+
+		//heat generation state
+		var heatsCreated = 0;
+		var generatingHeat = false;
+		var newRoundData;
+		var createdHeatIDs = [];
+
+		socket.emit('load_data', {'load_types': [
+			'heat_data',
+			'pilot_data',
+			'result_data',
+			'leaderboard',
+			'class_data'
+		]});
+
+		// set admin flag
+		rotorhazard.admin = true;
+		rotorhazard.saveData();
+		$('nav li').removeClass('admin-hide');
+
+		socket.on('exporter_list', function (msg) {
+			$('#exporter_list').empty();
+			if ('exporters' in msg && msg.exporters.length) {
+				msg.exporters.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
+				for (idx in msg.exporters) {
+					var ex = msg.exporters[idx];
+					$('#exporter_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
+				}
+				$('#exporter_list').prop('disabled', false);
+				$('#export_database').prop('disabled', false);
+			} else {
+				$('#exporter_list').append('<option value="-">' + __('No Exporters') + '</option>');
+				$('#exporter_list').prop('disabled', true);
+				$('#export_database').prop('disabled', true);
+			}
+		});
+
+		function getPilotByID(pilot_id){
+			for (var key in pilots){
+				var pilot = pilots[key];
+				if(pilot['pilot_id']==pilot_id){
+					return pilot['callsign'];
+				}
+			}
+			return "";
+		}
+
+		function calculateRoundPoints(raceResults){
+		        var SLRounds = {};
+		        var raceClasses = raceResults["classes"];
+						for (var key in raceClasses) {
+							var roundNumber = raceClasses[key];
+							var pilotHeats = roundNumber['leaderboard']['by_race_time'];
+							var points = pilotHeats.length;
+							SLRounds[key] = []; //{"1":[{"callsign":"Vanover","points":32,"laps":3,"heatTime":123}],"2":[],"3":[]}
+							for(var pilotHeatKey in pilotHeats){
+								var pilotHeat = pilotHeats[pilotHeatKey];
+								var pilot_id = pilotHeat['pilot_id'];
+								var heatTime = pilotHeat['total_time_raw'];
+								var laps = pilotHeat['laps'];
+								var pilotID = pilotHeat['pilot_id'];
+								SLRounds[key].push({"pilot_id":pilot_id,"points":String(points),"laps":String(laps),"heatTime":String(heatTime)});
+								points -= 1;
+							}
+						}
+						//CAN'T FIGURE OUT HOW TO DO JAVASCRIPT JSON SHIT....
+		        return SLRounds;
+		}
+
+		function getPilotPointsByRound(rounds){
+			var pilotPoints = {};
+
+			//Let's get a list of pilots who have scored points
+			var scoringPilots = [];
+			var roundNumber = 0;
+			for (var roundKey in rounds) {
+				var round = rounds[roundKey];
+				roundNumber+=1;
+				for (var i = 0; i < round.length; i++) {
+					var pilotHeat = round[i];
+					var pilot_id = pilotHeat['pilot_id'];
+					if(scoringPilots.includes(pilot_id)){
+					}else{
+						scoringPilots.push(pilot_id);
+					}
+				}
+			}
+
+			for (var roundKey in rounds) {
+				var round = rounds[roundKey];
+				var pilotsInThisRound = [];
+				for (var i = 0; i < round.length; i++) {
+					var pilotHeat = round[i];
+					var pilot_id = pilotHeat['pilot_id'];
+					pilotsInThisRound.push(pilot_id);
+				}
+				//this gets a list of pilots who never made a wholeshot in this round
+				let missingPilots = scoringPilots.filter(x => !pilotsInThisRound.includes(x));
+				for (var k = 0; k < missingPilots.length; k++) {
+					var missingPilotId = missingPilots[k];
+					round.push({"pilot_id": missingPilotId, points: '0', laps: '0', heatTime: 'dnf'})
+				}
+			}
+
+			//create a list of pilots containing the points they earned in each round
+
+			for (var roundKey in rounds) {
+				var round = rounds[roundKey];
+				for (var i = 0; i < round.length; i++) {
+					var pilotHeat = round[i];
+					var pilot_id = pilotHeat['pilot_id'];
+					var pilotRoundPoints = Number(pilotHeat['points']);
+					if(pilot_id in pilotPoints){
+						pilotPoints[pilot_id].push({'pilot_id':pilot_id, 'points':pilotRoundPoints});
+					}else{
+						pilotPoints[pilot_id] = [{'pilot_id':pilot_id, 'points':pilotRoundPoints}];
+					}
+				}
+			}
+
+			return pilotPoints;
+		}
+
+		function getPilotTotalsFromRounds(pilotPoints){
+			//create a list of pilots and their total points
+			console.log("pilotPoints");
+			console.log(pilotPoints);
+			var pilotTotalPoints = [];
+			for (var pilot_id in pilotPoints) {
+				var pilotPointsRounds = pilotPoints[pilot_id];
+				var totalPoints = 0;
+				for (var i = 0; i < pilotPointsRounds.length; i++) {
+					totalPoints += pilotPointsRounds[i]['points'];
+				}
+				var pilotJSON = {'pilot_id': pilot_id, "points": Number(totalPoints)};
+				pilotTotalPoints.push(pilotJSON);
+			}
+
+			//sort the list
+			pilotTotalPoints.sort((a,b) => b.points - a.points);
+	    return pilotTotalPoints;
+		}
+
+		function slformat(raceResults){
+			if(pilotsLoaded && exportLoaded && classesLoaded){
+				var rounds = calculateRoundPoints(raceResults);
+				var pilotPointsByRound = getPilotPointsByRound(rounds);
+				pilotRaceTotalPoints = getPilotTotalsFromRounds(pilotPointsByRound);
+				createSLTable(pilotPointsByRound, pilotRaceTotalPoints);
+			}else{
+				console.log("still waiting on data...");
+			}
+		}
+
+		function getPilotTotal(pilot_id, raceData){
+			for (var i = 0; i < raceData.length; i++) {
+				var pilotData = raceData[i];
+				if(pilotData['pilot_id'].localeCompare(pilot_id)==0){
+					return pilotData;
+				}
+			}
+		}
+
+		function createSLTable(roundData, raceData){
+			//clear the dom
+			document.getElementsByClassName('scoreTable')[0].innerHTML = "";
+			var headers = ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5", "Round 6"];
+			var table = document.getElementsByClassName('scoreTable')[0];
+			var headerRow = document.createElement("tr");
+			for (var rowIndex = -2; rowIndex < roundData[raceData[0]['pilot_id']].length+1; rowIndex++) {
+				if(rowIndex==-2){
+					var cell = document.createElement("th");
+					cell.innerHTML = "Rank";
+					headerRow.appendChild(cell);
+				}else if(rowIndex==-1){
+					var cell = document.createElement("th");
+					cell.innerHTML = "Pilot";
+					headerRow.appendChild(cell);
+				}else if(rowIndex==roundData[raceData[0]['pilot_id']].length){
+					var cell = document.createElement("th");
+					cell.innerHTML = "Total";
+					headerRow.appendChild(cell);
+				}else{
+					var cell = document.createElement("th");
+					cell.innerHTML = "Round "+(rowIndex+1);
+					headerRow.appendChild(cell);
+				}
+			}
+
+			table.appendChild(headerRow);
+			var rank = 1;
+			for (var i = 0; i < raceData.length; i++) {
+				//var callsign = raceData[i]['pilot_id'];
+				var pilot_id = raceData[i]['pilot_id'];
+				var row = document.createElement("tr");
+				for (var rowIndex = -2; rowIndex < roundData[pilot_id].length+1; rowIndex++) {
+					var roundNumber = rowIndex;
+					if(rowIndex==-2){
+						cell = document.createElement("td");
+						cell.innerHTML = "#"+rank;
+						row.appendChild(cell);
+						rank+=1;
+					}else if(roundNumber<0){
+						cell = document.createElement("td");
+						cell.innerHTML = getPilotByID(pilot_id);
+						row.appendChild(cell);
+					}else if(roundNumber==roundData[pilot_id].length){
+						cell = document.createElement("td");
+						cell.innerHTML = getPilotTotal(pilot_id,raceData)['points'];
+						row.appendChild(cell);
+					}else{
+						cell = document.createElement("td");
+						cell.innerHTML = roundData[pilot_id][roundNumber]['points'];
+						row.appendChild(cell);
+					}
+				}
+				table.appendChild(row);
+
+			}
+		}
+
+		$('.sortButton').click(sortTable);
+
+		function sortTable(n) {
+			var n = Number(document.getElementById("quantity").value);
+			if(n==0){
+				console.log("n="+n);
+				n=7;
+			}
+			n+=1;
+		  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+		  table = document.getElementsByClassName("scoreTable")[0];
+		  switching = true;
+		  // Set the sorting direction to ascending:
+		  dir = "desc";
+		  /* Make a loop that will continue until
+		  no switching has been done: */
+		  while (switching) {
+		    // Start by saying: no switching is done:
+		    switching = false;
+		    rows = table.rows;
+		    /* Loop through all table rows (except the
+		    first, which contains table headers): */
+		    for (i = 1; i < (rows.length - 1); i++) {
+		      // Start by saying there should be no switching:
+		      shouldSwitch = false;
+		      /* Get the two elements you want to compare,
+		      one from current row and one from the next: */
+		      x = rows[i].getElementsByTagName("TD")[n];
+		      y = rows[i + 1].getElementsByTagName("TD")[n];
+		      /* Check if the two rows should switch place,
+		      based on the direction, asc or desc: */
+		      if (dir == "asc") {
+		        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+		          // If so, mark as a switch and break the loop:
+		          shouldSwitch = true;
+		          break;
+		        }
+		      } else if (dir == "desc") {
+		        if (Number(x.innerHTML.toLowerCase()) < Number(y.innerHTML.toLowerCase())) {
+		          // If so, mark as a switch and break the loop:
+		          shouldSwitch = true;
+		          break;
+		        }
+		      }
+		    }
+		    if (shouldSwitch) {
+		      /* If a switch has been marked, make the switch
+		      and mark that a switch has been done: */
+		      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+		      switching = true;
+		      // Each time a switch is done, increase this count by 1:
+		      switchcount ++;
+		    } else {
+		      /* If no switching has been done AND the direction is "asc",
+		      set the direction to "desc" and run the while loop again. */
+		      if (switchcount == 0 && dir == "asc") {
+		        dir = "desc";
+		        switching = true;
+		      }
+		    }
+		  }
+		}
+
+		socket.on('pilot_data', function (msg) {
+			console.log("pilot data loaded");
+			pilotsLoaded = true;
+			pilotCount = msg.pilots.length;
+			pilots = msg.pilots;
+			console.log("pilots")
+			console.log(pilots);
+			slFormatData = slformat(exportData);
+		});
+
+		socket.on('class_data', function (msg) {
+			console.log("class data loaded");
+			classesLoaded = true;
+			classes = msg.classes;
+			slFormatData = slformat(exportData);
+			update_class_selectors(msg);
+		});
+
+		$('button#generate_heats').click(function (event) {
+			var heatLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+			var heatPrefix = document.getElementById("generate_round_class").value+" ";
+			var pilotsPerHeat = 4;
+			var node = 0;
+			var heatNumber = 0;
+			var reverseOrder = true;
+			var newHeatPilots = {};
+			newRoundData = [];
+			for (var i = 0; i < pilotRaceTotalPoints.length; i++) {
+				var totalPoints = pilotRaceTotalPoints[i]['points'];
+				console.log(i);
+				var pilot_id = pilotRaceTotalPoints[i]['pilot_id'];
+				console.log(String(pilot_id)+": "+String(totalPoints));
+
+				newHeatPilots[node] = parseInt(pilot_id);
+				console.log(newHeatPilots);
+				node+=1;
+				if((node==pilotsPerHeat) || (pilotRaceTotalPoints.length-1==i)){
+					var heatName = heatPrefix+heatLetters[heatNumber];
+					heatNumber +=1;
+					node = 0;
+					newRoundData.push({"heat":newHeatPilots,"note":heatName});
+
+					console.log("pushing round data ")
+					console.log({"heat":newHeatPilots,"note":heatName});
+					newHeatPilots = {};
+				}
+			}
+			console.log(newRoundData);
+			if(reverseOrder){
+				newRoundData.reverse();
+			}
+			addGeneratedHeat();
+		});
+		function addGeneratedHeat() {
+			generatingHeat = true;
+			heatsCreated = 0;
+			//socket.emit('add_race_class');
+			for(var i=0;i<newRoundData.length; i++){
+				console.log("adding heat "+i);
+				socket.emit('add_heat');
+			}
+			generatingHeat = true;
+		}
+
+		socket.on('current_heat', function(msg) {
+			slFormatData = slformat(exportData);
+			console.log("got new heat");
+		});
+
+		function getNewHeatData() {
+			if(generatingHeat){
+				if(heatsCreated<newRoundData.length){
+					heatsCreated+=1;
+					console.log("editing heat "+heatsCreated);
+					console.log(msg);
+					console.log(newRoundData);
+					var newHeat = newRoundData[heatsCreated-1]
+					for (var node in newHeat['heat']) {
+						console.log(newHeat);
+						var pilot_id = newHeat['heat'][node];
+						var newNote = newHeat['note'];
+						var newHeatID = getNewHeat(msg.heats, createdHeatIDs);
+
+						if(newHeatID==undefined){
+							heatsCreated-=1;
+							break;
+						}else{
+							var heatEditData = {
+								heat: parseInt(newHeatID),
+								node: parseInt(node),
+								note: newNote,
+								class: parseInt($('#generator_output_class').val()),
+								pilot: parseInt(pilot_id)
+							};
+							console.log(heatEditData);
+							socket.emit('alter_heat', heatEditData);
+						}
+
+					}
+					createdHeatIDs.push(newHeatID);
+				}else{
+					generatingHeat = false;
+					heatsCreated = 0;
+					newRoundData = undefined;
+					createdHeatIDs = [];
+					console.log("done generating heats");
+				}
+			}
+		}
+
+		socket.on('heat_data', function (msg) {
+			getNewHeatData();
+		});
+
+		socket.on('exported_data', function (msg) {
+			exportLoaded = true;
+			var data = msg.data
+			exportData = JSON.parse(data);
+			//createSLTable(slFormatData);
+			//saveAs(new Blob([data], {type: msg.encoding}), msg.filename);
+			slFormatData = slformat(exportData);
+		});
+
+		function getNewHeat(heatData, excludedIDs){
+			for( var key in heatData){
+				var heat = heatData[key];
+				if(heat['note']==null){
+					if(heat['locked']==false){
+						if(excludedIDs.includes(heat['heat_id'])==false){
+							console.log("found new heat!");
+							return heat['heat_id']
+						}
+
+					}
+				}
+			}
+			return undefined;
+		}
+
+		var exportData = {exporter: 'json_complete_results'};
+		socket.emit('export_database', exportData);
+
+		var generateRound
+	});
+
+	function update_class_selectors(class_data) {
+
+		var input_val = $('#generator_input_class').val();
+		var output_val = $('#generator_output_class').val();
+
+		$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
+		$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
+
+		if (class_data.classes.length) {
+			for (var i in class_data.classes) {
+				var race_class = class_data.classes[i];
+
+				if (race_class.name) {
+					race_class_name = race_class.name
+				} else {
+					race_class_name = __('Class') + ' ' + race_class.id
+				}
+
+				if (race_class.name) {
+					$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+					$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+				} else {
+					$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+					$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+				}
+			}
+		}
+
+		if ($('#generator_input_class option[value="' + input_val + '"]').length) {
+			$('#generator_input_class').val(input_val);
+		}
+		if ($('#generator_output_class option[value="' + output_val + '"]').length) {
+			$('#generator_output_class').val(output_val);
+		}
+	}
+</script>
+{% endblock %} {% block content %}
+<table class="scoreTable" id="scoreTable" style="overflow: hidden;">
+</table>
+<!--<p>
+<button class="sortButton">Sort</button>
+	<label for="quantity">Round Number to Sort (0=total)</label>
+	<input type="number" id="quantity" name="quantity" min="1" max="10" value="0">
+</p>
+-->
+<p>
+	<label for="generate_round_class">Round - Heat Name</label><br>
+	<input type="text" id="generate_round_class">
+</p>
+<p>
+	<label for="generator_output_class">Round Class</label><br>
+	<select id="generator_output_class">
+		<option>{{ __('Loading...') }}</option>
+	</select>
+</p>
+<p>
+	<button id=generate_heats>Generate Heats</button>
+
+</p>
+
+
+
+
+{% endblock %}

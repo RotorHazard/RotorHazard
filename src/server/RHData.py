@@ -555,7 +555,7 @@ class RHData():
                 new_pilot.color = init['color']
             if 'video_system' in init:
                 new_pilot.video_system = init['video_system']
-                
+
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
 

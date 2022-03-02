@@ -462,11 +462,26 @@ def render_settings():
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=Config.GENERAL['DEBUG'])
 
-@APP.route('/streetleague')
+@APP.route('/heatgenerator')
+@requires_auth
 def render_streetleague():
     '''Route to streetleague format page.'''
 
-    return render_template('streetleague.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+    return render_template('heatgenerator.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
+        led_events_enabled=led_manager.isEnabled(),
+        vrx_enabled=vrx_controller!=None,
+        num_nodes=RACE.num_nodes,
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
+        node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
+        Debug=Config.GENERAL['DEBUG'])
+
+@APP.route('/streetleaguepoints')
+def render_streetleaguepoints():
+    '''Route to streetleague format page.'''
+
+    return render_template('streetleaguepoints.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
@@ -2718,6 +2733,7 @@ def generate_heats(data):
 
         # commit generated heats to database, lower seeds first
         letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
         for idx, heat in enumerate(reversed(generated_heats), start=1):
             ladder = letters[len(generated_heats) - idx]
             new_heat = RHData.add_heat({
