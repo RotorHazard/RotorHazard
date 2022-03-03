@@ -321,7 +321,8 @@
 		$('button#generate_heats').click(function (event) {
 			var heatLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 			var heatPrefix = document.getElementById("generate_round_class").value+" ";
-			var pilotsPerHeat = 4;
+			var pilotsPerHeat = parseInt($('#pilotsPerHeat').val());
+			console.log("pilots per heat: "+pilotsPerHeat)
 			var node = 0;
 			var heatNumber = 0;
 			var reverseOrder = true;
@@ -490,13 +491,17 @@
 </table>
 <p>
 	<label for="generate_round_class">Round - Heat Name</label><br>
-	<input type="text" id="generate_round_class">
+	<input type="text" id="generate_round_class" value="Round X - Heat">
 </p>
 <p>
 	<label for="generator_output_class">Round Class</label><br>
 	<select id="generator_output_class">
 		<option>{{ __('Loading...') }}</option>
 	</select>
+</p>
+<p>
+	<label for="generate_round_class">Pilots Per Heat</label><br>
+	<input type="number" id="pilotsPerHeat" value=4>
 </p>
 <p>
 	<button id=generate_heats>Generate Heats</button>

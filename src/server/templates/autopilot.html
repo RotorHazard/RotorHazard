@@ -13,7 +13,8 @@
 
 	rotorhazard.show_messages = false;
 	var streamnode = 1;
-	var heatSchedule = 5;
+	var heatScheduleMinute = 5;
+	var heatScheduleSecond = 5;
 	var lastHeat = null;
 	var currentScene = "";
 	var launchDelay = 7;
@@ -46,7 +47,8 @@
 			}
 		})();
 
-		console.log("Heat Schedule (Minutes): "+heatSchedule);
+		console.log("Heat Schedule (Minutes): "+heatScheduleMinute);
+		console.log("Heat Schedule (Seconds): "+heatScheduleSecond);
 		console.log("Launch Delay: "+launchDelay);
 		console.log("FPV feed source names: "+FPVSourceNames);
 		console.log("FPV feed scene name: "+FPVFeedSceneName);
@@ -58,7 +60,8 @@
 		console.log("URL to the remote (or local) OBS instance: "+obsURL);
 		console.log("");
 
-		$('#heatScheduleField').val(heatSchedule);
+		$('#heatScheduleFieldMinute').val(heatScheduleMinute);
+		$('#heatScheduleFieldSecond').val(heatScheduleSecond);
 		$('#launchDelayField').val(launchDelay);
 		$('#commentatorField').val(commentatorSceneName);
 		$('#heatResultsField').val(resultsSceneName);
@@ -130,7 +133,7 @@
 					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(pilotCardsSceneName);} }, 20000);
 					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(commentatorSceneName);} }, 30000);
 				}
-				socket.emit("schedule_race",{"m": heatSchedule, "s":0});
+				socket.emit("schedule_race",{"m": parseInt($('#heatScheduleFieldMinute').val()), "s": parseInt($('#heatScheduleFieldSecond').val())});
 
 			}
 			if(msg['race_status']==2){ //race just stopped
@@ -264,8 +267,9 @@
 </script>
 {% endblock %} {% block content %}
 <p>
-	<label for="heatScheduleField">Heat Schedule (minutes)</label>
-	<input type="number" id="heatScheduleField" name="heatScheduleField" min="1" max="60">
+	<label for="heatScheduleFieldMinute">Heat Schedule</label>
+	<input type="number" id="heatScheduleFieldMinute" name="heatScheduleFieldMinute" min="1" max="60">
+	<input type="number" id="heatScheduleFieldSecond" name="heatScheduleFieldSecond" min="0" max="59">
 </p>
 <p>
 	<label for="launchDelayField">Launch Cam Delay</label>

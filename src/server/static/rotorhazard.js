@@ -449,15 +449,15 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 	if (volume && volume > MIN_LOG_VOL_LIM) {
 		var oscillator = globalAudioCtx.createOscillator();
 		var gainNode = globalAudioCtx.createGain();
-	
+
 		oscillator.connect(gainNode);
 		gainNode.connect(globalAudioCtx.destination);
-	
+
 		if (!duration)
 			duration = 500;
-	
+
 		gainNode.gain.value = volume;
-	
+
 		if (frequency)
 			oscillator.frequency.value = frequency;
 		if (type)
@@ -466,10 +466,10 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 			fadetime = 1;
 		if (callback)
 			oscillator.onended = callback;
-	
+
 		if(isFirefox)
 			fadetime = 0;
-	
+
 		oscillator.start();
 		setTimeout(function(fade){
 			gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
@@ -1155,8 +1155,27 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 		} else if (timer.time_s > -60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
 			var minutes = timer.time_s / -60;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == -600) {
+			speak('<div>' + __l('The course will be closed in') + ' 9 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == -540) {
+			speak('<div>' + __l('The course will be closed in') + ' 8 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == -480) {
+			speak('<div>' + __l('The course will be closed in') + ' 7 ' + __l('Minute') + '</div>', true);
+		} else if (timer.time_s == -420) {
+			speak('<div>' + __l('The course will be closed in') + ' 6 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == -360) {
+			speak('<div>' + __l('The course will be closed in') + ' 5 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == -300) {
+			speak('<div>' + __l('The course will be closed in') + ' 4 ' + __l('Minute') + '</div>', true);
+		} else if (timer.time_s == -240) {
+			speak('<div>' + __l('The course will be closed in') + ' 3 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == -180) {
+			speak('<div>' + __l('The course will be closed in') + ' 2 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == -120) {
+			speak('<div>' + __l('The course will be closed in') + ' 1 ' + __l('Minute') + '</div>', true);
 		} else if (timer.time_s == -60) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
+			speak('<div>' + __l('The course is now closed') + '</div>', true);
 		} else if (timer.time_s == -30) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
 		} else if (timer.time_s == -10) {

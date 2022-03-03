@@ -1992,7 +1992,7 @@ def on_schedule_race(data):
         'scheduled_at': RACE.scheduled_time
         })
 
-    emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
+    #emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
 
 @SOCKET_IO.on('cancel_schedule_race')
 @catchLogExceptionsWrapper
