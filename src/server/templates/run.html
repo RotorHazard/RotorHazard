@@ -492,6 +492,7 @@
 
 		socket.on('current_laps', function (msg) {
 			current_laps = msg.current;
+			console.log(current_laps)
 			current_laps_reversed = false;
 			show_current_laps();
 		});
@@ -551,6 +552,10 @@
 
 					var local_colspan = 2;
 					if(rotorhazard.display_lap_id) {
+						if(curnode_data.finished_flag)
+						{
+							console.log("pilot finished!");
+						}
 						local_colspan = 1;
 						if(lap_num < 0) {
 							lap_num = ' ';

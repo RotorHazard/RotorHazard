@@ -4179,7 +4179,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     lap_time_stamp *= 1000 # store as milliseconds
 
                     lap_number = len(RACE.get_active_laps()[node.index])
-
+                    nascarRule = False
+                    nascarRuleApplies = False
+                    if(nascarRule and RACE.win_status == WinStatus.DECLARED):
+                        nascarRuleApplies = True
                     if lap_number: # This is a normal completed lap
                         # Find the time stamp of the last lap completed (including "late" laps for timing)
                         last_lap_time_stamp = RACE.get_active_laps(True)[node.index][-1]['lap_time_stamp']
@@ -4202,7 +4205,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     node_finished_flag = RACE.get_node_finished_flag(node.index)
                     # set next node race status as 'finished' if winner has been declared
                     #  or timer mode is count-down race and race-time has expired
-                    if RACE.win_status == WinStatus.DECLARED or \
+                    if nascarRuleApplies or \
                                     (race_format.race_mode == 0 and RACE.timer_running is False):
                         RACE.set_node_finished_flag(node.index)
 
@@ -4225,8 +4228,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 lap_ok_flag = False
 
                     if lap_ok_flag:
+                        #let's not always do NASCAR rule.
 
-                        if RACE.win_status == WinStatus.DECLARED and (RACE.format.team_racing_mode or \
+                        if nascarRuleApplies and (RACE.format.team_racing_mode or \
                                                                         node_finished_flag):
                             lap_late_flag = True  # "late" lap pass (after race winner declared)
                             if RACE.format.team_racing_mode and pilot_obj:
@@ -4292,9 +4296,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         # announce lap
                         if lap_number > 0:
                             check_leader = race_format.win_condition != WinCondition.NONE and \
-                                           RACE.win_status != WinStatus.DECLARED
+                                           not nascarRuleApplies
                             # announce pilot lap number unless winner declared and pilot has finished final lap
-                            lap_id = lap_number if RACE.win_status != WinStatus.DECLARED or \
+                            lap_id = lap_number if not nascarRuleApplies or \
                                                    (not node_finished_flag) else None
                             if RACE.format.team_racing_mode:
                                 team_name = pilot_obj.team if pilot_obj else ""
