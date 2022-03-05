@@ -497,14 +497,14 @@ class RHInterface(BaseHardwareInterface):
         node = self.nodes[node_index]
         f = node.data_logger
         if f is not None:
-            self._flush_data_logger(f)
+            self._flush_data_logger(f, True)
             f.close()
             logger.info("Stopped data logging for node {0} ({1})".format(node, f.name))
             node.data_logger = None
 
-    def _flush_data_logger(self, f):
+    def _flush_data_logger(self, f, force=False):
         buf = f.data_buffer
-        if len(buf) == buf.maxlen:
+        if force or len(buf) > buf.maxlen:
             for r in buf:
                 r_cmd, r_bytes, r_values = r
                 if self.data_logger_format == BINARY_RECORD_FORMAT:
