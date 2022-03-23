@@ -485,9 +485,7 @@ def render_settings():
             message += __(item['message'])
             message += '</li>'
             server_messages_formatted += message
-    if rhconfig.GENERAL['configFile'] == 'error':
-        server_messages_formatted += '<li class="config config-bad warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
-    elif rhconfig.GENERAL['configFile'] == 'defaults':
+    if rhconfig.GENERAL['configFile'] == 'defaults':
         server_messages_formatted += '<li class="config config-none warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
 
     return render_template('settings.html', serverInfo=serverInfo, getOption=RHDATA.get_option, __=__,

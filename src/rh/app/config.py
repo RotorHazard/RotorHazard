@@ -2,6 +2,7 @@ import logging
 import random
 import json
 import jsonschema
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -137,3 +138,4 @@ class Config:
         except ValueError as ex:
             self.GENERAL['configFile'] = 'error'
             logger.error("Configuration file invalid, using defaults; error is: {}".format(ex))
+            sys.exit(1)
