@@ -1,5 +1,5 @@
 import unittest
-from rh.interface import calculate_checksum, ExtremumFilter, RssiHistory
+from rh.interface import calculate_checksum, ensure_iter, ExtremumFilter, RssiHistory
 from rh.interface.MockInterface import MockInterface
 
 
@@ -8,6 +8,12 @@ class InterfaceTest(unittest.TestCase):
         data = bytearray([200, 145])
         checksum = calculate_checksum(data)
         self.assertEqual(89, checksum)
+
+    def test_ensure_iter(self):
+        self.assertEqual(['foo'], ensure_iter('foo'))
+        self.assertEqual(['foo'], ensure_iter(['foo']))
+        self.assertEqual([1], ensure_iter(1))
+        self.assertEqual([1], ensure_iter([1]))
 
     def test_extremum_filter(self):
         f = ExtremumFilter()

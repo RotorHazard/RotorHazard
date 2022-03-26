@@ -63,7 +63,7 @@ def calculate_checksum(data: bytearray):
 
 
 def ensure_iter(l):
-    if not hasattr(l, '__iter__'):
+    if type(l) == str or not hasattr(l, '__iter__'):
         l = [l]
     return l
 
