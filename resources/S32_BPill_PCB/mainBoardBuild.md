@@ -216,7 +216,7 @@ protected but the INA219 is not.
 
 Install the buzzer by soldering the + pin the lower pad labeled (+). The
 long pin on the buzzer is (+). Note that after applying power if the
-buzzer is constantly beeping, it is because the BPill is not yet
+buzzer is constantly beeping, it may be because the BPill is not yet
 flashed. To silence it, put the clip on the '1' position of the Boot0
 jumper on the BPill module and press the reset button on the BPill.
 Leave the clip in place until the initial flash of the BPill is
@@ -226,14 +226,18 @@ left in place (see below).
 
 #### ​11) Boot Jumper
 
-After completing the build and installing the BPill, connect a [jumper wire](https://www.adafruit.com/product/1951)
+After completing the build and installing the BPill, remove the 2-pin header clip on the Boot0 pin and
+connect a [jumper wire](https://www.adafruit.com/product/1951)
 between the Boot0 pins on the BPill and the PCB. If you install the Boot0
 jumper wire (and leave it installed) then the RPi will always be able to
-flash the BPill. Without the wire it will work if the RH firmware is
+flash the BPill. Without the wire the flashing will work if the RH firmware is
 operational on the BPill (it has a jump-to-bootloader command), but if
 not then you'd need to move the 2-pin header clip to the '1' position on
 Boot0 (covering the pins designated as '3v3' and 'Boot0' in the pictures
 below).
+
+A 2-pin header clip should be present at the '0' position on Boot1
+(covering the pins designated as '3v3' and 'GND' in the pictures below).
 
 The location of the wire jumper is based on whether you used a Blue Pill
 or a RobotDyn Black Pill module:
