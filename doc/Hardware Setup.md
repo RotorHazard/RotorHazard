@@ -11,7 +11,16 @@ A directional RF shield significantly improves the system's ability to reject fa
 See '[doc/Real Time Clock.md](Real%20Time%20Clock.md)' for more information on installing a real-time clock module to improve how the system maintains its date and time.
 
 ### WS2812b LED Support
-The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under [doc/Software Setup.md](Software%20Setup.md).
+
+For the [S32_BPill board](../resources/S32_BPill_PCB/README.md) connect to J6 "Pi_LED" (near the middle of the board); pin 1 is ground, pin 2 is signal.
+
+For the [6 Node STM32](../resources/6_Node_BPill_PCB/README.md) board use the 'LEDS' connector.
+
+For the [RotorHazard PCB 1.2 board](../resources/PCB/README.md) use the LED OUT connector (beware of overloading the 5V power supply).
+
+See [WS2812b LED Support](Software%20Setup.md#ws2812b-led-support) under [doc/Software Setup.md](Software%20Setup.md).
+
+For direct wiring to the Pi: The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source.
 
 ![led wiring](img/GPIO.jpg)
 

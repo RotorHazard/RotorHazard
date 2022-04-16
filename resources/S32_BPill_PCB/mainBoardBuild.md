@@ -254,6 +254,10 @@ or a RobotDyn Black Pill module:
 
 <br>
 
+Note: For WS2812b LED strip connect to J6 "Pi_LED" (near the middle of the board); pin 1 is ground, pin 2 is signal.
+
+<br>
+
 -------------------------------------------------------
 
 See also: [RotorHazard S32_BPill Node Board Assembly](nodeAssembly.md)

@@ -30,7 +30,7 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * Optional "extra" LED, which can be panel mounted on the timer case
 
-* Connector pads for LED-strips -- one to the Raspberry Pi, one to the STM32 processor
+* Connector pads for LED-strips: J6 "Pi_LED" (near the middle of the board); pin 1 is ground, pin 2 is signal (going to GPIO10 on the Raspberry Pi)
 <br>
 
 Main PCB:<br>
