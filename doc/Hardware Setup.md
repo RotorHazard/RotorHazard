@@ -4,6 +4,8 @@ See the [RotorHazard Build Resources](../resources/README.md) page for informati
 
 For general information on the Arduino-nodes version of the timer, see '[doc/Timer Build with Arduinos.md](Timer%20Build%20with%20Arduinos.md)'
 
+(If it seems like one or more RX5808 modules are not responding to frequency changes, if may be that they need the "SPI mod" -- see [here for more info](Timer%20Build%20with%20Arduinos.md#rx5808-video-receivers).)
+
 ### Add a Directional RF Shield
 A directional RF shield significantly improves the system's ability to reject false passes. See [RF shielding](Shielding%20and%20Course%20Position.md)
 
