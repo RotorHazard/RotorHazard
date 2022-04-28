@@ -124,7 +124,7 @@ void RssiNode::setRxModuleToFreq(uint16_t vtxFreq)
     //  MSB 4 bits are zeros
     //  Data Packet is: register address (4-bits) = 0x1, read/write bit = 1 for read, data D0-D15 stored in vtxHexVerify, data15-19=0x0
 
-    delay(20); // IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, can be longer but not shorter). Erroneous results will occur if delay is too short
+    delay(30); // IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, 30ms is safer, can be longer but not shorter). Erroneous results will occur if delay is too short
 
     rx5808SerialEnableHigh();
     rx5808SerialEnableLow();
