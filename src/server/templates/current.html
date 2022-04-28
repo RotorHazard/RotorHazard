@@ -143,6 +143,7 @@
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#display_laps_reversed').prop("checked", rotorhazard.display_laps_reversed);
+		$('#display_chan_freq').prop("checked", rotorhazard.display_chan_freq);
 		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
 		$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
@@ -223,6 +224,7 @@
 					$('#s_channel_' + i).val(fObj.frequency);
 					$('#f_table_' + i).val(fObj.fString);
 					freq.updateBlock(fObj, i);
+					$('.channel-block[data-node="' + i + '"]').toggle(rotorhazard.display_chan_freq);
 				}
 			}
 		});
@@ -482,6 +484,7 @@
 				if (hn.callsign) {
 					cs.html(hn.callsign);
 					cs.parent().show();
+					$('.channel-block[data-node="' + idx + '"]').toggle(rotorhazard.display_chan_freq);
 				} else {
 					cs.parent().hide();
 				}
@@ -639,6 +642,14 @@
 			rotorhazard.display_laps_reversed = $(this).prop('checked');
 			rotorhazard.saveData();
 			show_current_laps();
+		});
+
+		$('#display_chan_freq').change(function (event) {
+			rotorhazard.display_chan_freq = $(this).prop('checked');
+			rotorhazard.saveData();
+			for (i = 0; i < rotorhazard.nodes.length; i++) {
+				$('.channel-block[data-node="' + i + '"]').toggle(rotorhazard.display_chan_freq);
+			}
 		});
 
 		socket.on('race_format', function (msg) {
@@ -873,6 +884,14 @@
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Node Information') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="display_chan_freq"> {{ __('Channel and frequency') }}</label></li>
 				</ul>
 			</li>
 		</ol>
