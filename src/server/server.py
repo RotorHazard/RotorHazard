@@ -477,6 +477,20 @@ def render_streetleague():
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=Config.GENERAL['DEBUG'])
 
+@APP.route('/streetleaguetimes')
+def render_streetleaguetimes():
+    '''Route to streetleague format page.'''
+
+    return render_template('streetleaguetimes.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
+        led_events_enabled=led_manager.isEnabled(),
+        vrx_enabled=vrx_controller!=None,
+        num_nodes=RACE.num_nodes,
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
+        node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
+        Debug=Config.GENERAL['DEBUG'])
+
 @APP.route('/streetleaguepoints')
 def render_streetleaguepoints():
     '''Route to streetleague format page.'''
@@ -1291,6 +1305,7 @@ def on_add_race_class():
     RHData.add_raceClass()
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
+    export_to_AWS("classes.json", json.dumps(get_class_data(nobroadcast=True)))
 
 @SOCKET_IO.on('duplicate_race_class')
 @catchLogExceptionsWrapper
@@ -1299,6 +1314,7 @@ def on_duplicate_race_class(data):
     RHData.duplicate_raceClass(data['class'])
     emit_class_data()
     emit_heat_data()
+    export_to_AWS("classes.json", json.dumps(get_class_data(nobroadcast=True)))
 
 @SOCKET_IO.on('alter_race_class')
 @catchLogExceptionsWrapper
@@ -1316,6 +1332,7 @@ def on_alter_race_class(data):
         emit_heat_data() # Update class names in heat displays
     if 'class_format' in data:
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
+    export_to_AWS("classes.json", json.dumps(get_class_data(nobroadcast=True)))
 
 @SOCKET_IO.on('delete_class')
 @catchLogExceptionsWrapper
@@ -1325,6 +1342,7 @@ def on_delete_class(data):
     if result:
         emit_class_data()
         emit_heat_data()
+    export_to_AWS("classes.json", json.dumps(get_class_data(nobroadcast=True)))
 
 @SOCKET_IO.on('add_pilot')
 @catchLogExceptionsWrapper
@@ -1332,6 +1350,7 @@ def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     RHData.add_pilot()
     emit_pilot_data()
+    export_to_AWS("pilots.json", json.dumps(get_pilot_data(nobroadcast=True)))
 
 @SOCKET_IO.on('alter_pilot')
 @catchLogExceptionsWrapper
@@ -1350,6 +1369,7 @@ def on_alter_pilot(data):
 
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
     RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    export_to_AWS("pilots.json", json.dumps(get_pilot_data(nobroadcast=True)))
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1360,6 +1380,7 @@ def on_delete_pilot(data):
     if result:
         emit_pilot_data()
         emit_heat_data()
+    export_to_AWS("pilots.json", json.dumps(get_pilot_data(nobroadcast=True)))
 
 @SOCKET_IO.on('add_profile')
 @catchLogExceptionsWrapper
@@ -1647,6 +1668,15 @@ def on_reset_database(data):
 
     Events.trigger(Evt.DATABASE_RESET)
 
+def export_to_AWS(filename, contents):
+    if(Config.AWS!={}):
+        S3 = Config.AWS['S3']
+        S3.Bucket('sl-rotorhazard').put_object(Key=filename, Body=str(contents))
+        logger.info('Exported to AWS')
+        logger.info('File: '+str(filename))
+    else:
+        logger.info('AWS not configured')
+
 @SOCKET_IO.on('export_database')
 @catchLogExceptionsWrapper
 def on_export_database_file(data):
@@ -1666,8 +1696,13 @@ def on_export_database_file(data):
                     'data' : export_result['data']
                 }
                 emit('exported_data', emit_payload)
-
+                pilotsData = json.dumps(get_pilot_data(nobroadcast=True))
+                classesData = json.dumps(get_class_data(nobroadcast=True))
+                export_to_AWS("results.json", export_result['data'])
+                export_to_AWS("classes.json", classesData)
+                export_to_AWS("pilots.json", pilotsData)
                 Events.trigger(Evt.DATABASE_EXPORT)
+
             except Exception:
                 logger.exception("Error downloading export file")
                 emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
@@ -3550,8 +3585,7 @@ def emit_heat_data(**params):
     else:
         SOCKET_IO.emit('heat_data', emit_payload)
 
-def emit_class_data(**params):
-    '''Emits class data.'''
+def get_class_data(**params):
     current_classes = []
     for race_class in RHData.get_raceClasses():
         current_class = {}
@@ -3583,6 +3617,11 @@ def emit_class_data(**params):
         'classes': current_classes,
         'formats': formats
     }
+    return emit_payload
+
+def emit_class_data(**params):
+    '''Emits class data.'''
+    emit_payload = get_class_data(**params)
     if ('nobroadcast' in params):
         emit('class_data', emit_payload)
     elif ('noself' in params):
@@ -3590,7 +3629,7 @@ def emit_class_data(**params):
     else:
         SOCKET_IO.emit('class_data', emit_payload)
 
-def emit_pilot_data(**params):
+def get_pilot_data(**params):
     '''Emits pilot data.'''
     pilots_list = []
     for pilot in RHData.get_pilots():
@@ -3627,6 +3666,11 @@ def emit_pilot_data(**params):
     emit_payload = {
         'pilots': pilots_list
     }
+    return emit_payload
+
+def emit_pilot_data(**params):
+    '''Emits pilot data.'''
+    emit_payload = get_pilot_data(**params)
     if ('nobroadcast' in params):
         emit('pilot_data', emit_payload)
     elif ('noself' in params):

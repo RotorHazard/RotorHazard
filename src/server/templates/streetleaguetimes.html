@@ -32,7 +32,7 @@
 	 var generatingHeat = false;
 	 var newRoundData;
 	 var createdHeatIDs = [];
-
+	 socket.emit('export_to_S3');
 	 socket.emit('load_data', {'load_types': [
 		 'heat_data',
 		 'pilot_data',
@@ -76,6 +76,7 @@
 	 function calculateRoundPoints(raceResults){
 					 var SLRounds = {};
 					 var raceClasses = raceResults["classes"];
+					 console.log(raceClasses);
 					 for (var key in raceClasses) {
 						 var roundNumber = raceClasses[key];
 						 var pilotHeats = roundNumber['leaderboard']['by_race_time'];
@@ -86,8 +87,9 @@
 							 var pilot_id = pilotHeat['pilot_id'];
 							 var heatTime = pilotHeat['total_time_raw'];
 							 var laps = pilotHeat['laps'];
+							 console.log("laps: "+laps);
 							 var pilotID = pilotHeat['pilot_id'];
-							 SLRounds[key].push({"pilot_id":pilot_id,"points":String(points),"laps":String(laps),"heatTime":String(heatTime)});
+							 SLRounds[key].push({"pilot_id":pilot_id,"points":points,"laps":laps,"heatTime":String(heatTime)});
 							 points -= 1;
 						 }
 					 }
@@ -126,7 +128,7 @@
 			 let missingPilots = scoringPilots.filter(x => !pilotsInThisRound.includes(x));
 			 for (var k = 0; k < missingPilots.length; k++) {
 				 var missingPilotId = missingPilots[k];
-				 round.push({"pilot_id": missingPilotId, points: '0', laps: '0', heatTime: 'dnf'})
+				 round.push({"pilot_id": missingPilotId, points: 0, laps: 0, heatTime: 120000})
 			 }
 		 }
 
@@ -138,10 +140,12 @@
 				 var pilotHeat = round[i];
 				 var pilot_id = pilotHeat['pilot_id'];
 				 var pilotRoundPoints = Number(pilotHeat['points']);
+				 var pilotRoundTime = pilotHeat['heatTime'];
+				 var pilotRoundLaps = pilotHeat['laps'];
 				 if(pilot_id in pilotPoints){
-					 pilotPoints[pilot_id].push({'pilot_id':pilot_id, 'points':pilotRoundPoints});
+					 pilotPoints[pilot_id].push({'pilot_id':pilot_id, 'points':pilotRoundPoints, 'laps':pilotRoundLaps, 'heatTime':pilotRoundTime});
 				 }else{
-					 pilotPoints[pilot_id] = [{'pilot_id':pilot_id, 'points':pilotRoundPoints}];
+					 pilotPoints[pilot_id] = [{'pilot_id':pilot_id, 'points':pilotRoundPoints, 'laps':pilotRoundLaps, 'heatTime':pilotRoundTime}];
 				 }
 			 }
 		 }
@@ -160,7 +164,7 @@
 			 for (var i = 0; i < pilotPointsRounds.length; i++) {
 				 totalPoints += pilotPointsRounds[i]['points'];
 			 }
-			 var pilotJSON = {'pilot_id': pilot_id, "points": Number(totalPoints)};
+			 var pilotJSON = {'pilot_id': pilot_id, "points": String(totalPoints)};
 			 pilotTotalPoints.push(pilotJSON);
 		 }
 
@@ -190,6 +194,8 @@
 	 }
 
 	 function createSLTable(roundData, raceData){
+		 console.log("debug");
+		 console.log(roundData);
 		 //clear the dom
 		 document.getElementsByClassName('scoreTable')[0].innerHTML = "";
 		 var headers = ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5", "Round 6"];
@@ -262,7 +268,11 @@
 					row.appendChild(cell);
 				}else{
 					cell = document.createElement("td");
-					cell.innerHTML = roundData[pilot_id][roundNumber]['points'];
+					cell.innerHTML = roundData[pilot_id][roundNumber]['laps']+"/"+formatTimeMillis(roundData[pilot_id][roundNumber]['heatTime']);
+					//cell.innerHTML = roundData[pilot_id][roundNumber]['points'];
+					if(roundData[pilot_id][roundNumber]['points']==0){
+						cell.innerHTML = "dns";
+					}
 					row.appendChild(cell);
 				}
 			}
@@ -339,6 +349,7 @@
 		 pilotsLoaded = true;
 		 pilotCount = msg.pilots.length;
 		 pilots = msg.pilots;
+		 console.log(msg);
 	 });
 
 	 socket.on('class_data', function (msg) {
@@ -403,6 +414,23 @@
 	 socket.on('enter_and_exit_at_levels', function(msg) {
 		 console.log("got new heat");
 	 });
+
+	 function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
+	 	s = Math.round(s);
+	 	var ms = s % 1000;
+	 	s = (s - ms) / 1000;
+	 	var secs = s % 60;
+	 	var mins = (s - secs) / 60;
+
+	 	if (!formatted_time) {
+	 		timeformat = '{m}:{s}.{d}';
+	 	}
+	 	var formatted_time = timeformat.replace('{d}', pad(ms, 3));
+	 	formatted_time = formatted_time.replace('{s}', pad(secs));
+	 	formatted_time = formatted_time.replace('{m}', mins)
+
+	 	return formatted_time;
+	 }
 
 	 function populateNewHeats(msg) {
 		 if(generatingHeat){

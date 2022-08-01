@@ -4,6 +4,7 @@ Global configurations
 import logging
 import random
 import json
+import boto3
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ LED = {}
 SERIAL_PORTS = []
 LOGGING = {}
 VRX_CONTROL = {}
+AWS = {}
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
@@ -76,7 +78,12 @@ try:
         LED.update(ExternalConfig['LED'])
     if 'VRX_CONTROL' in ExternalConfig:
         VRX_CONTROL.update(ExternalConfig['VRX_CONTROL'])
-
+    if 'AWS' in ExternalConfig:
+        AWS.update(ExternalConfig['AWS'])
+        ACCESS_ID = AWS['ACCESS_ID']
+        ACCESS_KEY = AWS['ACCESS_KEY']
+        s3 = boto3.resource('s3',aws_access_key_id=ACCESS_ID,aws_secret_access_key= ACCESS_KEY)
+        AWS["S3"] = s3
 
     '''  #pylint: disable=pointless-string-statement
     # Subtree updating

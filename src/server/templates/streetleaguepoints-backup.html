@@ -1,12 +1,6 @@
 {% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Seat') }}{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/streetleague.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
-<style>
-	.scoreTable tr:nth-child(4n+5) {
-	    border-bottom: solid 2px green;
-	}
-</style>
-<script src="https://cdn.tailwindcss.com"></script>
 <script type="text/javascript" charset="utf-8">
  var data_dependencies = [
 	 'exporter_list',
@@ -24,8 +18,6 @@
 	 var pilotsLoaded = false;
 	 var exportLoaded = false;
 	 var classesLoaded = false;
-	 var currentRound = 0;
-	 var currentHeat = 0;
 
 	 //heat generation state
 	 var heatsCreated = 0;
@@ -194,79 +186,55 @@
 		 document.getElementsByClassName('scoreTable')[0].innerHTML = "";
 		 var headers = ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5", "Round 6"];
 		 var table = document.getElementsByClassName('scoreTable')[0];
-		 var tableHeader = document.createElement("thead");
-		 table.classList.add("table-auto")
-		 for (var rowIndex = -3; rowIndex < roundData[raceData[0]['pilot_id']].length+1; rowIndex++) {
-			 if(rowIndex==-3){
-				 var cell = document.createElement("th");
-				 cell.innerHTML = "Ch";
-				 tableHeader.appendChild(cell);
-			 }else if(rowIndex==-2){
+		 var headerRow = document.createElement("tr");
+		 for (var rowIndex = -2; rowIndex < roundData[raceData[0]['pilot_id']].length+1; rowIndex++) {
+			 if(rowIndex==-2){
 				 var cell = document.createElement("th");
 				 cell.innerHTML = "Rank";
-				 tableHeader.appendChild(cell);
+				 headerRow.appendChild(cell);
 			 }else if(rowIndex==-1){
 				 var cell = document.createElement("th");
 				 cell.innerHTML = "Pilot";
-				 tableHeader.appendChild(cell);
+				 headerRow.appendChild(cell);
 			 }else if(rowIndex==roundData[raceData[0]['pilot_id']].length){
 				 var cell = document.createElement("th");
 				 cell.innerHTML = "Total";
-				 tableHeader.appendChild(cell);
+				 headerRow.appendChild(cell);
 			 }else{
 				 var cell = document.createElement("th");
 				 cell.innerHTML = "Round "+(rowIndex+1);
-				 tableHeader.appendChild(cell);
+				 headerRow.appendChild(cell);
 			 }
 		 }
 
-			table.appendChild(tableHeader);
-			var rank = 1;
-			var channelIndex = 0;
-			var channelSet = [1,2,7,8];
-			for (var i = 0; i < raceData.length; i++) {
-				var rowHeat = Math.floor(((i)/4)+1);
-				var heatHighlight = "";
-				if(rowHeat == currentHeat){
-					roundHighlight = "#7FD2B5";
-				}
-
-				//var callsign = raceData[i]['pilot_id'];
-				var pilot_id = raceData[i]['pilot_id'];
-				var row = document.createElement("tr");
-				row.style.backgroundColor = heatHighlight;
-				//console.log(Math.round((i)/4));
-				for (var rowIndex = -3; rowIndex < roundData[pilot_id].length+1; rowIndex++) {
-					var roundNumber = rowIndex;
-					if(rowIndex==-3){
-					cell = document.createElement("td");
-					cell.innerHTML = "R"+channelSet[channelIndex];
-					row.appendChild(cell);
-					if(channelIndex<=2){
-						channelIndex+=1;
-					}else{
-						channelIndex = 0;
-					}
-				}else if(rowIndex==-2){
-					cell = document.createElement("td");
-					cell.innerHTML = "#"+rank;
-					row.appendChild(cell);
-					rank+=1;
-				}else if(roundNumber<0){
-					cell = document.createElement("td");
-					cell.innerHTML = getPilotByID(pilot_id);
-					row.appendChild(cell);
-				}else if(roundNumber==roundData[pilot_id].length){
-					cell = document.createElement("td");
-					cell.innerHTML = getPilotTotal(pilot_id,raceData)['points'];
-					row.appendChild(cell);
-				}else{
-					cell = document.createElement("td");
-					cell.innerHTML = roundData[pilot_id][roundNumber]['points'];
-					row.appendChild(cell);
-				}
-			}
-			table.appendChild(row);
+		 table.appendChild(headerRow);
+		 var rank = 1;
+		 for (var i = 0; i < raceData.length; i++) {
+			 //var callsign = raceData[i]['pilot_id'];
+			 var pilot_id = raceData[i]['pilot_id'];
+			 var row = document.createElement("tr");
+			 for (var rowIndex = -2; rowIndex < roundData[pilot_id].length+1; rowIndex++) {
+				 var roundNumber = rowIndex;
+				 if(rowIndex==-2){
+					 cell = document.createElement("td");
+					 cell.innerHTML = "#"+rank;
+					 row.appendChild(cell);
+					 rank+=1;
+				 }else if(roundNumber<0){
+					 cell = document.createElement("td");
+					 cell.innerHTML = getPilotByID(pilot_id);
+					 row.appendChild(cell);
+				 }else if(roundNumber==roundData[pilot_id].length){
+					 cell = document.createElement("td");
+					 cell.innerHTML = getPilotTotal(pilot_id,raceData)['points'];
+					 row.appendChild(cell);
+				 }else{
+					 cell = document.createElement("td");
+					 cell.innerHTML = roundData[pilot_id][roundNumber]['points'];
+					 row.appendChild(cell);
+				 }
+			 }
+			 table.appendChild(row);
 
 		 }
 	 }
@@ -449,14 +417,6 @@
 		 var exportData = {exporter: 'json_complete_results'};
 		 socket.emit('export_database', exportData);
 		 exportLoaded = false;
-	 });
-
-	 socket.on('current_heat', function (msg) {
-		 currentRound = msg['heat_class'];
-		 currentHeat = msg['current_heat'];
-		 console.log("current round is "+currentRound);
-		 console.log("current heat is "+currentHeat);
-		 slformat(exportData);
 	 });
 
 	 socket.on('exported_data', function (msg) {
