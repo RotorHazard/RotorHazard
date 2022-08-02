@@ -26,16 +26,19 @@
 			}
 		});
 
+		function setPilotColor(idx, heatNodes){
+			hn = heatNodes[streamnode];
+			var pilotColor = 'var(--contrast_0_high)';
+			if (hn.activeColor) {
+				pilotColor = colorvalToHex(hn.activeColor)
+			}
+			$('[data-node="'+idx+'"] .position').css('background', pilotColor);
+			$('[data-node="'+idx+'"] .pilot-info').css('color', pilotColor);
+		}
 
 		socket.on('current_heat', function (msg) {
 			for (var idx in msg.heatNodes) {
-				hn = msg.heatNodes[streamnode];
-				var pilotColor = 'var(--contrast_0_high)';
-				if (hn.activeColor) {
-					pilotColor = colorvalToHex(hn.activeColor)
-				}
-				$('[data-node="'+idx+'"] .position').css('background', pilotColor);
-				$('[data-node="'+idx+'"] .pilot-info').css('color', pilotColor);
+				setPilotColor(idx,msg.heatNodes);
 			}
 		});
 
