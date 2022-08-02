@@ -123,22 +123,20 @@
 
 		socket.on('leaderboard', function (msg) {
 			var race = msg.current.leaderboard;
-			console.log(race);
 			primary_leaderboard = race.meta.primary_leaderboard;
 			leaderboard = race[primary_leaderboard];
-
-			found_streamnode = false;
 			[...Array(4)].forEach((_, i) => {
 				$('[data-node="'+i+'"]').css('visibility', 'hidden');
 			});
 
 			function setPilotImage(i,leaderboard){
-				found_streamnode = true;
-
+				console.log('setPilotImage('+i+',leaderboard)');
+				console.log(leaderboard);
 				pilot_data = leaderboard[i];
+				var node = pilot_data.node;
+				console.log(node)
 				callsign = pilot_data.callsign.toLowerCase();
 				if(callsign!=null){
-					console.log(pilot_data);
 
 					var pilotPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/'+callsign;
 					var unknownPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';
@@ -154,28 +152,21 @@
 					checkImage(pilotPicURL, function(){
 
 					}, function(){
-						$('[data-node="'+i+'"] .position .pilotthumb').attr({
+						$('[data-node="'+node+'"] .position .pilotthumb').attr({
 							'src':unknownPicURL
 						});
 						console.log("could not find pilot profile picture for "+callsign);
 					});
 
-					$('[data-node="'+i+'"]').css('visibility', 'visible');
-					$('[data-node="'+i+'"] .position .pilotthumb').attr('src', pilotPicURL);
-					$('[data-node="'+i+'"] .pilot-info').html(callsign);
+					$('[data-node="'+node+'"]').css('visibility', 'visible');
+					$('[data-node="'+node+'"] .position .pilotthumb').attr('src', pilotPicURL);
+					$('[data-node="'+node+'"] .pilot-info').html(callsign);
 				}
 			}
 
 			for (var i in leaderboard) {
 				setPilotImage(i, leaderboard);
 
-			}
-
-			if (!found_streamnode) {
-				$('#position').html('');
-				$('#callsign').html('');
-				$('#rank_stat').html('');
-				$('#current_laps').html('');
 			}
 		});
 
