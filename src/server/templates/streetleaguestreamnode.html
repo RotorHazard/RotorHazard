@@ -51,7 +51,9 @@
 		}
 
 		socket.on('current_heat', function (msg) {
+			console.log(msg.heatNodes);
 			for (var idx in msg.heatNodes) {
+				console.log(idx);
 				setPilotColor(idx,msg.heatNodes);
 			}
 		});
