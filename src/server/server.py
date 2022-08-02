@@ -546,6 +546,11 @@ def render_stream_node(node_id):
     else:
         return False
 
+@APP.route('/streetleague/stream/node/')
+def render_4box_stream_node():
+    '''Route to 4 up node overlay for streaming.'''
+    return render_template('streetleaguestreamnode.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__)
+
 @APP.route('/stream/pilotcard/<int:node_id>')
 def render_pilot_card(node_id):
     '''Route to single pilot card for streaming.'''

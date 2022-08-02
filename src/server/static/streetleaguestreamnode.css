@@ -1,0 +1,134 @@
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/BarlowRH-Light.woff2') format('woff2'),
+       url('fonts/BarlowRH-Light.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: italic;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/Barlow-LightItalic.woff2') format('woff2'),
+       url('fonts/Barlow-LightItalic.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/BarlowRH-Bold.woff2') format('woff2'),
+       url('fonts/BarlowRH-Bold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: italic;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/Barlow-BoldItalic.woff2') format('woff2'),
+       url('fonts/Barlow-BoldItalic.woff') format('woff');
+}
+
+html {
+	background: transparent;
+	color: #000;
+	margin: 0;
+	padding: 0;
+	font-family: 'Barlow', sans-serif;
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+}
+
+body {
+	font-size: 1.2em;
+	margin: 0;
+	padding: 0;
+}
+
+[data-node] {
+}
+
+#four-box-container {
+  width: 1920px;
+  height: 1080px;
+}
+
+.position {
+	background-color: attr(data-nodecolor);
+	color: #000;
+	color: var(--position_foreground_color);
+
+	font-size: 5rem;
+	width: 6rem;
+	height: 6rem;
+	overflow: hidden;
+}
+
+.pilot-info {
+	color: #fff;
+	color: var(--pilotcolor);
+  background-image: linear-gradient(90deg, rgb(0% 0% 0%) 0%, rgb(0% 0% 0% / 0.999755859375) 6.25%, rgb(0% 0% 0% / 0.998046875) 12.5%, rgb(0% 0% 0% / 0.993408203125) 18.75%, rgb(0% 0% 0% / 0.984375) 25%, rgb(0% 0% 0% / 0.969482421875) 31.25%, rgb(0% 0% 0% / 0.947265625) 37.5%, rgb(0% 0% 0% / 0.916259765625) 43.75%, rgb(0% 0% 0% / 0.875) 50%, rgb(0% 0% 0% / 0.822021484375) 56.25%, rgb(0% 0% 0% / 0.755859375) 62.5%, rgb(0% 0% 0% / 0.675048828125) 68.75%, rgb(0% 0% 0% / 0.578125) 75%, rgb(0% 0% 0% / 0.463623046875) 81.25%, rgb(0% 0% 0% / 0.330078125) 87.5%, rgb(0% 0% 0% / 0.176025390625) 93.75%, rgb(0% 0% 0% / 0) 100% );
+  font-size: 2.5rem;
+  text-shadow: 1px 1px 5px #000000ff;
+  font-family: "Sarabun", sans-serif;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.callsign {
+	flex: 1 1 auto;
+	margin-right: 1rem;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+	display: block;
+}
+
+#rank_stat {
+	flex: 0 0 auto;
+}
+
+#current_laps {
+	position: absolute;
+	top: 4rem;
+	padding: 0.25rem 0.5rem;
+	right: 0;
+	text-align: right;
+	font-size: 2rem;
+	color: #fff;
+	text-shadow:
+		0.07em 0.07em 0 #000,
+		0.13em 0.07em 0 #000,
+		0.07em 0.13em 0 #000,
+		0.13em 0.13em 0 #000,
+		-0.03em -0.03em 0 #000,
+		0.03em -0.03em 0 #000,
+		-0.03em 0.03em 0 #000,
+		0.03em 0.03em 0 #000;
+}
+
+.display_lap_number {
+	padding-right: 0.5em;
+	font-size: 0.8em;
+}
+
+.fastest_lap {
+	color: hsl(25, 85%, 55%);
+	color: var(--fast_lap_color);
+
+	text-shadow:
+		0.07em 0.07em 0 var(--contrast_fast_lap_color),
+		0.13em 0.07em 0 var(--contrast_fast_lap_color),
+		0.07em 0.13em 0 var(--contrast_fast_lap_color),
+		0.13em 0.13em 0 var(--contrast_fast_lap_color),
+		-0.03em -0.03em 0 var(--contrast_fast_lap_color),
+		0.03em -0.03em 0 var(--contrast_fast_lap_color),
+		-0.03em 0.03em 0 var(--contrast_fast_lap_color),
+		0.03em 0.03em 0 var(--contrast_fast_lap_color);
+}

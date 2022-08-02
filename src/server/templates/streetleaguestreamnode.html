@@ -1,0 +1,207 @@
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Seat') }}{% endblock %}{% block head %}
+<link rel="stylesheet" href="/static/streetleaguestreamnode.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+<link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@1,800&display=swap" rel="stylesheet">
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'race_format',
+		'leaderboard',
+		'current_laps',
+		'current_heat'
+	];
+
+	rotorhazard.show_messages = false;
+	streamnode = 1
+
+	$(document).ready(function () {
+		rotorhazard.show_messages = false;
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+
+		socket.on('current_heat', function (msg) {
+			for (var idx in msg.heatNodes) {
+				hn = msg.heatNodes[streamnode];
+				var pilotColor = 'var(--contrast_0_high)';
+				if (hn.activeColor) {
+					pilotColor = colorvalToHex(hn.activeColor)
+				}
+				$('[data-node="'+idx+'"] .position').css('background', pilotColor);
+				$('[data-node="'+idx+'"] .pilot-info').css('color', pilotColor);
+			}
+		});
+
+		socket.on('current_laps', function (msg) {
+			current_laps = msg.current;
+			show_current_laps();
+		});
+
+		function show_current_laps() {
+			var i = streamnode;
+			var node_index = current_laps.node_index[streamnode];
+
+			$('#current_laps tr').remove();
+
+			display_laps = node_index.laps
+			while (display_laps.length > 10) {
+				display_laps.shift();
+			}
+
+			$.each(display_laps, function (j, lap) { // j is loop num, lap is json object
+				var tr = '';
+				var lapTime = lap.lap_time;
+				if (lap.splits.length > 0) {
+					lapTime += ' (';
+					for (k=0; k<lap.splits.length; k++) {
+						var split = lap.splits[k];
+						if (k > 0) {
+							lapTime += ', ';
+						}
+						lapTime += split.split_time;
+						if (split.split_speed) {
+							lapTime += '/' + split.split_speed;
+						}
+					}
+					lapTime += ')';
+				}
+
+				tr = $('<tr>')
+				if (lap.lap_number == 0) {
+					tr.addClass('lap_0');
+					lap.lap_number = __('HS');
+				}
+
+				if (lap.lap_index == node_index.fastest_lap_index) {
+					tr.addClass('fastest_lap');
+				}
+
+				tr.append(
+					$('<td class="display_lap_number">').text(lap.lap_number + ":")
+				);
+				$time_td = $('<td>').text(lap.lap_time + ' ');
+				$local_prepend = $('<span class="from_start">');
+
+				$time_td.prepend($local_prepend);
+				tr.append($time_td);
+
+				if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+					tr.addClass('min-lap-warning');
+				}
+				if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
+					tr.addClass('after-time-expired');
+				}
+				tr.appendTo('#current_laps');
+			});
+		}
+
+		socket.on('leaderboard', function (msg) {
+			var race = msg.current.leaderboard;
+			console.log(race);
+			primary_leaderboard = race.meta.primary_leaderboard;
+			leaderboard = race[primary_leaderboard];
+
+			found_streamnode = false;
+			[...Array(4)].forEach((_, i) => {
+				$('[data-node="'+i+'"]').css('visibility', 'hidden');
+			});
+
+			function setPilotImage(i,leaderboard){
+				found_streamnode = true;
+
+				pilot_data = leaderboard[i];
+				callsign = pilot_data.callsign.toLowerCase();
+				console.log(pilot_data);
+
+				var pilotPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/'+callsign;
+				var unknownPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';
+
+				function checkImage(imageSrc, good, bad) {
+							var img = new Image();
+							img.onload = good;
+							img.onerror = bad;
+							img.src = imageSrc;
+							console.log("loading profile pic: "+imageSrc);
+				}
+
+				checkImage(pilotPicURL, function(){
+
+				}, function(){
+					$('[data-node="'+i+'"] .position .pilotthumb').attr({
+						'src':unknownPicURL
+					});
+					console.log("could not find pilot profile picture for "+callsign);
+				});
+
+				$('[data-node="'+i+'"]').css('visibility', 'visible');
+				$('[data-node="'+i+'"] .position .pilotthumb').attr('src', pilotPicURL);
+				$('[data-node="'+i+'"] .pilot-info').html(callsign);
+			}
+
+			for (var i in leaderboard) {
+				setPilotImage(i, leaderboard);
+
+			}
+
+			if (!found_streamnode) {
+				$('#position').html('');
+				$('#callsign').html('');
+				$('#rank_stat').html('');
+				$('#current_laps').html('');
+			}
+		});
+
+		socket.on('race_format', function (msg) {
+			rotorhazard.race_formats = msg;
+		});
+	});
+
+
+</script>
+{% endblock %} {% block content %}
+<div id="four-box-container" class="node0 grid grid-cols-2 gap-0">
+	<div data-node="0" class="page-streamnode relative">
+		<div class="flex absolute bottom-0 w-full">
+			<div class="position text-center flex justify-center items-center">
+				<img class="pilotthumb p-1" onerror="this.onerror=null;this.src='https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';" src=""/>
+			</div>
+			<div class="pilot-info flex flex-auto px-10 items-center"></div>
+			<div class="flex flex-auto px-10 items-center"></div>
+		</div>
+	</div>
+	<div data-node="1" class="node1 page-streamnode relative">
+		<div class="flex absolute bottom-0 w-full">
+			<div class="position text-center flex justify-center items-center">
+				<img class="pilotthumb p-1" onerror="this.onerror=null;this.src='https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';" src=""/>
+			</div>
+			<div class="pilot-info flex flex-auto px-10 items-center"></div>
+			<div class="flex flex-auto px-10 items-center"></div>
+		</div>
+	</div>
+	<div data-node="2" class="node2 page-streamnode relative">
+		<div class="flex absolute bottom-0 w-full">
+			<div class="position text-center flex justify-center items-center">
+				<img class="pilotthumb p-1" onerror="this.onerror=null;this.src='https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';" src=""/>
+			</div>
+			<div class="pilot-info flex flex-auto px-10 items-center"></div>
+			<div class="flex flex-auto px-10 items-center"></div>
+		</div>
+	</div>
+	<div data-node="3" class="node3 page-streamnode relative">
+		<div class="flex absolute bottom-0 w-full">
+			<div class="position text-center flex justify-center items-center">
+				<img class="pilotthumb p-1" onerror="this.onerror=null;this.src='https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';" src=""/>
+			</div>
+			<div class="pilot-info flex flex-auto px-10 items-center"></div>
+			<div class="flex flex-auto px-10 items-center"></div>
+		</div>
+	</div>
+</div>
+{% endblock %}
