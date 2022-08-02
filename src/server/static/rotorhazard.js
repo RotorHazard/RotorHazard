@@ -1166,7 +1166,7 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 		} else if (timer.time_s == -360) {
 			speak('<div>' + __l('The course will be closed in') + ' 5 ' + __l('Minutes') + '</div>', true);
 		} else if (timer.time_s == -300) {
-			speak('<div>' + __l('The course will be closed in') + ' 4 ' + __l('Minute') + '</div>', true);
+			speak('<div>' + __l('The course will be closed in') + ' 4 ' + __l('Minutes') + '</div>', true);
 		} else if (timer.time_s == -240) {
 			speak('<div>' + __l('The course will be closed in') + ' 3 ' + __l('Minutes') + '</div>', true);
 		} else if (timer.time_s == -180) {
