@@ -26,16 +26,33 @@
 			}
 		});
 
+		function setPilotColor(idx, heatNodes){
+			hn = heatNodes[streamnode];
+			console.log("setPilotColor("+idx+",heatNodes)")
+			console.log(hn);
+			var pilotColor = 'var(--contrast_0_high)';
+      if(idx==0){
+        pilotColor = 'hsl(1, 100%, 50%)';
+      }
+      if(idx==1){
+        pilotColor = 'hsl(50, 100%, 50%)';
+      }
+      if(idx==2){
+        pilotColor = 'hsl(100, 100%, 50%)';
+      }
+      if(idx==3){
+        pilotColor = 'hsl(200, 100%, 50%)';
+      }
+			if (hn.activeColor) {
+				pilotColor = colorvalToHex(hn.activeColor)
+			}
+			$('[data-node="'+idx+'"] .position').css('background', pilotColor);
+			$('[data-node="'+idx+'"] .pilot-info').css('color', pilotColor);
+		}
 
 		socket.on('current_heat', function (msg) {
 			for (var idx in msg.heatNodes) {
-				hn = msg.heatNodes[streamnode];
-				var pilotColor = 'var(--contrast_0_high)';
-				if (hn.activeColor) {
-					pilotColor = colorvalToHex(hn.activeColor)
-				}
-				$('[data-node="'+idx+'"] .position').css('background', pilotColor);
-				$('[data-node="'+idx+'"] .pilot-info').css('color', pilotColor);
+				setPilotColor(idx,msg.heatNodes);
 			}
 		});
 
