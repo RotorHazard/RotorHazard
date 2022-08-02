@@ -137,31 +137,33 @@
 
 				pilot_data = leaderboard[i];
 				callsign = pilot_data.callsign.toLowerCase();
-				console.log(pilot_data);
+				if(callsign!=null){
+					console.log(pilot_data);
 
-				var pilotPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/'+callsign;
-				var unknownPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';
+					var pilotPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/'+callsign;
+					var unknownPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';
 
-				function checkImage(imageSrc, good, bad) {
-							var img = new Image();
-							img.onload = good;
-							img.onerror = bad;
-							img.src = imageSrc;
-							console.log("loading profile pic: "+imageSrc);
-				}
+					function checkImage(imageSrc, good, bad) {
+								var img = new Image();
+								img.onload = good;
+								img.onerror = bad;
+								img.src = imageSrc;
+								console.log("loading profile pic: "+imageSrc);
+					}
 
-				checkImage(pilotPicURL, function(){
+					checkImage(pilotPicURL, function(){
 
-				}, function(){
-					$('[data-node="'+i+'"] .position .pilotthumb').attr({
-						'src':unknownPicURL
+					}, function(){
+						$('[data-node="'+i+'"] .position .pilotthumb').attr({
+							'src':unknownPicURL
+						});
+						console.log("could not find pilot profile picture for "+callsign);
 					});
-					console.log("could not find pilot profile picture for "+callsign);
-				});
 
-				$('[data-node="'+i+'"]').css('visibility', 'visible');
-				$('[data-node="'+i+'"] .position .pilotthumb').attr('src', pilotPicURL);
-				$('[data-node="'+i+'"] .pilot-info').html(callsign);
+					$('[data-node="'+i+'"]').css('visibility', 'visible');
+					$('[data-node="'+i+'"] .position .pilotthumb').attr('src', pilotPicURL);
+					$('[data-node="'+i+'"] .pilot-info').html(callsign);
+				}
 			}
 
 			for (var i in leaderboard) {
