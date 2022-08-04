@@ -193,6 +193,15 @@ Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be r
 
 See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) section in [doc/Hardware Setup.md](Hardware%20Setup.md).
 
+#### LED Panel Support
+
+Additional LED effects for a two-dimensional LED display (panel) are available by installing image manipulation libraries.
+```
+sudo apt-get install libjpeg-dev
+sudo pip install pillow
+sudo apt-get install libopenjp2-7-dev
+```
+In addition to these package installations, ensure LED_ROWS is set correctly for your display.
 
 ### Java Support
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
