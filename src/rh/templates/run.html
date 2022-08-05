@@ -701,6 +701,7 @@
 				$('button#start_race').prop('disabled', true);
 				$('#set_current_heat').prop('disabled', true);
 				$("#main_panel").focus();  // make sure focus not on button
+				doSpeak('<div class="speech">' + __('') + '</div>');
 			}
 			return false;
 		});
@@ -1097,6 +1098,7 @@
 				request_time = new Date();
 				socket.emit('schedule_race', data);
 			}
+			doSpeak('<div class="speech">' + __('') + '</div>');
 		})
 
 		$('#cancel_schedule_race').click(function (event) {

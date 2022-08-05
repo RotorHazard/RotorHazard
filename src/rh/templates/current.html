@@ -577,6 +577,11 @@
 		$('#use_mp3_tones').change(function (event) {
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
 		});
+		
+		$('#voice_initialize').click(function (event) {
+			doSpeak('<div class="speech">' + __('Ready') + '</div>');
+			return false;
+		});
 	});
 
 </script>
@@ -797,6 +802,6 @@
 		</ol>
 	</div>
 </div>
-
+<button class="button" id="voice_initialize">Initialize Voice (iOS)</button>
 </main>
 {% endblock %}
