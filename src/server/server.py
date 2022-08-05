@@ -566,8 +566,7 @@ def render_viewDocs():
     try:
         docfile = request.args.get('d')
 
-        while docfile[0:2] == '../':
-            docfile = docfile[3:]
+        docfile = docfile.replace('../', '')
 
         docPath = folderBase + docfile
 
@@ -597,8 +596,7 @@ def render_viewImg(imgfile):
     folderBase = '../../doc/'
     folderImg = 'img/'
 
-    while imgfile[0:2] == '../':
-        imgfile = imgfile[3:]
+    imgfile = imgfile.replace('../', '')
 
     imgPath = folderBase + folderImg + imgfile
 
