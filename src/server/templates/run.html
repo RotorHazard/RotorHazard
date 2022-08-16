@@ -780,6 +780,7 @@
 				$('#set_current_heat').prop('disabled', true);
 				$("#main_panel").focus();  // make sure focus not on button
 			}
+			initSpeak()
 			return false;
 		});
 
@@ -1162,11 +1163,6 @@
 			show_current_laps();
 		});
 
-		$('#voice_initialize').click(function (event) {
-			doSpeak('<div class="speech">' + __('Ready') + '</div>');
-			return false;
-		});
-		
 		/* Race Format */
 
 		$('#schedule_race').click(function (event) {
@@ -1180,6 +1176,7 @@
 				request_time = new Date();
 				socket.emit('schedule_race', data);
 			}
+			initSpeak()
 		})
 
 		$('#cancel_schedule_race').click(function (event) {
@@ -2415,8 +2412,6 @@
 		</div>
 	</div>
 </div>
-
-<button class="button" id="voice_initialize">Initialize Voice (iOS)</button>
 
 </main>
 {% endblock %}

@@ -557,6 +557,16 @@ function speak(obj, priority) {
 	}
 };
 
+var isInitialized = false;
+function initSpeak() {
+	if (!isInitialized) {
+		doSpeak('<div class="speech"> </div>');
+		isInitialized = true;
+	}
+}
+
+$(document).on('click touchstart', initSpeak);
+
 function __(text) {
 	// return translated string
 	if (rotorhazard.language_strings[rotorhazard.interface_language]) {
