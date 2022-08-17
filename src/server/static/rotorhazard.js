@@ -557,15 +557,16 @@ function speak(obj, priority) {
 	}
 };
 
-var isInitialized = false;
-function initSpeak() {
-	if (!isInitialized) {
-		doSpeak('<div class="speech"> </div>');
-		isInitialized = true;
+function initSpeak(event) {
+	if (event.type == "click") {
+		doSpeak(' ');
+		$('#audio-unlock').remove();
 	}
 }
 
-$(document).on('click touchstart', initSpeak);
+$(document).on('click', function(event){
+	initSpeak(event);
+});
 
 function __(text) {
 	// return translated string

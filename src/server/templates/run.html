@@ -780,7 +780,7 @@
 				$('#set_current_heat').prop('disabled', true);
 				$("#main_panel").focus();  // make sure focus not on button
 			}
-			initSpeak()
+			initSpeak(event);
 			return false;
 		});
 
@@ -1176,7 +1176,7 @@
 				request_time = new Date();
 				socket.emit('schedule_race', data);
 			}
-			initSpeak()
+			initSpeak(event);
 		})
 
 		$('#cancel_schedule_race').click(function (event) {
@@ -2413,5 +2413,6 @@
 	</div>
 </div>
 
+<button id="audio-unlock">Enable Audio</button>
 </main>
 {% endblock %}
