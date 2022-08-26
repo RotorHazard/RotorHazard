@@ -1553,7 +1553,9 @@
 			var callout = $(this).siblings('.callout_text').val();
 
 			// %HEAT% : Current heat name
-			callout = callout.replace('%HEAT%', rotorhazard.heats[rotorhazard.current_heat].heatname);
+			var heat = rotorhazard.heats[rotorhazard.current_heat];
+			var heatname = (heat.note ? heat.note : heat.heat_id);
+			callout = callout.replace('%HEAT%', heatname);
 
 			// %PILOTS% : Current pilot names
 			var pilots = '';
