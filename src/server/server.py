@@ -536,6 +536,12 @@ def render_stream_results():
     return render_template('streamresults.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
+@APP.route('/streetleagueresults')
+def render_sl_stream_results():
+    '''Route to current race leaderboard stream.'''
+    return render_template('streetleaguestreamresults.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        num_nodes=RACE.num_nodes)
+
 @APP.route('/stream/node/<int:node_id>')
 def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
@@ -569,9 +575,17 @@ def render_stream_class(class_id):
     )
 
 @APP.route('/stream/heat/<int:heat_id>')
-def render_stream_heat(heat_id):
+def render_streetleague_stream_heat(heat_id):
     '''Route to heat display for streaming.'''
     return render_template('streamheat.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        num_nodes=RACE.num_nodes,
+        heat_id=heat_id
+    )
+
+@APP.route('/streetleaguestandings/<int:heat_id>')
+def render_stream_heat(heat_id):
+    '''Route to heat display for streaming.'''
+    return render_template('streetleaguestreamheat.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes,
         heat_id=heat_id
     )

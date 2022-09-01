@@ -109,6 +109,36 @@
 			});
 		}
 
+		function setPilotImage(pilotName){
+			var callsign = pilotName.toLowerCase();
+			if(callsign!=null){
+
+				var pilotPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/c_thumb,h_380,w_380/pilot-photos/'+callsign;
+				var unknownPicURL = 'https://res.cloudinary.com/street-league-spec/image/upload/q_80,w_100,h_100,c_thumb,g_faces/v1659422654/pilot-photos/unknownPilot.jpg';
+
+				function checkImage(imageSrc, good, bad) {
+							var img = new Image();
+							img.onload = good;
+							img.onerror = bad;
+							img.src = imageSrc;
+							console.log("loading profile pic: "+imageSrc);
+				}
+
+				checkImage(pilotPicURL, function(){
+
+				}, function(){
+					$('.pilot-picture').attr({
+						'src':unknownPicURL
+					});
+					console.log("could not find pilot profile picture for "+callsign);
+				});
+
+				$('#pilot-info').css('visibility', 'visible');
+				$('.pilot-picture').attr('src', pilotPicURL);
+				$('#callsign').html(callsign);
+				}
+		}
+
 		socket.on('leaderboard', function (msg) {
 			var race = msg.current.leaderboard;
 
@@ -121,8 +151,12 @@
 				if (leaderboard[i].node == streamnode) {
 					found_streamnode = true;
 
+
+
 					pilot_data = leaderboard[i];
 					var pilotName = pilot_data.callsign;
+					setPilotImage(pilotName);
+					/*
 					var pilotPicURL = '../../static/image/pilotcards/'+pilotName+'.jpg';
 
 					function checkImage(imageSrc, good, bad) {
@@ -151,7 +185,7 @@
 					// $('#team_name').html(pilot_data.team_name);
 					// $('#laps').html(pilot_data.laps);
 					// $('#fastest_lap').html(pilot_data.fastest_lap);
-
+					*/
 					if (primary_leaderboard == 'by_fastest_lap') {
 						rank_stat = pilot_data.fastest_lap
 					} else if (primary_leaderboard == 'by_consecutives') {

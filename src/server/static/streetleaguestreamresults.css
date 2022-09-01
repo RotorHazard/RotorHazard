@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@1,700&display=swap');
+
+body {
+	font-family: 'Sarabun', sans-serif;
+	font-weight: 700;
+}
+
+.leaderboard {
+	width: 480px;
+}
+
+.pilot-row {
+	display: flex;
+	margin-bottom: 4px;
+	transform: skew(-15deg);
+	opacity: 0;
+	position: relative;
+	left: 100px;
+}
+
+.pos {
+	width: 64px;
+	background-color: red;
+	padding: 12px 10px 6px 20px;
+	margin-right: 4px;
+	font-size: 44px;
+	border-radius: 10px;
+	color: #fff;
+	background: linear-gradient(to bottom right, rgba(0, 221, 125, 1), rgba(0, 86, 49, 1));
+}
+
+.pilot {
+	flex: 1;
+	padding: 12px 30px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 44px;
+	border-radius: 10px;
+	color: #fff;
+	background: linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(116,116,116,1) 100%);
+	text-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}

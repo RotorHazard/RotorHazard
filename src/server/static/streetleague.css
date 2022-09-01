@@ -61,6 +61,7 @@ body::-webkit-scrollbar {
   font-family: Arial, Helvetica, sans-serif;
   border-collapse: collapse;
   width: 100%;
+  color: white;
 }
 
 .scoreTable td, #scoreTable th {
@@ -68,8 +69,8 @@ body::-webkit-scrollbar {
   padding: 8px;
 }
 
-.scoreTable tr:nth-child(even){background-color: #f2f2f2ff;}
-.scoreTable tr:nth-child(odd){background-color: #ffffffff;}
+.scoreTable tr:nth-child(even){background-color: #525252b0;}
+.scoreTable tr:nth-child(odd){background-color: #000000b0;}
 
 .scoreTable tr:hover {background-color: #ddd;}
 
@@ -77,6 +78,6 @@ body::-webkit-scrollbar {
   padding-top: 12px;
   padding-bottom: 12px;
   text-align: left;
-  background-color: #04AA6Dff;
+  background-color: #00dd7d;
   color: white;
 }

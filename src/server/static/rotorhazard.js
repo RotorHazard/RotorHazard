@@ -1564,7 +1564,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 	var twrap = $('<div class="responsive-wrap">');
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
-	var header_row = $('<tr>');
+	var header_row = $('<tr class="pilot-row">');
 	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
 	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
 	if (meta.team_racing_mode) {
