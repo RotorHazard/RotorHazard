@@ -23,6 +23,6 @@
 
 ---
 
-* [Build Resources (PCB, etc)](../resources/README.md)
+* [Build Resources (PCB, etc) &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources/README.md)
 * [Developer Documentation](Development.md)
 * <a href="https://github.com/RotorHazard/RotorHazard">RotorHazard on GitHub &#10132;&#xFE0E;</a>
