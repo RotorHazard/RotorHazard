@@ -385,21 +385,19 @@
 				if (heat.class_id != 0) {
 					single_class = false;
 				}
+				if (heat.note) {
+					rotorhazard.heats[h].heatname = heat.note;
+				} else {
+					rotorhazard.heats[h].heatname = __('Heat') + ' ' + heat.heat_id;
+				}
 			}
 
 			// assemble optgroups
 			if (single_class) {
 				for (var h in msg.heats) {
 					var heat = msg.heats[h];
-
-					if (heat.note) {
-						var heatname = heat.note;
-					} else {
-						var heatname = __('Heat') + ' ' + heat.heat_id;
-					}
-
 					var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
-					opt.html(heatname);
+					opt.html(heat.heatname);
 					$('#set_current_heat').append(opt);
 				}
 			} else {
@@ -421,15 +419,9 @@
 					for (var h in heat_list) {
 						var heat = heat_list[h];
 
-						if (heat.note) {
-							var heatname = heat.note;
-						} else {
-							var heatname = __('Heat') + ' ' + heat.heat_id;
-						}
-
 						var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
 
-						opt.html(heatname);
+						opt.html(heat.heatname);
 						optgroup.append(opt)
 					}
 					$('#set_current_heat').append(optgroup);
