@@ -2018,9 +2018,9 @@ def on_stage_race():
 
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
-        RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
+        RACE.start_time_delay_secs = random.randint(MIN, MAX)
 
-        RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
+        RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs + RHRace.RACE_START_DELAY_EXTRA_SECS
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
