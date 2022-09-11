@@ -36,7 +36,7 @@ The second jumper wire goes from the single-pin header that was installed at the
 
 ![stm32f4_mod8](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/stm32f4pics/stm32f4_mod8.jpg)
 
-For this processor and board (S32_BPill), the RotorHazard server must be version 3.0.0 or later. The RotorHazard server should be installed on the timer as per the instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)'.
+For this processor and board (S32_BPill), the RotorHazard server must be version 3.1.0 or later. The RotorHazard server should be installed on the timer as per the instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)'.
 
 If this is the first time using the processor, its initial programming (flashing) should be performed as follows:
 
@@ -54,6 +54,8 @@ If this is the first time using the processor, its initial programming (flashing
 * On the web GUI, click on the `Update` button to flash-update the processor
 
 Once the processor has been flash-updated the first time, future flash-updates can be performed by simply clicking on the `Update` button. The displayed processor type should be "STM32F4".
+
+Note that the above flashing method will only work with an STM32F411CEU6 module. If another type of STM32F4 module is used or if the flashing fails, see the "src/node/[readme_S32_BPill.md](../../src/node/readme_S32_BPill.md)" file for instructions on building and flashing the code using the Arduino IDE. The module pinout should match what is shown above.
 
 **Technical Notes:**
 

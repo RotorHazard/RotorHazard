@@ -723,11 +723,7 @@ class Stm32Bootloader:
 # Above code is from "stm32loader-0.5.1/stm32loader/bootloader.py"
 
 import serial
-
-try:
-    from urllib.request import urlopen  # for Python 3
-except ImportError:
-    from urllib2 import urlopen  # for Python 2
+import requests
 
 DEF_SERIAL_PORT = "/dev/serial0"
 DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
@@ -802,15 +798,19 @@ def reset_to_run():
 
 # download given URL to buffer
 def download_to_buffer(src_url, log_flag=True):
-    resp = urlopen(src_url)
+    if log_flag:
+        Console_output_fn("Downloading file data from: {}".format(src_url))
+    resp = requests.get(src_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0"}, verify=False)
+    if resp.status_code != 200:
+        raise RuntimeError("Error reading file data, HTTP status code: {}".format(resp.status_code))
     file_size = int(resp.headers["Content-Length"])
     if file_size <= 0:
         raise RuntimeError("File data size is zero")
     if file_size > MAX_SRC_FILE_SIZE:
         raise RuntimeError("File data size too large ({})".format(file_size))
     if log_flag:
-        Console_output_fn("Downloading {} bytes from: {}".format(file_size, src_url))
-    return resp.read(file_size)
+        Console_output_fn("Downloaded {} bytes".format(file_size))
+    return resp.content
 
 # read given local file to buffer
 def read_file_to_buffer(file_str, log_flag=True):

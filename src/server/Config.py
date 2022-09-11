@@ -50,6 +50,7 @@ GENERAL['FORCE_S32_BPILL_FLAG'] = False
 GENERAL['DEF_NODE_FWUPDATE_URL'] = ''
 GENERAL['SHUTDOWN_BUTTON_GPIOPIN'] = 18
 GENERAL['SHUTDOWN_BUTTON_DELAYMS'] = 2500
+GENERAL['DB_AUTOBKP_NUM_KEEP'] = 30
 
 InitResultStr = None
 InitResultLogLevel = logging.INFO
@@ -60,6 +61,12 @@ try:
         ExternalConfig = json.load(f)
 
     GENERAL.update(ExternalConfig['GENERAL'])
+
+    # if auth fields set to empty strings then allow open access to all pages
+    if ExternalConfig['GENERAL'].get('ADMIN_USERNAME') == "" and \
+                ExternalConfig['GENERAL'].get('ADMIN_PASSWORD') == "":
+        GENERAL['ADMIN_USERNAME'] = ''
+        GENERAL['ADMIN_PASSWORD'] = ''
 
     if 'HARDWARE' in ExternalConfig:
         HARDWARE.update(ExternalConfig['HARDWARE'])

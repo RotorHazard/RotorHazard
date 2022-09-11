@@ -8,7 +8,7 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * Instead of multiple Arduinos, the board has a single STM32 processor
 
-* Board size (100×100mm) is the same as the "standard" Delta5 PCBs
+* Board size (100x100mm) is the same as the "standard" Delta5 PCBs
 
 * Supports 1 to 8 RX5808 node modules on a single PCB
 
@@ -30,7 +30,7 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * Optional "extra" LED, which can be panel mounted on the timer case
 
-* Connector pads for LED-strips -- one to the Raspberry Pi, one to the STM32 processor
+* Connector pads for LED-strips: J6 "Pi_LED" (near the middle of the board); pin 1 is ground, pin 2 is signal (going to GPIO10 on the Raspberry Pi)
 <br>
 
 Main PCB:<br>
@@ -74,7 +74,7 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 ## Notes
 
-* For the S32_BPill board the RotorHazard server must be version 3.0.0 or later.
+* For the S32_BPill board the RotorHazard server must be version 3.1.0 or later.
 
 * The recommended voltage regulators for the board are Pololu [D36V28F5](https://www.pololu.com/product/3782) (5V) and Pololu [D24V22F3](https://www.pololu.com/product/2857) (3.3V). See [here for additional notes](files/PololuCompatibilityWithRaceTimer.txt) about Pololu voltage regulators.
 
@@ -90,7 +90,11 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 * Note that during the first-time power up, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the 2-pin header-clip on the '1' position of the Boot0 jumper on the BPill module and press the reset button to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
 
+* There have been reports that with some BPill modules the buzzer emits a constant tone -- a workaround for this is to wire the '+' side of the buzzer to +3.3V (J12) instead of +5V.  Using a different BPill module may also fix the issue.
+
 * The recommended method for installing the node firmware onto the BPill processor is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file on the RPi for the flash-update to succeed (see instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)').
+
+* If the initial programming of the BPill processor is unsuccessful, it may be necessary to use an [ST-Link](https://www.ebay.com/sch/i.html?_nkw=ST-Link) USB programming adapter. See the instructions in the first section of the '[src/node/readme_S32_BPill.md](../../src/node/readme_S32_BPill.md)' file and use step "[8b](../../src/node/readme_S32_BPill.md#s32stlink)" to do the flash-update.
 
 * The recommended enclosure is the [RotorHazard S32_BPill Case](../S32_BPill_case/README.md), which features mounting holes for a power button, [shutdown button](../../doc/Shutdown%20Button.md), and status LED.
 
@@ -101,7 +105,7 @@ The "Blue Pill" is a module containing an STM32F1 processor and support componen
 
 [RobotDyn](https://robotdyn.com) has a version with several improvements (better parts, thinner board layout, etc), which they called a "[Black Pill](https://stm32-base.org/boards/STM32F103C8T6-RobotDyn-Black-Pill)". See [here for the RobotDyn page](https://robotdyn.com/stm32f103-stm32-arm-mini-system-dev-board-stm-firmware.html).
 
-We like the RobotDyn version more than the generics, but it has become difficult to acquire. In practice, any Blue Pill module with an STM32F103C8T6 processor and a compatible pin layout should work fine with the S32_BPill PCB.
+We like the RobotDyn version more than the generics, but it has become difficult to acquire. In practice, any Blue Pill module with an STM32F103C8T6 processor and a compatible pin layout should work fine with the S32_BPill PCB. (Note: It needs to be the "C8" module; the STM32F103C6T6 module cannot be used because its available memory space is too small.)
 
 Seaching eBay for "[STM32F103C8T6 Blue Pill](https://www.ebay.com/sch/i.html?_nkw=STM32F103C8T6+Blue+Pill)" should lead to a number of good, cheap options for acquiring compatible modules.
 

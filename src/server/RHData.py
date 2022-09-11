@@ -12,6 +12,7 @@ import os
 import traceback
 import shutil
 import json
+import glob
 import RHUtils
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition
@@ -39,26 +40,31 @@ class RHData():
 
     # Integrity Checking
     def check_integrity(self):
-        if self.get_optionInt('server_api') < self._SERVER_API:
-            logger.info('Old server API version; recovering database')
-            return False
-        if not self._Database.Heat.query.count():
-            logger.info('Heats are empty; recovering database')
-            return False
-        if not self._Database.Profiles.query.count():
-            logger.info('Profiles are empty; recovering database')
-            return False
-        if not self._Database.RaceFormat.query.count():
-            logger.info('Formats are empty; recovering database')
-            return False
-
-        try:  # make sure no problems reading 'Heat' table data
-            self._Database.Heat.query.all()
+        try:
+            if self.get_optionInt('server_api') < self._SERVER_API:
+                logger.info('Old server API version; recovering database')
+                return False
+            if not self._Database.Heat.query.count():
+                logger.info('Heats are empty; recovering database')
+                return False
+            if not self._Database.Profiles.query.count():
+                logger.info('Profiles are empty; recovering database')
+                return False
+            if not self._Database.RaceFormat.query.count():
+                logger.info('Formats are empty; recovering database')
+                return False
+            try:  # make sure no problems reading 'Heat' table data
+                self._Database.Heat.query.all()
+            except Exception as ex:
+                logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
+                return False
+            if self.get_optionInt('server_api') > self._SERVER_API:
+                logger.warning('Database API version ({}) is newer than server version ({})'.\
+                               format(self.get_optionInt('server_api'), self._SERVER_API))
+            return True
         except Exception as ex:
-            logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
+            logger.error('Error checking database integrity; err: ' + str(ex))
             return False
-
-        return True
 
     # Caching
     def primeCache(self):
@@ -108,7 +114,7 @@ class RHData():
 
     # File Handling
 
-    def backup_db_file(self, copy_flag):
+    def backup_db_file(self, copy_flag, prefix_str=None):
         self.close()
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
@@ -116,6 +122,8 @@ class RHData():
             time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         try:
             (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+            if prefix_str:
+                dbname = prefix_str + dbname
             bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
             if not os.path.exists(self._DB_BKP_DIR_NAME):
                 os.makedirs(self._DB_BKP_DIR_NAME)
@@ -133,6 +141,33 @@ class RHData():
         except Exception:
             logger.exception('Error backing up database file')
         return bkp_name
+
+    def delete_old_db_autoBkp_files(self, num_keep_val, prefix_str, DB_AUTOBKP_NUM_KEEP_STR):
+        num_del = 0
+        try:
+            num_keep_val = int(num_keep_val)  # make sure this is numeric
+            if num_keep_val > 0:
+                (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+                if prefix_str:
+                    dbname = prefix_str + dbname
+                file_list = list(filter(os.path.isfile, glob.glob(self._DB_BKP_DIR_NAME + \
+                                                        '/' + dbname + '*' + dbext)))
+                file_list.sort(key=os.path.getmtime)  # sort by last-modified time
+                if len(file_list) > num_keep_val:
+                    if num_keep_val > 0:
+                        file_list = file_list[:(-num_keep_val)]
+                    for del_path in file_list:
+                        os.remove(del_path)
+                        num_del += 1
+            elif num_keep_val < 0:
+                raise ValueError("Negative value")
+            if num_del > 0:
+                logger.info("Removed {} old DB-autoBkp file(s)".format(num_del))
+        except ValueError:
+            logger.error("Value for '{}' in configuration is invalid: {}".\
+                            format(DB_AUTOBKP_NUM_KEEP_STR, num_keep_val))
+        except Exception as ex:
+            logger.error("Error removing old DB-autoBkp files: " + str(ex))
 
     # Migration
 
@@ -623,6 +658,10 @@ class RHData():
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
 
+    def get_heat_note(self, heat_id):
+        heat_data = self._Database.Heat.query.get(heat_id)
+        return heat_data.note if heat_data else None
+
     def get_heats(self):
         return self._Database.Heat.query.all()
 
@@ -786,7 +825,7 @@ class RHData():
         return heat, race_list
 
     def delete_heat(self, heat_id):
-        # Deletes heat. Returns True/False success
+        # Deletes heat. Returns heat-ID if successful, None if not
         heat_count = self._Database.Heat.query.count()
         heat = self._Database.Heat.query.get(heat_id)
         if heat and heat_count > 1: # keep at least one heat
@@ -796,7 +835,7 @@ class RHData():
 
             if has_race or (self._RACE.current_heat == heat.id and self._RACE.race_status != RaceStatus.READY):
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
-                return False
+                return None
             else:
                 self._Database.DB.session.delete(heat)
                 for heatnode in heatnodes:
@@ -823,16 +862,16 @@ class RHData():
                                     heatnode.heat_id = heat_obj.id
                                 self.commit()
                                 self._RACE.current_heat = 1
-                                heat_id = 1  # set value so heat data is updated below
+                                heat_id = 1  # set value so heat data is updated
                             else:
                                 logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                     except Exception as ex:
                         logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
-                return True
+                return heat_id
         else:
             logger.info('Refusing to delete only heat')
-            return False
+            return None
 
     def set_results_heat(self, heat_id, data):
         heat = self._Database.Heat.query.get(heat_id)
@@ -1908,7 +1947,7 @@ class RHData():
     # Event Results (Options)
     def set_results_event(self, data):
         if 'results' in data:
-            self.set_option("eventResults_cacheStatus", data['results'])
+            self.set_option("eventResults", data['results'])
         if 'cacheStatus' in data:
             self.set_option("eventResults_cacheStatus", data['cacheStatus'])
 
@@ -1923,4 +1962,3 @@ class RHData():
     def clear_results_event(self):
         self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
         return True
-

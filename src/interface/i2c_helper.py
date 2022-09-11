@@ -19,6 +19,7 @@ class I2CBus(object):
         self.i2c = SMBus(bus) # Start i2c bus
         self.i2c_rlock_obj = gevent.lock.RLock()  # for limiting i2c to 1 read/write at a time
         self.i2c_timestamp = -1
+        self.i2c_busnum = bus
 
     def i2c_end(self):
         self.i2c_timestamp = monotonic()
@@ -46,6 +47,9 @@ class I2CBus(object):
         except IOError as err:
             logger.info('I2C error: {0}'.format(err))
             self.i2c_end()
+
+    def get_i2c_busnum(self):
+        return self.i2c_busnum
 
 
 def create(config):

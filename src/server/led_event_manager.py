@@ -101,7 +101,7 @@ class LEDEventManager:
             else:
                 priority = 150 # event is normal (threaded/non-blocking)
 
-                self.Events.on(event, 'LED', self.activateEffect, args, priority)
+            self.Events.on(event, 'LED', self.activateEffect, args, priority)
         return True
 
     def clear(self):
@@ -192,6 +192,9 @@ class LEDEventManager:
         return hexToColor(color)
 
     def activateEffect(self, args):
+        if 'caller' in args and args['caller'] == 'shutdown':
+            return False
+
         result = args['handlerFn'](args)
         if result == False:
             logger.debug('LED effect %s produced no output', args['handlerFn'])

@@ -9,7 +9,8 @@ class INA219Sensor(I2CSensor):
     def __init__(self, name, addr, i2c_helper, config={}):  #pylint: disable=dangerous-default-value
         I2CSensor.__init__(self, name, i2c_helper)
         max_current = float(config['max_current']) if 'max_current' in config else None
-        self.device = ina219.INA219(0.1, address=addr, max_expected_amps=max_current)
+        self.device = ina219.INA219(0.1, address=addr, max_expected_amps=max_current,
+                                    busnum=i2c_helper.get_i2c_busnum())
         self.device.configure()
         self.device.sleep()
         self.readData()

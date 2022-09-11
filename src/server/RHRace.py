@@ -1,5 +1,7 @@
 '''Class to hold race management variables.'''
 
+import RHUtils
+
 class RHRace():
     '''Class to hold race management variables.'''
     def __init__(self):
@@ -45,11 +47,34 @@ class RHRace():
             deleted
         '''
 
-    def get_active_laps(self):
+    def init_node_finished_flags(self, heatNodes):
+        self.node_has_finished = {}
+        for heatNode in heatNodes:
+            if heatNode.node_index < self.num_nodes:
+                if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
+                    self.node_has_finished[heatNode.node_index] = False
+                else:
+                    self.node_has_finished[heatNode.node_index] = None
+
+    def set_node_finished_flag(self, node_index):
+        self.node_has_finished[node_index] = True
+
+    def get_node_finished_flag(self, node_index):
+        return self.node_has_finished.get(node_index, None)
+
+    def check_all_nodes_finished(self):
+        return False not in self.node_has_finished.values()
+
+    def get_active_laps(self, late_lap_flag=False):
         # return active (non-deleted) laps objects
         filtered = {}
-        for node_index in self.node_laps:
-            filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
+        if not late_lap_flag:
+            for node_index in self.node_laps:
+                filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
+        else:
+            for node_index in self.node_laps:
+                filtered[node_index] = list(filter(lambda lap : \
+                                (lap['deleted'] == False or lap.get('late_lap', False)), self.node_laps[node_index]))
         return filtered
 
     def any_laps_recorded(self):

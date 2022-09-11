@@ -13,6 +13,7 @@ class BaseHardwareInterface(object):
     LAP_SOURCE_REALTIME = 0
     LAP_SOURCE_MANUAL = 1
     LAP_SOURCE_RECALC = 2
+    LAP_SOURCE_LABEL_STRS = ["realtime", "manual", "recalc"]
 
     RACE_STATUS_READY = 0
     RACE_STATUS_STAGING = 3
@@ -38,12 +39,20 @@ class BaseHardwareInterface(object):
     def log(self, message):
         logger.info('Interface: {0}'.format(message))
 
+    def get_lap_source_str(self, source_idx):
+        return BaseHardwareInterface.LAP_SOURCE_LABEL_STRS[source_idx] \
+            if source_idx >= 0 and source_idx < len(BaseHardwareInterface.LAP_SOURCE_LABEL_STRS) \
+            else "unknown ({})".format(source_idx)
+
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
         if node.scan_interval == 0:
             if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
                 node.crossing_flag = cross_flag
                 if cross_flag:
                     node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
+                    node.enter_at_timestamp = monotonic()
+                else:
+                    node.exit_at_timestamp = monotonic()
                 if callable(self.node_crossing_callback):
                     cross_list.append(node)
 
@@ -123,6 +132,7 @@ class BaseHardwareInterface(object):
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
         node.lap_timestamp = monotonic() - (ms_val / 1000.0)
+        node.enter_at_timestamp = node.exit_at_timestamp = 0
         gevent.spawn(self.pass_record_callback, node, node.lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
     def set_race_status(self, race_status):

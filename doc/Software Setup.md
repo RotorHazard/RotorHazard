@@ -1,5 +1,19 @@
 # Software Setup Instructions
 
+- [Introduction](#introduction)
+- [Install RotorHazard on a Raspberry Pi](#install-rotorhazard-on-a-raspberry-pi)
+- [RotorHazard Node Code](#rotorhazard-node-code)
+- [Optional Components](#optional-components)
+- [Running the RotorHazard server](#running-the-rotorhazard-server)
+- [Updating an existing installation](#updating-an-existing-installation)
+- [Enable Port forwarding](#enable-port-forwarding)
+- [Other Operating Systems](#other-operating-systems)
+- [Viewing Database Files](#viewing-database-files)
+- [RotorHazard Portable](#rotorhazard-portable)
+- [Logging](#logging)
+
+## Introduction
+
 The central software component of the RotorHazard system is its server, written in Python, which operates its functions and serves up web pages to browsers. In a standard setup, the server is run on a RaspberryPi. (It is also possible to run RotorHazard on other types of hardware -- see the [Other Operating Systems](#otheros) section below.)
 
 Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.
@@ -72,16 +86,16 @@ For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_tr
 ### 4. Perform System Update
 Using a terminal window, do a system update and upgrade (this can take a few minutes):
 ```
-sudo apt-get update && sudo apt-get upgrade
+sudo apt update && sudo apt upgrade
 ```
 
 <a id="python"></a>
 ### 5. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
-sudo apt install python-dev python3-dev libffi-dev python-smbus build-essential python-pip python3-pip git scons swig python-rpi.gpio python3-rpi.gpio
+sudo apt install python3-dev libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
 ```
-Check the current default version of Python by entering the following command:
+The minimum version of Python supported is 3.5 Check the current default version of Python by entering the following command:
 ```
 python --version
 ```
@@ -112,11 +126,26 @@ cd ~/RotorHazard/src/server
 sudo pip install -r requirements.txt
 ```
 
-### 7. Reboot System
+### 7. Setup Config File
+In the "src/server" directory, copy the *config-dist.json* file to *config.json*:
+```
+cp config-dist.json config.json
+```
+
+With a command like `nano config.json` edit the *config.json* file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. These are the login credentials you will need to enter (in the browser popup window) to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages).
+
+The contents of the *config.json* file must in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+
+### 8. Reboot System
 After the above setup steps are performed, the system should be rebooted by entering the following using a terminal window:
 ```
 sudo reboot
 ```
+
+### User Guide
+
+The RotorHazard Race Timer [User Guide](User%20Guide.md) contains further instructions and setup tips for using the timer and the software.
+
 
 ----------------------------------------------------------------------------
 
@@ -161,6 +190,18 @@ INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default 
 If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
 
 Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must run the server with `sudo` or connect LEDs to a different GPIO pin. If using a service file to start the server on boot, it may be run as root by leaving out the "User=pi" line.
+
+See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) section in [doc/Hardware Setup.md](Hardware%20Setup.md).
+
+#### LED Panel Support
+
+Additional LED effects for a two-dimensional LED display (panel) are available by installing image manipulation libraries.
+```
+sudo apt-get install libjpeg-dev
+sudo pip install pillow
+sudo apt-get install libopenjp2-7-dev
+```
+In addition to these package installations, ensure LED_ROWS is set correctly for your display.
 
 ### Java Support
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
@@ -289,11 +330,15 @@ The RotorHazard server defaults to port 5000, as this is necessary for some 3rd 
 By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and reusing it will cause problems. If port 80 is used directly via `HTTP_PORT`, the server may need to be run using the *sudo* command. With the following commands, the server runs on port 5000 but the system sends the traffic from port 80 to it.
 
 ```
+sudo apt-get install iptables
 sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 5000
+sudo iptables -A PREROUTING -t nat -p tcp --dport 8080 -j REDIRECT --to-ports 80
 sudo iptables-save
 sudo apt-get install iptables-persistent
 ```
-After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server: `http://127.0.0.1`
+After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server, i.e.: `http://127.0.0.1`
+
+Note: The second *iptables* command will forward port 8080 to 80, so services that would normally be available on port 80 will instead be available on port 8080. If port 80 services are not present or if other services are using port 8080, this *iptables* command may be omitted.
 <br/>
 
 ----------------------------------------------------------------------------
@@ -340,6 +385,33 @@ If no hardware nodes are configured, the server will operate using simulated (mo
 
 To view the web-GUI interface, open up a web browser and enter into the address bar: ```localhost:5000``` (If the HTTP_PORT value in the configuration has been changed then use that value instead of 5000). If the server is running then the RotorHazard main page should appear. Note that pages reserved for the race director (Admin/Settings) are password protected with the username and password specified in the configuration.
 <br/>
+
+----------------------------------------------------------------------------
+
+<a id="viewdb"></a>
+## Viewing Database Files
+
+A "snapshot" copy of the database file used by the RotorHazard server may be downloaded using the `Backup Database` button in the 'Database' section on the 'Settings' page in the RotorHazard web GUI. A tool like [DB Browser for SQLite](https://sqlitebrowser.org) may be used to view the raw data in the file.
+
+A database file may be loaded into the RotorHazard server via the "--viewdb" command-line argument:
+```
+python server.py --viewdb dbFileName.db [pagename] [browsercmd]
+```
+The current server database is backed up and the specified one is loaded. If a 'pagename' value (i.e., "results") is given then a web browser is launched showing the RotorHazard web GUI at the specified page. If a 'browsercmd' value is given then that command is used to launch the web browser (for instance, a value of "C:\Program Files\Mozilla Firefox\firefox.exe" could be specified to launch the Firefox browser on a PC where is it installed but is not the default browser).
+
+The "--launchb" command-line argument can be specified to launch a web browser after the server starts up:
+```
+python server.py --launchb [pagename] [browsercmd]
+```
+
+----------------------------------------------------------------------------
+
+<a id="portable"></a>
+## RotorHazard Portable
+
+A "portable" version of the RotorHazard server, which can be useful for viewing database files on a Windows PC, may be found [here](http://www.rotorhazard.com/portable). To use it, download the "rhPortable...zip" file, unpack it into a local directory, and then drag-and-drop a database file onto the 'runRotorHazard' batch file. This will launch a local copy of the RotorHazard server, load the database file, and launch a web browser for viewing the GUI. Sample RotorHazard database files may be found [here](http://www.rotorhazard.com/dbsamples). The server can be terminated by entering Ctrl-C on its console window.
+
+(The "rhPortable...zip" file includes the needed Python support. The the 'runRotorHazardFF' batch file will attempt to launch the Firefox browser.)
 
 ----------------------------------------------------------------------------
 

@@ -22,17 +22,12 @@
 		'vrx_list'
 	];
 
-	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	var request_time;
 	var request_pi_time;
 	var resume_check = true;
-
-	var speakObjsQueue = [];
-	var checkSpeakQueueFlag = true;
-	const LEADER_FLAG_CHAR = 'L';
-	const WINNER_FLAG_CHAR = 'W';
 
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
@@ -132,6 +127,7 @@
 
 		var heartbeatCounter = 0;
 		var current_laps = {};
+		var current_laps_reversed = false;
 
 		// set admin flag
 		rotorhazard.admin = true;
@@ -172,6 +168,7 @@
 		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
+		$('#display_laps_reversed').prop("checked", rotorhazard.display_laps_reversed);
 
 		if ('{{ getOption('ledBrightness') }}' != 'False') {
 			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
@@ -495,33 +492,96 @@
 
 		socket.on('current_laps', function (msg) {
 			current_laps = msg.current;
+			current_laps_reversed = false;
 			show_current_laps();
 		});
 
 		function show_current_laps() {
-			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
+			$.each(current_laps.node_index, function (i, curnode_data) { // i is loop num, curnode_data is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
-				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
-					var tr = $('<tr>')
-					if (lap.lap_number == 0) {
+				if(rotorhazard.display_laps_reversed) {
+					if(!current_laps_reversed) {
+						curnode_data.laps.reverse();
+					}
+				}
+				else if(current_laps_reversed) {
+					curnode_data.laps.reverse();
+				}
+
+				$.each(curnode_data.laps, function (j, lap) { // j is loop num, lap_id is json object
+					if(lap.splits) {
+						if(rotorhazard.display_laps_reversed) {
+							if(!current_laps_reversed && lap.splits.length > 1) {
+								lap.splits.laps.reverse();
+							}
+							$.each(lap.splits, function(k, split) {
+								if ((!curnode_data.finished_flag) || j > 0 ||
+												(split.split_time && split.split_time != '-') ||
+												split.split_speed) {  // don't show last split if empty and pilot finished
+									var split_display = split.split_time + ' ';
+									if (split.split_speed) {
+										split_display += '(' + split.split_speed + ')';
+									}
+									var split_tr = $('<tr>');
+									split_tr.addClass('lap_split');
+									if (rotorhazard.display_lap_id) {
+										var split_id = 'split ';
+										if (lap.splits.length > 1) {
+											split_id += (k+1);
+										}
+										split_tr.append($('<td>').text(split_id));
+									}
+									var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+									split_tr.append(split_time_td);
+									split_tr.appendTo('#current_laps_' + i);
+								}
+							});
+						}
+						else if(current_laps_reversed && lap.splits.length > 1) {
+							lap.splits.laps.reverse();
+						}
+					}
+
+					var tr = $('<tr>');
+					var lap_num = lap.lap_number;
+					if (lap_num == 0) {
 						tr.addClass('lap_0');
 					}
 
 					var local_colspan = 2;
 					if(rotorhazard.display_lap_id) {
 						local_colspan = 1;
+						if(lap_num < 0) {
+							lap_num = ' ';
+						}
 						tr.append(
-							$('<td class="display_lap_number">').text(lap.lap_number)
+							$('<td class="display_lap_number">').text(lap_num)
 						);
 					}
-					time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
+					time_td = $('<td colspan="'+local_colspan+'">').text(' ' + lap.lap_time + ' ').append(
 							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
 							);
+					if(lap.late_lap) {
+						tr.addClass('late-lap');
+						time_td.prepend(
+								$('<button class="restore_deleted_lap" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">+</button>'));
+					}
 					local_prepend = $('<span class="from_start">');
 
 					if(rotorhazard.display_time_first_pass) {
-						local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
+						if(rotorhazard.display_laps_reversed) {
+							if(curnode_data.laps.length > 0) {
+								ts_val = lap.lap_time_stamp - curnode_data.laps[curnode_data.laps.length-1].lap_time_stamp;
+							}
+							else {
+								ts_val = 0;
+							}
+						}
+						else {
+							ts_val = lap.lap_time_stamp - curnode_data.laps[0].lap_time_stamp;
+						}
+						local_prepend.text(formatTimeMillis(ts_val, {{ getOption('timeFormat')|tojson }}));
 						if(rotorhazard.display_time_start){
 							local_prepend.append(" / ");
 						}
@@ -542,26 +602,33 @@
 					}
 					tr.appendTo('#current_laps_' + i);
 
-					$.each(lap.splits, function(k, split) {
-						var split_display = split.split_time + ' ';
-						if (split.split_speed) {
-							split_display += '(' + split.split_speed + ')';
-						}
-						var split_tr = $('<tr>');
-						split_tr.addClass('lap_split');
-						if (rotorhazard.display_lap_id) {
-							var split_id = 'split ';
-							if (lap.splits.length > 1) {
-								split_id += (k+1);
+					if(!rotorhazard.display_laps_reversed) {
+						$.each(lap.splits, function(k, split) {
+							if ((!curnode_data.finished_flag) || j < curnode_data.laps.length-1 ||
+													(split.split_time && split.split_time != '-') ||
+													split.split_speed) {  // don't show last split if empty and pilot finished
+								var split_display = split.split_time + ' ';
+								if (split.split_speed) {
+									split_display += '(' + split.split_speed + ')';
+								}
+								var split_tr = $('<tr>');
+								split_tr.addClass('lap_split');
+								if (rotorhazard.display_lap_id) {
+									var split_id = 'split ';
+									if (lap.splits.length > 1) {
+										split_id += (k+1);
+									}
+									split_tr.append($('<td>').text(split_id));
+								}
+								var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+								split_tr.append(split_time_td);
+								split_tr.appendTo('#current_laps_' + i);
 							}
-							split_tr.append($('<td>').text(split_id));
-						}
-						var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
-						split_tr.append(split_time_td);
-						split_tr.appendTo('#current_laps_' + i);
-					});
+						});
+					}
 				});
 			});
+			current_laps_reversed = rotorhazard.display_laps_reversed;
 		}
 
 		socket.on('leaderboard', function (msg) {
@@ -597,14 +664,14 @@
 				}
 
 				if (rotorhazard.voice_lap_count == 1 ||
-							(rotorhazard.voice_lap_count == 2 && (!msg.team_laps))) {
+							(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += __l('Lap') + " " + msg.lap;
 				}
 
 				if (rotorhazard.voice_lap_time == 1 ||
-							(rotorhazard.voice_lap_time == 2 && (!msg.team_laps))) {
+							(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += msg.phonetic;
@@ -646,8 +713,8 @@
 
 		socket.on('first_pass_registered', function (msg) {
 			if (!rotorhazard.beep_crossing_exited && rotorhazard.beep_on_first_pass_button) {
-				if( rotorhazard.use_mp3_tones){
-					sound_beep.play();
+				if (rotorhazard.use_mp3_tones) {
+					play_mp3_beep(sound_beep, rotorhazard.indicator_beep_volume);
 				}
 				else {
 					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -713,6 +780,7 @@
 				$('#set_current_heat').prop('disabled', true);
 				$("#main_panel").focus();  // make sure focus not on button
 			}
+			initSpeak(event);
 			return false;
 		});
 
@@ -864,8 +932,8 @@
 		$('button.simulate_lap').click(function (event) {
 			// if(!$(this).prop('disabled')) {
 				if (rotorhazard.beep_manual_lap_button) {
-					if( rotorhazard.use_mp3_tones){
-						sound_beep.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_beep, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
@@ -886,6 +954,15 @@
 				lap_index: parseInt($(this).data('lap-index')),
 			};
 			socket.emit('delete_lap', data);
+			return false;
+		});
+
+		$(document).on("click", ".restore_deleted_lap", function (event) { // Needed for buttons added after document load
+			var data = {
+				node: parseInt($(this).data('node')),
+				lap_index: parseInt($(this).data('lap-index')),
+			};
+			socket.emit('restore_deleted_lap', data);
 			return false;
 		});
 
@@ -1080,6 +1157,12 @@
 			show_current_laps();
 		});
 
+		$('#display_laps_reversed').change(function (event) {
+			rotorhazard.display_laps_reversed = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
 		/* Race Format */
 
 		$('#schedule_race').click(function (event) {
@@ -1093,6 +1176,7 @@
 				request_time = new Date();
 				socket.emit('schedule_race', data);
 			}
+			initSpeak(event);
 		})
 
 		$('#cancel_schedule_race').click(function (event) {
@@ -1158,8 +1242,8 @@
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
 				if (rotorhazard.beep_crossing_entered)
-					if( rotorhazard.use_mp3_tones){
-						sound_enter.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_enter, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
@@ -1167,8 +1251,8 @@
 			}
 			else {
 				if (rotorhazard.beep_crossing_exited) {
-						if( rotorhazard.use_mp3_tones){
-							sound_exit.play();
+						if (rotorhazard.use_mp3_tones) {
+							play_mp3_beep(sound_exit, rotorhazard.indicator_beep_volume);
 						}
 						else {
 							play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -1183,8 +1267,8 @@
 		socket.on('cluster_connect_change', function (msg) {
 			if (rotorhazard.beep_cluster_connect) {
 				if (msg.connect_flag) {
-					if( rotorhazard.use_mp3_tones){
-						sound_cconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(120, 225, rotorhazard.indicator_beep_volume, 'square');
@@ -1194,8 +1278,8 @@
 					}
 				}
 				else {
-					if( rotorhazard.use_mp3_tones){
-						sound_cdisconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cdisconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(80, 200, rotorhazard.indicator_beep_volume, 'square');
@@ -1506,7 +1590,7 @@
 				pilot = rotorhazard.current_heatNodes[i].pilot_id;
 				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
 					if (!first) {
-						pilots += ', ';
+						pilots += '. ';
 					}
 					for (var p in rotorhazard.pilot_data) {
 						pdata = rotorhazard.pilot_data[p];
@@ -1890,72 +1974,6 @@
 		});
 	});
 
-	function playLeaderTone() {
-		if (rotorhazard.use_mp3_tones) {
-			sound_leader.play();
-		}
-		else {
-			play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
-			setTimeout(function(tone){
-				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 75, 0);
-		}
-	}
-
-	function playWinnerTone() {
-		if (rotorhazard.use_mp3_tones) {
-			sound_winner.play();
-		}
-		else {
-			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			setTimeout(function(tone) {
-				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 50, 0);
-			setTimeout(function(tone) {
-				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			}, 125, 0);
-			setTimeout(function(tone) {
-				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 175, 0);
-			setTimeout(function(tone) {
-				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			}, 250, 0);
-			setTimeout(function(tone) {
-				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 300, 0);
-		}
-	}
-
-	function doSpeak(obj) {
-		if (obj.startsWith(LEADER_FLAG_CHAR)) {
-			obj = obj.substring(1);
-			if (rotorhazard.beep_race_leader_lap) {
-				playLeaderTone();
-			}
-		}
-		else if (obj.startsWith(WINNER_FLAG_CHAR)) {
-			obj = obj.substring(1);
-			if (rotorhazard.beep_race_winner_declared) {
-				playWinnerTone();
-			}
-		}
-		if (obj.length > 0) {
-			$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
-			return true;
-		}
-		return false;
-	};
-
-	function speak(obj, priority) {
-		if (typeof(priority)=='undefined')
-			priority = false;
-
-		if (priority) {
-			speakObjsQueue.unshift(obj);
-		} else {
-			speakObjsQueue.push(obj);
-		}
-	};
 </script>
 {% endblock %} {% block content %}
 <main class="page-race">
@@ -2248,7 +2266,7 @@
 					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_voice_volume" min="1" max="100">
+				<input type="range" id="set_voice_volume" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2269,7 +2287,7 @@
 					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_tone_volume" min="1" max="100">
+				<input type="range" id="set_tone_volume" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2293,7 +2311,7 @@
 					<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_indicator_volume" min="1" max="100">
+				<input type="range" id="set_indicator_volume" min="0" max="100">
 			</li>
 		</ol>
 	</div>
@@ -2313,9 +2331,10 @@
 					{{ __('Lap Information') }}
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap number') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
+					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
 				</ul>
 			</li>
 
@@ -2394,5 +2413,6 @@
 	</div>
 </div>
 
+<button id="audio-unlock">Enable Audio</button>
 </main>
 {% endblock %}
