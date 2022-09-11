@@ -557,6 +557,17 @@ function speak(obj, priority) {
 	}
 };
 
+function initSpeak(event) {
+	if (event.type == "click") {
+		doSpeak(' ');
+		$('#audio-unlock').remove();
+	}
+}
+
+$(document).on('click', function(event){
+	initSpeak(event);
+});
+
 function __(text) {
 	// return translated string
 	if (rotorhazard.language_strings[rotorhazard.interface_language]) {
