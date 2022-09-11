@@ -46,7 +46,7 @@ from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
 
-from flask import Flask, send_file, request, Response, session, templating, redirect
+from flask import Flask, send_file, request, Response, session, templating, redirect, abort
 from flask_socketio import SocketIO, emit
 
 import socket
@@ -606,7 +606,10 @@ def render_viewImg(imgfile):
         if os.path.isfile(translated_path):
             imgPath = translated_path
 
-    return send_file(imgPath)
+    if os.path.isfile(imgPath):
+        return send_file(imgPath)
+    else:
+        abort(404)
 
 # Redirect routes (Previous versions/Delta 5)
 @APP.route('/race')
