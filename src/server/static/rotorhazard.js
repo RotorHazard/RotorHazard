@@ -707,7 +707,7 @@ const TONES_ALL = 2;
 
 function timerModel() {
 	// interval control
-	this.interval = 100; // in ms
+	this.interval = 20; // in ms
 	this.min_interval = 10; // skip interval if too soon
 
 	this.timeout = false;
@@ -724,12 +724,15 @@ function timerModel() {
 	this.running = false;
 	this.zero_time = null; // timestamp for timer's zero point
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
+	this.is_staging = true; // whether negative time is treated as staging
 	this.staging_tones = TONES_ALL; // sound tones during staging
 	this.max_delay = Infinity; // don't sound more tones than this even if staging takes longer
 	this.time_s = false; // simplified relative time in seconds
+	this.time_tenths = false; // simplified relative time in tenths
 	this.count_up = false; // use fixed-length timer
-	this.duration = 0; // fixed-length duration, in seconds
-	this.allow_expire = false; // prevent expire callbacks until timer runs 1 loop
+	this.duration_tenths = 0; // fixed-length duration, in tenths
+	this.has_looped = false; // prevent expire callbacks until timer runs 1 loop
+	this.allow_expire = true; // prevent multiple expire callbacks
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -746,16 +749,20 @@ function timerModel() {
 		if (diff > self.interval / -2) {
 			// time is positive or zero
 			if (!self.count_up) {
-				var new_time_s = self.duration - (Math.round(diff / 100) / 10);
+				var new_time_tenths = self.duration_tenths - Math.round(diff / 100);
 
-				if (new_time_s != self.time_s) { // prevent double callbacks
-					self.time_s = new_time_s;
+				if (new_time_tenths != self.time_tenths) { // prevent double callbacks
+					self.time_tenths = new_time_tenths;
+					self.time_s = (new_time_tenths / 10).toFixed(0);
 
-					if (self.time_s <= 0) {
-						continue_timer = false;
-						self.running = false;
-						if (self.allow_expire && self.callbacks.expire instanceof Function) {
+					if (self.time_tenths <= 0) {
+						// continue_timer = false;
+						// self.running = false;
+						if (self.has_looped && self.allow_expire && self.callbacks.expire instanceof Function) {
 							self.callbacks.expire(self);
+							self.allow_expire = false;
+						} else if (self.callbacks.step instanceof Function) {
+							self.callbacks.step(self);
 						}
 					} else {
 						if (self.callbacks.step instanceof Function) {
@@ -764,10 +771,11 @@ function timerModel() {
 					}
 				}
 			} else {
-				var new_time_s = Math.round(diff / 100) / 10;
+				var new_time_tenths = Math.round(diff / 100);
 
-				if (new_time_s != self.time_s) { // prevent double callbacks
-					self.time_s = new_time_s;
+				if (new_time_tenths != self.time_tenths) { // prevent double callbacks
+					self.time_tenths = new_time_tenths;
+					self.time_s = (new_time_tenths / 10).toFixed(0);
 
 					if (self.callbacks.step instanceof Function) {
 						self.callbacks.step(self);
@@ -776,10 +784,11 @@ function timerModel() {
 			}
 		} else {
 			// negative
-			var new_time_s = Math.round(diff / 100) / 10;
+			var new_time_tenths = Math.round(diff / 100);
 
-			if (new_time_s != self.time_s) { // prevent double callbacks
-				self.time_s = new_time_s;
+			if (new_time_tenths != self.time_tenths) { // prevent double callbacks
+				self.time_tenths = new_time_tenths;
+				self.time_s = (new_time_tenths / 10).toFixed(0);
 
 				if (self.callbacks.step instanceof Function) {
 					self.callbacks.step(self);
@@ -787,7 +796,7 @@ function timerModel() {
 			}
 		}
 
-		self.allow_expire = true;
+		self.has_looped = true;
 
 		if (continue_timer) {
 			var now = window.performance.now()
@@ -833,6 +842,7 @@ function timerModel() {
 	this.start = function(remote_time_zero, local_remote_diiferential){
 		// reset simplified time and drift history
 		rotorhazard.timer.race.time_s = false;
+		rotorhazard.timer.race.time_tenths = false;
 		this.drift_history = [];
 		this.drift_correction = 0;
 
@@ -884,32 +894,43 @@ function timerModel() {
 	}
 
 	this.renderHTML = function() {
-		if (this.zero_time == null || typeof this.time_s != 'number' || !this.running) {
+		if (this.zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
 			return '--:--';
 		}
 
-		if (this.hidden_staging && this.time_s < 0) {
+		if (this.hidden_staging && this.is_staging && this.time_tenths < 0) {
 			return __l('Ready');
 		}
 
-		if (this.time_s >= 0 && !this.count_up) {
-			var display_time = Math.abs(Math.ceil(this.time_s));
+		var active_time_tenths = this.time_tenths;
+
+		// hold timer during prestage
+		if (this.is_staging && active_time_tenths < -this.max_delay * 10) {
+			active_time_tenths = -this.max_delay * 10;
+		}
+
+		var active_time_s = Math.trunc(active_time_tenths / 10);
+		var display_time = Math.abs(active_time_s);
+
+		if (this.is_staging && active_time_tenths < 0) {
+			var sign = '';
 		} else {
-			var display_time = Math.abs(Math.floor(this.time_s));
+			var sign = active_time_tenths >= 0 ? '' : '-';
 		}
 
 		var hour = Math.floor(display_time / 3600);
-		display_time = display_time - (hour * 3600);
+		display_time = display_time % 3600;
 		var minute = Math.floor(display_time / 60);
 		var second = display_time % 60;
+		var decimal = Math.abs(active_time_tenths % 10);
 
 		second = (second < 10) ? '0' + second : second; // Pad zero if under 10
 		minute = (minute < 10) ? '0' + minute : minute;
 
 		if (hour) {
-			return hour + ':' + minute + ':' + second;
+			return sign + hour + ':' + minute + ':' + second + '.' + decimal;
 		} else {
-			return minute + ':' + second;
+			return sign + minute + ':' + second + '.' + decimal;
 		}
 	}
 }
@@ -1161,23 +1182,23 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
 	if (rotorhazard.voice_race_timer != 0) {
-		if (timer.time_s < -3600 && !(timer.time_s % -3600)) { // 2+ hour callout
-			var hours = timer.time_s / -3600;
+		if (timer.time_tenths < -36000 && !(timer.time_tenths % -36000)) { // 2+ hour callout
+			var hours = timer.time_tenths / -36000;
 			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (timer.time_s == -3600) {
+		} else if (timer.time_tenths == -36000) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
-		} else if (timer.time_s == -1800) {
+		} else if (timer.time_tenths == -18000) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s > -60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
-			var minutes = timer.time_s / -60;
+		} else if (timer.time_tenths > -600 && timer.time_tenths <= 3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
+			var minutes = timer.time_tenths / -600;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s == -60) {
+		} else if (timer.time_tenths == -600) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
-		} else if (timer.time_s == -30) {
+		} else if (timer.time_tenths == -300) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_s == -10) {
+		} else if (timer.time_tenths == -100) {
 			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
-		}else if (timer.time_s == -5) {
+		}else if (timer.time_tenths == -50) {
 			speak('<div>' + __l('Next race begins in') + ' 5 ' + __l('Seconds') + '</div>', true);
 		}
 	}
@@ -1195,6 +1216,7 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 rotorhazard.timer.race.callbacks.start = function(timer){
 	$('.time-display').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
+	timer.is_staging = true; // set staging flag
 	if (timer.staging_tones == TONES_ONE
 		&& timer.max_delay >= 1) {
 		// beep on start if single staging tone
@@ -1210,13 +1232,14 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_s < 0
-		&& timer.time_s >= -timer.max_delay) {
+	if (timer.time_tenths < 0
+		&& timer.is_staging
+		&& timer.time_tenths >= -timer.max_delay * 10) {
 		// time before race begins (staging)
 		if (timer.hidden_staging
 			&& timer.staging_tones == TONES_ALL) {
 			// beep every second during staging if timer is hidden
-			if (timer.time_s * 10 % 10 == 0) {
+			if (timer.time_tenths % 10 == 0) {
 				if (rotorhazard.use_mp3_tones) {
 					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 				}
@@ -1224,14 +1247,15 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 				}
 			}
-		} else if (timer.time_s == -30
-			|| timer.time_s == -20
-			|| timer.time_s == -10) {
+		} else if (timer.time_tenths == -300
+			|| timer.time_tenths == -200
+			|| timer.time_tenths == -100) {
 			speak('<div>' + __l('Starting in') + ' ' + (-timer.time_s) + ' ' + __l('Seconds') + '</div>', true);
 		} else if (timer.staging_tones == TONES_ALL
-			&& timer.time_s >= -5) {
+			&& timer.time_tenths >= -50
+			&& timer.is_staging) {
 			// staging beep for last 5 seconds before start
-			if (timer.time_s * 10 % 10 == 0) {
+			if (timer.time_tenths % 10 == 0) {
 				if (rotorhazard.use_mp3_tones) {
 					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 				}
@@ -1240,8 +1264,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 				}
 			}
 		}
-	} else if (timer.time_s == 0 ||
-		(!timer.count_up && timer.time_s == timer.duration)
+	} else if (timer.time_tenths == 0 ||
+		(!timer.count_up && timer.time_tenths == timer.duration_tenths)
 		) {
 		// play start tone
 		if (rotorhazard.use_mp3_tones) {
@@ -1250,10 +1274,12 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		else {
 			play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 		}
+		// remove staging flag
+		timer.is_staging = false;
 	} else {
 		if (!timer.count_up) {
-			if (timer.time_s <= 5) { // Final seconds
-				if (timer.time_s * 10 % 10 == 0) {
+			if (timer.time_tenths <= 50 && timer.time_tenths > 0) { // Final seconds
+				if (timer.time_tenths % 10 == 0) {
 					if (rotorhazard.use_mp3_tones) {
 						play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 					}
@@ -1261,7 +1287,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 					}
 				}
-			} else if (timer.time_s == 10) { // announce 10s only when counting down
+			} else if (timer.time_tenths == 100) { // announce 10s only when counting down
 				if (rotorhazard.voice_race_timer != 0)
 					speak('<div>10 ' + __l('Seconds') + '</div>', true);
 			}
@@ -1269,19 +1295,19 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 
 		if (rotorhazard.voice_race_timer == 1 ||
 				(rotorhazard.voice_race_timer == 2 && (!timer.count_up))) {
-			if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout (endurance)
-				var hours = timer.time_s / 3600;
+			if (timer.time_tenths > 36000 && !(timer.time_tenths % 36000)) { // 2+ hour callout (endurance)
+				var hours = timer.time_tenths / 36000;
 				speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
-			} else if (timer.time_s == 3600) {
+			} else if (timer.time_tenths == 36000) {
 				speak('<div>1 ' + __l('Hour') + '</div>', true);
-			} else if (timer.time_s == 1800) {
+			} else if (timer.time_tenths == 18000) {
 				speak('<div>30 ' + __l('Minutes') + '</div>', true);
-			} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
-				var minutes = timer.time_s / 60;
+			} else if (timer.time_tenths > 600 && timer.time_tenths <= 3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
+				var minutes = timer.time_tenths / 600;
 				speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
-			} else if (timer.time_s == 60) {
+			} else if (timer.time_tenths == 600) {
 				speak('<div>1 ' + __l('Minute') + '</div>', true);
-			} else if (timer.time_s == 30) {
+			} else if (timer.time_tenths == 300) {
 				speak('<div>30 ' + __l('Seconds') + '</div>', true);
 			}
 		}
