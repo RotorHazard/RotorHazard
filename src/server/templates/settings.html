@@ -142,6 +142,7 @@
 					$('#set_format_name').prop('disabled', true);
 					$('#set_race_mode').prop('disabled', true);
 					$('#set_fix_race_time').prop('disabled', true);
+					$('#set_staging_fixed_tones').prop('disabled', true);
 					$('#set_start_delay_min').prop('disabled', true);
 					$('#set_start_delay_max').prop('disabled', true);
 					$('#set_staging_tones').prop('disabled', true);
@@ -158,6 +159,7 @@
 					$('#set_format_name').prop('disabled', false);
 					$('#set_race_mode').prop('disabled', false);
 					$('#set_fix_race_time').prop('disabled', false);
+					$('#set_staging_fixed_tones').prop('disabled', false);
 					$('#set_start_delay_min').prop('disabled', false);
 					$('#set_start_delay_max').prop('disabled', false);
 					$('#set_staging_tones').prop('disabled', false);
@@ -1432,9 +1434,11 @@
 			$('#set_fix_race_time').prop('disabled', msg.locked);
 			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
 			$('#set_hide_stage_timer').prop('disabled', msg.locked);
-			$('#set_start_delay_min').val(msg.start_delay_min);
+			$('#set_staging_fixed_tones').val(msg.staging_fixed_tones);
+			$('#set_staging_fixed_tones').prop('disabled', msg.locked);
+			$('#set_start_delay_min').val(msg.start_delay_min / 1000); // convert from ms
 			$('#set_start_delay_min').prop('disabled', msg.locked);
-			$('#set_start_delay_max').val(msg.start_delay_max);
+			$('#set_start_delay_max').val(msg.start_delay_max / 1000); // convert from ms
 			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_staging_tones').val(msg.staging_tones);
 			$('#set_staging_tones').prop('disabled', msg.locked);
@@ -1496,16 +1500,23 @@
 			socket.emit('alter_race_format', data);
 		})
 
+		$('#set_staging_fixed_tones').change(function (event) {
+			var data = {
+				staging_fixed_tones: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
 		$('#set_start_delay_min').change(function (event) {
 			var data = {
-				start_delay_min: parseInt($(this).val())
+				start_delay_min: parseInt($(this).val() * 1000) //convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_max').change(function (event) {
 			var data = {
-				start_delay_max: parseInt($(this).val())
+				start_delay_max: parseInt($(this).val() * 1000) //convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
@@ -2686,26 +2697,32 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_start_delay_min">{{ __('Minimum Start Delay') }}</label>
-					<p class="desc">{{ __('Minimum time before race begins') }}</p>
+				<label for="set_staging_fixed_tones">{{ __('Prestage Tones') }}</label>
+					<p class="desc">{{ __('Fixed tones played one per second') }}</p>
 				</div>
-				<input type="number" id="set_start_delay_min" min="0" max="999">
+				<input type="number" id="set_staging_fixed_tones" min="0" max="999">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_start_delay_max">{{ __('Maximum Start Delay') }}</label>
-					<p class="desc">{{ __('Maximum time before race begins') }}<br />
-						{{ __('Staging timer is hidden unless value matches Minimum Start Delay') }}</p>
+					<label for="set_start_delay_min">{{ __('Staging Delay Minimum (seconds)') }}</label>
+					<p class="desc">{{ __('Time between prestage tones and race start') }}</p>
 				</div>
-				<input type="number" id="set_start_delay_max" min="0" max="999">
+				<input type="number" id="set_start_delay_min" min="0" max="99" step="0.1">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_staging_tones">{{ __('Staging Tones') }}</label>
+					<label for="set_start_delay_max">{{ __('Staging Variable Delay (seconds)') }}</label>
+					<p class="desc">{{ __('Staging timer is hidden if above 0') }}</p>
+				</div>
+				<input type="number" id="set_start_delay_max" min="0" max="99" step="0.1">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_staging_tones">{{ __('Variable Staging Tones') }}</label>
+					<p class="desc">{{ __('Sometimes played during variable staging') }}</p>
 				</div>
 				<select id="set_staging_tones">
 					<option value="2">{{ __('Each Second') }}</option>
-					<option value="1">{{ __('One') }}</option>
 					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>

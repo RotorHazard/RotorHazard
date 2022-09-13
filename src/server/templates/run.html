@@ -32,15 +32,16 @@
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
 
+		rotorhazard.staging_start_pi = (msg.pi_staging_at_s * 1000); // convert seconds (pi) to millis (JS)
 		rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
 
 		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
 		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 		rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
 
-		rotorhazard.timer.race.max_delay = msg.delay;
+		rotorhazard.timer.race.staging_tones = msg.staging_tones;
 
-		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff, rotorhazard.staging_start_pi);
 	}
 
 	$(document).ready(function () {
@@ -84,7 +85,7 @@
 			rotorhazard.pi_time_diff = median(a);
 
 			// pass current sync to timer
-			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff, rotorhazard.staging_start_pi);
 
 			// continue sampling for sync to improve accuracy
 			if (rotorhazard.pi_time_diff_samples.length < 10) {

@@ -267,13 +267,13 @@
 							format_details['Race Clock (seconds)'] = raceformat.race_time_sec
 						}
 
-						if (raceformat.start_delay_min == raceformat.start_delay_max) {
-							format_details['Start Delay (seconds)'] = raceformat.start_delay_min;
-						} else {
-							format_details['Start Delay (seconds)'] = raceformat.start_delay_min + '&#8211;' + raceformat.start_delay_max;
-						}
+						format_details['Fixed Staging Tones'] = rotorhazard.stagingTones[raceformat.staging_fixed_tones];
 
-						format_details['Staging Tones'] = rotorhazard.stagingTones[raceformat.staging_tones];
+						if (raceformat.start_delay_min_ms == raceformat.start_delay_max_ms) {
+							format_details['Start Delay (seconds)'] = raceformat.start_delay_min_ms / 1000;
+						} else {
+							format_details['Start Delay (seconds)'] = raceformat.start_delay_min_ms / 1000 + '&#8211;' + raceformat.start_delay_max_ms / 1000;
+						}
 
 						format_details['First Crossing'] = rotorhazard.startBehavior[raceformat.start_behavior];
 
