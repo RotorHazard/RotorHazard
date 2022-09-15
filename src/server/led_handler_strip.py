@@ -306,16 +306,19 @@ def stagingTrigger(args):
     start_time = args['pi_starts_at_s']
     triggers = args['staging_tones']
 
-    idx = 0
-    while idx < triggers:
-        diff = stage_time - monotonic()
-        diff_to_s = diff % 1
-        if diff:
-            gevent.sleep(diff_to_s)
-            idx += 1
-            args['effect_fn'](args)
-        else:
-            break
+    if triggers < 1:
+        args['effect_fn'](args)
+    else:
+        idx = 0
+        while idx < triggers:
+            diff = stage_time - monotonic()
+            diff_to_s = diff % 1
+            if diff:
+                gevent.sleep(diff_to_s)
+                idx += 1
+                args['effect_fn'](args)
+            else:
+                break
 
 def larsonScanner(args):
     if 'strip' in args:
