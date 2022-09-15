@@ -98,11 +98,31 @@ Race formats define how a race is conducted. Choose an active race format. Setti
 
 The race clock can count up or down as selected by _Race Clock Mode_. Use "No Time Limit" for a "First to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
 
-Each race begins with a staging sequence. Race staging can be done with a fixed or variable number of staging seconds and with or without staging tones. Set the _Minimum Start Delay_ and _Maximum Start Delay_ to the values (in seconds) that are desired for race staging. If these values are different, the timer will choose a value at random for the amount of staging time. Random staging times are useful to prevent false starts. The timer will display "Ready" during staging, obscuring the race start time. For a fixed staging time, set the "Minimum" and "Maximum" to the same value. The staging timer will openly display the number of seconds until the race begins. 
+Each race begins with a staging sequence. The *prestage* phase is always a fixed length which will sound one tone each second. Adjust this with the _Prestage Tones_ value. Next is the *staging* phase. _Staging Delay_ sets the time in between the *prestage* and *staging* phases. Once the delay expires, the timer will wait a random amount of time from zero up to the maximum set in _Staging Variable Delay_. If _Staging Variable Delay_ is not zero, the timer will hide the staging clock and simply show "Ready". Choose whether tones are heard during the *staging* phase with _Variable Staging Tones_.
 
-_A small amount of time is needed to ensure the timer has synchronized with all hardware, so there is a short staging period even with a staging time of zero._
+#####Examples:
+* A fixed "3, 2, 1, Go" countdown start:
+    * _Prestage Tones_: 3
+    * _Staging Delay_: 1.0
+    * _Staging Variable Delay_: 0.0
+    * _Variable Staging Tones_: None
+* A race with three prestage tones followed by a start tone between 1.0 and 3.0 seconds:
+    * _Prestage Tones_: 3
+    * _Staging Delay_: 1.0
+    * _Staging Variable Delay_: 2.0
+    * _Variable Staging Tones_: None
+* A "formula one"-style launch of 5 prestage tones followed by a random delay between 0.2 as 5.0 seconds:
+    * _Prestage Tones_: 5
+    * _Staging Delay_: 0.2
+    * _Staging Variable Delay_: 4.8
+    * _Variable Staging Tones_: None
+* A variable number of prestage tones between 2 and 5, followed by up to 0.9s:
+    * _Prestage Tones_: 2
+    * _Staging Delay_: 0.0
+    * _Staging Variable Delay_: 3.9
+    * _Variable Staging Tones_: Each Second
 
-A number of tones can be generated during the staging sequence, as set by _Staging Tones_. For "Each Second", the timer will sound a tone continuously during staging. With "One", the timer will sound a tone immediately when staging begins. With "None", no audible warning is provided. Regardless of the _Staging Tones_ setting, the "Race Start" tone is still played when staging completes and the race begins.
+_A small amount of time is needed to ensure the timer has synchronized with all hardware, so there is always a short period to start a race even with all staging times set to zero._
 
 When a pilot crosses for the first time in a race, _First Crossing_ affects how result displays and race outcomes are processed. "Hole Shot" records the race time of each pilot's first crossing as beginning their first lap. "First Lap" records the race time of each pilot's first crossing as ending their first lap. "Staggered Start" begins each pilot's own race clock their first crossing, disregarding the global race clock. "Staggered Start" is typically combined with the "No Time Limit" _Race Clock Mode_.
 
