@@ -106,17 +106,22 @@ Each race begins with a staging sequence. The *prestage* phase is always a fixed
     * _Staging Delay_: 1.0
     * _Staging Variable Delay_: 0.0
     * _Variable Staging Tones_: None
-* A race with three prestage tones followed by a start tone between 1.0 and 3.0 seconds:
+* One prestage tone followed by a start tone within 5 seconds:
+    * _Prestage Tones_: 1
+    * _Staging Delay_: 0.0
+    * _Staging Variable Delay_: 5.0
+    * _Variable Staging Tones_: None
+* Three prestage tones followed by a start tone between 1.0 and 3.0 seconds:
     * _Prestage Tones_: 3
     * _Staging Delay_: 1.0
     * _Staging Variable Delay_: 2.0
     * _Variable Staging Tones_: None
-* A "formula one"-style launch of 5 prestage tones followed by a random delay between 0.2 as 5.0 seconds:
+* A "formula one"-style launch of 5 prestage tones followed by a random delay between 0.2 and 3.0 seconds:
     * _Prestage Tones_: 5
     * _Staging Delay_: 0.2
-    * _Staging Variable Delay_: 4.8
+    * _Staging Variable Delay_: 2.8
     * _Variable Staging Tones_: None
-* A variable number of prestage tones between 2 and 5, followed by up to 0.9s:
+* A variable number of prestage tones between 2 and 5:
     * _Prestage Tones_: 2
     * _Staging Delay_: 0.0
     * _Staging Variable Delay_: 3.9
