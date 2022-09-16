@@ -3313,17 +3313,6 @@ def emit_race_list(**params):
             for race in RHData.get_savedRaceMetas_by_heat(heat.id):
                 pilotraces = []
                 for pilotrace in RHData.get_savedPilotRaces_by_savedRaceMeta(race.id):
-                    laps = []
-                    for lap in RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
-                        laps.append({
-                                'id': lap.id,
-                                'lap_time_stamp': lap.lap_time_stamp,
-                                'lap_time': lap.lap_time,
-                                'lap_time_formatted': lap.lap_time_formatted,
-                                'source': lap.source,
-                                'deleted': lap.deleted
-                            })
-
                     pilot_data = RHData.get_pilot(pilotrace.pilot_id)
                     if pilot_data:
                         nodepilot = pilot_data.callsign
@@ -3335,11 +3324,6 @@ def emit_race_list(**params):
                         'callsign': nodepilot,
                         'pilot_id': pilotrace.pilot_id,
                         'node_index': pilotrace.node_index,
-                        'history_values': json.loads(pilotrace.history_values),
-                        'history_times': json.loads(pilotrace.history_times),
-                        'laps': laps,
-                        'enter_at': pilotrace.enter_at,
-                        'exit_at': pilotrace.exit_at,
                     })
                 rounds[race.round_id] = {
                     'race_id': race.id,
@@ -3365,6 +3349,42 @@ def emit_race_list(**params):
         emit('race_list', emit_payload)
     else:
         SOCKET_IO.emit('race_list', emit_payload)
+
+@SOCKET_IO.on('get_pilotrace')
+@catchLogExceptionsWrapper
+def get_pilotrace(data):
+    # get single race detail
+    if 'pilotrace_id' in data:
+        pilotrace = RHData.get_savedPilotRace(data['pilotrace_id'])
+
+        laps = []
+        for lap in RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
+            laps.append({
+                    'id': lap.id,
+                    'lap_time_stamp': lap.lap_time_stamp,
+                    'lap_time': lap.lap_time,
+                    'lap_time_formatted': lap.lap_time_formatted,
+                    'source': lap.source,
+                    'deleted': lap.deleted
+                })
+
+        pilot_data = RHData.get_pilot(pilotrace.pilot_id)
+        if pilot_data:
+            nodepilot = pilot_data.callsign
+        else:
+            nodepilot = None
+
+        emit('race_details', {
+            'pilotrace_id': data['pilotrace_id'],
+            'callsign': nodepilot,
+            'pilot_id': pilotrace.pilot_id,
+            'node_index': pilotrace.node_index,
+            'history_values': json.loads(pilotrace.history_values),
+            'history_times': json.loads(pilotrace.history_times),
+            'laps': laps,
+            'enter_at': pilotrace.enter_at,
+            'exit_at': pilotrace.exit_at,
+        })
 
 def emit_result_data(**params):
     ''' kick off non-blocking thread to generate data'''
