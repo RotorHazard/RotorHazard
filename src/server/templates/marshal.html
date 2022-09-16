@@ -96,15 +96,6 @@
 				return false;
 			}
 
-			for (var heat in race_list.heats) {
-				for (var round in race_list.heats[heat].rounds) {
-					for (var pilotrace in race_list.heats[heat].rounds[round].pilotraces) {
-						race_list.heats[heat].rounds[round].pilotraces[pilotrace].minRSSI = Math.min.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) - 2;
-						race_list.heats[heat].rounds[round].pilotraces[pilotrace].maxRSSI = Math.max.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) + 2;
-					}
-				}
-			}
-
 			// find most recent race
 			var prev_heat = null;
 			if (race_list_loaded) {
@@ -146,6 +137,60 @@
 				$('.heat-selector').val(prev_heat);
 				$('#selected_heat').trigger('change');
 			}
+		});
+
+		socket.on('race_details', function (msg) {
+			var racedetail = msg;
+
+			current_race_data.history_times = msg.history_times;
+			current_race_data.history_values = msg.history_values;
+			current_race_data.laps = msg.laps;
+			current_race_data.enter_at = msg.enter_at;
+			current_race_data.exit_at = msg.exit_at;
+
+			if (current_race_data.history_times.length) {
+				current_race_data.end_time = current_race_data.history_times[current_race_data.history_times.length - 1];
+				graph.options.minValue = Math.min.apply(null, current_race_data.history_values) - 2;
+				graph.options.maxValue = Math.max.apply(null, current_race_data.history_values) + 2;
+			} else {
+				current_race_data.end_time = current_race_data.start_time + 1
+				graph.options.minValue = current_race_data.exit_at;
+				graph.options.maxValue = current_race_data.enter_at;
+			}
+
+			current_race_data.race_format = rotorhazard.race_formats[current_race_data.format_id];
+
+			// update header
+			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
+			$( "#selected_round option:selected" ).text() + ' / ' +
+			$( "#selected_pilot option:selected" ).text();
+			$('#race-title').html(header);
+
+			// fill enter/exit values
+			$('#enterat').val(current_race_data.enter_at);
+			$('#exitat').val(current_race_data.exit_at);
+
+			// prepare graph
+			rssi_series.data = [];
+			for (idx in current_race_data.history_times) {
+				var value = current_race_data.history_times[idx];
+				if (value == lastValue) {
+					rssi_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
+				} else {
+					rssi_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
+				}
+				var lastValue = value;
+			}
+			// Lap marker series lines drawn below the bottom of the graph
+			clearCrossings();
+			clearMarkedLap();
+			renderGraph();
+
+			// populate laps
+			displayLaps(current_race_data.laps);
+
+			enableUI();
+			return false;
 		});
 
 		socket.on('heat_data', function (msg) {
@@ -249,49 +294,9 @@
 			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
 			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
 
-			if (current_race_data.history_times.length) {
-				current_race_data.end_time = current_race_data.history_times[current_race_data.history_times.length - 1];
-				graph.options.minValue = current_race_data.minRSSI;
-				graph.options.maxValue = current_race_data.maxRSSI;
-			} else {
-				current_race_data.end_time = current_race_data.start_time + 1
-				graph.options.minValue = current_race_data.exit_at;
-				graph.options.maxValue = current_race_data.enter_at;
-			}
-
-			current_race_data.race_format = rotorhazard.race_formats[current_race_data.format_id];
-
-			// update header
-			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
-			$( "#selected_round option:selected" ).text() + ' / ' +
-			$( "#selected_pilot option:selected" ).text();
-			$('#race-title').html(header);
-
-			// fill enter/exit values
-			$('#enterat').val(current_race_data.enter_at);
-			$('#exitat').val(current_race_data.exit_at);
-
-			// prepare graph
-			rssi_series.data = [];
-			for (idx in current_race_data.history_times) {
-				var value = current_race_data.history_times[idx];
-				if (value == lastValue) {
-					rssi_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
-				} else {
-					rssi_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
-				}
-				var lastValue = value;
-			}
-			// Lap marker series lines drawn below the bottom of the graph
-			clearCrossings();
-			clearMarkedLap();
-			renderGraph();
-
-			// populate laps
-			displayLaps(current_race_data.laps);
-
-			enableUI();
-			return false;
+			socket.emit('get_pilotrace', {
+				'pilotrace_id': current_race_data.pilotrace_id,
+			});
 		}
 
 		function disableUI(lapsOnly=false) {
