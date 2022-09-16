@@ -701,9 +701,6 @@ nodeModel.prototype = {
 }
 
 /* Data model for timer */
-const TONES_NONE = 0;
-const TONES_ONE = 1;
-const TONES_ALL = 2;
 
 function timerModel() {
 	// interval control
@@ -720,15 +717,16 @@ function timerModel() {
 		'step': false,
 		'expire': false,
 	};
+	this.staging_cb_tic = null; // prevent double callbacks
 
 	this.running = false;
-	this.zero_time = null; // timestamp for timer's zero point
+	this.local_start_time = null; // timestamp for local staging start time
+	this.local_zero_time = null; // timestamp for local T=0 point (race start)
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
-	this.is_staging = true; // whether negative time is treated as staging
-	this.staging_tones = TONES_ALL; // sound tones during staging
-	this.max_delay = Infinity; // don't sound more tones than this even if staging takes longer
-	this.time_s = false; // simplified relative time in seconds
-	this.time_tenths = false; // simplified relative time in tenths
+	this.staging_tones = 0; // sound tones during staging
+	this.time = null; // start-relative time in ms
+	this.time_tenths = null; // race-relative display time in tenths (inverts when counting down)
+	this.time_staging_tenths = null; // staging-relative time
 	this.count_up = false; // use fixed-length timer
 	this.duration_tenths = 0; // fixed-length duration, in tenths
 	this.has_looped = false; // prevent expire callbacks until timer runs 1 loop
@@ -743,17 +741,19 @@ function timerModel() {
 	var self = this;
 
 	function step() { // timer control
-		var diff = window.performance.now() - self.zero_time;
+		var now = window.performance.now();
+		self.time = now - self.local_zero_time;
 		var continue_timer = true;
 
-		if (diff > self.interval / -2) {
+		self.time_staging_tenths = Math.round((now - self.local_start_time) / 100);
+
+		if (self.time > self.interval / -2) {
 			// time is positive or zero
 			if (!self.count_up) {
-				var new_time_tenths = self.duration_tenths - Math.round(diff / 100);
+				var new_time_tenths = self.duration_tenths - Math.round(self.time / 100);
 
 				if (new_time_tenths != self.time_tenths) { // prevent double callbacks
 					self.time_tenths = new_time_tenths;
-					self.time_s = (new_time_tenths / 10).toFixed(0);
 
 					if (self.time_tenths <= 0) {
 						// continue_timer = false;
@@ -771,11 +771,10 @@ function timerModel() {
 					}
 				}
 			} else {
-				var new_time_tenths = Math.round(diff / 100);
+				var new_time_tenths = Math.round(self.time / 100);
 
 				if (new_time_tenths != self.time_tenths) { // prevent double callbacks
 					self.time_tenths = new_time_tenths;
-					self.time_s = (new_time_tenths / 10).toFixed(0);
 
 					if (self.callbacks.step instanceof Function) {
 						self.callbacks.step(self);
@@ -784,11 +783,10 @@ function timerModel() {
 			}
 		} else {
 			// negative
-			var new_time_tenths = Math.round(diff / 100);
+			var new_time_tenths = Math.round(self.time / 100);
 
 			if (new_time_tenths != self.time_tenths) { // prevent double callbacks
 				self.time_tenths = new_time_tenths;
-				self.time_s = (new_time_tenths / 10).toFixed(0);
 
 				if (self.callbacks.step instanceof Function) {
 					self.callbacks.step(self);
@@ -799,7 +797,7 @@ function timerModel() {
 		self.has_looped = true;
 
 		if (continue_timer) {
-			var now = window.performance.now()
+			now = window.performance.now();
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
@@ -820,7 +818,7 @@ function timerModel() {
 
 	this.get_next_step = function(now){
 		// find current differential
-		var diff = this.zero_time - now;
+		var diff = this.local_zero_time - now;
 
 		if (diff >= 0) {
 			// waiting for zero
@@ -839,16 +837,16 @@ function timerModel() {
 		}
 	}
 
-	this.start = function(remote_time_zero, local_remote_diiferential){
+	this.start = function(remote_time_zero, local_remote_differential, remote_time_start){
 		// reset simplified time and drift history
-		rotorhazard.timer.race.time_s = false;
-		rotorhazard.timer.race.time_tenths = false;
-		this.drift_history = [];
-		this.drift_correction = 0;
+		this.time_tenths = false;
+		this.staging_cb_tic = null;
 
 		// get sync if needed
-		if (typeof remote_time_zero !== "undefined" && typeof local_remote_diiferential !== "undefined") {
-			this.sync(remote_time_zero, local_remote_diiferential);
+		if (typeof remote_time_zero !== "undefined"
+			&& typeof remote_time_start !== "undefined"
+			&& typeof local_remote_differential !== "undefined") {
+			this.sync(remote_time_zero, local_remote_differential, remote_time_start);
 		}
 
 		// start timing loop
@@ -873,14 +871,24 @@ function timerModel() {
 		this.running = true;
 	}
 
-	this.sync = function(remote_time_zero, local_remote_diiferential) {
-		// set local timer zero based on remote zero and calculated differential
-		if (local_remote_diiferential && remote_time_zero) {
-			// only valid with both components
-			this.zero_time = remote_time_zero - local_remote_diiferential;
+	this.sync = function(remote_time_zero, local_remote_diiferential, remote_time_start) {
+		// set local timer based on remote and calculated differential
+		// only valid with both components
+		if (local_remote_diiferential) {
+			if (remote_time_start) {
+				this.local_start_time = remote_time_start - local_remote_diiferential;
+			} else {
+				this.local_start_time = null;
+			}
+
+			if (remote_time_zero) {
+				this.local_zero_time = remote_time_zero - local_remote_diiferential;
+			} else {
+				this.local_zero_time = null;
+			}
 		} else {
-			// otherwise don't consider valid
-			this.zero_time = null;
+			this.local_start_time = null;
+			this.local_zero_time = null;
 		}
 	}
 
@@ -894,25 +902,25 @@ function timerModel() {
 	}
 
 	this.renderHTML = function() {
-		if (this.zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
+		if (this.local_zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
 			return '--:--';
 		}
 
-		if (this.hidden_staging && this.is_staging && this.time_tenths < 0) {
+		if (this.hidden_staging && this.time < 0) {
 			return __l('Ready');
 		}
 
 		var active_time_tenths = this.time_tenths;
 
 		// hold timer during prestage
-		if (this.is_staging && active_time_tenths < -this.max_delay * 10) {
-			active_time_tenths = -this.max_delay * 10;
+		if (this.time_staging_tenths < 0) {
+			active_time_tenths = Math.trunc((this.local_start_time - this.local_zero_time) / 100);
 		}
 
 		var active_time_s = Math.trunc(active_time_tenths / 10);
 		var display_time = Math.abs(active_time_s);
 
-		if (this.is_staging && active_time_tenths < 0) {
+		if (this.time < 0 && active_time_tenths < 0) {
 			var sign = '';
 		} else {
 			var sign = active_time_tenths >= 0 ? '' : '-';
@@ -1216,52 +1224,24 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 rotorhazard.timer.race.callbacks.start = function(timer){
 	$('.time-display').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
-	timer.is_staging = true; // set staging flag
-	if (timer.staging_tones == TONES_ONE
-		&& timer.max_delay >= 1) {
-		// beep on start if single staging tone
-		if (rotorhazard.use_mp3_tones) {
-			play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-		}
-		else {
-			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		}
-	}
 }
+
 rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_tenths < 0
-		&& timer.is_staging
-		&& timer.time_tenths >= -timer.max_delay * 10) {
+	if (timer.time_tenths < 0) {
 		// time before race begins (staging)
-		if (timer.hidden_staging
-			&& timer.staging_tones == TONES_ALL) {
-			// beep every second during staging if timer is hidden
-			if (timer.time_tenths % 10 == 0) {
-				if (rotorhazard.use_mp3_tones) {
-					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-				}
-				else {
-					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-				}
+		if (timer.time_staging_tenths < (timer.staging_tones*10)
+			&& timer.time_staging_tenths >= 0
+			&& timer.time_staging_tenths % 10 == 0
+			&& timer.time_staging_tenths != timer.staging_cb_tic) {
+			timer.staging_cb_tic = timer.time_staging_tenths;
+			if (rotorhazard.use_mp3_tones) {
+				play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 			}
-		} else if (timer.time_tenths == -300
-			|| timer.time_tenths == -200
-			|| timer.time_tenths == -100) {
-			speak('<div>' + __l('Starting in') + ' ' + (-timer.time_s) + ' ' + __l('Seconds') + '</div>', true);
-		} else if (timer.staging_tones == TONES_ALL
-			&& timer.time_tenths >= -50
-			&& timer.is_staging) {
-			// staging beep for last 5 seconds before start
-			if (timer.time_tenths % 10 == 0) {
-				if (rotorhazard.use_mp3_tones) {
-					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-				}
-				else {
-					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-				}
+			else {
+				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 			}
 		}
 	} else if (timer.time_tenths == 0 ||
@@ -1274,8 +1254,6 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		else {
 			play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 		}
-		// remove staging flag
-		timer.is_staging = false;
 	} else {
 		if (!timer.count_up) {
 			if (timer.time_tenths <= 50 && timer.time_tenths > 0) { // Final seconds

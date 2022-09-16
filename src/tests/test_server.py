@@ -90,8 +90,8 @@ class ServerTest(unittest.TestCase):
             'format_name': 'Test ' + str(datetime.now()),
             'race_mode': 0,
             'race_time': 30,
-            'start_delay_min': 1,
-            'start_delay_max': 4,
+            'start_delay_min_ms': 1000,
+            'start_delay_max_ms': 4000,
             'number_laps_win': 5,
             'win_condition': 0,
             'team_racing_mode': True
@@ -101,8 +101,8 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['format_name'], data['format_name'])
         self.assertEqual(resp['race_mode'], data['race_mode'])
         self.assertEqual(resp['race_time_sec'], data['race_time'])
-        self.assertEqual(resp['start_delay_min'], data['start_delay_min'])
-        self.assertEqual(resp['start_delay_max'], data['start_delay_max'])
+        self.assertEqual(resp['start_delay_min_ms'], data['start_delay_min_ms'])
+        self.assertEqual(resp['start_delay_max_ms'], data['start_delay_max_ms'])
         self.assertEqual(resp['number_laps_win'], data['number_laps_win'])
         self.assertEqual(resp['win_condition'], data['win_condition'])
         self.assertEqual(resp['team_racing_mode'], data['team_racing_mode'])

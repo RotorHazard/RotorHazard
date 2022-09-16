@@ -302,20 +302,23 @@ def meteor(args):
         gevent.sleep(a['speedDelay']/1000.0)
 
 def stagingTrigger(args):
-    if args['hide_stage_timer']:
-        args['effect_fn'](args)
-        return None
-
+    stage_time = args['pi_staging_at_s']
     start_time = args['pi_starts_at_s']
+    triggers = args['staging_tones']
 
-    while monotonic() < start_time:
-        diff = start_time - monotonic()
-        diff_to_s = diff % 1
-        if diff:
-            gevent.sleep(diff_to_s)
-            args['effect_fn'](args)
-        else:
-            break
+    if triggers < 1:
+        args['effect_fn'](args)
+    else:
+        idx = 0
+        while idx < triggers:
+            diff = stage_time - monotonic()
+            diff_to_s = diff % 1
+            if diff:
+                gevent.sleep(diff_to_s)
+                idx += 1
+                args['effect_fn'](args)
+            else:
+                break
 
 def larsonScanner(args):
     if 'strip' in args:

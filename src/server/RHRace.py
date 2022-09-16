@@ -18,10 +18,10 @@ class RHRace():
         # status
         self.race_status = RaceStatus.READY
         self.timer_running = False
+        self.stage_time_monotonic = 0
         self.start_time = 0 # datetime
-        self.start_time_monotonic = 0 # monotonic
+        self.start_time_monotonic = 0
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
-        self.start_time_delay_secs = 0 # random-length race-start delay
         self.node_laps = {} # current race lap objects, by node
         self.node_has_finished = {}
         self.any_races_started = False
@@ -84,6 +84,12 @@ class RHRace():
         return False
 
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
+
+class StagingTones():
+    TONES_NONE = 0
+    TONES_ONE = 1
+    TONES_ALL = 2
+    # TONES_3_2_1 = 3
 
 class StartBehavior():
     HOLESHOT = 0
