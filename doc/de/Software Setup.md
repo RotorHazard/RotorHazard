@@ -127,7 +127,7 @@ Hinweis: Der Wert **LED_COUNT** muss in der Datei `src/server/config.json` festg
 
 ```
 LED_COUNT:  Anzahl der LED-Pixel im Streifen (oder Panel)
-LED_PIN:  GPIO-Pin mit den Pixeln verbunden (Standard 10 verwendet SPI '/dev/spidev0.0')
+LED_GPIO:  GPIO-Pin mit den Pixeln verbunden (Standard 10 verwendet SPI '/dev/spidev0.0')
 LED_FREQ_HZ:  LED-Signalfrequenz in Hertz (normalerweise 800000)
 LED_DMA:  DMA-Kanal zur Signalerzeugung (Standard 10)
 LED_INVERT:  True, um das Signal zu invertieren (bei Verwendung der NPN-Transistorpegelverschiebung)

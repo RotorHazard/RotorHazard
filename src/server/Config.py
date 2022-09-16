@@ -19,7 +19,7 @@ VRX_CONTROL = {}
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
-LED['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+LED['LED_GPIO']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 LED['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
 LED['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
 LED['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
@@ -117,6 +117,10 @@ if not GENERAL['SECONDARY_TIMEOUT']:
     if 'SLAVE_TIMEOUT' in GENERAL and GENERAL['SLAVE_TIMEOUT']:
         GENERAL['SECONDARY_TIMEOUT'] = GENERAL['SLAVE_TIMEOUT']
 
+if not LED['LED_GPIO']:
+    if 'LED_PIN' in LED and LED['LED_PIN']:
+        LED['LED_GPIO'] = LED['LED_PIN']
+        
 # Writes a log message describing the result of the module initialization.
 def logInitResultMessage():
     if InitResultStr:
