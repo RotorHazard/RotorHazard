@@ -177,7 +177,7 @@ The **LED_COUNT** value must be set in the `src/server/config.json` file; other 
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
 LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
-LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
+LED_GPIO:  GPIO connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
 LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
 LED_DMA:  DMA channel to use for generating signal (default 10)
 LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
@@ -186,7 +186,7 @@ LED_STRIP:  Strip type and color ordering (default is 'GRB')
 PANEL_ROTATE:  Optional panel-rotation value (default 0)
 INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default false)
 ```
-***LED_PIN*** is the GPIO number, not the hardware pin index.
+***LED_GPIO*** is not the hardware pin index.
 If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
 
 Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must run the server with `sudo` or connect LEDs to a different GPIO pin. If using a service file to start the server on boot, it may be run as root by leaving out the "User=pi" line.
