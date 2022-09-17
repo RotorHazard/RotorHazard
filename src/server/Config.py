@@ -113,14 +113,14 @@ if not GENERAL['SECONDARIES']:
     if 'SLAVES' in GENERAL and GENERAL['SLAVES']:
         GENERAL['SECONDARIES'] = GENERAL['SLAVES']
 
-if not GENERAL['SECONDARY_TIMEOUT']:
+if GENERAL['SECONDARY_TIMEOUT'] == 300:
     if 'SLAVE_TIMEOUT' in GENERAL and GENERAL['SLAVE_TIMEOUT']:
         GENERAL['SECONDARY_TIMEOUT'] = GENERAL['SLAVE_TIMEOUT']
 
-if not LED['LED_GPIO']:
+if LED['LED_GPIO'] == 10:
     if 'LED_PIN' in LED and LED['LED_PIN']:
         LED['LED_GPIO'] = LED['LED_PIN']
-        
+
 # Writes a log message describing the result of the module initialization.
 def logInitResultMessage():
     if InitResultStr:
