@@ -4297,7 +4297,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             lap_number += 1
 
                         # announce lap
-                        if lap_number > 0:
+                        if lap_number > 0 and not node_finished_flag:
                             check_leader = race_format.win_condition != WinCondition.NONE and \
                                            RACE.win_status != WinStatus.DECLARED
                             # announce pilot lap number unless winner declared and pilot has finished final lap
