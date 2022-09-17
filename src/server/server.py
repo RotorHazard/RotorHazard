@@ -2272,26 +2272,32 @@ def race_expire_thread(start_token):
 
 @SOCKET_IO.on('stop_race')
 @catchLogExceptionsWrapper
-def on_stop_race():
+def on_stop_race(doSave=False):
     '''Stops the race and stops registering laps.'''
     if CLUSTER:
         CLUSTER.emitToSplits('stop_race')
-    # clear any crossings still in progress
-    any_forced_flag = False
-    for node in INTERFACE.nodes:
-        if node.crossing_flag and node.frequency > 0 and \
-                        node.current_pilot_id != RHUtils.PILOT_ID_NONE:
-            logger.info("Forcing end crossing for node {} at race stop (rssi={}, enterAt={}, exitAt={})".\
-                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
-            INTERFACE.force_end_crossing(node.index)
-            any_forced_flag = True
-    if any_forced_flag:  # give forced end-crossings a chance to complete before stopping race
-        gevent.spawn_later(0.5, do_stop_race_actions)
+
+    if RACE.race_status == RaceStatus.RACING:
+        # clear any crossings still in progress
+        any_forced_flag = False
+        for node in INTERFACE.nodes:
+            if node.crossing_flag and node.frequency > 0 and \
+                            node.current_pilot_id != RHUtils.PILOT_ID_NONE:
+                logger.info("Forcing end crossing for node {} at race stop (rssi={}, enterAt={}, exitAt={})".\
+                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                INTERFACE.force_end_crossing(node.index)
+                any_forced_flag = True
+        if any_forced_flag:  # give forced end-crossings a chance to complete before stopping race
+            gevent.spawn_later(0.5, do_stop_race_actions, doSave)
+        else:
+            do_stop_race_actions(doSave)
     else:
-        do_stop_race_actions()
+        do_stop_race_actions(doSave)
+
+    SOCKET_IO.emit('stop_timer') # Loop back to race page to stop the timer
 
 @catchLogExceptionsWrapper
-def do_stop_race_actions():
+def do_stop_race_actions(doSave=False):
     if RACE.race_status == RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
@@ -2338,21 +2344,25 @@ def do_stop_race_actions():
     RACE.timer_running = False # indicate race timer not running
     RACE.scheduled = False # also stop any deferred start
 
-    SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
     emit_current_leaderboard()
 
+    if doSave:
+        do_save_actions()
+
 @SOCKET_IO.on('save_laps')
 @catchLogExceptionsWrapper
-def on_save_laps():
-    '''Save current laps data to the database.'''
+def on_save_laps(data=None):
+    '''Handle "save" UI action'''
 
-    # Determine if race is empty
-    # race_has_laps = False
-    # for node_index in RACE.node_laps:
-    #    if RACE.node_laps[node_index]:
-    #        race_has_laps = True
-    #        break
+    if RACE.race_status == RaceStatus.RACING:
+        on_stop_race(doSave=True)
+    else:
+        do_save_actions()
+
+@catchLogExceptionsWrapper
+def do_save_actions():
+    '''Save current laps data to the database.'''
 
     # if race_has_laps == True:
     if CLUSTER:
