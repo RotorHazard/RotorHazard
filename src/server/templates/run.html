@@ -223,7 +223,7 @@
 					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', false);
-					$('button#save_laps').prop('disabled', true);
+					$('button#save_laps').prop('disabled', false);
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
 					$('button#schedule_race').prop('disabled', true);
@@ -1985,7 +1985,7 @@
 			</select>
 			<button id="start_race" tabindex="-1"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
 			<button id="stop_race" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
-			<button id="save_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
+			<button id="save_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save and Clear') }}</span></button>
 			<button id="discard_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 		</div>
 
