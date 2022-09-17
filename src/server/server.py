@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.1.2-dev.2" # Public release version code
-SERVER_API = 33 # Server API version
+SERVER_API = 34 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -295,10 +295,11 @@ def setCurrentRaceFormat(race_format, **kwargs):
         emit_current_laps()
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
+    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
         self.name = name
         self.race_mode = race_mode  # 0 for count down, 1 for count up
         self.race_time_sec = race_time_sec
+        self.lap_grace_sec = lap_grace_sec
         self.staging_fixed_tones = staging_fixed_tones
         self.start_delay_min_ms = start_delay_min_ms
         self.start_delay_max_ms = start_delay_max_ms
@@ -313,6 +314,7 @@ class RHRaceFormat():
         return RHRaceFormat(name=race_format.name,
                             race_mode=race_format.race_mode,
                             race_time_sec=race_format.race_time_sec,
+                            lap_grace_sec=race_format.lap_grace_sec,
                             staging_fixed_tones=race_format.staging_fixed_tones,
                             start_delay_min_ms=race_format.start_delay_min_ms,
                             start_delay_max_ms=race_format.start_delay_max_ms,
@@ -2267,6 +2269,9 @@ def race_expire_thread(start_token):
             Events.trigger(Evt.RACE_FINISH)
             check_win_condition(at_finish=True, start_token=start_token)
             emit_current_leaderboard()
+            if race_format.lap_grace_sec > -1:
+                gevent.sleep((RACE.start_time_monotonic + race_format.race_time_sec + race_format.lap_grace_sec) - monotonic())
+                on_stop_race()
         else:
             logger.debug("Finished unused race-time-expire thread")
 
@@ -2295,10 +2300,8 @@ def do_stop_race_actions():
     if RACE.race_status == RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
-        milli_sec = delta_time * 1000.0
-        RACE.duration_ms = milli_sec
 
-        logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.0f}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.0f}s'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), delta_time))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -3178,6 +3181,7 @@ def emit_race_format(**params):
         'format_name': race_format.name,
         'race_mode': race_format.race_mode,
         'race_time_sec': race_format.race_time_sec,
+        'lap_grace_sec': race_format.lap_grace_sec,
         'staging_fixed_tones': race_format.staging_fixed_tones,
         'start_delay_min': race_format.start_delay_min_ms,
         'start_delay_max': race_format.start_delay_max_ms,
@@ -3203,6 +3207,7 @@ def emit_race_formats(**params):
             'format_name': race_format.name,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
+            'lap_grace_sec': race_format.lap_grace_sec,
             'staging_fixed_tones': race_format.staging_fixed_tones,
             'start_delay_min': race_format.start_delay_min_ms,
             'start_delay_max': race_format.start_delay_max_ms,
@@ -3555,6 +3560,7 @@ def emit_class_data(**params):
         raceformat['name'] = race_format.name
         raceformat['race_mode'] = race_format.race_mode
         raceformat['race_time_sec'] = race_format.race_time_sec
+        raceformat['lap_grace_sec'] = race_format.lap_grace_sec
         raceformat['staging_fixed_tones'] = race_format.staging_fixed_tones
         raceformat['start_delay_min'] = race_format.start_delay_min_ms
         raceformat['start_delay_max'] = race_format.start_delay_max_ms
@@ -4141,7 +4147,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
-        # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
+        # always count laps if race is running, otherwise test if lap should have counted before race end
         if RACE.race_status is RaceStatus.RACING \
             or (RACE.race_status is RaceStatus.DONE and \
                 lap_timestamp_absolute < RACE.end_time):
@@ -4182,17 +4188,23 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         min_lap = RHData.get_optionInt("MinLapSec")
                         min_lap_behavior = RHData.get_optionInt("MinLapBehavior")
 
-                    node_finished_flag = RACE.get_node_finished_flag(node.index)
-                    # set next node race status as 'finished' if winner has been declared
-                    #  or timer mode is count-down race and race-time has expired
-                    if RACE.win_status == WinStatus.DECLARED or \
-                                    (race_format.race_mode == 0 and RACE.timer_running is False):
-                        RACE.set_node_finished_flag(node.index)
-
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
                     lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, RHData.get_option('timeFormat'))
                     pilot_obj = RHData.get_pilot(pilot_id)
                     pilot_namestr = pilot_obj.callsign if pilot_obj else ""
+
+                    node_finished_flag = RACE.get_node_finished_flag(node.index)
+                    # set next node race status as 'finished' if winner has been declared
+                    #  or timer mode is count-down race and race-time has expired
+                    if RACE.win_status == WinStatus.DECLARED or \
+                                    (race_format.race_mode == 0 and lap_time_stamp > race_format.race_time_sec * 1000):
+                        RACE.set_node_finished_flag(node.index)
+                        if not node_finished_flag:
+                            logger.info('Pilot {} done'.format(pilot_obj.callsign))
+                            Events.trigger(Evt.RACE_PILOT_DONE, {
+                                'node_index': node.index,
+                                'color': led_manager.getDisplayColor(node.index),
+                                })
 
                     lap_ok_flag = True
                     lap_late_flag = False
@@ -4207,8 +4219,20 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
+                        if race_format.lap_grace_sec > -1 and lap_time_stamp > (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
+                            logger.info('Ignoring lap after grace period expired: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
+                                       .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
+                                               INTERFACE.get_lap_source_str(source), pilot_namestr))
+                            lap_ok_flag = False
+
                     if lap_ok_flag:
 
+                        if node_finished_flag:
+                            lap_late_flag = True  # "late" lap pass (after time expired)
+                            logger.info('Ignoring lap after pilot done: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
+                                       .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
+                                               INTERFACE.get_lap_source_str(source), pilot_namestr))
+                            
                         if RACE.win_status == WinStatus.DECLARED and (RACE.format.team_racing_mode or \
                                                                         node_finished_flag):
                             lap_late_flag = True  # "late" lap pass (after race winner declared)
@@ -4252,7 +4276,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
-                        if RACE.format.team_racing_mode:
+                        if race_format.team_racing_mode:
                             RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
                             RACE.team_cacheStatus = Results.CacheStatus.VALID
 
@@ -4269,7 +4293,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         if lap_number == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
 
-                        if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                        if race_format.start_behavior == StartBehavior.FIRST_LAP:
                             lap_number += 1
 
                         # announce lap
@@ -4279,7 +4303,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             # announce pilot lap number unless winner declared and pilot has finished final lap
                             lap_id = lap_number if RACE.win_status != WinStatus.DECLARED or \
                                                    (not node_finished_flag) else None
-                            if RACE.format.team_racing_mode:
+                            if race_format.team_racing_mode:
                                 team_name = pilot_obj.team if pilot_obj else ""
                                 team_laps = RACE.team_results['meta']['teams'][team_name]['laps']
                                 if not lap_late_flag:
@@ -5172,6 +5196,7 @@ except Exception:
 SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
                          race_mode=1,
                          race_time_sec=0,
+                         lap_grace_sec=-1,
                          staging_fixed_tones=0,
                          start_delay_min_ms=1000,
                          start_delay_max_ms=1000,
