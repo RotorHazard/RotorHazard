@@ -3843,6 +3843,11 @@ def emit_imdtabler_rating():
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
+def emit_event(args):
+    SOCKET_IO.emit('timer_event', args)
+
+Events.on(Evt.ALL, 'eventRepeater', emit_event)
+    
 def emit_vrx_list(*args, **params):
     ''' get list of connected VRx devices '''
     if vrx_controller:
