@@ -98,6 +98,8 @@ Race formats define how a race is conducted. Choose an active race format. Setti
 
 The race clock can count up or down as selected by _Race Clock Mode_. Use "No Time Limit" for a "First to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
 
+During a "Fixed Time" race, _Grace Period_ is the amount of time after the race clock expires before the timer is automatically stopped. Set _Grace Period_ to "0" to stop a race immediately when time expires. If _Grace Period_ is set to "-1", the clock continues indefinitely.
+
 Each race begins with a staging sequence. The *prestage* phase is always a fixed length which will sound one tone each second. Adjust this with the _Prestage Tones_ value. Next is the *staging* phase. _Staging Delay_ sets the time in between the *prestage* and *staging* phases. Once the delay expires, the timer will wait a random amount of time from zero up to the maximum set in _Staging Variable Delay_. If _Staging Variable Delay_ is not zero, the timer will hide the staging clock and simply show "Ready". Choose whether tones are heard during the *staging* phase with _Variable Staging Tones_.
 
 #####Examples:
