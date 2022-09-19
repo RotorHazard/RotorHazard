@@ -151,6 +151,18 @@
 		return twrap;
 	}
 
+	function setPilotColor(idx, heatNodes){
+		hn = heatNodes[idx];
+		console.log("setPilotColor("+idx+",heatNodes)")
+		console.log(hn);
+		var pilotColor = 'var(--contrast_0_high)';
+		if (hn.activeColor) {
+			pilotColor = colorvalToHex(hn.activeColor)
+		}
+		$('.pos').css('background', pilotColor);
+		$('.pos').css('color', pilotColor);
+	}
+
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
 
@@ -305,7 +317,12 @@
 			//updateWinnerColor();
 		});
 
-		socket.on('leaderboard', function (msg) {
+		socket.on('current_heat', function (msg) {
+			console.log(msg.heatNodes);
+			for (var idx in msg.heatNodes) {
+				console.log(idx);
+				setPilotColor(idx,msg.heatNodes);
+			}
 			$('#leaderboard').empty();
 		});
 
