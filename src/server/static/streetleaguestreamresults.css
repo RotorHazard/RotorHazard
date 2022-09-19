@@ -20,7 +20,6 @@ body {
 
 .pos {
 	width: 64px;
-	background-color: var(--contrast_0_high);
 	padding: 12px 10px 6px 20px;
 	margin-right: 4px;
 	font-size: 44px;
