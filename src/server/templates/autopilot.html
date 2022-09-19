@@ -18,12 +18,12 @@
 	var lastHeat = null;
 	var currentScene = "";
 	var launchDelay = 7;
-	var FPVFeedSceneName = "4Box";
-	var resultsSceneName = "Results";
-	var raceResultsSceneName = "Race Results";
+	var raceFeedSceneName = "Race - Mixed";
+	var eventResultsSceneName = "Event - Results";
+	var raceResultsSceneName = "Race - Results";
 	var pilotCardsSceneName = "Pilot Intro";
-	var launchSceneName = "Launch";
-	var commentatorSceneName = "Commentators";
+	var launchSceneName = "Race - Launch";
+	var commentatorSceneName = "Event - Commentators";
 	var FPVSourceNames = "Node{N}-{analog,HD0,DJI}"
 	var obsURL = "ws://localhost:4444";
 
@@ -51,8 +51,8 @@
 		console.log("Heat Schedule (Seconds): "+heatScheduleSecond);
 		console.log("Launch Delay: "+launchDelay);
 		console.log("FPV feed source names: "+FPVSourceNames);
-		console.log("FPV feed scene name: "+FPVFeedSceneName);
-		console.log("Results scene name: "+resultsSceneName);
+		console.log("Race feed scene name: "+raceFeedSceneName);
+		console.log("Results scene name: "+eventResultsSceneName);
 		console.log("Race Results scene name: "+raceResultsSceneName);
 		console.log("Launch scene name: "+launchSceneName);
 		console.log("Commentator scene name: "+commentatorSceneName);
@@ -63,8 +63,9 @@
 		$('#heatScheduleFieldMinute').val(heatScheduleMinute);
 		$('#heatScheduleFieldSecond').val(heatScheduleSecond);
 		$('#launchDelayField').val(launchDelay);
+		$('#raceFeedField').val(raceFeedSceneName);
 		$('#commentatorField').val(commentatorSceneName);
-		$('#heatResultsField').val(resultsSceneName);
+		$('#heatResultsField').val(eventResultsSceneName);
 		$('#raceResultsField').val(raceResultsSceneName);
 		$('#launchField').val(launchSceneName);
 
@@ -86,8 +87,8 @@
 		const heatResultsInput = document.querySelector('#heatResultsField');
 		heatResultsInput.addEventListener('input', updateHeatResultsValue);
 		function updateHeatResultsValue(e) {
-		  resultsSceneName = e.target.value;
-			console.log("updating heat results scene name: "+resultsSceneName);
+		  eventResultsSceneName = e.target.value;
+			console.log("updating heat results scene name: "+eventResultsSceneName);
 		}
 
 		const raceResultsInput = document.querySelector('#raceResultsField');
@@ -123,21 +124,21 @@
 			if(raceStatus==3){ //race is counting down, lets double check were on the right scene and have the right feeds
 				if (lastHeat!=null){
 					setScene(launchSceneName);
-					setTimeout(() => {setScene(FPVFeedSceneName);}, (launchDelay*1000));
+					setTimeout(() => {setScene(raceFeedSceneName);}, (launchDelay*1000));
 			    setTimeout(() => {applyHeatToOBS(lastHeat);}, (launchDelay*1000)+100);
 				}
 			}
 			if(raceStatus==0){ //Race Director hit save or discard, lets switch back to FPV feeds in 10 seconds and update
 				if (lastHeat!=null){
-					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(raceResultsSceneName);} }, 10000);
-					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(pilotCardsSceneName);} }, 20000);
-					setTimeout(() => { if(currentScene!=FPVFeedSceneName && currentScene!=launchSceneName){setScene(commentatorSceneName);} }, 30000);
+					setTimeout(() => { if(currentScene!=raceFeedSceneName && currentScene!=launchSceneName){setScene(eventResultsSceneName);} }, 10000);
+					setTimeout(() => { if(currentScene!=raceFeedSceneName && currentScene!=launchSceneName){setScene(pilotCardsSceneName);} }, 20000);
+					setTimeout(() => { if(currentScene!=raceFeedSceneName && currentScene!=launchSceneName){setScene(commentatorSceneName);} }, 30000);
 				}
 				socket.emit("schedule_race",{"m": parseInt($('#heatScheduleFieldMinute').val()), "s": parseInt($('#heatScheduleFieldSecond').val())});
 
 			}
 			if(msg['race_status']==2){ //race just stopped
-				setScene(resultsSceneName);
+				setScene(raceResultsSceneName);
 			}
 		});
 
@@ -213,7 +214,11 @@
 			//var payload = {"message-id":crypto.randomUUID(), "request-type":"GetVersion"};
 			data["message-id"] = new Date().getTime();
 			data["request-type"] = requestType;
-			obsSocket.send(JSON.stringify(data));
+			try {
+				obsSocket.send(JSON.stringify(data));
+			}catch(err){
+				console.error(err, err.stack);
+			}
 
 		}
 
@@ -274,6 +279,10 @@
 <p>
 	<label for="launchDelayField">Launch Cam Delay</label>
 	<input type="number" id="launchDelayField" name="launchDelayField" min="1" max="15">
+</p>
+<p>
+	<label for="raceFeedField">Race Feed Scene</label>
+	<input type="text" id="raceFeedField" name="raceFeedField">
 </p>
 <p>
 	<label for="commentatorField">Commentator Scene</label>

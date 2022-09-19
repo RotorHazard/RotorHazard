@@ -306,6 +306,10 @@
 		});
 
 		socket.on('leaderboard', function (msg) {
+			$('#leaderboard').empty();
+		});
+
+		socket.on('leaderboard', function (msg) {
 			if (msg && 'last_race' in msg) {
 				var race = msg.last_race;
 			} else {
@@ -313,18 +317,26 @@
 
 			}
 
+			//we are getting an update to the leaderboard
 			var newLeaderboard = race.leaderboard.by_race_time;
 
 			console.log("new race...");
 			console.log(newLeaderboard);
 			console.log("old race...");
 			console.log(oldLeaderboard);
+			//let's create a list of pilots who changed positions
 			var diffPilots = [];
 			if(!jQuery.isEmptyObject(newLeaderboard) && !jQuery.isEmptyObject(oldLeaderboard)){
 				newLeaderboard.forEach((item, index) => {
-					var newPilotPosition = newLeaderboard[index].pilot_id;
-					var oldPilotPosition = oldLeaderboard[index].pilot_id;
-					if(newPilotPosition!=oldPilotPosition){
+					//if the old pilot is on this leaderboard
+					if (oldLeaderboard[index] !== undefined) {
+						var newPilotPosition = newLeaderboard[index].pilot_id;
+						var oldPilotPosition = oldLeaderboard[index].pilot_id;
+						if(newPilotPosition!=oldPilotPosition){
+							diffPilots.push(index);
+						}
+					//when heats change, the list may be different
+					}else{
 						diffPilots.push(index);
 					}
 				});
