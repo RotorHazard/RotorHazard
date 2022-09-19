@@ -404,7 +404,7 @@
 						opacity: 1,
 						left: 0,
 						delay: i/5,
-						duration: 5
+						duration: 0
 					});
 				});
 			}
@@ -443,9 +443,9 @@
 
 			const pilotRows = document.querySelectorAll('.pilot-row');
 			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
-				updateRow(pilotRows);
+				fadeIn(pilotRows);
 			}else{
-
+				updateRow(pilotRows);
 			}
 
 			$('#team_leaderboard').empty();
