@@ -66,10 +66,12 @@
 			display_type == 'round' ||
 			display_type == 'current') {
 		}
-		//table.append(header);
+		//
 
 		var body = $('<div>');
-
+		var header = $('<div class="pilot-row">');
+		header.append('<div class="pilot"> Lap '+ leaderboard[0].laps +'</div>');
+		table.append(header);
 		for (var i in leaderboard) {
 			var node = leaderboard[i].node;
 			var pilot_id = leaderboard[i].pilot_id;
@@ -156,7 +158,6 @@
 
 			table.append(row);
 		}
-
 		table.append(body);
 		twrap.append(table);
 		return twrap;
