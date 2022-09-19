@@ -151,13 +151,12 @@
 		return twrap;
 	}
 
-	function setPilotColor(idx, heatNodes){
-		hn = heatNodes[idx];
+	function setPilotColor(idx, color){
 		console.log("setPilotColor("+idx+",heatNodes)")
-		console.log(hn);
+		console.log(color);
 		var pilotColor = 'var(--contrast_0_high)';
-		if (hn.activeColor) {
-			pilotColor = colorvalToHex(hn.activeColor)
+		if (color) {
+			pilotColor = colorvalToHex(color)
 		}
 		$('[data-node="'+idx+'"] .pos').css('background-color', pilotColor);
 		$('[data-node="'+idx+'"] .pos').css('color', pilotColor);
@@ -321,7 +320,8 @@
 			console.log(msg.heatNodes);
 			for (var idx in msg.heatNodes) {
 				console.log(idx);
-				setPilotColor(idx,msg.heatNodes);
+				var color = msg.heatNodes[idx];
+				setPilotColor(idx,color);
 			}
 			$('#leaderboard').empty();
 		});
