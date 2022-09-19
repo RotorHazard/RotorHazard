@@ -24,7 +24,7 @@
 	var resume_check = true;
 
 	/* Leaderboards */
-	function build_leaderboard(leaderboard, display_type, meta, heatNodes, display_starts=false) {
+	function build_leaderboard(leaderboard, display_type, meta, leaderboardHeatNodes, display_starts=false) {
 		if (typeof(display_type) === 'undefined')
 			display_type = 'by_race_time';
 		if (typeof(meta) === 'undefined') {
@@ -74,10 +74,10 @@
 			var node = leaderboard[i].node;
 			var pilot_id = leaderboard[i].pilot_id;
 			var pilotColor = "#00ff00";
-			for (const key in heatNodes) {
-				console.log(heatNodes[key].pilot_id+"=="+pilot_id);
-				if(heatNodes[key].pilot_id==pilot_id){
-					pilotColor = heatNodes[key].pilotColor;
+			for (const key in leaderboardHeatNodes) {
+				console.log(leaderboardHeatNodes[key].pilot_id+"=="+pilot_id);
+				if(leaderboardHeatNodes[key].pilot_id==pilot_id){
+					pilotColor = leaderboardHeatNodes[key].pilotColor;
 				}
 			}
 			var row = $('<div class="pilot-row" data-node="'+ node +'">');
