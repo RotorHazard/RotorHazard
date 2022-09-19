@@ -433,7 +433,7 @@
 			const pilotRows = document.querySelectorAll('.pilot-row');
 			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
 				fadeIn(pilotRows);
-			});
+			}
 
 			$('#team_leaderboard').empty();
 			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {
