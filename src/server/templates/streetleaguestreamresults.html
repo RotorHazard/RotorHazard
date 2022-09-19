@@ -153,9 +153,12 @@
 
 	function setPilotColor(idx, color){
 		console.log("setPilotColor("+idx+",heatNodes)")
-		console.log(color);
+
 		var pilotColor = 'var(--contrast_0_high)';
-		pilotColor = colorvalToHex(color)
+		if (color) {
+			console.log(color);
+			pilotColor = colorvalToHex(color)
+		}
 		$('[data-node="'+idx+'"] .pos').css('background-color', pilotColor);
 		$('[data-node="'+idx+'"] .pos').css('color', pilotColor);
 	}
