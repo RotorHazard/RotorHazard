@@ -320,7 +320,7 @@
 			console.log(msg.heatNodes);
 			for (var idx in msg.heatNodes) {
 				console.log(idx);
-				var color = msg.heatNodes[idx];
+				var color = msg.heatNodes[idx].pilotColor;
 				setPilotColor(idx,color);
 			}
 			$('#leaderboard').empty();
