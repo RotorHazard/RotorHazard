@@ -81,7 +81,8 @@
 			}
 			var row = $('<div class="pilot-row" data-node="'+ node +'">');
 
-			row.append('<div class="pos" style="background-color:${pilotColor}">'+ leaderboard[i].position +'</div>');
+			row.append(`<div class="pos" style="background-color:${pilotColor}"> ${leaderboard[i].position}</div>`);
+			//row.append('<div class="pos" style="background-color:'+pilotColor+'"> '+leaderboard[i].position+'</div>');
 			row.append('<div class="pilot">'+ leaderboard[i].callsign +'</div>');
 			if (meta.team_racing_mode) {
 				row.append('<div class="team">'+ leaderboard[i].team_name +'</div>');
@@ -382,6 +383,7 @@
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
 				$('#leaderboard').empty();
+				console.log(heatNodes);
 				$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, heatNodes));
 			}
 
