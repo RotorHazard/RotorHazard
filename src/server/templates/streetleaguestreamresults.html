@@ -387,7 +387,8 @@
 					});
 				}else{
 					if(jQuery.isEmptyObject(oldLeaderboard)){
-
+						$('#leaderboard').empty();
+						$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, heatNodes));
 					}else{
 						$('.standings-header > .pilot').html("Lap "+race.leaderboard[leaderboard_type][0].laps);
 					}
