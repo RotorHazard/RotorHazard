@@ -382,11 +382,9 @@
 			$('.current_heat').html(heatname);
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
-			//if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
-				$('#leaderboard').empty();
-				console.log(heatNodes);
-				$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, heatNodes));
-			//}
+			$('#leaderboard').empty();
+			console.log(heatNodes);
+			$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, heatNodes));
 
 			oldLeaderboard = newLeaderboard;
 
@@ -433,7 +431,9 @@
 			}
 
 			const pilotRows = document.querySelectorAll('.pilot-row');
-			fadeIn(pilotRows);
+			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
+				fadeIn(pilotRows);
+			});
 
 			$('#team_leaderboard').empty();
 			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {
