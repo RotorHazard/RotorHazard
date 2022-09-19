@@ -75,6 +75,7 @@
 			var pilot_id = leaderboard[i].pilot_id;
 			var pilotColor = "#00ff00";
 			for (const key in heatNodes) {
+				console.log(heatNodes[key].pilot_id+"=="+pilot_id);
 				if(heatNodes[key].pilot_id==pilot_id){
 					pilotColor = heatNodes[key].pilotColor;
 				}
