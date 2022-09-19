@@ -382,11 +382,11 @@
 			$('.current_heat').html(heatname);
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
-			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
+			//if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
 				$('#leaderboard').empty();
 				console.log(heatNodes);
 				$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, heatNodes));
-			}
+			//}
 
 			oldLeaderboard = newLeaderboard;
 
