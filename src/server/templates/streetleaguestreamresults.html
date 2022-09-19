@@ -171,9 +171,7 @@
 			console.log(color);
 			pilotColor = colorvalToHex(color)
 		}
-		//$('[data-node="'+idx+'"] .pos').css('background-color', "red");
-		//$('[data-node="'+idx+'"] .pos').html("yo");
-		$('[data-node="3"] .pos').css('background-color', "red");
+		$('[data-node="'+idx+'"] .pos').css('background-color', pilotColor);
 		//$('[data-node="'+idx+'"] .pos').css('color', "red");
 	}
 
@@ -339,7 +337,7 @@
 				var color = msg.heatNodes[idx].pilotColor;
 				setPilotColor(idx,color);
 			}
-			//$('#leaderboard').empty();
+			$('#leaderboard').empty();
 		});
 
 		socket.on('leaderboard', function (msg) {
