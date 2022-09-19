@@ -16,6 +16,7 @@
 	var winnerColor = "#aaaaaa";
 	var winnerContrastColor = "#000000";
 	var oldLeaderboard = {};
+	var oldLeaderboardMeta;
 	var heatNodes = {};
 
 	rotorhazard.show_messages = false;
@@ -70,7 +71,7 @@
 		//
 
 		var body = $('<div>');
-		var header = $('<div class="pilot-row">');
+		var header = $('<div class="standings-header">');
 		header.append('<div class="pilot"> Lap '+ leaderboard[0].laps +'</div>');
 		table.append(header);
 		for (var i in leaderboard) {
@@ -78,7 +79,6 @@
 			var pilot_id = leaderboard[i].pilot_id;
 			var pilotColor = "#00ff00";
 			for (const key in leaderboardHeatNodes) {
-				console.log(leaderboardHeatNodes[key].pilot_id+"=="+pilot_id);
 				if(leaderboardHeatNodes[key].pilot_id==pilot_id){
 					pilotColor = leaderboardHeatNodes[key].pilotColor;
 				}
@@ -164,30 +164,6 @@
 		return twrap;
 	}
 
-	function setPilotColor(idx, color){
-		console.log("setPilotColor("+idx+",heatNodes)")
-
-		var pilotColor = 'var(--contrast_0_high)';
-		if (color) {
-			console.log(color);
-			pilotColor = colorvalToHex(color)
-		}
-		$('[data-node="'+idx+'"] .pos').css('background-color', pilotColor);
-		//$('[data-node="'+idx+'"] .pos').css('color', "red");
-	}
-
-	function race_kickoff(msg) {
-		rotorhazard.timer.stopAll();
-
-		rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
-
-		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
-		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
-		rotorhazard.timer.race.duration = msg.race_time_sec;
-
-		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
-	}
-
 	$(document).ready(function () {// get pi time
 		rotorhazard.pi_time_request = window.performance.now();
 		socket.emit('get_pi_time');
@@ -244,11 +220,6 @@
 			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
 		});
 
-		function updateWinnerColor(){
-			$('.race_status_message').css('background', winnerColor);
-			$('.race_status_message').css('color', winnerContrastColor);
-		}
-
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -277,9 +248,6 @@
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
-					if (resume_check) {
-						race_kickoff(msg);
-					}
 					break;
 				case 2: // Race stopped, clear or save laps
 					$('body').removeClass('race-running');
@@ -292,18 +260,9 @@
 					$('body').addClass('race-running');
 					$('body').removeClass('race-new');
 					$('.timing-clock').addClass('staging');
-					if (resume_check) {
-						race_kickoff(msg);
-					}
 					break;
 				default: // Waiting to start new race
-					$('body').removeClass('race-running');
-					$('body').removeClass('race-stopped');
-					$('body').addClass('race-new');
-					$('.timing-clock').removeClass('staging');
-					if (resume_check) {
-						socket.emit('get_race_scheduled');
-					}
+					oldLeaderboard = {};
 					break;
 			}
 
@@ -316,79 +275,11 @@
 		socket.emit('load_data', {'load_types': ['pilot_data']}
 		);
 
-		socket.on('pilot_data', function (msg) {
-			console.log("got pilot data");
-			for (var i in msg.pilots) {
-				var pilot = msg.pilots[i];
-				pilotColors[pilot.callsign] = pilot.color;
-			}
-			console.log(pilotColors);
-			if(winner!=undefined){
-				winnerColor = pilotColors[winner];
-				//winnerContrastColor = contrastColor(winnerColor);
-			}
-			//updateWinnerColor();
-		});
-
 		socket.on('current_heat', function (msg) {
-			console.log(msg.heatNodes);
 			heatNodes = msg.heatNodes;
-			oldLeaderboard = {};
-			for (var idx in msg.heatNodes) {
-				console.log(idx);
-				var color = msg.heatNodes[idx].pilotColor;
-				setPilotColor(idx,color);
-			}
-			$('#leaderboard').empty();
 		});
 
 		socket.on('leaderboard', function (msg) {
-			if (msg && 'last_race' in msg) {
-				var race = msg.last_race;
-			} else {
-				var race = msg.current;
-
-			}
-
-			//we are getting an update to the leaderboard
-			var newLeaderboard = race.leaderboard.by_race_time;
-
-			console.log("new race...");
-			console.log(newLeaderboard);
-			console.log("old race...");
-			console.log(oldLeaderboard);
-			//let's create a list of pilots who changed positions
-			var diffPilots = [];
-			if(!jQuery.isEmptyObject(newLeaderboard) && !jQuery.isEmptyObject(oldLeaderboard)){
-				newLeaderboard.forEach((item, index) => {
-					//if the old pilot is on this leaderboard
-					if (oldLeaderboard[index] !== undefined) {
-						var newPilotPosition = newLeaderboard[index].pilot_id;
-						var oldPilotPosition = oldLeaderboard[index].pilot_id;
-						if(newPilotPosition!=oldPilotPosition){
-							diffPilots.push(index);
-						}
-					//when heats change, the list may be different
-					}else{
-						diffPilots.push(index);
-					}
-				});
-			}
-
-			console.log("pilots who changed positions....",diffPilots);
-
-			var heatname = __('Heat') + ' ' + race.heat;
-			if (race.heat_note)
-				heatname = race.heat_note;
-			$('.current_heat').html(heatname);
-
-			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
-			$('#leaderboard').empty();
-			console.log(heatNodes);
-			$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, heatNodes));
-
-			oldLeaderboard = newLeaderboard;
-
 			const fadeIn = (pilotrows) => {
 				pilotrows.forEach((pilotrow, i) => {
 					gsap.to(pilotrow, {
@@ -422,32 +313,102 @@
 
 			const diffReorder = (pilotrows) => {
 				pilotrows.forEach((pilotrow, i) => {
-					if (i % 2 == 0) {
-						let ii = 0;
-						ii++;
-						gsap.to(pilotrow, {
-							opacity: 0,
-							left: 50,
-							delay: i/8
-						}).then(() => {
+					let ii = 0;
+					ii++;
+					gsap.to(pilotrow, {
+						opacity: 1,
+						left: 0,
+						delay: 0,
+						duration: 0
+					}).then(() => {
+					gsap.to(pilotrow, {
+						opacity: 0,
+						left: 50
+					}).then(() => {
+					gsap.to(pilotrow, {
+						opacity: 1,
+						left: 0
+					});
+					});
+					});
+				});
+			}
 
-							gsap.to(pilotrow, {
-								opacity: 1,
-								left: 0,
-								delay: ii/8
-							});
+			var race = msg.current;
 
-						});
+			//we are getting an update to the leaderboard
+			var newLeaderboard = race.leaderboard.by_race_time;
+
+			console.log("new race...");
+			console.log(newLeaderboard);
+			console.log("old race...");
+			console.log(oldLeaderboard);
+			//let's create a list of pilots who changed positions
+			var diffPilots = [];
+			if(!jQuery.isEmptyObject(newLeaderboard) && !jQuery.isEmptyObject(oldLeaderboard)){
+				newLeaderboard.forEach((item, index) => {
+					//if the old pilot is on this leaderboard
+					if (oldLeaderboard[index] !== undefined) {
+						var newPilotPosition = newLeaderboard[index].pilot_id;
+						var oldPilotPosition = oldLeaderboard[index].pilot_id;
+						if(newPilotPosition!=oldPilotPosition){
+							diffPilots.push(newLeaderboard[index].node);
+						}
+					//when heats change, the list may be different
+					}else{
+						diffPilots.push(newLeaderboard[index].node);
 					}
 				});
 			}
 
-			const pilotRows = document.querySelectorAll('.pilot-row');
-			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
-				fadeIn(pilotRows);
-			}else{
-				updateRows(pilotRows);
+			console.log("pilots who changed positions....",diffPilots);
+
+			var heatname = __('Heat') + ' ' + race.heat;
+			if (race.heat_note)
+				heatname = race.heat_note;
+			$('.current_heat').html(heatname);
+
+			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
+			if(newLeaderboard!=oldLeaderboard){
+				if(diffPilots.length!=0){
+					console.log("CLEARING LEADERBOARD");
+					$('#leaderboard').empty();
+					$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, heatNodes));
+					newLeaderboard.forEach(function (item, index) {
+						if(diffPilots.includes(item.node)){
+							console.log("reordering pilot "+item.node)
+							var pilotRow = document.querySelectorAll('[data-node="'+item.node+'"]');
+							fadeIn(pilotRow);
+						}
+						else{
+							var pilotRow = document.querySelectorAll('[data-node="'+item.node+'"]');
+							updateRows(pilotRow);
+						}
+					});
+				}else{
+					if(jQuery.isEmptyObject(oldLeaderboard)){
+
+					}else{
+						$('.standings-header > .pilot').html("Lap "+race.leaderboard[leaderboard_type][0].laps);
+					}
+
+				}
+
 			}
+			const pilotRows = document.querySelectorAll('data-node');
+			const standingsHeader = document.querySelectorAll('.standings-header');
+			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
+				//fadeIn(pilotRows);
+			}else{
+
+			}
+			updateRows(standingsHeader);
+
+
+
+			oldLeaderboard = newLeaderboard;
+			oldLeaderboardMeta = race.leaderboard.meta;
+
 
 			$('#team_leaderboard').empty();
 			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {
@@ -458,23 +419,10 @@
 				$('#team_leaderboard').hide();
 			}
 			var primary_leaderboard = race.leaderboard.meta.primary_leaderboard;
-      console.log(primary_leaderboard);
-      console.log(race.leaderboard[primary_leaderboard]);
       winner = race.leaderboard[primary_leaderboard][0].callsign;
 			if(winner in pilotColors){
 				winnerColor = pilotColors[winner];
 				//winnerContrastColor = contrastColor(winnerColor);
-				updateWinnerColor();
-			}
-
-			if (race.status_msg){
-
-				$('.race_status_message').html(race.status_msg);
-				$('.race_status_message').slideDown();
-
-			} else {
-				$('.race_status_message').slideUp();
-
 			}
 		});
 
@@ -482,16 +430,8 @@
 			request_time = new Date();
 		});
 
-		socket.on('stage_ready', function (msg) {
-			race_kickoff(msg);
-		});
-
 		socket.on('stop_timer', function (msg) {
 			rotorhazard.timer.stopAll();
-		});
-
-		socket.on('stage_ready', function (msg) {
-			race_kickoff(msg);
 		});
 	});
 
@@ -505,8 +445,6 @@
 	<div id="leaderboard"></div>
 
 	<div id="team_leaderboard"></div>
-
-	<div class="race_status_message"></div>
 
 </div>
 

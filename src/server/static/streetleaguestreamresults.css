@@ -18,6 +18,15 @@ body {
 	left: 100px;
 }
 
+.standings-header {
+	display: flex;
+	margin-bottom: 4px;
+	transform: skew(-15deg);
+	opacity: 1;
+	position: relative;
+	left: 0px;
+}
+
 .pos {
 	width: 64px;
 	padding: 12px 10px 6px 20px;
