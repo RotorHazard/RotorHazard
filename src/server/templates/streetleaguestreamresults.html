@@ -70,7 +70,7 @@
 		var body = $('<div>');
 
 		for (var i in leaderboard) {
-			var row = $('<div class="pilot-row">');
+			var row = $('<div class="pilot-row" data-node="'+ leaderboard[i].node +'">');
 
 			row.append('<div class="pos">'+ leaderboard[i].position +'</div>');
 			row.append('<div class="pilot">'+ leaderboard[i].callsign +'</div>');
@@ -159,8 +159,8 @@
 		if (hn.activeColor) {
 			pilotColor = colorvalToHex(hn.activeColor)
 		}
-		$('.pos').css('background-colors', pilotColor);
-		$('.pos').css('color', pilotColor);
+		$('[data-node="'+idx+'"] .pos').css('background-color', pilotColor);
+		$('[data-node="'+idx+'"] .pos').css('color', pilotColor);
 	}
 
 	function race_kickoff(msg) {
