@@ -398,6 +398,17 @@
 				});
 			}
 
+			const updateRow = (pilotrows) => {
+				pilotrows.forEach((pilotrow, i) => {
+					gsap.to(pilotrow, {
+						opacity: 1,
+						left: 0,
+						delay: i/5,
+						duration: 5
+					});
+				});
+			}
+
 			const fadeOut = (pilotrows) => {
 				pilotrows.forEach((pilotrow, i) => {
 					gsap.to(pilotrow, {
@@ -432,7 +443,9 @@
 
 			const pilotRows = document.querySelectorAll('.pilot-row');
 			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
-				fadeIn(pilotRows);
+				updateRow(pilotRows);
+			}else{
+
 			}
 
 			$('#team_leaderboard').empty();
