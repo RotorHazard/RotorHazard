@@ -333,6 +333,7 @@
 		socket.on('current_heat', function (msg) {
 			console.log(msg.heatNodes);
 			heatNodes = msg.heatNodes;
+			oldLeaderboard = {};
 			for (var idx in msg.heatNodes) {
 				console.log(idx);
 				var color = msg.heatNodes[idx].pilotColor;
@@ -398,7 +399,7 @@
 				});
 			}
 
-			const updateRow = (pilotrows) => {
+			const updateRows = (pilotrows) => {
 				pilotrows.forEach((pilotrow, i) => {
 					gsap.to(pilotrow, {
 						opacity: 1,
@@ -442,10 +443,10 @@
 			}
 
 			const pilotRows = document.querySelectorAll('.pilot-row');
-			if(diffPilots.length!=0 || jQuery.isEmptyObject(oldLeaderboard)){
+			if(diffPilots.length!=0){} || jQuery.isEmptyObject(oldLeaderboard)){
 				fadeIn(pilotRows);
 			}else{
-				updateRow(pilotRows);
+				updateRows(pilotRows);
 			}
 
 			$('#team_leaderboard').empty();
