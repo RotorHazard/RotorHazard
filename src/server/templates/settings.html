@@ -1351,6 +1351,165 @@
 			}
 		});
 
+		/* Event Actions */
+		var eventList = {
+			raceStage: 'Race Stage',
+			raceStart: 'Race Start',
+			raceFinish: 'Race Finish',
+			raceStop: 'Race Stop',
+			raceWin: 'Race Win',
+			racePilotDone: 'Pilot Done',
+		}
+
+		var effectList = {
+			speak: {
+				name: 'Speak',
+				fields: [
+					{
+						id: 'text',
+						name: 'Callout Text',
+						type: 'text',
+					}
+				]
+			},
+			alert: {
+				name: 'Text Alert',
+				fields: [
+					{
+						id: 'text',
+						name: 'Alert Text',
+						type: 'text',
+					}
+				]
+			}
+
+		}
+
+		var actionList = []
+
+		function buildActionList() {
+			var actionListObj = $('<ul>');
+			for (var idx in actionList) {
+				var action = actionList[idx]
+				actionListObj.append(buildActionItem(action['event'], action['effect'], idx));
+			}
+			return actionListObj;
+		}
+
+		function buildActionItem(event, effect, action_idx) {
+			var item = $('<li class="action">')
+			var eventLabel = $('<label>')
+				.text(__('Event'))
+				.addClass('screen-reader-text')
+				.attr('for', 'action_event_' + action_idx);
+			var eventSelect = $('<select class="actionfield">')
+				.addClass('actionfield')
+				.data('idx', action_idx)
+				.data('field', 'event')
+				.attr('id', 'action_event_' + action_idx);
+			for (const [key, value] of Object.entries(eventList)) {
+				var opt = $('<option>')
+					.attr('value', key)
+					.text(value);
+				eventSelect.append(opt);
+			}
+			if (event) {
+				eventSelect.val(event);
+			} else {
+				event = eventSelect.val();
+				actionList[action_idx].event = event;
+			}
+			item.append(eventLabel);
+			item.append(eventSelect);
+
+			var effectLabel = $('<label>')
+				.text(__('Effect'))
+				.addClass('screen-reader-text')
+				.attr('for', 'action_effect_' + action_idx);
+			var effectSelect = $('<select>')
+				.addClass('actionfield')
+				.data('idx', action_idx)
+				.data('field', 'effect')
+				.attr('id', 'action_effect_' + action_idx);
+			for (const [key, value] of Object.entries(effectList)) {
+				var opt = $('<option>')
+					.attr('value', key)
+					.text(value.name);
+				effectSelect.append(opt);
+			}
+			if (effect) {
+				effectSelect.val(effect);
+			} else {
+				effect = effectSelect.val()
+				actionList[action_idx].effect = effect;
+			}
+
+			item.append(effectLabel);
+			item.append(effectSelect);
+
+			item.append(buildActionFields(effect, action_idx));
+
+			return item;
+		}
+
+		function buildActionFields(effect, action_idx) {
+			var fieldset = $('<fieldset>');
+			for (idx in effectList[effect].fields) {
+				var field = effectList[effect].fields[idx];
+				var id = 'action_' + action_idx + '_' + idx
+				var label = field.name;
+
+				fieldGroup = $('<div>');
+				if (field.type == 'text') {
+					var labelEl = $('<label>')
+						.attr('for', id)
+						.text(label);
+					fieldGroup.append(labelEl);
+					var fieldEl = $('<input>')
+						.addClass('actionfield')
+						.data('idx', action_idx)
+						.data('field', field.id)
+						.attr('id', id)
+						.attr('type', 'text');
+
+					if (actionList[action_idx][field.id]) {
+						fieldEl.val(actionList[action_idx][field.id]);
+					}
+
+					fieldGroup.append(fieldEl);
+				}
+				fieldset.append(fieldGroup);
+			}
+			return fieldset;
+		}
+
+		socket.on('event_actions', function (msg) {
+			actionList = msg.actions;
+			$('#actions').html(buildActionList());
+		});
+
+		$('button#add_action').click(function (event) {
+			actionList.push({});
+			$('#actions').html(buildActionList());
+		});
+
+		$(document).on('change', '.actionfield', function(evt){
+			var target = $(evt.target);
+			var action = target.data('idx');
+			var field = target.data('field');
+			var value = target.val();
+
+			actionList[action][field] = value;
+
+			if (field == "effect") {
+				$('#actions').html(buildActionList());
+			}
+
+			socket.emit('set_actions', actionList);
+		});
+
+		// Delete Action
+
 		/* Race Format */
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
@@ -2633,6 +2792,21 @@
 				<input type="range" id="set_indicator_volume" min="0" max="100">
 			</li>
 		</ol>
+	</div>
+</div>
+
+<!--Event Actions-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Event Actions') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="actions" class="form">
+		</div>
+
+		<div class="control-set">
+			<button class="button" id="add_action">{{ __('Add Action') }}</button>
+		</div>
 	</div>
 </div>
 
