@@ -852,6 +852,8 @@ def on_load_data(data):
             emit_start_thresh_lower_duration(nobroadcast=True)
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
+        elif load_type == 'event_actions':
+            emit_event_actions(nobroadcast=True)
         elif load_type == 'leaderboard':
             emit_current_leaderboard(nobroadcast=True)
         elif load_type == 'current_laps':
@@ -3163,6 +3165,16 @@ def emit_all_languages(**params):
     else:
         SOCKET_IO.emit('all_languages', emit_payload)
 
+def emit_event_actions(**params):
+    '''Emits event actions.'''
+    emit_payload = {
+        'actions': RHData.get_option('actions'),
+    }
+    if ('nobroadcast' in params):
+        emit('event_actions', emit_payload)
+    else:
+        SOCKET_IO.emit('min_lap', emit_payload)
+
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
@@ -3843,11 +3855,6 @@ def emit_imdtabler_rating():
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
-def emit_event(args):
-    SOCKET_IO.emit('timer_event', args)
-
-Events.on(Evt.ALL, 'eventRepeater', emit_event)
-    
 def emit_vrx_list(*args, **params):
     ''' get list of connected VRx devices '''
     if vrx_controller:
@@ -5280,6 +5287,14 @@ gevent.spawn(clock_check_thread_function)  # start thread to monitor system cloc
 import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
+
+#register actions
+try:
+    from EventActions import EventActions
+    eventActions = EventActions(Events, RHData, emit_phonetic_text)
+except ImportError as e:
+    logger.error("EventActions unable to be imported")
+    logger.error(e)
 
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):

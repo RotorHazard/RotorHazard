@@ -18,6 +18,7 @@
 		'start_thresh_lower_amount',
 		'start_thresh_lower_duration',
 		'min_lap',
+		'event_actions',
 		'race_status',
 		'team_racing_mode',
 		'led_effects',
@@ -1363,7 +1364,7 @@
 
 		var effectList = {
 			speak: {
-				name: 'Speak',
+				name: 'Announce',
 				fields: [
 					{
 						id: 'text',
@@ -1372,17 +1373,6 @@
 					}
 				]
 			},
-			alert: {
-				name: 'Text Alert',
-				fields: [
-					{
-						id: 'text',
-						name: 'Alert Text',
-						type: 'text',
-					}
-				]
-			}
-
 		}
 
 		var actionList = []
@@ -1484,7 +1474,7 @@
 		}
 
 		socket.on('event_actions', function (msg) {
-			actionList = msg.actions;
+			actionList = JSON.parse(msg.actions);
 			$('#actions').html(buildActionList());
 		});
 
@@ -1505,7 +1495,10 @@
 				$('#actions').html(buildActionList());
 			}
 
-			socket.emit('set_actions', actionList);
+			socket.emit('set_option', {
+				option: 'actions',
+				value: JSON.stringify(actionList)
+			});
 		});
 
 		// Delete Action
