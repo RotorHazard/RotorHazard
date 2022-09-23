@@ -151,6 +151,7 @@ class Evt:
     RACE_WIN = 'raceWin'
     RACE_FIRST_PASS = 'raceFirstPass'
     RACE_LAP_RECORDED = 'raceLapRecorded'
+    RACE_PILOT_DONE = 'racePilotDone'
     CROSSING_ENTER = 'crossingEnter'
     CROSSING_EXIT = 'crossingExit'
     # Race management
