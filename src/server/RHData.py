@@ -462,6 +462,7 @@ class RHData():
                         'name': self.__("Migrated Format"),
                         'race_mode': 0,
                         'race_time_sec': 120,
+                        'lap_grace_sec': -1,
                         'staging_fixed_tones': 3,
                         'start_delay_min_ms': 1000,
                         'start_delay_max_ms': 0,
@@ -1281,6 +1282,7 @@ class RHData():
             name='',
             race_mode=0,
             race_time_sec=0,
+            lap_grace_sec=-1,
             staging_fixed_tones=0,
             start_delay_min_ms=1000,
             start_delay_max_ms=1000,
@@ -1296,6 +1298,8 @@ class RHData():
                 race_format.race_mode = init['race_mode']
             if 'race_time' in init:
                 race_format.race_time_sec = init['race_time']
+            if 'lap_grace_sec' in init:
+                race_format.lap_grace_sec = init['lap_grace_sec']
             if 'start_delay_min' in init:
                 race_format.start_delay_min_ms = init['start_delay_min']
             if 'start_delay_max' in init:
@@ -1327,7 +1331,8 @@ class RHData():
         new_format = self._Database.RaceFormat(
             name=new_format_name,
             race_mode=source_format.race_mode,
-            race_time_sec=source_format.race_time_sec ,
+            race_time_sec=source_format.race_time_sec,
+            lap_grace_sec=source_format.lap_grace_sec,
             staging_fixed_tones=source_format.staging_fixed_tones,
             start_delay_min_ms=source_format.start_delay_min_ms,
             start_delay_max_ms=source_format.start_delay_max_ms,
@@ -1360,6 +1365,8 @@ class RHData():
             race_format.race_mode = data['race_mode']
         if 'race_time' in data:
             race_format.race_time_sec = data['race_time']
+        if 'lap_grace_sec' in data:
+            race_format.lap_grace_sec = data['lap_grace_sec']
         if 'staging_fixed_tones' in data:
             race_format.staging_fixed_tones = data['staging_fixed_tones']
         if 'start_delay_min' in data:
@@ -1455,6 +1462,7 @@ class RHData():
             'format_name': self.__("2:00 Standard Race"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
@@ -1468,6 +1476,7 @@ class RHData():
             'format_name': self.__("1:30 Whoop Sprint"),
             'race_mode': 0,
             'race_time_sec': 90,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
@@ -1481,6 +1490,7 @@ class RHData():
             'format_name': self.__("3:00 Extended Race"),
             'race_mode': 0,
             'race_time_sec': 210,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
@@ -1494,6 +1504,7 @@ class RHData():
             'format_name': self.__("First to 3 Laps"),
             'race_mode': 1,
             'race_time_sec': 0,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
@@ -1507,6 +1518,7 @@ class RHData():
             'format_name': self.__("Open Practice"),
             'race_mode': 1,
             'race_time_sec': 0,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
@@ -1520,6 +1532,7 @@ class RHData():
             'format_name': self.__("Fastest Lap Qualifier"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': 30,
             "staging_fixed_tones": 1,
             'start_delay_min_ms': 2000,
             'start_delay_max_ms': 3000,
@@ -1533,6 +1546,7 @@ class RHData():
             'format_name': self.__("Fastest 3 Laps Qualifier"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': 30,
             "staging_fixed_tones": 1,
             'start_delay_min_ms': 2000,
             'start_delay_max_ms': 3000,
@@ -1546,6 +1560,7 @@ class RHData():
             'format_name': self.__("Lap Count Only"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
@@ -1559,6 +1574,7 @@ class RHData():
             'format_name': self.__("Team / Most Laps Wins"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
@@ -1572,6 +1588,7 @@ class RHData():
             'format_name': self.__("Team / First to 7 Laps"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
@@ -1585,6 +1602,7 @@ class RHData():
             'format_name': self.__("Team / Fastest Lap Average"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
@@ -1598,6 +1616,7 @@ class RHData():
             'format_name': self.__("Team / Fastest 3 Consecutive Average"),
             'race_mode': 0,
             'race_time_sec': 120,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
