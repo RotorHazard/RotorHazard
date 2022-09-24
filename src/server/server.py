@@ -4204,10 +4204,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     pilot_namestr = pilot_obj.callsign if pilot_obj else ""
 
                     node_finished_flag = RACE.get_node_finished_flag(node.index)
-                    # set next node race status as 'finished' if winner has been declared
-                    #  or timer mode is count-down race and race-time has expired
-                    if RACE.win_status == WinStatus.DECLARED or \
-                                    (race_format.race_mode == 0 and lap_time_stamp > race_format.race_time_sec * 1000):
+                    # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
+                    if race_format.race_mode == 0 and lap_time_stamp > race_format.race_time_sec * 1000:
                         RACE.set_node_finished_flag(node.index)
                         if not node_finished_flag:
                             logger.info('Pilot {} done'.format(pilot_obj.callsign))
@@ -4238,13 +4236,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     if lap_ok_flag:
 
                         if node_finished_flag:
-                            lap_late_flag = True  # "late" lap pass (after time expired)
+                            lap_late_flag = True  # "late" lap pass (after grace lap)
                             logger.info('Ignoring lap after pilot done: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
                                                INTERFACE.get_lap_source_str(source), pilot_namestr))
                             
-                        if RACE.win_status == WinStatus.DECLARED and (RACE.format.team_racing_mode or \
-                                                                        node_finished_flag):
+                        if RACE.win_status == WinStatus.DECLARED and RACE.format.win_condition == WinCondition.FIRST_TO_LAP_X:
                             lap_late_flag = True  # "late" lap pass (after race winner declared)
                             if RACE.format.team_racing_mode and pilot_obj:
                                 t_str = ", Team " + pilot_obj.team
@@ -4397,8 +4394,6 @@ def check_win_condition(**kwargs):
                 if (not win_phon_name) or len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_data.get('callsign', '')
                 phonetic_str = __('Winner is') + ' ' + win_phon_name
-                if 'node' in win_data:  # make sure winner node race status always set to 'finished'
-                    RACE.set_node_finished_flag(win_data['node'])
 
             # if racer lap was deleted then only output if win-status details changed
             if (not del_lap_flag) or RACE.win_status != previous_win_status or \
