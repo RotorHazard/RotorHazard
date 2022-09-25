@@ -18,6 +18,7 @@
 		'start_thresh_lower_amount',
 		'start_thresh_lower_duration',
 		'min_lap',
+		'action_setup',
 		'event_actions',
 		'race_status',
 		'team_racing_mode',
@@ -1355,7 +1356,7 @@
 		});
 
 		/* Event Actions */
-		var eventList = {
+		var eventList = { // TODO: load from server
 			raceStage: 'Race Stage',
 			raceStart: 'Race Start',
 			raceFinish: 'Race Finish',
@@ -1363,19 +1364,9 @@
 			raceWin: 'Race Win',
 			racePilotDone: 'Pilot Done',
 		}
+		var eventListLoaded = true;
 
-		var effectList = {
-			speak: {
-				name: 'Announce',
-				fields: [
-					{
-						id: 'text',
-						name: 'Callout Text',
-						type: 'text',
-					}
-				]
-			},
-		}
+		var effectListLoaded = false;
 
 		var actionList = []
 
@@ -1475,9 +1466,21 @@
 			return fieldset;
 		}
 
+		socket.on('action_setup', function (msg) {
+			if (msg.enabled) {
+				effectList = msg.effects;
+				effectListLoaded = true;
+				if (actionList.length > 0) {
+					$('#actions').html(buildActionList());
+				}
+			}
+		});
+
 		socket.on('event_actions', function (msg) {
 			actionList = JSON.parse(msg.actions);
-			$('#actions').html(buildActionList());
+			if (effectListLoaded && eventListLoaded) {
+				$('#actions').html(buildActionList());
+			}
 		});
 
 		$('button#add_action').click(function (event) {

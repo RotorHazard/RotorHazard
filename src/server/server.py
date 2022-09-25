@@ -854,6 +854,8 @@ def on_load_data(data):
             emit_start_thresh_lower_duration(nobroadcast=True)
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
+        elif load_type == 'action_setup':
+            emit_action_setup(nobroadcast=True)
         elif load_type == 'event_actions':
             emit_event_actions(nobroadcast=True)
         elif load_type == 'leaderboard':
@@ -3168,6 +3170,34 @@ def emit_all_languages(**params):
     else:
         SOCKET_IO.emit('all_languages', emit_payload)
 
+def emit_action_setup(**params):
+    '''Emits events and effects for actions.'''
+    emit_payload = {
+        'enabled': False
+    }
+
+    if eventActions:
+        effects = eventActions.getRegisteredEffects()
+
+        effect_list = {}
+        if effects:
+            for effect in effects:
+                effect_list[effect] = {
+                    'name': __(effects[effect]['name']),
+                    'fields': effects[effect]['fields']
+                }
+
+            emit_payload = {
+                'enabled': True,
+                'events': None,
+                'effects': effect_list,
+            }
+
+    if ('nobroadcast' in params):
+        emit('action_setup', emit_payload)
+    else:
+        SOCKET_IO.emit('action_setup', emit_payload)
+    
 def emit_event_actions(**params):
     '''Emits event actions.'''
     emit_payload = {
@@ -3176,7 +3206,7 @@ def emit_event_actions(**params):
     if ('nobroadcast' in params):
         emit('event_actions', emit_payload)
     else:
-        SOCKET_IO.emit('min_lap', emit_payload)
+        SOCKET_IO.emit('event_actions', emit_payload)
 
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
@@ -5316,9 +5346,27 @@ APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, ser
 #register actions
 try:
     from EventActions import EventActions
-    eventActions = EventActions(Events, RHData, emit_phonetic_text)
+    eventActions = EventActions(Events, RHData)
+
+    #register built-in effects
+    def speakEffect(action, args):
+        logger.debug(action)
+        logger.debug(args)
+        emit_phonetic_text(action['text'])
+
+    eventActions.registerEffect('speak', speakEffect, {
+        'name': 'Announce',
+        'fields': [
+                    {
+                        'id': 'text',
+                        'name': 'Callout Text',
+                        'type': 'text',
+                    }
+                ],
+        })
+
 except ImportError as e:
-    logger.error("EventActions unable to be imported")
+    logger.error("Unable to load EventActions")
     logger.error(e)
 
 @catchLogExceptionsWrapper
