@@ -2743,11 +2743,17 @@ def on_delete_lap(data):
 
     time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
 
+    race_format = getCurrentRaceFormat()
+    RACE.set_node_finished_flag(node_index, False)
     lap_number = 0
     for lap in RACE.node_laps[node_index]:
         if not lap['deleted']:
             lap['lap_number'] = lap_number
             lap_number += 1
+            if RACE.get_node_finished_flag(node_index):
+                lap['late_lap'] = True
+            if lap['lap_time_stamp'] > (race_format.race_time_sec * 1000):
+                RACE.set_node_finished_flag(node_index)
         else:
             lap['lap_number'] = None
 

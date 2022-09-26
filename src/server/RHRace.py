@@ -55,8 +55,8 @@ class RHRace():
                 else:
                     self.node_has_finished[heatNode.node_index] = None
 
-    def set_node_finished_flag(self, node_index):
-        self.node_has_finished[node_index] = True
+    def set_node_finished_flag(self, node_index, value=True):
+        self.node_has_finished[node_index] = value
 
     def get_node_finished_flag(self, node_index):
         return self.node_has_finished.get(node_index, None)
