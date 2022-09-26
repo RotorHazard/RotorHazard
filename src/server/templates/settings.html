@@ -1430,6 +1430,14 @@
 			item.append(effectLabel);
 			item.append(effectSelect);
 
+			var deleteBtn = $('<button>')
+				.text('\u00D7')
+				.addClass('delete-action')
+				.addClass('btn-danger')
+				.data('id', action_idx)
+				.attr('title', __("Delete Action"));
+
+			item.append(deleteBtn);
 			item.append(buildActionFields(effect, action_idx));
 
 			return item;
@@ -1471,6 +1479,7 @@
 				effectList = msg.effects;
 				effectListLoaded = true;
 				if (actionList.length > 0) {
+					$('button#add_action').prop('disabled', false);
 					$('#actions').html(buildActionList());
 				}
 			}
@@ -1479,6 +1488,7 @@
 		socket.on('event_actions', function (msg) {
 			actionList = JSON.parse(msg.actions);
 			if (effectListLoaded && eventListLoaded) {
+				$('button#add_action').prop('disabled', false);
 				$('#actions').html(buildActionList());
 			}
 		});
@@ -1486,6 +1496,16 @@
 		$('button#add_action').click(function (event) {
 			actionList.push({});
 			$('#actions').html(buildActionList());
+		});
+
+		$(document).on('click', 'button.delete-action', function (event) {
+			var idx = $(event.target).data('id');
+			actionList.splice(idx, 1);
+			$('#actions').html(buildActionList());
+			socket.emit('set_option', {
+				option: 'actions',
+				value: JSON.stringify(actionList)
+			});
 		});
 
 		$(document).on('change', '.actionfield', function(evt){
@@ -1505,8 +1525,6 @@
 				value: JSON.stringify(actionList)
 			});
 		});
-
-		// Delete Action
 
 		/* Race Format */
 		socket.on('min_lap', function (msg) {
@@ -2810,7 +2828,7 @@
 		</div>
 
 		<div class="control-set">
-			<button class="button" id="add_action">{{ __('Add Action') }}</button>
+			<button class="button" id="add_action" disabled="disabled">{{ __('Add Action') }}</button>
 		</div>
 	</div>
 </div>
