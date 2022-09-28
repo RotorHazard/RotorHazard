@@ -12,7 +12,7 @@ class EventActions:
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.loadActions(None)
-        self.Events.on(Evt.ALL, 'Actions', self.doActions)
+        self.Events.on(Evt.ALL, 'Actions', self.doActions, {}, 200, True)
         self.Events.on(Evt.OPTION_SET, 'Actions', self.loadActions, {}, 200, True)
 
     def registerEffect(self, handle, handlerFn, args):

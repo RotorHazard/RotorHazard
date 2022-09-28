@@ -27,6 +27,15 @@ class Pilot(DB.Model):
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
 
+    def spokenName(self):
+        if self.phonetic:
+            return self.phonetic
+        if self.callsign:
+            return self.callsign
+        if self.name:
+            return self.name
+        return id
+
     def __repr__(self):
         return '<Pilot %r>' % self.id
 

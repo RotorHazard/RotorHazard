@@ -96,7 +96,13 @@ Indicator beeps are very short tones that give feedback on how the timer is work
 #### Event Actions
 Extend and personalize your timer's behavior by attaching *Effects* to *Events*. The timer generates an *Event* on race start, lap recorded, pilot done, etc. *Effects* are behaviors that can be triggered. Each effect may have parameters which can be configured.
 
-For example, you might add the "Announce" effect to the "Pilot Done" event in order to call out when each pilot has completed their own laps.
+For example, you might add the "Speak" effect to the "Pilot Done" event in order to call out when each pilot has completed their own laps.
+
+* _Speak_ produces an audible voice callout
+* _Message_ creates a standard text notification
+* _Alert_ creates a priority (pop-up) alert message
+
+For the above effects, you can use "%PILOT%" for a callsign when a pilot triggers the event.
 
 #### Race Format
 Race formats define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.

@@ -1914,6 +1914,22 @@ button .wide {
 #actions>ul>li {
 	margin: 0;
 	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.action > select:first-of-type {
+  order: -2;
+  flex: 1 1 0;
+}
+
+.action > .delete-action {
+  order: -1;
+  flex: 0 0 auto;
+}
+
+.action > fieldset {
+	flex: 1 1 0;
 }
 
 /* Marshaling */

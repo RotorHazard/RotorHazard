@@ -5350,12 +5350,62 @@ try:
 
     #register built-in effects
     def speakEffect(action, args):
-        logger.debug(action)
-        logger.debug(args)
-        emit_phonetic_text(action['text'])
+        logger.info(args)
+        text = action['text']
+        if 'node_index' in args:
+            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+            text = text.replace('%PILOT%', pilot.spokenName())
+
+        if 'heat_id' in args:
+            heat = RHData.get_heat(args['heat_id'])
+        else:
+            heat = RHData.get_heat(RACE.current_heat)
+
+        if heat.note:
+            text = text.replace('%HEAT%', heat.note)
+        else:
+            text = text.replace('%HEAT%', __("heat " + heat.id))
+
+        emit_phonetic_text(text)
+
+    def messageEffect(action, args):
+        text = action['text']
+        if 'node_index' in args:
+            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+            text = text.replace('%PILOT%', pilot.callsign)
+
+        if 'heat_id' in args:
+            heat = RHData.get_heat(args['heat_id'])
+        else:
+            heat = RHData.get_heat(RACE.current_heat)
+
+        if heat.note:
+            text = text.replace('%HEAT%', heat.note)
+        else:
+            text = text.replace('%HEAT%', __("heat " + heat.id))
+
+        emit_priority_message(text)
+
+    def alertEffect(action, args):
+        text = action['text']
+        if 'node_index' in args:
+            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+            text = text.replace('%PILOT%', pilot.callsign)
+
+        if 'heat_id' in args:
+            heat = RHData.get_heat(args['heat_id'])
+        else:
+            heat = RHData.get_heat(RACE.current_heat)
+
+        if heat.note:
+            text = text.replace('%HEAT%', heat.note)
+        else:
+            text = text.replace('%HEAT%', __("heat " + heat.id))
+
+        emit_priority_message(text, True)
 
     eventActions.registerEffect('speak', speakEffect, {
-        'name': 'Announce',
+        'name': 'Speak',
         'fields': [
                     {
                         'id': 'text',
@@ -5364,6 +5414,27 @@ try:
                     }
                 ],
         })
+    eventActions.registerEffect('message', messageEffect, {
+        'name': 'Message',
+        'fields': [
+                    {
+                        'id': 'text',
+                        'name': 'Message Text',
+                        'type': 'text',
+                    }
+                ],
+        })
+    eventActions.registerEffect('alert', alertEffect, {
+        'name': 'Alert',
+        'fields': [
+                    {
+                        'id': 'text',
+                        'name': 'Alert Text',
+                        'type': 'text',
+                    }
+                ],
+        })
+
 
 except ImportError as e:
     logger.error("Unable to load EventActions")
