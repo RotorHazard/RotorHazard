@@ -854,6 +854,10 @@ def on_load_data(data):
             emit_start_thresh_lower_duration(nobroadcast=True)
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
+        elif load_type == 'action_setup':
+            emit_action_setup(nobroadcast=True)
+        elif load_type == 'event_actions':
+            emit_event_actions(nobroadcast=True)
         elif load_type == 'leaderboard':
             emit_current_leaderboard(nobroadcast=True)
         elif load_type == 'current_laps':
@@ -3166,6 +3170,44 @@ def emit_all_languages(**params):
     else:
         SOCKET_IO.emit('all_languages', emit_payload)
 
+def emit_action_setup(**params):
+    '''Emits events and effects for actions.'''
+    emit_payload = {
+        'enabled': False
+    }
+
+    if eventActions:
+        effects = eventActions.getRegisteredEffects()
+
+        effect_list = {}
+        if effects:
+            for effect in effects:
+                effect_list[effect] = {
+                    'name': __(effects[effect]['name']),
+                    'fields': effects[effect]['fields']
+                }
+
+            emit_payload = {
+                'enabled': True,
+                'events': None,
+                'effects': effect_list,
+            }
+
+    if ('nobroadcast' in params):
+        emit('action_setup', emit_payload)
+    else:
+        SOCKET_IO.emit('action_setup', emit_payload)
+    
+def emit_event_actions(**params):
+    '''Emits event actions.'''
+    emit_payload = {
+        'actions': RHData.get_option('actions'),
+    }
+    if ('nobroadcast' in params):
+        emit('event_actions', emit_payload)
+    else:
+        SOCKET_IO.emit('event_actions', emit_payload)
+
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
@@ -5300,6 +5342,103 @@ gevent.spawn(clock_check_thread_function)  # start thread to monitor system cloc
 import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
+
+#register actions
+try:
+    from EventActions import EventActions
+    eventActions = EventActions(Events, RHData)
+
+    #register built-in effects
+    def speakEffect(action, args):
+        logger.info(args)
+        text = action['text']
+        if 'node_index' in args:
+            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+            text = text.replace('%PILOT%', pilot.spokenName())
+
+        if 'heat_id' in args:
+            heat = RHData.get_heat(args['heat_id'])
+        else:
+            heat = RHData.get_heat(RACE.current_heat)
+
+        if heat.note:
+            text = text.replace('%HEAT%', heat.note)
+        else:
+            text = text.replace('%HEAT%', __("heat " + heat.id))
+
+        emit_phonetic_text(text)
+
+    def messageEffect(action, args):
+        text = action['text']
+        if 'node_index' in args:
+            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+            text = text.replace('%PILOT%', pilot.callsign)
+
+        if 'heat_id' in args:
+            heat = RHData.get_heat(args['heat_id'])
+        else:
+            heat = RHData.get_heat(RACE.current_heat)
+
+        if heat.note:
+            text = text.replace('%HEAT%', heat.note)
+        else:
+            text = text.replace('%HEAT%', __("heat " + heat.id))
+
+        emit_priority_message(text)
+
+    def alertEffect(action, args):
+        text = action['text']
+        if 'node_index' in args:
+            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+            text = text.replace('%PILOT%', pilot.callsign)
+
+        if 'heat_id' in args:
+            heat = RHData.get_heat(args['heat_id'])
+        else:
+            heat = RHData.get_heat(RACE.current_heat)
+
+        if heat.note:
+            text = text.replace('%HEAT%', heat.note)
+        else:
+            text = text.replace('%HEAT%', __("heat " + heat.id))
+
+        emit_priority_message(text, True)
+
+    eventActions.registerEffect('speak', speakEffect, {
+        'name': 'Speak',
+        'fields': [
+                    {
+                        'id': 'text',
+                        'name': 'Callout Text',
+                        'type': 'text',
+                    }
+                ],
+        })
+    eventActions.registerEffect('message', messageEffect, {
+        'name': 'Message',
+        'fields': [
+                    {
+                        'id': 'text',
+                        'name': 'Message Text',
+                        'type': 'text',
+                    }
+                ],
+        })
+    eventActions.registerEffect('alert', alertEffect, {
+        'name': 'Alert',
+        'fields': [
+                    {
+                        'id': 'text',
+                        'name': 'Alert Text',
+                        'type': 'text',
+                    }
+                ],
+        })
+
+
+except ImportError as e:
+    logger.error("Unable to load EventActions")
+    logger.error(e)
 
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
