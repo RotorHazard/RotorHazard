@@ -2742,23 +2742,35 @@ def on_delete_lap(data):
         logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
         return
 
-    RACE.node_laps[node_index][lap_index]['deleted'] = True
-    RACE.node_laps[node_index][lap_index]['late_lap'] = False
+    RACE.node_laps[node_index][lap_index]['invalid'] = True
 
     time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
 
+    race_format = getCurrentRaceFormat()
+    RACE.set_node_finished_flag(node_index, False)
     lap_number = 0
     for lap in RACE.node_laps[node_index]:
-        if not lap['deleted']:
-            lap['lap_number'] = lap_number
-            lap_number += 1
+        lap['deleted'] = False
+        if RACE.get_node_finished_flag(node_index):
+            lap['late_lap'] = True
+            lap['deleted'] = True
         else:
+            lap['late_lap'] = False
+
+        if lap.get('invalid', False):
             lap['lap_number'] = None
+            lap['deleted'] = True
+        else:
+            lap['lap_number'] = lap_number
+            if race_format.race_mode == 0 and lap['lap_time_stamp'] > (race_format.race_time_sec * 1000) or \
+                (race_format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
+                RACE.set_node_finished_flag(node_index)
+            lap_number += 1
 
     db_last = False
     db_next = False
     for lap in RACE.node_laps[node_index]:
-        if (not lap['deleted']) or lap.get('late_lap', False):
+        if not lap.get('invalid', False) and ((not lap['deleted']) or lap.get('late_lap', False)):
             if lap['lap_time_stamp'] < time:
                 db_last = lap
             if lap['lap_time_stamp'] > time:
@@ -3292,7 +3304,8 @@ def build_laps_list(active_race=RACE):
         fastest_lap_index = None
         last_lap_id = -1
         for idx, lap in enumerate(active_race.node_laps[node_idx]):
-            if (not lap['deleted']) or lap.get('late_lap', False):
+            if (not lap.get('invalid', False)) and \
+                ((not lap['deleted']) or lap.get('late_lap', False)):
                 if not lap.get('late_lap', False):
                     last_lap_id = lap_number = lap['lap_number']
                     if active_race.format and active_race.format.start_behavior == StartBehavior.FIRST_LAP:
@@ -4245,19 +4258,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     pilot_obj = RHData.get_pilot(pilot_id)
                     pilot_namestr = pilot_obj.callsign if pilot_obj else ""
 
-                    node_finished_flag = RACE.get_node_finished_flag(node.index)
-                    # set next node race status as 'finished' if winner has been declared
-                    #  or timer mode is count-down race and race-time has expired
-                    if RACE.win_status == WinStatus.DECLARED or \
-                                    (race_format.race_mode == 0 and lap_time_stamp > race_format.race_time_sec * 1000):
-                        RACE.set_node_finished_flag(node.index)
-                        if not node_finished_flag:
-                            logger.info('Pilot {} done'.format(pilot_obj.callsign))
-                            Events.trigger(Evt.RACE_PILOT_DONE, {
-                                'node_index': node.index,
-                                'color': led_manager.getDisplayColor(node.index),
-                                })
-
                     lap_ok_flag = True
                     lap_late_flag = False
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
@@ -4278,16 +4278,26 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             lap_ok_flag = False
 
                     if lap_ok_flag:
+                        node_finished_flag = RACE.get_node_finished_flag(node.index)
+                        # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
+                        if (race_format.race_mode == 0 and lap_time_stamp > race_format.race_time_sec * 1000) or \
+                            (RACE.format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
+                            RACE.set_node_finished_flag(node.index)
+                            if not node_finished_flag:
+                                logger.info('Pilot {} done'.format(pilot_obj.callsign))
+                                Events.trigger(Evt.RACE_PILOT_DONE, {
+                                    'node_index': node.index,
+                                    'color': led_manager.getDisplayColor(node.index),
+                                    })
 
                         if node_finished_flag:
-                            lap_late_flag = True  # "late" lap pass (after time expired)
+                            lap_late_flag = True  # "late" lap pass (after grace lap)
                             logger.info('Ignoring lap after pilot done: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
                                                INTERFACE.get_lap_source_str(source), pilot_namestr))
                             
-                        if RACE.win_status == WinStatus.DECLARED and (RACE.format.team_racing_mode or \
-                                                                        node_finished_flag):
-                            lap_late_flag = True  # "late" lap pass (after race winner declared)
+                        if RACE.win_status == WinStatus.DECLARED and race_format.race_mode == 1 and RACE.format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                            lap_late_flag = True  # "late" lap pass after race winner declared (when no time limit)
                             if RACE.format.team_racing_mode and pilot_obj:
                                 t_str = ", Team " + pilot_obj.team
                             else:
@@ -4377,14 +4387,15 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 emit_current_leaderboard()  # show current race status on leaderboard
 
                     else:
-                        # record lap as 'deleted'
+                        # record lap as 'invalid'
                         RACE.node_laps[node.index].append({
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
-                            'deleted': True
+                            'deleted': True,
+                            'invalid': True
                         })
                 else:
                     logger.debug('Pass record dismissed: Node {}, Race not started (abs_ts={:.3f}, source={})' \
@@ -4439,8 +4450,6 @@ def check_win_condition(**kwargs):
                 if (not win_phon_name) or len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_data.get('callsign', '')
                 phonetic_str = __('Winner is') + ' ' + win_phon_name
-                if 'node' in win_data:  # make sure winner node race status always set to 'finished'
-                    RACE.set_node_finished_flag(win_data['node'])
 
             # if racer lap was deleted then only output if win-status details changed
             if (not del_lap_flag) or RACE.win_status != previous_win_status or \
