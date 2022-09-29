@@ -1492,6 +1492,9 @@
 
 		socket.on('event_actions', function (msg) {
 			actionList = JSON.parse(msg.actions);
+			if (!Array.isArray(actionList)) {
+				actionList = [];
+			}
 			if (effectListLoaded && eventListLoaded) {
 				$('button#add_action').prop('disabled', false);
 				$('#actions').html(buildActionList());
