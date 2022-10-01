@@ -5358,8 +5358,8 @@ try:
     eventActions = EventActions(Events, RHData)
 
     #register built-in effects
+    @catchLogExceptionsWrapper
     def speakEffect(action, args):
-        logger.info(args)
         text = action['text']
         if 'node_index' in args:
             pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
@@ -5373,10 +5373,11 @@ try:
         if heat.note:
             text = text.replace('%HEAT%', heat.note)
         else:
-            text = text.replace('%HEAT%', __("heat " + heat.id))
+            text = text.replace('%HEAT%', __("heat " + str(heat.id)))
 
         emit_phonetic_text(text)
 
+    @catchLogExceptionsWrapper
     def messageEffect(action, args):
         text = action['text']
         if 'node_index' in args:
@@ -5391,10 +5392,11 @@ try:
         if heat.note:
             text = text.replace('%HEAT%', heat.note)
         else:
-            text = text.replace('%HEAT%', __("heat " + heat.id))
+            text = text.replace('%HEAT%', __("heat " + str(heat.id)))
 
         emit_priority_message(text)
 
+    @catchLogExceptionsWrapper
     def alertEffect(action, args):
         text = action['text']
         if 'node_index' in args:
@@ -5409,7 +5411,7 @@ try:
         if heat.note:
             text = text.replace('%HEAT%', heat.note)
         else:
-            text = text.replace('%HEAT%', __("heat " + heat.id))
+            text = text.replace('%HEAT%', __("heat " + str(heat.id)))
 
         emit_priority_message(text, True)
 
