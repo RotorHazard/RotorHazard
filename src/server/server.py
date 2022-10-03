@@ -58,6 +58,8 @@ import Config
 import Database
 import Results
 import Language
+import json_endpoints
+import EventActions
 import RHData
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
@@ -72,6 +74,7 @@ import util.stm32loader as stm32loader
 from eventmanager import Evt, EventManager
 
 Events = EventManager()
+EventActionsObj = None
 
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
@@ -3188,11 +3191,11 @@ def emit_action_setup(**params):
         'enabled': False
     }
 
-    if eventActions:
-        effects = eventActions.getRegisteredEffects()
+    if EventActionsObj:
+        effects = EventActionsObj.getRegisteredEffects()
 
-        effect_list = {}
         if effects:
+            effect_list = {}
             for effect in effects:
                 effect_list[effect] = {
                     'name': __(effects[effect]['name']),
@@ -5348,108 +5351,11 @@ export_manager = DataExportManager(RHData, PageCache, Language)
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
 # register endpoints
-import json_endpoints
-
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 
-#register actions
-try:
-    from EventActions import EventActions
-    eventActions = EventActions(Events, RHData)
-
-    #register built-in effects
-    @catchLogExceptionsWrapper
-    def speakEffect(action, args):
-        text = action['text']
-        if 'node_index' in args:
-            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
-            text = text.replace('%PILOT%', pilot.spokenName())
-
-        if 'heat_id' in args:
-            heat = RHData.get_heat(args['heat_id'])
-        else:
-            heat = RHData.get_heat(RACE.current_heat)
-
-        if heat.note:
-            text = text.replace('%HEAT%', heat.note)
-        else:
-            text = text.replace('%HEAT%', __("heat " + str(heat.id)))
-
-        emit_phonetic_text(text)
-
-    @catchLogExceptionsWrapper
-    def messageEffect(action, args):
-        text = action['text']
-        if 'node_index' in args:
-            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
-            text = text.replace('%PILOT%', pilot.callsign)
-
-        if 'heat_id' in args:
-            heat = RHData.get_heat(args['heat_id'])
-        else:
-            heat = RHData.get_heat(RACE.current_heat)
-
-        if heat.note:
-            text = text.replace('%HEAT%', heat.note)
-        else:
-            text = text.replace('%HEAT%', __("heat " + str(heat.id)))
-
-        emit_priority_message(text)
-
-    @catchLogExceptionsWrapper
-    def alertEffect(action, args):
-        text = action['text']
-        if 'node_index' in args:
-            pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
-            text = text.replace('%PILOT%', pilot.callsign)
-
-        if 'heat_id' in args:
-            heat = RHData.get_heat(args['heat_id'])
-        else:
-            heat = RHData.get_heat(RACE.current_heat)
-
-        if heat.note:
-            text = text.replace('%HEAT%', heat.note)
-        else:
-            text = text.replace('%HEAT%', __("heat " + str(heat.id)))
-
-        emit_priority_message(text, True)
-
-    eventActions.registerEffect('speak', speakEffect, {
-        'name': 'Speak',
-        'fields': [
-                    {
-                        'id': 'text',
-                        'name': 'Callout Text',
-                        'type': 'text',
-                    }
-                ],
-        })
-    eventActions.registerEffect('message', messageEffect, {
-        'name': 'Message',
-        'fields': [
-                    {
-                        'id': 'text',
-                        'name': 'Message Text',
-                        'type': 'text',
-                    }
-                ],
-        })
-    eventActions.registerEffect('alert', alertEffect, {
-        'name': 'Alert',
-        'fields': [
-                    {
-                        'id': 'text',
-                        'name': 'Alert Text',
-                        'type': 'text',
-                    }
-                ],
-        })
-
-
-except ImportError as e:
-    logger.error("Unable to load EventActions")
-    logger.error(e)
+#register event actions
+EventActionsObj = EventActions.initializeEventActions(Events, RHData, RACE, emit_phonetic_text, \
+                                    emit_priority_message, Language, logger)
 
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
