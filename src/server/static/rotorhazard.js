@@ -871,18 +871,18 @@ function timerModel() {
 		this.running = true;
 	}
 
-	this.sync = function(remote_time_zero, local_remote_diiferential, remote_time_start) {
+	this.sync = function(remote_time_zero, local_remote_differential, remote_time_start) {
 		// set local timer based on remote and calculated differential
 		// only valid with both components
-		if (local_remote_diiferential) {
+		if (local_remote_differential) {
 			if (remote_time_start) {
-				this.local_start_time = remote_time_start - local_remote_diiferential;
+				this.local_start_time = remote_time_start - local_remote_differential;
 			} else {
 				this.local_start_time = null;
 			}
 
 			if (remote_time_zero) {
-				this.local_zero_time = remote_time_zero - local_remote_diiferential;
+				this.local_zero_time = remote_time_zero - local_remote_differential;
 			} else {
 				this.local_zero_time = null;
 			}
