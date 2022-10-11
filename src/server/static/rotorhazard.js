@@ -801,7 +801,10 @@ function timerModel() {
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
-				self.callbacks.self_resync(self);
+				if (self.callbacks.self_resync instanceof Function) {
+					self.callbacks.self_resync(self);
+				}
+
 				self.start();
 			} else {
 				self.get_next_step(now);
