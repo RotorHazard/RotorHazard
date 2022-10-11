@@ -1197,7 +1197,7 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
 		} else if (timer.time_tenths == -18000) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_tenths > -600 && timer.time_tenths <= 3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
+		} else if (timer.time_tenths < -600 && timer.time_tenths >= -3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
 			var minutes = timer.time_tenths / -600;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
 		} else if (timer.time_tenths == -600) {
