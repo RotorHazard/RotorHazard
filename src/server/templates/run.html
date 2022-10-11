@@ -206,7 +206,8 @@
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
-				rotorhazard.timer.deferred.start(deferred_start, rotorhazard.pi_time_diff);
+				rotorhazard.timer.deferred.sync(deferred_start, rotorhazard.pi_time_diff);
+				rotorhazard.timer.deferred.start();
 			} else {
 				rotorhazard.timer.deferred.stop();
 			}
