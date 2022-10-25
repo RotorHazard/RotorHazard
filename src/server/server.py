@@ -4300,6 +4300,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                                INTERFACE.get_lap_source_str(source), pilot_namestr))
                             
                         if RACE.win_status == WinStatus.DECLARED and race_format.race_mode == 1 and RACE.format.win_condition == WinCondition.FIRST_TO_LAP_X:
+
                             lap_late_flag = True  # "late" lap pass after race winner declared (when no time limit)
                             if RACE.format.team_racing_mode and pilot_obj:
                                 t_str = ", Team " + pilot_obj.team
@@ -4333,8 +4334,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_time': lap_time,
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
-                            'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
-                            'late_lap': lap_late_flag
+                            'deleted':  lap_late_flag if race_format.team_racing_mode else node_finished_flag,  # delete if lap pass is after race winner declared on team racing or after node fineshed if else.
+                            'late_lap': lap_late_flag if race_format.team_racing_mode else node_finished_flag
                         }
                         RACE.node_laps[node.index].append(lap_data)
 
