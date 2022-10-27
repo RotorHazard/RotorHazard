@@ -722,6 +722,7 @@ function timerModel() {
 	this.running = false;
 	this.local_start_time = null; // timestamp for local staging start time
 	this.local_zero_time = null; // timestamp for local T=0 point (race start)
+	this.phased_staging = false; // timer counts independently in staging
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
 	this.staging_tones = 0; // sound tones during staging
 	this.time = null; // start-relative time in ms
@@ -801,7 +802,9 @@ function timerModel() {
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
-				self.callbacks.self_resync(self);
+				if (self.callbacks.self_resync instanceof Function) {
+					self.callbacks.self_resync(self);
+				}
 				self.start();
 			} else {
 				self.get_next_step(now);
@@ -841,6 +844,7 @@ function timerModel() {
 		// reset simplified time and drift history
 		this.time_tenths = false;
 		this.staging_cb_tic = null;
+		this.allow_expire = true;
 
 		// get sync if needed
 		if (typeof remote_time_zero !== "undefined"
@@ -878,7 +882,7 @@ function timerModel() {
 			if (remote_time_start) {
 				this.local_start_time = remote_time_start - local_remote_differential;
 			} else {
-				this.local_start_time = null;
+				this.local_start_time = remote_time_zero - local_remote_differential;
 			}
 
 			if (remote_time_zero) {
@@ -913,7 +917,7 @@ function timerModel() {
 		var active_time_tenths = this.time_tenths;
 
 		// hold timer during prestage
-		if (this.time_staging_tenths < 0) {
+		if (this.phased_staging && this.time_staging_tenths < 0) {
 			active_time_tenths = Math.trunc((this.local_start_time - this.local_zero_time) / 100);
 		}
 
@@ -1030,7 +1034,9 @@ var rotorhazard = {
 	pi_time_request: false,
 	pi_time_diff: false,
 	race_start_pi: false,
+	deferred_start_pi: false,
 	pi_time_diff_samples: [], // stored previously acquired offsets
+
 
 	timer: {
 		deferred: new timerModel(),
@@ -1197,7 +1203,9 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
 		} else if (timer.time_tenths == -18000) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_tenths > -600 && timer.time_tenths <= 3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
+		} else if (timer.time_tenths == -6000) {
+			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_tenths < -600 && timer.time_tenths >= -3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
 			var minutes = timer.time_tenths / -600;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
 		} else if (timer.time_tenths == -600) {
@@ -1217,10 +1225,13 @@ rotorhazard.timer.deferred.callbacks.stop = function(timer){
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
+	rotorhazard.timer.deferred.stop();
 	$('.time-display').html(__('Wait'));
 }
 
 // race/staging timer callbacks
+rotorhazard.timer.race.phased_staging = true;
+
 rotorhazard.timer.race.callbacks.start = function(timer){
 	$('.time-display').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
