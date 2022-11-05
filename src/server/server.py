@@ -4274,7 +4274,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
-                        if race_format.lap_grace_sec > -1 and lap_time_stamp > (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
+                        if race_format.race_mode == 0 and \
+                            race_format.lap_grace_sec > -1 and \
+                            lap_time_stamp > (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
                             logger.info('Ignoring lap after grace period expired: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
                                                INTERFACE.get_lap_source_str(source), pilot_namestr))
@@ -4299,9 +4301,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
                                                INTERFACE.get_lap_source_str(source), pilot_namestr))
                             
-                        if RACE.win_status == WinStatus.DECLARED and race_format.race_mode == 1 and RACE.format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                            lap_late_flag = True  # "late" lap pass after race winner declared (when no time limit)
-                            if RACE.format.team_racing_mode and pilot_obj:
+                        if RACE.win_status == WinStatus.DECLARED and \
+                            race_format.race_mode == 1 and \
+                            RACE.format.team_racing_mode and \
+                            RACE.format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                            lap_late_flag = True  # "late" lap pass after team race winner declared (when no time limit)
+                            if pilot_obj:
                                 t_str = ", Team " + pilot_obj.team
                             else:
                                 t_str = ""
