@@ -86,6 +86,8 @@
 
 			// pass current sync to timer
 			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff, rotorhazard.staging_start_pi);
+			rotorhazard.timer.deferred.sync(rotorhazard.deferred_start_pi, rotorhazard.pi_time_diff, rotorhazard.deferred_start_pi);
+
 
 			// continue sampling for sync to improve accuracy
 			if (rotorhazard.pi_time_diff_samples.length < 10) {
@@ -206,7 +208,8 @@
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
-				rotorhazard.timer.deferred.start(deferred_start, rotorhazard.pi_time_diff);
+				rotorhazard.deferred_start_pi = deferred_start;
+				rotorhazard.timer.deferred.start(rotorhazard.deferred_start_pi, rotorhazard.pi_time_diff, null);
 			} else {
 				rotorhazard.timer.deferred.stop();
 			}
