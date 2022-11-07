@@ -997,6 +997,7 @@ var rotorhazard = {
 	voice_race_timer: 2, // speak race timer
 	voice_race_winner: 1, // speak race winner
 	voice_split_timer: 0, // split timer
+	voice_if_node_finished: 0, // call laps after pilot completed
 
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
@@ -1061,6 +1062,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
 		localStorage['rotorhazard.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
 		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
+		localStorage['rotorhazard.voice_if_node_finished'] = JSON.stringify(this.voice_if_node_finished);
 		localStorage['rotorhazard.voice_split_timer'] = JSON.stringify(this.voice_split_timer);
 		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
 		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
@@ -1118,6 +1120,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.voice_race_winner']) {
 				this.voice_race_winner = parseIntOrBoolean(localStorage['rotorhazard.voice_race_winner']);
+			}
+			if (localStorage['rotorhazard.voice_if_node_finished']) {
+				this.voice_if_node_finished = parseIntOrBoolean(localStorage['rotorhazard.voice_if_node_finished']);
 			}
 			if (localStorage['rotorhazard.voice_split_timer']) {
 				this.voice_split_timer = JSON.parse(localStorage['rotorhazard.voice_split_timer']);

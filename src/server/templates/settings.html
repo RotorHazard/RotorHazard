@@ -73,6 +73,7 @@
 		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
 		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
 		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+		$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
 		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
@@ -1237,6 +1238,11 @@
 
 		$('#voice_race_winner').change(function (event) {
 			rotorhazard.voice_race_winner = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
+		$('#voice_if_node_finished').change(function (event) {
+			rotorhazard.voice_if_node_finished = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
@@ -2732,6 +2738,15 @@
 						<label for="voice_race_winner">{{ __('Race Winner') }}</label>
 					</div>
 					<select id="voice_race_winner">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_if_node_finished">{{ __('After Pilot Done') }}</label>
+					</div>
+					<select id="voice_if_node_finished">
 						<option value="0">{{ __('Never') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>

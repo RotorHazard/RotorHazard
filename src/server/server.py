@@ -3736,7 +3736,7 @@ def emit_current_heat(**params):
     else:
         SOCKET_IO.emit('current_heat', emit_payload)
 
-def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, **params):
+def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, **params):
     '''Emits phonetic data.'''
     raw_time = lap_time
     phonetic_time = RHUtils.phonetictime_format(lap_time, RHData.get_option('timeFormatPhonetic'))
@@ -3750,7 +3750,8 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
         'phonetic': phonetic_time,
         'team_name' : team_name,
         'team_laps' : team_laps,
-        'leader_flag' : leader_flag
+        'leader_flag' : leader_flag,
+        'node_finished': node_finished,
     }
     if ('nobroadcast' in params):
         emit('phonetic_data', emit_payload)
@@ -4367,7 +4368,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             lap_number += 1
 
                         # announce lap
-                        if lap_number > 0 and not node_finished_flag:
+                        if lap_number > 0:
                             check_leader = race_format.win_condition != WinCondition.NONE and \
                                            RACE.win_status != WinStatus.DECLARED
                             # announce pilot lap number unless winner declared and pilot has finished final lap
@@ -4384,11 +4385,13 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                     team_laps = None
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
                                                 (check_leader and \
-                                                 team_name == Results.get_leading_team_name(RACE.team_results)))
+                                                 team_name == Results.get_leading_team_name(RACE.team_results)), \
+                                                node_finished_flag)
                             else:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
                                                 (check_leader and \
-                                                 pilot_id == Results.get_leading_pilot_id(RACE.results)))
+                                                 pilot_id == Results.get_leading_pilot_id(RACE.results)), \
+                                                node_finished_flag)
 
                             check_win_condition() # check for and announce possible winner
                             if RACE.win_status != WinStatus.NONE:
