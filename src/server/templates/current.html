@@ -133,6 +133,7 @@
 		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
 		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
 		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+		$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
 		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
@@ -411,43 +412,45 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			if ((rotorhazard.primaryPilot == 0 || rotorhazard.primaryPilot == msg.pilot_id)
-				&& rotorhazard.min_lap * 1000 < msg.raw_time) {
-
-				var ttstext = '';
-
-				if (rotorhazard.voice_callsign == 1 ||
-							(rotorhazard.voice_callsign == 2 && (!msg.team_name))) {
-					ttstext = msg.callsign;
-					if (msg.pilot)
-						ttstext = msg.pilot;
-				}
-
-				if (rotorhazard.voice_lap_count == 1 ||
-							(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
-					if (ttstext.length > 0)
-						ttstext += ", ";
-					ttstext += __l('Lap') + " " + msg.lap;
-				}
-
-				if (rotorhazard.voice_lap_time == 1 ||
-							(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
-					if (ttstext.length > 0)
-						ttstext += ", ";
-					ttstext += msg.phonetic;
-				}
-
-				if (msg.team_name && msg.team_laps && rotorhazard.voice_team_lap_count != 0) {
-					if (ttstext.length > 0)
-						ttstext += ", ";
-					ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
-				}
-
-				if (ttstext.length > 0) {
-					if (msg.leader_flag) {
-						speak(LEADER_FLAG_CHAR);
+			if (!msg.node_finished || rotorhazard.voice_if_node_finished) {
+				if ((rotorhazard.primaryPilot == 0 || rotorhazard.primaryPilot == msg.pilot_id)
+					&& rotorhazard.min_lap * 1000 < msg.raw_time) {
+	
+					var ttstext = '';
+	
+					if (rotorhazard.voice_callsign == 1 ||
+								(rotorhazard.voice_callsign == 2 && (!msg.team_name))) {
+						ttstext = msg.callsign;
+						if (msg.pilot)
+							ttstext = msg.pilot;
 					}
-					speak('<div class="speech">' + ttstext + '</div>');
+	
+					if (rotorhazard.voice_lap_count == 1 ||
+								(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
+						if (ttstext.length > 0)
+							ttstext += ", ";
+						ttstext += __l('Lap') + " " + msg.lap;
+					}
+	
+					if (rotorhazard.voice_lap_time == 1 ||
+								(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
+						if (ttstext.length > 0)
+							ttstext += ", ";
+						ttstext += msg.phonetic;
+					}
+	
+					if (msg.team_name && msg.team_laps && rotorhazard.voice_team_lap_count != 0) {
+						if (ttstext.length > 0)
+							ttstext += ", ";
+						ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
+					}
+	
+					if (ttstext.length > 0) {
+						if (msg.leader_flag) {
+							speak(LEADER_FLAG_CHAR);
+						}
+						speak('<div class="speech">' + ttstext + '</div>');
+					}
 				}
 			}
 		})
@@ -578,6 +581,11 @@
 
 		$('#voice_race_winner').change(function (event) {
 			rotorhazard.voice_race_winner = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
+		$('#voice_if_node_finished').change(function (event) {
+			rotorhazard.voice_if_node_finished = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
@@ -816,6 +824,15 @@
 						<label for="voice_race_winner">{{ __('Race Winner') }}</label>
 					</div>
 					<select id="voice_race_winner">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_if_node_finished">{{ __('After Pilot Done') }}</label>
+					</div>
+					<select id="voice_if_node_finished">
 						<option value="0">{{ __('Never') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
