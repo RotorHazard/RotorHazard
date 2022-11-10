@@ -2979,6 +2979,11 @@ def save_callouts(data):
     logger.info('Set all voice callouts')
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 
+@SOCKET_IO.on('reload_callouts')
+@catchLogExceptionsWrapper
+def reload_callouts():
+    emit_callouts()
+
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
 def imdtabler_update_freqs(data):
