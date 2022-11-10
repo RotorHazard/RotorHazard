@@ -15,25 +15,23 @@
 #
 
 import logging
-from Plugins import Plugins  #pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
 class DataExportManager():
     exporters = {}
 
-    def __init__(self, RHData, PageCache, Language):
+    def __init__(self, RHData, PageCache, Language, plugin_modules):
         self._RHData = RHData
         self._PageCache = PageCache
         self._Language = Language
-        self.readPlugins()
+        self.readPlugins(plugin_modules)
 
-    def readPlugins(self):
-        exporter_plugins = Plugins(prefix='data_export')
-        exporter_plugins.discover()
-
-        for exporter in exporter_plugins:
-            self.registerExporter(exporter)
+    def readPlugins(self, plugin_modules):
+        for plugin in plugin_modules:
+            if plugin.__name__.startswith('plugins.data_export_'):
+                for exporter in plugin.discover():
+                    self.registerExporter(exporter)
 
     def registerExporter(self, exporter):
         if hasattr(exporter, 'name'):
