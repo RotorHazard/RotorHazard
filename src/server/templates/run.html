@@ -1543,7 +1543,8 @@
 
 			new_callout_control = $('<div class="control-block">');
 			new_callout_control.append('<input type="text" id="callout_text_' + id + '" class="callout_text" value="' + content + '">');
-			new_callout_control.append('<button class="button play_callout" id="play_callout_' + id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+			new_callout_control.append('<button class="button play_callout" id="play_callout_' + id + '" title="' + __('Play Callout') + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+			new_callout_control.append('<button class="button del-callout-action btn-danger" id="del-callout-action_' + id + '" title="' + __('Delete Callout') + '"> x </button>');
 
 			new_callout.append(new_callout_label);
 			new_callout.append(new_callout_control);
@@ -1617,6 +1618,12 @@
 			return false;
 		});
 
+		$(document).on('click', '.del-callout-action', function (event) {
+			$(this).parent().parent().remove();
+			do_save_callouts();
+			socket.emit('reload_callouts');  // reload to update hotkey assignments
+		});
+
 		// make 'Enter' key on input field trigger button
 		$(document).on('keyup', '.callout_text', function(event) {
 			if (event.keyCode === 13) {
@@ -1626,14 +1633,15 @@
 		});
 
 		// load callouts
-		socket.on('callouts', function(msg){
+		socket.on('callouts', function(msg) {
+			clear_callout_items();
 			for (i in msg) {
 				add_callout(msg[i]);
 			}
 		})
 
 		// save callouts
-		$(document).on('change', '.callout_text', function (event) {
+		function do_save_callouts() {
 			var data = [];
 
 			$('.callout-items>li').each(function(index){
@@ -1645,7 +1653,17 @@
 			socket.emit('save_callouts', {
 				'callouts': data
 			});
+		}
+
+		$(document).on('change', '.callout_text', function (event) {
+			do_save_callouts();
 		});
+
+		function clear_callout_items() {
+			$('.callout-items>li').each(function(index){
+				$(this).remove();
+			})
+		}
 
 		/* Other */
 		$('.open-mfp-popup-tuning').magnificPopup({
