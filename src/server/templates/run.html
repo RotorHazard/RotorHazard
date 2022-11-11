@@ -1542,9 +1542,9 @@
 			new_callout_label.html(label)
 
 			new_callout_control = $('<div class="control-block">');
-			new_callout_control.append('&nbsp; <input type="text" id="callout_text_' + id + '" class="callout_text" value="' + content + '">');
-			new_callout_control.append(' &nbsp;<button class="button del-callout-action btn-danger-small" id="del-callout-action_' + id + '" title="' + __('Delete Callout') + '"> x </button>');
+			new_callout_control.append('<input type="text" id="callout_text_' + id + '" class="callout_text" value="' + content + '">');
 			new_callout_control.append('<button class="button play_callout" id="play_callout_' + id + '" title="' + __('Play Callout') + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+			new_callout_control.append('<button class="button del-callout-action btn-danger" id="del-callout-action_' + id + '" title="' + __('Delete Callout') + '"> x </button>');
 
 			new_callout.append(new_callout_label);
 			new_callout.append(new_callout_control);
