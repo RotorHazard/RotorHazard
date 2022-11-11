@@ -298,7 +298,8 @@ class RHData():
                 "osd_positionHeader",
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
-                "nextHeatBehavior"
+                "nextHeatBehavior",
+                "voiceCallouts"
             ]
 
             # RSSI reduced by half for 2.0.0
@@ -506,10 +507,13 @@ class RHData():
                 logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
                 logger.debug(traceback.format_exc())
                 # failed recovery, db reset
-                self.reset_all()
-                self.commit()
-                self.primeCache() # refresh Options cache
-                self._Events.trigger(Evt.DATABASE_RECOVER)
+                try:
+                    self.reset_all()
+                    self.commit()
+                    self.primeCache() # refresh Options cache
+                    self._Events.trigger(Evt.DATABASE_RECOVER)
+                except:
+                    logger.exception("Exception performing db reset in 'recover_database()'")
                 return recover_status
 
             # stage 2: recover race result data
