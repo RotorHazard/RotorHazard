@@ -2041,6 +2041,20 @@ footer svg {
 	margin: 0;
 }
 
+.callout-items .control-block {
+	display: flex;
+	gap: 0.5rem;
+	width: 20em;
+}
+
+.callout-items button {
+	margin-top: 0;
+}
+
+.callout-items .play_callout {
+	order: -1;
+}
+
 .vrx-header {
 	font-size: 0.8rem;
 	padding: 0.25em;
