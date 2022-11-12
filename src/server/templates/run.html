@@ -32,8 +32,8 @@
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
 
-		rotorhazard.staging_start_pi = (msg.pi_staging_at_s * 1000); // convert seconds (pi) to millis (JS)
-		rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
+		var staging_start_pi = (msg.pi_staging_at_s * 1000); // convert seconds (pi) to millis (JS)
+		var race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
 
 		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
 		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
@@ -41,7 +41,7 @@
 
 		rotorhazard.timer.race.staging_tones = msg.staging_tones;
 
-		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff, rotorhazard.staging_start_pi);
+		rotorhazard.timer.race.start(race_start_pi, staging_start_pi);
 	}
 
 	$(document).ready(function () {
@@ -56,41 +56,40 @@
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
 
-			var pi_time_diff = {
+			var server_time_differential = {
 				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
 				'response': parseFloat(server_delay)
 			}
 
 			// store sync sample
-			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
+			rotorhazard.server_time_differential_samples.push(server_time_differential);
 
 			// sort stored samples
-			rotorhazard.pi_time_diff_samples.sort(function(a, b){
+			rotorhazard.server_time_differential_samples.sort(function(a, b){
 				return a.response - b.response;
 			})
 
 			// remove unusable samples
-			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
-			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
+			var diff_min = rotorhazard.server_time_differential_samples[0].differential - rotorhazard.server_time_differential_samples[0].response
+			var diff_max = rotorhazard.server_time_differential_samples[0].differential + rotorhazard.server_time_differential_samples[0].response
 
-			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+			rotorhazard.server_time_differential_samples = rotorhazard.server_time_differential_samples.filter(function(value, index, array) {
 				return value.differential >= diff_min && value.differential <= diff_max;
 			});
 
 			// get filtered value
 			var a = [];
-			for (var i in rotorhazard.pi_time_diff_samples) {
-				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			for (var i in rotorhazard.server_time_differential_samples) {
+				a.push(rotorhazard.server_time_differential_samples[i].differential);
 			}
-			rotorhazard.pi_time_diff = median(a);
+			rotorhazard.server_time_differential = median(a);
 
-			// pass current sync to timer
-			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff, rotorhazard.staging_start_pi);
-			rotorhazard.timer.deferred.sync(rotorhazard.deferred_start_pi, rotorhazard.pi_time_diff, rotorhazard.deferred_start_pi);
-
+			// pass current sync to timers
+			rotorhazard.timer.race.sync();
+			rotorhazard.timer.deferred.sync();
 
 			// continue sampling for sync to improve accuracy
-			if (rotorhazard.pi_time_diff_samples.length < 10) {
+			if (rotorhazard.server_time_differential_samples.length < 10) {
 				setTimeout(function(){
 					rotorhazard.pi_time_request = window.performance.now();
 					socket.emit('get_pi_time');
@@ -99,10 +98,10 @@
 
 			// update server info
 			var a = Infinity;
-			for (var i in rotorhazard.pi_time_diff_samples) {
-				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
+			for (var i in rotorhazard.server_time_differential_samples) {
+				a = Math.min(a, rotorhazard.server_time_differential_samples[i].response);
 			}
-			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.server_time_differential_samples.length + ' samples)</p>');
 		});
 
 		socket.on('language', function (msg) {
@@ -209,8 +208,7 @@
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
-				rotorhazard.deferred_start_pi = deferred_start;
-				rotorhazard.timer.deferred.start(rotorhazard.deferred_start_pi, rotorhazard.pi_time_diff, null);
+				rotorhazard.timer.deferred.start(deferred_start, null);
 			} else {
 				rotorhazard.timer.deferred.stop();
 			}
