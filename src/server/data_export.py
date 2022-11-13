@@ -21,17 +21,15 @@ logger = logging.getLogger(__name__)
 class DataExportManager():
     exporters = {}
 
-    def __init__(self, RHData, PageCache, Language, plugin_modules):
+    def __init__(self, RHData, PageCache, Language, Events):
         self._RHData = RHData
         self._PageCache = PageCache
         self._Language = Language
-        self.readPlugins(plugin_modules)
+        self.Events = Events
 
-    def readPlugins(self, plugin_modules):
-        for plugin in plugin_modules:
-            if plugin.__name__.startswith('plugins.data_export_'):
-                for exporter in plugin.discover():
-                    self.registerExporter(exporter)
+        self.Events.trigger('Export_Initialize', {
+            'registerFn': self.registerExporter
+            })
 
     def registerExporter(self, exporter):
         if hasattr(exporter, 'name'):

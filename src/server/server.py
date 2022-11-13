@@ -1621,7 +1621,7 @@ def on_export_database_file(data):
                 }
                 emit('exported_data', emit_payload)
 
-                Events.trigger(Evt.DATABASE_EXPORT)
+                Events.trigger(Evt.DATABASE_EXPORT, export_result)
             except Exception:
                 logger.exception("Error downloading export file")
                 emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
@@ -5093,6 +5093,10 @@ if os.path.isdir('./plugins'):
 else:
     logger.warning('No plugins directory found.')
 
+for plugin in plugin_modules:
+    if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
+        plugin.initialize(Events=Events)
+
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
     logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
@@ -5340,13 +5344,13 @@ if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
-        led_manager = LEDEventManager(Events, strip, RHData, RACE, Language, INTERFACE, plugin_modules)
+        led_manager = LEDEventManager(Events, strip, RHData, RACE, Language, INTERFACE)
         init_LED_effects()
     except:
         logger.exception("Error initializing LED support")
         led_manager = NoLEDManager()
 elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
-    led_manager = ClusterLEDManager(plugin_modules)
+    led_manager = ClusterLEDManager(Events)
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
@@ -5358,7 +5362,7 @@ if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
 
 # data exporters
-export_manager = DataExportManager(RHData, PageCache, Language, plugin_modules)
+export_manager = DataExportManager(RHData, PageCache, Language, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

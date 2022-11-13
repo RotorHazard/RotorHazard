@@ -7,6 +7,15 @@ import io
 import csv
 from data_export import DataExporter
 
+def registerHandlers(args):
+    if 'registerFn' in args:
+        for exporter in discover():
+            args['registerFn'](exporter)
+
+def initialize(**kwargs):
+    if 'Events' in kwargs:
+        kwargs['Events'].on('Export_Initialize', 'Export_register_CSV', registerHandlers, {}, 75, True)
+
 def write_csv(data):
     output = io.StringIO()
     writer = csv.writer(output, quoting=csv.QUOTE_NONNUMERIC)

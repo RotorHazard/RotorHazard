@@ -28,7 +28,7 @@ class LEDEventManager:
     eventThread = None
     displayColorCache = []
 
-    def __init__(self, eventmanager, strip, RHData, RACE, Language, INTERFACE, plugin_modules):
+    def __init__(self, eventmanager, strip, RHData, RACE, Language, INTERFACE):
         self.Events = eventmanager
         self.strip = strip
         self.RHData = RHData
@@ -52,13 +52,9 @@ class LEDEventManager:
                 'recommended': [Evt.ALL]
             }))
 
-        self.readPlugins(plugin_modules)
-
-    def readPlugins(self, plugin_modules):
-        for plugin in plugin_modules:
-            if plugin.__name__.startswith('plugins.led_handler_'):
-                for led_effect in plugin.discover():
-                    self.registerEffect(led_effect)
+        self.Events.trigger('LED_Initialize', {
+            'registerFn': self.registerEffect
+            })
 
     def isEnabled(self):
         return True
@@ -247,14 +243,10 @@ class NoLEDManager():
 class ClusterLEDManager():
     eventEffects = {}
 
-    def __init__(self, plugin_modules):
-        self.readPlugins(plugin_modules)
-
-    def readPlugins(self, plugin_modules):
-        for plugin in plugin_modules:
-            if plugin.__name__.startswith('plugins.led_handler_'):
-                for led_effect in plugin.discover():
-                    self.registerEffect(led_effect)
+    def __init__(self, Events):
+        Events.trigger('LED_Initialize', {
+            'registerFn': self.registerEffect
+            })
 
     def isEnabled(self):
         return False
