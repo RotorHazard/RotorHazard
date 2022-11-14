@@ -3198,8 +3198,8 @@ def emit_action_setup(**params):
             effect_list = {}
             for effect in effects:
                 effect_list[effect] = {
-                    'name': __(effects[effect]['name']),
-                    'fields': effects[effect]['fields']
+                    'name': __(effects[effect].label),
+                    'fields': effects[effect].fields
                 }
 
             emit_payload = {
