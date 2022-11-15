@@ -704,7 +704,7 @@ nodeModel.prototype = {
 
 function timerModel() {
 	// interval control
-	this.interval = 20; // in ms
+	this.interval = 100; // in ms
 	this.min_interval = 10; // skip interval if too soon
 
 	this.timeout = false;
@@ -720,8 +720,10 @@ function timerModel() {
 	this.staging_cb_tic = null; // prevent double callbacks
 
 	this.running = false;
-	this.local_start_time = null; // timestamp for local staging start time
+	this.remote_zero_time = null; // timestamp for server's t=0 point (race start)
+	this.remote_staging_start_time = null; // timestamp for server's staging start time
 	this.local_zero_time = null; // timestamp for local T=0 point (race start)
+	this.local_staging_start_time = null; // timestamp for local staging start time
 	this.phased_staging = false; // timer counts independently in staging
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
 	this.staging_tones = 0; // sound tones during staging
@@ -731,7 +733,7 @@ function timerModel() {
 	this.count_up = false; // use fixed-length timer
 	this.duration_tenths = 0; // fixed-length duration, in tenths
 	this.has_looped = false; // prevent expire callbacks until timer runs 1 loop
-	this.allow_expire = true; // prevent multiple expire callbacks
+	this.allow_expire = false; // prevent multiple expire callbacks
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -746,7 +748,7 @@ function timerModel() {
 		self.time = now - self.local_zero_time;
 		var continue_timer = true;
 
-		self.time_staging_tenths = Math.round((now - self.local_start_time) / 100);
+		self.time_staging_tenths = Math.round((now - self.local_staging_start_time) / 100);
 
 		if (self.time > self.interval / -2) {
 			// time is positive or zero
@@ -805,7 +807,7 @@ function timerModel() {
 				if (self.callbacks.self_resync instanceof Function) {
 					self.callbacks.self_resync(self);
 				}
-				self.start();
+				self.continue();
 			} else {
 				self.get_next_step(now);
 				self.timeout = setTimeout(step, Math.max(0, self.next_interval - self.drift_correction));
@@ -816,6 +818,25 @@ function timerModel() {
 					self.drift_history.shift();
 				}
 			}
+		}
+	}
+
+	function run_after_sync() {
+		// check for sync
+		if (self.local_zero_time != null) {
+			// initialize expiration allowance
+			now = window.performance.now();
+			self.allow_expire = (!self.count_up && now < self.local_zero_time);
+
+			// start timing loop
+			self.continue();
+
+			// do callback
+			if (self.callbacks.start instanceof Function) {
+				self.callbacks.start(self);
+			}
+		} else {
+			self.timeout = setTimeout(run_after_sync, 100);
 		}
 	}
 
@@ -840,26 +861,17 @@ function timerModel() {
 		}
 	}
 
-	this.start = function(remote_time_zero, local_remote_differential, remote_time_start){
-		// reset simplified time and drift history
+	this.start = function(server_start_time, server_staging_start_time=null){
+		// reset simplified time and staging callback
 		this.time_tenths = false;
 		this.staging_cb_tic = null;
-		this.allow_expire = true;
 
-		// get sync if needed
-		if (typeof remote_time_zero !== "undefined"
-			&& typeof remote_time_start !== "undefined"
-			&& typeof local_remote_differential !== "undefined") {
-			this.sync(remote_time_zero, local_remote_differential, remote_time_start);
-		}
+		this.remote_zero_time = server_start_time;
+		this.remote_staging_start_time = server_staging_start_time;
+		this.sync(rotorhazard.server_time_differential);
 
-		// start timing loop
-		this.continue();
-
-		// do callback
-		if (self.callbacks.start instanceof Function) {
-			self.callbacks.start(this);
-		}
+		// begin timing once sync is established
+		run_after_sync();
 	}
 
 	this.continue = function(race_start_ms) {
@@ -875,24 +887,24 @@ function timerModel() {
 		this.running = true;
 	}
 
-	this.sync = function(remote_time_zero, local_remote_differential, remote_time_start) {
+	this.sync = function() {
 		// set local timer based on remote and calculated differential
-		// only valid with both components
-		if (local_remote_differential) {
-			if (remote_time_start) {
-				this.local_start_time = remote_time_start - local_remote_differential;
-			} else {
-				this.local_start_time = remote_time_zero - local_remote_differential;
-			}
+		// only valid when both components provided
+		var local_remote_differential = rotorhazard.server_time_differential; // get diff from shared store
 
-			if (remote_time_zero) {
-				this.local_zero_time = remote_time_zero - local_remote_differential;
-			} else {
-				this.local_zero_time = null;
+		this.local_zero_time = null;
+		this.local_staging_start_time = null;
+		
+		if (local_remote_differential != null) {
+			if (this.remote_zero_time != null) {
+				this.local_zero_time = this.remote_zero_time - local_remote_differential;
+
+				if (this.remote_staging_start_time != null) {
+					this.local_staging_start_time = this.remote_staging_start_time - local_remote_differential;
+				} else {
+					this.local_staging_start_time = this.remote_zero_time - local_remote_differential;
+				}
 			}
-		} else {
-			this.local_start_time = null;
-			this.local_zero_time = null;
 		}
 	}
 
@@ -918,7 +930,7 @@ function timerModel() {
 
 		// hold timer during prestage
 		if (this.phased_staging && this.time_staging_tenths < 0) {
-			active_time_tenths = Math.trunc((this.local_start_time - this.local_zero_time) / 100);
+			active_time_tenths = Math.trunc((this.local_staging_start_time - this.local_zero_time) / 100);
 		}
 
 		var active_time_s = Math.trunc(active_time_tenths / 10);
@@ -1010,7 +1022,7 @@ var rotorhazard = {
 	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
 
 	schedule_m: 0, //time in minutes for scheduled races
-	schedule_s: 10, //time in minutes for scheduled races
+	schedule_s: 10, //time in seconds for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
 
 	//display options
@@ -1033,10 +1045,8 @@ var rotorhazard = {
 
 	// all times in ms (decimal micros if available)
 	pi_time_request: false,
-	pi_time_diff: false,
-	race_start_pi: false,
-	deferred_start_pi: false,
-	pi_time_diff_samples: [], // stored previously acquired offsets
+	server_time_differential: null,
+	server_time_differential_samples: [], // stored previously acquired offsets
 
 
 	timer: {
