@@ -257,19 +257,6 @@
 			}
 		});
 
-		/* Send Message */
-		$('button#send_message').click(function (event) {
-			var data = {
-				message: $('#message_body').val(),
-				interrupt: $('#message_interrupt').prop('checked')
-			};
-			socket.emit('broadcast_message', data);
-
-			$('#message_body').val('');
-			$('#message_interrupt').prop('checked', false);
-			return false;
-		});
-
 		/* Profiles */
 		socket.on('node_tuning', function (msg) {
 			$('#set_profile').empty();
@@ -1521,19 +1508,6 @@
 		</ul>
 	</div>
 {% endif %}
-
-<!--Client Messaging-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Send Message') }}</h2>
-	</div>
-	<div class="panel-content">
-		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
-		<input type="text" id="message_body" maxlength="256" placeholder="Message">{{ getOption('eventDescription') }}</textarea></p>
-		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
-		<p><button id="send_message">{{ __('Send Message') }}</button></p>
-	</div>
-</div>
 
 <!--Frequency Setup-->
 <div class="panel collapsing">
