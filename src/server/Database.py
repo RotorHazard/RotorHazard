@@ -193,6 +193,7 @@ class SchemeSet(DB.Model):
     set_format = DB.Column(DB.Integer, nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
+    order = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<SchemeSet %r>' % self.id
@@ -201,8 +202,9 @@ class SchemeRace(DB.Model):
     __tablename__ = 'scheme_race'
     id = DB.Column(DB.Integer, primary_key=True)
     set_id = DB.Column(DB.Integer, DB.ForeignKey("scheme_set.id"), nullable=False)
+    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
     name = DB.Column(DB.String(80), nullable=True)
-    next_race = DB.Column(DB.Integer, nullable=True)
+    order = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<SchemeRace %r>' % self.id
@@ -226,5 +228,5 @@ class SchemeRaceMethodSlot(DB.Model):
 
 class MethodType:
     ASSIGN = 0
-    SET_RESULT = 1
-    RACE_RESULT = 2
+    RACE_RESULT = 1
+    SET_RESULT = 2
