@@ -435,6 +435,13 @@ def render_marshal():
     return render_template('marshal.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
+@APP.route('/format')
+@requires_auth
+def render_format():
+    '''Route to settings page.'''
+    return render_template('format.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        num_nodes=RACE.num_nodes)
+
 @APP.route('/settings')
 @requires_auth
 def render_settings():

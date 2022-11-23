@@ -1,0 +1,1259 @@
+{% extends "layout.html" %} {% block title %}{{ __('Format') }}{% endblock %} {% block head %}
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'language',
+		'heat_data',
+		'class_data',
+		'pilot_data',
+		'race_format',
+		'min_lap',
+		'race_status',
+		'team_racing_mode',
+		'backups_list',
+		'exporter_list',
+	];
+
+	var heat_to_unlock = null;
+	var class_to_unlock = null;
+
+	$(document).ready(function () {
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (var i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+
+			$('#set_voice_string_language').empty();
+			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="">English</option>')
+			for (var i = 0; i < msg.languages.length; i++) {
+				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
+
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_language').selectedIndex = 0;
+			}
+		});
+
+		// set admin flag
+		rotorhazard.admin = true;
+		rotorhazard.saveData();
+		$('nav li').removeClass('admin-hide');
+
+		if ('{{ getOption('pilotSort') }}' == 'callsign') {
+			$('#set_pilotSort').val('callsign');
+		}
+
+		$('#unlock_race_format_button').html(svg_asset.lock);
+
+		// set up node local store
+		for (var i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
+
+		socket.on('race_status', function (msg) {
+			switch (msg.race_status) {
+				case 1: // Race running
+				case 2: // Race stopped, clear or save laps
+				case 3: // Race staging
+					$('#set_race_format').prop('disabled', true);
+					$('#add_race_format').prop('disabled', true);
+					$('#unlock_race_format_button').prop('disabled', true);
+					$('#delete_race_format_button').prop('disabled', true);
+					$('#set_format_name').prop('disabled', true);
+					$('#set_race_mode').prop('disabled', true);
+					$('#set_fix_race_time').prop('disabled', true);
+					$('#set_start_delay_min').prop('disabled', true);
+					$('#set_start_delay_max').prop('disabled', true);
+					$('#set_staging_tones').prop('disabled', true);
+					$('#set_start_behavior').prop('disabled', true);
+					$('#set_number_laps_win').prop('disabled', true);
+					$('#set_win_condition').prop('disabled', true);
+					$('#set_team_racing_mode').prop('disabled', true);
+					break;
+				default: // Waiting to start new race
+					$('#set_race_format').prop('disabled', false);
+					$('#add_race_format').prop('disabled', false);
+					$('#unlock_race_format_button').prop('disabled', false);
+					$('#delete_race_format_button').prop('disabled', false);
+					$('#set_format_name').prop('disabled', false);
+					$('#set_race_mode').prop('disabled', false);
+					$('#set_fix_race_time').prop('disabled', false);
+					$('#set_start_delay_min').prop('disabled', false);
+					$('#set_start_delay_max').prop('disabled', false);
+					$('#set_staging_tones').prop('disabled', false);
+					$('#set_start_behavior').prop('disabled', false);
+					$('#set_number_laps_win').prop('disabled', false);
+					$('#set_win_condition').prop('disabled', false);
+					$('#set_team_racing_mode').prop('disabled', false);
+
+					socket.emit('load_data', {'load_types': [
+						'race_format',
+					]});
+			}
+		});
+
+		/* Heats */
+		socket.on('heat_data', function (msg) {
+			$(".heats").empty();
+			for (var i in msg.heats) {
+				var heats = msg.heats[i];
+
+				if (heats.note) {
+					heat_note = heats.note
+				} else {
+					heat_note = __('Heat') + ' ' + heats.heat_id
+				}
+
+				var el = $('<li>');
+
+				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
+
+				if (!heats.locked && Object.keys(msg.heats).length > 1) {
+					header.append('<button class="delete_heat btn-danger" data-id="' + heats.heat_id + '" title="Delete Heat ' + heats.heat_id + '">&#215;</button>');
+				}
+				el.append(header);
+
+				var input = $('<input type="text" id="heat-note-' + heats.heat_id + '" class="set_heat_note" data-heat="' + heats.heat_id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heats.heat_id + ')" maxlength="80">');
+				input.val(heats.note);
+				el.append(input);
+				var nodelist = $('<ol>');
+
+				// nodes
+				for (j in heats.pilots) {
+					var heatpilot = heats.pilots[j];
+					var slot = $('<li>');
+					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
+					var pilot = $('<div class="pilot-name">');
+					// pilot selectors
+					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
+					selectbox.append('<option value="0">None</option>')
+						for (var k in msg.pilot_data) {
+							if (msg.pilotSort == 'callsign') {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+
+							} else {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].name + ' (' + msg.pilot_data[k].callsign + ')</option>')
+							}
+						}
+					selectbox.val(heatpilot);
+					selectbox.prop('disabled', heats.locked);
+					pilot.append(selectbox);
+					slot.append(pilot);
+					nodelist.append(slot);
+				}
+				el.append(nodelist);
+
+				// update class selector
+				if (msg.classes.length) {
+					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '" data-heat="' + heats.heat_id + '">')
+						selectbox.append('<option value="0">' + __('Unclassified') + '</option>')
+						for (var k in msg.classes) {
+							if (msg.classes[k].name) {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+							} else {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + __('Class') + ' ' + msg.classes[k].id + '</option>')
+							}
+						}
+					if (heats.class_id > 0) {
+						selectbox.val(heats.class_id);
+					} else {
+						selectbox.val(0);
+					}
+					selectbox.prop('disabled', heats.locked);
+					el.append(selectbox);
+				}
+
+				if (heats.locked) {
+					el.append('<button class="btn-danger open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</button>');
+				}
+
+				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="' + __('Duplicate Heat') + ': ' + heat_note + '">+</button>');
+
+				el.appendTo($('.heats'));
+			}
+			freq.updateBlocks();
+			init_popup_generics();
+		});
+
+		$(document).on("change", '.set_heat_note', function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				note: $(this).val(),
+			};
+			socket.emit('alter_heat', data);
+		});
+
+		$(document).on("change", '.set_pilot_position', function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				node: parseInt($(this).data('node')),
+				pilot: parseInt($(this).val())
+			};
+			socket.emit('alter_heat', data);
+		});
+
+		$(document).on("change", '.set_heat_class', function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				class: $(this).val(),
+			};
+			socket.emit('alter_heat', data);
+		});
+
+		$('button#add_heat').click(function (event) {
+			socket.emit('add_heat');
+			return false;
+		});
+
+		$(document).on("click", '.delete_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_heat', data);
+		});
+
+		$(document).on("click", '.unlock_heat', function (event) {
+			heat_to_unlock = $(this).data('id');
+		});
+
+		$(document).on("click", '#unlock_heat', function (event) {
+			$.magnificPopup.close();
+			var heat = $('[data-heat=' + heat_to_unlock + ']');
+			$(heat).prop('disabled', false);
+		});
+
+		$(document).on("click", '.duplicate_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_heat', data);
+		});
+
+		$('button#generate_heats').click(function (event) {
+			var data = {
+				input_class: parseInt($('#generator_input_class').val()),
+				output_class: parseInt($('#generator_output_class').val()),
+				suffix: $('#generator_suffix').val(),
+				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
+			};
+			$('button#generate_heats').prop('disabled', true);
+			socket.emit('generate_heats', data);
+			return false;
+		});
+
+		socket.on('heat_generate_done', function (msg) {
+			$('button#generate_heats').prop('disabled', false);
+		});
+
+		$('#set_next_heat_behavior').change(function (event) {
+			var data = {
+				next_heat_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_next_heat_behavior', data);
+		})
+
+		if ('{{ getOption('nextHeatBehavior') }}' == '1') {
+			$('#set_next_heat_behavior').val(1);
+		}
+		/* Classes */
+		function update_class_selectors() {
+			var class_data = rotorhazard.class_data;
+
+			var input_val = $('#generator_input_class').val();
+			var output_val = $('#generator_output_class').val();
+
+			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
+			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
+
+			if (class_data.classes.length) {
+				for (var i in class_data.classes) {
+					var race_class = class_data.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
+					if (race_class.name) {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+					} else {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+					}
+				}
+			}
+
+			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
+				$('#generator_input_class').val(input_val);
+			}
+			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
+				$('#generator_output_class').val(output_val);
+			}
+		}
+
+		socket.on('class_data', function (msg) {
+			rotorhazard.class_data = msg;
+
+			$(".race_classes").empty();
+
+			if (msg.classes.length) {
+				$('.race_classes').append('<p class="form-note">' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
+
+				var classlist = $('<ol>');
+				for (var i in msg.classes) {
+					var race_class = msg.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
+					var el = $('<li>');
+					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
+
+					if (!race_class.locked) {
+						header.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
+					}
+					el.append(header);
+
+					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
+					input.val(race_class.name);
+					el.append(input);
+
+					var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + '" maxlength="256">');
+					input.val(race_class.description);
+					el.append(input);
+
+					var selectbox = $('<select class="set_race_class_format" id="class_format_' + race_class.id + '" data-class_id="' + race_class.id + '">')
+					selectbox.append('<option value="0">' + __('-None-') + '</option>')
+					for (var j in msg.formats) {
+						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
+					}
+					selectbox.val(race_class.format);
+					selectbox.prop('disabled', race_class.locked);
+					el.append(selectbox);
+
+					if (race_class.locked) {
+						el.append('<button class="btn-danger open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</button>');
+					}
+
+					el.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+
+					el.appendTo(classlist);
+				}
+				classlist.appendTo($('.race_classes'));
+			} else {
+				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
+			}
+
+			init_popup_generics();
+			update_class_selectors();
+		});
+
+		$(document).on("change", '.set_race_class_name', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_name: $(this).val(),
+			};
+			socket.emit('alter_race_class', data);
+
+			for (var i in rotorhazard.class_data.classes) {
+				var race_class = rotorhazard.class_data.classes[i];
+				if (race_class['id'] == data.class_id) {
+					race_class.name = data.class_name;
+					break;
+				}
+			}
+			update_class_selectors();
+		});
+
+		$(document).on("change", '.set_race_class_format', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_format: $(this).val(),
+			};
+			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("change", '.set_race_class_description', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_description: $(this).val(),
+			};
+			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("click", '.unlock_class', function (event) {
+			class_to_unlock = $(this).data('id');
+		});
+
+		$(document).on("click", '#unlock_class', function (event) {
+			$.magnificPopup.close();
+			var race_class = $('[data-class_id=' + class_to_unlock + ']');
+			$(race_class).prop('disabled', false);
+		});
+
+		$('button#add_race_class').click(function (event) {
+			socket.emit('add_race_class');
+			return false;
+		});
+
+		$(document).on("click", '.delete_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_class', data);
+		});
+
+		$(document).on("click", '.duplicate_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_race_class', data);
+		});
+
+		/* Pilots */
+		socket.on('pilot_data', function (msg) {
+			$(".pilots").empty();
+			for (var i in msg.pilots) {
+				var pilot = msg.pilots[i];
+				if (pilot.pilot_id != 0) {
+					var el = $('<li data-id="' + pilot.pilot_id + '">');
+					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
+					el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+					if ('color' in pilot) {
+						el.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
+						el.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
+					}
+					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+					var phonetic = $('<div class="phonetic">');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					el.append(phonetic);
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+					if (!pilot.locked) {
+						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
+					}
+
+					el.appendTo($('.pilots'));
+				}
+			}
+
+			msg.pilots.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
+			$('.set_pilot_position').each(function(){
+				$(this).empty();
+
+				for (var i in msg.pilots) {
+					$(this).append('<option value="'+ msg.pilots[i].id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
+				}
+			});
+		});
+
+		$(document).on("focus", '.set_pilot_name', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_name', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				name: $(this).val()
+			};
+			socket.emit('alter_pilot', data);
+		})
+
+		$(document).on("focus", '.set_pilot_callsign', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_callsign', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				callsign: $(this).val()
+			};
+			socket.emit('alter_pilot', data);
+		})
+
+		$(document).on("click", '.set_pilot_color', function (event) {
+			pilot_id = parseInt($(event.target).data('pilot_id'));
+			src_hexcolor = $(event.target).data('color');
+
+			color_picker(src_hexcolor, function(h, s, l){
+				hexcolor = hslToHex(h, s, l)
+				var data = {
+					pilot_id: pilot_id,
+					color: hexcolor
+				};
+				socket.emit('alter_pilot', data);
+				$('#color_' + pilot_id).data('color', hexcolor).css('background-color', hexcolor);
+			})
+		})
+
+		$(document).on("change", '.set_pilot_team', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				team_name: $(this).val()
+			};
+			socket.emit('alter_pilot', data);
+		})
+
+		$(document).on("focus", '.set_pilot_phonetic', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_phonetic', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				phonetic: $(this).val()
+			};
+			socket.emit('alter_pilot', data);
+		})
+
+		$(document).on("click", 'button.speak_pilot', function (event) {
+			var el = $(this).closest('li');
+			var callsign = el.find('.set_pilot_callsign').val()
+			var phonetic = el.find('.set_pilot_phonetic').val()
+
+			var ttstext = callsign;
+			if (phonetic)
+				ttstext = phonetic;
+
+			doSpeak('<div class="speech">' + ttstext + '</div>');
+			return false;
+		});
+
+		$('button#add_pilot').click(function (event) {
+			socket.emit('add_pilot');
+			return false;
+		});
+
+		$(document).on("click", '.delete_pilot', function (event) {
+			var data = {
+				pilot: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_pilot', data);
+		});
+
+		/* Race Format */
+		socket.on('min_lap', function (msg) {
+			$('#set_min_lap').val(msg.min_lap);
+			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
+			rotorhazard.min_lap = msg.min_lap;
+		});
+
+		$('#set_min_lap').change(function (event) {
+			var min_lap_val = parseInt($(this).val());
+			rotorhazard.min_lap = min_lap_val;
+			var data = {
+				min_lap: min_lap_val
+			};
+			socket.emit('set_min_lap', data);
+		})
+
+		$('#set_min_lap_behavior').change(function (event) {
+			var data = {
+				min_lap_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap_behavior', data);
+		})
+
+		$('#set_team_racing_mode').change(function (event) {
+			var data = {
+				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		function update_race_format_ui() {
+			var rf = rotorhazard.race_format;
+
+			$('#format-race-duration-field').toggle(rf.race_mode == 0);
+			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
+
+			var issues = []
+
+			if (rf.win_condition == 1 && rf.race_mode == 1) {
+				issues.push('"Most Laps in Fastest Time" is typically used with "Fixed Time"');
+			}
+
+			if (rf.win_condition == 2 && rf.race_mode == 0) {
+				issues.push('"First to X Laps" is typically used with "No Time Limit"');
+			}
+
+			if (rf.win_condition == 6 && rf.race_mode == 1) {
+				issues.push('"Most Laps Only with Overtime" is typically used with "Fixed Time"');
+			}
+
+			if (rf.start_behavior == 2 && rf.race_mode == 0) {
+				issues.push('"Staggered Start" is typically used with "No Time Limit"');
+			}
+
+			if (issues.length) {
+				var output = $('<ul>')
+				for (item in issues) {
+					output.append('<li>' + __(issues[item]) + '</li>');
+				}
+				$('#race_format_suggestions').html(output);
+			} else {
+				$('#race_format_suggestions').empty();
+			}
+		}
+
+		socket.on('race_format', function (msg) {
+			rotorhazard.race_format = msg;
+
+			$('#set_race_format').empty();
+			for (var i = 0; i < msg.format_ids.length; i++) {
+				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
+			}
+			$('#unlock_race_format').toggle(msg.locked);
+			$('#delete_race_format_button').prop('disabled', msg.locked);
+			$('#set_race_format').val(msg.current_format);
+			$('#set_format_name').val(msg.format_name);
+			$('#set_format_name').prop('disabled', msg.locked);
+			$('#set_race_mode').val(msg.race_mode);
+			$('#set_race_mode').prop('disabled', msg.locked);
+			$('#set_fix_race_time').val(msg.race_time_sec);
+			$('#set_fix_race_time').prop('disabled', msg.locked);
+			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
+			$('#set_hide_stage_timer').prop('disabled', msg.locked);
+			$('#set_start_delay_min').val(msg.start_delay_min);
+			$('#set_start_delay_min').prop('disabled', msg.locked);
+			$('#set_start_delay_max').val(msg.start_delay_max);
+			$('#set_start_delay_max').prop('disabled', msg.locked);
+			$('#set_staging_tones').val(msg.staging_tones);
+			$('#set_staging_tones').prop('disabled', msg.locked);
+			$('#set_start_behavior').val(msg.start_behavior);
+			$('#set_start_behavior').prop('disabled', msg.locked);
+			$('#set_number_laps_win').val(msg.number_laps_win);
+			$('#set_number_laps_win').prop('disabled', msg.locked);
+			$('#set_win_condition').val(msg.win_condition);
+			$('#set_win_condition').prop('disabled', msg.locked);
+			$('#set_team_racing_mode').val(msg.team_racing_mode);
+			$('#set_team_racing_mode').prop('disabled', msg.locked);
+
+			update_race_format_ui();
+		});
+
+		$('#set_race_format').change(function (event) {
+			var data = {
+				race_format: $(this).val()
+			};
+			socket.emit('set_race_format', data);
+		});
+
+		$('button#add_race_format').click(function (event) {
+			socket.emit('add_race_format');
+			return false;
+		});
+
+		$(document).on("click", '#unlock_race_format', function (event) {
+			$.magnificPopup.close();
+			$('#race_formats *').prop('disabled', false);
+		});
+
+		$('button#delete_race_format').click(function (event) {
+			$.magnificPopup.close();
+			socket.emit('delete_race_format');
+			return false;
+		});
+
+		$('#set_format_name').change(function (event) {
+			var data = {
+				format_name: $(this).val()
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_race_mode').change(function (event) {
+			var data = {
+				race_mode: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.race_mode = parseInt($(this).val());
+			update_race_format_ui();
+		})
+
+		$('#set_fix_race_time').change(function (event) {
+			var data = {
+				race_time: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_start_delay_min').change(function (event) {
+			var data = {
+				start_delay_min: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_start_delay_max').change(function (event) {
+			var data = {
+				start_delay_max: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_number_laps_win').change(function (event) {
+			var data = {
+				number_laps_win: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_staging_tones').change(function (event) {
+			var data = {
+				staging_tones: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_start_behavior').change(function (event) {
+			var data = {
+				start_behavior: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.start_behavior = parseInt($(this).val());
+			update_race_format_ui();
+		})
+
+		$('#set_win_condition').change(function (event) {
+			var data = {
+				win_condition: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.win_condition = parseInt($(this).val());
+			update_race_format_ui();
+		})
+
+		$('button#backup_database').click(function (event) {
+			socket.emit('backup_database');
+			return false;
+		});
+
+		socket.on('database_bkp_done', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
+
+		socket.on('backups_list', function (msg) {
+			$('#database_list').empty();
+			if ('backup_files' in msg && msg.backup_files && msg.backup_files.length) {
+				for (file in msg.backup_files) {
+					dbfile = msg.backup_files[file];
+					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
+				}
+				$('#database_list').prop('disabled', false);
+				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', false);
+				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', false);
+			} else {
+				$('#database_list').append('<option value="-">' + __('No Saved Databases') + '</option>');
+				$('#database_list').prop('disabled', true);
+				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', true);
+				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', true);
+			}
+		});
+
+		$('button#restore_database').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				backup_file: $('#database_list').val()
+			};
+			socket.emit('restore_database', data);
+			return false;
+		});
+
+		$('button#delete_database').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				backup_file: $('#database_list').val()
+			};
+			socket.emit('delete_database', data);
+			return false;
+		});
+
+		/* Database Reset */
+		socket.on('reset_confirm', function () {
+			standard_message_queue.push(__('Data Cleared'));
+			if (standard_message_queue.length == 1) {
+				get_standard_message()
+			}
+		});
+
+		$('button#reset_database').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				reset_type: $('#reset_type').val()
+			};
+			socket.emit('reset_database', data);
+			return false;
+		});
+
+		socket.on('exporter_list', function (msg) {
+			$('#exporter_list').empty();
+			if ('exporters' in msg && msg.exporters.length) {
+				msg.exporters.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
+				for (idx in msg.exporters) {
+					var ex = msg.exporters[idx];
+					$('#exporter_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
+				}
+				$('#exporter_list').prop('disabled', false);
+				$('#export_database').prop('disabled', false);
+			} else {
+				$('#exporter_list').append('<option value="-">' + __('No Exporters') + '</option>');
+				$('#exporter_list').prop('disabled', true);
+				$('#export_database').prop('disabled', true);
+			}
+		});
+
+		socket.on('exported_data', function (msg) {
+			var data = msg.data
+			/*
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			*/
+			// construct blob and initiate browser save-as
+			saveAs(new Blob([data], {type: msg.encoding}), msg.filename);
+		});
+
+		$('button#export_database').click(function (event) {
+			var data = {
+				exporter: $('#exporter_list').val()
+			};
+			socket.emit('export_database', data);
+			return false;
+		});
+
+		$('button#download_logs').click(function (event) {
+			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
+			return false;
+		});
+
+		socket.on('settings_save_logs', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
+
+		socket.on('set_option', function (msg) {
+			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
+		});
+
+		$('.set-option').change(function (event) {
+			var data = {
+				option: $(this).data('option'),
+				value: $(this).val()
+			};
+			socket.emit('set_option', data);
+			return false;
+		});
+
+		$('#set_language').change(function (event) {
+			var data = {
+				language: $(this).val()
+			};
+			socket.emit('set_language', data);
+			location.reload(true);
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+<main class="page-settings">
+
+<!--Event and Class info-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Event and Classes') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_event_name">{{ __('Event Name') }}</label>
+				</div>
+				<input type="text" id="set_event_name" class="set-option" data-option="eventName" value="{{ getOption('eventName') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_event_description">{{ __('Event Description') }}</label>
+				</div>
+				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
+			</li>
+		</ol>
+
+		<div id="race_classes" class="race_classes item-blocks">
+			<p class="form-note">{{ __('Loading...') }}</p>
+		</div>
+		<div class="control-set">
+			<button id="add_race_class">+ {{ __('Add Class') }}</button>
+		</div>
+
+		<div id="class_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked class retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_class">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!--Heats list for editing-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Heats') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol id="heats" class="heats item-blocks">
+			<li>{{ __('Loading...') }}</li>
+		</ol>
+		<div class="control-set">
+			<button id="add_heat">+ {{ __('Add Heat') }}</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
+				</div>
+				<select id="set_next_heat_behavior">
+					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
+					<option value="1">{{ __('Manually Switch Heats') }}</option>
+				</select>
+			</li>
+		</ol>
+
+		<h3>Heat generator</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
+				</div>
+				<select id="generator_input_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
+				</div>
+				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_suffix">{{ __('Suffix') }}</label>
+				</div>
+				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_output_class">{{ __('Output Class') }}</label>
+				</div>
+				<select id="generator_output_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="generate_heats">{{ __('Generate Heats') }}</button>
+		</div>
+
+		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!--Pilots list for editing-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Pilots') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ul class="pilots">
+			<li>{{ __('Loading...') }}</li>
+		</ul>
+
+		<div class="control-set">
+			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_pilotSort">{{ __('Pilot Sort') }}</label>
+				</div>
+				<select id="set_pilotSort" class="set-option" data-option="pilotSort">
+					<option value="name">{{ __('Name') }}</option>
+					<option value="callsign">{{ __('Callsign') }}</option>
+				</select>
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!--Race Format-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Race Format') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
+
+		<div class="control-set">
+			<label for="set_race_format">{{ __('Format:') }}</label>
+			<select id="set_race_format">
+				<option>{{ __('Loading...') }}</option>
+			</select>
+			<button id="add_race_format" title="{{ __('Duplicate Format') }}">+</button>
+			<button class="btn-danger open-mfp-popup unlock" id="unlock_race_format_button" data-mfp-src="#format_unlock_confirm" title="{{ __('Force Modify Format') }}"></button>
+			<button class="btn-danger open-mfp-popup" id="delete_race_format_button" data-mfp-src="#format_delete_confirm" title="{{ __('Remove') }}">&#215;</button>
+		</div>
+
+		<div id="format_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked format retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_race_format">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="format_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleting a race format cannot be undone.') }}</p>
+				<p><button class="btn-danger" id="delete_race_format">{{ __('Delete') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<ol class="form" id="race_formats">
+			<li>
+				<div class="label-block">
+					<label for="set_format_name">{{ __('Name') }}</label>
+				</div>
+				<input type="text" id="set_format_name">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_race_mode">{{ __('Race Clock Mode') }}</label>
+				</div>
+				<select id="set_race_mode">
+					<option value="1">{{ __('No Time Limit') }}</option>
+					<option value="0">{{ __('Fixed Time') }}</option><!--  / Finish Lap -->
+					<!-- <option value="2">{{ __('Fixed Time / End Immediately') }}</option> -->
+				</select>
+			</li>
+			<li id="format-race-duration-field">
+				<div class="label-block">
+					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
+				</div>
+				<input type="number" id="set_fix_race_time" min="0" max="99999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_min">{{ __('Minimum Start Delay') }}</label>
+					<p class="desc">{{ __('Minimum time before race begins') }}</p>
+				</div>
+				<input type="number" id="set_start_delay_min" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_max">{{ __('Maximum Start Delay') }}</label>
+					<p class="desc">{{ __('Maximum time before race begins') }}<br />
+						{{ __('Staging timer is hidden unless value matches Minimum Start Delay') }}</p>
+				</div>
+				<input type="number" id="set_start_delay_max" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_staging_tones">{{ __('Staging Tones') }}</label>
+				</div>
+				<select id="set_staging_tones">
+					<option value="2">{{ __('Each Second') }}</option>
+					<option value="1">{{ __('One') }}</option>
+					<option value="0">{{ __('None') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_behavior">{{ __('First Crossing') }}</label>
+				</div>
+				<select id="set_start_behavior">
+					<option value="0">{{ __('Hole Shot') }}</option>
+					<option value="1">{{ __('First Lap') }}</option>
+					<option value="2">{{ __('Staggered Start') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_win_condition">{{ __('Win Condition') }}</label>
+				</div>
+				<select id="set_win_condition">
+					<option value="1">{{ __('Most Laps in Fastest Time') }}</option>
+					<option value="5">{{ __('Most Laps Only') }}</option>
+					<option value="6">{{ __('Most Laps Only with Overtime') }}</option>
+					<option value="2">{{ __('First to X Laps') }}</option>
+					<option value="3">{{ __('Fastest Lap') }}</option>
+					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
+					<option value="0">{{ __('None') }}</option>
+				</select>
+			</li>
+			<li id="format-laps-to-win-field">
+				<div class="label-block">
+					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
+				</div>
+				<input type="number" id="set_number_laps_win" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">{{ __('Team Racing Disabled') }}</option>
+					<option value="1">{{ __('Team Racing Enabled') }}</option>
+				</select>
+			</li>
+		</ol>
+
+		<div id="race_format_suggestions" class="form-note emphasis"></div>
+
+		<hr />
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
+					<p class="desc">{{ __('In seconds') }}</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
+				</div>
+				<select id="set_min_lap_behavior">
+					<option value="0">{{ __('Highlight Short Laps') }}</option>
+					<option value="1">{{ __('Discard New Short Laps') }}</option>
+				</select>
+			</li>
+
+		</ol>
+	</div>
+</div>
+
+<!--Reset database-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Database') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button id="backup_database">{{ __('Backup Database') }}</button>
+			{% if Debug %}<a href="/database" class="debug button-like">{{ __('View Database') }}</a>{% endif %}
+		</div>
+		<div class="control-set">
+			<select id="reset_type">
+				<option value="races">{{ __('Races') }}</option>
+				<option value="heats">{{ __('Races and Heats') }}</option>
+				<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
+				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
+				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+				<option value="formats">{{ __('Races and Race Formats') }}</option>
+			</select>
+			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
+		</div>
+		<div class="control-set">
+			<select id="database_list" disabled="disabled">
+				<option value="-">{{ __('No Saved Databases') }}</option>
+			</select>
+			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
+			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete Data') }}</button>
+		</div>
+		<div class="control-set">
+			<select id="exporter_list" disabled="disabled">
+				<option value="-">{{ __('No Exporters') }}</option>
+			</select>
+			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+		</div>
+
+		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+      <div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+
+</main>
+{% endblock %}
