@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
-SERVER_API = 34 # Server API version
+SERVER_API = 35 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -3629,8 +3629,10 @@ def emit_class_data(**params):
         current_class['name'] = race_class.name
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
+        current_class['win_condition'] = race_class.win_condition
+        current_class['rounds'] = race_class.rounds
+        current_class['order'] = race_class.order
         current_class['locked'] = RHData.savedRaceMetas_has_raceClass(race_class.id)
-
         current_classes.append(current_class)
 
     formats = []

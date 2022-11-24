@@ -70,8 +70,11 @@ class RaceClass(DB.Model):
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    win_condition = DB.Column(DB.Integer, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
+    rounds = DB.Column(DB.Integer, nullable=False)
+    order = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
@@ -108,7 +111,7 @@ class SavedRaceMeta(DB.Model):
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
-    scheme_race_id = DB.Column(DB.Integer, DB.ForeignKey("scheme_race.id"), nullable=True)
+    race_program_id = DB.Column(DB.Integer, DB.ForeignKey("race_program.id"), nullable=True)
 
     def __repr__(self):
         return '<SavedRaceMeta %r>' % self.id
@@ -186,47 +189,38 @@ class GlobalSettings(DB.Model):
     option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String, nullable=False)
 
-class SchemeSet(DB.Model):
-    __tablename__ = 'scheme_set'
+    def __repr__(self):
+        return '<GlobalSetting %r>' % self.id
+
+class RaceProgram(DB.Model):
+    __tablename__ = 'race_program'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
-    set_format = DB.Column(DB.Integer, nullable=False)
-    rounds = DB.Column(DB.Integer, nullable=False)
-    results = DB.Column(DB.PickleType, nullable=True)
-    order = DB.Column(DB.Integer, nullable=True)
-
-    def __repr__(self):
-        return '<SchemeSet %r>' % self.id
-
-class SchemeRace(DB.Model):
-    __tablename__ = 'scheme_race'
-    id = DB.Column(DB.Integer, primary_key=True)
-    set_id = DB.Column(DB.Integer, DB.ForeignKey("scheme_set.id"), nullable=False)
+    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    name = DB.Column(DB.String(80), nullable=True)
     order = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
-        return '<SchemeRace %r>' % self.id
+        return '<RaceProgram %r>' % self.id
 
-class SchemeRaceMethodSlot(DB.Model):
-    __tablename__ = 'scheme_race_slot'
+class RaceProgramSlot(DB.Model):
+    __tablename__ = 'race_program_slot'
     __table_args__ = (
-        DB.UniqueConstraint('scheme_race_id', 'node_index'),
+        DB.UniqueConstraint('race_program_id', 'node_index'),
     )
     id = DB.Column(DB.Integer, primary_key=True)
-    scheme_race_id = DB.Column(DB.Integer, DB.ForeignKey("scheme_race.id"), nullable=False)
+    race_program_id = DB.Column(DB.Integer, DB.ForeignKey("race_program.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    method_type = DB.Column(DB.Integer, nullable=False)
+    method = DB.Column(DB.Integer, nullable=False)
     pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=True)
     seed_rank = DB.Column(DB.Integer, nullable=True)
-    seed_scheme_set_id = DB.Column(DB.Integer, DB.ForeignKey("scheme_set.id"), nullable=True)
-    seed_scheme_race_id = DB.Column(DB.Integer, DB.ForeignKey("scheme_race.id"), nullable=True)
+    seed_class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=True)
+    seed_race_program_id = DB.Column(DB.Integer, DB.ForeignKey("race_program.id"), nullable=True)
 
     def __repr__(self):
-        return '<SchemeRaceMethodSlot %r>' % self.id
+        return '<RaceProgramSlot %r>' % self.id
 
-class MethodType:
+class ProgramMethod:
     ASSIGN = 0
     RACE_RESULT = 1
     SET_RESULT = 2

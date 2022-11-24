@@ -101,6 +101,210 @@
 			}
 		});
 
+		/* Classes */
+		function update_class_selectors() {
+			var class_data = rotorhazard.class_data;
+
+			var input_val = $('#generator_input_class').val();
+			var output_val = $('#generator_output_class').val();
+
+			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
+			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
+
+			if (class_data.classes.length) {
+				for (var i in class_data.classes) {
+					var race_class = class_data.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
+					if (race_class.name) {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+					} else {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+					}
+				}
+			}
+
+			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
+				$('#generator_input_class').val(input_val);
+			}
+			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
+				$('#generator_output_class').val(output_val);
+			}
+		}
+
+		socket.on('class_data', function (msg) {
+			rotorhazard.class_data = msg;
+
+			$(".race_classes").empty();
+
+			if (msg.classes.length) {
+				var classlist = $('<ol>');
+				for (var i in msg.classes) {
+					var race_class = msg.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
+					var el = $('<li>');
+					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
+
+					if (!race_class.locked) {
+						header.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
+					}
+					el.append(header);
+
+					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
+					input.val(race_class.name);
+					el.append(input);
+
+					var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + '" maxlength="256">');
+					input.val(race_class.description);
+					el.append(input);
+
+					var selectbox = $('<select class="set_race_class_format" id="class_format_' + race_class.id + '" data-class_id="' + race_class.id + '">')
+					selectbox.append('<option value="0">' + __('-None-') + '</option>')
+					for (var j in msg.formats) {
+						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
+					}
+					selectbox.val(race_class.format);
+					selectbox.prop('disabled', race_class.locked);
+					el.append(selectbox);
+
+					var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
+					selectbox.append('<option value="0">' + __('-None-') + '</option>')
+					selectbox.append('<option value="1">1</option>')
+					/*
+					for (var j in msg.formats) {
+						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
+					}
+					*/
+					selectbox.val(race_class.win_condition);
+					selectbox.prop('disabled', race_class.locked);
+					el.append(selectbox);
+
+					var input = $('<input type="number" id="race_class_rounds-' + race_class.id + '" class="set_race_class_rounds" data-class_id="' + race_class.id + '" step="1" min="0">');
+					input.val(race_class.rounds);
+					input.prop('disabled', race_class.locked);
+					el.append(input);
+
+					var input = $('<input type="number" id="race_class_order-' + race_class.id + '" class="set_race_class_order" data-class_id="' + race_class.id + '" step="1" min="0">');
+					input.val(race_class.order);
+					input.prop('disabled', race_class.locked);
+					el.append(input);
+
+					if (race_class.locked) {
+						el.append('<button class="btn-danger open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</button>');
+					}
+
+					el.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+
+					el.appendTo(classlist);
+				}
+				classlist.appendTo($('.race_classes'));
+			} else {
+				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
+			}
+
+			init_popup_generics();
+			update_class_selectors();
+		});
+
+		$(document).on("change", '.set_race_class_name', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_name: $(this).val(),
+			};
+			socket.emit('alter_race_class', data);
+
+			for (var i in rotorhazard.class_data.classes) {
+				var race_class = rotorhazard.class_data.classes[i];
+				if (race_class['id'] == data.class_id) {
+					race_class.name = data.class_name;
+					break;
+				}
+			}
+			update_class_selectors();
+		});
+
+		$(document).on("change", '.set_race_class_description', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_description: $(this).val(),
+			};
+			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("change", '.set_race_class_format', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_format: $(this).val(),
+			};
+			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("change", '.set_race_class_win_condition', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				win_condition: parseInt($(this).val()),
+			};
+			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("change", '.set_race_class_rounds', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				rounds: parseInt($(this).val()),
+			};
+			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("change", '.set_race_class_order', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				order: parseInt($(this).val()),
+			};
+			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("click", '.unlock_class', function (event) {
+			class_to_unlock = $(this).data('id');
+		});
+
+		$(document).on("click", '#unlock_class', function (event) {
+			$.magnificPopup.close();
+			var race_class = $('[data-class_id=' + class_to_unlock + ']');
+			$(race_class).prop('disabled', false);
+		});
+
+		$('button#add_race_class').click(function (event) {
+			socket.emit('add_race_class');
+			return false;
+		});
+
+		$(document).on("click", '.delete_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_class', data);
+		});
+
+		$(document).on("click", '.duplicate_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_race_class', data);
+		});
+
 		/* Heats */
 		socket.on('heat_data', function (msg) {
 			$(".heats").empty();
@@ -264,165 +468,6 @@
 		if ('{{ getOption('nextHeatBehavior') }}' == '1') {
 			$('#set_next_heat_behavior').val(1);
 		}
-		/* Classes */
-		function update_class_selectors() {
-			var class_data = rotorhazard.class_data;
-
-			var input_val = $('#generator_input_class').val();
-			var output_val = $('#generator_output_class').val();
-
-			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
-			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
-
-			if (class_data.classes.length) {
-				for (var i in class_data.classes) {
-					var race_class = class_data.classes[i];
-
-					if (race_class.name) {
-						race_class_name = race_class.name
-					} else {
-						race_class_name = __('Class') + ' ' + race_class.id
-					}
-
-					if (race_class.name) {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
-					} else {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
-					}
-				}
-			}
-
-			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
-				$('#generator_input_class').val(input_val);
-			}
-			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
-				$('#generator_output_class').val(output_val);
-			}
-		}
-
-		socket.on('class_data', function (msg) {
-			rotorhazard.class_data = msg;
-
-			$(".race_classes").empty();
-
-			if (msg.classes.length) {
-				$('.race_classes').append('<p class="form-note">' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
-
-				var classlist = $('<ol>');
-				for (var i in msg.classes) {
-					var race_class = msg.classes[i];
-
-					if (race_class.name) {
-						race_class_name = race_class.name
-					} else {
-						race_class_name = __('Class') + ' ' + race_class.id
-					}
-
-					var el = $('<li>');
-					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
-
-					if (!race_class.locked) {
-						header.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
-					}
-					el.append(header);
-
-					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
-					input.val(race_class.name);
-					el.append(input);
-
-					var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + '" maxlength="256">');
-					input.val(race_class.description);
-					el.append(input);
-
-					var selectbox = $('<select class="set_race_class_format" id="class_format_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-					selectbox.append('<option value="0">' + __('-None-') + '</option>')
-					for (var j in msg.formats) {
-						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
-					}
-					selectbox.val(race_class.format);
-					selectbox.prop('disabled', race_class.locked);
-					el.append(selectbox);
-
-					if (race_class.locked) {
-						el.append('<button class="btn-danger open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</button>');
-					}
-
-					el.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
-
-					el.appendTo(classlist);
-				}
-				classlist.appendTo($('.race_classes'));
-			} else {
-				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
-			}
-
-			init_popup_generics();
-			update_class_selectors();
-		});
-
-		$(document).on("change", '.set_race_class_name', function (event) {
-			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_name: $(this).val(),
-			};
-			socket.emit('alter_race_class', data);
-
-			for (var i in rotorhazard.class_data.classes) {
-				var race_class = rotorhazard.class_data.classes[i];
-				if (race_class['id'] == data.class_id) {
-					race_class.name = data.class_name;
-					break;
-				}
-			}
-			update_class_selectors();
-		});
-
-		$(document).on("change", '.set_race_class_format', function (event) {
-			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_format: $(this).val(),
-			};
-			socket.emit('alter_race_class', data);
-		});
-
-		$(document).on("change", '.set_race_class_description', function (event) {
-			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_description: $(this).val(),
-			};
-			socket.emit('alter_race_class', data);
-		});
-
-		$(document).on("click", '.unlock_class', function (event) {
-			class_to_unlock = $(this).data('id');
-		});
-
-		$(document).on("click", '#unlock_class', function (event) {
-			$.magnificPopup.close();
-			var race_class = $('[data-class_id=' + class_to_unlock + ']');
-			$(race_class).prop('disabled', false);
-		});
-
-		$('button#add_race_class').click(function (event) {
-			socket.emit('add_race_class');
-			return false;
-		});
-
-		$(document).on("click", '.delete_class', function (event) {
-			var data = {
-				class: parseInt($(this).data('id')),
-			};
-			socket.emit('delete_class', data);
-		});
-
-		$(document).on("click", '.duplicate_class', function (event) {
-			var data = {
-				class: parseInt($(this).data('id')),
-			};
-			socket.emit('duplicate_race_class', data);
-		});
 
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
@@ -747,6 +792,7 @@
 			update_race_format_ui();
 		})
 
+		/* Database Reset */
 		$('button#backup_database').click(function (event) {
 			socket.emit('backup_database');
 			return false;
@@ -800,7 +846,6 @@
 			return false;
 		});
 
-		/* Database Reset */
 		socket.on('reset_confirm', function () {
 			standard_message_queue.push(__('Data Cleared'));
 			if (standard_message_queue.length == 1) {
@@ -900,10 +945,10 @@
 {% endblock %} {% block content %}
 <main class="page-settings">
 
-<!--Event and Class info-->
+<!--Event Overview-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Event and Classes') }}</h2>
+		<h2>{{ __('Event and Database') }}</h2>
 	</div>
 	<div class="panel-content">
 		<ol class="form">
@@ -921,6 +966,70 @@
 			</li>
 		</ol>
 
+		<div class="control-set">
+			<button id="backup_database">{{ __('Backup Database') }}</button>
+			{% if Debug %}<a href="/database" class="debug button-like">{{ __('View Database') }}</a>{% endif %}
+		</div>
+		<div class="control-set">
+			<select id="reset_type">
+				<option value="races">{{ __('Races') }}</option>
+				<option value="heats">{{ __('Races and Heats') }}</option>
+				<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
+				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
+				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+				<option value="formats">{{ __('Races and Race Formats') }}</option>
+			</select>
+			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
+		</div>
+		<div class="control-set">
+			<select id="database_list" disabled="disabled">
+				<option value="-">{{ __('No Saved Databases') }}</option>
+			</select>
+			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
+			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
+		</div>
+		<div class="control-set">
+			<select id="exporter_list" disabled="disabled">
+				<option value="-">{{ __('No Exporters') }}</option>
+			</select>
+			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+		</div>
+
+		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!--Class and Race Program-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Classes') }}</h2>
+	</div>
+	<div class="panel-content">
 		<div id="race_classes" class="race_classes item-blocks">
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
@@ -933,77 +1042,6 @@
 			<div class="popup-content">
 				<p>{{ __('Modifying a locked class retroactively changes saved race data.') }}</p>
 				<p><button class="btn-danger" id="unlock_class">{{ __('Unlock') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-	</div>
-</div>
-
-<!--Heats list for editing-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Heats') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ol id="heats" class="heats item-blocks">
-			<li>{{ __('Loading...') }}</li>
-		</ol>
-		<div class="control-set">
-			<button id="add_heat">+ {{ __('Add Heat') }}</button>
-		</div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
-				</div>
-				<select id="set_next_heat_behavior">
-					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
-					<option value="1">{{ __('Manually Switch Heats') }}</option>
-				</select>
-			</li>
-		</ol>
-
-		<h3>Heat generator</h3>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
-				</div>
-				<select id="generator_input_class">
-					<option>{{ __('Loading...') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
-				</div>
-				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_suffix">{{ __('Suffix') }}</label>
-				</div>
-				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_output_class">{{ __('Output Class') }}</label>
-				</div>
-				<select id="generator_output_class">
-					<option>{{ __('Loading...') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button id="generate_heats">{{ __('Generate Heats') }}</button>
-		</div>
-
-		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
-				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
@@ -1189,71 +1227,76 @@
 	</div>
 </div>
 
-<!--Reset database-->
+<!--Heats list for editing-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Database') }}</h2>
+		<h2 class="btn-warning">{{ __('Heats') }}</h2>
 	</div>
 	<div class="panel-content">
+		<ol id="heats" class="heats item-blocks">
+			<li>{{ __('Loading...') }}</li>
+		</ol>
 		<div class="control-set">
-			<button id="backup_database">{{ __('Backup Database') }}</button>
-			{% if Debug %}<a href="/database" class="debug button-like">{{ __('View Database') }}</a>{% endif %}
-		</div>
-		<div class="control-set">
-			<select id="reset_type">
-				<option value="races">{{ __('Races') }}</option>
-				<option value="heats">{{ __('Races and Heats') }}</option>
-				<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
-				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
-				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
-				<option value="formats">{{ __('Races and Race Formats') }}</option>
-			</select>
-			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
-		</div>
-		<div class="control-set">
-			<select id="database_list" disabled="disabled">
-				<option value="-">{{ __('No Saved Databases') }}</option>
-			</select>
-			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
-			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete Data') }}</button>
-		</div>
-		<div class="control-set">
-			<select id="exporter_list" disabled="disabled">
-				<option value="-">{{ __('No Exporters') }}</option>
-			</select>
-			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+			<button id="add_heat">+ {{ __('Add Heat') }}</button>
 		</div>
 
-		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
+				</div>
+				<select id="set_next_heat_behavior">
+					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
+					<option value="1">{{ __('Manually Switch Heats') }}</option>
+				</select>
+			</li>
+		</ol>
+
+		<h3>Heat generator</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
+				</div>
+				<select id="generator_input_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
+				</div>
+				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_suffix">{{ __('Suffix') }}</label>
+				</div>
+				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_output_class">{{ __('Output Class') }}</label>
+				</div>
+				<select id="generator_output_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="generate_heats">{{ __('Generate Heats') }}</button>
+		</div>
+
+		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
-
-		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-      <div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
 	</div>
 </div>
-
 
 </main>
 {% endblock %}

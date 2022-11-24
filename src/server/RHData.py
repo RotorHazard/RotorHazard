@@ -491,7 +491,10 @@ class RHData():
                         'name': 'New class',
                         'format_id': 0,
                         'results': None,
-                        'cacheStatus': CacheStatus.INVALID
+                        'cacheStatus': CacheStatus.INVALID,
+                        'win_condition': 0,
+                        'rounds': 0,
+                        'order': None,
                     })
 
                 self.reset_options()
@@ -1001,7 +1004,10 @@ class RHData():
             name='',
             description='',
             format_id=RHUtils.FORMAT_ID_NONE,
-            cacheStatus=CacheStatus.INVALID
+            cacheStatus=CacheStatus.INVALID,
+            win_condition=0,
+            rounds=0,
+            order=None
             )
         self._Database.DB.session.add(new_race_class)
         self.commit()
@@ -1027,7 +1033,10 @@ class RHData():
             description=source_class.description,
             format_id=source_class.format_id,
             results=None,
-            cacheStatus=CacheStatus.INVALID)
+            cacheStatus=CacheStatus.INVALID,
+            win_condition=source_class.win_condition,
+            rounds=source_class.rounds,
+            order=None)
 
         self._Database.DB.session.add(new_class)
         self._Database.DB.session.flush()
@@ -1056,10 +1065,16 @@ class RHData():
 
         if 'class_name' in data:
             race_class.name = data['class_name']
-        if 'class_format' in data:
-            race_class.format_id = data['class_format']
         if 'class_description' in data:
             race_class.description = data['class_description']
+        if 'class_format' in data:
+            race_class.format_id = data['class_format']
+        if 'win_condition' in data:
+            race_class.win_condition = data['win_condition']
+        if 'rounds' in data:
+            race_class.rounds = data['rounds']
+        if 'order' in data:
+            race_class.order = data['order']
 
         race_list = self._Database.SavedRaceMeta.query.filter_by(class_id=race_class_id).all()
 
@@ -1080,6 +1095,8 @@ class RHData():
             heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
             for heat in heats:
                 self.clear_results_heat(heat.id)
+
+        #TODO: Clear cache appropriately for new values win_condition, rounds, order
 
         self.commit()
 
