@@ -93,6 +93,8 @@ Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Vo
 
 Indicator beeps are very short tones that give feedback on how the timer is working, and are most useful when trying to tune it. Each node is identified with a unique audio pitch. "Crossing Entered" will beep once when a pass begins, and "Crossing Exited" will beep twice rapidly when a pass is completed. "Manual Lap Button" will beep once if the "Manual" button is used to force a simulated pass.
 
+If you select "Use MP3 Tones instead of synthetic tones" then the '.mp3' files at "src/server/static/audio" will be used to play the tones.
+
 #### Event Actions
 Extend and personalize your timer's behavior by attaching *Effects* to *Events*. The timer generates an *Event* on race start, lap recorded, pilot done, etc. *Effects* are behaviors that can be triggered. Each effect may have parameters which can be configured.
 
@@ -106,6 +108,8 @@ For the above effects, you can use "%PILOT%" for a callsign when a pilot trigger
 
 #### Race Format
 Race formats define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.
+
+Hitting the "+" button will duplicate the current race format, and the "x" button will remove the current race format. (Once a race format is removed there is not a direct way to recover it, but if you go to "Settings | Database", select "Races and Race Formats" in the drop-down and then hit "Clear Data" it will restore the race formats to the original set. Note that any customized race formats will be deleted.)
 
 The race clock can count up or down as selected by _Race Clock Mode_. Use "No Time Limit" for a "First to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
 
