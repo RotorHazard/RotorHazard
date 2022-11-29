@@ -61,6 +61,11 @@ class Heat(DB.Model):
     def __repr__(self):
         return '<Heat %r>' % self.id
 
+class HeatStatus:
+    PLANNED = 0
+    PROJECTED = 1
+    CONFIRMED = 2
+
 class HeatNode(DB.Model):
     __tablename__ = 'heat_node'
     __table_args__ = (

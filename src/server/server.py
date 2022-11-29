@@ -1204,9 +1204,12 @@ def on_set_scan(data):
 
 @SOCKET_IO.on('add_heat')
 @catchLogExceptionsWrapper
-def on_add_heat():
+def on_add_heat(data=None):
     '''Adds the next available heat number to the database.'''
-    RHData.add_heat()
+    if data and 'class' in data:
+        RHData.add_heat(init={'class_id': data['class']})
+    else:
+        RHData.add_heat()
     emit_heat_data()
 
 @SOCKET_IO.on('duplicate_heat')

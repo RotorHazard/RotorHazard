@@ -214,6 +214,8 @@
 
 						el.append(heats_el);
 
+						el.append('<button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button>');
+
 						el.appendTo(classlist);
 					}
 					classlist.appendTo($('.race_classes'));
@@ -310,6 +312,13 @@
 				class: parseInt($(this).data('id')),
 			};
 			socket.emit('duplicate_race_class', data);
+		});
+
+		$(document).on("click", 'button.add_heat', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('add_heat', data);
 		});
 
 		/* Heats */
