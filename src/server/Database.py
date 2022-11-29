@@ -9,6 +9,9 @@ from flask_sqlalchemy import SQLAlchemy
 
 DB = SQLAlchemy()
 
+def __(*args): # Language placeholder (Overwritten after module init)
+    pass
+
 #
 # Database Models
 #
@@ -46,6 +49,14 @@ class Heat(DB.Model):
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
+    order = DB.Column(DB.Integer, nullable=True)
+    status = DB.Column(DB.Boolean, nullable=False)
+
+    def displayname(self):
+        if self.note:
+            return self.note
+        else:
+            return __('Heat') + ' ' + str(self.id)
 
     def __repr__(self):
         return '<Heat %r>' % self.id
@@ -57,12 +68,20 @@ class HeatNode(DB.Model):
     )
     id = DB.Column(DB.Integer, primary_key=True)
     heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
+    node_index = DB.Column(DB.Integer, nullable=True)
     pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     color = DB.Column(DB.String(6), nullable=True)
+    method = DB.Column(DB.Integer, nullable=False)
+    seed_rank = DB.Column(DB.Integer, nullable=True)
+    seed_id = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<HeatNode %r>' % self.id
+
+class ProgramMethod:
+    ASSIGN = 0
+    HEAT_RESULT = 1
+    CLASS_RESULT = 2
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'
@@ -75,6 +94,12 @@ class RaceClass(DB.Model):
     cacheStatus = DB.Column(DB.Integer, nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
+
+    def displayname(self):
+        if self.name:
+            return self.name
+        else:
+            return __('Class') + ' ' + str(self.id)
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
@@ -111,7 +136,6 @@ class SavedRaceMeta(DB.Model):
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
-    race_program_id = DB.Column(DB.Integer, DB.ForeignKey("race_program.id"), nullable=True)
 
     def __repr__(self):
         return '<SavedRaceMeta %r>' % self.id
@@ -191,36 +215,3 @@ class GlobalSettings(DB.Model):
 
     def __repr__(self):
         return '<GlobalSetting %r>' % self.id
-
-class RaceProgram(DB.Model):
-    __tablename__ = 'race_program'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=True)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    order = DB.Column(DB.Integer, nullable=True)
-
-    def __repr__(self):
-        return '<RaceProgram %r>' % self.id
-
-class RaceProgramSlot(DB.Model):
-    __tablename__ = 'race_program_slot'
-    __table_args__ = (
-        DB.UniqueConstraint('race_program_id', 'node_index'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    race_program_id = DB.Column(DB.Integer, DB.ForeignKey("race_program.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    method = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=True)
-    seed_rank = DB.Column(DB.Integer, nullable=True)
-    seed_class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=True)
-    seed_race_program_id = DB.Column(DB.Integer, DB.ForeignKey("race_program.id"), nullable=True)
-
-    def __repr__(self):
-        return '<RaceProgramSlot %r>' % self.id
-
-class ProgramMethod:
-    ASSIGN = 0
-    RACE_RESULT = 1
-    SET_RESULT = 2

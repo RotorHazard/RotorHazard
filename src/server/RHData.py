@@ -17,6 +17,7 @@ import RHUtils
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Results import CacheStatus
+from Database import ProgramMethod
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
@@ -372,7 +373,9 @@ class RHData():
                                 'note': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID,
+                                'order': None,
+                                'status': 0,
                             })
 
                         # extract pilots from heats and load into heatnode
@@ -401,11 +404,16 @@ class RHData():
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID,
+                                'order': None,
+                                'status': 0,
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
-                                'color': None
+                                'color': None,
+                                'method': 0,
+                                'seed_rank': None,
+                                'seed_id': None
                             })
 
                         self._RACE.current_heat = self.get_first_heat().id
@@ -730,7 +738,9 @@ class RHData():
         # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
-            cacheStatus=CacheStatus.INVALID
+            cacheStatus=CacheStatus.INVALID,
+            order=None,
+            status=0
             )
 
         if init:
@@ -748,7 +758,10 @@ class RHData():
             new_heatNode = self._Database.HeatNode(
                 heat_id=new_heat.id,
                 node_index=node_index,
-                pilot_id=RHUtils.PILOT_ID_NONE
+                pilot_id=RHUtils.PILOT_ID_NONE,
+                method=0,
+                seed_rank=None,
+                seed_id=None
             )
 
             if initPilots and node_index in initPilots:
@@ -818,10 +831,32 @@ class RHData():
             old_class_id = heat.class_id
             heat.class_id = data['class']
         if 'pilot' in data:
-            node_index = data['node']
-            heatnode = self._Database.HeatNode.query.filter_by(
-                heat_id=heat_id, node_index=node_index).one()
-            heatnode.pilot_id = data['pilot']
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+            slot.pilot_id = data['pilot']
+        if 'method' in data:
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+            slot.method = data['method']
+            slot.seed_id = None
+        if 'seed_heat_id' in data:
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+            if slot.method == ProgramMethod.HEAT_RESULT: 
+                slot.seed_id = data['seed_heat_id']
+            else:
+                logger.warning('Rejecting attempt to set Heat seed id: method does not match')
+        if 'seed_class_id' in data:
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+            if slot.method == ProgramMethod.CLASS_RESULT: 
+                slot.seed_id = data['seed_class_id']
+            else:
+                logger.warning('Rejecting attempt to set Class seed id: method does not match')
+        if 'seed_rank' in data:
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+            slot.seed_rank = data['seed_rank']
 
         # alter existing saved races:
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()

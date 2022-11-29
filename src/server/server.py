@@ -177,6 +177,7 @@ RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_
 PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
+Database.__ = __ # Pass language to Database module
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
 TONES_NONE = 0
@@ -3627,6 +3628,7 @@ def emit_class_data(**params):
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
+        current_class['displayname'] = race_class.displayname()
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
         current_class['win_condition'] = race_class.win_condition
@@ -3652,9 +3654,35 @@ def emit_class_data(**params):
         raceformat['start_behavior'] = race_format.start_behavior
         formats.append(raceformat)
 
+    heats = []
+    for heat in RHData.get_heats():
+        current_heat = {}
+        current_heat['id'] = heat.id
+        current_heat['note'] = heat.note
+        current_heat['displayname'] = heat.displayname()
+        current_heat['class_id'] = heat.class_id
+        current_heat['order'] = heat.order
+
+        current_heat['slots'] = []
+        heatNodes = RHData.get_heatNodes_by_heat(heat.id)
+        for heatNode in heatNodes:
+            current_node = {}
+            current_node['id'] = heatNode.id
+            current_node['node_index'] = heatNode.node_index
+            current_node['pilot_id'] = heatNode.pilot_id
+            current_node['color'] = heatNode.color
+            current_node['method'] = heatNode.method
+            current_node['seed_rank'] = heatNode.seed_rank
+            current_node['seed_id'] = heatNode.seed_id
+            current_heat['slots'].append(current_node)
+
+        current_heat['locked'] = bool(RHData.savedRaceMetas_has_heat(heat.id))
+        heats.append(current_heat)
+
     emit_payload = {
         'classes': current_classes,
-        'formats': formats
+        'formats': formats,
+        'heats': heats
     }
     if ('nobroadcast' in params):
         emit('class_data', emit_payload)
