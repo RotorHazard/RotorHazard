@@ -30,6 +30,20 @@ class Pilot(DB.Model):
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
 
+    def displayCallsign(self):
+        if self.callsign:
+            return self.callsign
+        if self.name:
+            return self.name
+        return __('Pilot') + ' ' + id
+
+    def displayName(self):
+        if self.name:
+            return self.name
+        if self.callsign:
+            return self.callsign
+        return __('Pilot') + ' ' + id
+
     def spokenName(self):
         if self.phonetic:
             return self.phonetic
@@ -37,7 +51,7 @@ class Pilot(DB.Model):
             return self.callsign
         if self.name:
             return self.name
-        return id
+        return __('Pilot') + ' ' + id
 
     def __repr__(self):
         return '<Pilot %r>' % self.id
@@ -50,13 +64,13 @@ class Heat(DB.Model):
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
-    status = DB.Column(DB.Boolean, nullable=False)
+    status = DB.Column(DB.Integer, nullable=False)
+    auto_frequency = DB.Column(DB.Boolean, nullable=False)
 
     def displayname(self):
         if self.note:
             return self.note
-        else:
-            return __('Heat') + ' ' + str(self.id)
+        return __('Heat') + ' ' + str(self.id)
 
     def __repr__(self):
         return '<Heat %r>' % self.id
@@ -103,8 +117,7 @@ class RaceClass(DB.Model):
     def displayname(self):
         if self.name:
             return self.name
-        else:
-            return __('Class') + ' ' + str(self.id)
+        return __('Class') + ' ' + str(self.id)
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id

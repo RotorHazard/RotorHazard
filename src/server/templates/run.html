@@ -808,30 +808,6 @@
 				$('button#discard_laps').prop('disabled', true);
 				$("#main_panel").focus();  // make sure focus not on button
 			}
-
-			var selectedHeat = $('#set_current_heat').val();
-			var selectedClass = rotorhazard.heats[selectedHeat].class_id;
-
-			if ('{{ getOption('nextHeatBehavior') }}' != '1') {
-				var otherHeats = [];
-				for (heat_i in rotorhazard.heats) {
-					if (rotorhazard.heats[heat_i].class_id == selectedClass) {
-						otherHeats.push(heat_i);
-					}
-				}
-				if (otherHeats.length > 1) {
-					var newHeat = null;
-					if (otherHeats[otherHeats.length - 1] == selectedHeat) {
-						newHeat = otherHeats[0];
-					} else {
-						while (otherHeats[otherHeats.length - 1] != selectedHeat) {
-							newHeat = otherHeats.pop();
-						}
-					}
-					$('#set_current_heat').val(newHeat).change();
-				}
-			}
-
 			return false;
 		});
 

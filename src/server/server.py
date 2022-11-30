@@ -2441,6 +2441,10 @@ def do_save_actions():
         })
 
     logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
+
+    if RHData.get_optionInt('nextHeatBehavior') != 1:
+        on_set_current_heat({'heat':RHData.get_next_heat_id(RACE.current_heat)})
+
     on_discard_laps(saved=True) # Also clear the current laps
     # else:
     #    on_discard_laps()
@@ -2570,8 +2574,10 @@ def init_node_cross_fields():
 
         node.first_cross_flag = False
         node.show_crossing_flag = False
-    
+
 def set_current_heat_data(new_heat_id):
+    RHData.calc_heat_pilots(new_heat_id, Results)
+
     RACE.node_pilots = {}
     RACE.node_teams = {}
     for idx in range(RACE.num_nodes):
@@ -3665,6 +3671,8 @@ def emit_class_data(**params):
         current_heat['displayname'] = heat.displayname()
         current_heat['class_id'] = heat.class_id
         current_heat['order'] = heat.order
+        current_heat['status'] = heat.status
+        current_heat['auto_frequency'] = heat.auto_frequency
 
         current_heat['slots'] = []
         heatNodes = RHData.get_heatNodes_by_heat(heat.id)

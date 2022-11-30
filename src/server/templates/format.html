@@ -177,7 +177,9 @@
 
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 						selectbox.append('<option value="0">' + __('-None-') + '</option>')
-						selectbox.append('<option value="1">1</option>')
+						selectbox.append('<option value="1">Laps/Time</option>');
+						selectbox.append('<option value="2">Fastest Lap</option>');
+						selectbox.append('<option value="3">Fastest 3 Consecutive</option>');
 						/*
 						for (var j in rotorhazard.event.formats) {
 							selectbox.append('<option value="' + rotorhazard.event.formats[j].id +'">' + rotorhazard.event.formats[j].name + '</option>')
@@ -192,7 +194,7 @@
 						input.prop('disabled', race_class.locked);
 						el.append(input);
 
-						var input = $('<input type="number" id="race_class_order-' + race_class.id + '" class="set_race_class_order" data-class_id="' + race_class.id + '" step="1" min="0">');
+						var input = $('<input hidden type="number" id="race_class_order-' + race_class.id + '" class="set_race_class_order" data-class_id="' + race_class.id + '" step="1" min="0">');
 						input.val(race_class.order);
 						input.prop('disabled', race_class.locked);
 						el.append(input);
@@ -430,13 +432,6 @@
 			input.val(heat.note);
 			el.append(input);
 
-			var input = $('<input type="checkbox" id="heat-freqs-' + heat.id + '" class="set_heat_freqs" data-heat="' + heat.id + '">');
-			var label = $('<label>');
-			label.append(input);
-			label.append(__('Computed'));
-			input.prop('checked', false);
-			el.append(label);
-
 			// nodes
 			var nodelist = $('<ol>');
 			for (j in heat.slots) {
@@ -447,6 +442,7 @@
 
 				// method
 				var selectmethod = $('<select class="set_method" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+				selectmethod.append('<option value="-1">None</option>');
 				selectmethod.append('<option value="0">Pilot</option>');
 				selectmethod.append('<option value="1">Heat</option>');
 				selectmethod.append('<option value="2">Class</option>');
@@ -456,7 +452,6 @@
 
 				// method-heat
 				var selectheat = $('<select class="set_heat" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-				selectheat.append('<option value="0">-None-</option>');
 				for (var k in rotorhazard.event.heats) {
 					var h = rotorhazard.event.heats[k];
 					selectheat.append('<option value="' + h.id + '">' + h.displayname + '</option>');
@@ -467,7 +462,6 @@
 
 				// method-class
 				var selectclass = $('<select class="set_class" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-				selectclass.append('<option value="0">-None-</option>');
 				for (var k in rotorhazard.event.classes) {
 					var c = rotorhazard.event.classes[k];
 					selectclass.append('<option value="' + c.id + '">' + c.displayname + '</option>');
@@ -485,7 +479,6 @@
 				var pilot = $('<div class="pilot-name">');
 				// pilot selectors
 				var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
-				selectbox.append('<option value="0">None</option>');
 				for (var k in rotorhazard.heat_data.pilot_data) {
 					if (rotorhazard.heat_data.pilotSort == 'callsign') {
 						selectbox.append('<option value="' + rotorhazard.heat_data.pilot_data[k].pilot_id + '">' + rotorhazard.heat_data.pilot_data[k].callsign + ' (' + rotorhazard.heat_data.pilot_data[k].name + ')</option>');
@@ -501,6 +494,13 @@
 			}
 			el.append(nodelist);
 
+			var input = $('<input type="checkbox" id="heat-autofrequency-' + heat.id + '" class="set_heat_autofrequency" data-heat="' + heat.id + '">');
+			var label = $('<label>');
+			label.append(input);
+			label.append(__('Auto Frequency'));
+			input.prop('checked', heat.auto_frequency);
+			el.append(label);
+
 			if (heat.locked) {
 				el.append('<button class="btn-danger open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heat.id + '" title="' + __('Force Modify Heat') + ': ' + heat.displayname + '">' + svg_asset.lock + '</button>');
 			}
@@ -512,12 +512,17 @@
 		}
 
 		function update_heat_ui(el) {
-			var frequency_lock = el.find('.set_heat_freqs').prop('checked');
-			el.find('.channel-block').prop('hidden', !frequency_lock);
+			var autofrequency = el.find('.set_heat_autofrequency').prop('checked');
+			el.find('.channel-block').prop('hidden', autofrequency);
 
 			el.find('li').each(function(){
 				var method = parseInt($(this).find('.set_method').val());
-				if (method == 0) { // Pilot
+				if (method == -1) { // None
+					$(this).find('.set_class').prop('hidden', true);
+					$(this).find('.set_heat').prop('hidden', true);
+					$(this).find('.set_rank').prop('hidden', true);
+					$(this).find('.pilot-name').prop('hidden', true);
+				} else if (method == 0) { // Pilot
 					$(this).find('.set_class').prop('hidden', true);
 					$(this).find('.set_heat').prop('hidden', true);
 					$(this).find('.set_rank').prop('hidden', true);
@@ -560,6 +565,7 @@
 				method: parseInt($(this).val())
 			};
 			socket.emit('alter_heat', data);
+			update_heat_ui($(this).closest('li.rh-heat'));
 		});
 
 		$(document).on("change", '.set_heat', function (event) {
@@ -595,6 +601,15 @@
 				class: $(this).val(),
 			};
 			socket.emit('alter_heat', data);
+		});
+
+		$(document).on("change", '.set_heat_autofrequency', function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				auto_frequency: $(this).prop("checked")
+			};
+			socket.emit('alter_heat', data);
+			update_heat_ui($(this).closest('li.rh-heat'));
 		});
 
 		$('button#add_heat').click(function (event) {

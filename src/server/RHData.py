@@ -4,6 +4,7 @@
 #
 
 import logging
+from RHUtils import PILOT_ID_NONE
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import create_engine, MetaData, Table
@@ -13,6 +14,8 @@ import traceback
 import shutil
 import json
 import glob
+import gevent
+import monotonic
 import RHUtils
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
@@ -407,6 +410,7 @@ class RHData():
                                 'cacheStatus': CacheStatus.INVALID,
                                 'order': None,
                                 'status': 0,
+                                'auto_frequency': False
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
@@ -740,7 +744,8 @@ class RHData():
             class_id=RHUtils.CLASS_ID_NONE,
             cacheStatus=CacheStatus.INVALID,
             order=None,
-            status=0
+            status=0,
+            auto_frequency=False
             )
 
         if init:
@@ -748,6 +753,8 @@ class RHData():
                 new_heat.class_id = init['class_id']
             if 'note' in init:
                 new_heat.note = init['note']
+            if 'auto_frequency' in init:
+                new_heat.auto_frequency = init['auto_frequency']
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -794,10 +801,14 @@ class RHData():
         else:
             new_class = source_heat.class_id
 
-        new_heat = self._Database.Heat(note=new_heat_note,
+        new_heat = self._Database.Heat(
+            note=new_heat_note,
             class_id=new_class,
             results=None,
-            cacheStatus=CacheStatus.INVALID)
+            cacheStatus=CacheStatus.INVALID,
+            status=0,
+            auto_frequency=source_heat.auto_frequency
+            )
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -806,7 +817,11 @@ class RHData():
         for source_heatnode in self.get_heatNodes_by_heat(source_heat.id):
             new_heatnode = self._Database.HeatNode(heat_id=new_heat.id,
                 node_index=source_heatnode.node_index,
-                pilot_id=source_heatnode.pilot_id)
+                pilot_id=source_heatnode.pilot_id,
+                method=source_heatnode.method,
+                seed_rank=source_heatnode.seed_rank,
+                seed_id=source_heatnode.seed_id
+                )
             self._Database.DB.session.add(new_heatnode)
 
         self.commit()
@@ -830,6 +845,8 @@ class RHData():
         if 'class' in data:
             old_class_id = heat.class_id
             heat.class_id = data['class']
+        if 'auto_frequency' in data:
+            heat.auto_frequency = data['auto_frequency']
         if 'pilot' in data:
             slot_id = data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
@@ -962,6 +979,72 @@ class RHData():
         else:
             logger.info('Refusing to delete only heat')
             return None
+
+    def get_next_heat_id(self, current_heat_id):
+        current_heat = self.get_heat(current_heat_id)
+        heats = self.get_heats_by_class(current_heat.class_id)
+
+        if len(heats):
+            next_heat_id = None
+            if heats[-1].id == current_heat_id:
+                #TODO: Advance round instead if rounds expired
+                next_heat_id = heats[0].id
+            else:
+                for idx, heat in enumerate(heats):
+                    if heat.id == current_heat_id:
+                        next_heat_id = heats[idx + 1].id
+                        break
+
+        return next_heat_id
+
+    def calc_heat_pilots(self, heat_id, Results):
+        heat = self._Database.Heat.query.get(heat_id)
+
+        if not heat:
+            return False
+
+        # alter existing saved races:
+        race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
+        if (race_list):
+            logger.warning("Rejecting attempt to calculate pilots: Races exist (heat {})".format(heat_id))
+            return False
+
+        for slot in self.get_heatNodes_by_heat(heat_id):
+            if slot.method == ProgramMethod.HEAT_RESULT:
+                seed_heat = self.get_heat(slot.seed_id)
+                logger.debug('Need Heat {} Result'.format(slot.seed_id))
+                if seed_heat.cacheStatus == Results.CacheStatus.VALID:
+                    results = seed_heat.results[seed_heat.results['meta']['primary_leaderboard']]
+                    # TODO: get proper result format based on win condition
+                    if slot.seed_rank - 1 < len(results):
+                        slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                    else:
+                        slot.pilot_id = RHUtils.PILOT_ID_NONE
+                else:
+                    logger.debug('...NOT READY')
+                    return False
+
+            elif slot.method == ProgramMethod.CLASS_RESULT:
+                seed_class = self.get_raceClass(slot.seed_id)
+                logger.debug('Need Class {} Result'.format(slot.seed_id))
+                if seed_class.cacheStatus == Results.CacheStatus.VALID:
+                    results = seed_class.results[seed_class.results['meta']['primary_leaderboard']]
+                    # TODO: get proper result format based on win condition
+                    if slot.seed_rank - 1 < len(results):
+                        slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                    else:
+                        slot.pilot_id = RHUtils.PILOT_ID_NONE
+                else:
+                    logger.debug('...NOT READY')
+                    return False
+
+            logger.debug('Pilot is {}'.format(slot.pilot_id))
+
+        # TODO: auto_frequency
+        # TODO: implement pilot.last_frequency
+        # reassign node_index
+        
+        return True
 
     def set_results_heat(self, heat_id, data):
         heat = self._Database.Heat.query.get(heat_id)
