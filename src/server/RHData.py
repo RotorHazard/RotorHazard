@@ -1001,41 +1001,44 @@ class RHData():
         heat = self._Database.Heat.query.get(heat_id)
 
         if not heat:
+            logger.error('Requested invalid heat {}'.format(heat_id))
             return False
 
         # alter existing saved races:
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
         if (race_list):
-            logger.warning("Rejecting attempt to calculate pilots: Races exist (heat {})".format(heat_id))
-            return False
+            logger.warning("Skipping pilot recalculation: Races exist (heat {})".format(heat_id))
+            return None
 
         for slot in self.get_heatNodes_by_heat(heat_id):
             if slot.method == ProgramMethod.HEAT_RESULT:
+                logger.debug('Seeding Slot {} from Heat {}'.format(slot.id, slot.seed_id))
                 seed_heat = self.get_heat(slot.seed_id)
-                logger.debug('Need Heat {} Result'.format(slot.seed_id))
-                if seed_heat.cacheStatus == Results.CacheStatus.VALID:
-                    results = seed_heat.results[seed_heat.results['meta']['primary_leaderboard']]
-                    # TODO: get proper result format based on win condition
+
+                output = Results.get_results_heat(self, seed_heat)
+                if output['result']:
+                    results = output['data'][output['data']['meta']['primary_leaderboard']]
                     if slot.seed_rank - 1 < len(results):
                         slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
                     else:
                         slot.pilot_id = RHUtils.PILOT_ID_NONE
                 else:
-                    logger.debug('...NOT READY')
+                    logger.warning('Cancelling heat calc: Cache build timed out')
                     return False
 
             elif slot.method == ProgramMethod.CLASS_RESULT:
+                logger.debug('Seeding Slot {} from Class {}'.format(slot.id, slot.seed_id))
                 seed_class = self.get_raceClass(slot.seed_id)
-                logger.debug('Need Class {} Result'.format(slot.seed_id))
-                if seed_class.cacheStatus == Results.CacheStatus.VALID:
-                    results = seed_class.results[seed_class.results['meta']['primary_leaderboard']]
-                    # TODO: get proper result format based on win condition
+
+                output = Results.get_results_race_class(self, seed_class)
+                if output['result']:
+                    results = output['data'][output['data']['meta']['primary_leaderboard']]
                     if slot.seed_rank - 1 < len(results):
                         slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
                     else:
                         slot.pilot_id = RHUtils.PILOT_ID_NONE
                 else:
-                    logger.debug('...NOT READY')
+                    logger.warning('Cancelling heat calc: Cache build timed out')
                     return False
 
             logger.debug('Pilot is {}'.format(slot.pilot_id))

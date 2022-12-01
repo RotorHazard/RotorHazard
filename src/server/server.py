@@ -2576,7 +2576,10 @@ def init_node_cross_fields():
         node.show_crossing_flag = False
 
 def set_current_heat_data(new_heat_id):
-    RHData.calc_heat_pilots(new_heat_id, Results)
+    calc_result = RHData.calc_heat_pilots(new_heat_id, Results)
+    if calc_result is False:
+        #TODO: Send frontend warning
+        logger.warning('Heat calculation failed! Heat {} may not be viable.'.format(new_heat_id))
 
     RACE.node_pilots = {}
     RACE.node_teams = {}

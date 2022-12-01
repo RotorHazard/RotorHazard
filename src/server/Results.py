@@ -12,6 +12,8 @@ from monotonic import monotonic
 from eventmanager import Evt, EventManager
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
+CACHE_TIMEOUT = 10
+
 Events = EventManager()
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,7 @@ class CacheStatus:
 class Results():
     def __init__ (self, rhDataObj):
         self._RHData = rhDataObj
-    
+
 def invalidate_all_caches(rhDataObj):
     ''' Check all caches and invalidate any paused builds '''
     rhDataObj.clear_results_savedRaceMetas()
@@ -149,6 +151,119 @@ def build_atomic_results_caches(rhDataObj, params):
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
+
+def get_results_heat(RHData, heat):
+    if heat.cacheStatus == CacheStatus.INVALID:
+        logger.info('Rebuilding Heat %d cache', heat.id)
+        build = build_atomic_result_cache(RHData, heat_id=heat.id) 
+        RHData.set_results_heat(heat.id, build)
+        return {
+            'result': True,
+            'data': build['results']
+            }
+    else:
+        expires = monotonic() + CACHE_TIMEOUT
+        while True:
+            gevent.idle()
+            if heat.cacheStatus == CacheStatus.VALID:
+                return {
+                    'result': True,
+                    'data': heat.results
+                    }
+            elif monotonic() > expires:
+                return {
+                    'result': False,
+                    'data': None
+                    }
+
+def get_results_race_class(RHData, race_class):
+    if race_class.cacheStatus == CacheStatus.INVALID:
+        logger.info('Rebuilding Class %d cache', race_class.id)
+        build = build_atomic_result_cache(RHData, class_id=race_class.id)
+        RHData.set_results_raceClass(race_class.id, build)
+        return {
+            'result': True,
+            'data': build['results']
+            }
+    else:
+        expires = monotonic() + CACHE_TIMEOUT
+        while True:
+            gevent.idle()
+            if race_class.cacheStatus == CacheStatus.VALID:
+                return {
+                    'result': True,
+                    'data': race_class.results
+                    }
+            elif monotonic() > expires:
+                return {
+                    'result': False,
+                    'data': None
+                    }
+
+def get_results_race(RHData, heat, race):
+    if race.cacheStatus == CacheStatus.INVALID:
+        logger.info('Rebuilding Race (Heat %d Round %d) cache', heat.id, race.round_id)
+        build = build_atomic_result_cache(RHData, heat_id=heat.id, round_id=race.round_id)
+        RHData.set_results_savedRaceMeta(race.id, build)
+        return {
+            'result': True,
+            'data': build['results']
+            }
+    else:
+        expires = monotonic() + CACHE_TIMEOUT
+        while True:
+            gevent.idle()
+            if race.cacheStatus == CacheStatus.VALID:
+                return {
+                    'result': True,
+                    'data': race.results
+                    }
+            elif monotonic() > expires:
+                return {
+                    'result': False,
+                    'data': None
+                    }
+
+def get_results_event(RHData):
+    if RHData.get_results_event()['cacheStatus'] == CacheStatus.INVALID:
+        logger.info('Rebuilding Event cache')
+        results = calc_leaderboard(RHData)
+        RHData.set_results_event({
+            'results': json.dumps(results),
+            'cacheStatus': CacheStatus.VALID
+            })
+        return {
+            'result': True,
+            'data': results
+            }
+    else:
+        expires = monotonic() + CACHE_TIMEOUT
+        while True:
+            gevent.idle()
+            eventCache = RHData.get_results_event()
+            if eventCache['cacheStatus'] == CacheStatus.VALID:
+                try:
+                    results = json.loads(eventCache['results'])
+                    return {
+                        'result': True,
+                        'data': results
+                        }
+                except:
+                    RHData.set_results_event({
+                        'results': False,
+                        'cacheStatus': CacheStatus.INVALID
+                        })
+                    logger.error('Unable to retrieve "valid" event cache from RHData')
+                    return {
+                        'result': False,
+                        'data': None
+                        }
+            elif monotonic() > expires:
+                logger.warning('Cache build timed out: Event Summary')
+                return {
+                    'result': False,
+                    'data': None
+                    }
 
 def calc_leaderboard(rhDataObj, **params):
     ''' Generates leaderboards '''
