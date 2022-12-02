@@ -119,6 +119,9 @@ class LEDEventManager:
         return colors
 
     def getDisplayColor(self, node_index, from_result=False):
+        if node_index is None:
+            return hexToColor('#000000')
+
         if node_index < len(self.displayColorCache):
             return self.displayColorCache[node_index]
 

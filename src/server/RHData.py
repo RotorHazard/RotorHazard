@@ -17,6 +17,7 @@ import glob
 import gevent
 import monotonic
 import RHUtils
+import random
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Results import CacheStatus
@@ -347,7 +348,8 @@ class RHData():
                             'callsign': 'New Callsign',
                             'team': RHUtils.DEF_TEAM_NAME,
                             'phonetic': '',
-                            'color': None
+                            'color': None,
+                            'last_used_frequency': None
                         })
                     for pilot in self._Database.Pilot.query.all():
                         if not pilot.color:
@@ -605,7 +607,8 @@ class RHData():
             callsign='',
             team=RHUtils.DEF_TEAM_NAME,
             phonetic='',
-            color=color)
+            color=color,
+            last_used_frequency=None)
 
         if init:
             if 'name' in init:
@@ -683,6 +686,14 @@ class RHData():
                 self.commit()
 
         return pilot, race_list
+
+    def set_pilot_last_used_frequency(self, pilot_id, frequency):
+        pilot = self._Database.Pilot.query.get(pilot_id)
+        if pilot:
+            pilot.last_used_frequency = json.dumps(frequency)
+            self.commit()
+            return pilot
+        return False
 
     def delete_pilot(self, pilot_id):
         pilot = self._Database.Pilot.query.get(pilot_id)
@@ -997,7 +1008,7 @@ class RHData():
 
         return next_heat_id
 
-    def calc_heat_pilots(self, heat_id, Results):
+    def calc_heat_pilots(self, heat_id, Results, current_frequencies, num_nodes):
         heat = self._Database.Heat.query.get(heat_id)
 
         if not heat:
@@ -1010,8 +1021,12 @@ class RHData():
             logger.warning("Skipping pilot recalculation: Races exist (heat {})".format(heat_id))
             return None
 
-        for slot in self.get_heatNodes_by_heat(heat_id):
-            if slot.method == ProgramMethod.HEAT_RESULT:
+        slots = self.get_heatNodes_by_heat(heat_id)
+        for slot in slots:
+            if slot.method == ProgramMethod.NONE:
+                slot.pilot_id = RHUtils.PILOT_ID_NONE
+
+            elif slot.method == ProgramMethod.HEAT_RESULT:
                 logger.debug('Seeding Slot {} from Heat {}'.format(slot.id, slot.seed_id))
                 seed_heat = self.get_heat(slot.seed_id)
 
@@ -1043,10 +1058,51 @@ class RHData():
 
             logger.debug('Pilot is {}'.format(slot.pilot_id))
 
-        # TODO: auto_frequency
-        # TODO: implement pilot.last_frequency
-        # reassign node_index
-        
+        self.commit()
+
+        if heat.auto_frequency:
+            # clear all node assignments
+            for slot in slots:
+                slot.node_index = None
+            
+            self.commit()
+
+            # collect node data
+            available_nodes = []
+            profile_freqs = json.loads(current_frequencies)
+            for node_index in range(num_nodes):
+                if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                    available_nodes.append({
+                        'idx': node_index,
+                        'f': profile_freqs["f"][node_index]
+                        })
+
+            # Place pilots with frequency match
+            for slot in slots:
+                if slot.pilot_id:
+                    if len(available_nodes):
+                        last_used_frequency = json.loads(self.get_pilot(slot.pilot_id).last_used_frequency)['f']
+                        for n_idx, node in enumerate(available_nodes):
+                            if last_used_frequency == node['f']:
+                                slot.node_index = node['idx']
+                                available_nodes.pop(n_idx)
+                                break
+                    else:
+                        logger.warning('No more nodes for pilots')
+                        return False
+
+            # Randomly assign unmatched pilots
+            for slot in slots:
+                if slot.pilot_id and slot.node_index is None:
+                    if len(available_nodes):
+                        idx = random.randint(0, len(available_nodes) - 1)
+                        slot.node_index = available_nodes[idx]['idx']
+                        available_nodes.pop(idx)
+                    else:
+                        logger.warning('No more available nodes for pilot assignment')
+                        return False
+
+        self.commit()
         return True
 
     def set_results_heat(self, heat_id, data):

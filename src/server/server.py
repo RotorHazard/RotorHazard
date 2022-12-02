@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
-SERVER_API = 35 # Server API version
+SERVER_API = 36 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -2425,6 +2425,12 @@ def do_save_actions():
                 'exit_at': INTERFACE.nodes[node_index].exit_at_level,
                 'laps': RACE.node_laps[node_index]
                 }
+            
+            RHData.set_pilot_last_used_frequency(pilot_id, {
+                'b': profile_freqs["b"][node_index],
+                'c': profile_freqs["c"][node_index],
+                'f': profile_freqs["f"][node_index]
+                })
 
     RHData.add_race_data(race_data)
 
@@ -2576,10 +2582,10 @@ def init_node_cross_fields():
         node.show_crossing_flag = False
 
 def set_current_heat_data(new_heat_id):
-    calc_result = RHData.calc_heat_pilots(new_heat_id, Results)
+    calc_result = RHData.calc_heat_pilots(new_heat_id, Results, getCurrentProfile().frequencies, RACE.num_nodes)
     if calc_result is False:
-        #TODO: Send frontend warning
         logger.warning('Heat calculation failed! Heat {} may not be viable.'.format(new_heat_id))
+        emit_priority_message("Warning: Failed to calculate heat pilots", True, nobroadcast=True)
 
     RACE.node_pilots = {}
     RACE.node_teams = {}
@@ -3758,21 +3764,32 @@ def emit_current_heat(**params):
     heat_data = RHData.get_heat(RACE.current_heat)
 
     heatNode_data = {}
-    for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
-        heatNode_data[heatNode.node_index] = {
-            'pilot_id': heatNode.pilot_id,
-            'callsign': None,
-            'heatNodeColor': heatNode.color,
-            'pilotColor': None,
-            'activeColor': None
-            }
-        pilot = RHData.get_pilot(heatNode.pilot_id)
-        if pilot:
-            heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
-            heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
+    for idx in range(RACE.num_nodes):
+        heatNode_data[idx] = {
+                'pilot_id': None,
+                'callsign': None,
+                'heatNodeColor': None,
+                'pilotColor': None,
+                'activeColor': None
+                }
 
-        if led_manager.isEnabled():
-            heatNode_data[heatNode.node_index]['activeColor'] = led_manager.getDisplayColor(heatNode.node_index)
+    for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
+        if heatNode.node_index is not None:
+            heatNode_data[heatNode.node_index] = {
+                'pilot_id': heatNode.pilot_id,
+                'callsign': None,
+                'heatNodeColor': heatNode.color,
+                'pilotColor': None,
+                'activeColor': None
+                }
+            pilot = RHData.get_pilot(heatNode.pilot_id)
+            if pilot:
+                heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
+                heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
+
+            if led_manager.isEnabled():
+                heatNode_data[heatNode.node_index]['activeColor'] = led_manager.getDisplayColor(heatNode.node_index)
+
 
     heat_format = None
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
@@ -4675,17 +4692,10 @@ def reset_current_laps():
 
 def expand_heats():
     ''' ensure loaded data includes enough slots for current nodes '''
-    heatNode_data = {}
-    for heatNode in RHData.get_heatNodes():
-        if heatNode.heat_id not in heatNode_data:
-            heatNode_data[heatNode.heat_id] = []
-
-        heatNode_data[heatNode.heat_id].append(heatNode.node_index)
-
-    for heat_id, nodes in heatNode_data.items():
-        for node_index in range(RACE.num_nodes):
-            if node_index not in nodes:
-                RHData.add_heatNode(heat_id, node_index)
+    for heat in RHData.get_heats():
+        heatNodes = RHData.get_heatNodes_by_heat(heat.id)
+        while len(heatNodes) < RACE.num_nodes:
+            RHData.add_heatNode(heat.id, None)
 
 def init_race_state():
     expand_heats()

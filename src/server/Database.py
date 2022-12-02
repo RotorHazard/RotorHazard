@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 DB = SQLAlchemy()
 
-def __(*args): # Language placeholder (Overwritten after module init)
+def __(*args): # pylint: disable=unused-argument -- Language placeholder (Overwritten after module init)
     pass
 
 #
@@ -29,6 +29,7 @@ class Pilot(DB.Model):
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
+    last_used_frequency = DB.Column(DB.String(40), nullable=True)
 
     def displayCallsign(self):
         if self.callsign:
@@ -101,6 +102,7 @@ class ProgramMethod:
     ASSIGN = 0
     HEAT_RESULT = 1
     CLASS_RESULT = 2
+    NONE = 3
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'
