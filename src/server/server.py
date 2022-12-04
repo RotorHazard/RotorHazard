@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
-SERVER_API = 36 # Server API version
+SERVER_API = 37 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -1989,7 +1989,7 @@ def on_stage_race():
     heat_data = RHData.get_heat(RACE.current_heat)
     heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
     for heatNode in heatNodes:
-        if heatNode.node_index < RACE.num_nodes:
+        if heatNode.node_index is not None and heatNode.node_index < RACE.num_nodes:
             if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
                 valid_pilots = True
                 break
@@ -2388,8 +2388,14 @@ def do_save_actions():
     # if race_has_laps == True:
     if CLUSTER:
         CLUSTER.emitToSplits('save_laps')
-    PageCache.set_valid(False)
+
     heat = RHData.get_heat(RACE.current_heat)
+
+    # Clear caches
+    PageCache.set_valid(False)
+    RHData.clear_results_heat(RACE.current_heat)
+    RHData.clear_results_raceClass(heat.class_id)
+
     # Get the last saved round for the current heat
     max_round = RHData.get_max_round(RACE.current_heat)
 
@@ -2416,21 +2422,22 @@ def do_save_actions():
         if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
             pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
 
-            race_data[node_index] = {
-                'race_id': new_race.id,
-                'pilot_id': pilot_id,
-                'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
-                'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
-                'enter_at': INTERFACE.nodes[node_index].enter_at_level,
-                'exit_at': INTERFACE.nodes[node_index].exit_at_level,
-                'laps': RACE.node_laps[node_index]
-                }
-            
-            RHData.set_pilot_last_used_frequency(pilot_id, {
-                'b': profile_freqs["b"][node_index],
-                'c': profile_freqs["c"][node_index],
-                'f': profile_freqs["f"][node_index]
-                })
+            if pilot_id is not None:
+                race_data[node_index] = {
+                    'race_id': new_race.id,
+                    'pilot_id': pilot_id,
+                    'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
+                    'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
+                    'enter_at': INTERFACE.nodes[node_index].enter_at_level,
+                    'exit_at': INTERFACE.nodes[node_index].exit_at_level,
+                    'laps': RACE.node_laps[node_index]
+                    }
+                
+                RHData.set_pilot_used_frequency(pilot_id, {
+                    'b': profile_freqs["b"][node_index],
+                    'c': profile_freqs["c"][node_index],
+                    'f': profile_freqs["f"][node_index]
+                    })
 
     RHData.add_race_data(race_data)
 
@@ -2582,7 +2589,12 @@ def init_node_cross_fields():
         node.show_crossing_flag = False
 
 def set_current_heat_data(new_heat_id):
-    calc_result = RHData.calc_heat_pilots(new_heat_id, Results, getCurrentProfile().frequencies, RACE.num_nodes)
+    adaptive = bool(RHData.get_optionInt('calibrationMode'))
+    if adaptive:
+        calc_fn = RHUtils.find_best_slot_node_adaptive
+    else:
+        calc_fn= RHUtils.find_best_slot_node_basic
+    calc_result = RHData.calc_heat_pilots(new_heat_id, Results, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
     if calc_result is False:
         logger.warning('Heat calculation failed! Heat {} may not be viable.'.format(new_heat_id))
         emit_priority_message("Warning: Failed to calculate heat pilots", True, nobroadcast=True)
@@ -2610,7 +2622,7 @@ def set_current_heat_data(new_heat_id):
             setCurrentRaceFormat(class_format)
             logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
 
-    if RHData.get_optionInt('calibrationMode'):
+    if adaptive:
         autoUpdateCalibration()
 
     Events.trigger(Evt.HEAT_SET, {
@@ -4288,7 +4300,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     emit_node_data() # For updated triggers and peaks
 
     profile_freqs = json.loads(getCurrentProfile().frequencies)
-    if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
+    if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE :
         # always count laps if race is running, otherwise test if lap should have counted before race end
         if RACE.race_status is RaceStatus.RACING \
             or (RACE.race_status is RaceStatus.DONE and \
@@ -4299,7 +4311,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
             # reject passes before race start and with disabled (no-pilot) nodes
             race_format = getCurrentRaceFormat()
-            if pilot_id != RHUtils.PILOT_ID_NONE or race_format is SECONDARY_RACE_FORMAT:
+            if (pilot_id is not None and pilot_id != RHUtils.PILOT_ID_NONE) or race_format is SECONDARY_RACE_FORMAT:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon

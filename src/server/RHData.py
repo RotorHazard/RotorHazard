@@ -349,7 +349,7 @@ class RHData():
                             'team': RHUtils.DEF_TEAM_NAME,
                             'phonetic': '',
                             'color': None,
-                            'last_used_frequency': None
+                            'used_frequencies': None
                         })
                     for pilot in self._Database.Pilot.query.all():
                         if not pilot.color:
@@ -432,18 +432,18 @@ class RHData():
                         for raceFormat in raceFormat_query_data:
                             if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ONE:
                                 raceFormat['staging_fixed_tones'] = 1
-                                
+
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
                                     del raceFormat['start_delay_min']
-    
+
                                 if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
                                     if 'start_delay_min_ms' in raceFormat:
                                         raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
                                         if raceFormat['start_delay_max_ms'] < 0:
                                             raceFormat['start_delay_max_ms'] = 0
                                     del raceFormat['start_delay_max']
-                                
+
                             elif 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ALL:
                                 raceFormat['staging_tones'] = StagingTones.TONES_ALL
 
@@ -458,15 +458,15 @@ class RHData():
                                         if raceFormat['start_delay_max_ms'] < 0:
                                             raceFormat['start_delay_max_ms'] = 0
                                     del raceFormat['start_delay_max']
-                                
+
                             else: # None or unsupported
                                 raceFormat['staging_fixed_tones'] = 0
                                 raceFormat['staging_tones'] = StagingTones.TONES_NONE
-                            
+
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
                                     del raceFormat['start_delay_min']
-    
+
                                 if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
                                     raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
                                     if raceFormat['start_delay_max_ms'] < 0:
@@ -608,7 +608,7 @@ class RHData():
             team=RHUtils.DEF_TEAM_NAME,
             phonetic='',
             color=color,
-            last_used_frequency=None)
+            used_frequencies=None)
 
         if init:
             if 'name' in init:
@@ -621,7 +621,7 @@ class RHData():
                 new_pilot.phonetic = init['phonetic']
             if 'color' in init:
                 new_pilot.color = init['color']
-                
+
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
 
@@ -687,10 +687,24 @@ class RHData():
 
         return pilot, race_list
 
-    def set_pilot_last_used_frequency(self, pilot_id, frequency):
+    def set_pilot_used_frequency(self, pilot_id, frequency):
         pilot = self._Database.Pilot.query.get(pilot_id)
         if pilot:
-            pilot.last_used_frequency = json.dumps(frequency)
+            if pilot.used_frequencies:
+                used_freqs = json.loads(pilot.used_frequencies)
+            else:
+                used_freqs = []
+
+            for idx, freq in enumerate(used_freqs):
+                if freq['f'] == frequency['f'] and \
+                    freq['b'] == frequency['b'] and \
+                    freq['c'] == frequency['c']:
+
+                    del used_freqs[idx]
+
+            used_freqs.append(frequency)
+
+            pilot.used_frequencies = json.dumps(used_freqs)
             self.commit()
             return pilot
         return False
@@ -858,6 +872,9 @@ class RHData():
             heat.class_id = data['class']
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
+            if not heat.auto_frequency:
+                for idx, slot in enumerate(self.get_heatNodes_by_heat(heat_id)):
+                    slot.node_index = idx
         if 'pilot' in data:
             slot_id = data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
@@ -870,14 +887,14 @@ class RHData():
         if 'seed_heat_id' in data:
             slot_id = data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
-            if slot.method == ProgramMethod.HEAT_RESULT: 
+            if slot.method == ProgramMethod.HEAT_RESULT:
                 slot.seed_id = data['seed_heat_id']
             else:
                 logger.warning('Rejecting attempt to set Heat seed id: method does not match')
         if 'seed_class_id' in data:
             slot_id = data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
-            if slot.method == ProgramMethod.CLASS_RESULT: 
+            if slot.method == ProgramMethod.CLASS_RESULT:
                 slot.seed_id = data['seed_class_id']
             else:
                 logger.warning('Rejecting attempt to set Class seed id: method does not match')
@@ -1008,7 +1025,7 @@ class RHData():
 
         return next_heat_id
 
-    def calc_heat_pilots(self, heat_id, Results, current_frequencies, num_nodes):
+    def calc_heat_pilots(self, heat_id, Results, current_frequencies, num_nodes, calc_fn):
         heat = self._Database.Heat.query.get(heat_id)
 
         if not heat:
@@ -1064,8 +1081,8 @@ class RHData():
             # clear all node assignments
             for slot in slots:
                 slot.node_index = None
-            
-            self.commit()
+
+            self.commit() # TODO: delete if unneeded
 
             # collect node data
             available_nodes = []
@@ -1074,33 +1091,54 @@ class RHData():
                 if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
                     available_nodes.append({
                         'idx': node_index,
-                        'f': profile_freqs["f"][node_index]
+                        'frq': {
+                            'f': profile_freqs["f"][node_index],
+                            'b': profile_freqs["b"][node_index],
+                            'c': profile_freqs["c"][node_index]
+                            },
+                        'matches': []
                         })
 
-            # Place pilots with frequency match
+            # find all frequency matches
             for slot in slots:
                 if slot.pilot_id:
-                    if len(available_nodes):
-                        last_used_frequency = json.loads(self.get_pilot(slot.pilot_id).last_used_frequency)['f']
-                        for n_idx, node in enumerate(available_nodes):
-                            if last_used_frequency == node['f']:
-                                slot.node_index = node['idx']
-                                available_nodes.pop(n_idx)
-                                break
-                    else:
-                        logger.warning('No more nodes for pilots')
-                        return False
+                    used_frequencies = json.loads(self.get_pilot(slot.pilot_id).used_frequencies)
+                    for n_idx, node in enumerate(available_nodes):
+                        for f_idx, pilot_freq in enumerate(used_frequencies):
+                            if node['frq']['f'] == pilot_freq['f']:
+                                node['matches'].append({
+                                        'slot': slot,
+                                        'priority': True if f_idx == 0 else False
+                                     })
 
-            # Randomly assign unmatched pilots
-            for slot in slots:
-                if slot.pilot_id and slot.node_index is None:
-                    if len(available_nodes):
-                        idx = random.randint(0, len(available_nodes) - 1)
-                        slot.node_index = available_nodes[idx]['idx']
-                        available_nodes.pop(idx)
+            eliminated_slots = []
+            if callable(calc_fn):
+                while len(available_nodes):
+                    m_node, m_slot, an_idx = calc_fn(available_nodes)
+                    if m_node and m_slot:
+                        m_slot.node_index = m_node['idx']
+                        for slot_idx, slot_match in enumerate(m_node['matches']):
+                            if slot_match['slot'] != m_slot:
+                                eliminated_slots.append(slot_match)
+                        del available_nodes[an_idx]
+                        for available_node in available_nodes:
+                            for slot_idx, slot_match in enumerate(available_node['matches']):
+                                if slot_match['slot'] == m_slot:
+                                    available_node['matches'][slot_idx] = None
+                                available_node['matches'] = [x for x in available_node['matches'] if x is not None]
                     else:
-                        logger.warning('No more available nodes for pilot assignment')
-                        return False
+                        if len(eliminated_slots):
+                            random.shuffle(available_nodes)
+                            for slot_idx, slot_match in enumerate(eliminated_slots):
+                                if eliminated_slots[slot_idx] and eliminated_slots[slot_idx]['slot'].node_index is None:
+                                    eliminated_slots[slot_idx]['slot'].node_index = available_nodes[0]['idx']
+                                    del(available_nodes[0])
+                                eliminated_slots[slot_idx] = None
+                            eliminated_slots = [x for x in eliminated_slots if x is not None]
+                        break
+            else:
+                logger.error('calc_fn is not a valid auto-frequency algortihm')
+                return False
 
         self.commit()
         return True

@@ -153,52 +153,64 @@ def build_atomic_results_caches(rhDataObj, params):
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
 def get_results_heat(RHData, heat):
-    if heat.cacheStatus == CacheStatus.INVALID:
-        logger.info('Rebuilding Heat %d cache', heat.id)
-        build = build_atomic_result_cache(RHData, heat_id=heat.id) 
-        RHData.set_results_heat(heat.id, build)
-        return {
-            'result': True,
-            'data': build['results']
-            }
+    if len(RHData.get_savedRaceMetas_by_heat(heat.id)):
+        if heat.cacheStatus == CacheStatus.INVALID:
+            logger.info('Rebuilding Heat %d cache', heat.id)
+            build = build_atomic_result_cache(RHData, heat_id=heat.id) 
+            RHData.set_results_heat(heat.id, build)
+            return {
+                'result': True,
+                'data': build['results']
+                }
+        else:
+            expires = monotonic() + CACHE_TIMEOUT
+            while True:
+                gevent.idle()
+                if heat.cacheStatus == CacheStatus.VALID:
+                    return {
+                        'result': True,
+                        'data': heat.results
+                        }
+                elif monotonic() > expires:
+                    return {
+                        'result': False,
+                        'data': None
+                        }
     else:
-        expires = monotonic() + CACHE_TIMEOUT
-        while True:
-            gevent.idle()
-            if heat.cacheStatus == CacheStatus.VALID:
-                return {
-                    'result': True,
-                    'data': heat.results
-                    }
-            elif monotonic() > expires:
-                return {
-                    'result': False,
-                    'data': None
-                    }
+        return {
+            'result': False,
+            'data': None
+            }
 
 def get_results_race_class(RHData, race_class):
-    if race_class.cacheStatus == CacheStatus.INVALID:
-        logger.info('Rebuilding Class %d cache', race_class.id)
-        build = build_atomic_result_cache(RHData, class_id=race_class.id)
-        RHData.set_results_raceClass(race_class.id, build)
-        return {
-            'result': True,
-            'data': build['results']
-            }
+    if len(RHData.get_savedRaceMetas_by_raceClass(race_class.id)):
+        if race_class.cacheStatus == CacheStatus.INVALID:
+            logger.info('Rebuilding Class %d cache', race_class.id)
+            build = build_atomic_result_cache(RHData, class_id=race_class.id)
+            RHData.set_results_raceClass(race_class.id, build)
+            return {
+                'result': True,
+                'data': build['results']
+                }
+        else:
+            expires = monotonic() + CACHE_TIMEOUT
+            while True:
+                gevent.idle()
+                if race_class.cacheStatus == CacheStatus.VALID:
+                    return {
+                        'result': True,
+                        'data': race_class.results
+                        }
+                elif monotonic() > expires:
+                    return {
+                        'result': False,
+                        'data': None
+                        }
     else:
-        expires = monotonic() + CACHE_TIMEOUT
-        while True:
-            gevent.idle()
-            if race_class.cacheStatus == CacheStatus.VALID:
-                return {
-                    'result': True,
-                    'data': race_class.results
-                    }
-            elif monotonic() > expires:
-                return {
-                    'result': False,
-                    'data': None
-                    }
+        return {
+            'result': False,
+            'data': None
+            }
 
 def get_results_race(RHData, heat, race):
     if race.cacheStatus == CacheStatus.INVALID:

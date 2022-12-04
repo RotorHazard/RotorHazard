@@ -29,7 +29,7 @@ class Pilot(DB.Model):
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
-    last_used_frequency = DB.Column(DB.String(40), nullable=True)
+    used_frequencies = DB.Column(DB.String, nullable=True)
 
     def displayCallsign(self):
         if self.callsign:
