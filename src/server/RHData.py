@@ -1025,7 +1025,7 @@ class RHData():
 
         return next_heat_id
 
-    def calc_heat_pilots(self, heat_id, Results, current_frequencies, num_nodes, calc_fn):
+    def calc_heat_pilots(self, heat_id, Results):
         heat = self._Database.Heat.query.get(heat_id)
 
         if not heat:
@@ -1076,7 +1076,12 @@ class RHData():
             logger.debug('Pilot is {}'.format(slot.pilot_id))
 
         self.commit()
+        return True
 
+    def run_auto_frequency(self, heat_id, current_frequencies, num_nodes, calc_fn):
+        heat = self._Database.Heat.query.get(heat_id)
+        slots = self.get_heatNodes_by_heat(heat_id)
+        
         if heat.auto_frequency:
             # clear all node assignments
             for slot in slots:
@@ -1140,7 +1145,7 @@ class RHData():
                 logger.error('calc_fn is not a valid auto-frequency algortihm')
                 return False
 
-        self.commit()
+            self.commit()
         return True
 
     def set_results_heat(self, heat_id, data):

@@ -2590,14 +2590,17 @@ def init_node_cross_fields():
 
 def set_current_heat_data(new_heat_id):
     adaptive = bool(RHData.get_optionInt('calibrationMode'))
+
+    calc_result = RHData.calc_heat_pilots(new_heat_id, Results)
+    if calc_result is False:
+        logger.warning('Heat calculation failed! Heat {} may not be viable.'.format(new_heat_id))
+        emit_priority_message(__("Warning: Unable to calculate heat pilots"), True, nobroadcast=True)
+
     if adaptive:
         calc_fn = RHUtils.find_best_slot_node_adaptive
     else:
-        calc_fn= RHUtils.find_best_slot_node_basic
-    calc_result = RHData.calc_heat_pilots(new_heat_id, Results, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
-    if calc_result is False:
-        logger.warning('Heat calculation failed! Heat {} may not be viable.'.format(new_heat_id))
-        emit_priority_message("Warning: Failed to calculate heat pilots", True, nobroadcast=True)
+        calc_fn = RHUtils.find_best_slot_node_basic
+    RHData.run_auto_frequency(new_heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
     RACE.node_pilots = {}
     RACE.node_teams = {}
