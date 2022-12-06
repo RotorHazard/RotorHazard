@@ -947,6 +947,124 @@ def calc_team_leaderboard(raceObj, rhDataObj):
         return leaderboard_output
     return None
 
+def calc_special_class_ranking_leaderboard(rhDataObj, race_class, rounds=None):
+    class_win_condition = race_class.win_condition
+
+    if class_win_condition >= 4:
+        if rounds is None:
+            rounds = class_win_condition - 3
+
+        race_format = rhDataObj.get_raceFormat(race_class.format_id)
+        heats = rhDataObj.get_heats_by_class(race_class.id)
+
+        pilotresults = {}
+        for heat in heats:
+            races = rhDataObj.get_savedRaceMetas_by_heat(heat.id)
+
+            for race in races:
+                race_result = get_results_race(rhDataObj, heat, race)
+
+                for pilotresult in race_result['data']['by_race_time']:
+                    if pilotresult['pilot_id'] not in pilotresults:
+                        pilotresults[pilotresult['pilot_id']] = []
+                    pilotresults[pilotresult['pilot_id']].append(pilotresult)
+
+        leaderboard = []
+        for pilotresultlist in pilotresults:
+            pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+            pilot_result = pilot_result[:rounds]
+
+            new_pilot_result = {}
+            new_pilot_result['pilot_id'] = pilot_result[0]['pilot_id']
+            new_pilot_result['callsign'] = pilot_result[0]['callsign']
+            new_pilot_result['team_name'] = pilot_result[0]['team_name']
+            new_pilot_result['node'] = pilot_result[0]['node']
+            new_pilot_result['laps'] = 0
+            new_pilot_result['starts'] = 0
+            new_pilot_result['total_time_raw'] = 0
+            new_pilot_result['total_time_laps_raw'] = 0
+
+            for race in pilot_result:
+                new_pilot_result['laps'] += race['laps']
+                new_pilot_result['starts'] += race['starts']
+                new_pilot_result['total_time_raw'] += race['total_time_raw']
+                new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
+
+                # new_leaderboard['fastest_lap'] += race['fastest_lap']
+                # new_leaderboard['fastest_lap_source'] += race['']
+                # new_leaderboard['consecutives'] += race['consecutives']
+                # new_leaderboard['consecutives_source'] += race['']
+
+            new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps']
+
+            timeFormat = rhDataObj.get_option('timeFormat')
+            new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
+            new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
+            new_pilot_result['average_lap'] = RHUtils.time_format(new_pilot_result['average_lap_raw'], timeFormat)
+
+            '''
+            result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
+            result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
+            result_pilot['consecutives_raw'] = result_pilot['consecutives']
+            result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
+            '''
+                
+            leaderboard.append(new_pilot_result)
+                
+        if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
+            # Sort by laps time
+            leaderboard = sorted(leaderboard, key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+
+            # determine ranking
+            last_rank = '-'
+            last_rank_laps = 0
+            last_rank_time = 0
+            for i, row in enumerate(leaderboard, start=1):
+                pos = i
+                if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
+                    pos = last_rank
+                last_rank = pos
+                last_rank_laps = row['laps']
+                last_rank_time = row['total_time_laps_raw']
+
+                row['position'] = pos
+        else:
+            # Sort by race time
+            leaderboard = sorted(leaderboard, key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+
+            # determine ranking
+            last_rank = '-'
+            last_rank_laps = 0
+            last_rank_time = 0
+            for i, row in enumerate(leaderboard, start=1):
+                pos = i
+                if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                    pos = last_rank
+                last_rank = pos
+                last_rank_laps = row['laps']
+                last_rank_time = row['total_time_raw']
+
+                row['position'] = pos
+                    
+        return leaderboard
+    return False
+
+            
+    # split to pilots
+    # rank heats
+    # keep X heats
+    # collapse to leaderboard
+    pass
+
 def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
     race_format = raceObj.format
     if race_format:

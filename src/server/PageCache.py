@@ -169,6 +169,8 @@ class PageCache:
                 current_class['name'] = race_class.name
                 current_class['description'] = race_class.name
                 current_class['leaderboard'] = results
+                current_class['special_leaderboard'] = Results.calc_special_class_ranking_leaderboard(self._RHData, race_class)
+
                 current_classes[race_class.id] = current_class
 
             timing['event'] = monotonic()
