@@ -7,6 +7,8 @@
 		'node_data',
 		'frequency_data',
 		'pilot_data',
+		'heat_data',
+		'class_data',
 		'race_format',
 		'node_tuning',
 		'enter_and_exit_at_levels',
@@ -373,71 +375,77 @@
 		});
 
 		socket.on('heat_data', function (msg) {
-			rotorhazard.heats = msg.heats;
-			$('#set_current_heat').empty();
-
-			// assemble heats by class
-			var heats_by_class = {}
-			var single_class = true;
-			for (var h in msg.heats) {
-				var heat = msg.heats[h];
-				if (!(heat.class_id in heats_by_class)) {
-					heats_by_class[heat.class_id] = [];
-				}
-				heats_by_class[heat.class_id].push(heat)
-				if (heat.class_id != 0) {
-					single_class = false;
-				}
-				if (heat.note) {
-					rotorhazard.heats[h].heatname = heat.note;
-				} else {
-					rotorhazard.heats[h].heatname = __('Heat') + ' ' + heat.heat_id;
-				}
-			}
-
-			// assemble optgroups
-			if (single_class) {
-				for (var h in msg.heats) {
-					var heat = msg.heats[h];
-					var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
-					opt.html(heat.heatname);
-					$('#set_current_heat').append(opt);
-				}
-			} else {
-				for (var c in heats_by_class) {
-					var heat_list = heats_by_class[c]
-					var optgroup = $('<optgroup>');
-
-					optgroup.attr('label', __('Unclassified'));
-					optgroup.attr('data-id', 0);
-					for (var rc in msg.classes) {
-						if (c == msg.classes[rc].id) {
-							var class_data = msg.classes[rc]
-							optgroup.attr('label', class_data.name);
-							optgroup.attr('data-id', class_data.id);
-							break;
-						}
-					}
-
-					for (var h in heat_list) {
-						var heat = heat_list[h];
-
-						var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
-
-						opt.html(heat.heatname);
-						optgroup.append(opt)
-					}
-					$('#set_current_heat').append(optgroup);
-				}
-
-				// move unclassified to end of list
-				$('#set_current_heat').append($('#set_current_heat optgroup[data-id="0"]'));
-			}
-
-			socket.emit('load_data', {'load_types': [
-				'current_heat',
-			]});
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
 		});
+
+		socket.on('class_data', function (msg) {
+			rotorhazard.event.classes = msg.classes;
+			display_heats();
+		});
+
+		function display_heats() {
+			if (rotorhazard.event.heats && rotorhazard.event.classes) {
+				$('#set_current_heat').empty();
+
+				// assemble heats by class
+				var heats_by_class = {}
+				var single_class = true;
+				for (var h in rotorhazard.event.heats) {
+					var heat = rotorhazard.event.heats[h];
+					if (!(heat.class_id in heats_by_class)) {
+						heats_by_class[heat.class_id] = [];
+					}
+					heats_by_class[heat.class_id].push(heat)
+					if (heat.class_id != 0) {
+						single_class = false;
+					}
+				}
+
+				// assemble optgroups
+				if (single_class) {
+					for (var h in rotorhazard.event.heats) {
+						var heat = rotorhazard.event.heats[h];
+						var opt = $('<option value="' + heat.id + '" data-class="' + heat.class_id + '">');
+						opt.html(heat.displayname);
+						$('#set_current_heat').append(opt);
+					}
+				} else {
+					for (var c in heats_by_class) {
+						var heat_list = heats_by_class[c]
+						var optgroup = $('<optgroup>');
+
+						optgroup.attr('label', __('Unclassified'));
+						optgroup.attr('data-id', 0);
+						for (var rc in rotorhazard.event.classes) {
+							if (c == rotorhazard.event.classes[rc].id) {
+								var class_data = rotorhazard.event.classes[rc]
+								optgroup.attr('label', class_data.name);
+								optgroup.attr('data-id', class_data.id);
+								break;
+							}
+						}
+
+						for (var h in heat_list) {
+							var heat = heat_list[h];
+
+							var opt = $('<option value="' + heat.id + '" data-class="' + heat.class_id + '">');
+
+							opt.html(heat.displayname);
+							optgroup.append(opt)
+						}
+						$('#set_current_heat').append(optgroup);
+					}
+
+					// move unclassified to end of list
+					$('#set_current_heat').append($('#set_current_heat optgroup[data-id="0"]'));
+				}
+
+				socket.emit('load_data', {'load_types': [
+					'current_heat',
+				]});
+			}
+		}
 
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.node_peak_rssi.length; i++) {
@@ -629,10 +637,8 @@
 		socket.on('leaderboard', function (msg) {
 			var race = msg.current;
 
-			var heatname = __('Heat') + ' ' + race.heat;
-			if (race.heat_note)
-				heatname = race.heat_note;
-			$('.current_heat').html(heatname);
+			heat = rotorhazard.event.heats.find(obj => {return obj.id == race.heat})
+			$('.current_heat').html(heat.displayname);
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();
@@ -1547,7 +1553,8 @@
 			var callout = $(this).siblings('.callout_text').val();
 
 			// %HEAT% : Current heat name
-			callout = callout.replace('%HEAT%', rotorhazard.heats[rotorhazard.current_heat].heatname);
+			heat = rotorhazard.event.heats.find(obj => {return obj.id == rotorhazard.current_heat})
+			callout = callout.replace('%HEAT%', heat.displayname);
 
 			// %PILOTS% : Current pilot names
 			var pilots = '';

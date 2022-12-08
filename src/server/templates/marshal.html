@@ -194,19 +194,20 @@
 		});
 
 		socket.on('heat_data', function (msg) {
-			$("#reassign-heat-selector").empty();
-			for (var heat_i in msg.heats) {
-				var heats = msg.heats[heat_i];
-
-				if (heats.note) {
-					heat_name = heats.note
-				} else {
-					heat_name = __('Heat') + ' ' + heats.heat_id
-				}
-
-				$('#reassign-heat-selector').append('<option value="' + heat_i + '">' + heat_name + '</option>');
-			}
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
 		});
+
+		function display_heats() {
+			if (rotorhazard.event.heats) {
+				$("#reassign-heat-selector").empty();
+				for (var idx in rotorhazard.event.heats) {
+					var heat = rotorhazard.event.heats[idx];
+
+					$('#reassign-heat-selector').append('<option value="' + heat.id + '">' + heat.displayname + '</option>');
+				}
+			}
+		}
 
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {

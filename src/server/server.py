@@ -3801,7 +3801,6 @@ def emit_current_heat(**params):
             if led_manager.isEnabled():
                 heatNode_data[heatNode.node_index]['activeColor'] = led_manager.getDisplayColor(heatNode.node_index)
 
-
     heat_format = None
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
         heat_format = RHData.get_raceClass(heat_data.class_id).format_id
