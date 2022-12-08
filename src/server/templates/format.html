@@ -159,8 +159,8 @@
 				rotorhazard.event.pilots) {
 				$(".race_classes").empty();
 
+				var classlist = $('<ol>');
 				if (rotorhazard.event.classes.length) {
-					var classlist = $('<ol>');
 					for (var i in rotorhazard.event.classes) {
 						var race_class = rotorhazard.event.classes[i];
 
@@ -181,7 +181,7 @@
 						el.append(input);
 
 						var selectbox = $('<select class="set_race_class_format" id="class_format_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-						selectbox.append('<option value="0">' + __('-None-') + '</option>')
+						selectbox.append('<option value="0">' + __('-No Format-') + '</option>')
 						for (var j in rotorhazard.event.formats) {
 							selectbox.append('<option value="' + rotorhazard.event.formats[j].id +'">' + rotorhazard.event.formats[j].name + '</option>')
 						}
@@ -190,7 +190,7 @@
 						el.append(selectbox);
 
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-						selectbox.append('<option value="0">' + __('-None-') + '</option>')
+						selectbox.append('<option value="0">' + __('Use Format Ranking') + '</option>')
 						selectbox.append('<option value="1">Laps/Time</option>');
 						selectbox.append('<option value="2">Fastest Lap</option>');
 						selectbox.append('<option value="3">Fastest 3 Consecutive</option>');
@@ -231,16 +231,15 @@
 								heats_el.append(create_heat_ui(heat));
 							}
 						}
+						heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button></li>');
 						el.append(heats_el);
-
-						el.append('<button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button>');
 
 						el.appendTo(classlist);
 					}
 					classlist.appendTo($('.race_classes'));
 				}
 
-				display_unclassified_heats();
+				classlist.append(display_unclassified_heats());
 				freq.updateBlocks();
 				init_popup_generics();
 				update_class_selectors();
@@ -250,9 +249,9 @@
 		function display_unclassified_heats() {
 			if (rotorhazard.event.heats) {
 				$("#unclassified_heats").empty();
-				var unclassified = $('<div>');
+				var unclassified_el = $('<li>');
 				var header = $('<h3>' + __('Unclassified Heats') + '</h3>');
-				unclassified.append(header);
+				unclassified_el.append(header);
 
 				var heats_el = $('<ol class="heats">');
 				for (var i in rotorhazard.event.heats) {
@@ -262,10 +261,12 @@
 					}
 				}
 
-				unclassified.append(heats_el);
-				unclassified.append('<button class="add_heat" data-id="0">' + __('Add Heat') + '</button>');
+				heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="0">' + __('Add Heat') + '</button></li>');
+				unclassified_el.append(heats_el);
 
-				$('#unclassified_heats').append(unclassified);
+				unclassified_el.append(heats_el);
+
+				return unclassified_el;
 			}
 		}
 
@@ -435,7 +436,7 @@
 				slot_el.append(selectclass);
 
 				// rank
-				var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank***">');
+				var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank">'); // TODO: Proper labels
 				input.val(slot.seed_rank);
 				input.prop('disabled', heat.locked);
 				slot_el.append(input);
@@ -452,6 +453,9 @@
 					}
 				}
 				selectbox.val(heatpilot);
+				if (slot.method === 0 && !heatpilot) {
+					selectmethod.val(-1);
+				}
 				selectbox.prop('disabled', heat.locked);
 				pilot_el.append(selectbox);
 				slot_el.append(pilot_el);
@@ -460,7 +464,7 @@
 			el.append(nodelist);
 
 			var input = $('<input type="checkbox" id="heat-autofrequency-' + heat.id + '" class="set_heat_autofrequency" data-heat="' + heat.id + '">');
-			var label = $('<label>');
+			var label = $('<label class="auto_frequency">');
 			label.append(input);
 			label.append(__('Auto Frequency'));
 			input.prop('checked', heat.auto_frequency);
@@ -1411,18 +1415,6 @@
 		<h2 class="btn-warning">{{ __('Heats') }}</h2>
 	</div>
 	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
-				</div>
-				<select id="set_next_heat_behavior">
-					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
-					<option value="1">{{ __('Manually Switch Heats') }}</option>
-				</select>
-			</li>
-		</ol>
-
 		<h3>Heat generator</h3>
 		<ol class="form">
 			<li>
