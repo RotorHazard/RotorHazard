@@ -4,7 +4,6 @@
 #
 
 import logging
-from RHUtils import PILOT_ID_NONE
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import create_engine, MetaData, Table
@@ -14,8 +13,6 @@ import traceback
 import shutil
 import json
 import glob
-import gevent
-import monotonic
 import RHUtils
 import random
 from eventmanager import Evt
@@ -872,7 +869,11 @@ class RHData():
             heat.class_id = data['class']
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
+            #TODO: Consider best method to exit auto frequency and assign node indexes
             if not heat.auto_frequency:
+                for idx, slot in enumerate(self.get_heatNodes_by_heat(heat_id)):
+                    slot.node_index = None
+                self.commit()
                 for idx, slot in enumerate(self.get_heatNodes_by_heat(heat_id)):
                     slot.node_index = idx
         if 'pilot' in data:
@@ -1108,7 +1109,7 @@ class RHData():
             for slot in slots:
                 if slot.pilot_id:
                     used_frequencies = json.loads(self.get_pilot(slot.pilot_id).used_frequencies)
-                    for n_idx, node in enumerate(available_nodes):
+                    for node in available_nodes:
                         for f_idx, pilot_freq in enumerate(used_frequencies):
                             if node['frq']['f'] == pilot_freq['f']:
                                 node['matches'].append({

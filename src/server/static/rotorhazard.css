@@ -44,6 +44,7 @@ html {
 	margin: 0;
 	padding: 0;
 	overflow-x: hidden;
+	overflow-x: clip;
 	font-family: 'Barlow', sans-serif;
 	font-variant-numeric: tabular-nums;
 }
@@ -64,6 +65,7 @@ body {
 	min-height: 100vh;
 	max-width:100vw;
 	overflow-x: hidden;
+	overflow-x: clip;
 }
 
 body>* {
@@ -414,6 +416,7 @@ ol.form li+li {
 .popup-content {
 	padding: 0 1rem;
 	overflow: hidden;
+	overflow: clip;
 }
 
 .panel {
@@ -565,6 +568,7 @@ body>header {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
+	overflow: clip;
 }
 
 #timer-name img {
@@ -1130,6 +1134,7 @@ main.page-home {
 	color: #000;
 	white-space: nowrap;
 	overflow: hidden;
+	overflow: clip;
 	font-size: 1rem;
 	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
 	color: var(--contrast_1_high);
@@ -1191,6 +1196,7 @@ main.page-home {
 
 .race-results h4 {
 	overflow: hidden;
+	overflow: clip;
 }
 
 .race-header {
@@ -1401,7 +1407,6 @@ main.page-home {
 	}
 }
 
-/* .race_classes>ol, */
 .race_formats>ul {
 	padding: 0;
 	list-style: none;
@@ -1415,8 +1420,18 @@ main.page-home {
 	justify-content: center;
 }
 
+.race_classes>ol {
+	padding: 0;
+	list-style: none;
+}
+
+.race_classes>ol>li {
+	display: grid;
+}
+
 .race_classes h3 {
-	position: relative;
+	position: sticky;
+	top: 0;
 }
 
 .race_classes h3>button {
@@ -1425,7 +1440,6 @@ main.page-home {
 	font-size: 0.9rem;
 }
 
-/* .race_classes>ol>li, */
 .race_formats>ul>li {
 	width: calc(33.3333% - 0.5em);
 	margin: 0 0.25em 0.5em;
@@ -1472,6 +1486,7 @@ main.page-home {
 	border-top: none;
 	padding: 0 1em;
 	overflow: hidden;
+	overflow: clip;
 }
 
 @media (prefers-color-scheme: dark) {

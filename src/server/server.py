@@ -3595,57 +3595,36 @@ def emit_current_leaderboard(**params):
 
 def emit_heat_data(**params):
     '''Emits heat data.'''
-    current_heats = {}
+
+    heats = []
     for heat in RHData.get_heats():
-        heat_id = heat.id
-        note = heat.note
-        race_class = heat.class_id
+        current_heat = {}
+        current_heat['id'] = heat.id
+        current_heat['note'] = heat.note
+        current_heat['displayname'] = heat.displayname()
+        current_heat['class_id'] = heat.class_id
+        current_heat['order'] = heat.order
+        current_heat['status'] = heat.status
+        current_heat['auto_frequency'] = heat.auto_frequency
 
-        heatnodes = RHData.get_heatNodes_by_heat(heat.id)
-        pilots = []
-        for heatnode in heatnodes:
-            pilots.append(heatnode.pilot_id)
+        current_heat['slots'] = []
+        heatNodes = RHData.get_heatNodes_by_heat(heat.id)
+        for heatNode in heatNodes:
+            current_node = {}
+            current_node['id'] = heatNode.id
+            current_node['node_index'] = heatNode.node_index
+            current_node['pilot_id'] = heatNode.pilot_id
+            current_node['color'] = heatNode.color
+            current_node['method'] = heatNode.method
+            current_node['seed_rank'] = heatNode.seed_rank
+            current_node['seed_id'] = heatNode.seed_id
+            current_heat['slots'].append(current_node)
 
-        has_race = RHData.savedRaceMetas_has_heat(heat.id)
-
-        if has_race:
-            locked = True
-        else:
-            locked = False
-
-        current_heats[heat_id] = {
-            'pilots': pilots,
-            'note': note,
-            'heat_id': heat_id,
-            'class_id': race_class,
-            'locked': locked}
-
-    current_classes = []
-    for race_class in RHData.get_raceClasses():
-        current_class = {}
-        current_class['id'] = race_class.id
-        current_class['name'] = race_class.name
-        current_class['description'] = race_class.description
-        current_classes.append(current_class)
-
-    pilots = []
-    for pilot in RHData.get_pilots():
-        pilots.append({
-            'pilot_id': pilot.id,
-            'callsign': pilot.callsign,
-            'name': pilot.name
-            })
-
-    if RHData.get_option('pilotSort') == 'callsign':
-        pilots.sort(key=lambda x: (x['callsign'], x['name']))
-    else:
-        pilots.sort(key=lambda x: (x['name'], x['callsign']))
+        current_heat['locked'] = bool(RHData.savedRaceMetas_has_heat(heat.id))
+        heats.append(current_heat)
 
     emit_payload = {
-        'heats': current_heats,
-        'pilot_data': pilots,
-        'classes': current_classes,
-        'pilotSort': RHData.get_option('pilotSort'),
+        'heats': heats,
     }
     if ('nobroadcast' in params):
         emit('heat_data', emit_payload)
@@ -3687,37 +3666,53 @@ def emit_class_data(**params):
         raceformat['start_behavior'] = race_format.start_behavior
         formats.append(raceformat)
 
-    heats = []
-    for heat in RHData.get_heats():
-        current_heat = {}
-        current_heat['id'] = heat.id
-        current_heat['note'] = heat.note
-        current_heat['displayname'] = heat.displayname()
-        current_heat['class_id'] = heat.class_id
-        current_heat['order'] = heat.order
-        current_heat['status'] = heat.status
-        current_heat['auto_frequency'] = heat.auto_frequency
-
-        current_heat['slots'] = []
-        heatNodes = RHData.get_heatNodes_by_heat(heat.id)
-        for heatNode in heatNodes:
-            current_node = {}
-            current_node['id'] = heatNode.id
-            current_node['node_index'] = heatNode.node_index
-            current_node['pilot_id'] = heatNode.pilot_id
-            current_node['color'] = heatNode.color
-            current_node['method'] = heatNode.method
-            current_node['seed_rank'] = heatNode.seed_rank
-            current_node['seed_id'] = heatNode.seed_id
-            current_heat['slots'].append(current_node)
-
-        current_heat['locked'] = bool(RHData.savedRaceMetas_has_heat(heat.id))
-        heats.append(current_heat)
-
     emit_payload = {
         'classes': current_classes,
         'formats': formats,
-        'heats': heats
+    }
+    if ('nobroadcast' in params):
+        emit('class_data', emit_payload)
+    elif ('noself' in params):
+        emit('class_data', emit_payload, broadcast=True, include_self=False)
+    else:
+        SOCKET_IO.emit('class_data', emit_payload)
+
+def emit_format_data(**params):
+    '''Emits class data.'''
+    current_classes = []
+    for race_class in RHData.get_raceClasses():
+        current_class = {}
+        current_class['id'] = race_class.id
+        current_class['name'] = race_class.name
+        current_class['displayname'] = race_class.displayname()
+        current_class['description'] = race_class.description
+        current_class['format'] = race_class.format_id
+        current_class['win_condition'] = race_class.win_condition
+        current_class['rounds'] = race_class.rounds
+        current_class['order'] = race_class.order
+        current_class['locked'] = RHData.savedRaceMetas_has_raceClass(race_class.id)
+        current_classes.append(current_class)
+
+    formats = []
+    for race_format in RHData.get_raceFormats():
+        raceformat = {}
+        raceformat['id'] = race_format.id
+        raceformat['name'] = race_format.name
+        raceformat['race_mode'] = race_format.race_mode
+        raceformat['race_time_sec'] = race_format.race_time_sec
+        raceformat['lap_grace_sec'] = race_format.lap_grace_sec
+        raceformat['staging_fixed_tones'] = race_format.staging_fixed_tones
+        raceformat['start_delay_min'] = race_format.start_delay_min_ms
+        raceformat['start_delay_max'] = race_format.start_delay_max_ms
+        raceformat['number_laps_win'] = race_format.number_laps_win
+        raceformat['win_condition'] = race_format.win_condition
+        raceformat['team_racing_mode'] = race_format.team_racing_mode
+        raceformat['start_behavior'] = race_format.start_behavior
+        formats.append(raceformat)
+
+    emit_payload = {
+        'classes': current_classes,
+        'formats': formats, #TODO: break away format data
     }
     if ('nobroadcast' in params):
         emit('class_data', emit_payload)
@@ -3760,7 +3755,8 @@ def emit_pilot_data(**params):
             pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
 
     emit_payload = {
-        'pilots': pilots_list
+        'pilots': pilots_list,
+        'pilotSort': RHData.get_option('pilotSort')
     }
     if ('nobroadcast' in params):
         emit('pilot_data', emit_payload)

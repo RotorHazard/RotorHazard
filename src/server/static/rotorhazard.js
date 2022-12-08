@@ -994,6 +994,10 @@ var rotorhazard = {
 		1: 'One',
 		0: 'None',
 	},
+	//
+	event: {}, // race data
+	options: {}, // server options
+
 	language_strings: {},
 	interface_language: '',
 	// text-to-speech callout options
@@ -1998,7 +2002,7 @@ var freq = {
 	updateBlock: function(fObj, node_idx) {
 		// populate channel block
 		var channelBlock = $('.channel-block[data-node="' + node_idx + '"]');
-		if (fObj.frequency == 0) {
+		if (fObj === null || fObj.frequency == 0) {
 			channelBlock.children('.ch').html('—');
 			channelBlock.children('.fr').html('');
 		} else {
@@ -2011,6 +2015,7 @@ var freq = {
 		for (var i in rotorhazard.nodes) {
 			this.updateBlock(rotorhazard.nodes[i].fObj, i);
 		}
+		this.updateBlock(null, null);
 	}
 }
 
