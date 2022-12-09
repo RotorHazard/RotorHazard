@@ -7,6 +7,15 @@ import random
 import math
 from monotonic import monotonic
 
+def registerHandlers(args):
+    if 'registerFn' in args:
+        for led_effect in discover():
+            args['registerFn'](led_effect)
+
+def initialize(**kwargs):
+    if 'Events' in kwargs:
+        kwargs['Events'].on('LED_Initialize', 'LED_register_strip', registerHandlers, {}, 75, True)
+
 def leaderProxy(args):
     if 'effectFn' in args:
         if 'results' in args and args['results']:

@@ -7,6 +7,14 @@ import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from data_export import DataExporter
 
+def registerHandlers(args):
+    if 'registerFn' in args:
+        for exporter in discover():
+            args['registerFn'](exporter)
+
+def initialize(**kwargs):
+    if 'Events' in kwargs:
+        kwargs['Events'].on('Export_Initialize', 'Export_register_JSON', registerHandlers, {}, 75, True)
 
 def write_json(data):
     payload = json.dumps(data, indent='\t', cls=AlchemyEncoder)

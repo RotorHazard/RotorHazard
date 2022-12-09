@@ -1632,7 +1632,7 @@ def on_export_database_file(data):
                 }
                 emit('exported_data', emit_payload)
 
-                Events.trigger(Evt.DATABASE_EXPORT)
+                Events.trigger(Evt.DATABASE_EXPORT, export_result)
             except Exception:
                 logger.exception("Error downloading export file")
                 emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
@@ -3244,8 +3244,8 @@ def emit_action_setup(**params):
             effect_list = {}
             for effect in effects:
                 effect_list[effect] = {
-                    'name': __(effects[effect]['name']),
-                    'fields': effects[effect]['fields']
+                    'name': __(effects[effect].label),
+                    'fields': effects[effect].fields
                 }
 
             emit_payload = {
@@ -5157,6 +5157,25 @@ if RHUtils.isVersionPython2():
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
 
+# load plugins
+plugin_modules = []
+if os.path.isdir('./plugins'):
+    dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
+    for name in dirs:
+        try:
+            plugin_module = importlib.import_module('plugins.' + name)
+            plugin_modules.append(plugin_module)
+            logger.info('Loaded plugin module {0}'.format(name))
+        except ImportError as ex:
+            logger.warning('Plugin module {0} not imported (not supported or may require additional dependencies)'.format(name))
+            logger.debug(ex)
+else:
+    logger.warning('No plugins directory found.')
+
+for plugin in plugin_modules:
+    if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
+        plugin.initialize(Events=Events)
+
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
     logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
@@ -5405,20 +5424,12 @@ if strip:
     try:
         strip.begin()
         led_manager = LEDEventManager(Events, strip, RHData, RACE, Language, INTERFACE)
-        led_effects = Plugins(prefix='led_handler')
-        led_effects.discover()
-        for led_effect in led_effects:
-            led_manager.registerEffect(led_effect)
         init_LED_effects()
     except:
         logger.exception("Error initializing LED support")
         led_manager = NoLEDManager()
 elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
-    led_manager = ClusterLEDManager()
-    led_effects = Plugins(prefix='led_handler')
-    led_effects.discover()
-    for led_effect in led_effects:
-        led_manager.registerEffect(led_effect)
+    led_manager = ClusterLEDManager(Events)
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
@@ -5430,7 +5441,7 @@ if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
 
 # data exporters
-export_manager = DataExportManager(RHData, PageCache, Language)
+export_manager = DataExportManager(RHData, PageCache, Language, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

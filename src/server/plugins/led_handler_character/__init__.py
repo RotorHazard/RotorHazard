@@ -12,6 +12,15 @@ import gevent
 from PIL import Image, ImageFont, ImageDraw
 from monotonic import monotonic
 
+def registerHandlers(args):
+    if 'registerFn' in args:
+        for led_effect in discover():
+            args['registerFn'](led_effect)
+
+def initialize(**kwargs):
+    if 'Events' in kwargs:
+        kwargs['Events'].on('LED_Initialize', 'LED_register_character', registerHandlers, {}, 75, True)
+
 def dataHandler(args):
     if 'data' in args:
         if args['data'] == 'staging':
