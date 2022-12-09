@@ -99,10 +99,10 @@ class HeatNode(DB.Model):
         return '<HeatNode %r>' % self.id
 
 class ProgramMethod:
+    NONE = -1
     ASSIGN = 0
     HEAT_RESULT = 1
     CLASS_RESULT = 2
-    NONE = 3
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'

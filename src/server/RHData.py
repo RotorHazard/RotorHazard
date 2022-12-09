@@ -778,6 +778,8 @@ class RHData():
             if 'auto_frequency' in init:
                 new_heat.auto_frequency = init['auto_frequency']
 
+            defaultMethod = init['defaultMethod'] if 'defaultMethod' in init else ProgramMethod.ASSIGN
+
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
         self._Database.DB.session.refresh(new_heat)
@@ -788,7 +790,7 @@ class RHData():
                 heat_id=new_heat.id,
                 node_index=node_index,
                 pilot_id=RHUtils.PILOT_ID_NONE,
-                method=0,
+                method=defaultMethod,
                 seed_rank=None,
                 seed_id=None
             )
@@ -800,7 +802,7 @@ class RHData():
 
         self.commit()
 
-        self._Events.trigger(Evt.HEAT_DUPLICATE, {
+        self._Events.trigger(Evt.HEAT_ADD, {
             'heat_id': new_heat.id,
             })
 

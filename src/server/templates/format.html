@@ -15,6 +15,7 @@
 		'team_racing_mode',
 		'backups_list',
 		'exporter_list',
+		'heatgenerator_list',
 	];
 
 	var heat_to_unlock = null;
@@ -386,8 +387,8 @@
 			// nodes
 			if (heat.auto_frequency) {
 				heat.slots.sort((a,b) => {
-					if (a.method === -1) return 1;
-					if (b.method === -1) return -1;
+					if (a.method === -1 || (a.method === 0 && !a.pilot_id)) return 1;
+					if (b.method === -1 || (b.method === 0 && !b.pilot_id)) return -1;
 					return (a.method > b.method) ? 1 : -1
 					});
 			} else {
@@ -1097,6 +1098,35 @@
 			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
 
+		socket.on('heatgenerator_list', function (msg) {
+			$('#generator_list').empty();
+			if ('generators' in msg && msg.generators.length) {
+				msg.generators.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
+				for (idx in msg.generators) {
+					var ex = msg.generators[idx];
+					$('#generator_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
+				}
+				$('#generator_list').prop('disabled', false);
+				$('#generate_heats_2').prop('disabled', false);
+			} else {
+				$('#generator_list').append('<option value="-">' + __('No generators') + '</option>');
+				$('#generator_list').prop('disabled', true);
+				$('#generate_heats_2').prop('disabled', true);
+			}
+		});
+
+		$('button#generate_heats_2').click(function (event) {
+			var data = {
+				input_class: parseInt($('#generator_input_class').val()),
+				output_class: parseInt($('#generator_output_class').val()),
+				suffix: $('#generator_suffix').val(),
+				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
+				generator: $('#generator_list').val()
+			};
+			socket.emit('generate_heats_v2', data);
+			return false;
+		});
+
 		socket.on('set_option', function (msg) {
 			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
 		});
@@ -1412,10 +1442,9 @@
 <!--Heats list for editing-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2 class="btn-warning">{{ __('Heats') }}</h2>
+		<h2>{{ __('Heat Generators') }}</h2>
 	</div>
 	<div class="panel-content">
-		<h3>Heat generator</h3>
 		<ol class="form">
 			<li>
 				<div class="label-block">
@@ -1425,13 +1454,13 @@
 					<option>{{ __('Loading...') }}</option>
 				</select>
 			</li>
-			<li>
+			<li style="display: none">
 				<div class="label-block">
 					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
 				</div>
 				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
 			</li>
-			<li>
+			<li style="display: none">
 				<div class="label-block">
 					<label for="generator_suffix">{{ __('Suffix') }}</label>
 				</div>
@@ -1447,7 +1476,13 @@
 			</li>
 		</ol>
 		<div class="control-set">
-			<button id="generate_heats">{{ __('Generate Heats') }}</button>
+			<select id="generator_list" disabled="disabled">
+				<option value="-">{{ __('No Generators') }}</option>
+			</select>
+			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
+		</div>
+		<div class="control-set">
+			<button class="btn-warning" style="display: none" id="generate_heats">{{ __('Generate Heats (legacy)') }}</button>
 		</div>
 
 		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">

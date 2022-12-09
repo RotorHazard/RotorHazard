@@ -87,6 +87,7 @@ from Sensors import Sensors  #pylint: disable=import-error
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus, StagingTones
 from data_export import DataExportManager
+from HeatGenerator import HeatGeneratorManager
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -897,6 +898,8 @@ def on_load_data(data):
             on_list_backups()
         elif load_type == 'exporter_list':
             emit_exporter_list()
+        elif load_type == 'heatgenerator_list':
+            emit_heatgenerator_list()
         elif load_type == 'cluster_status':
             emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -1644,6 +1647,35 @@ def on_export_database_file(data):
 
     logger.error('Data exporter "{0}" not found'.format(exporter))
     emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
+
+@SOCKET_IO.on('generate_heats_v2')
+@catchLogExceptionsWrapper
+def on_generate_heats_v2(data):
+    '''Run the selected Generator'''
+    generate_args = {
+        'input_class': int(data['input_class']),
+        'output_class': int(data['output_class']),
+        'suffix': data['suffix'],
+        'pilots_per_heat': int(data['pilots_per_heat']),
+        }
+    generator = data['generator']
+
+    if heatgenerate_manager.hasGenerator(generator):
+        # do export
+        logger.info('Generating heats via {0}'.format(generator))
+        generate_result = heatgenerate_manager.generate(generator, generate_args)
+
+        if generate_result != False:
+            emit_heat_data()
+            Events.trigger(Evt.HEAT_GENERATE)
+        else:
+            logger.warning('Failed generating heats: generator returned no data')
+            emit_priority_message(__('Heat generation failed. (See log)'), False, nobroadcast=True)
+
+        return
+
+    logger.error('Data exporter "{0}" not found'.format(generator))
+    emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)    
 
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
@@ -4155,6 +4187,21 @@ def emit_exporter_list():
 
     emit('exporter_list', emit_payload)
 
+def emit_heatgenerator_list():
+    '''List Heat Generators'''
+
+    emit_payload = {
+        'generators': []
+    }
+
+    for name, exp in heatgenerate_manager.getGenerators().items():
+        emit_payload['generators'].append({
+            'name': name,
+            'label': exp.label
+        })
+
+    emit('heatgenerator_list', emit_payload)
+
 #
 # Program Functions
 #
@@ -5442,6 +5489,9 @@ if vrx_controller:
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language, Events)
+
+# heat generators
+heatgenerate_manager = HeatGeneratorManager(RHData, Results, PageCache, Language, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
