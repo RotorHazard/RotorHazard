@@ -9,6 +9,15 @@ from led_event_manager import LEDEffect, Color, ColorVal
 import gevent
 from PIL import Image, ImageDraw
 
+def registerHandlers(args):
+    if 'registerFn' in args:
+        for led_effect in discover():
+            args['registerFn'](led_effect)
+
+def initialize(**kwargs):
+    if 'Events' in kwargs:
+        kwargs['Events'].on('LED_Initialize', 'LED_register_graph', registerHandlers, {}, 75, True)
+
 def rssiGraph(args):
     if 'strip' in args:
         strip = args['strip']

@@ -52,6 +52,10 @@ class LEDEventManager:
                 'recommended': [Evt.ALL]
             }))
 
+        self.Events.trigger('LED_Initialize', {
+            'registerFn': self.registerEffect
+            })
+
     def isEnabled(self):
         return True
 
@@ -239,8 +243,10 @@ class NoLEDManager():
 class ClusterLEDManager():
     eventEffects = {}
 
-    def __init__(self):
-        pass
+    def __init__(self, Events):
+        Events.trigger('LED_Initialize', {
+            'registerFn': self.registerEffect
+            })
 
     def isEnabled(self):
         return False
