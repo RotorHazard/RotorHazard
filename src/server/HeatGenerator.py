@@ -57,6 +57,7 @@ class HeatGeneratorManager():
 
         heat_id_mapping = {}
         for h_idx, heat_plan in enumerate(generated_heats):
+            # TODO: Provide combined heat+slot fn  
             new_heat = self._RHData.add_heat(init={
                 'class_id': output_class,
                 'note': heat_plan['name'],
@@ -64,7 +65,7 @@ class HeatGeneratorManager():
                 'defaultMethod': ProgramMethod.NONE
                 })
             heat_id_mapping[h_idx] = new_heat.id
-            
+
             heat_slots = self._RHData.get_heatNodes_by_heat(new_heat.id)
 
             if len(heat_slots) < len(heat_plan['slots']):

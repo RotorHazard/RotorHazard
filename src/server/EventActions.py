@@ -27,7 +27,7 @@ class EventActions:
     def getRegisteredEffects(self):
         return self.effects
 
-    def loadActions(self, args=None):
+    def loadActions(self, _args=None):
         actionSetting = self._RHData.get_option('actions')
         if actionSetting:
             try:

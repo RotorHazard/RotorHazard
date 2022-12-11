@@ -9,7 +9,8 @@ from flask_sqlalchemy import SQLAlchemy
 
 DB = SQLAlchemy()
 
-def __(*args): # pylint: disable=unused-argument -- Language placeholder (Overwritten after module init)
+# Language placeholder (Overwritten after module init)
+def __(*_args):
     pass
 
 #

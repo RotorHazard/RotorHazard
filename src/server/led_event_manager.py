@@ -37,7 +37,7 @@ class LEDEventManager:
         self.INTERFACE = INTERFACE
 
         # hold
-        self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None, {
+        self.registerEffect(LEDEffect("hold", "Hold", lambda *_args: None, {
                 'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
                 'exclude': [Evt.STARTUP],
                 'recommended': [Evt.ALL]
@@ -46,7 +46,7 @@ class LEDEventManager:
             }))
 
         # do nothing
-        self.registerEffect(LEDEffect("none", "No Effect", lambda *args: None, {
+        self.registerEffect(LEDEffect("none", "No Effect", lambda *_args: None, {
                 'manual': False,
                 'exclude': [Evt.STARTUP],
                 'recommended': [Evt.ALL]
@@ -237,8 +237,8 @@ class NoLEDManager():
     def isEnabled(self):
         return False
 
-    def __getattr__(self, *args, **kwargs):
-        def nothing(*args, **kwargs):
+    def __getattr__(self, *_args, **_kwargs):
+        def nothing(*_args, **_kwargs):
             return False
         return nothing
 
@@ -261,8 +261,8 @@ class ClusterLEDManager():
     def getRegisteredEffects(self):
         return self.eventEffects
 
-    def __getattr__(self, *args, **kwargs):
-        def nothing(*args, **kwargs):
+    def __getattr__(self, *_args, **_kwargs):
+        def nothing(*_args, **_kwargs):
             return False
         return nothing
 

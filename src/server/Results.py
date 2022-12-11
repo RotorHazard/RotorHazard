@@ -1005,15 +1005,13 @@ def calc_special_class_ranking_leaderboard(rhDataObj, race_class, rounds=None):
             new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
             new_pilot_result['average_lap'] = RHUtils.time_format(new_pilot_result['average_lap_raw'], timeFormat)
 
-            '''
-            result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
-            result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
-            result_pilot['consecutives_raw'] = result_pilot['consecutives']
-            result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
-            '''
-                
+            # result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
+            # result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
+            # result_pilot['consecutives_raw'] = result_pilot['consecutives']
+            # result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
+
             leaderboard.append(new_pilot_result)
-                
+
         if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
             # Sort by laps time
             leaderboard = sorted(leaderboard, key = lambda x: (
@@ -1057,13 +1055,6 @@ def calc_special_class_ranking_leaderboard(rhDataObj, race_class, rounds=None):
                     
         return leaderboard
     return False
-
-            
-    # split to pilots
-    # rank heats
-    # keep X heats
-    # collapse to leaderboard
-    pass
 
 def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
     race_format = raceObj.format
@@ -1286,7 +1277,7 @@ def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
+def check_win_first_to_x(raceObj, interfaceObj, **_kwargs):
     race_format = raceObj.format
     if race_format.number_laps_win: # must have laps > 0 to win
         leaderboard = raceObj.results['by_race_time']
@@ -1623,7 +1614,7 @@ def check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
         'status': WinStatus.NONE
     }
 
-def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
+def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **_kwargs):
     race_format = raceObj.format
     if race_format.number_laps_win: # must have laps > 0 to win
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_race_time']

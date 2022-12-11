@@ -11,7 +11,6 @@ if new data becomes available during the build process.
 import logging
 from monotonic import monotonic
 from eventmanager import Evt
-import json
 import Results
 import RHUtils
 import gevent
@@ -73,7 +72,6 @@ class PageCache:
         }
         logger.debug('T%d: Result data build started', timing['start'])
 
-        expires = monotonic() + self._CACHE_TIMEOUT
         error_flag = False
         results = None
 
@@ -117,7 +115,7 @@ class PageCache:
                                 'node_index': pilotrace.node_index,
                                 'laps': laps
                             })
-                        
+
                         output = Results.get_results_race(self._RHData, heat, race)
                         results = output['data']
                         if not output['result']:
@@ -135,7 +133,7 @@ class PageCache:
                     results = output['data']
                     if not output['result']:
                         error_flag = True
-                        logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.id, race.round_id)
+                        logger.warning('T%d: Cache build timed out: Heat %d', timing['start'], heat.id)
 
                     heats[heat.id] = {
                         'heat_id': heat.id,
