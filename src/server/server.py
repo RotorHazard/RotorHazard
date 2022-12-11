@@ -1,4 +1,5 @@
 '''RotorHazard server script'''
+from jsonschema._types import is_integer
 RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
 SERVER_API = 37 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -1653,8 +1654,8 @@ def on_export_database_file(data):
 def on_generate_heats_v2(data):
     '''Run the selected Generator'''
     generate_args = {
-        'input_class': int(data['input_class']),
-        'output_class': int(data['output_class']),
+        'input_class': data['input_class'],
+        'output_class': data['output_class'],
         'suffix': data['suffix'],
         'pilots_per_heat': int(data['pilots_per_heat']),
         }

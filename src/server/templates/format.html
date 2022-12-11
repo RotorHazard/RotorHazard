@@ -123,7 +123,7 @@
 			var output_val = $('#generator_output_class').val();
 
 			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
-			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
+			$('#generator_output_class').empty().append($('<option value="">' + __('New Class') + '</option>'));
 
 			if (class_data.classes.length) {
 				for (var i in class_data.classes) {
@@ -139,6 +139,8 @@
 				}
 			}
 
+			$('#generator_output_class').append($('<option value="0">' + __('Unclassified') + '</option>'));
+
 			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
 				$('#generator_input_class').val(input_val);
 			}
@@ -146,6 +148,7 @@
 				$('#generator_output_class').val(output_val);
 			}
 		}
+
 
 		socket.on('class_data', function (msg) {
 			rotorhazard.event.classes = msg.classes;

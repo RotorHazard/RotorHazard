@@ -24,7 +24,7 @@ class HeatGeneratorManager():
     def registerGenerator(self, generator):
         if hasattr(generator, 'name'):
             if generator.name in self.generators:
-                logger.warning('Overwriting data generator "{0}"'.format(generator['name']))
+                logger.warning('Overwriting data generator "{0}"'.format(generator.name))
 
             self.generators[generator.name] = generator
         else:
