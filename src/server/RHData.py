@@ -1052,31 +1052,37 @@ class RHData():
                 logger.debug('Seeding Slot {} from Heat {}'.format(slot.id, slot.seed_id))
                 seed_heat = self.get_heat(slot.seed_id)
 
-                output = Results.get_results_heat(self, seed_heat)
-                if output['result']:
-                    results = output['data'][output['data']['meta']['primary_leaderboard']]
-                    if slot.seed_rank - 1 < len(results):
-                        slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                if seed_heat:
+                    output = Results.get_results_heat(self, seed_heat)
+                    if output['result']:
+                        results = output['data'][output['data']['meta']['primary_leaderboard']]
+                        if slot.seed_rank - 1 < len(results):
+                            slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                        else:
+                            slot.pilot_id = RHUtils.PILOT_ID_NONE
                     else:
-                        slot.pilot_id = RHUtils.PILOT_ID_NONE
+                        logger.warning('Cancelling heat calc: Cache build failed')
+                        return False
                 else:
-                    logger.warning('Cancelling heat calc: Cache build timed out')
-                    return False
+                    logger.warning("Can't seed from heat {}: does not exist".format(slot.seed_id))
 
             elif slot.method == ProgramMethod.CLASS_RESULT:
                 logger.debug('Seeding Slot {} from Class {}'.format(slot.id, slot.seed_id))
                 seed_class = self.get_raceClass(slot.seed_id)
 
-                output = Results.get_results_race_class(self, seed_class)
-                if output['result']:
-                    results = output['data'][output['data']['meta']['primary_leaderboard']]
-                    if slot.seed_rank - 1 < len(results):
-                        slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                if seed_class:
+                    output = Results.get_results_race_class(self, seed_class)
+                    if output['result']:
+                        results = output['data'][output['data']['meta']['primary_leaderboard']]
+                        if slot.seed_rank - 1 < len(results):
+                            slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                        else:
+                            slot.pilot_id = RHUtils.PILOT_ID_NONE
                     else:
-                        slot.pilot_id = RHUtils.PILOT_ID_NONE
+                        logger.warning('Cancelling heat calc: Cache build failed')
+                        return False
                 else:
-                    logger.warning('Cancelling heat calc: Cache build timed out')
-                    return False
+                    logger.warning("Can't seed from class {}: does not exist".format(slot.seed_id))
 
             logger.debug('Pilot is {}'.format(slot.pilot_id))
 

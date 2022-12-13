@@ -4228,8 +4228,6 @@ def bracket_2e_16_mgp_next(RHData, Results, PageCache, Language, generate_args=N
 
     return heats
 
-#TODO: FAI 2e 64
-
 def discover(*args, **kwargs):
     # returns array of exporters with default arguments
     return [

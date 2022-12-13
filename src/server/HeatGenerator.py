@@ -3,6 +3,7 @@
 #
 
 import logging
+import random
 from Database import ProgramMethod
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,8 @@ class HeatGeneratorManager():
             return False
 
     def apply(self, generated_heats, generate_args):
+        pilot_pool = []
+        filled_pool = False
         input_class = generate_args['input_class'] if 'input_class' in generate_args else None 
         output_class = generate_args['output_class'] if 'output_class' in generate_args else None
 
@@ -84,9 +87,21 @@ class HeatGeneratorManager():
                             data['method'] = ProgramMethod.CLASS_RESULT
                             data['seed_class_id'] = input_class
                         else:
-                            # random seeding!
-                            data['method'] = ProgramMethod.ASSIGN
-                            data['pilot'] = 0 # TODO: Do random seeding
+                            # randomly seed 
+                            if filled_pool == False:
+                                for pilot in self._RHData.get_pilots():
+                                    pilot_pool.append(pilot.id)
+
+                                random.shuffle(pilot_pool)
+                                filled_pool = True
+
+                            if len(pilot_pool):
+                                data['method'] = ProgramMethod.ASSIGN
+                                data['pilot'] = pilot_pool.pop()
+                            else:
+                                logger.info('Unable to seed pilot: no available pilots left to seed')
+                                data['method'] = ProgramMethod.NONE
+
                     elif seed_slot['method'] == ProgramMethod.HEAT_RESULT:
                         data['method'] = ProgramMethod.HEAT_RESULT
                         data['seed_heat_id'] = heat_id_mapping[seed_slot['seed_heat_id']]
@@ -97,6 +112,9 @@ class HeatGeneratorManager():
                 heat_alterations.append(data)
 
             self._RHData.alter_heatNodes_fast(heat_alterations)
+
+            if filled_pool and len(pilot_pool):
+                logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
 
 class HeatGenerator():
     def __init__(self, name, label, generatorFn):
