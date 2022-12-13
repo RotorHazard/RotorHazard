@@ -779,6 +779,8 @@ class RHData():
                 new_heat.auto_frequency = init['auto_frequency']
 
             defaultMethod = init['defaultMethod'] if 'defaultMethod' in init else ProgramMethod.ASSIGN
+        else:
+            defaultMethod = ProgramMethod.ASSIGN
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -1213,6 +1215,37 @@ class RHData():
             return heatNode.pilot_id
         else:
             return None
+
+    def alter_heatNodes_fast(self, data):
+        # Alters heatNodes quickly, in batch
+        # !! Unsafe for general use. Intentionally light type checking,    !!
+        # !! DOES NOT trigger events, clear results, or update cached data !! 
+
+        for slot_data in data:
+            slot_id = slot_data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+                
+            if 'pilot' in slot_data:
+                slot.pilot_id = slot_data['pilot']
+            if 'method' in slot_data:
+                slot.method = slot_data['method']
+                slot.seed_id = None
+            if 'seed_heat_id' in slot_data:
+                if slot.method == ProgramMethod.HEAT_RESULT:
+                    slot.seed_id = slot_data['seed_heat_id']
+                else:
+                    logger.warning('Rejecting attempt to set Heat seed id: method does not match')
+            if 'seed_class_id' in slot_data:
+                if slot.method == ProgramMethod.CLASS_RESULT:
+                    slot.seed_id = slot_data['seed_class_id']
+                else:
+                    logger.warning('Rejecting attempt to set Class seed id: method does not match')
+            if 'seed_rank' in slot_data:
+                slot.seed_rank = slot_data['seed_rank']
+
+        self.commit()
+
+        return True
 
     # Race Classes
     def get_raceClass(self, raceClass_id):

@@ -57,7 +57,6 @@ class HeatGeneratorManager():
 
         heat_id_mapping = {}
         for h_idx, heat_plan in enumerate(generated_heats):
-            # TODO: Provide combined heat+slot fn  
             new_heat = self._RHData.add_heat(init={
                 'class_id': output_class,
                 'note': heat_plan['name'],
@@ -66,6 +65,7 @@ class HeatGeneratorManager():
                 })
             heat_id_mapping[h_idx] = new_heat.id
 
+            heat_alterations = []
             heat_slots = self._RHData.get_heatNodes_by_heat(new_heat.id)
 
             if len(heat_slots) < len(heat_plan['slots']):
@@ -86,7 +86,7 @@ class HeatGeneratorManager():
                         else:
                             # random seeding!
                             data['method'] = ProgramMethod.ASSIGN
-                            data['pilot'] = None # TODO: Do random seeding
+                            data['pilot'] = 0 # TODO: Do random seeding
                     elif seed_slot['method'] == ProgramMethod.HEAT_RESULT:
                         data['method'] = ProgramMethod.HEAT_RESULT
                         data['seed_heat_id'] = heat_id_mapping[seed_slot['seed_heat_id']]
@@ -94,7 +94,9 @@ class HeatGeneratorManager():
                         logger.error('Not a supported seed method: {}'.format(seed_slot['method']))
                         return False
 
-                self._RHData.alter_heat(data)
+                heat_alterations.append(data)
+
+            self._RHData.alter_heatNodes_fast(heat_alterations)
 
 class HeatGenerator():
     def __init__(self, name, label, generatorFn):

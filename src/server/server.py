@@ -1668,6 +1668,7 @@ def on_generate_heats_v2(data):
 
         if generate_result != False:
             emit_heat_data()
+            emit_class_data()
             Events.trigger(Evt.HEAT_GENERATE)
         else:
             logger.warning('Failed generating heats: generator returned no data')
