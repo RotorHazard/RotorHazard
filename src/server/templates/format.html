@@ -158,9 +158,9 @@
 		});
 
 		function display_classes() {
-			if (rotorhazard.event.classes &&
-				rotorhazard.event.heats &&
-				rotorhazard.event.pilots) {
+			if (typeof rotorhazard.event.classes != "undefined" &&
+				typeof rotorhazard.event.heats != "undefined" &&
+				typeof rotorhazard.event.pilots != "undefined") {
 				$(".race_classes").empty();
 
 				var classlist = $('<ol>');
@@ -240,10 +240,10 @@
 
 						el.appendTo(classlist);
 					}
-					classlist.appendTo($('.race_classes'));
 				}
 
 				classlist.append(display_unclassified_heats());
+				classlist.appendTo($('.race_classes'));
 				freq.updateBlocks();
 				init_popup_generics();
 				update_class_selectors();

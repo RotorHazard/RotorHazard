@@ -45,7 +45,7 @@ class HeatGeneratorManager():
             self.apply(generated_heats, generate_args)
             return True
         else:
-            logger.error('Generation stage failed or refused to produce output') # TODO: provide better context
+            logger.error('Generation stage failed or refused to produce output: see log')
             return False
 
     def apply(self, generated_heats, generate_args):
@@ -114,14 +114,18 @@ class HeatGeneratorManager():
 
             self._RHData.alter_heatNodes_fast(heat_alterations)
 
-            if filled_pool and len(pilot_pool):
-                logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
+        if filled_pool and len(pilot_pool):
+            logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
 
 class HeatGenerator():
-    def __init__(self, name, label, generatorFn):
+    def __init__(self, name, label, generatorFn, defaultArgs=None):
         self.name = name
         self.label = label
         self.generator = generatorFn
+        self.defaultArgs = defaultArgs
 
     def generate(self, RHData, Results, PageCache, generate_args=None):
+        if generate_args and self.defaultArgs:
+            generate_args = {**self.defaultArgs, **generate_args}
+
         return self.generator(RHData, Results, PageCache, generate_args)

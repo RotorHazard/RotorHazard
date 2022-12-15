@@ -1653,11 +1653,18 @@ def on_export_database_file(data):
 @catchLogExceptionsWrapper
 def on_generate_heats_v2(data):
     '''Run the selected Generator'''
+    available_nodes = 0
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
+    for node_index in range(RACE.num_nodes):
+        if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+            available_nodes += 1
+
     generate_args = {
         'input_class': data['input_class'],
         'output_class': data['output_class'],
         'suffix': data['suffix'],
         'pilots_per_heat': int(data['pilots_per_heat']),
+        'available_nodes': available_nodes
         }
     generator = data['generator']
 

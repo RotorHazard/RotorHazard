@@ -23,10 +23,42 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def ladder(_RHData, _Results, _PageCache, generate_args=None):
-    qualifiers_per_heat = generate_args['qualifiers_per_heat'] if 'qualifiers_per_heat' in generate_args else 3
-    advances_per_heat = generate_args['advances_per_heat'] if 'advances_per_heat' in generate_args else 2
-    total_pilots = generate_args['total_pilots'] if 'total_pilots' in generate_args else 8
+def generateLadder(RHData, Results, _PageCache, generate_args=None):
+    available_nodes = generate_args['available_nodes'] if 'available_nodes' in generate_args else None
+    suffix = generate_args['suffix'] if 'suffix' in generate_args else __('Main')
+
+    if 'qualifiers_per_heat' in generate_args and 'advances_per_heat' in generate_args:
+        qualifiers_per_heat = generate_args['qualifiers_per_heat']
+        advances_per_heat = generate_args['advances_per_heat']
+    elif 'advances_per_heat' in generate_args:
+        advances_per_heat = generate_args['advances_per_heat']
+        qualifiers_per_heat = available_nodes - advances_per_heat
+    elif 'qualifiers_per_heat' in generate_args:
+        qualifiers_per_heat = generate_args['qualifiers_per_heat']
+        advances_per_heat = available_nodes - qualifiers_per_heat
+    else:
+        qualifiers_per_heat = available_nodes - 1
+        advances_per_heat = 1
+
+    if qualifiers_per_heat < 1 or advances_per_heat < 1:
+        logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 1')
+        return False
+
+    input_class_id = generate_args['input_class'] if 'input_class' in generate_args else None
+    if input_class_id:
+        race_class = RHData.get_raceClass(input_class_id)
+        class_results = Results.get_results_race_class(RHData, race_class)
+        if class_results['result']: # TODO: Check class finalized status
+            total_pilots = len(class_results['result']['by_race_time'])
+        else:
+            if 'total_pilots' in generate_args:
+                total_pilots = generate_args['total_pilots']
+            else:
+                pilots = RHData.get_pilots()
+                total_pilots = len(pilots)
+    else:
+        pilots = RHData.get_pilots()
+        total_pilots = len(pilots)
 
     letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     heats = []
@@ -37,7 +69,7 @@ def ladder(_RHData, _Results, _PageCache, generate_args=None):
     while len(unseeded_pilots):
         if heat_pilots == 0:
             heat = {
-                'name': letters[len(heats)] + ' Main',
+                'name': letters[len(heats)] + ' ' + suffix,
                 'slots': []
                 }
 
@@ -72,14 +104,25 @@ def ladder(_RHData, _Results, _PageCache, generate_args=None):
             heats = [heat, *heats] # insert at front
             heat_pilots = 0
 
+    if heat_pilots: # insert final heat
+        heats = [heat, *heats]
+
     return heats
 
 def discover(*args, **kwargs):
     # returns array of exporters with default arguments
     return [
         HeatGenerator(
-            'ladder',
-            'Ladder',
-            ladder,
+            'ladder_1a',
+            'Ladder, single advance',
+            generateLadder,
+        ),
+        HeatGenerator(
+            'ladder_2a',
+            'Ladder, double advance',
+            generateLadder,
+            {
+                'advances_per_heat': 2,
+            }
         ),
     ]
