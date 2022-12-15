@@ -123,5 +123,5 @@ class HeatGenerator():
         self.label = label
         self.generator = generatorFn
 
-    def generate(self, RHData, Results, PageCache, Language, generate_args=None):
-        return self.generator(RHData, Results, PageCache, Language, generate_args)
+    def generate(self, RHData, Results, PageCache, generate_args=None):
+        return self.generator(RHData, Results, PageCache, generate_args)
