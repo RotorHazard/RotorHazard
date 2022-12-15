@@ -106,6 +106,14 @@ class RHData():
             logger.error('Error writing to database: ' + str(ex))
             return False
 
+    def rollback(self):
+        try:
+            self._Database.DB.session.rollback()
+            return True
+        except Exception as ex:
+            logger.error('Error rolling back to database: ' + str(ex))
+            return False
+
     def close(self):
         try:
             self._Database.DB.session.close()
@@ -1062,6 +1070,7 @@ class RHData():
                             slot.pilot_id = RHUtils.PILOT_ID_NONE
                     else:
                         logger.warning('Cancelling heat calc: Cache build failed')
+                        self.rollback() # Release DB lock
                         return False
                 else:
                     logger.warning("Can't seed from heat {}: does not exist".format(slot.seed_id))
@@ -1080,6 +1089,7 @@ class RHData():
                             slot.pilot_id = RHUtils.PILOT_ID_NONE
                     else:
                         logger.warning('Cancelling heat calc: Cache build failed')
+                        self.rollback() # Release DB lock
                         return False
                 else:
                     logger.warning("Can't seed from class {}: does not exist".format(slot.seed_id))
@@ -1097,8 +1107,6 @@ class RHData():
             # clear all node assignments
             for slot in slots:
                 slot.node_index = None
-
-            self.commit() # TODO: delete if unneeded
 
             # collect node data
             available_nodes = []
@@ -1118,14 +1126,16 @@ class RHData():
             # find all frequency matches
             for slot in slots:
                 if slot.pilot_id:
-                    used_frequencies = json.loads(self.get_pilot(slot.pilot_id).used_frequencies)
-                    for node in available_nodes:
-                        for f_idx, pilot_freq in enumerate(used_frequencies):
-                            if node['frq']['f'] == pilot_freq['f']:
-                                node['matches'].append({
-                                        'slot': slot,
-                                        'priority': True if f_idx == 0 else False
-                                     })
+                    used_frequencies_json = self.get_pilot(slot.pilot_id).used_frequencies
+                    if used_frequencies_json:
+                        used_frequencies = json.loads(used_frequencies_json)
+                        for node in available_nodes:
+                            for f_idx, pilot_freq in enumerate(used_frequencies):
+                                if node['frq']['f'] == pilot_freq['f']:
+                                    node['matches'].append({
+                                            'slot': slot,
+                                            'priority': True if f_idx == 0 else False
+                                         })
 
             eliminated_slots = []
             if callable(calc_fn):
@@ -1143,14 +1153,22 @@ class RHData():
                                     available_node['matches'][slot_idx] = None
                                 available_node['matches'] = [x for x in available_node['matches'] if x is not None]
                     else:
+                        random.shuffle(available_nodes)
                         if len(eliminated_slots):
-                            random.shuffle(available_nodes)
                             for slot_idx, slot_match in enumerate(eliminated_slots):
                                 if eliminated_slots[slot_idx] and eliminated_slots[slot_idx]['slot'].node_index is None:
                                     eliminated_slots[slot_idx]['slot'].node_index = available_nodes[0]['idx']
                                     del(available_nodes[0])
                                 eliminated_slots[slot_idx] = None
                             eliminated_slots = [x for x in eliminated_slots if x is not None]
+                        else: 
+                            for slot in slots:
+                                if slot.node_index is None and slot.pilot_id:
+                                    if len(available_nodes):
+                                        slot.node_index = available_nodes[0]['idx']
+                                        del(available_nodes[0])
+                                    else:
+                                        logger.warning("Dropping pilot {}; No remaining available nodes for slot {}".format(slot.pilot_id, slot))
                         break
             else:
                 logger.error('calc_fn is not a valid auto-frequency algortihm')

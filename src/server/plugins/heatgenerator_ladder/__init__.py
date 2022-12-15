@@ -23,6 +23,30 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
+def getTotalPilots(RHData, Results, generate_args):
+    input_class_id = generate_args['input_class'] if 'input_class' in generate_args else None
+
+    if input_class_id:
+        race_class = RHData.get_raceClass(input_class_id)
+        class_results = Results.get_results_race_class(RHData, race_class)
+        if class_results['result']: 
+            # fill from available results
+            # TODO: Check class finalized status
+            total_pilots = len(class_results['result']['by_race_time'])
+        else:
+            if 'total_pilots' in generate_args:
+                total_pilots = generate_args['total_pilots']
+            else:
+                # fall back to number of pilots
+                pilots = RHData.get_pilots()
+                total_pilots = len(pilots)
+    else:
+        # use total number of pilots
+        pilots = RHData.get_pilots()
+        total_pilots = len(pilots)
+
+    return total_pilots
+
 def generateLadder(RHData, Results, _PageCache, generate_args=None):
     available_nodes = generate_args['available_nodes'] if 'available_nodes' in generate_args else None
     suffix = generate_args['suffix'] if 'suffix' in generate_args else __('Main')
@@ -41,24 +65,14 @@ def generateLadder(RHData, Results, _PageCache, generate_args=None):
         advances_per_heat = 1
 
     if qualifiers_per_heat < 1 or advances_per_heat < 1:
-        logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 1')
+        logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 0')
         return False
 
-    input_class_id = generate_args['input_class'] if 'input_class' in generate_args else None
-    if input_class_id:
-        race_class = RHData.get_raceClass(input_class_id)
-        class_results = Results.get_results_race_class(RHData, race_class)
-        if class_results['result']: # TODO: Check class finalized status
-            total_pilots = len(class_results['result']['by_race_time'])
-        else:
-            if 'total_pilots' in generate_args:
-                total_pilots = generate_args['total_pilots']
-            else:
-                pilots = RHData.get_pilots()
-                total_pilots = len(pilots)
-    else:
-        pilots = RHData.get_pilots()
-        total_pilots = len(pilots)
+    total_pilots = getTotalPilots(RHData, Results, generate_args)
+
+    if total_pilots == 0:
+        logger.warning('Unable to seed ladder: no pilots available')
+        return False
 
     letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     heats = []
@@ -109,6 +123,54 @@ def generateLadder(RHData, Results, _PageCache, generate_args=None):
 
     return heats
 
+def generateBalancedHeats(RHData, Results, _PageCache, generate_args=None):
+    available_nodes = generate_args['available_nodes'] if 'available_nodes' in generate_args else None
+    suffix = generate_args['suffix'] if 'suffix' in generate_args else __('Qualifier')
+
+    if 'qualifiers_per_heat' in generate_args:
+        qualifiers_per_heat = generate_args['qualifiers_per_heat']
+    else:
+        qualifiers_per_heat = available_nodes
+
+    if qualifiers_per_heat < 1:
+        logger.warning('Unable to seed ladder: provided qualifiers must be > 1')
+        return False
+
+    total_pilots = getTotalPilots(RHData, Results, generate_args)
+
+    if total_pilots == 0:
+        logger.warning('Unable to seed heats: no pilots available')
+        return False
+
+    total_heats = (total_pilots // qualifiers_per_heat)
+    if total_pilots % qualifiers_per_heat:
+        total_heats += 1
+
+    letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    heats = []
+
+    for idx in range(total_heats):
+        heats.append({
+            'name': letters[idx] + ' ' + suffix,
+            'slots': []
+            })
+
+    unseeded_pilots = list(range(total_pilots))
+    random.shuffle(unseeded_pilots)
+
+    heatNum = 0
+    while len(unseeded_pilots):
+        if heatNum >= len(heats):
+            heatNum = 0
+
+        heats[heatNum]['slots'].append({
+                'method': 'input',
+                'seed_rank': unseeded_pilots.pop(0) + 1
+                })
+        heatNum += 1
+
+    return heats
+
 def discover(*args, **kwargs):
     # returns array of exporters with default arguments
     return [
@@ -125,4 +187,10 @@ def discover(*args, **kwargs):
                 'advances_per_heat': 2,
             }
         ),
+        HeatGenerator(
+            'balanced_fill',
+            'Balanced random fill',
+            generateBalancedHeats
+        ),
+
     ]

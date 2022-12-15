@@ -2634,8 +2634,8 @@ def set_current_heat_data(new_heat_id):
 
     calc_result = RHData.calc_heat_pilots(new_heat_id, Results)
     if calc_result is False:
-        logger.warning('Heat calculation failed! Heat {} may not be viable.'.format(new_heat_id))
-        emit_priority_message(__("Warning: Unable to calculate heat pilots"), True, nobroadcast=True)
+        logger.warning('Heat {} plan cannot be fulfilled.'.format(new_heat_id))
+        emit_priority_message(__("Warning: Heat plan cannot be fulfilled"), True, nobroadcast=True)
 
     if adaptive:
         calc_fn = RHUtils.find_best_slot_node_adaptive
@@ -3427,7 +3427,7 @@ def build_laps_list(active_race=RACE):
                 'splits': splits
             })
 
-        if len(active_race.node_pilots) and active_race.node_pilots[node_idx]:
+        if node_idx in active_race.node_pilots:
             pilot = RHData.get_pilot(active_race.node_pilots[node_idx])
             pilot_data = {
                 'id': pilot.id,
