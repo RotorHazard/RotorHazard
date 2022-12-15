@@ -40,7 +40,7 @@ class HeatGeneratorManager():
         return self.generators
 
     def generate(self, generator_id, generate_args=None):
-        generated_heats = self.generators[generator_id].generate(self._RHData, self._Results, self._PageCache, self._Language, generate_args)
+        generated_heats = self.generators[generator_id].generate(self._RHData, self._Results, self._PageCache, generate_args)
         if generated_heats:
             self.apply(generated_heats, generate_args)
             return True
@@ -58,18 +58,19 @@ class HeatGeneratorManager():
             new_class = self._RHData.add_raceClass()
             output_class = new_class.id
 
-        heat_id_mapping = {}
-        for h_idx, heat_plan in enumerate(generated_heats):
+        heat_id_mapping = []
+        for heat_plan in generated_heats:
             new_heat = self._RHData.add_heat(init={
                 'class_id': output_class,
                 'note': heat_plan['name'],
                 'auto_frequency': True,
                 'defaultMethod': ProgramMethod.NONE
                 })
-            heat_id_mapping[h_idx] = new_heat.id
+            heat_id_mapping.append(new_heat.id)
 
+        for h_idx, heat_plan in enumerate(generated_heats):
             heat_alterations = []
-            heat_slots = self._RHData.get_heatNodes_by_heat(new_heat.id)
+            heat_slots = self._RHData.get_heatNodes_by_heat(heat_id_mapping[h_idx])
 
             if len(heat_slots) < len(heat_plan['slots']):
                 logger.warning('Not enough actual slots for requested heat generation')
@@ -78,7 +79,7 @@ class HeatGeneratorManager():
                 if s_idx < len(heat_plan['slots']):
                     seed_slot = heat_plan['slots'][s_idx]
                     data = {
-                        'heat': new_heat.id,
+                        'heat': heat_id_mapping[h_idx],
                         'slot_id': heat_slot.id,
                         'seed_rank': seed_slot['seed_rank'],
                         }

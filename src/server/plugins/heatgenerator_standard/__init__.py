@@ -12,16 +12,19 @@ def registerHandlers(args):
         for generator in discover():
             args['registerFn'](generator)
 
+def __(arg): # Replaced with language from initialize()
+    return arg
+
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('HeatGenerator_Initialize', 'HeatGenerator_register_mgp2e', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('HeatGenerator_Initialize', 'HeatGenerator_register_standards', registerHandlers, {}, 75, True)
+    if '__' in kwargs:
+        __ = kwargs['__']
 
-#TODO: Mains
-
-def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_1e_16_fai(_RHData, _Results, _PageCache, _generate_args=None):
     heats = [
         {
-            'name': 'Race 1',
+            'name': __('Race') + ' 1',
             'slots': [
                 {
                     'method': 'input',
@@ -42,7 +45,7 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 2',
+            'name': __('Race') + ' 2',
             'slots': [
                 {
                     'method': 'input',
@@ -63,7 +66,7 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 3',
+            'name': __('Race') + ' 3',
             'slots': [
                 {
                     'method': 'input',
@@ -84,7 +87,7 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 4',
+            'name': __('Race') + ' 4',
             'slots': [
                 {
                     'method': 'input',
@@ -105,7 +108,7 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Semifinal 1',
+            'name': __('Semifinal') + ' 1',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -130,7 +133,7 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Semifinal 2',
+            'name': __('Semifinal') + ' 2',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -155,7 +158,7 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Small Final',
+            'name': __('Small Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -180,7 +183,7 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Final',
+            'name': __('Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -208,10 +211,10 @@ def bracket_1e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
 
     return heats
 
-def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_1e_32_fai(_RHData, _Results, _PageCache, _generate_args=None):
     heats = [
         {
-            'name': 'Race 1 (E1)',
+            'name': __('Race') + ' 1 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -232,7 +235,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 2 (E1)',
+            'name': __('Race') + ' 2 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -253,7 +256,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 3 (E1)',
+            'name': __('Race') + ' 3 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -274,7 +277,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 4 (E1)',
+            'name': __('Race') + ' 4 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -295,7 +298,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 5 (E1)',
+            'name': __('Race') + ' 5 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -316,7 +319,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 6 (E1)',
+            'name': __('Race') + ' 6 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -337,7 +340,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 7 (E1)',
+            'name': __('Race') + ' 7 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -358,7 +361,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 8 (E1)',
+            'name': __('Race') + ' 8 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -379,7 +382,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 9 (E2)',
+            'name': __('Race') + ' 9 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -404,7 +407,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 10 (E2)',
+            'name': __('Race') + ' 10 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -429,7 +432,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 11 (E2)',
+            'name': __('Race') + ' 11 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -454,7 +457,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 12 (E2)',
+            'name': __('Race') + ' 12 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -479,7 +482,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Semifinal 1',
+            'name': __('Semifinal') + ' 1',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -504,7 +507,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Semifinal 2',
+            'name': __('Semifinal') + ' 2',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -529,7 +532,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Small Final',
+            'name': __('Small Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -554,7 +557,7 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Final',
+            'name': __('Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -582,10 +585,10 @@ def bracket_1e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
 
     return heats
 
-def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_1e_64_fai(_RHData, _Results, _PageCache, _generate_args=None):
     heats = [
         {
-            'name': 'Race 1 (E1)',
+            'name': __('Race') + ' 1 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -606,7 +609,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 2 (E1)',
+            'name': __('Race') + ' 2 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -627,7 +630,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 3 (E1)',
+            'name': __('Race') + ' 3 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -648,7 +651,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 4 (E1)',
+            'name': __('Race') + ' 4 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -669,7 +672,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 5 (E1)',
+            'name': __('Race') + ' 5 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -690,7 +693,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 6 (E1)',
+            'name': __('Race') + ' 6 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -711,7 +714,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 7 (E1)',
+            'name': __('Race') + ' 7 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -732,7 +735,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 8 (E1)',
+            'name': __('Race') + ' 8 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -753,7 +756,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 9 (E1)',
+            'name': __('Race') + ' 9 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -774,7 +777,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 10 (E1)',
+            'name': __('Race') + ' 10 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -795,7 +798,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 11 (E1)',
+            'name': __('Race') + ' 11 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -816,7 +819,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 12 (E1)',
+            'name': __('Race') + ' 12 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -837,7 +840,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 13 (E1)',
+            'name': __('Race') + ' 13 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -858,7 +861,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 14 (E1)',
+            'name': __('Race') + ' 14 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -879,7 +882,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 15 (E1)',
+            'name': __('Race') + ' 15 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -900,7 +903,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 16 (E1)',
+            'name': __('Race') + ' 16 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -921,7 +924,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 17 (E2)',
+            'name': __('Race') + ' 17 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -946,7 +949,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 18 (E2)',
+            'name': __('Race') + ' 18 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -971,7 +974,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 19 (E2)',
+            'name': __('Race') + ' 19 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -996,7 +999,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 20 (E2)',
+            'name': __('Race') + ' 20 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1021,7 +1024,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 21 (E2)',
+            'name': __('Race') + ' 21 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1046,7 +1049,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 22 (E2)',
+            'name': __('Race') + ' 22 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1071,7 +1074,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 23 (E2)',
+            'name': __('Race') + ' 23 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1096,7 +1099,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 24 (E2)',
+            'name': __('Race') + ' 24 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1121,7 +1124,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 25 (E3)',
+            'name': __('Race') + ' 25 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1146,7 +1149,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 26 (E3)',
+            'name': __('Race') + ' 26 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1171,7 +1174,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 27 (E3)',
+            'name': __('Race') + ' 27 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1196,7 +1199,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 28 (E3)',
+            'name': __('Race') + ' 28 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1221,7 +1224,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Semifinal 1',
+            'name': __('Semifinal 1'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1246,7 +1249,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Semifinal 2',
+            'name': __('Semifinal 2'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1271,7 +1274,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Small Final',
+            'name': __('Small Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1296,7 +1299,7 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Final',
+            'name': __('Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1324,10 +1327,10 @@ def bracket_1e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
 
     return heats
 
-def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_2e_16_fai(_RHData, _Results, _PageCache, _generate_args=None):
     heats = [
        {
-            'name': 'Race 1',
+            'name': __('Race') + ' 1',
             'slots': [
                 {
                     'method': 'input',
@@ -1348,7 +1351,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 2',
+            'name': __('Race') + ' 2',
             'slots': [
                 {
                     'method': 'input',
@@ -1369,7 +1372,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 3',
+            'name': __('Race') + ' 3',
             'slots': [
                 {
                     'method': 'input',
@@ -1390,7 +1393,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 4',
+            'name': __('Race') + ' 4',
             'slots': [
                 {
                     'method': 'input',
@@ -1411,7 +1414,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 5',
+            'name': __('Race') + ' 5',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1436,7 +1439,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 6',
+            'name': __('Race') + ' 6',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1461,7 +1464,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 7',
+            'name': __('Race') + ' 7',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1486,7 +1489,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 8',
+            'name': __('Race') + ' 8',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1511,7 +1514,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 9',
+            'name': __('Race') + ' 9',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1536,7 +1539,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 10',
+            'name': __('Race') + ' 10',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1561,7 +1564,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 11',
+            'name': __('Race') + ' 11',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1586,7 +1589,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 12',
+            'name': __('Race') + ' 12',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1611,7 +1614,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 13',
+            'name': __('Race') + ' 13',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1636,7 +1639,7 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Final',
+            'name': __('Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1664,10 +1667,10 @@ def bracket_2e_16_fai(RHData, Results, PageCache, Language, generate_args=None):
 
     return heats
 
-def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_2e_32_fai(_RHData, _Results, _PageCache, _generate_args=None):
     heats = [
         {
-            'name': 'Race 1 (E1)',
+            'name': __('Race') + ' 1 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1688,7 +1691,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 2 (E1)',
+            'name': __('Race') + ' 2 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1709,7 +1712,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 3 (E1)',
+            'name': __('Race') + ' 3 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1730,7 +1733,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 4 (E1)',
+            'name': __('Race') + ' 4 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1751,7 +1754,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 5 (E1)',
+            'name': __('Race') + ' 5 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1772,7 +1775,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 6 (E1)',
+            'name': __('Race') + ' 6 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1793,7 +1796,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 7 (E1)',
+            'name': __('Race') + ' 7 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1814,7 +1817,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 8 (E1)',
+            'name': __('Race') + ' 8 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -1835,7 +1838,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 9 (E2)',
+            'name': __('Race') + ' 9 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1860,7 +1863,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 10 (E2)',
+            'name': __('Race') + ' 10 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1885,7 +1888,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 11 (E2)',
+            'name': __('Race') + ' 11 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1910,7 +1913,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 12 (E2)',
+            'name': __('Race') + ' 12 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1935,7 +1938,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 13 (DE1)',
+            'name': __('Race') + ' 13 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1960,7 +1963,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 14 (DE1)',
+            'name': __('Race') + ' 14 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -1985,7 +1988,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 15 (DE1)',
+            'name': __('Race') + ' 15 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2010,7 +2013,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 16 (DE1)',
+            'name': __('Race') + ' 16 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2035,7 +2038,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 17 (DE2)',
+            'name': __('Race') + ' 17 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2060,7 +2063,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 18 (DE2)',
+            'name': __('Race') + ' 18 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2085,7 +2088,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 19 (DE2)',
+            'name': __('Race') + ' 19 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2110,7 +2113,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 20 (DE2)',
+            'name': __('Race') + ' 20 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2135,7 +2138,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 21 (DE3)',
+            'name': __('Race') + ' 21 (DE3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2160,7 +2163,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 22 (DE3)',
+            'name': __('Race') + ' 22 (DE3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2185,7 +2188,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 23 (E3)',
+            'name': __('Race') + ' 23 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2210,7 +2213,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 24 (E3)',
+            'name': __('Race') + ' 24 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2235,7 +2238,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 25 (DE4)',
+            'name': __('Race') + ' 25 (DE4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2260,7 +2263,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 26 (DE4)',
+            'name': __('Race') + ' 26 (DE4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2285,7 +2288,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 27 (DE5)',
+            'name': __('Race') + ' 27 (DE5)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2310,7 +2313,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 28 (E4)',
+            'name': __('Race') + ' 28 (E4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2335,7 +2338,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 29 (DE6)',
+            'name': __('Race') + ' 29 (DE6)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2360,7 +2363,7 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Final',
+            'name': __('Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2388,10 +2391,10 @@ def bracket_2e_32_fai(RHData, Results, PageCache, Language, generate_args=None):
 
     return heats
 
-def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_2e_64_fai(_RHData, _Results, _PageCache, _generate_args=None):
     heats = [
         {
-            'name': 'Race 1 (E1)',
+            'name': __('Race') + ' 1 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2412,7 +2415,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 2 (E1)',
+            'name': __('Race') + ' 2 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2433,7 +2436,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 3 (E1)',
+            'name': __('Race') + ' 3 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2454,7 +2457,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 4 (E1)',
+            'name': __('Race') + ' 4 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2475,7 +2478,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 5 (E1)',
+            'name': __('Race') + ' 5 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2496,7 +2499,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 6 (E1)',
+            'name': __('Race') + ' 6 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2517,7 +2520,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 7 (E1)',
+            'name': __('Race') + ' 7 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2538,7 +2541,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 8 (E1)',
+            'name': __('Race') + ' 8 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2559,7 +2562,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 9 (E1)',
+            'name': __('Race') + ' 9 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2580,7 +2583,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 10 (E1)',
+            'name': __('Race') + ' 10 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2601,7 +2604,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 11 (E1)',
+            'name': __('Race') + ' 11 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2622,7 +2625,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 12 (E1)',
+            'name': __('Race') + ' 12 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2643,7 +2646,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 13 (E1)',
+            'name': __('Race') + ' 13 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2664,7 +2667,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 14 (E1)',
+            'name': __('Race') + ' 14 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2685,7 +2688,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 15 (E1)',
+            'name': __('Race') + ' 15 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2706,7 +2709,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 16 (E1)',
+            'name': __('Race') + ' 16 (E1)',
             'slots': [
                 {
                     'method': 'input',
@@ -2727,7 +2730,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 17 (E2)',
+            'name': __('Race') + ' 17 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2752,7 +2755,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 18 (E2)',
+            'name': __('Race') + ' 18 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2777,7 +2780,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 19 (E2)',
+            'name': __('Race') + ' 19 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2802,7 +2805,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 20 (E2)',
+            'name': __('Race') + ' 20 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2827,7 +2830,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 21 (E2)',
+            'name': __('Race') + ' 21 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2852,7 +2855,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 22 (E2)',
+            'name': __('Race') + ' 22 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2877,7 +2880,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 23 (E2)',
+            'name': __('Race') + ' 23 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2902,7 +2905,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 24 (E2)',
+            'name': __('Race') + ' 24 (E2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2927,7 +2930,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 25 (DE1)',
+            'name': __('Race') + ' 25 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2952,7 +2955,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 26 (DE1)',
+            'name': __('Race') + ' 26 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -2977,7 +2980,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 27 (DE1)',
+            'name': __('Race') + ' 27 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3002,7 +3005,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 28 (DE1)',
+            'name': __('Race') + ' 28 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3027,7 +3030,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 29 (DE1)',
+            'name': __('Race') + ' 29 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3052,7 +3055,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 30 (DE1)',
+            'name': __('Race') + ' 30 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3077,7 +3080,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 31 (DE1)',
+            'name': __('Race') + ' 31 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3102,7 +3105,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 32 (DE1)',
+            'name': __('Race') + ' 32 (DE1)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3127,7 +3130,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 33 (DE2)',
+            'name': __('Race') + ' 33 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3152,7 +3155,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 34 (DE2)',
+            'name': __('Race') + ' 34 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3177,7 +3180,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 35 (DE2)',
+            'name': __('Race') + ' 35 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3202,7 +3205,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 36 (DE2)',
+            'name': __('Race') + ' 36 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3227,7 +3230,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 37 (DE2)',
+            'name': __('Race') + ' 37 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3252,7 +3255,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 38 (DE2)',
+            'name': __('Race') + ' 38 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3277,7 +3280,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 39 (DE2)',
+            'name': __('Race') + ' 39 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3302,7 +3305,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 40 (DE2)',
+            'name': __('Race') + ' 40 (DE2)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3327,7 +3330,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 41 (DE3)',
+            'name': __('Race') + ' 41 (DE3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3352,7 +3355,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 42 (DE3)',
+            'name': __('Race') + ' 42 (DE3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3377,7 +3380,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 43 (DE3)',
+            'name': __('Race') + ' 43 (DE3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3402,7 +3405,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 44 (DE3)',
+            'name': __('Race') + ' 44 (DE3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3427,7 +3430,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 45 (E3)',
+            'name': __('Race') + ' 45 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3452,7 +3455,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 46 (E3)',
+            'name': __('Race') + ' 46 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3477,7 +3480,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 47 (E3)',
+            'name': __('Race') + ' 47 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3502,7 +3505,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 48 (E3)',
+            'name': __('Race') + ' 48 (E3)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3527,7 +3530,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 49 (DE4)',
+            'name': __('Race') + ' 49 (DE4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3552,7 +3555,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 50 (DE4)',
+            'name': __('Race') + ' 50 (DE4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3577,7 +3580,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 51 (DE4)',
+            'name': __('Race') + ' 51 (DE4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3602,7 +3605,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 52 (DE4)',
+            'name': __('Race') + ' 52 (DE4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3627,7 +3630,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 53 (DE5)',
+            'name': __('Race') + ' 53 (DE5)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3652,7 +3655,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 54 (DE5)',
+            'name': __('Race') + ' 54 (DE5)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3677,7 +3680,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 55 (E4)',
+            'name': __('Race') + ' 55 (E4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3702,7 +3705,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 56 (E4)',
+            'name': __('Race') + ' 56 (E4)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3727,7 +3730,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 57 (DE6)',
+            'name': __('Race') + ' 57 (DE6)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3752,7 +3755,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 58 (DE6)',
+            'name': __('Race') + ' 58 (DE6)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3777,7 +3780,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 59 (DE7)',
+            'name': __('Race') + ' 59 (DE7)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3802,7 +3805,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 60 (E5)',
+            'name': __('Race') + ' 60 (E5)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3827,7 +3830,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Race 61 (DE7)',
+            'name': __('Race') + ' 61 (DE7)',
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3852,7 +3855,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
             ]
         },
         {
-            'name': 'Final',
+            'name': __('Final'),
             'slots': [
                 {
                     'method': ProgramMethod.HEAT_RESULT,
@@ -3882,7 +3885,7 @@ def bracket_2e_64_fai(RHData, Results, PageCache, Language, generate_args=None):
 
 mgp_26_16_heats = [
     {
-        'name': 'Race 1',
+        'name': __('Race') + ' 1',
         'slots': [
             {
                 'method': 'input',
@@ -3903,7 +3906,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 2',
+        'name': __('Race') + ' 2',
         'slots': [
             {
                 'method': 'input',
@@ -3924,7 +3927,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 3',
+        'name': __('Race') + ' 3',
         'slots': [
             {
                 'method': 'input',
@@ -3945,7 +3948,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 4',
+        'name': __('Race') + ' 4',
         'slots': [
             {
                 'method': 'input',
@@ -3966,7 +3969,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 5',
+        'name': __('Race') + ' 5',
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -3991,7 +3994,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 6',
+        'name': __('Race') + ' 6',
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4016,7 +4019,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 7',
+        'name': __('Race') + ' 7',
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4041,7 +4044,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 8',
+        'name': __('Race') + ' 8',
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4066,7 +4069,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 9',
+        'name': __('Race') + ' 9',
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4091,7 +4094,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 10',
+        'name': __('Race') + ' 10',
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4116,7 +4119,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 11: Winners Bracket Semifinal',
+        'name': __('Race') + ' 11: ' + __('Winners Bracket Semifinal'),
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4141,7 +4144,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 12: Winners Bracket Semifinal',
+        'name': __('Race') + ' 12: ' + __('Winners Bracket Semifinal'),
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4166,7 +4169,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 13: Consolation Bracket Semifinal',
+        'name': __('Race') + ' 13: ' + __('Consolation Bracket Semifinal'),
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4191,7 +4194,7 @@ mgp_26_16_heats = [
         ]
     },
     {
-        'name': 'Race 14: Winners Bracket Final',
+        'name': __('Race') + ' 14: ' + __('Winners Bracket Final'),
         'slots': [
             {
                 'method': ProgramMethod.HEAT_RESULT,
@@ -4217,10 +4220,10 @@ mgp_26_16_heats = [
     }
 ]
 
-def bracket_2e_16_mgp(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_2e_16_mgp(_RHData, _Results, _PageCache, _generate_args=None):
     return mgp_26_16_heats
 
-def bracket_2e_16_mgp_next(RHData, Results, PageCache, Language, generate_args=None):
+def bracket_2e_16_mgp_next(_RHData, _Results, _PageCache, _generate_args=None):
     heats = mgp_26_16_heats
     for heat in heats[:4]:
         for slot in heat['slots']:
