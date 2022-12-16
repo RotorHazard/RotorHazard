@@ -139,7 +139,6 @@ def assemble_formats(RHData, PageCache, Language):
     return payload
 
 def assemble_results(RHData, PageCache, Language):
-    # TODO: Make results friendly
     payload = PageCache.get_cache()
     return payload
 

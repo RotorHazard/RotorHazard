@@ -3,6 +3,9 @@
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
+	// TODO: UI for heat order
+	// TODO: UI for class order
+
 	var data_dependencies = [
 		'language',
 		'frequency_data',
@@ -126,6 +129,7 @@
 			$('#generator_output_class').empty().append($('<option value="">' + __('New Class') + '</option>'));
 
 			if (class_data.classes.length) {
+				class_data.classes.sort((a, b) => (a.order > b.order) ? 1 : -1);
 				for (var i in class_data.classes) {
 					var race_class = class_data.classes[i];
 
@@ -149,7 +153,6 @@
 			}
 		}
 
-
 		socket.on('class_data', function (msg) {
 			rotorhazard.event.classes = msg.classes;
 			rotorhazard.event.formats = msg.formats;
@@ -164,6 +167,8 @@
 				$(".race_classes").empty();
 
 				var classlist = $('<ol>');
+				rotorhazard.event.classes.sort((a, b) => (a.order > b.order) ? 1 : -1);
+				rotorhazard.event.heats.sort((a, b) => (a.order > b.order) ? 1 : -1);
 				if (rotorhazard.event.classes.length) {
 					for (var i in rotorhazard.event.classes) {
 						var race_class = rotorhazard.event.classes[i];
@@ -241,8 +246,6 @@
 						el.appendTo(classlist);
 					}
 				}
-
-				classlist.append(display_unclassified_heats());
 				classlist.appendTo($('.race_classes'));
 				freq.updateBlocks();
 				init_popup_generics();
@@ -253,11 +256,13 @@
 		function display_unclassified_heats() {
 			if (rotorhazard.event.heats) {
 				$("#unclassified_heats").empty();
+				var uc_ol = $('<ol>');
 				var unclassified_el = $('<li>');
 				var header = $('<h3>' + __('Unclassified Heats') + '</h3>');
 				unclassified_el.append(header);
 
 				var heats_el = $('<ol class="heats">');
+				rotorhazard.event.heats.sort((a, b) => (a.order > b.order) ? 1 : -1);
 				for (var i in rotorhazard.event.heats) {
 					var heat = rotorhazard.event.heats[i];
 					if (heat.class_id == 0) {
@@ -270,7 +275,8 @@
 
 				unclassified_el.append(heats_el);
 
-				return unclassified_el;
+				uc_ol.append(unclassified_el);
+				$("#unclassified_heats").append(uc_ol);
 			}
 		}
 
@@ -371,6 +377,7 @@
 		socket.on('heat_data', function (msg) {
 			rotorhazard.event.heats = msg.heats;
 			display_classes();
+			display_unclassified_heats();
 		});
 
 		function create_heat_ui(heat) {
@@ -1238,7 +1245,7 @@
 <!--Class and Race Program-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Classes') }}</h2>
+		<h2>{{ __('Classes and Heats') }}</h2>
 	</div>
 	<div class="panel-content">
 		<div id="race_classes" class="race_classes item-blocks">
@@ -1294,7 +1301,7 @@
 <!--Race Format-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Race Format') }}</h2>
+		<h2>{{ __('Race Formats') }}</h2>
 	</div>
 	<div class="panel-content">
 		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>

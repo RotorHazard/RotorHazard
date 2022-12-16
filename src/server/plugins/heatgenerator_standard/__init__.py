@@ -4236,42 +4236,42 @@ def discover(*args, **kwargs):
     return [
         HeatGenerator(
             'bracket_1e_16_fai',
-            'Single elimination, FAI, top 16',
+            'Single elimination, 4-up, FAI, top 16',
             bracket_1e_16_fai,
         ),
         HeatGenerator(
             'bracket_1e_32_fai',
-            'Single elimination, FAI, top 32',
+            'Single elimination, 4-up, FAI, top 32',
             bracket_1e_32_fai,
         ),
         HeatGenerator(
             'bracket_1e_64_fai',
-            'Single elimination, FAI, top 64',
+            'Single elimination, 4-up, FAI, top 64',
             bracket_1e_64_fai,
         ),
         HeatGenerator(
             'bracket_2e_16_fai',
-            'Double elimination, FAI, top 16',
+            'Double elimination, 4-up, FAI, top 16',
             bracket_2e_16_fai,
         ),
         HeatGenerator(
             'bracket_2e_16_mgp',
-            'Double elimination, MultiGP, top 16',
+            'Double elimination, 4-up, MultiGP, top 16',
             bracket_2e_16_mgp,
         ),
         HeatGenerator(
             'bracket_2e_16_mgp_next',
-            'Double elimination, MultiGP, next 16',
+            'Double elimination, 4-up, MultiGP, next 16',
             bracket_2e_16_mgp_next,
         ),
         HeatGenerator(
             'bracket_2e_32_fai',
-            'Double elimination, FAI, top 32',
+            'Double elimination, 4-up, FAI, top 32',
             bracket_2e_32_fai,
         ),
         HeatGenerator(
             'bracket_2e_64_fai',
-            'Double elimination, FAI, top 64',
+            'Double elimination, 4-up, FAI, top 64',
             bracket_2e_64_fai,
         ),
     ]

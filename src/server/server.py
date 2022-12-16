@@ -849,13 +849,15 @@ def on_load_data(data):
             emit_heat_data(nobroadcast=True)
         elif load_type == 'class_data':
             emit_class_data(nobroadcast=True)
+        elif load_type == 'format_data':
+            emit_class_data(nobroadcast=True)
         elif load_type == 'pilot_data':
             emit_pilot_data(nobroadcast=True)
         elif load_type == 'result_data':
             emit_result_data(nobroadcast=True)
-        elif load_type == 'race_format':
+        elif load_type == 'race_format': # TODO: Migrate to RACE DATA
             emit_race_format(nobroadcast=True)
-        elif load_type == 'race_formats':
+        elif load_type == 'race_formats': # TODO: Remove
             emit_race_formats(nobroadcast=True)
         elif load_type == 'node_tuning':
             emit_node_tuning(nobroadcast=True)
@@ -2650,12 +2652,13 @@ def set_current_heat_data(new_heat_id):
         RACE.node_teams[idx] = None
 
     for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
-        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+        if heatNode.node_index is not None:
+            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
-        if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-            RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
-        else:
-            RACE.node_teams[heatNode.node_index] = None
+            if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
+                RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
+            else:
+                RACE.node_teams[heatNode.node_index] = None
 
     heat_data = RHData.get_heat(new_heat_id)
 
@@ -3427,15 +3430,15 @@ def build_laps_list(active_race=RACE):
                 'splits': splits
             })
 
+        pilot_data = None
         if node_idx in active_race.node_pilots:
             pilot = RHData.get_pilot(active_race.node_pilots[node_idx])
-            pilot_data = {
-                'id': pilot.id,
-                'name': pilot.name,
-                'callsign': pilot.callsign
-            }
-        else:
-            pilot_data = None
+            if pilot:
+                pilot_data = {
+                    'id': pilot.id,
+                    'name': pilot.name,
+                    'callsign': pilot.callsign
+                }
 
         current_laps.append({
             'laps': node_laps,
@@ -3719,21 +3722,8 @@ def emit_class_data(**params):
         SOCKET_IO.emit('class_data', emit_payload)
 
 def emit_format_data(**params):
-    '''Emits class data.'''
-    current_classes = []
-    for race_class in RHData.get_raceClasses():
-        current_class = {}
-        current_class['id'] = race_class.id
-        current_class['name'] = race_class.name
-        current_class['displayname'] = race_class.displayname()
-        current_class['description'] = race_class.description
-        current_class['format'] = race_class.format_id
-        current_class['win_condition'] = race_class.win_condition
-        current_class['rounds'] = race_class.rounds
-        current_class['order'] = race_class.order
-        current_class['locked'] = RHData.savedRaceMetas_has_raceClass(race_class.id)
-        current_classes.append(current_class)
-
+    '''Emits format data.'''
+    # TODO: Migrate to emit_format_data
     formats = []
     for race_format in RHData.get_raceFormats():
         raceformat = {}
@@ -3749,11 +3739,11 @@ def emit_format_data(**params):
         raceformat['win_condition'] = race_format.win_condition
         raceformat['team_racing_mode'] = race_format.team_racing_mode
         raceformat['start_behavior'] = race_format.start_behavior
+        raceformat['locked'] = RHData.savedRaceMetas_has_raceFormat(race_format.id)
         formats.append(raceformat)
 
     emit_payload = {
-        'classes': current_classes,
-        'formats': formats, #TODO: break away format data
+        'formats': formats,
     }
     if ('nobroadcast' in params):
         emit('class_data', emit_payload)
@@ -4776,12 +4766,13 @@ def init_race_state():
         RACE.node_pilots = {}
         RACE.node_teams = {}
         for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
-            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+            if heatNode.node_index is not None:
+                RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
-            if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
-            else:
-                RACE.node_teams[heatNode.node_index] = None
+                if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
+                    RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
+                else:
+                    RACE.node_teams[heatNode.node_index] = None
 
     # Set race format
     raceformat_id = RHData.get_optionInt('currentFormat')

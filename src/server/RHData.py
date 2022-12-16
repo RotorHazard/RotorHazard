@@ -1024,12 +1024,29 @@ class RHData():
     def get_next_heat_id(self, current_heat_id):
         current_heat = self.get_heat(current_heat_id)
         heats = self.get_heats_by_class(current_heat.class_id)
+        heats.sort(key=lambda x: x.order)
 
         if len(heats):
             next_heat_id = None
             if heats[-1].id == current_heat_id:
-                #TODO: Advance round instead if rounds expired
                 next_heat_id = heats[0].id
+                current_class = self.get_raceClass(current_heat.class_id)
+                if current_class.rounds:
+                    max_round = self.get_max_round(current_heat_id)
+                    if current_class.rounds >= max_round:
+                        race_classes = self.get_raceClasses()
+                        race_classes.sort(key=lambda x: x.order)
+                        if race_classes[-1].id == current_heat.class_id:
+                            next_class_id = race_classes[0].id
+                            logger.debug('Completed last heat of last class, looping to first class')
+                        else:
+                            for idx, race_class in enumerate(race_classes):
+                                if race_class.id == current_heat.class_id:
+                                    next_class_id = race_classes[idx + 1].id
+                                    break
+
+                        next_heats = self.get_heats_by_class(next_class_id)
+                        next_heat_id = next_heats[0].id
             else:
                 for idx, heat in enumerate(heats):
                     if heat.id == current_heat_id:
