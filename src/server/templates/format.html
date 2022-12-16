@@ -1242,34 +1242,6 @@
 	</div>
 </div>
 
-<!--Class and Race Program-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Classes and Heats') }}</h2>
-	</div>
-	<div class="panel-content">
-		<div id="race_classes" class="race_classes item-blocks">
-			<p class="form-note">{{ __('Loading...') }}</p>
-		</div>
-		<div class="control-set">
-			<button id="add_race_class">+ {{ __('Add Class') }}</button>
-		</div>
-
-		<div id="unclassified_heats">
-			<p class="form-note">{{ __('Loading...') }}</p>
-		</div>
-
-		<div id="class_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Modifying a locked class retroactively changes saved race data.') }}</p>
-				<p><button class="btn-danger" id="unlock_class">{{ __('Unlock') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-	</div>
-</div>
-
 <!--Pilots list for editing-->
 <div class="panel collapsing">
 	<div class="panel-header">
@@ -1295,6 +1267,76 @@
 				</select>
 			</li>
 		</ol>
+	</div>
+</div>
+
+<!--Class and Race Program-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Classes and Heats') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="race_classes" class="race_classes item-blocks">
+			<p class="form-note">{{ __('Loading...') }}</p>
+		</div>
+		<div class="control-set">
+			<button id="add_race_class">+ {{ __('Add Class') }}</button>
+		</div>
+
+		<div id="unclassified_heats">
+			<p class="form-note">{{ __('Loading...') }}</p>
+		</div>
+
+		<div id="class_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked class retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_class">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!--Heat Generators-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Heat Generators') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="generator_input_class">{{ __('Input') }}</label>
+				</div>
+				<select id="generator_input_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_output_class">{{ __('Output') }}</label>
+				</div>
+				<select id="generator_output_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<select id="generator_list" disabled="disabled">
+				<option value="-">{{ __('No Generators') }}</option>
+			</select>
+			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
+		</div>
 	</div>
 </div>
 
@@ -1446,63 +1488,6 @@
 			</li>
 
 		</ol>
-	</div>
-</div>
-
-<!--Heats list for editing-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Heat Generators') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
-				</div>
-				<select id="generator_input_class">
-					<option>{{ __('Loading...') }}</option>
-				</select>
-			</li>
-			<li style="display: none">
-				<div class="label-block">
-					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
-				</div>
-				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
-			</li>
-			<li style="display: none">
-				<div class="label-block">
-					<label for="generator_suffix">{{ __('Suffix') }}</label>
-				</div>
-				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_output_class">{{ __('Output Class') }}</label>
-				</div>
-				<select id="generator_output_class">
-					<option>{{ __('Loading...') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<select id="generator_list" disabled="disabled">
-				<option value="-">{{ __('No Generators') }}</option>
-			</select>
-			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
-		</div>
-		<div class="control-set">
-			<button class="btn-warning" style="display: none" id="generate_heats">{{ __('Generate Heats (legacy)') }}</button>
-		</div>
-
-		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
-				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
 	</div>
 </div>
 

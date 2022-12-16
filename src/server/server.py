@@ -1664,8 +1664,8 @@ def on_generate_heats_v2(data):
     generate_args = {
         'input_class': data['input_class'],
         'output_class': data['output_class'],
-        'suffix': data['suffix'],
-        'pilots_per_heat': int(data['pilots_per_heat']),
+        # 'suffix': data['suffix'],
+        # 'pilots_per_heat': int(data['pilots_per_heat']),
         'available_nodes': available_nodes
         }
     generator = data['generator']
@@ -2690,133 +2690,6 @@ def on_set_current_heat(data):
     logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
     RACE.current_heat = new_heat_id
     set_current_heat_data(new_heat_id)
-
-@SOCKET_IO.on('generate_heats')
-def on_generate_heats(data):
-    '''Spawn heat generator thread'''
-    gevent.spawn(generate_heats, data)
-
-@catchLogExceptionsWrapper
-def generate_heats(data):
-    '''Generate heats from qualifying class'''
-    RESULTS_TIMEOUT = 30 # maximum time to wait for results to generate
-
-    input_class = int(data['input_class'])
-    output_class = int(data['output_class'])
-    suffix = data['suffix']
-    pilots_per_heat = int(data['pilots_per_heat'])
-
-    if input_class == RHUtils.CLASS_ID_NONE:
-        results = {
-            'by_race_time': []
-        }
-        for pilot in RHData.get_pilots():
-            # *** if pilot is active
-            entry = {}
-            entry['pilot_id'] = pilot.id
-
-            pilot_node = RHData.get_recent_pilot_node(pilot.id)
-
-            if pilot_node:
-                entry['node'] = pilot_node.node_index
-            else:
-                entry['node'] = -1
-
-            results['by_race_time'].append(entry)
-
-        win_condition = WinCondition.NONE
-        cacheStatus = Results.CacheStatus.VALID
-    else:
-        race_class = RHData.get_raceClass(input_class)
-        race_format = RHData.get_raceFormat(race_class.format_id)
-        results = race_class.results
-        if race_format:
-            win_condition = race_format.win_condition
-            cacheStatus = race_class.cacheStatus
-        else:
-            win_condition = WinCondition.NONE
-            cacheStatus = Results.CacheStatus.VALID
-            logger.info('Unable to fetch format from race class {0}'.format(input_class))
-
-    if cacheStatus == Results.CacheStatus.INVALID:
-        # build new results if needed
-        logger.info("No class cache available for {0}; regenerating".format(input_class))
-        RHData.set_results_raceClass(race_class.id,
-            Results.build_atomic_result_cache(RHData, class_id=race_class.id)
-            )
-
-    time_now = monotonic()
-    timeout = time_now + RESULTS_TIMEOUT
-    while cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
-        gevent.sleep()
-        time_now = monotonic()
-
-    if cacheStatus == Results.CacheStatus.VALID:
-        if win_condition == WinCondition.NONE:
-
-            leaderboard = random.sample(results['by_race_time'], len(results['by_race_time']))
-        else:
-            leaderboard = results[results['meta']['primary_leaderboard']]
-
-        generated_heats = []
-        unplaced_pilots = []
-        new_heat = {}
-        assigned_pilots = 0
-
-        available_nodes = []
-
-        profile_freqs = json.loads(getCurrentProfile().frequencies)
-        for node_index in range(RACE.num_nodes):
-            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                available_nodes.append(node_index)
-
-        pilots_per_heat = min(pilots_per_heat, RACE.num_nodes, len(available_nodes))
-
-        for i,row in enumerate(leaderboard, start=1):
-            logger.debug("Placing {0} into heat {1}".format(row['pilot_id'], len(generated_heats)))
-
-            if row['node'] in new_heat or row['node'] not in available_nodes:
-                unplaced_pilots.append(row['pilot_id'])
-            else:
-                new_heat[row['node']] = row['pilot_id']
-
-            assigned_pilots += 1
-
-            if assigned_pilots >= pilots_per_heat or i == len(leaderboard):
-                # find slots for unassigned pilots
-                if len(unplaced_pilots):
-                    for pilot in unplaced_pilots:
-                        for index in available_nodes:
-                            if index in new_heat:
-                                continue
-                            else:
-                                new_heat[index] = pilot
-                                break
-
-                # heat is full, flush and start next heat
-                generated_heats.append(new_heat)
-                unplaced_pilots = []
-                new_heat = {}
-                assigned_pilots = 0
-
-        # commit generated heats to database, lower seeds first
-        letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-        for idx, heat in enumerate(reversed(generated_heats), start=1):
-            ladder = letters[len(generated_heats) - idx]
-            new_heat = RHData.add_heat({
-                'class_id': output_class,
-                'note': ladder + ' ' + suffix
-                }, heat)
-
-        logger.info("Generated {0} heats from class {1}".format(len(generated_heats), input_class))
-        SOCKET_IO.emit('heat_generate_done')
-
-        Events.trigger(Evt.HEAT_GENERATE)
-
-        emit_heat_data()
-    else:
-        logger.warning("Unable to generate heats from class {0}: can't get valid results".format(input_class))
-        SOCKET_IO.emit('heat_generate_done')
 
 @SOCKET_IO.on('delete_lap')
 @catchLogExceptionsWrapper
