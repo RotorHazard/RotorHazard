@@ -46,7 +46,7 @@ from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
 
-from flask import Flask, send_file, request, Response, session, templating, redirect, abort
+from flask import Flask, send_file, request, Response, session, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
 
 import socket
@@ -664,8 +664,14 @@ def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
-    # push initial data
-    emit_frontend_load(nobroadcast=True)
+    #
+    @catchLogExceptionsWrapper
+    @copy_current_request_context
+    def finish_connect_handler():
+        # push initial data
+        emit_frontend_load(nobroadcast=True)
+    # pause and spawn to make sure connection to browser is established
+    gevent.spawn_later(0.050, finish_connect_handler)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
