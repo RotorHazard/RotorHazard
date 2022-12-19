@@ -2051,7 +2051,7 @@ def on_stage_race():
             if staging_random_ms % 1000:
                 staging_tones += 1
 
-        RACE.stage_time_monotonic = monotonic() + RHRace.RACE_START_DELAY_EXTRA_SECS
+        RACE.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
         RACE.start_time_monotonic = RACE.stage_time_monotonic + (staging_total_ms / 1000 )
 
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
