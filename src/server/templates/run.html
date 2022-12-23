@@ -136,7 +136,7 @@
 		rotorhazard.saveData();
 		$('nav li').removeClass('admin-hide');
 
-		// populate voice controls
+		// populate controls
 		$('#voice_callsign').val(rotorhazard.voice_callsign);
 		$('#voice_lap_count').val(rotorhazard.voice_lap_count);
 		$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
@@ -168,6 +168,7 @@
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 		$('#schedule_m').val(rotorhazard.schedule_m);
 		$('#schedule_s').val(rotorhazard.schedule_s);
+		$('#hide_graphs').prop("checked", !rotorhazard.hide_graphs);
 		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
@@ -190,8 +191,15 @@
 			if (canvas) {
 				rotorhazard.nodes[i].canvas = canvas;
 				rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
+				if (rotorhazard.hide_graphs) {
+					rotorhazard.nodes[i].graph.stop();
+				}
 			}
 		}
+		if (rotorhazard.hide_graphs) {
+			$('.rssi-graph').prop('hidden', true);
+		}
+
 
 		function any_laps_recorded() {
 			if (current_laps && 'node_index' in current_laps) {
@@ -1139,6 +1147,22 @@
 			var val = volume_logsl.value($(this).val());
 			rotorhazard.indicator_beep_volume = val;
 			rotorhazard.saveData();
+		});
+
+		$('#hide_graphs').change(function (event) {
+			rotorhazard.hide_graphs = !$(this).prop('checked');
+			rotorhazard.saveData();
+			for (var i in rotorhazard.nodes) {
+				var node = rotorhazard.nodes[i];
+				if (node.canvas) {
+					if (rotorhazard.hide_graphs) {
+						node.graph.stop();
+					} else {
+						node.graph.start();
+					}
+				}
+			}
+			$('.rssi-graph').prop('hidden', rotorhazard.hide_graphs);
 		});
 
 		$('#display_lap_id').change(function (event) {
@@ -2363,7 +2387,6 @@
 	<div class="panel-content">
 		<p class="form-note">{{ __('Display settings apply to this device only.') }}</p>
 		<ol class="form">
-
 			<li>
 				<div class="label-block">
 					{{ __('Lap Information') }}
@@ -2375,7 +2398,14 @@
 					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
 				</ul>
 			</li>
-
+			<li>
+				<div class="label-block">
+					{{ __('Performance') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="hide_graphs"> {{ __('RSSI Graphs') }}</label></li>
+				</ul>
+			</li>
 		</ol>
 	</div>
 </div>
