@@ -3146,24 +3146,20 @@ def emit_cluster_status(**params):
 def emit_start_thresh_lower_amount(**params):
     '''Emits current start_thresh_lower_amount.'''
     emit_payload = {
-        'start_thresh_lower_amount': RHData.get_option('startThreshLowerAmount'),
+        'start_thresh_lower_amount': RHData.get_optionInt('startThreshLowerAmount'),
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_amount', emit_payload)
-    elif ('noself' in params):
-        emit('start_thresh_lower_amount', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_amount', emit_payload)
 
 def emit_start_thresh_lower_duration(**params):
     '''Emits current start_thresh_lower_duration.'''
     emit_payload = {
-        'start_thresh_lower_duration': RHData.get_option('startThreshLowerDuration'),
+        'start_thresh_lower_duration': RHData.get_optionInt('startThreshLowerDuration'),
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_duration', emit_payload)
-    elif ('noself' in params):
-        emit('start_thresh_lower_duration', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_duration', emit_payload)
 
@@ -3244,7 +3240,7 @@ def emit_event_actions(**params):
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
-        'min_lap': RHData.get_option('MinLapSec'),
+        'min_lap': RHData.get_optionInt('MinLapSec'),
         'min_lap_behavior': RHData.get_optionInt("MinLapBehavior")
     }
     if ('nobroadcast' in params):

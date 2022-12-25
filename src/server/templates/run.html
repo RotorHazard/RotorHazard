@@ -1223,7 +1223,7 @@
 		});
 
 		$('#set_min_lap').change(function (event) {
-			var min_lap_val = parseInt($(this).val());
+			var min_lap_val = parseIntDefault($(this).val());
 			rotorhazard.min_lap = min_lap_val;
 			var data = {
 				min_lap: min_lap_val

@@ -969,6 +969,11 @@ function parseIntOrBoolean(str) {
 	return JSON.parse(str)
 }
 
+function parseIntDefault(str, defaultVal=0) {
+	var retVal = parseInt(str);
+	return isNaN(retVal) ? defaultVal : retVal;
+}
+
 /* rotorhazard object for local settings/storage */
 var rotorhazard = {
 	raceMode: {

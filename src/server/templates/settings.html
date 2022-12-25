@@ -720,7 +720,7 @@
 		});
 
 		$('#set_start_thresh_lower_amount').change(function (event) {
-			var start_thresh_lower_amount_val = parseInt($(this).val());
+			var start_thresh_lower_amount_val = parseIntDefault($(this).val());
 			var data = {
 				start_thresh_lower_amount: start_thresh_lower_amount_val
 			};
@@ -732,7 +732,7 @@
 		});
 
 		$('#set_start_thresh_lower_duration').change(function (event) {
-			var start_thresh_lower_duration_val = parseInt($(this).val());
+			var start_thresh_lower_duration_val = parseIntDefault($(this).val());
 			var data = {
 				start_thresh_lower_duration: start_thresh_lower_duration_val
 			};
@@ -1555,7 +1555,7 @@
 		});
 
 		$('#set_min_lap').change(function (event) {
-			var min_lap_val = parseInt($(this).val());
+			var min_lap_val = parseIntDefault($(this).val());
 			rotorhazard.min_lap = min_lap_val;
 			var data = {
 				min_lap: min_lap_val
@@ -1691,42 +1691,42 @@
 
 		$('#set_fix_race_time').change(function (event) {
 			var data = {
-				race_time: parseInt($(this).val())
+				race_time: parseIntDefault($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_lap_grace_time').change(function (event) {
 			var data = {
-				lap_grace_sec: parseInt($(this).val())
+				lap_grace_sec: parseIntDefault($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})
 		
 		$('#set_staging_fixed_tones').change(function (event) {
 			var data = {
-				staging_fixed_tones: parseInt($(this).val())
+				staging_fixed_tones: parseIntDefault($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_min').change(function (event) {
 			var data = {
-				start_delay_min: parseInt($(this).val() * 1000) //convert to ms
+				start_delay_min: parseIntDefault($(this).val() * 1000) //convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_max').change(function (event) {
 			var data = {
-				start_delay_max: parseInt($(this).val() * 1000) //convert to ms
+				start_delay_max: parseIntDefault($(this).val() * 1000) //convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_number_laps_win').change(function (event) {
 			var data = {
-				number_laps_win: parseInt($(this).val())
+				number_laps_win: parseIntDefault($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})
