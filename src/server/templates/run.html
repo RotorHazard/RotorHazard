@@ -1219,7 +1219,7 @@
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
-			rotorhazard.min_lap = msg.min_lap;
+			rotorhazard.min_lap = parseIntDefault(msg.min_lap);
 		});
 
 		$('#set_min_lap').change(function (event) {
