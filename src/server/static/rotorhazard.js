@@ -1031,6 +1031,7 @@ var rotorhazard = {
 	display_time_first_pass: false, //shows the timestamp of the lap since the first pass was recorded
 	display_laps_reversed: false, //shows race laps in reverse order
 	display_chan_freq: true, //shows node channel and frequency (Current Race page only)
+	hide_graphs: false, //hides RSSI graphs on Run page
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
