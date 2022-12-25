@@ -970,6 +970,13 @@
 			socket.emit('set_current_heat', data);
 		});
 
+		$(document).on("click", '.retry_secondary', function (event) {
+			var data = {
+				secondary_id: parseInt($(this).data('secondary_id'))
+			};
+			socket.emit('retry_secondary', data);
+		});
+
 		/* Voice */
 		$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
 

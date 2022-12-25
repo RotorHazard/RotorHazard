@@ -46,6 +46,15 @@ class SecondaryNode:
         if self.queryInterval <= 0:
             self.queryInterval = 10
         self.firstQueryInterval = 3 if self.queryInterval >= 3 else 1
+        self.sio = socketio.Client(reconnection=False, request_timeout=1)
+        self.sio.on('connect', self.on_connect)
+        self.sio.on('disconnect', self.on_disconnect)
+        self.sio.on('pass_record', self.on_pass_record)
+        self.sio.on('check_secondary_response', self.on_check_secondary_response)
+        self.sio.on('join_cluster_response', self.join_cluster_response)
+        self.start_connection()
+
+    def start_connection(self):
         self.startConnectTime = 0
         self.lastContactTime = -1
         self.firstContactTime = 0
@@ -62,14 +71,8 @@ class SecondaryNode:
         self.timeDiffMedianMs = 0
         self.timeCorrectionMs = 0
         self.progStartEpoch = 0
-        self.runningFlag = True
-        self.sio = socketio.Client(reconnection=False, request_timeout=1)
-        self.sio.on('connect', self.on_connect)
-        self.sio.on('disconnect', self.on_disconnect)
-        self.sio.on('pass_record', self.on_pass_record)
-        self.sio.on('check_secondary_response', self.on_check_secondary_response)
-        self.sio.on('join_cluster_response', self.join_cluster_response)
         gevent.spawn(self.secondary_worker_thread)
+        self.runningFlag = True
 
     def secondary_worker_thread(self):
         self.startConnectTime = monotonic()
@@ -113,6 +116,7 @@ class SecondaryNode:
                                                         format(self.id+1, self.address))
                                             if self.runningFlag and self.emit_cluster_connect_change:
                                                 self.emit_cluster_connect_change(False)  # play one disconnect tone
+                                            self.runningFlag = False
                                             return  # exit worker thread
                 else:  # if current status is connected
                     now_time = monotonic()
@@ -511,6 +515,25 @@ class ClusterNodeSet:
                     (self.secondaries[secondary_index].lastContactTime > 0 or \
                      self.secondaries[secondary_index].numDisconnects > 0)
 
+    def getSecondaryForIdVal(self, idVal):
+        for secondary in self.secondaries:
+            if secondary.id == idVal:
+                return secondary
+        return None
+    
+    def retrySecondary(self, secondary_id):
+        secondary = self.getSecondaryForIdVal(secondary_id)
+        if (secondary):
+            if not secondary.runningFlag:
+                logger.info("Retrying connection to secondary {} at {}".format(secondary.id+1, secondary.address))
+                secondary.start_connection()
+            else:
+                logger.error("Attempted retry of running secondary {} at {} in ClusterNodeSet 'retrySecondary()'".\
+                             format(secondary_id+1, secondary.address))
+        else:
+            logger.error("Secondary ID value ({}) out of bounds in ClusterNodeSet 'retrySecondary()'".\
+                         format(secondary_id+1))
+
     def emit(self, event, data = None):
         for secondary in self.secondaries:
             gevent.spawn(secondary.emit, event, data)
@@ -531,6 +554,17 @@ class ClusterNodeSet:
             downTimeSecs = int(round(secondary.secsSinceDisconnect)) if secondary.lastContactTime <= 0 else 0
             totalUpSecs = secondary.totalUpTimeSecs + upTimeSecs
             totalDownSecs = secondary.totalDownTimeSecs + downTimeSecs
+            if secondary.lastContactTime >= 0:
+                lastContactStr = str(int(nowTime-secondary.lastContactTime))
+            else:
+                if secondary.numDisconnects > 0:
+                    lastContactStr = self.__("connection lost")
+                else:
+                    if secondary.runningFlag:
+                        lastContactStr = self.__("never connected")
+                    else:
+                        lastContactStr = "<button class=\"retry_secondary\" data-secondary_id=\"" + \
+                                str(secondary.id) + "\">" + self.__("Not found - click to retry") + "</button>"
             payload.append(
                 {'address': secondary.address, \
                  'modeIndicator': ('M' if secondary.isMirrorMode else 'S'), \
@@ -545,8 +579,7 @@ class ClusterNodeSet:
                  'downTimeSecs': downTimeSecs, \
                  'availability': round((100.0*totalUpSecs/(totalUpSecs+totalDownSecs) \
                                        if totalUpSecs+totalDownSecs > 0 else 0), 1), \
-                 'last_contact': int(nowTime-secondary.lastContactTime) if secondary.lastContactTime >= 0 else \
-                                 (self.__("connection lost") if secondary.numDisconnects > 0 else self.__("never connected"))
+                 'last_contact': lastContactStr
                  })
         return {'secondaries': payload}
 

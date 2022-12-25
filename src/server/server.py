@@ -1314,7 +1314,7 @@ def on_alter_pilot(data):
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
 def on_delete_pilot(data):
-    '''Delete heat.'''
+    '''Delete pilot.'''
     result = RHData.delete_pilot(data['pilot'])
 
     if result:
@@ -3002,6 +3002,13 @@ def clean_results_cache():
     ''' wipe all results caches '''
     Results.invalidate_all_caches(RHData)
     PageCache.set_valid(False)
+
+@SOCKET_IO.on('retry_secondary')
+@catchLogExceptionsWrapper
+def on_retry_secondary(data):
+    '''Retry connection to secondary timer.'''
+    CLUSTER.retrySecondary(data['secondary_id'])
+    emit_cluster_status()
 
 # Socket io emit functions
 
