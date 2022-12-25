@@ -1031,6 +1031,7 @@ var rotorhazard = {
 	display_time_first_pass: false, //shows the timestamp of the lap since the first pass was recorded
 	display_laps_reversed: false, //shows race laps in reverse order
 	display_chan_freq: true, //shows node channel and frequency (Current Race page only)
+	hide_graphs: false, //hides RSSI graphs on Run page
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
@@ -1089,6 +1090,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
 		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
+		localStorage['rotorhazard.hide_graphs'] = JSON.stringify(this.hide_graphs);
 		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
 		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
 		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
@@ -1181,6 +1183,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.primaryPilot']) {
 				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
+			}
+			if (localStorage['rotorhazard.hide_graphs']) {
+				this.hide_graphs = JSON.parse(localStorage['rotorhazard.hide_graphs']);
 			}
 			if (localStorage['rotorhazard.display_lap_id']) {
 				this.display_lap_id = JSON.parse(localStorage['rotorhazard.display_lap_id']);
