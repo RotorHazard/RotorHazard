@@ -2932,33 +2932,31 @@
 			<li>
 				<div class="label-block">
 				<label for="set_staging_fixed_tones">{{ __('Prestage Tones') }}</label>
-					<p class="desc">{{ __('Fixed tones played one per second') }}</p>
+					<p class="desc">{{ __('Fixed tones per second before staging') }}</p>
 				</div>
 				<input type="number" id="set_staging_fixed_tones" min="0" max="999">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_start_delay_min">{{ __('Staging Delay (seconds)') }}</label>
-					<p class="desc">{{ __('Time between prestage tones and race start') }}</p>
-				</div>
-				<input type="number" id="set_start_delay_min" min="0" max="99" step="0.1">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_start_delay_max">{{ __('Staging Variable Delay (seconds)') }}</label>
-					<p class="desc">{{ __('Staging timer is hidden if above 0') }}</p>
-				</div>
-				<input type="number" id="set_start_delay_max" min="0" max="99" step="0.1">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_staging_tones">{{ __('Variable Staging Tones') }}</label>
-					<p class="desc">{{ __('Sometimes played during variable staging') }}</p>
+					<label for="set_staging_tones">{{ __('Staging Tones') }}</label>
 				</div>
 				<select id="set_staging_tones">
 					<option value="2">{{ __('Each Second') }}</option>
 					<option value="0">{{ __('None') }}</option>
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_min">{{ __('Minimum Staging Time (seconds)') }}</label>
+				</div>
+				<input type="number" id="set_start_delay_min" min="0" max="99" step="0.1">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_max">{{ __('Random Staging Time (seconds)') }}</label>
+					<p class="desc">{{ __('Staging timer hidden if above 0') }}</p>
+				</div>
+				<input type="number" id="set_start_delay_max" min="0" max="99" step="0.1">
 			</li>
 			<li>
 				<div class="label-block">
