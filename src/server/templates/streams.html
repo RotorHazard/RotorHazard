@@ -17,6 +17,7 @@
 
 		socket.on('heat_data', function (msg) {
 			$('.heat_list').empty();
+			$('.heat_list').append('<li><a href="/streetleague/stream/round">Current Round</a></li>');
 			$('.heat_list').append('<li><a href="/stream/heat/0">' + __("Current Heat") + '</a></li>');
 
 			for (var i in msg.heats) {
@@ -59,7 +60,10 @@
 		</div>
 		<div class="panel-content">
 			<h2>{{ __("Current Race Results") }}</h2>
-			<ul><li><a href="/stream/results">{{ __("Current Race Results") }}</a></li></ul>
+			<ul>
+				<li><a href="/stream/results">{{ __("Current Race Results") }}</a></li>
+				<li><a href="/heatgenerator">StreetLeague Heat generator</a></li>
+		  </ul>
 
 			<h2>{{ __("Node Overlays") }}</h2>
 			<ul>
@@ -70,6 +74,9 @@
 
 			<h2>{{ __("Heat Displays") }}</h2>
 			<ul class="heat_list"></ul>
+			<ul>
+				<li><a href="/streetleague/stream/round">Heat Channels</a></li>
+			</ul>
 
 			<h2>{{ __("Class Displays") }}</h2>
 			<ul class="race_class_list"></ul>

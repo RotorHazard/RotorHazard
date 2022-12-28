@@ -1,0 +1,142 @@
+{% extends "layout-sl.html" %} {% block title %}{{ __('Stream') }}: {{ __('Heat') }}{% endblock %}{% block head %}
+<link rel="stylesheet" href="/static/slstream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'frequency_data',
+		'current_heat',
+		'heat_data',
+	];
+
+	rotorhazard.show_messages = false;
+	var heat_data;
+	var streamheat;
+	var streamclass;
+
+	$(document).ready(function () {
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		socket.on('frequency_data', function (msg) {
+			console.log('frequenct_data', msg);
+			if (msg.fdata.length) {
+				for (var i in msg.fdata) {
+					var fObj = freq.getFObjbyFData(msg.fdata[i]);
+					rotorhazard.nodes[i].fObj = fObj;
+					$('#s_channel_' + i).val(fObj.frequency);
+					$('#f_table_' + i).val(fObj.fString);
+					freq.updateBlock(fObj, i);
+				}
+			}
+		});
+
+		function display_nothing() {
+			$('#header h1').html(__('No Data'))
+			$('#container').html('<p>' + __('There is no saved race data available to view.') + '</p>');
+		}
+
+		function heatsForRound(class_id) {
+			const heatIds = [];
+			for (let heat_id in heat_data.heats) {
+				if (heat_data.heats[heat_id].class_id == class_id) {
+					heatIds.push(heat_id);
+				}
+			}
+			return heatIds;
+		}
+
+		function nodesForRound(class_id) {
+			const heatIds = heatsForRound(class_id);
+			const pilotNodes = {};
+			heatIds.forEach(heatId => {
+				const heat = heat_data.heats[heatId];
+				heat.pilots.forEach((pilot_id, node) => {
+					pilotNodes[pilot_id] = node;
+				});
+			});
+			return pilotNodes;
+		}
+
+		function display_heat_data() {
+
+			const heatIds = heatsForRound(streamclass);
+			const prevNodes = nodesForRound(streamclass - 1);
+
+			console.log('prev nodes ', prevNodes);
+
+			// class indicator
+			const current_class = heat_data?.classes.find(({id}) => id == streamclass );
+			const roundName = current_class?.name || __("Unclassified");
+
+			$('#header h1').text(roundName);
+			
+			$('#heats').empty();
+
+			heatIds.forEach(heatId => {
+				const heat = heat_data.heats[heatId];
+				const heatName = heat.note || `${__('Heat')} ${heat.heat_id}`;
+
+				const $heat_li = $('<li>');
+				$('<h3>').addClass(heat.heat_id == streamheat ? 'current_heat' : '').text(heatName.replace(`${roundName} - `,'')).appendTo($heat_li);
+				const $heat_pilots = $('<ol>').appendTo($heat_li);
+				heat.pilots.forEach((pilot_id, index) => {
+					if (pilot_id <= 0) return;
+					const row = $('<li>').appendTo($heat_pilots);
+					const changed =
+					  (streamclass > 1 && index != prevNodes[pilot_id])
+						  ? 'channel-change'
+							: '';
+					row.append(`<div class="channel-block ${changed}" data-node="${index}"><span class="ch"></span> <span class="fr"></span></div>`);
+
+					let callsign = '-';
+					for (let k in heat_data.pilot_data) {
+						if (heat_data.pilot_data[k].pilot_id == pilot_id) {
+							callsign = heat_data.pilot_data[k].callsign;
+							break;
+						}
+					}
+
+					row.append(`<div class="pilot-name">${callsign}</div>`);
+				});
+
+				$('#heats').append($heat_li);
+			});
+			freq.updateBlocks();
+		}
+
+		socket.on('heat_data', function (msg) {
+			console.log('heat_data', msg);
+			heat_data = msg;
+
+			display_heat_data(heat_data);
+		});
+
+		socket.on('current_heat', function (msg) {
+			console.log('current_heat', msg);
+			streamheat = msg.current_heat;
+			streamclass = msg.heat_class;
+	 		if (heat_data) display_heat_data();
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+<main class="page-streamheat">
+	<div id="header">
+		<h1>{{ __('Loading...') }}</h1>
+	</div>
+  <ol id="heats" class="heats item-blocks">
+
+	</ol>
+</main>
+{% endblock %}

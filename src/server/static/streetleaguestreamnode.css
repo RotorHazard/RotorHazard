@@ -53,6 +53,59 @@ body {
 [data-node] {
 }
 
+.grid {
+	display: grid;
+}
+
+.grid-cols-2 {
+	grid-template-columns: auto auto;
+}
+
+.gap-0 {
+	gap: 0px;
+}
+
+.absolute {
+	position: absolute;
+}
+
+.bottom-0 {
+	bottom: 0;
+}
+
+.relative {
+	position: relative;
+}
+
+.flex {
+	display: flex;
+}
+
+.flex-auto {
+	flex: 1 1 auto;
+}
+
+.justify-center {
+	justify-content: center;
+}
+
+.items-center {
+	align-items: center;
+}
+
+.text-center {
+	text-align: center;
+}
+
+.w-full {
+	width: 100%;
+}
+
+.px-10 {
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
 #four-box-container {
   width: 1920px;
   height: 1080px;

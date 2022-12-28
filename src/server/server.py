@@ -495,7 +495,21 @@ def render_streetleaguetimes():
 def render_streetleaguepoints():
     '''Route to streetleague format page.'''
 
-    return render_template('streetleaguepoints.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+    return render_template('heatgenerator.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
+        led_events_enabled=led_manager.isEnabled(),
+        vrx_enabled=vrx_controller!=None,
+        num_nodes=RACE.num_nodes,
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
+        node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
+        Debug=Config.GENERAL['DEBUG'])
+
+@APP.route('/streetleaguepoints_old')
+def render_streetleaguepoints_old():
+    '''Route to streetleague format page.'''
+
+    return render_template('streetleaguepoints_old.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
@@ -551,6 +565,13 @@ def render_stream_node(node_id):
         )
     else:
         return False
+
+@APP.route('/streetleague/stream/round/')
+def render_sl_stream_round():
+    '''Route to a streetleague round (class) pilot lineup.'''
+    return render_template('streetleaguestreamround.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        num_nodes=RACE.num_nodes
+    )
 
 @APP.route('/streetleague/stream/node/')
 def render_4box_stream_node():
