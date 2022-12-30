@@ -378,6 +378,7 @@
 			rotorhazard.event.heats = msg.heats;
 			display_classes();
 			display_unclassified_heats();
+			freq.updateBlocks();
 		});
 
 		function create_heat_ui(heat) {
@@ -1175,7 +1176,7 @@
 
 </script>
 {% endblock %} {% block content %}
-<main class="page-settings">
+<main class="page-format">
 
 <!--Event Overview-->
 <div class="panel collapsing">
@@ -1293,11 +1294,11 @@
 		<div id="race_classes" class="race_classes item-blocks">
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
-		<div class="control-set">
-			<button id="add_race_class">+ {{ __('Add Class') }}</button>
+		<div class="control-set new-class-container">
+			<button id="add_race_class">{{ __('Add Class') }}</button>
 		</div>
 
-		<div id="unclassified_heats">
+		<div id="unclassified_heats" class="item-blocks">
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
 
