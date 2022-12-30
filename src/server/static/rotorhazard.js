@@ -917,6 +917,23 @@ function timerModel() {
 		}
 	}
 
+	this.initCanvas = function(el) {
+		var canvas_el = $('<canvas>');
+		$(el).html(canvas_el);
+		this.canvas = canvas_el[0]
+		this.canvas.width = 300;
+		this.canvas.height = 60;
+		this.ctx = this.canvas.getContext("2d");
+		this.ctx.font = "3rem monospace";
+		this.ctx.fillStyle = "#fff";
+		this.ctx.textAlign = "center";
+	}
+
+	this.render = function(){
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+  		this.ctx.fillText(this.renderHTML(), this.canvas.width / 2, this.canvas.height - 10);
+	}
+
 	this.renderHTML = function() {
 		if (this.local_zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
 			return '--:--';
@@ -1266,10 +1283,10 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 		}
 	}
 
-	$('.time-display').html(timer.renderHTML());
+	timer.render();
 }
 rotorhazard.timer.deferred.callbacks.stop = function(timer){
-	$('.time-display').html(timer.renderHTML());
+	timer.render();
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	rotorhazard.timer.deferred.stop();
@@ -1280,7 +1297,7 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 rotorhazard.timer.race.phased_staging = true;
 
 rotorhazard.timer.race.callbacks.start = function(timer){
-	$('.time-display').html(timer.renderHTML());
+	timer.render();
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
 }
 
@@ -1348,7 +1365,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 			}
 		}
 	}
-	$('.time-display').html(timer.renderHTML());
+	timer.render();
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
@@ -1358,7 +1375,7 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 	else {
 		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	}
-	$('.time-display').html(timer.renderHTML());
+	timer.render();
 }
 rotorhazard.timer.race.callbacks.self_resync = function(timer){
 	// display resync warning
@@ -1601,6 +1618,12 @@ jQuery(document).ready(function($){
 	socket.on('all_languages', function (msg) {
 		rotorhazard.language_strings = msg.languages;
 	});
+
+	// init timer
+	if ($('.time-display').length) {
+		rotorhazard.timer.deferred.initCanvas($('.time-display')[0]);
+		rotorhazard.timer.race.initCanvas($('.time-display')[0]);
+	}
 });
 }
 
