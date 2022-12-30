@@ -650,7 +650,7 @@
 		});
 
 		$('#set_start_thresh_lower_amount').change(function (event) {
-			var start_thresh_lower_amount_val = parseInt($(this).val());
+			var start_thresh_lower_amount_val = parseIntDefault($(this).val());
 			var data = {
 				start_thresh_lower_amount: start_thresh_lower_amount_val
 			};
@@ -662,7 +662,7 @@
 		});
 
 		$('#set_start_thresh_lower_duration').change(function (event) {
-			var start_thresh_lower_duration_val = parseInt($(this).val());
+			var start_thresh_lower_duration_val = parseIntDefault($(this).val());
 			var data = {
 				start_thresh_lower_duration: start_thresh_lower_duration_val
 			};
@@ -676,6 +676,13 @@
 			socket.emit('set_next_heat_behavior', data);
 		})
 
+
+		$(document).on("click", '.retry_secondary', function (event) {
+			var data = {
+				secondary_id: parseInt($(this).data('secondary_id'))
+			};
+			socket.emit('retry_secondary', data);
+		});
 
 		/* Voice */
 		$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);

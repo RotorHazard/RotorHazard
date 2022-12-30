@@ -959,14 +959,41 @@ function timerModel() {
 	}
 }
 
+function parseJsonStr(str) {
+	try {
+		var retVal = JSON.parse(str);
+		if (retVal == null) {
+  			throw 'Null data found';
+		}
+		return retVal;
+	} catch(ex) {
+		console.error('Error parsing data ("' + str + '") - ' + ex);
+		return null;
+	}
+}
+
 function parseIntOrBoolean(str) {
 	if (str == 'false') {
-		return 0
+		return 0;
 	}
 	if (str == 'true') {
-		return 1
+		return 1;
 	}
-	return JSON.parse(str)
+	try {
+		var retVal = JSON.parse(str);
+		if (retVal == null) {
+  			throw 'Null data found';
+		}
+		return retVal;
+	} catch(ex) {
+		console.error('Error parsing data ("' + str + '") int/bool - ' + ex);
+		return 0;
+	}
+}
+
+function parseIntDefault(str, defaultVal=0) {
+	var retVal = parseInt(str);
+	return isNaN(retVal) ? defaultVal : retVal;
 }
 
 /* rotorhazard object for local settings/storage */
@@ -1035,6 +1062,7 @@ var rotorhazard = {
 	display_time_first_pass: false, //shows the timestamp of the lap since the first pass was recorded
 	display_laps_reversed: false, //shows race laps in reverse order
 	display_chan_freq: true, //shows node channel and frequency (Current Race page only)
+	hide_graphs: false, //hides RSSI graphs on Run page
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
@@ -1093,6 +1121,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
 		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
+		localStorage['rotorhazard.hide_graphs'] = JSON.stringify(this.hide_graphs);
 		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
 		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
 		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
@@ -1103,19 +1132,19 @@ var rotorhazard = {
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
 			if (localStorage['rotorhazard.voice_string_language']) {
-				this.voice_string_language = JSON.parse(localStorage['rotorhazard.voice_string_language']);
+				this.voice_string_language = parseJsonStr(localStorage['rotorhazard.voice_string_language']);
 			}
 			if (localStorage['rotorhazard.voice_language']) {
-				this.voice_language = JSON.parse(localStorage['rotorhazard.voice_language']);
+				this.voice_language = parseJsonStr(localStorage['rotorhazard.voice_language']);
 			}
 			if (localStorage['rotorhazard.voice_volume']) {
-				this.voice_volume = JSON.parse(localStorage['rotorhazard.voice_volume']);
+				this.voice_volume = parseJsonStr(localStorage['rotorhazard.voice_volume']);
 			}
 			if (localStorage['rotorhazard.voice_rate']) {
-				this.voice_rate = JSON.parse(localStorage['rotorhazard.voice_rate']);
+				this.voice_rate = parseJsonStr(localStorage['rotorhazard.voice_rate']);
 			}
 			if (localStorage['rotorhazard.voice_pitch']) {
-				this.voice_pitch = JSON.parse(localStorage['rotorhazard.voice_pitch']);
+				this.voice_pitch = parseJsonStr(localStorage['rotorhazard.voice_pitch']);
 			}
 			if (localStorage['rotorhazard.voice_callsign']) {
 				this.voice_callsign = parseIntOrBoolean(localStorage['rotorhazard.voice_callsign']);
@@ -1139,67 +1168,70 @@ var rotorhazard = {
 				this.voice_if_node_finished = parseIntOrBoolean(localStorage['rotorhazard.voice_if_node_finished']);
 			}
 			if (localStorage['rotorhazard.voice_split_timer']) {
-				this.voice_split_timer = JSON.parse(localStorage['rotorhazard.voice_split_timer']);
+				this.voice_split_timer = parseJsonStr(localStorage['rotorhazard.voice_split_timer']);
 			}
 			if (localStorage['rotorhazard.tone_volume']) {
-				this.tone_volume = JSON.parse(localStorage['rotorhazard.tone_volume']);
+				this.tone_volume = parseJsonStr(localStorage['rotorhazard.tone_volume']);
 			}
 			if (localStorage['rotorhazard.beep_crossing_entered']) {
-				this.beep_crossing_entered = JSON.parse(localStorage['rotorhazard.beep_crossing_entered']);
+				this.beep_crossing_entered = parseJsonStr(localStorage['rotorhazard.beep_crossing_entered']);
 			}
 			if (localStorage['rotorhazard.beep_crossing_exited']) {
-				this.beep_crossing_exited = JSON.parse(localStorage['rotorhazard.beep_crossing_exited']);
+				this.beep_crossing_exited = parseJsonStr(localStorage['rotorhazard.beep_crossing_exited']);
 			}
 			if (localStorage['rotorhazard.beep_manual_lap_button']) {
-				this.beep_manual_lap_button = JSON.parse(localStorage['rotorhazard.beep_manual_lap_button']);
+				this.beep_manual_lap_button = parseJsonStr(localStorage['rotorhazard.beep_manual_lap_button']);
 			}
 			if (localStorage['rotorhazard.beep_race_leader_lap']) {
-				this.beep_race_leader_lap = JSON.parse(localStorage['rotorhazard.beep_race_leader_lap']);
+				this.beep_race_leader_lap = parseJsonStr(localStorage['rotorhazard.beep_race_leader_lap']);
 			}
 			if (localStorage['rotorhazard.beep_race_winner_declared']) {
-				this.beep_race_winner_declared = JSON.parse(localStorage['rotorhazard.beep_race_winner_declared']);
+				this.beep_race_winner_declared = parseJsonStr(localStorage['rotorhazard.beep_race_winner_declared']);
 			}
 			if (localStorage['rotorhazard.beep_cluster_connect']) {
-				this.beep_cluster_connect = JSON.parse(localStorage['rotorhazard.beep_cluster_connect']);
+				this.beep_cluster_connect = parseJsonStr(localStorage['rotorhazard.beep_cluster_connect']);
 			}
 			if (localStorage['rotorhazard.use_mp3_tones']) {
-				this.use_mp3_tones = JSON.parse(localStorage['rotorhazard.use_mp3_tones']);
+				this.use_mp3_tones = parseJsonStr(localStorage['rotorhazard.use_mp3_tones']);
 			}
 			if (localStorage['rotorhazard.beep_on_first_pass_button']) {
-				this.beep_on_first_pass_button = JSON.parse(localStorage['rotorhazard.beep_on_first_pass_button']);
+				this.beep_on_first_pass_button = parseJsonStr(localStorage['rotorhazard.beep_on_first_pass_button']);
 			}
 			if (localStorage['rotorhazard.schedule_m']) {
-				this.schedule_m = JSON.parse(localStorage['rotorhazard.schedule_m']);
+				this.schedule_m = parseJsonStr(localStorage['rotorhazard.schedule_m']);
 			}
 			if (localStorage['rotorhazard.schedule_s']) {
-				this.schedule_s = JSON.parse(localStorage['rotorhazard.schedule_s']);
+				this.schedule_s = parseJsonStr(localStorage['rotorhazard.schedule_s']);
 			}
 			if (localStorage['rotorhazard.indicator_beep_volume']) {
-				this.indicator_beep_volume = JSON.parse(localStorage['rotorhazard.indicator_beep_volume']);
+				this.indicator_beep_volume = parseJsonStr(localStorage['rotorhazard.indicator_beep_volume']);
 			}
 			if (localStorage['rotorhazard.min_lap']) {
-				this.min_lap = JSON.parse(localStorage['rotorhazard.min_lap']);
+				this.min_lap = parseJsonStr(localStorage['rotorhazard.min_lap']);
 			}
 			if (localStorage['rotorhazard.admin']) {
-				this.admin = JSON.parse(localStorage['rotorhazard.admin']);
+				this.admin = parseJsonStr(localStorage['rotorhazard.admin']);
 			}
 			if (localStorage['rotorhazard.primaryPilot']) {
-				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
+				this.primaryPilot = parseJsonStr(localStorage['rotorhazard.primaryPilot']);
+			}
+			if (localStorage['rotorhazard.hide_graphs']) {
+				this.hide_graphs = parseJsonStr(localStorage['rotorhazard.hide_graphs']);
 			}
 			if (localStorage['rotorhazard.display_lap_id']) {
-				this.display_lap_id = JSON.parse(localStorage['rotorhazard.display_lap_id']);
+				this.display_lap_id = parseJsonStr(localStorage['rotorhazard.display_lap_id']);
 			}
 			if (localStorage['rotorhazard.display_time_start']) {
-				this.display_time_start = JSON.parse(localStorage['rotorhazard.display_time_start']);
+				this.display_time_start = parseJsonStr(localStorage['rotorhazard.display_time_start']);
 			}
 			if (localStorage['rotorhazard.display_time_first_pass']) {
-				this.display_time_first_pass = JSON.parse(localStorage['rotorhazard.display_time_first_pass']);
+				this.display_time_first_pass = parseJsonStr(localStorage['rotorhazard.display_time_first_pass']);
 			}
 			if (localStorage['rotorhazard.display_laps_reversed']) {
-				this.display_laps_reversed = JSON.parse(localStorage['rotorhazard.display_laps_reversed']);
+				this.display_laps_reversed = parseJsonStr(localStorage['rotorhazard.display_laps_reversed']);
 			}
 			if (localStorage['rotorhazard.display_chan_freq']) {
-				this.display_chan_freq = JSON.parse(localStorage['rotorhazard.display_chan_freq']);
+				this.display_chan_freq = parseJsonStr(localStorage['rotorhazard.display_chan_freq']);
 			}
 			return true;
 		}

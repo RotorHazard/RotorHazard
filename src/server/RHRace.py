@@ -82,8 +82,6 @@ class RHRace():
                 return True
         return False
 
-RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
-
 class StagingTones():
     TONES_NONE = 0
     TONES_ONE = 1

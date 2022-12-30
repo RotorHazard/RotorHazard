@@ -47,7 +47,7 @@ from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
 
-from flask import Flask, send_file, request, Response, session, templating, redirect, abort
+from flask import Flask, send_file, request, Response, session, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
 
 import socket
@@ -674,8 +674,14 @@ def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
-    # push initial data
-    emit_frontend_load(nobroadcast=True)
+    #
+    @catchLogExceptionsWrapper
+    @copy_current_request_context
+    def finish_connect_handler():
+        # push initial data
+        emit_frontend_load(nobroadcast=True)
+    # pause and spawn to make sure connection to browser is established
+    gevent.spawn_later(0.050, finish_connect_handler)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
@@ -1325,7 +1331,7 @@ def on_alter_pilot(data):
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
 def on_delete_pilot(data):
-    '''Delete heat.'''
+    '''Delete pilot.'''
     result = RHData.delete_pilot(data['pilot'])
 
     if result:
@@ -1686,7 +1692,7 @@ def on_generate_heats_v2(data):
         return
 
     logger.error('Data exporter "{0}" not found'.format(generator))
-    emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)    
+    emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
@@ -2099,7 +2105,7 @@ def on_stage_race():
             if staging_random_ms % 1000:
                 staging_tones += 1
 
-        RACE.stage_time_monotonic = monotonic() + RHRace.RACE_START_DELAY_EXTRA_SECS
+        RACE.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
         RACE.start_time_monotonic = RACE.stage_time_monotonic + (staging_total_ms / 1000 )
 
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
@@ -2475,7 +2481,7 @@ def do_save_actions():
                     'exit_at': INTERFACE.nodes[node_index].exit_at_level,
                     'laps': RACE.node_laps[node_index]
                     }
-                
+
                 RHData.set_pilot_used_frequency(pilot_id, {
                     'b': profile_freqs["b"][node_index],
                     'c': profile_freqs["c"][node_index],
@@ -2955,6 +2961,13 @@ def clean_results_cache():
     Results.invalidate_all_caches(RHData)
     PageCache.set_valid(False)
 
+@SOCKET_IO.on('retry_secondary')
+@catchLogExceptionsWrapper
+def on_retry_secondary(data):
+    '''Retry connection to secondary timer.'''
+    CLUSTER.retrySecondary(data['secondary_id'])
+    emit_cluster_status()
+
 # Socket io emit functions
 
 def emit_frontend_load(**params):
@@ -3091,24 +3104,20 @@ def emit_cluster_status(**params):
 def emit_start_thresh_lower_amount(**params):
     '''Emits current start_thresh_lower_amount.'''
     emit_payload = {
-        'start_thresh_lower_amount': RHData.get_option('startThreshLowerAmount'),
+        'start_thresh_lower_amount': RHData.get_optionInt('startThreshLowerAmount'),
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_amount', emit_payload)
-    elif ('noself' in params):
-        emit('start_thresh_lower_amount', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_amount', emit_payload)
 
 def emit_start_thresh_lower_duration(**params):
     '''Emits current start_thresh_lower_duration.'''
     emit_payload = {
-        'start_thresh_lower_duration': RHData.get_option('startThreshLowerDuration'),
+        'start_thresh_lower_duration': RHData.get_optionInt('startThreshLowerDuration'),
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_duration', emit_payload)
-    elif ('noself' in params):
-        emit('start_thresh_lower_duration', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_duration', emit_payload)
 
@@ -3189,7 +3198,7 @@ def emit_event_actions(**params):
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
-        'min_lap': RHData.get_option('MinLapSec'),
+        'min_lap': RHData.get_optionInt('MinLapSec'),
         'min_lap_behavior': RHData.get_optionInt("MinLapBehavior")
     }
     if ('nobroadcast' in params):
@@ -5095,7 +5104,7 @@ else:
 for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
         plugin.initialize(
-            Events=Events, 
+            Events=Events,
             Language=Language,
             __=__)
 

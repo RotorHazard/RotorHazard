@@ -138,7 +138,7 @@
 		rotorhazard.saveData();
 		$('nav li').removeClass('admin-hide');
 
-		// populate voice controls
+		// populate controls
 		$('#voice_callsign').val(rotorhazard.voice_callsign);
 		$('#voice_lap_count').val(rotorhazard.voice_lap_count);
 		$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
@@ -170,6 +170,7 @@
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 		$('#schedule_m').val(rotorhazard.schedule_m);
 		$('#schedule_s').val(rotorhazard.schedule_s);
+		$('#hide_graphs').prop("checked", !rotorhazard.hide_graphs);
 		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
@@ -192,8 +193,15 @@
 			if (canvas) {
 				rotorhazard.nodes[i].canvas = canvas;
 				rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
+				if (rotorhazard.hide_graphs) {
+					rotorhazard.nodes[i].graph.stop();
+				}
 			}
 		}
+		if (rotorhazard.hide_graphs) {
+			$('.rssi-graph').prop('hidden', true);
+		}
+
 
 		function any_laps_recorded() {
 			if (current_laps && 'node_index' in current_laps) {
@@ -952,6 +960,13 @@
 			socket.emit('set_current_heat', data);
 		});
 
+		$(document).on("click", '.retry_secondary', function (event) {
+			var data = {
+				secondary_id: parseInt($(this).data('secondary_id'))
+			};
+			socket.emit('retry_secondary', data);
+		});
+
 		/* Voice */
 		$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
 
@@ -1123,6 +1138,22 @@
 			rotorhazard.saveData();
 		});
 
+		$('#hide_graphs').change(function (event) {
+			rotorhazard.hide_graphs = !$(this).prop('checked');
+			rotorhazard.saveData();
+			for (var i in rotorhazard.nodes) {
+				var node = rotorhazard.nodes[i];
+				if (node.canvas) {
+					if (rotorhazard.hide_graphs) {
+						node.graph.stop();
+					} else {
+						node.graph.start();
+					}
+				}
+			}
+			$('.rssi-graph').prop('hidden', rotorhazard.hide_graphs);
+		});
+
 		$('#display_lap_id').change(function (event) {
 			rotorhazard.display_lap_id = $(this).prop('checked');
 			rotorhazard.saveData();
@@ -1170,11 +1201,11 @@
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
-			rotorhazard.min_lap = msg.min_lap;
+			rotorhazard.min_lap = parseIntDefault(msg.min_lap);
 		});
 
 		$('#set_min_lap').change(function (event) {
-			var min_lap_val = parseInt($(this).val());
+			var min_lap_val = parseIntDefault($(this).val());
 			rotorhazard.min_lap = min_lap_val;
 			var data = {
 				min_lap: min_lap_val
@@ -1549,64 +1580,72 @@
 			add_callout();
 		});
 
+		function get_pilots_list_string(sepstr) {
+			var pilots = '';
+			var first = true;
+			for (i in rotorhazard.current_heatNodes) {
+				pilot = rotorhazard.current_heatNodes[i].pilot_id;
+				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
+					if (!first) {
+						pilots += sepstr;
+					}
+					for (var p in rotorhazard.pilot_data) {
+						pdata = rotorhazard.pilot_data[p];
+						if (pdata.pilot_id == pilot) {
+							if (pdata.phonetic) {
+								pilots += pdata.phonetic;
+							} else {
+								pilots += pdata.callsign;
+							}
+							break;
+						}
+					}
+					first = false;
+				}
+			}
+			return pilots
+		}
+
 		$(document).on('click', '.play_callout', function (event) {
 			var callout = $(this).siblings('.callout_text').val();
 
-			// %HEAT% : Current heat name
-			heat = rotorhazard.event.heats.find(obj => {return obj.id == rotorhazard.current_heat})
-			callout = callout.replace('%HEAT%', heat.displayname);
+			if (callout.indexOf('%') >= 0) {
+				// %HEAT% : Current heat name
+				heat = rotorhazard.event.heats.find(obj => {return obj.id == rotorhazard.current_heat})
+				callout = callout.replace('%HEAT%', heat.displayname);
 
-			// %PILOTS% : Current pilot names
-			var pilots = '';
-			var first = true;
+				// %PILOTS% : Current pilot names
+				callout = callout.replace('%PILOTS%', get_pilots_list_string(' . '))
 
-			for (i in rotorhazard.current_heatNodes) {
-				pilot = rotorhazard.current_heatNodes[i].pilot_id;
-				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
-					if (!first) {
-						pilots += '. ';
-					}
-					for (var p in rotorhazard.pilot_data) {
-						pdata = rotorhazard.pilot_data[p];
-						if (pdata.pilot_id == pilot) {
-							if (pdata.phonetic) {
-								pilots += pdata.phonetic;
-							} else {
-								pilots += pdata.callsign;
-							}
-							break;
+				// %LINEUP% : Current pilot names (faster)
+				callout = callout.replace('%LINEUP%', get_pilots_list_string(' , '))
+
+				// %FREQS% : Frequencies with current pilot assignments
+				var pilots = '';
+				var first = true;
+				for (i in rotorhazard.current_heatNodes) {
+					pilot = rotorhazard.current_heatNodes[i].pilot_id;
+					if (pilot && rotorhazard.nodes[i].fObj.frequency) {
+						if (!first) {
+							pilots += '. ';
 						}
-					}
-					first = false;
-				}
-			}
-			callout = callout.replace('%PILOTS%', pilots)
-
-			// %FREQS% : Frequencies with current pilot assignments
-			var pilots = '';
-			var first = true;
-			for (i in rotorhazard.current_heatNodes) {
-				pilot = rotorhazard.current_heatNodes[i].pilot_id;
-				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
-					if (!first) {
-						pilots += '. ';
-					}
-					for (var p in rotorhazard.pilot_data) {
-						pdata = rotorhazard.pilot_data[p];
-						if (pdata.pilot_id == pilot) {
-							if (pdata.phonetic) {
-								pilots += pdata.phonetic;
-							} else {
-								pilots += pdata.callsign;
+						for (var p in rotorhazard.pilot_data) {
+							pdata = rotorhazard.pilot_data[p];
+							if (pdata.pilot_id == pilot) {
+								if (pdata.phonetic) {
+									pilots += pdata.phonetic;
+								} else {
+									pilots += pdata.callsign;
+								}
+								break;
 							}
-							break;
 						}
+						pilots += ': ' + rotorhazard.nodes[i].fObj.key;
+						first = false;
 					}
-					pilots += ': ' + rotorhazard.nodes[i].fObj.key;
-					first = false;
 				}
+				callout = callout.replace('%FREQS%', pilots)
 			}
-			callout = callout.replace('%FREQS%', pilots)
 
 			speak('<div class="speech">' + callout + '</div>');
 			return false;
@@ -2363,7 +2402,6 @@
 	<div class="panel-content">
 		<p class="form-note">{{ __('Display settings apply to this device only.') }}</p>
 		<ol class="form">
-
 			<li>
 				<div class="label-block">
 					{{ __('Lap Information') }}
@@ -2375,7 +2413,14 @@
 					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
 				</ul>
 			</li>
-
+			<li>
+				<div class="label-block">
+					{{ __('Performance') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="hide_graphs"> {{ __('RSSI Graphs') }}</label></li>
+				</ul>
+			</li>
 		</ol>
 	</div>
 </div>
@@ -2433,6 +2478,7 @@
 		<p class="form-note">
 			%HEAT% : {{ __('Current heat name') }}<br />
 			%PILOTS% : {{ __('Current pilot names') }}<br />
+			%LINEUP% : {{ __('Current pilot names') }} ({{ __('faster') }}) <br />
 			%FREQS% : {{ __('Frequencies with current pilot assignments') }}
 		</p>
 	</div>

@@ -1,16 +1,16 @@
 # RotorHazard Race Timer User Guide
 
 - [Initial Setup](#initial-setup)
-  - [Hardware and Software Setup](#hardware-and-software-setup)
-  - [Connect to the Server](#connect-to-the-server)
+    - [Hardware and Software Setup](#hardware-and-software-setup)
+    - [Connect to the Server](#connect-to-the-server)
 - [Pages](#pages)
-  - [Home](#home)
-  - [Event](#event)
-  - [Results](#results)
-  - [Current](#current)
-  - [Settings](#settings)
-  - [Run](#run)
-  - [Marshal](#marshal)
+    - [Home](#home)
+    - [Event](#event)
+    - [Results](#results)
+    - [Current](#current)
+    - [Settings](#settings)
+    - [Run](#run)
+    - [Marshal](#marshal)
 
 ## Initial Setup
 
@@ -23,7 +23,7 @@ Follow the instructions here if not done already:<br>
 ### Connect to the Server
 A computer, phone or tablet may be used to interact with the race timer by launching a web browser and entering the IP address of the Raspberry Pi. The Raspberry Pi may be connected using an ethernet cable, or to an available WiFi network. If the IP address of the Pi is not known, it may be viewed using the terminal command "ifconfig", and it can configured to a static value on the Pi desktop via the "Network Preferences." If the Pi is connected to a WiFi network, its IP address may be found in the 'Clients' list on the admin page for the network's router.
 
-In the web browser, type in the IP address of for the race timer and the port value you set in the config file (or leave off the :port if set to 80).
+In the web browser, type in the IP address of for the race timer and the port value you set in the config file. (You may leave off the :port if set to 80 or [port forwarding from 80](Software%20Setup.md#enable-port-forwarding) is enabled.)
 
 ```
 XXX.XXX.XXX.XXX:5000
@@ -93,6 +93,8 @@ Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Vo
 
 Indicator beeps are very short tones that give feedback on how the timer is working, and are most useful when trying to tune it. Each node is identified with a unique audio pitch. "Crossing Entered" will beep once when a pass begins, and "Crossing Exited" will beep twice rapidly when a pass is completed. "Manual Lap Button" will beep once if the "Manual" button is used to force a simulated pass.
 
+If you select "Use MP3 Tones instead of synthetic tones" then the '.mp3' files at "src/server/static/audio" will be used to play the tones.
+
 #### Event Actions
 Extend and personalize your timer's behavior by attaching *Effects* to *Events*. The timer generates an *Event* on race start, lap recorded, pilot done, etc. *Effects* are behaviors that can be triggered. Each effect may have parameters which can be configured.
 
@@ -107,38 +109,35 @@ For the above effects, you can use "%PILOT%" for a callsign when a pilot trigger
 #### Race Format
 Race formats define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.
 
+Hitting the "+" button will duplicate the current race format, and the "x" button will remove the current race format. (Once a race format is removed there is not a direct way to recover it, but if you go to "Settings | Database", select "Races and Race Formats" in the drop-down and then hit "Clear Data" it will restore the race formats to the original set. Note that any customized race formats will be deleted.)
+
 The race clock can count up or down as selected by _Race Clock Mode_. Use "No Time Limit" for a "First to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
 
-During a "Fixed Time" race, _Grace Period_ is the amount of time after the race clock expires before the timer is automatically stopped. Set _Grace Period_ to "0" to stop a race immediately when time expires. If _Grace Period_ is set to "-1", the clock continues indefinitely.
+During a "Fixed Time" race, _Grace Period_ is the amount of time after the race clock expires before the timer is automatically stopped. Set _Grace Period_ to "0" to stop a race immediately when time expires. If _Grace Period_ is set to "-1", the clock continues indefinitely and must be stopped manually.
 
-Each race begins with a staging sequence. The *prestage* phase is always a fixed length which will sound one tone each second. Adjust this with the _Prestage Tones_ value. Next is the *staging* phase. _Staging Delay_ sets the time in between the *prestage* and *staging* phases. Once the delay expires, the timer will wait a random amount of time from zero up to the maximum set in _Staging Variable Delay_. If _Staging Variable Delay_ is not zero, the timer will hide the staging clock and simply show "Ready". Choose whether tones are heard during the *staging* phase with _Variable Staging Tones_.
+Each race begins with a staging sequence. Adjust the _Prestage Tones_ value to control the length of the *prestage* phase, during which one tone will sound each second. Next is the *staging* phase, which can be a fixed or random duration. _Minimum Staging Time_ sets a fixed minimum duration for the *staging* phase. If _Random Staging Time_ is greater than zero, the timer will additionally delay randomly between zero and this value. Setting _Random Staging Time_ above zero also hides the staging clock, which will show "Ready" instead of a countdown. Choose whether tones are heard during the *staging* phase with _Staging Tones_.
 
 #####Examples:
 * A fixed "3, 2, 1, Go" countdown start:
     * _Prestage Tones_: 3
-    * _Staging Delay_: 1.0
-    * _Staging Variable Delay_: 0.0
-    * _Variable Staging Tones_: None
-* One prestage tone followed by a start tone within 5 seconds:
+    * _Staging Tones_: (any)
+    * _Minimum Staging Time_: 1.0
+    * _Random Staging Time_: 0.0
+* 1 prestage tone followed by a start tone within 1–5 seconds:
     * _Prestage Tones_: 1
-    * _Staging Delay_: 0.0
-    * _Staging Variable Delay_: 5.0
-    * _Variable Staging Tones_: None
-* Three prestage tones followed by a start tone between 1.0 and 3.0 seconds:
-    * _Prestage Tones_: 3
-    * _Staging Delay_: 1.0
-    * _Staging Variable Delay_: 2.0
-    * _Variable Staging Tones_: None
-* A "formula one"-style launch of 5 prestage tones followed by a random delay between 0.2 and 3.0 seconds:
+    * _Staging Tones_: None    
+    * _Minimum Staging Time_: 1.0
+    * _Random Staging Time_: 5.0
+* 5 prestage tones followed by a random delay between 0.2 and 3.0 seconds:
     * _Prestage Tones_: 5
-    * _Staging Delay_: 0.2
-    * _Staging Variable Delay_: 2.8
-    * _Variable Staging Tones_: None
-* A variable number of prestage tones between 2 and 5:
+    * _Staging Tones_: None    
+    * _Minimum Staging Time_: 0.2
+    * _Random Staging Time_: 2.8
+* A variable number of tones between 2 and 5, then start:
     * _Prestage Tones_: 2
-    * _Staging Delay_: 0.0
-    * _Staging Variable Delay_: 3.9
-    * _Variable Staging Tones_: Each Second
+    * _Staging Tones_: Each Second    
+    * _Minimum Staging Time_: 0.2
+    * _Random Staging Time_: 3.7
 
 _A small amount of time is needed to ensure the timer has synchronized with all hardware, so there is always a short period to start a race even with all staging times set to zero._
 

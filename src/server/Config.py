@@ -51,6 +51,7 @@ GENERAL['DEF_NODE_FWUPDATE_URL'] = ''
 GENERAL['SHUTDOWN_BUTTON_GPIOPIN'] = 18
 GENERAL['SHUTDOWN_BUTTON_DELAYMS'] = 2500
 GENERAL['DB_AUTOBKP_NUM_KEEP'] = 30
+GENERAL['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
 
 InitResultStr = None
 InitResultLogLevel = logging.INFO

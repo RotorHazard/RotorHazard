@@ -4,9 +4,9 @@
 - [Install RotorHazard on a Raspberry Pi](#install-rotorhazard-on-a-raspberry-pi)
 - [RotorHazard Node Code](#rotorhazard-node-code)
 - [Optional Components](#optional-components)
-- [Running the RotorHazard server](#running-the-rotorhazard-server)
-- [Updating an existing installation](#updating-an-existing-installation)
-- [Enable Port forwarding](#enable-port-forwarding)
+- [Running the RotorHazard Server](#running-the-rotorhazard-server)
+- [Updating an Existing Installation](#updating-an-existing-installation)
+- [Enable Port Forwarding](#enable-port-forwarding)
 - [Other Operating Systems](#other-operating-systems)
 - [Viewing Database Files](#viewing-database-files)
 - [RotorHazard Portable](#rotorhazard-portable)
@@ -222,7 +222,7 @@ sudo apt install openjdk-8-jdk-headless
 
 ----------------------------------------------------------------------------
 
-## Running the RotorHazard server
+## Running the RotorHazard Server
 
 The following instructions will start the web server on the raspberry pi, allowing full control and configuration of the system to run races and save lap times.
 
@@ -294,7 +294,7 @@ sudo shutdown now
 ----------------------------------------------------------------------------
 
 <a id="update"></a>
-## Updating an existing installation
+## Updating an Existing Installation
 
 Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like:
 ```
@@ -324,7 +324,7 @@ sudo pip install --upgrade --no-cache-dir -r requirements.txt
 
 ----------------------------------------------------------------------------
 
-## Enable Port forwarding
+## Enable Port Forwarding
 The RotorHazard server defaults to port 5000, as this is necessary for some 3rd party integrations. While you can change the port via `HTTP_PORT` in the `config.json` file, a better approach is often to forward the web default port of 80 to 5000.
 
 By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and reusing it will cause problems. If port 80 is used directly via `HTTP_PORT`, the server may need to be run using the *sudo* command. With the following commands, the server runs on port 5000 but the system sends the traffic from port 80 to it.
