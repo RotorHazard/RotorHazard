@@ -125,8 +125,8 @@
 			var input_val = $('#generator_input_class').val();
 			var output_val = $('#generator_output_class').val();
 
-			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
-			$('#generator_output_class').empty().append($('<option value="">' + __('New Class') + '</option>'));
+			$('#generator_input_class').empty().append($('<option value="0">' + __('All Pilots') + '</option>'));
+			$('#generator_output_class').empty().append($('<option value="">-' + __('New Class') + '-</option>'));
 
 			if (class_data.classes.length) {
 				class_data.classes.sort((a, b) => (a.order > b.order) ? 1 : -1);

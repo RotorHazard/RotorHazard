@@ -65,8 +65,9 @@ def generateLadder(RHData, Results, _PageCache, generate_args=None):
         advances_per_heat = 1
 
     if qualifiers_per_heat < 1 or advances_per_heat < 1:
-        logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 0')
-        return False
+        if not ('advances_per_heat' in generate_args and generate_args['advances_per_heat'] == 0):
+            logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 0')
+            return False
 
     total_pilots = getTotalPilots(RHData, Results, generate_args)
 
@@ -185,6 +186,14 @@ def discover(*args, **kwargs):
             generateLadder,
             {
                 'advances_per_heat': 2,
+            }
+        ),
+        HeatGenerator(
+            'ladder_0a',
+            'Ranked fill',
+            generateLadder,
+            {
+                'advances_per_heat': 0,
             }
         ),
         HeatGenerator(
