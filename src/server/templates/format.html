@@ -653,8 +653,9 @@
 		socket.on('pilot_data', function (msg) {
 			rotorhazard.event.pilots = msg.pilots;
 			rotorhazard.options.pilotSort = msg.pilotSort;
-			display_classes();
 			display_pilots();
+			display_classes();
+			display_unclassified_heats();
 		});
 
 		function display_pilots() {
@@ -710,11 +711,17 @@
 		});
 
 		$(document).on("change", '.set_pilot_name', function (event) {
+			var pilot_id = parseInt($(this).data('pilot_id'));
+			var pilot_name = $(this).val();
 			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				name: $(this).val()
+				pilot_id: pilot_id,
+				name: pilot_name
 			};
 			socket.emit('alter_pilot', data);
+			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
+			pilot.name = pilot_name;
+			display_classes();
+			display_unclassified_heats();
 		})
 
 		$(document).on("focus", '.set_pilot_callsign', function(){
@@ -722,11 +729,17 @@
 		});
 
 		$(document).on("change", '.set_pilot_callsign', function (event) {
+			var pilot_id = parseInt($(this).data('pilot_id'));
+			var pilot_callsign = $(this).val();
 			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				callsign: $(this).val()
+				pilot_id: pilot_id,
+				callsign: pilot_callsign
 			};
 			socket.emit('alter_pilot', data);
+			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
+			pilot.callsign = pilot_callsign;
+			display_classes();
+			display_unclassified_heats();
 		})
 
 		$(document).on("click", '.set_pilot_color', function (event) {
