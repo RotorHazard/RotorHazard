@@ -1249,12 +1249,6 @@ main.page-home {
 	position: relative;
 }
 
-.heats h3>button {
-	position: absolute;
-	right: 0.25em;
-	font-size: 0.9rem;
-}
-
 @media (max-width: 68em){
 	.heats>li {
 		width: calc(25% - 0.5em);
@@ -1467,6 +1461,20 @@ main.page-home {
 #unclassified_heats>ol>li,
 .race_classes>ol>li {
 	margin: 1rem 0;
+	position: relative;
+}
+
+.actions {
+	position: absolute;
+	top: 0.25rem;
+	right: 0.25em;
+	font-size: 0.9rem;
+	z-index: 200;
+}
+
+.actions button {
+	margin-left:0.5em;
+	font-weight: bold;
 }
 
 @media(min-width:30em) {
@@ -1517,9 +1525,9 @@ main.page-home {
 }
 
 .race_classes h3 {
-	position: sticky;
+	/* position: sticky;
 	top: 0;
-	z-index: 100;
+	z-index: 100; */
 }
 
 .race_classes h3>button,
