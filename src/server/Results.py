@@ -178,7 +178,7 @@ def get_results_heat(RHData, heat):
                         }
     else:
         return {
-            'result': False,
+            'result': True,
             'data': None
             }
 
@@ -208,7 +208,7 @@ def get_results_race_class(RHData, race_class):
                         }
     else:
         return {
-            'result': False,
+            'result': True,
             'data': None
             }
 
