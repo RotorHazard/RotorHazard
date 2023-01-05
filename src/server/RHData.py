@@ -1024,7 +1024,12 @@ class RHData():
     def get_next_heat_id(self, current_heat_id):
         current_heat = self.get_heat(current_heat_id)
         heats = self.get_heats_by_class(current_heat.class_id)
-        heats.sort(key=lambda x: x.order)
+        
+        def heatsorter(x):
+            if not x.order:
+                return 0
+            return x.order
+        heats.sort(key=heatsorter)
 
         if len(heats):
             next_heat_id = None
