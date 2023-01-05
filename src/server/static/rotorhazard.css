@@ -1508,12 +1508,12 @@ main.page-home {
 		grid-row: 3;
 	}
 
-	.race_classes .set_race_class_rounds {
+	.race_classes .field-rounds {
 		grid-column: 2;
 		grid-row: 4;
 	}
 
-	.race_classes .duplicate_class {
+	.race_classes .field-advance {
 		grid-column: 2;
 		grid-row: 5;
 	}
