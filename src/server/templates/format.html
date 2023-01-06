@@ -234,10 +234,10 @@
 						el.append(field);
 
 						var field = $('<div class="field field-advance">');
-						field.append('<label for="class_heat_advance_' + race_class.id + '">' + __('Auto Advance Heat') + '</label>');
+						field.append('<label for="class_heat_advance_' + race_class.id + '">' + __('Advance Heat') + '</label>');
 						var selectbox = $('<select class="set_race_class_heat_advance" id="class_heat_advance_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 						selectbox.append('<option value="1">' + __('Always') + '</option>');
-						selectbox.append('<option value="2">' + __('After last round') + '</option>');
+						selectbox.append('<option value="2">' + __('After rounds') + '</option>');
 						selectbox.append('<option value="0">' + __('Never') + '</option>');
 
 						selectbox.val(race_class.heat_advance);

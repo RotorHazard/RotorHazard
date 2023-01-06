@@ -1369,9 +1369,9 @@ main.page-home {
 }
 
 .heats label.auto_frequency {
-	margin-right: auto;
+	margin: 0.25rem;
+	display: block;
 }
-
 
 .pilots {
 	padding: 0;

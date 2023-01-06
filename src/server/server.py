@@ -1691,8 +1691,8 @@ def on_generate_heats_v2(data):
 
         return
 
-    logger.error('Data exporter "{0}" not found'.format(generator))
-    emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
+    logger.error('Heat generator "{0}" not found'.format(generator))
+    emit_priority_message(__('Heat generation failed. (See log)'), False, nobroadcast=True)
 
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
