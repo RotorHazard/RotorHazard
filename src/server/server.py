@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from jsonschema._types import is_integer
 RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
-SERVER_API = 37 # Server API version
+SERVER_API = 38 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -1873,13 +1873,6 @@ def on_delete_race_format():
         else:
             emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
 
-@SOCKET_IO.on("set_next_heat_behavior")
-@catchLogExceptionsWrapper
-def on_set_next_heat_behavior(data):
-    next_heat_behavior = int(data['next_heat_behavior'])
-    RHData.set_option("nextHeatBehavior", next_heat_behavior)
-    logger.info("set next heat behavior to %s" % next_heat_behavior)
-
 # LED Effects
 
 def emit_led_effect_setup(**params):
@@ -2504,8 +2497,9 @@ def do_save_actions():
 
     logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
 
-    if RHData.get_optionInt('nextHeatBehavior') != 1:
-        on_set_current_heat({'heat':RHData.get_next_heat_id(RACE.current_heat)})
+    race_class = RHData.get_raceClass(heat.class_id)
+    if race_class:
+        on_set_current_heat({'heat':RHData.get_next_heat_id(heat, race_class)})
 
     on_discard_laps(saved=True) # Also clear the current laps
     # else:
@@ -3571,6 +3565,7 @@ def emit_class_data(**params):
         current_class['format'] = race_class.format_id
         current_class['win_condition'] = race_class.win_condition
         current_class['rounds'] = race_class.rounds
+        current_class['heat_advance'] = race_class.heatAdvanceType
         current_class['order'] = race_class.order
         current_class['locked'] = RHData.savedRaceMetas_has_raceClass(race_class.id)
         current_classes.append(current_class)

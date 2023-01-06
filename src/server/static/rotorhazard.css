@@ -193,7 +193,7 @@ textarea {
 	border-color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
 	border-radius: 0.25rem;
 	background: #fff;
-	padding: 0.25rem;
+	padding: 0.25rem 0.5rem;
 	color: #000;
 }
 
@@ -1280,17 +1280,26 @@ main.page-home {
 .page-format .heats>li {
 	position: relative;
 	width: calc(33.3333% - 0.5em);
-	display: flex;
-	flex-wrap: wrap;
 }
 
 .page-format .heats>li>h4,
-.page-format .heats>li>.set_heat_note,
 .page-format .heats>li>ol {
 	flex-basis: 100%;
 }
 
+.page-format .heats>li>.set_heat_note {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: calc(100% - 4.25rem);
+	background: transparent;
+	border: transparent;
+	color: var(--contrast_1_high);
+	font-weight: bold;
+}
+
 .page-format .heats>li>h4 {
+	color: transparent;
 	font-size: 1.17em;
 }
 
@@ -1480,7 +1489,9 @@ main.page-home {
 @media(min-width:30em) {
 	.race_classes>ol>li {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		row-gap: 0.5rem;
+		column-gap: 0.75rem;
 	}
 
 	.race_classes h3 {
@@ -1489,23 +1500,38 @@ main.page-home {
 	}
 
 	.race_classes .set_race_class_name {
-		grid-column: 1;
-		grid-row: 2;
+		grid-column: 1 / -1;
+		grid-row: 1;
+		max-width: calc(100% - 4.25rem);
 	}
 
 	.race_classes .set_race_class_description {
 		grid-column: 1;
-		grid-row: 3 / span 3;
+		grid-row: 2 / span 4;
+		height: 100%;
 	}
 
-	.race_classes .set_race_class_format {
+	.race_classes .field-format {
 		grid-column: 2;
 		grid-row: 2;
 	}
 
-	.race_classes .set_race_class_win_condition {
+	.race_classes .field-ranking {
 		grid-column: 2;
 		grid-row: 3;
+	}
+
+	.race_classes .field {
+		display: flex;
+		align-items: center;
+	}
+
+	.race_classes .field label {
+		flex: 1;
+	}
+
+	.race_classes .field :nth-child(2) {
+		flex: 2;
 	}
 
 	.race_classes .field-rounds {
@@ -1553,6 +1579,17 @@ main.page-home {
 .race_classes>ol>li>.set_race_class_description,
 .race_formats>ul>li>h3 {
 	flex-basis: 100%;
+}
+
+.race_classes h3 {
+	color: transparent;
+}
+
+.race_classes>ol>li>.set_race_class_name {
+	background: transparent;
+	border: transparent;
+	color: var(--contrast_0_low);
+	font-weight: bold;
 }
 
 .race_classes>ol>li>*,

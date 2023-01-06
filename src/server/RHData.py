@@ -18,7 +18,7 @@ import random
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Results import CacheStatus
-from Database import ProgramMethod
+from Database import ProgramMethod, HeatAdvanceType
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
@@ -513,6 +513,7 @@ class RHData():
                         'cacheStatus': CacheStatus.INVALID,
                         'win_condition': 0,
                         'rounds': 0,
+                        'heatAdvanceType': 1,
                         'order': None,
                     })
 
@@ -1021,44 +1022,53 @@ class RHData():
             logger.info('Refusing to delete only heat')
             return None
 
-    def get_next_heat_id(self, current_heat_id):
-        current_heat = self.get_heat(current_heat_id)
-        heats = self.get_heats_by_class(current_heat.class_id)
-        
-        def heatsorter(x):
-            if not x.order:
-                return 0
-            return x.order
-        heats.sort(key=heatsorter)
+    def get_next_heat_id(self, current_heat, current_class):
+        if current_heat.class_id:
+            heats = self.get_heats_by_class(current_heat.class_id)
 
-        if len(heats):
-            next_heat_id = None
-            if heats[-1].id == current_heat_id:
-                next_heat_id = heats[0].id
-                current_class = self.get_raceClass(current_heat.class_id)
-                if current_class.rounds:
-                    max_round = self.get_max_round(current_heat_id)
-                    if current_class.rounds >= max_round:
-                        race_classes = self.get_raceClasses()
-                        race_classes.sort(key=lambda x: x.order)
-                        if race_classes[-1].id == current_heat.class_id:
-                            next_class_id = race_classes[0].id
-                            logger.debug('Completed last heat of last class, looping to first class')
-                        else:
-                            for idx, race_class in enumerate(race_classes):
-                                if race_class.id == current_heat.class_id:
-                                    next_class_id = race_classes[idx + 1].id
-                                    break
+            if current_class.heatAdvanceType == HeatAdvanceType.NONE:
+                return current_heat.id
 
-                        next_heats = self.get_heats_by_class(next_class_id)
-                        next_heat_id = next_heats[0].id
-            else:
-                for idx, heat in enumerate(heats):
-                    if heat.id == current_heat_id:
-                        next_heat_id = heats[idx + 1].id
-                        break
+            if current_class.heatAdvanceType == HeatAdvanceType.NEXT_ROUND:
+                max_round = self.get_max_round(current_heat.id)
+                if max_round < current_class.rounds:
+                    return current_heat.id
 
-        return next_heat_id
+            def orderSorter(x):
+                if not x.order:
+                    return 0
+                return x.order
+            heats.sort(key=orderSorter)
+
+            if len(heats):
+                next_heat_id = None
+                if heats[-1].id == current_heat.id:
+                    next_heat_id = heats[0].id
+                    if current_class.rounds:
+                        max_round = self.get_max_round(current_heat.id)
+                        if current_class.rounds >= max_round:
+                            race_classes = self.get_raceClasses()
+                            race_classes.sort(key=orderSorter)
+                            if race_classes[-1].id == current_heat.class_id:
+                                next_class_id = race_classes[0].id
+                                logger.debug('Completed last heat of last class, looping to first class')
+                            else:
+                                for idx, race_class in enumerate(race_classes):
+                                    if race_class.id == current_heat.class_id:
+                                        next_class_id = race_classes[idx + 1].id
+                                        break
+
+                            next_heats = self.get_heats_by_class(next_class_id)
+                            next_heat_id = next_heats[0].id
+                else:
+                    for idx, heat in enumerate(heats):
+                        if heat.id == current_heat.id:
+                            next_heat_id = heats[idx + 1].id
+                            break
+
+            return next_heat_id
+
+        return current_heat.id
 
     def calc_heat_pilots(self, heat_id, Results):
         heat = self._Database.Heat.query.get(heat_id)
@@ -1309,6 +1319,7 @@ class RHData():
             cacheStatus=CacheStatus.INVALID,
             win_condition=0,
             rounds=0,
+            heatAdvanceType=1,
             order=None
             )
         self._Database.DB.session.add(new_race_class)
@@ -1338,6 +1349,7 @@ class RHData():
             cacheStatus=CacheStatus.INVALID,
             win_condition=source_class.win_condition,
             rounds=source_class.rounds,
+            heatAdvanceType=source_class.heatAdvanceType,
             order=None)
 
         self._Database.DB.session.add(new_class)
@@ -1375,6 +1387,8 @@ class RHData():
             race_class.win_condition = data['win_condition']
         if 'rounds' in data:
             race_class.rounds = data['rounds']
+        if 'heat_advance' in data:
+            race_class.heatAdvanceType = data['heat_advance']
         if 'order' in data:
             race_class.order = data['order']
 

@@ -669,14 +669,6 @@
 			socket.emit('set_start_thresh_lower_duration', data);
 		})
 
-		$('#set_next_heat_behavior').change(function (event) {
-			var data = {
-				next_heat_behavior: parseInt($(this).val())
-			};
-			socket.emit('set_next_heat_behavior', data);
-		})
-
-
 		$(document).on("click", '.retry_secondary', function (event) {
 			var data = {
 				secondary_id: parseInt($(this).data('secondary_id'))

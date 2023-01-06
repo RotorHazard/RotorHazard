@@ -115,6 +115,7 @@ class RaceClass(DB.Model):
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
+    heatAdvanceType = DB.Column(DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
 
     def displayname(self):
@@ -124,6 +125,11 @@ class RaceClass(DB.Model):
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
+
+class HeatAdvanceType:
+    NONE = 0
+    NEXT_HEAT = 1
+    NEXT_ROUND = 2
 
 class LapSplit(DB.Model):
     __tablename__ = 'lap_split'

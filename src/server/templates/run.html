@@ -181,10 +181,6 @@
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
-		if ('{{ getOption('nextHeatBehavior') }}' == '1') {
-			$('#set_next_heat_behavior').val(1);
-		}
-
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
@@ -1238,13 +1234,6 @@
 				socket.emit('set_race_format', data);
 		});
 
-		$('#set_next_heat_behavior').change(function (event) {
-			var data = {
-				next_heat_behavior: parseInt($(this).val())
-			};
-			socket.emit('set_next_heat_behavior', data);
-		})
-
 		/* Send Message */
 		$('button#send_message').click(function (event) {
 			var data = {
@@ -2199,15 +2188,6 @@
 				<select id="set_min_lap_behavior">
 					<option value="0">{{ __('Highlight Short Laps') }}</option>
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
-				</div>
-				<select id="set_next_heat_behavior">
-					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
-					<option value="1">{{ __('Manually Switch Heats') }}</option>
 				</select>
 			</li>
 		</ol>
