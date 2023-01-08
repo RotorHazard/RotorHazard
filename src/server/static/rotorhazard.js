@@ -527,15 +527,11 @@ function playWinnerTone() {
 function doSpeak(obj) {
 	if (obj.startsWith(LEADER_FLAG_CHAR)) {
 		obj = obj.substring(1);
-		if (rotorhazard.beep_race_leader_lap) {
-			playLeaderTone();
-		}
+		playLeaderTone();
 	}
 	else if (obj.startsWith(WINNER_FLAG_CHAR)) {
 		obj = obj.substring(1);
-		if (rotorhazard.beep_race_winner_declared) {
-			playWinnerTone();
-		}
+		playWinnerTone();
 	}
 	if (rotorhazard.voice_volume && rotorhazard.voice_volume > MIN_LOG_VOL_LIM) {
 		if (obj.length > 0) {
@@ -1037,6 +1033,7 @@ var rotorhazard = {
 	voice_race_winner: 1, // speak race winner
 	voice_split_timer: 0, // split timer
 	voice_if_node_finished: 0, // call laps after pilot completed
+	voice_race_leader: 0, // speak race leader pilot name
 
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
@@ -1075,7 +1072,7 @@ var rotorhazard = {
 	pi_time_request: false,
 	server_time_differential: null,
 	server_time_differential_samples: [], // stored previously acquired offsets
-
+	winner_declared_flag: false,
 
 	timer: {
 		deferred: new timerModel(),
@@ -1102,6 +1099,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
 		localStorage['rotorhazard.voice_if_node_finished'] = JSON.stringify(this.voice_if_node_finished);
 		localStorage['rotorhazard.voice_split_timer'] = JSON.stringify(this.voice_split_timer);
+		localStorage['rotorhazard.voice_race_leader'] = JSON.stringify(this.voice_race_leader);
 		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
 		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
 		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
@@ -1165,6 +1163,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.voice_split_timer']) {
 				this.voice_split_timer = parseJsonStr(localStorage['rotorhazard.voice_split_timer']);
+			}
+			if (localStorage['rotorhazard.voice_race_leader']) {
+				this.voice_race_leader = parseJsonStr(localStorage['rotorhazard.voice_race_leader']);
 			}
 			if (localStorage['rotorhazard.tone_volume']) {
 				this.tone_volume = parseJsonStr(localStorage['rotorhazard.tone_volume']);
