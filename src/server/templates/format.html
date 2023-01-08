@@ -15,7 +15,6 @@
 		'format_data',
 		'min_lap',
 		'race_status',
-		'team_racing_mode',
 		'backups_list',
 		'exporter_list',
 		'heatgenerator_list',
@@ -944,7 +943,7 @@
 			var race_time = parseInt($(this).val());
 			var data = {
 				format_id: format_id,
-				race_time: race_time
+				race_time_sec: race_time
 			};
 			socket.emit('alter_race_format', data);
 
@@ -996,7 +995,7 @@
 			var start_delay_min = parseIntDefault($(this).val() * 1000); //convert to ms
 			var data = {
 				format_id: format_id,
-				start_delay_min: start_delay_min
+				start_delay_min_ms: start_delay_min
 			};
 			socket.emit('alter_race_format', data);
 
@@ -1009,7 +1008,7 @@
 			var start_delay_max = parseIntDefault($(this).val() * 1000); //convert to ms
 			var data = {
 				format_id: format_id,
-				start_delay_max: start_delay_max
+				start_delay_max_ms: start_delay_max
 			};
 			socket.emit('alter_race_format', data);
 

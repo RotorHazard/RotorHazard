@@ -1633,14 +1633,16 @@ class RHData():
                 race_format.name = init['format_name']
             if 'race_mode' in init:
                 race_format.race_mode = init['race_mode']
-            if 'race_time' in init:
-                race_format.race_time_sec = init['race_time']
+            if 'race_time_sec' in init:
+                race_format.race_time_sec = init['race_time_sec']
             if 'lap_grace_sec' in init:
                 race_format.lap_grace_sec = init['lap_grace_sec']
-            if 'start_delay_min' in init:
-                race_format.start_delay_min_ms = init['start_delay_min']
-            if 'start_delay_max' in init:
-                race_format.start_delay_max_ms = init['start_delay_max']
+            if 'staging_fixed_tones' in init:
+                race_format.staging_fixed_tones = init['staging_fixed_tones']
+            if 'start_delay_min_ms' in init:
+                race_format.start_delay_min_ms = init['start_delay_min_ms']
+            if 'start_delay_max_ms' in init:
+                race_format.start_delay_max_ms = init['start_delay_max_ms']
             if 'staging_tones' in init:
                 race_format.staging_tones = init['staging_tones']
             if 'number_laps_win' in init:
