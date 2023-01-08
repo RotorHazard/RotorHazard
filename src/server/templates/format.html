@@ -12,7 +12,7 @@
 		'pilot_data',
 		'heat_data',
 		'class_data',
-		'race_format',
+		'format_data',
 		'min_lap',
 		'race_status',
 		'team_racing_mode',
@@ -77,45 +77,8 @@
 		});
 
 		socket.on('race_status', function (msg) {
-			switch (msg.race_status) {
-				case 1: // Race running
-				case 2: // Race stopped, clear or save laps
-				case 3: // Race staging
-					$('#set_race_format').prop('disabled', true);
-					$('#add_race_format').prop('disabled', true);
-					$('#unlock_race_format_button').prop('disabled', true);
-					$('#delete_race_format_button').prop('disabled', true);
-					$('#set_format_name').prop('disabled', true);
-					$('#set_race_mode').prop('disabled', true);
-					$('#set_fix_race_time').prop('disabled', true);
-					$('#set_start_delay_min').prop('disabled', true);
-					$('#set_start_delay_max').prop('disabled', true);
-					$('#set_staging_tones').prop('disabled', true);
-					$('#set_start_behavior').prop('disabled', true);
-					$('#set_number_laps_win').prop('disabled', true);
-					$('#set_win_condition').prop('disabled', true);
-					$('#set_team_racing_mode').prop('disabled', true);
-					break;
-				default: // Waiting to start new race
-					$('#set_race_format').prop('disabled', false);
-					$('#add_race_format').prop('disabled', false);
-					$('#unlock_race_format_button').prop('disabled', false);
-					$('#delete_race_format_button').prop('disabled', false);
-					$('#set_format_name').prop('disabled', false);
-					$('#set_race_mode').prop('disabled', false);
-					$('#set_fix_race_time').prop('disabled', false);
-					$('#set_start_delay_min').prop('disabled', false);
-					$('#set_start_delay_max').prop('disabled', false);
-					$('#set_staging_tones').prop('disabled', false);
-					$('#set_start_behavior').prop('disabled', false);
-					$('#set_number_laps_win').prop('disabled', false);
-					$('#set_win_condition').prop('disabled', false);
-					$('#set_team_racing_mode').prop('disabled', false);
-
-					socket.emit('load_data', {'load_types': [
-						'race_format',
-					]});
-			}
+			rotorhazard.event.race_status = msg;
+			display_format();
 		});
 
 		/* Classes */
@@ -155,7 +118,6 @@
 
 		socket.on('class_data', function (msg) {
 			rotorhazard.event.classes = msg.classes;
-			rotorhazard.event.formats = msg.formats;
 			display_classes();
 			freq.updateBlocks();
 		});
@@ -163,7 +125,8 @@
 		function display_classes() {
 			if (typeof rotorhazard.event.classes != "undefined" &&
 				typeof rotorhazard.event.heats != "undefined" &&
-				typeof rotorhazard.event.pilots != "undefined") {
+				typeof rotorhazard.event.pilots != "undefined" &&
+				typeof rotorhazard.event.race_formats != "undefined") {
 				$(".race_classes").empty();
 
 				var classlist = $('<ol>');
@@ -198,19 +161,19 @@
 						var field = $('<div class="field field-format">');
 						field.append('<label for="class_format_' + race_class.id + '">' + __('Race Format') + '</label>');
 						var selectbox = $('<select class="set_race_class_format" id="class_format_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-						selectbox.append('<option value="0">' + __('-No Format-') + '</option>')
-						for (var j in rotorhazard.event.formats) {
-							selectbox.append('<option value="' + rotorhazard.event.formats[j].id +'">' + rotorhazard.event.formats[j].name + '</option>')
+						selectbox.append('<option value="0">-' + __('Per-race') + '-</option>');
+						for (var j in rotorhazard.event.race_formats) {
+							selectbox.append('<option value="' + rotorhazard.event.race_formats[j].id +'">' + rotorhazard.event.race_formats[j].name + '</option>');
 						}
 						selectbox.val(race_class.format);
 						selectbox.prop('disabled', race_class.locked);
-						field.append(selectbox)
+						field.append(selectbox);
 						el.append(field);
 
 						var field = $('<div class="field field-ranking">');
 						field.append('<label for="class_win_condition_' + race_class.id + '">' + __('Ranking') + '</label>');
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-						selectbox.append('<option value="0">-' + __('From Race Format') + '-</option>')
+						selectbox.append('<option value="0">-' + __('Automatic') + '-</option>');
 						selectbox.append('<option value="1">Laps/Time</option>');
 						selectbox.append('<option value="2">Fastest Lap</option>');
 						selectbox.append('<option value="3">Fastest 3 Consecutive</option>');
@@ -222,7 +185,7 @@
 						
 						selectbox.val(race_class.win_condition);
 						selectbox.prop('disabled', race_class.locked);
-						field.append(selectbox)
+						field.append(selectbox);
 						el.append(field);
 
 						var field = $('<div class="field field-rounds">');
@@ -230,14 +193,14 @@
 						var input = $('<input type="number" id="race_class_rounds-' + race_class.id + '" class="set_race_class_rounds" data-class_id="' + race_class.id + '" step="1" min="0">');
 						input.val(race_class.rounds);
 						input.prop('disabled', race_class.locked);
-						field.append(input)
+						field.append(input);
 						el.append(field);
 
 						var field = $('<div class="field field-advance">');
 						field.append('<label for="class_heat_advance_' + race_class.id + '">' + __('Advance Heat') + '</label>');
 						var selectbox = $('<select class="set_race_class_heat_advance" id="class_heat_advance_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 						selectbox.append('<option value="1">' + __('Always') + '</option>');
-						selectbox.append('<option value="2">' + __('After rounds') + '</option>');
+						selectbox.append('<option value="2">' + __('After All Rounds') + '</option>');
 						selectbox.append('<option value="0">' + __('Never') + '</option>');
 
 						selectbox.val(race_class.heat_advance);
@@ -817,37 +780,71 @@
 		});
 
 		/* Race Format */
-		socket.on('min_lap', function (msg) {
-			$('#set_min_lap').val(msg.min_lap);
-			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
-			rotorhazard.min_lap = msg.min_lap;
+		socket.on('format_data', function (msg) {
+			rotorhazard.event.race_formats = msg.formats;
+			update_race_formats();
+			display_classes();
 		});
 
-		$('#set_min_lap').change(function (event) {
-			var min_lap_val = parseInt($(this).val());
-			rotorhazard.min_lap = min_lap_val;
-			var data = {
-				min_lap: min_lap_val
-			};
-			socket.emit('set_min_lap', data);
-		})
+		function update_race_formats() {
+			if (rotorhazard.event.race_formats) {
+				$('#set_race_format').empty();
+				for (var i = 0; i < rotorhazard.event.race_formats.length; i++) {
+					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>')
+				}
+				$('#set_race_format').val($('#set_race_format option:last').val());
+				display_format();
+			}
+		}
 
-		$('#set_min_lap_behavior').change(function (event) {
-			var data = {
-				min_lap_behavior: parseInt($(this).val())
-			};
-			socket.emit('set_min_lap_behavior', data);
-		})
+		function display_format() {
+			var format_id = parseInt($('#set_race_format').val());
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			var locked = rf.locked;
 
-		$('#set_team_racing_mode').change(function (event) {
-			var data = {
-				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
-			};
-			socket.emit('alter_race_format', data);
-		})
+			if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
+				var locked = true;
+				$('#unlock_race_format_button').prop('disabled', true);
+				$('#delete_race_format_button').prop('disabled', true);
+				$('#current_race_format_lock').show();
+			} else {
+				$('#unlock_race_format_button').prop('disabled', false);
+				$('#delete_race_format_button').prop('disabled', false);
+				$('#current_race_format_lock').hide();
+			}
+
+			$('#unlock_race_format_button').toggle(locked);
+			$('#delete_race_format_button').prop('disabled', locked);
+			$('#set_format_name').val(rf.name);
+			$('#set_race_mode').val(rf.race_mode);
+			$('#set_race_mode').prop('disabled', locked);
+			$('#set_fix_race_time').val(rf.race_time_sec);
+			$('#set_fix_race_time').prop('disabled', locked);
+			$('#set_lap_grace_time').val(rf.lap_grace_sec);
+			$('#set_lap_grace_time').prop('disabled', locked);
+			$('#set_staging_fixed_tones').val(rf.staging_fixed_tones);
+			$('#set_staging_fixed_tones').prop('disabled', locked);
+			$('#set_staging_tones').val(rf.staging_tones);
+			$('#set_staging_tones').prop('disabled', locked);
+			$('#set_start_delay_min').val(rf.start_delay_min / 1000); // convert from ms
+			$('#set_start_delay_min').prop('disabled', locked);
+			$('#set_start_delay_max').val(rf.start_delay_max / 1000); // convert from ms
+			$('#set_start_delay_max').prop('disabled', locked);
+			$('#set_start_behavior').val(rf.start_behavior);
+			$('#set_start_behavior').prop('disabled', locked);
+			$('#set_win_condition').val(rf.win_condition);
+			$('#set_win_condition').prop('disabled', locked);
+			$('#set_number_laps_win').val(rf.number_laps_win);
+			$('#set_number_laps_win').prop('disabled', locked);
+			$('#set_team_racing_mode').val(rf.team_racing_mode);
+			$('#set_team_racing_mode').prop('disabled', locked);
+
+			update_race_format_ui();
+		}
 
 		function update_race_format_ui() {
-			var rf = rotorhazard.race_format;
+			format_id = $('#set_race_format').val();
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 
 			$('#format-race-duration-field').toggle(rf.race_mode == 0);
 			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
@@ -881,52 +878,24 @@
 			}
 		}
 
-		socket.on('race_format', function (msg) {
-			rotorhazard.race_format = msg;
+		$('button#stop_save').click(function (event) {
+			socket.emit('save_laps');
+		});
 
-			$('#set_race_format').empty();
-			for (var i = 0; i < msg.format_ids.length; i++) {
-				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
-			}
-			$('#unlock_race_format').toggle(msg.locked);
-			$('#delete_race_format_button').prop('disabled', msg.locked);
-			$('#set_race_format').val(msg.current_format);
-			$('#set_format_name').val(msg.format_name);
-			$('#set_format_name').prop('disabled', msg.locked);
-			$('#set_race_mode').val(msg.race_mode);
-			$('#set_race_mode').prop('disabled', msg.locked);
-			$('#set_fix_race_time').val(msg.race_time_sec);
-			$('#set_fix_race_time').prop('disabled', msg.locked);
-			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
-			$('#set_hide_stage_timer').prop('disabled', msg.locked);
-			$('#set_start_delay_min').val(msg.start_delay_min);
-			$('#set_start_delay_min').prop('disabled', msg.locked);
-			$('#set_start_delay_max').val(msg.start_delay_max);
-			$('#set_start_delay_max').prop('disabled', msg.locked);
-			$('#set_staging_tones').val(msg.staging_tones);
-			$('#set_staging_tones').prop('disabled', msg.locked);
-			$('#set_start_behavior').val(msg.start_behavior);
-			$('#set_start_behavior').prop('disabled', msg.locked);
-			$('#set_number_laps_win').val(msg.number_laps_win);
-			$('#set_number_laps_win').prop('disabled', msg.locked);
-			$('#set_win_condition').val(msg.win_condition);
-			$('#set_win_condition').prop('disabled', msg.locked);
-			$('#set_team_racing_mode').val(msg.team_racing_mode);
-			$('#set_team_racing_mode').prop('disabled', msg.locked);
-
-			update_race_format_ui();
+		$('button#stop_discard').click(function (event) {
+			socket.emit('discard_laps');
 		});
 
 		$('#set_race_format').change(function (event) {
-			var data = {
-				race_format: $(this).val()
-			};
-			socket.emit('set_race_format', data);
+			display_format();
 		});
 
 		$('button#add_race_format').click(function (event) {
-			socket.emit('add_race_format');
-			return false;
+			var format_id = parseInt($('#set_race_format').val());
+			var data = {
+				source_format_id: format_id
+			};
+			socket.emit('add_race_format', data);
 		});
 
 		$(document).on("click", '#unlock_race_format', function (event) {
@@ -936,91 +905,197 @@
 
 		$('button#delete_race_format').click(function (event) {
 			$.magnificPopup.close();
-			socket.emit('delete_race_format');
+
+			var format_id = parseInt($('#set_race_format').val());
+			var data = {
+				format_id: format_id
+			};
+			socket.emit('delete_race_format', data);
 			return false;
 		});
 
 		$('#set_format_name').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var name = $(this).val();
 			var data = {
-				format_name: $(this).val()
+				format_id: format_id,
+				format_name: name
 			};
 			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.name = name;
+			update_race_formats();
 		})
 
 		$('#set_race_mode').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var mode = parseInt($(this).val());
 			var data = {
-				race_mode: parseInt($(this).val())
+				format_id: format_id,
+				race_mode: mode
 			};
 			socket.emit('alter_race_format', data);
-			rotorhazard.race_format.race_mode = parseInt($(this).val());
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.race_mode = mode;
 			update_race_format_ui();
 		})
 
 		$('#set_fix_race_time').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var race_time = parseInt($(this).val());
 			var data = {
-				race_time: parseInt($(this).val())
+				format_id: format_id,
+				race_time: race_time
 			};
 			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.race_time = race_time;
 		})
 
 		$('#set_lap_grace_time').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var lap_grace_sec = parseIntDefault($(this).val());
 			var data = {
-				lap_grace_sec: parseIntDefault($(this).val())
+				format_id: format_id,
+				lap_grace_sec: lap_grace_sec
 			};
 			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.lap_grace_sec = lap_grace_sec;
 		})
 
 		$('#set_staging_fixed_tones').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var staging_fixed_tones = parseIntDefault($(this).val());
 			var data = {
-				staging_fixed_tones: parseIntDefault($(this).val())
+				format_id: format_id,
+				staging_fixed_tones: staging_fixed_tones
 			};
 			socket.emit('alter_race_format', data);
-		})
 
-		$('#set_start_delay_min').change(function (event) {
-			var data = {
-				start_delay_min: parseIntDefault($(this).val() * 1000) //convert to ms
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_start_delay_max').change(function (event) {
-			var data = {
-				start_delay_max: parseIntDefault($(this).val() * 1000) //convert to ms
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_number_laps_win').change(function (event) {
-			var data = {
-				number_laps_win: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.staging_fixed_tones = staging_fixed_tones;
 		})
 
 		$('#set_staging_tones').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var staging_tones = parseInt($(this).val())
 			var data = {
-				staging_tones: parseInt($(this).val())
+				format_id: format_id,
+				staging_tones: staging_tones
 			};
 			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.staging_tones = staging_tones;
+		})
+
+		$('#set_start_delay_min').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var start_delay_min = parseIntDefault($(this).val() * 1000); //convert to ms
+			var data = {
+				format_id: format_id,
+				start_delay_min: start_delay_min
+			};
+			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.start_delay_min = start_delay_min;
+		})
+
+		$('#set_start_delay_max').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var start_delay_max = parseIntDefault($(this).val() * 1000); //convert to ms
+			var data = {
+				format_id: format_id,
+				start_delay_max: start_delay_max
+			};
+			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.start_delay_max = start_delay_max;
 		})
 
 		$('#set_start_behavior').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var start_behavior = parseInt($(this).val());
 			var data = {
-				start_behavior: parseInt($(this).val())
+				format_id: format_id,
+				start_behavior: start_behavior
 			};
 			socket.emit('alter_race_format', data);
 			rotorhazard.race_format.start_behavior = parseInt($(this).val());
 			update_race_format_ui();
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.start_behavior = start_behavior;
 		})
 
 		$('#set_win_condition').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var win_condition = parseInt($(this).val());
 			var data = {
-				win_condition: parseInt($(this).val())
+				format_id: format_id,
+				win_condition: win_condition
 			};
 			socket.emit('alter_race_format', data);
 			rotorhazard.race_format.win_condition = parseInt($(this).val());
 			update_race_format_ui();
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.win_condition = win_condition;
+		})
+
+		$('#set_number_laps_win').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var number_laps_win = parseInt($(this).val());
+			var data = {
+				format_id: format_id,
+				number_laps_win: number_laps_win
+			};
+			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.number_laps_win = number_laps_win;
+		})
+
+		$('#set_team_racing_mode').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var team_racing_mode = parseInt($(this).val()); // 0=disabled, 1=enabled
+			var data = {
+				format_id: format_id,
+				team_racing_mode: team_racing_mode
+			};
+			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.team_racing_mode = team_racing_mode;
+		})
+
+		socket.on('min_lap', function (msg) {
+			$('#set_min_lap').val(msg.min_lap);
+			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
+			rotorhazard.min_lap = msg.min_lap;
+		});
+
+		$('#set_min_lap').change(function (event) {
+			var min_lap_val = parseInt($(this).val());
+			rotorhazard.min_lap = min_lap_val;
+			var data = {
+				min_lap: min_lap_val
+			};
+			socket.emit('set_min_lap', data);
+		})
+
+		$('#set_min_lap_behavior').change(function (event) {
+			var data = {
+				min_lap_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap_behavior', data);
 		})
 
 		/* Database Reset */
@@ -1349,10 +1424,10 @@
 	</div>
 </div>
 
-<!--Heat Generators-->
+<!--Generators-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Heat Generators') }}</h2>
+		<h2>{{ __(' Generators') }}</h2>
 	</div>
 	<div class="panel-content">
 		<ol class="form">
@@ -1388,8 +1463,6 @@
 		<h2>{{ __('Race Formats') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
-
 		<div class="control-set">
 			<label for="set_race_format">{{ __('Format:') }}</label>
 			<select id="set_race_format">
@@ -1399,6 +1472,10 @@
 			<button class="btn-danger open-mfp-popup unlock" id="unlock_race_format_button" data-mfp-src="#format_unlock_confirm" title="{{ __('Force Modify Format') }}"></button>
 			<button class="btn-danger open-mfp-popup" id="delete_race_format_button" data-mfp-src="#format_delete_confirm" title="{{ __('Remove') }}">&#215;</button>
 		</div>
+
+		<p id="current_race_format_lock" class="form-note">{{ __('Format cannot be changed for currently active race.') }}
+			<button id="stop_save" class="btn-danger">{{ __('Stop/Save') }}</button>
+			<button id="stop_discard" class="btn-danger">{{ __('Stop/Discard') }}</button></p>
 
 		<div id="format_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
@@ -1468,14 +1545,14 @@
 				<div class="label-block">
 					<label for="set_start_delay_min">{{ __('Minimum Staging Time (seconds)') }}</label>
 				</div>
-				<input type="number" id="set_start_delay_min" min="0" max="99" step="0.1">
+				<input type="number" id="set_start_delay_min" min="0" max="99.9" step="0.1">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_start_delay_max">{{ __('Random Staging Time (seconds)') }}</label>
 					<p class="desc">{{ __('Staging timer hidden if above 0') }}</p>
 				</div>
-				<input type="number" id="set_start_delay_max" min="0" max="99" step="0.1">
+				<input type="number" id="set_start_delay_max" min="0" max="99.9" step="0.1">
 			</li>
 			<li>
 				<div class="label-block">

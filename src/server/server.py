@@ -63,7 +63,7 @@ import json_endpoints
 import EventActions
 import RHData
 import RHUtils
-from RHUtils import catchLogExceptionsWrapper
+from RHUtils import catchLogExceptionsWrapper, FORMAT_ID_NONE
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.SendAckQueue import SendAckQueue
@@ -287,18 +287,21 @@ def getCurrentDbRaceFormat():
         return None
 
 def setCurrentRaceFormat(race_format, **kwargs):
-    if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
-        RHData.set_option('currentFormat', race_format.id)
-        # create a shared instance
-        RACE.format = RHRaceFormat.copy(race_format)
-        RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
-        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-        RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    if RACE.race_status == RaceStatus.READY:
+        if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
+            RHData.set_option('currentFormat', race_format.id)
+            # create a shared instance
+            RACE.format = RHRaceFormat.copy(race_format)
+            RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
+            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+            RACE.team_cacheStatus = Results.CacheStatus.INVALID
+        else:
+            RACE.format = race_format
+    
+        if 'silent' not in kwargs:
+            emit_current_laps()
     else:
-        RACE.format = race_format
-
-    if 'silent' not in kwargs:
-        emit_current_laps()
+        logger.info('Preventing race format change: Race status not READY')
 
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
@@ -721,7 +724,7 @@ def on_reset_auto_calibration(data):
     on_stop_race()
     on_discard_laps()
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
-    emit_race_format()
+    emit_race_status()
     on_stage_race()
 
 # Cluster events
@@ -747,7 +750,7 @@ def has_joined_cluster():
 @catchLogExceptionsWrapper
 def on_join_cluster():
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
-    emit_race_format()
+    emit_race_status()
     logger.info("Joined cluster")
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
@@ -775,7 +778,7 @@ def on_join_cluster_ex(data=None):
         except:
             logger.exception("Error making db-autoBkp / clearing races on split timer")
         setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
-        emit_race_format()
+        emit_race_status()
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
                 })
@@ -856,15 +859,11 @@ def on_load_data(data):
         elif load_type == 'class_data':
             emit_class_data(nobroadcast=True)
         elif load_type == 'format_data':
-            emit_class_data(nobroadcast=True)
+            emit_format_data(nobroadcast=True)
         elif load_type == 'pilot_data':
             emit_pilot_data(nobroadcast=True)
         elif load_type == 'result_data':
             emit_result_data(nobroadcast=True)
-        elif load_type == 'race_format': # TODO: Migrate to RACE DATA
-            emit_race_format(nobroadcast=True)
-        elif load_type == 'race_formats': # TODO: Remove
-            emit_race_formats(nobroadcast=True)
         elif load_type == 'node_tuning':
             emit_node_tuning(nobroadcast=True)
         elif load_type == 'enter_and_exit_at_levels':
@@ -913,6 +912,8 @@ def on_load_data(data):
             emit_cluster_status()
         elif load_type == 'hardware_log_init':
             emit_current_log_file_to_socket()
+        else:
+            logger.warning('Called undefined load type: {}'.format(load_type))
 
 @SOCKET_IO.on('broadcast_message')
 @catchLogExceptionsWrapper
@@ -1446,13 +1447,7 @@ def on_alter_race(data):
 
     _race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    heatnote = new_heat.note
-    if heatnote:
-        name = heatnote
-    else:
-        name = new_heat.id
-
-    message = __('A race has been reassigned to {0}').format(name)
+    message = __('A race has been reassigned to {0}').format(new_heat.displayname())
     emit_priority_message(message, False)
 
     emit_race_list(nobroadcast=True)
@@ -1616,7 +1611,7 @@ def on_reset_database(data):
         setCurrentRaceFormat(RHData.get_first_raceFormat())
     emit_heat_data()
     emit_pilot_data()
-    emit_race_format()
+    emit_format_data()
     emit_class_data()
     emit_current_laps()
     emit_result_data()
@@ -1818,35 +1813,32 @@ def on_set_race_format(data):
             'race_format': race_format_val,
             })
 
-        emit_race_format()
+        emit_race_status()
         logger.info("set race format to '%s' (%s)" % (race_format.name, race_format.id))
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.info("Format change prevented by active race")
-        emit_race_format()
+        emit_race_status()
 
 @SOCKET_IO.on('add_race_format')
 @catchLogExceptionsWrapper
-def on_add_race_format():
+def on_add_race_format(data):
     '''Adds new format in the database by duplicating an existing one.'''
-    source_format = getCurrentRaceFormat()
-    new_format = RHData.duplicate_raceFormat(source_format.id)
-
-    on_set_race_format(data={ 'race_format': new_format.id })
+    source_format_id = data['source_format_id']
+    _new_format = RHData.duplicate_raceFormat(source_format_id)
+    emit_format_data()
 
 @SOCKET_IO.on('alter_race_format')
 @catchLogExceptionsWrapper
 def on_alter_race_format(data):
     ''' update race format '''
-    race_format = getCurrentDbRaceFormat()
-    data['format_id'] = race_format.id
     race_format, race_list = RHData.alter_raceFormat(data)
 
     if race_format != False:
         setCurrentRaceFormat(race_format)
 
         if 'format_name' in data:
-            emit_race_format()
+            emit_format_data()
             emit_class_data()
 
         if len(race_list):
@@ -1858,15 +1850,15 @@ def on_alter_race_format(data):
 
 @SOCKET_IO.on('delete_race_format')
 @catchLogExceptionsWrapper
-def on_delete_race_format():
-    '''Delete profile'''
-    raceformat = getCurrentDbRaceFormat()
-    result = RHData.delete_raceFormat(raceformat.id)
+def on_delete_race_format(data):
+    '''Delete race format'''
+    format_id = data['format_id']
+    result = RHData.delete_raceFormat(format_id)
 
     if result:
         first_raceFormat = RHData.get_first_raceFormat()
         setCurrentRaceFormat(first_raceFormat)
-        emit_race_format()
+        emit_format_data()
     else:
         if RACE.race_status == RaceStatus.READY:
             emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
@@ -2041,6 +2033,7 @@ def on_stage_race():
 
     if CLUSTER:
         CLUSTER.emitToSplits('stage_race')
+
     race_format = getCurrentRaceFormat()
 
     if RACE.race_status != RaceStatus.READY:
@@ -2079,7 +2072,6 @@ def on_stage_race():
         emit_current_laps() # Race page, blank laps to the web client
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
-        emit_race_format()
 
         staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
 
@@ -2451,7 +2443,7 @@ def do_save_actions():
         'round_id': max_round+1,
         'heat_id': RACE.current_heat,
         'class_id': heat.class_id,
-        'format_id': RHData.get_option('currentFormat'),
+        'format_id': RACE.format.id if hasattr(RACE.format, 'id') else RHUtils.FORMAT_ID_NONE,
         'start_time': RACE.start_time_monotonic,
         'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -2586,6 +2578,10 @@ def build_atomic_result_caches(params):
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
+
+    if RACE.race_status == RaceStatus.STAGING or RACE.race_status == RaceStatus.RACING:
+        on_stop_race()
+
     clear_laps()
     RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RaceStatus.READY)
@@ -2680,7 +2676,7 @@ def set_current_heat_data(new_heat_id):
     RACE.team_cacheStatus = Results.CacheStatus.INVALID
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
-    emit_race_format()
+    emit_race_status()
 
 @SOCKET_IO.on('set_current_heat')
 @catchLogExceptionsWrapper
@@ -3001,6 +2997,7 @@ def emit_race_status(**params):
 
     emit_payload = {
             'race_status': RACE.race_status,
+            'race_format_id': RACE.format.id if hasattr(RACE.format, 'id') else None,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'race_staging_tones': race_format.staging_tones,
@@ -3200,71 +3197,6 @@ def emit_min_lap(**params):
     else:
         SOCKET_IO.emit('min_lap', emit_payload)
 
-def emit_race_format(**params):
-    '''Emits race format values.'''
-    race_format = getCurrentRaceFormat()
-    is_db_race_format = RHRaceFormat.isDbBased(race_format)
-    locked = not is_db_race_format or RHData.savedRaceMetas_has_raceFormat(race_format.id)
-    raceFormats = RHData.get_raceFormats()
-
-    emit_payload = {
-        'format_ids': [raceformat.id for raceformat in raceFormats],
-        'format_names': [raceformat.name for raceformat in raceFormats],
-        'current_format': race_format.id if is_db_race_format else None,
-        'format_name': race_format.name,
-        'race_mode': race_format.race_mode,
-        'race_time_sec': race_format.race_time_sec,
-        'lap_grace_sec': race_format.lap_grace_sec,
-        'staging_fixed_tones': race_format.staging_fixed_tones,
-        'start_delay_min': race_format.start_delay_min_ms,
-        'start_delay_max': race_format.start_delay_max_ms,
-        'staging_tones': race_format.staging_tones,
-        'number_laps_win': race_format.number_laps_win,
-        'win_condition': race_format.win_condition,
-        'start_behavior': race_format.start_behavior,
-        'team_racing_mode': 1 if race_format.team_racing_mode else 0,
-        'locked': locked
-    }
-    if ('nobroadcast' in params):
-        emit('race_format', emit_payload)
-    else:
-        SOCKET_IO.emit('race_format', emit_payload)
-        emit_current_leaderboard()
-
-def emit_race_formats(**params):
-    '''Emits all race formats.'''
-    formats = RHData.get_raceFormats()
-    emit_payload = {}
-    for race_format in formats:
-        format_copy = {
-            'format_name': race_format.name,
-            'race_mode': race_format.race_mode,
-            'race_time_sec': race_format.race_time_sec,
-            'lap_grace_sec': race_format.lap_grace_sec,
-            'staging_fixed_tones': race_format.staging_fixed_tones,
-            'start_delay_min': race_format.start_delay_min_ms,
-            'start_delay_max': race_format.start_delay_max_ms,
-            'staging_tones': race_format.staging_tones,
-            'number_laps_win': race_format.number_laps_win,
-            'win_condition': race_format.win_condition,
-            'start_behavior': race_format.start_behavior,
-            'team_racing_mode': 1 if race_format.team_racing_mode else 0,
-        }
-
-        has_race = RHData.savedRaceMetas_has_raceFormat(race_format.id)
-
-        if has_race:
-            format_copy['locked'] = True
-        else:
-            format_copy['locked'] = False
-
-        emit_payload[race_format.id] = format_copy
-
-    if ('nobroadcast' in params):
-        emit('race_formats', emit_payload)
-    else:
-        SOCKET_IO.emit('race_formats', emit_payload)
-
 def build_laps_list(active_race=RACE):
     current_laps = []
     for node_idx in range(active_race.num_nodes):
@@ -3397,7 +3329,7 @@ def emit_race_list(**params):
                 }
             heats[heat.id] = {
                 'heat_id': heat.id,
-                'note': heatnote,
+                'displayname': heat.displayname(),
                 'rounds': rounds,
             }
 
@@ -3570,26 +3502,8 @@ def emit_class_data(**params):
         current_class['locked'] = RHData.savedRaceMetas_has_raceClass(race_class.id)
         current_classes.append(current_class)
 
-    formats = []
-    for race_format in RHData.get_raceFormats():
-        raceformat = {}
-        raceformat['id'] = race_format.id
-        raceformat['name'] = race_format.name
-        raceformat['race_mode'] = race_format.race_mode
-        raceformat['race_time_sec'] = race_format.race_time_sec
-        raceformat['lap_grace_sec'] = race_format.lap_grace_sec
-        raceformat['staging_fixed_tones'] = race_format.staging_fixed_tones
-        raceformat['start_delay_min'] = race_format.start_delay_min_ms
-        raceformat['start_delay_max'] = race_format.start_delay_max_ms
-        raceformat['number_laps_win'] = race_format.number_laps_win
-        raceformat['win_condition'] = race_format.win_condition
-        raceformat['team_racing_mode'] = race_format.team_racing_mode
-        raceformat['start_behavior'] = race_format.start_behavior
-        formats.append(raceformat)
-
     emit_payload = {
         'classes': current_classes,
-        'formats': formats,
     }
     if ('nobroadcast' in params):
         emit('class_data', emit_payload)
@@ -3610,11 +3524,12 @@ def emit_format_data(**params):
         raceformat['race_time_sec'] = race_format.race_time_sec
         raceformat['lap_grace_sec'] = race_format.lap_grace_sec
         raceformat['staging_fixed_tones'] = race_format.staging_fixed_tones
+        raceformat['staging_tones'] = race_format.staging_tones
         raceformat['start_delay_min'] = race_format.start_delay_min_ms
         raceformat['start_delay_max'] = race_format.start_delay_max_ms
         raceformat['number_laps_win'] = race_format.number_laps_win
         raceformat['win_condition'] = race_format.win_condition
-        raceformat['team_racing_mode'] = race_format.team_racing_mode
+        raceformat['team_racing_mode'] = 1 if race_format.team_racing_mode else 0
         raceformat['start_behavior'] = race_format.start_behavior
         raceformat['locked'] = RHData.savedRaceMetas_has_raceFormat(race_format.id)
         formats.append(raceformat)
@@ -3623,11 +3538,11 @@ def emit_format_data(**params):
         'formats': formats,
     }
     if ('nobroadcast' in params):
-        emit('class_data', emit_payload)
+        emit('format_data', emit_payload)
     elif ('noself' in params):
-        emit('class_data', emit_payload, broadcast=True, include_self=False)
+        emit('format_data', emit_payload, broadcast=True, include_self=False)
     else:
-        SOCKET_IO.emit('class_data', emit_payload)
+        SOCKET_IO.emit('format_data', emit_payload)
 
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
@@ -4652,8 +4567,7 @@ def init_race_state():
                     RACE.node_teams[heatNode.node_index] = None
 
     # Set race format
-    raceformat_id = RHData.get_optionInt('currentFormat')
-    race_format = RHData.get_raceFormat(raceformat_id)
+    race_format = RHData.get_first_raceFormat()
     setCurrentRaceFormat(race_format, silent=True)
 
     # Normalize results caches

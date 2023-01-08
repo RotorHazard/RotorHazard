@@ -1699,27 +1699,27 @@ class RHData():
         if 'format_name' in data:
             race_format.name = data['format_name']
         if 'race_mode' in data:
-            race_format.race_mode = data['race_mode']
+            race_format.race_mode = data['race_mode'] if isinstance(data['race_mode'], int) else 0
         if 'race_time' in data:
-            race_format.race_time_sec = data['race_time']
+            race_format.race_time_sec = data['race_time'] if isinstance(data['race_time'], int) else 0
         if 'lap_grace_sec' in data:
-            race_format.lap_grace_sec = data['lap_grace_sec']
+            race_format.lap_grace_sec = data['lap_grace_sec'] if isinstance(data['lap_grace_sec'], int) else 0
         if 'staging_fixed_tones' in data:
-            race_format.staging_fixed_tones = data['staging_fixed_tones']
+            race_format.staging_fixed_tones = data['staging_fixed_tones'] if isinstance(data['staging_fixed_tones'], int) else 0
         if 'start_delay_min' in data:
-            race_format.start_delay_min_ms = data['start_delay_min']
+            race_format.start_delay_min_ms = data['start_delay_min'] if isinstance(data['start_delay_min'], int) else 0
         if 'start_delay_max' in data:
-            race_format.start_delay_max_ms = data['start_delay_max']
+            race_format.start_delay_max_ms = data['start_delay_max'] if isinstance(data['start_delay_max'], int) else 0
         if 'staging_tones' in data:
-            race_format.staging_tones = data['staging_tones']
+            race_format.staging_tones = data['staging_tones'] if isinstance(data['staging_tones'], int) else 0
         if 'number_laps_win' in data:
-            race_format.number_laps_win = data['number_laps_win']
+            race_format.number_laps_win = data['number_laps_win'] if isinstance(data['number_laps_win'], int) else 0
         if 'start_behavior' in data:
-            race_format.start_behavior = data['start_behavior']
+            race_format.start_behavior = data['start_behavior'] if isinstance(data['start_behavior'], int) else 0
         if 'win_condition' in data:
-            race_format.win_condition = data['win_condition']
+            race_format.win_condition = data['win_condition'] if isinstance(data['win_condition'], int) else 0
         if 'team_racing_mode' in data:
-            race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+            race_format.team_racing_mode = True if data['team_racing_mode'] else False
 
         self.commit()
 

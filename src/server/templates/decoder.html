@@ -71,7 +71,6 @@
 			'frequency_data',
 			'class_data',
 			'pilot_data',
-			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
 			'min_lap',
@@ -125,7 +124,6 @@
 			$('.frequency_table').each(function(){
 				$(this).html(freq.buildSelect());
 			});
-
 			// set up node local store
 			for (var i = 0; i < {{ num_nodes }}; i++) {
 				rotorhazard.nodes[i] = new nodeModel();

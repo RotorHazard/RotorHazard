@@ -6,7 +6,7 @@
 		'language',
 		'heat_data',
 		'enter_and_exit_at_levels',
-		'race_formats',
+		'format_data',
 		'race_list'
 	];
 
@@ -84,60 +84,60 @@
 			}
 		});
 
-		socket.on('race_formats', function (msg) {
-			rotorhazard.race_formats = msg;
+		socket.on('format_data', function (msg) {
+			rotorhazard.event.race_formats = msg.formats;
+			populate_race_list();
 		});
 
 		socket.on('race_list', function (msg) {
 			race_list = msg;
+			populate_race_list();
+		});
 
-			if (jQuery.isEmptyObject(race_list.heats)) {
-				$('.page-marshal>.panel>.panel-content').html('<p>' + __('There is no saved race data available to view.') + '</p>');
-				return false;
-			}
+		function populate_race_list() {
+			if (race_list.hasOwnProperty('heats') && rotorhazard.event.race_formats) {
+				if (jQuery.isEmptyObject(race_list.heats)) {
+					$('.page-marshal>.panel>.panel-content').html('<p>' + __('There is no saved race data available to view.') + '</p>');
+					return false;
+				}
 
-			// find most recent race
-			var prev_heat = null;
-			if (race_list_loaded) {
-				prev_heat = $('#selected_heat').val();
-			} else {
-				var newest_race = 0;
-				for (var heat in race_list.heats) {
-					for (var round in race_list.heats[heat].rounds) {
-						var race_time = race_list.heats[heat].rounds[round].start_time;
+				// find most recent race
+				var prev_heat = null;
+				if (race_list_loaded) {
+					prev_heat = $('#selected_heat').val();
+				} else {
+					var newest_race = 0;
+					for (var heat in race_list.heats) {
+						for (var round in race_list.heats[heat].rounds) {
+							var race_time = race_list.heats[heat].rounds[round].start_time;
 
-						if (newest_race < race_time) {
-							newest_race = race_time;
-							prev_heat = heat;
+							if (newest_race < race_time) {
+								newest_race = race_time;
+								prev_heat = heat;
+							}
 						}
 					}
 				}
-			}
 
-			$('#selected_heat').empty();
-			for (var heat_i in race_list.heats) {
-				var heat = race_list.heats[heat_i];
+				$('#selected_heat').empty();
+				for (var heat_i in race_list.heats) {
+					var heat = race_list.heats[heat_i];
 
-				if (heat.note) {
-					var heat_name = heat.note;
-				} else {
-					var heat_name = __('Heat') + ' ' + heat_i;
+					$('#selected_heat').append('<option value="' + heat_i + '">' + heat.displayname + '</option>');
 				}
 
-				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
+				if (!race_list_loaded) {
+					race_list_loaded = true;
+					$('.heat-selector').prop('disabled', false);
+					$('#selected_round').prop('disabled', false);
+					$('#selected_pilot').prop('disabled', false);
+				}
+				if (prev_heat) {
+					$('.heat-selector').val(prev_heat);
+					$('#selected_heat').trigger('change');
+				}
 			}
-
-			if (!race_list_loaded) {
-				race_list_loaded = true;
-				$('.heat-selector').prop('disabled', false);
-				$('#selected_round').prop('disabled', false);
-				$('#selected_pilot').prop('disabled', false);
-			}
-			if (prev_heat) {
-				$('.heat-selector').val(prev_heat);
-				$('#selected_heat').trigger('change');
-			}
-		});
+		}
 
 		socket.on('race_details', function (msg) {
 			var racedetail = msg;
@@ -158,7 +158,14 @@
 				graph.options.maxValue = current_race_data.enter_at;
 			}
 
-			current_race_data.race_format = rotorhazard.race_formats[current_race_data.format_id];
+			if (current_race_data.format_id > 0) {
+				current_race_data.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == current_race_data.format_id});
+			} else {
+				current_race_data.race_format = {
+					race_mode: false,
+					race_time_sec: null
+				};
+			}
 
 			// update header
 			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
