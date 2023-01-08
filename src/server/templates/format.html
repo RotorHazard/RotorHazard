@@ -192,7 +192,6 @@
 						field.append('<label for="race_class_rounds-' + race_class.id + '">' + __('Rounds') + '</label>');
 						var input = $('<input type="number" id="race_class_rounds-' + race_class.id + '" class="set_race_class_rounds" data-class_id="' + race_class.id + '" step="1" min="0">');
 						input.val(race_class.rounds);
-						input.prop('disabled', race_class.locked);
 						field.append(input);
 						el.append(field);
 
@@ -204,13 +203,11 @@
 						selectbox.append('<option value="0">' + __('Never') + '</option>');
 
 						selectbox.val(race_class.heat_advance);
-						selectbox.prop('disabled', race_class.locked);
 						field.append(selectbox);
 						el.append(field);
 						
 						var input = $('<input hidden type="number" id="race_class_order-' + race_class.id + '" class="set_race_class_order" data-class_id="' + race_class.id + '" step="1" min="0">');
 						input.val(race_class.order);
-						input.prop('disabled', race_class.locked);
 						el.append(input);
 
 						var heats_el = $('<ol class="heats">');
@@ -1433,6 +1430,14 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
+					<label for="generator_input_class">{{ __('Generator') }}</label>
+				</div>
+				<select id="generator_list" disabled="disabled">
+					<option value="-">{{ __('No Generators') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="generator_input_class">{{ __('Input') }}</label>
 				</div>
 				<select id="generator_input_class">
@@ -1449,9 +1454,6 @@
 			</li>
 		</ol>
 		<div class="control-set">
-			<select id="generator_list" disabled="disabled">
-				<option value="-">{{ __('No Generators') }}</option>
-			</select>
 			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
 		</div>
 	</div>
