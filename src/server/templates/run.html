@@ -42,6 +42,8 @@
 		rotorhazard.timer.race.staging_tones = msg.staging_tones;
 
 		rotorhazard.timer.race.start(race_start_pi, staging_start_pi);
+
+		rotorhazard.winner_declared_flag = false;
 	}
 
 	$(document).ready(function () {
@@ -145,6 +147,7 @@
 		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
 		$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
 		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
+		$('#voice_race_leader').val(rotorhazard.voice_race_leader);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -655,6 +658,12 @@
 			$('.race_status_message').html(race.status_msg);
 		});
 
+		function callout_current_leader(pilot_phonetic) {
+			if (!rotorhazard.winner_declared_flag) {
+				speak('<div class="speech">' + __l('Leader is') + " " + pilot_phonetic + '</div>');
+			}
+		}
+
 		socket.on('phonetic_data', function (msg) {
 			if (!msg.node_finished || rotorhazard.voice_if_node_finished) {
 				if (rotorhazard.min_lap * 1000 < msg.raw_time) {
@@ -689,7 +698,12 @@
 	
 					if (ttstext.length > 0) {
 						if (msg.leader_flag) {
-							speak(LEADER_FLAG_CHAR);
+							if (rotorhazard.beep_race_leader_lap) {
+								speak(LEADER_FLAG_CHAR);
+							}
+							if (rotorhazard.voice_race_leader && (!msg.team_name)) {
+								setTimeout(callout_current_leader, (rotorhazard.voice_race_leader * 1000), (msg.pilot ? msg.pilot : msg.callsign));
+							}
 						}
 						speak('<div class="speech">' + ttstext + '</div>');
 					}
@@ -732,7 +746,10 @@
 
 		socket.on('phonetic_text', function (msg) {
 			if (msg.winner_flag) {
-				speak(WINNER_FLAG_CHAR);
+				if (rotorhazard.beep_race_winner_declared) {
+					speak(WINNER_FLAG_CHAR);
+				}
+				rotorhazard.winner_declared_flag = true;
 			}
 			if (msg.text) {
 				if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
@@ -1044,6 +1061,11 @@
 		
 		$('#voice_split_timer').change(function (event) {
 			rotorhazard.voice_split_timer = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+		
+		$('#voice_race_leader').change(function (event) {
+			rotorhazard.voice_race_leader = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
@@ -2329,6 +2351,33 @@
 					</select>
 				</li>
 				{% endif %}
+				<li>
+					<div class="label-block">
+						<label for="voice_race_leader">{{ __('Race Leader Pilot') }}</label>
+					</div>
+					<select id="voice_race_leader">
+						<option value="0">{{ __('None') }}</option>
+						<option value="1">{{ __('After 1 Second') }}</option>
+						<option value="2">{{ __('After 2 Seconds') }}</option>
+						<option value="3">{{ __('After 3 Seconds') }}</option>
+						<option value="4">{{ __('After 4 Seconds') }}</option>
+						<option value="5">{{ __('After 5 Seconds') }}</option>
+						<option value="6">{{ __('After 6 Seconds') }}</option>
+						<option value="7">{{ __('After 7 Seconds') }}</option>
+						<option value="8">{{ __('After 8 Seconds') }}</option>
+						<option value="9">{{ __('After 9 Seconds') }}</option>
+						<option value="10">{{ __('After 10 Seconds') }}</option>
+						<option value="11">{{ __('After 11 Seconds') }}</option>
+						<option value="12">{{ __('After 12 Seconds') }}</option>
+						<option value="13">{{ __('After 13 Seconds') }}</option>
+						<option value="14">{{ __('After 14 Seconds') }}</option>
+						<option value="15">{{ __('After 15 Seconds') }}</option>
+						<option value="16">{{ __('After 16 Seconds') }}</option>
+						<option value="17">{{ __('After 17 Seconds') }}</option>
+						<option value="18">{{ __('After 18 Seconds') }}</option>
+						<option value="19">{{ __('After 19 Seconds') }}</option>
+					</select>
+				</li>
 			</li>
 			<li>
 				<div class="label-block">
