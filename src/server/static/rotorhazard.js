@@ -1056,6 +1056,7 @@ var rotorhazard = {
 	display_laps_reversed: false, //shows race laps in reverse order
 	display_chan_freq: true, //shows node channel and frequency (Current Race page only)
 	hide_graphs: false, //hides RSSI graphs on Run page
+	display_late_laps_cur: false, //shows "late" laps on Current Race page
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
@@ -1121,6 +1122,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
 		localStorage['rotorhazard.display_laps_reversed'] = JSON.stringify(this.display_laps_reversed);
 		localStorage['rotorhazard.display_chan_freq'] = JSON.stringify(this.display_chan_freq);
+		localStorage['rotorhazard.display_late_laps_cur'] = JSON.stringify(this.display_late_laps_cur);
 		return true;
 	},
 	restoreData: function(dataType) {
@@ -1229,6 +1231,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.display_chan_freq']) {
 				this.display_chan_freq = parseJsonStr(localStorage['rotorhazard.display_chan_freq']);
+			}
+			if (localStorage['rotorhazard.display_late_laps_cur']) {
+				this.display_late_laps_cur = parseIntOrBoolean(localStorage['rotorhazard.display_late_laps_cur']);
 			}
 			return true;
 		}
