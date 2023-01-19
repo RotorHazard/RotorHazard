@@ -608,7 +608,7 @@
 						if (lap.lap_number && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
 							tr.addClass('min-lap-warning');
 						}
-						if (!rotorhazard.event.race_status.race_mode && lap.lap_time_stamp > (rotorhazrotorhazard.event.race_status.race_time_sec * 1000)) {
+						if (!rotorhazard.event.race_status.race_mode && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
 							tr.addClass('after-time-expired');
 						}
 						tr.appendTo('#current_laps_' + i);
