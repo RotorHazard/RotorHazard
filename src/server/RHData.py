@@ -1702,8 +1702,8 @@ class RHData():
             race_format.name = data['format_name']
         if 'race_mode' in data:
             race_format.race_mode = data['race_mode'] if isinstance(data['race_mode'], int) else 0
-        if 'race_time' in data:
-            race_format.race_time_sec = data['race_time'] if isinstance(data['race_time'], int) else 0
+        if 'race_time_sec' in data:
+            race_format.race_time_sec = data['race_time_sec'] if isinstance(data['race_time_sec'], int) else 0
         if 'lap_grace_sec' in data:
             race_format.lap_grace_sec = data['lap_grace_sec'] if isinstance(data['lap_grace_sec'], int) else 0
         if 'staging_fixed_tones' in data:
