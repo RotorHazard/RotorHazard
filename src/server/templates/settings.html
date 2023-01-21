@@ -1570,13 +1570,6 @@
 			socket.emit('set_min_lap_behavior', data);
 		})
 
-		$('#set_team_racing_mode').change(function (event) {
-			var data = {
-				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
-			};
-			socket.emit('alter_race_format', data);
-		})
-
 		function update_race_format_ui() {
 			var rf = rotorhazard.race_format;
 
@@ -1691,7 +1684,7 @@
 
 		$('#set_fix_race_time').change(function (event) {
 			var data = {
-				race_time: parseIntDefault($(this).val())
+				race_time_sec: parseIntDefault($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})
@@ -1712,21 +1705,14 @@
 
 		$('#set_start_delay_min').change(function (event) {
 			var data = {
-				start_delay_min: parseIntDefault($(this).val() * 1000) //convert to ms
+				start_delay_min_ms: parseIntDefault($(this).val() * 1000) //convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_max').change(function (event) {
 			var data = {
-				start_delay_max: parseIntDefault($(this).val() * 1000) //convert to ms
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_number_laps_win').change(function (event) {
-			var data = {
-				number_laps_win: parseIntDefault($(this).val())
+				start_delay_max_ms: parseIntDefault($(this).val() * 1000) //convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
@@ -1738,13 +1724,11 @@
 			socket.emit('alter_race_format', data);
 		})
 
-		$('#set_start_behavior').change(function (event) {
+		$('#set_number_laps_win').change(function (event) {
 			var data = {
-				start_behavior: parseInt($(this).val())
+				number_laps_win: parseIntDefault($(this).val())
 			};
 			socket.emit('alter_race_format', data);
-			rotorhazard.race_format.start_behavior = parseInt($(this).val());
-			update_race_format_ui();
 		})
 
 		$('#set_win_condition').change(function (event) {
@@ -1753,6 +1737,22 @@
 			};
 			socket.emit('alter_race_format', data);
 			rotorhazard.race_format.win_condition = parseInt($(this).val());
+			update_race_format_ui();
+		})
+
+		$('#set_team_racing_mode').change(function (event) {
+			var data = {
+				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_start_behavior').change(function (event) {
+			var data = {
+				start_behavior: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.start_behavior = parseInt($(this).val());
 			update_race_format_ui();
 		})
 

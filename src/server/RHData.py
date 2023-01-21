@@ -1300,24 +1300,26 @@ class RHData():
                 race_format.name = init['format_name']
             if 'race_mode' in init:
                 race_format.race_mode = init['race_mode']
-            if 'race_time' in init:
-                race_format.race_time_sec = init['race_time']
+            if 'race_time_sec' in init:
+                race_format.race_time_sec = init['race_time_sec']
             if 'lap_grace_sec' in init:
                 race_format.lap_grace_sec = init['lap_grace_sec']
-            if 'start_delay_min' in init:
-                race_format.start_delay_min_ms = init['start_delay_min']
-            if 'start_delay_max' in init:
-                race_format.start_delay_max_ms = init['start_delay_max']
+            if 'staging_fixed_tones' in init:
+                race_format.staging_fixed_tones = init['staging_fixed_tones']
+            if 'start_delay_min_ms' in init:
+                race_format.start_delay_min_ms = init['start_delay_min_ms']
+            if 'start_delay_max_ms' in init:
+                race_format.start_delay_max_ms = init['start_delay_max_ms']
             if 'staging_tones' in init:
                 race_format.staging_tones = init['staging_tones']
             if 'number_laps_win' in init:
                 race_format.number_laps_win = init['number_laps_win']
-            if 'start_behavior' in init:
-                race_format.start_behavior = init['start_behavior']
             if 'win_condition' in init:
                 race_format.win_condition = init['win_condition']
             if 'team_racing_mode' in init:
                 race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
+            if 'start_behavior' in init:
+                race_format.start_behavior = init['start_behavior']
 
         self._Database.DB.session.add(race_format)
         self.commit()
@@ -1367,26 +1369,26 @@ class RHData():
             race_format.name = data['format_name']
         if 'race_mode' in data:
             race_format.race_mode = data['race_mode']
-        if 'race_time' in data:
-            race_format.race_time_sec = data['race_time']
+        if 'race_time_sec' in data:
+            race_format.race_time_sec = data['race_time_sec']
         if 'lap_grace_sec' in data:
             race_format.lap_grace_sec = data['lap_grace_sec']
         if 'staging_fixed_tones' in data:
             race_format.staging_fixed_tones = data['staging_fixed_tones']
-        if 'start_delay_min' in data:
-            race_format.start_delay_min_ms = data['start_delay_min']
-        if 'start_delay_max' in data:
-            race_format.start_delay_max_ms = data['start_delay_max']
+        if 'start_delay_min_ms' in data:
+            race_format.start_delay_min_ms = data['start_delay_min_ms']
+        if 'start_delay_max_ms' in data:
+            race_format.start_delay_max_ms = data['start_delay_max_ms']
         if 'staging_tones' in data:
             race_format.staging_tones = data['staging_tones']
         if 'number_laps_win' in data:
             race_format.number_laps_win = data['number_laps_win']
-        if 'start_behavior' in data:
-            race_format.start_behavior = data['start_behavior']
         if 'win_condition' in data:
             race_format.win_condition = data['win_condition']
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+        if 'start_behavior' in data:
+            race_format.start_behavior = data['start_behavior']
 
         self.commit()
 
