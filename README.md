@@ -46,9 +46,6 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 
 With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David Just, Paweł Fabiszewski, Aaron Smith, Diez Roggisch, Roger Bess, Kęstutis Strimaitis, and previous contributors to [Delta5](https://github.com/scottgchin/delta5_race_timer).
 
-### Supported by:
-[![Propwashed Logo](doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
-
 ### Translators
 * Dutch: Kenny Van Der Sypt
 * German: Klaus Michael Schneider, Christian Baumgartner
@@ -57,9 +54,9 @@ With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David
 * Polish: Mariusz Misiurek and Paweł Fabiszewski
 
 ## Feedback
-Discuss RotorHazard on Facebook:  https://www.facebook.com/groups/rotorhazard
+Join a community to discuss RotorHazard: [Discord](https://discord.gg/ANKd2pzBKH) | [Facebook](https://www.facebook.com/groups/rotorhazard)
 
-To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues). When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended (see [here](doc/Software%20Setup.md#logging) for more information on logging).
+To report bugs or request features, please [post a GitHub issue](https://github.com/RotorHazard/RotorHazard/issues). When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended (See [more information on logging](doc/Software%20Setup.md#logging).)
 
 Community contributions are welcome and encouraged; see the [Development.md](doc/Development.md) doc for more info.
 
