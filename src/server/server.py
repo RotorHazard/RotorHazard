@@ -5112,7 +5112,10 @@ else:
 
 for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
-        plugin.initialize(Events=Events)
+        plugin.initialize(
+            Events=Events,
+            SOCKET_IO=SOCKET_IO, # Temporary and not supported. Treat as deprecated.
+            )
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
