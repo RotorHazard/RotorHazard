@@ -1717,7 +1717,11 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				row.attr('title', source_text);
 			} else {
 				var el = $('<td class="fast">'+ lap +'</td>');
-				if ('min_lap' in rotorhazard && (rotorhazard.min_lap * 1000) > leaderboard[i].fastest_lap_raw) {
+				if ('min_lap' in rotorhazard
+					&& rotorhazard.min_lap > 0
+					&& leaderboard[i].fastest_lap_raw > 0
+					&& (rotorhazard.min_lap * 1000) > leaderboard[i].fastest_lap_raw
+					) {
 					el.addClass('min-lap-warning');
 				}
 				row.append(el);

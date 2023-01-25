@@ -18,7 +18,7 @@ import random
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Results import CacheStatus
-from Database import ProgramMethod, HeatAdvanceType
+from Database import ProgramMethod, HeatAdvanceType, HeatStatus
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
@@ -775,7 +775,7 @@ class RHData():
             class_id=RHUtils.CLASS_ID_NONE,
             cacheStatus=CacheStatus.INVALID,
             order=None,
-            status=0,
+            status=HeatStatus.PLANNED,
             auto_frequency=False
             )
 
@@ -1073,15 +1073,22 @@ class RHData():
     def calc_heat_pilots(self, heat_id, Results):
         heat = self._Database.Heat.query.get(heat_id)
 
+        result = {
+             'calc_success': False,
+             'has_calc_pilots': False,
+             'unassigned_slots': 0
+             }
+
         if not heat:
             logger.error('Requested invalid heat {}'.format(heat_id))
-            return False
+            return result
 
-        # alter existing saved races:
+        # don't alter if saved races exist
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
         if (race_list):
-            logger.warning("Skipping pilot recalculation: Races exist (heat {})".format(heat_id))
-            return None
+            result['calc_success'] = None
+            logger.debug("Skipping pilot recalculation: Races exist (heat {})".format(heat_id))
+            return result
 
         slots = self.get_heatNodes_by_heat(heat_id)
         for slot in slots:
@@ -1089,47 +1096,64 @@ class RHData():
                 slot.pilot_id = RHUtils.PILOT_ID_NONE
 
             elif slot.method == ProgramMethod.HEAT_RESULT:
+                result['has_calc_pilots'] = True
                 logger.debug('Seeding Slot {} from Heat {}'.format(slot.id, slot.seed_id))
                 seed_heat = self.get_heat(slot.seed_id)
 
                 if seed_heat:
                     output = Results.get_results_heat(self, seed_heat)
                     if output['result']:
-                        results = output['data'][output['data']['meta']['primary_leaderboard']]
-                        if slot.seed_rank - 1 < len(results):
-                            slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                        if output['data']:
+                            results = output['data'][output['data']['meta']['primary_leaderboard']]
+                            if slot.seed_rank - 1 < len(results):
+                                slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                            else:
+                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                result['unassigned_slots'] += 1
                         else:
+                            logger.debug("Can't assign pilot from heat {}: Results not available".format(slot.seed_id))
                             slot.pilot_id = RHUtils.PILOT_ID_NONE
+                            result['unassigned_slots'] += 1
                     else:
                         logger.warning('Cancelling heat calc: Cache build failed')
                         self.rollback() # Release DB lock
-                        return False
+                        return result
                 else:
                     logger.warning("Can't seed from heat {}: does not exist".format(slot.seed_id))
+                    return result
 
             elif slot.method == ProgramMethod.CLASS_RESULT:
+                result['has_calc_pilots'] = True
                 logger.debug('Seeding Slot {} from Class {}'.format(slot.id, slot.seed_id))
                 seed_class = self.get_raceClass(slot.seed_id)
 
                 if seed_class:
                     output = Results.get_results_race_class(self, seed_class)
                     if output['result']:
-                        results = output['data'][output['data']['meta']['primary_leaderboard']]
-                        if slot.seed_rank - 1 < len(results):
-                            slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                        if output['data']:
+                            results = output['data'][output['data']['meta']['primary_leaderboard']]
+                            if slot.seed_rank - 1 < len(results):
+                                slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                            else:
+                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                result['unassigned_slots'] += 1
                         else:
+                            logger.debug("Can't assign pilot from class {}: Results not available".format(slot.seed_id))
                             slot.pilot_id = RHUtils.PILOT_ID_NONE
+                            result['unassigned_slots'] += 1
                     else:
                         logger.warning('Cancelling heat calc: Cache build failed')
                         self.rollback() # Release DB lock
-                        return False
+                        return result
                 else:
                     logger.warning("Can't seed from class {}: does not exist".format(slot.seed_id))
+                    return result
 
             logger.debug('Pilot is {}'.format(slot.pilot_id))
 
         self.commit()
-        return True
+        result['calc_success'] = True
+        return result
 
     def run_auto_frequency(self, heat_id, current_frequencies, num_nodes, calc_fn):
         heat = self._Database.Heat.query.get(heat_id)

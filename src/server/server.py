@@ -2630,10 +2630,15 @@ def init_node_cross_fields():
 def set_current_heat_data(new_heat_id):
     adaptive = bool(RHData.get_optionInt('calibrationMode'))
 
+    heat = RHData.get_heat(new_heat_id)
     calc_result = RHData.calc_heat_pilots(new_heat_id, Results)
-    if calc_result is False:
-        logger.warning('Heat {} plan cannot be fulfilled.'.format(new_heat_id))
+    if calc_result['calc_success'] is False:
+        logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
         emit_priority_message(__("Warning: Heat plan cannot be fulfilled"), True, nobroadcast=True)
+    elif calc_result['unassigned_slots'] > 0:
+        emit_priority_message(__("Notice: {} seeding contains empty slots".format(heat.displayname())), False, nobroadcast=True)
+    elif calc_result['has_calc_pilots']:
+        emit_priority_message(__("{} seeded from race results".format(heat.displayname())), False, nobroadcast=True)
 
     if adaptive:
         calc_fn = RHUtils.find_best_slot_node_adaptive
