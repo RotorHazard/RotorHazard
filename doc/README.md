@@ -12,6 +12,7 @@
 * [Raspberry Pi Reference](Raspberry%20Pi%20Reference.md)
 
 ## Optional Features
+* [Plugins](Plugins.md)
 * [Split Timing Guide](Cluster.md)
 * [USB Nodes](USB%20Nodes.md)
 * [Video Receiver Control](Video%20Receiver.md)

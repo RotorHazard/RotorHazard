@@ -71,9 +71,9 @@ Triggers an *event*, causing all registered *handlers* to run
 
 ### Actions
 
-Actions are behaviors that can be assigned to events from the server's front-end interface, allowing users to customize when and how they occur.
+*Actions* are behaviors be assigned to events by users from the server's UI. *Action effects* are assigned to and triggered by the *event* a user has configured within an *action*. All parameters of the selected *event* in the *action* become available to the *effect*.
 
-Action effects are registered with the `actionsInitialize` event. This event provides a `registerFn` argument, which is a function that must be called to register your effects with the action system.
+*Effects* must be registered to be available in the UI. The `registerEffect` method of the `EventActions` object provides effect registration. Access to this method is provided though the `registerFn` argument of the `actionsInitialize` event. Pass an `ActionEffect` object to this method to register it.
 
 For example, an effect to send a UDP message might be registered with the following functions:
 ```
@@ -92,9 +92,51 @@ def discover():
     ]
 ```
 
+#### ActionEffect(name, label, effectFn, fields)
+
+Provides metadata and function linkage for *action effects*.
+
+- `name` (string): internal identifier for this effect
+- `label` (string): user-facing text that appears in the RotorHazard frontend interface
+- `effectFn` (function): function to run when this effect is triggered
+- `fields` (list): front-end fields to collect parameters from user interface
+
+`fields` should be an array of dicts with the following format:
+- `id` (string): internal identifier for this parameter
+- `name` (string): user-facing text that appears in the RotorHazard frontend interface
+- `type` (string): Currently accepts only "text"; additional options will become available in the future
+
+Example:
+```
+ActionEffect(
+    'udpmessage',
+    'UDP Message',
+    UDPMessageEffect,
+    [
+        {
+            'id': 'text',
+            'name': 'UDP message',
+            'type': 'text',
+        },
+        {
+            'id': 'ipaddress',
+            'name': 'UDP IP Address',
+            'type': 'text',
+        },
+        {
+            'id': 'udpport',
+            'name': 'UDP Port',
+            'type': 'text',
+        }
+    ]
+)
+```
+
 ### LED Effects
 
-LED effects are registered with the `LED_Initialize` event. This event provides a `registerFn` argument, which is a function that must be called to register your effects with the LED system.
+*LED Effects* are colors and patterns that may be displayed by an LED strip (or panel) attached to the server. *Effects* are assigned by users in the server's UI, and triggered by the server when appropriate. Most *effects* are triggered by *standard events*, but some (such as the "idle" states) are unique to the LED system and not broadcast elsewhere. All parameters of the *event* become available to the *LED Effect*.
+
+*Effects* must be registered to be available in the UI. The `registerEffect` method of the `LEDEventManager` object provides effect registration. Access to this method is provided though the `registerFn` argument of the `LED_Initialize` event. Pass an `LEDEffect` object to this method to register it.
 
 For example, the bitmap display registers its effects with the following functions:
 ```
@@ -115,9 +157,57 @@ def discover(*args, **kwargs):
     ]
 ```
 
+#### LEDEffect(name, label, handlerFn, validEvents, [defaultArgs=None])
+
+Provides metadata and function linkage for *LED effects*.
+
+Often, `color` will be passed through as an argument, which is an RGB hexadecimal code that can be used to modify the effect's output as appropriate. For example, during the `RACE_LAP_RECORDED` event, color is often determined by the pilot that completed the lap.
+
+- `name` (string): internal identifier for this effect
+- `label` (string): user-facing text that appears in the RotorHazard frontend interface
+- `handlerFn` (function): function to run when this effect is triggered
+- `validEvents` (list): controls whether events can be assigned to various events
+- `defaultargs` (dict): provides default arguments for the handler. These arguments will be overwritten if the `Event` provides arguments with the same keys.
+
+By default, an *LED effect* will be available to all *events* that can produce LED output except *Evt.SHUTDOWN*, *LEDEvent.IDLE_DONE*, *LEDEvent.IDLE_RACING*, and *LEDEvent.IDLE_READY*. This can be modified with `validEvents`. It should contain a dict with the following optional keys. Each value should be a list of event identifiers.
+- `exclude` (list): this *effect* will never be available for *events* specified here. As a special case, `Evt.ALL` will remove this *effect* from all *events* except those specifically included.
+- `include` (list): this *effect* will always be available for *events* specified here  unless specifically excluded.
+- `recommended` (list): *effects* in this list will receive priority ordering and visibility in the effect selection UI, at the top of the list, with an asterisk. `Evt.ALL` may be used here.
+
+Normally when an *LED effect*'s handler function completes, the display system will look for a `time` argument and wait this many seconds before switching to an appropriate idle state. You can prevent switching to idle with the `preventIdle` argument, but usually it is more appropriate to set a reasonable `time`.
+
+A list of standard and LED-specific *events* that will accept and trigger *effects* can be found in `src/server/led_event_manager.py`.
+
+Be sure to `import gevent` and set `gevent.sleep` or `gevent.idle` frequently within your handler code. Failure to do this may delay or prevent server response while your handler is running.
+
+Example:
+```
+LEDEffect(
+    "bitmapRHLogo",
+    "Image: RotorHazard",
+    showBitmap,
+    {
+        'include': [Evt.SHUTDOWN],
+        'recommended': [Evt.STARTUP]
+    },
+    {
+        'bitmaps': 
+            [
+                {
+                    "image": "static/image/LEDpanel-16x16-RotorHazard.png",
+                    "delay": 0
+                }
+            ],
+        'time': 60
+    }
+)
+```
+
 ### Data Exporters
 
-Data exporters are registered with the `Export_Initialize` event. This event provides a `registerFn` argument, which is a function that must be called to register your effects with the data export system.
+*Exporters* provide formatting of event data so it may be saved or sent elsewhere. A user may select and run an exporter from the UI, and will be provided with its contents in a file. Plugins may also trigger exports for their own purposes.
+
+*Exporters* must be registered before use. The `registerExporter` method of the `DataExportManager` object provides effect registration. Access to this method is provided though the `registerFn` argument of the `Export_Initialize` event. Pass a `DataExporter` object to this method to register it.
 
 For example, the CSV exporter registers its options with the following functions:
 
@@ -138,3 +228,18 @@ def discover(*args, **kwargs):
         ...
     ]
 ```
+
+#### DataExporter(name, label, formatterFn, assemblerFn)
+
+Provides metadata and function linkage for *exporters*.
+
+*Exporters* are run in two stages. First, the *assembler* pulls the data needed, then passes it to the *formatter*. In this way, a variety of *assemblers* can share a *formatter*, such as assembling pilot data, heat data, or race data and then passing it to be formatted as CSV or JSON.
+
+- `name` (string): internal identifier for this effect
+- `label` (string): user-facing text that appears in the RotorHazard frontend interface
+- `formatterFn` (function): function to run for formatting stage
+- `assemblerFn` (function): function to run for assembly stage
+
+The `assemblerFn` receives (`RHData`, `PageCache`, `Language`) as arguments so that it may access and prepare timer data as needed.
+
+The `formatterFn` receives the output of the `assemblerFn`.
