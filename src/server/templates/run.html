@@ -518,8 +518,8 @@
 			plan_dialog_el.append(heat_el);
 
 			plan_dialog_el.append('<a href="/format">Modify Plan</a>');
-			plan_dialog_el.append('<button>Confirm</button>');
-			plan_dialog_el.append('<button>Cancel</button>');
+			plan_dialog_el.append('<button class="confirm-heat-plan" data-heat_id="' + msg.heat + '">Confirm</button>');
+			plan_dialog_el.append('<button class="cancel">Cancel</button>');
 
 			$.magnificPopup.open({
 				items: {
@@ -530,6 +530,13 @@
 
 			freq.updateBlocks();
 		}
+
+		$(document).on("click", '.confirm-heat-plan', function (event) {
+			var data = {
+				heat_id: parseInt($(this).data('heat_id')),
+			};
+			socket.emit('confirm_heat_plan', data);
+		});
 
 		function get_method_descriptor (method, seed, rank) {
 			if (method == 0) { // pilot

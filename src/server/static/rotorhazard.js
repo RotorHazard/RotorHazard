@@ -1536,7 +1536,7 @@ jQuery(document).ready(function($){
 	// Popup generics
 	init_popup_generics();
 
-	$('.cancel').click(function() {
+	$(document).on('click', '.cancel', function(el) {
 		$.magnificPopup.close();
 	});
 

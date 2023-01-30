@@ -1,5 +1,6 @@
 '''RotorHazard server script'''
 from jsonschema._types import is_integer
+from _ast import Or
 RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
 SERVER_API = 38 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -2640,7 +2641,8 @@ def set_current_heat_data(new_heat_id):
         calc_fn = RHUtils.find_best_slot_node_basic
     RHData.run_auto_frequency(new_heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
-    if calc_result['calc_success'] is None:
+    if calc_result['calc_success'] is None or \
+        (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False):
         finalize_current_heat_set(new_heat_id)
     else:
         if calc_result['calc_success'] is False:
@@ -2677,7 +2679,7 @@ def emit_heat_plan_result(new_heat_id, calc_result):
 
     emit('heat_plan_result', emit_payload)
 
-@SOCKET_IO.on('confirm_heat')
+@SOCKET_IO.on('confirm_heat_plan')
 @catchLogExceptionsWrapper
 def on_confirm_heat(data):
     if 'heat_id' in data:

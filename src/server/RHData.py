@@ -1085,6 +1085,12 @@ class RHData():
             logger.error('Requested invalid heat {}'.format(heat_id))
             return result
 
+        # skip if heat status confirmed
+        if (heat.status == HeatStatus.CONFIRMED):
+            result['calc_success'] = None
+            logger.debug("Skipping pilot recalculation: Heat confirmed (heat {})".format(heat_id))
+            return result
+
         # don't alter if saved races exist
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
         if (race_list):
