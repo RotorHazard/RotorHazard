@@ -454,6 +454,106 @@
 			}
 		}
 
+		socket.on('heat_plan_result', function (msg) {
+			console.log(msg);
+			display_race_plan_result(msg);
+		});
+
+		function display_race_plan_result(msg) {
+			var plan_dialog_el = $('<div class="popup">');
+			plan_dialog_el.append('<h2>' + __('Heat Plan') + ': ' + msg.displayname + '</h2>');
+			var message_content = $('<div class="popup-content">');
+			plan_dialog_el.append(message_content);
+
+			if (msg.calc_result.calc_success == false) {
+				var message_el = $('<div class="warning">');
+				message_el.append(__("Warning: Heat plan cannot be fulfilled"));
+				plan_dialog_el.append(message_el);
+			} else if (msg.calc_result.unassigned_slots > 0) {
+				var message_el = $('<div class="notice">');
+				message_el.append(__("Seeding contains empty slots"));
+				plan_dialog_el.append(message_el);
+			}
+
+			var heat_el = $('<div class="heat-plan">');
+			var nodelist = $('<ul>');
+			for (idx in msg.slots) {
+				var slot = msg.slots[idx];
+				var slot_el = $('<li>');
+
+				if (slot.method > -1) {
+					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
+					slot_el.append('<div class="method">' + method_text + '</div>');
+
+					if (Number.isInteger(slot.node_index)) {
+						slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
+					} else {
+						slot_el.addClass('no-freq');
+						slot_el.append('<div class="channel-block"><span class="ch">—</span> <span class="fr">—</span></div>');
+					}
+
+					if (slot.pilot_id) {
+						/*
+						var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == slot.pilot_id});
+						*/
+						var pilot = slot.callsign;
+
+						if (pilot) {
+							// var callsign = pilot.callsign;
+							var callsign = pilot;
+						} else {
+							var callsign = "(" + __("Pilot") + " " + slot.pilot_id + ")"
+						}
+						slot_el.append('<div class="pilot-name">' + callsign + '</div>');
+					} else {
+						slot_el.addClass('no-pilot');
+						slot_el.append('<div class="pilot-name">—</div>');
+					}
+
+					nodelist.append(slot_el);
+				}
+			}
+			heat_el.append(nodelist);
+
+			plan_dialog_el.append(heat_el);
+
+			plan_dialog_el.append('<a href="/format">Modify Plan</a>');
+			plan_dialog_el.append('<button>Confirm</button>');
+			plan_dialog_el.append('<button>Cancel</button>');
+
+			$.magnificPopup.open({
+				items: {
+					src: plan_dialog_el,
+					type: 'inline',
+				}
+			});
+
+			freq.updateBlocks();
+		}
+
+		function get_method_descriptor (method, seed, rank) {
+			if (method == 0) { // pilot
+				return __("Pilot");
+			} else if (method == 1) { // heat
+				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
+
+				if (heat) {
+					return heat.displayname + " " + __('Rank') + " " + rank;
+				} else {
+					return __('Undefined Heat');
+				}
+			} else if (method == 2) { // class
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
+
+				if (race_class) {
+					return race_class.displayname + " " + __('Rank') + " " + rank;
+				} else {
+					return __('Undefined Class');
+				}
+			}
+			return __('Undefined');
+		}
+
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
@@ -1545,12 +1645,12 @@
 			}
 		});
 
-		/* Callouts */
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			rotorhazard.pilot_data = msg.pilots;
 		});
 
+		/* Callouts */
 		function add_callout(content='') {
 			id = $('.callout-items>li').length + 1;
 

@@ -2323,6 +2323,18 @@ button.color-picker {
 	margin: 0.5em 0;
 }
 
+.heat-plan > ul > li {
+	display: flex;
+}
+
+.heat-plan > ul > li > * {
+	flex: 1;
+}
+
+.heat-plan > ul > li > .channel-block {
+	flex: 0 0 2em;
+}
+
 /* ************* */
 /* Print Styling */
 /* ************* */

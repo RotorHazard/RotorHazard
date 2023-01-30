@@ -57,6 +57,7 @@ import json
 
 import Config
 import Database
+from Database import HeatStatus
 import Results
 import Language
 import json_endpoints
@@ -2628,23 +2629,67 @@ def init_node_cross_fields():
         node.show_crossing_flag = False
 
 def set_current_heat_data(new_heat_id):
-    adaptive = bool(RHData.get_optionInt('calibrationMode'))
-
     heat = RHData.get_heat(new_heat_id)
     calc_result = RHData.calc_heat_pilots(new_heat_id, Results)
-    if calc_result['calc_success'] is False:
-        logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
-        emit_priority_message(__("Warning: Heat plan cannot be fulfilled"), True, nobroadcast=True)
-    elif calc_result['unassigned_slots'] > 0:
-        emit_priority_message(__("Notice: {} seeding contains empty slots".format(heat.displayname())), False, nobroadcast=True)
-    elif calc_result['has_calc_pilots']:
-        emit_priority_message(__("{} seeded from race results".format(heat.displayname())), False, nobroadcast=True)
+
+    adaptive = bool(RHData.get_optionInt('calibrationMode'))
 
     if adaptive:
         calc_fn = RHUtils.find_best_slot_node_adaptive
     else:
         calc_fn = RHUtils.find_best_slot_node_basic
     RHData.run_auto_frequency(new_heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
+
+    if calc_result['calc_success'] is None:
+        finalize_current_heat_set(new_heat_id)
+    else:
+        if calc_result['calc_success'] is False:
+            logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
+
+        emit_heat_plan_result(new_heat_id, calc_result)
+
+def emit_heat_plan_result(new_heat_id, calc_result):
+    heat = RHData.get_heat(new_heat_id)
+    heatNodes = []
+
+    for heatNode in RHData.get_heatNodes_by_heat(heat.id):
+        heatNode_data = {
+            'node_index': heatNode.node_index,
+            'pilot_id': heatNode.pilot_id,
+            'callsign': None,
+            'method': heatNode.method,
+            'seed_rank': heatNode.seed_rank,
+            'seed_id': heatNode.seed_id
+            }
+        if heatNode.pilot_id:
+            pilot = RHData.get_pilot(heatNode.pilot_id)
+            if pilot:
+                heatNode_data['callsign'] = pilot.callsign
+
+        heatNodes.append(heatNode_data)
+
+    emit_payload = {
+        'heat': new_heat_id,
+        'displayname': heat.displayname(),
+        'slots': heatNodes,
+        'calc_result': calc_result
+    }
+
+    emit('heat_plan_result', emit_payload)
+
+@SOCKET_IO.on('confirm_heat')
+@catchLogExceptionsWrapper
+def on_confirm_heat(data):
+    if 'heat_id' in data:
+        RHData.alter_heat({
+            'heat': data['heat_id'],
+            'status': HeatStatus.CONFIRMED
+            }
+        )
+        finalize_current_heat_set(data['heat_id'])
+
+def finalize_current_heat_set(new_heat_id):
+    RACE.current_heat = new_heat_id
 
     RACE.node_pilots = {}
     RACE.node_teams = {}
@@ -2670,6 +2715,7 @@ def set_current_heat_data(new_heat_id):
             setCurrentRaceFormat(class_format)
             logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
 
+    adaptive = bool(RHData.get_optionInt('calibrationMode'))
     if adaptive:
         autoUpdateCalibration()
 
@@ -2689,7 +2735,6 @@ def on_set_current_heat(data):
     '''Update the current heat variable and data.'''
     new_heat_id = data['heat']
     logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
-    RACE.current_heat = new_heat_id
     set_current_heat_data(new_heat_id)
 
 @SOCKET_IO.on('delete_lap')
@@ -3597,9 +3642,6 @@ def emit_pilot_data(**params):
 
 def emit_current_heat(**params):
     '''Emits the current heat.'''
-    callsigns = []
-    pilot_ids = []
-
     heat_data = RHData.get_heat(RACE.current_heat)
 
     heatNode_data = {}
@@ -3636,8 +3678,6 @@ def emit_current_heat(**params):
     emit_payload = {
         'current_heat': RACE.current_heat,
         'heatNodes': heatNode_data,
-        'callsign': callsigns,
-        'pilot_ids': pilot_ids,
         'heat_note': heat_data.note,
         'heat_format': heat_format,
         'heat_class': heat_data.class_id

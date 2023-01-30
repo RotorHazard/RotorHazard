@@ -916,6 +916,8 @@ class RHData():
             slot_id = data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
             slot.seed_rank = data['seed_rank']
+        if 'status' in data:
+            heat.status = data['status'] 
 
         # alter existing saved races:
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
@@ -1156,6 +1158,7 @@ class RHData():
         return result
 
     def run_auto_frequency(self, heat_id, current_frequencies, num_nodes, calc_fn):
+        logger.debug('running auto-frequency with {}'.format(calc_fn))
         heat = self._Database.Heat.query.get(heat_id)
         slots = self.get_heatNodes_by_heat(heat_id)
         
