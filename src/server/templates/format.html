@@ -368,6 +368,10 @@
 		function create_heat_ui(heat) {
 			var el = $('<li class="rh-heat">');
 
+			if (heat.status == 2) {
+				el.addClass('is-confirmed');
+			}
+
 			var header = $('<h4>Heat ' + heat.id + '</h4>');
 			el.append(header);
 
@@ -383,7 +387,7 @@
 				actions.append('<button class="delete_heat btn-danger" data-id="' + heat.id + '" title="Delete Heat ' + heat.id + '">&#215;</button>');
 			}
 			el.append(actions);
-			
+
 			// nodes
 			if (heat.auto_frequency) {
 				heat.slots.sort((a,b) => {
@@ -406,60 +410,72 @@
 				var slot_el = $('<li>');
 				slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
 
-				// method
-				var selectmethod = $('<select class="set_method" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-				selectmethod.append('<option value="-1">None</option>');
-				selectmethod.append('<option value="0">Pilot</option>');
-				selectmethod.append('<option value="1">Heat</option>');
-				selectmethod.append('<option value="2">Class</option>');
-				selectmethod.val(slot.method);
-				selectmethod.prop('disabled', heat.locked);
-				slot_el.append(selectmethod);
+				if (heat.dynamic && heat.status == 2) {
+					var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == heatpilot});
 
-				// method-heat
-				var selectheat = $('<select class="set_heat" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-				for (var k in rotorhazard.event.heats) {
-					var h = rotorhazard.event.heats[k];
-					selectheat.append('<option value="' + h.id + '">' + h.displayname + '</option>');
-				}
-				selectheat.val(slot.seed_id);
-				selectheat.prop('disabled', heat.locked);
-				slot_el.append(selectheat);
-
-				// method-class
-				var selectclass = $('<select class="set_class" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-				for (var k in rotorhazard.event.classes) {
-					var c = rotorhazard.event.classes[k];
-					selectclass.append('<option value="' + c.id + '">' + c.displayname + '</option>');
-				}
-				selectclass.val(slot.seed_id);
-				selectclass.prop('disabled', heat.locked);
-				slot_el.append(selectclass);
-
-				// rank
-				var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank">'); // TODO: Proper labels
-				input.val(slot.seed_rank);
-				input.prop('disabled', heat.locked);
-				slot_el.append(input);
-
-				var pilot_el = $('<div class="pilot-name">');
-				// pilot selectors
-				var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
-				for (var k in rotorhazard.event.pilots) {
-					var pilot = rotorhazard.event.pilots[k];
-					if (rotorhazard.options.pilotSort == 'callsign') {
-						selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.callsign + ' (' + pilot.name + ')</option>');
+					if (pilot) {
+						var callsign = pilot.callsign;
 					} else {
-						selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.name + ' (' + pilot.callsign + ')</option>');
+						var callsign = "(" + __("None") + ")"
 					}
+
+					slot_el.append('<div class="pilot-name">' + callsign + '</div>');
+				} else {
+					// method
+					var selectmethod = $('<select class="set_method" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+					selectmethod.append('<option value="-1">None</option>');
+					selectmethod.append('<option value="0">Pilot</option>');
+					selectmethod.append('<option value="1">Heat</option>');
+					selectmethod.append('<option value="2">Class</option>');
+					selectmethod.val(slot.method);
+					selectmethod.prop('disabled', heat.locked);
+					slot_el.append(selectmethod);
+
+					// method-heat
+					var selectheat = $('<select class="set_heat" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+					for (var k in rotorhazard.event.heats) {
+						var h = rotorhazard.event.heats[k];
+						selectheat.append('<option value="' + h.id + '">' + h.displayname + '</option>');
+					}
+					selectheat.val(slot.seed_id);
+					selectheat.prop('disabled', heat.locked);
+					slot_el.append(selectheat);
+
+					// method-class
+					var selectclass = $('<select class="set_class" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+					for (var k in rotorhazard.event.classes) {
+						var c = rotorhazard.event.classes[k];
+						selectclass.append('<option value="' + c.id + '">' + c.displayname + '</option>');
+					}
+					selectclass.val(slot.seed_id);
+					selectclass.prop('disabled', heat.locked);
+					slot_el.append(selectclass);
+
+					// rank
+					var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank">'); // TODO: Proper labels
+					input.val(slot.seed_rank);
+					input.prop('disabled', heat.locked);
+					slot_el.append(input);
+
+					var pilot_el = $('<div class="pilot-name">');
+					// pilot selectors
+					var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
+					for (var k in rotorhazard.event.pilots) {
+						var pilot = rotorhazard.event.pilots[k];
+						if (rotorhazard.options.pilotSort == 'callsign') {
+							selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.callsign + ' (' + pilot.name + ')</option>');
+						} else {
+							selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.name + ' (' + pilot.callsign + ')</option>');
+						}
+					}
+					selectbox.val(heatpilot);
+					if (slot.method === 0 && !heatpilot) {
+						selectmethod.val(-1);
+					}
+					selectbox.prop('disabled', heat.locked);
+					pilot_el.append(selectbox);
+					slot_el.append(pilot_el);
 				}
-				selectbox.val(heatpilot);
-				if (slot.method === 0 && !heatpilot) {
-					selectmethod.val(-1);
-				}
-				selectbox.prop('disabled', heat.locked);
-				pilot_el.append(selectbox);
-				slot_el.append(pilot_el);
 				nodelist.append(slot_el);
 			}
 			el.append(nodelist);
@@ -472,38 +488,50 @@
 			input.prop('disabled', heat.locked);
 			el.append(label);
 
+			if (heat.dynamic) {
+				if (heat.status == 2) {
+					el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">Reset to Plan</button>');
+				} else {
+					el.append('<button class="btn-danger plan-calc" data-id="' + heat.id + '">Calc Pilots</button>');
+				}
+			}
+
 			update_heat_ui(el);
 			return el;
 		}
 
 		function update_heat_ui(el) {
-			var autofrequency = el.find('.set_heat_autofrequency').prop('checked');
-			el.find('.channel-block').prop('hidden', autofrequency);
+			if (el.hasClass('is-confirmed')) {
+				el.find('.channel-block').prop('hidden', false);
+			} else {
+				var autofrequency = el.find('.set_heat_autofrequency').prop('checked');
+				el.find('.channel-block').prop('hidden', autofrequency);
 
-			el.find('li').each(function(){
-				var method = parseInt($(this).find('.set_method').val());
-				if (method == -1) { // None
-					$(this).find('.set_class').prop('hidden', true);
-					$(this).find('.set_heat').prop('hidden', true);
-					$(this).find('.set_rank').prop('hidden', true);
-					$(this).find('.pilot-name').prop('hidden', true);
-				} else if (method == 0) { // Pilot
-					$(this).find('.set_class').prop('hidden', true);
-					$(this).find('.set_heat').prop('hidden', true);
-					$(this).find('.set_rank').prop('hidden', true);
-					$(this).find('.pilot-name').prop('hidden', false);
-				} else if (method == 1) { // Heat
-					$(this).find('.set_class').prop('hidden', true);
-					$(this).find('.set_heat').prop('hidden', false);
-					$(this).find('.set_rank').prop('hidden', false);
-					$(this).find('.pilot-name').prop('hidden', true);
-				} else if (method == 2) { // Class
-					$(this).find('.set_class').prop('hidden', false);
-					$(this).find('.set_heat').prop('hidden', true);
-					$(this).find('.set_rank').prop('hidden', false);
-					$(this).find('.pilot-name').prop('hidden', true);
-				}
-			});
+				el.find('li').each(function(){
+					var method = parseInt($(this).find('.set_method').val());
+					if (method == -1) { // None
+						$(this).find('.set_class').prop('hidden', true);
+						$(this).find('.set_heat').prop('hidden', true);
+						$(this).find('.set_rank').prop('hidden', true);
+						$(this).find('.pilot-name').prop('hidden', true);
+					} else if (method == 0) { // Pilot
+						$(this).find('.set_class').prop('hidden', true);
+						$(this).find('.set_heat').prop('hidden', true);
+						$(this).find('.set_rank').prop('hidden', true);
+						$(this).find('.pilot-name').prop('hidden', false);
+					} else if (method == 1) { // Heat
+						$(this).find('.set_class').prop('hidden', true);
+						$(this).find('.set_heat').prop('hidden', false);
+						$(this).find('.set_rank').prop('hidden', false);
+						$(this).find('.pilot-name').prop('hidden', true);
+					} else if (method == 2) { // Class
+						$(this).find('.set_class').prop('hidden', false);
+						$(this).find('.set_heat').prop('hidden', true);
+						$(this).find('.set_rank').prop('hidden', false);
+						$(this).find('.pilot-name').prop('hidden', true);
+					}
+				});
+			}
 		}
 
 		$(document).on("change", '.set_heat_note', function (event) {
