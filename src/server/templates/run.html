@@ -460,36 +460,38 @@
 		});
 
 		function display_race_plan_result(msg) {
-			var plan_dialog_el = $('<div class="popup">');
+			var plan_dialog_el = $('<div class="heat-plan-result popup">');
 			plan_dialog_el.append('<h2>' + __('Heat Plan') + ': ' + msg.displayname + '</h2>');
-			var message_content = $('<div class="popup-content">');
+			var message_content = $('<div class="popup-content dialog-content">');
 			plan_dialog_el.append(message_content);
 
 			if (msg.calc_result.calc_success == false) {
-				var message_el = $('<div class="warning">');
-				message_el.append(__("Warning: Heat plan cannot be fulfilled"));
-				plan_dialog_el.append(message_el);
+				var message_el = $('<div class="notice warning">');
+				message_el.append('&#9888;&#xFE0E; ' + __("Heat plan is invalid"));
+				message_content.append(message_el);
 			} else if (msg.calc_result.unassigned_slots > 0) {
 				var message_el = $('<div class="notice">');
-				message_el.append(__("Seeding contains empty slots"));
-				plan_dialog_el.append(message_el);
+				message_el.append('&#9888;&#xFE0E; ' + __("Heat contains empty slots"));
+				message_content.append(message_el);
 			}
 
 			var heat_el = $('<div class="heat-plan">');
-			var nodelist = $('<ul>');
+			var nodelist = $('<table>');
 			for (idx in msg.slots) {
 				var slot = msg.slots[idx];
-				var slot_el = $('<li>');
+				var slot_el = $('<tr>');
 
 				if (slot.method > -1) {
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
-					slot_el.append('<div class="method">' + method_text + '</div>');
+					slot_el.append('<td class="method">' + method_text + '</td>');
+
+					slot_el.append('<td class="calc_to">&#x2192;</td>');
 
 					if (Number.isInteger(slot.node_index)) {
-						slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
+						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
 					} else {
 						slot_el.addClass('no-freq');
-						slot_el.append('<div class="channel-block"><span class="ch">—</span> <span class="fr">—</span></div>');
+						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
 					}
 
 					if (slot.pilot_id) {
@@ -504,10 +506,10 @@
 						} else {
 							var callsign = "(" + __("Pilot") + " " + slot.pilot_id + ")"
 						}
-						slot_el.append('<div class="pilot-name">' + callsign + '</div>');
+						slot_el.append('<td class="pilot-name">' + callsign + '</td>');
 					} else {
 						slot_el.addClass('no-pilot');
-						slot_el.append('<div class="pilot-name">—</div>');
+						slot_el.append('<td class="pilot-name">' + __('(None)') + '</td>');
 					}
 
 					nodelist.append(slot_el);
@@ -515,16 +517,23 @@
 			}
 			heat_el.append(nodelist);
 
-			plan_dialog_el.append(heat_el);
+			message_content.append(heat_el);
 
-			plan_dialog_el.append('<a href="/format">Modify Plan</a>');
-			plan_dialog_el.append('<button class="confirm-heat-plan" data-heat_id="' + msg.heat + '">Confirm</button>');
-			plan_dialog_el.append('<button class="cancel">Cancel</button>');
+			var actions_el = $('<div class="dialog-actions">');
+			actions_el.append('<a href="/format#classes_and_heats">' + __('Modify Plans') + '</a>');
+			actions_el.append('<button class="cancel">' + __('Cancel') + '</button>');
+			actions_el.append('<button class="btn-danger confirm-heat-plan" data-heat_id="' + msg.heat + '">' + __('Confirm') + '</button>');
+			message_content.append(actions_el);
 
 			$.magnificPopup.open({
 				items: {
 					src: plan_dialog_el,
 					type: 'inline',
+				},
+				callbacks: {
+					open: function(){
+						$('#set_current_heat').val(rotorhazard.current_heat);
+					}
 				}
 			});
 
@@ -532,6 +541,7 @@
 		}
 
 		$(document).on("click", '.confirm-heat-plan', function (event) {
+			$.magnificPopup.close();
 			var data = {
 				heat_id: parseInt($(this).data('heat_id')),
 			};

@@ -1,6 +1,4 @@
 '''RotorHazard server script'''
-from jsonschema._types import is_integer
-from _ast import Or
 RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
 SERVER_API = 38 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -65,7 +63,7 @@ import json_endpoints
 import EventActions
 import RHData
 import RHUtils
-from RHUtils import catchLogExceptionsWrapper, FORMAT_ID_NONE
+from RHUtils import catchLogExceptionsWrapper
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.SendAckQueue import SendAckQueue
@@ -722,7 +720,7 @@ def on_get_settings():
 
 @SOCKET_IO.on('reset_auto_calibration')
 @catchLogExceptionsWrapper
-def on_reset_auto_calibration(data):
+def on_reset_auto_calibration(_data):
     on_stop_race()
     on_discard_laps()
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
@@ -788,7 +786,7 @@ def on_join_cluster_ex(data=None):
 
 @SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
-def on_check_secondary_query(data):
+def on_check_secondary_query(_data):
     ''' Check-query received from primary; return response. '''
     payload = {
         'timestamp': monotonic_to_epoch_millis(monotonic())
@@ -1467,7 +1465,7 @@ def on_backup_database():
     if hasattr(base64, "encodebytes"):
         file_content = base64.encodebytes(file_content).decode()
     else:
-        file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+        file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method,undefined-variable
 
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
@@ -1763,7 +1761,7 @@ def on_download_logs(data):
             if hasattr(base64, "encodebytes"):
                 file_content = base64.encodebytes(file_content).decode()
             else:
-                file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+                file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method,undefined-variable
 
             emit_payload = {
                 'file_name': os.path.basename(zip_path_name),
@@ -1869,7 +1867,7 @@ def on_delete_race_format(data):
 
 # LED Effects
 
-def emit_led_effect_setup(**params):
+def emit_led_effect_setup(**_params):
     '''Emits LED event/effect wiring options.'''
     if led_manager.isEnabled():
         effects = led_manager.getRegisteredEffects()
@@ -1916,7 +1914,7 @@ def emit_led_effect_setup(**params):
         # never broadcast
         emit('led_effect_setup_data', emit_payload)
 
-def emit_led_effects(**params):
+def emit_led_effects(**_params):
     if led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries()):
         effects = led_manager.getRegisteredEffects()
 
@@ -2409,7 +2407,7 @@ def do_stop_race_actions(doSave=False):
 
 @SOCKET_IO.on('save_laps')
 @catchLogExceptionsWrapper
-def on_save_laps(data=None):
+def on_save_laps(_data=None):
     '''Handle "save" UI action'''
 
     if RACE.race_status == RaceStatus.RACING:
@@ -3354,7 +3352,6 @@ def emit_race_list(**params):
     heats = {}
     for heat in RHData.get_heats():
         if RHData.savedRaceMetas_has_heat(heat.id):
-            heatnote = RHData.get_heat_note(heat.id)
             rounds = {}
             for race in RHData.get_savedRaceMetas_by_heat(heat.id):
                 pilotraces = []
@@ -3566,7 +3563,6 @@ def emit_class_data(**params):
 
 def emit_format_data(**params):
     '''Emits format data.'''
-    # TODO: Migrate to emit_format_data
     formats = []
     for race_format in RHData.get_raceFormats():
         raceformat = {}
@@ -3804,7 +3800,7 @@ def emit_callouts():
     if callouts:
         emit('callouts', json.loads(callouts))
 
-def emit_imdtabler_page(**params):
+def emit_imdtabler_page(**_params):
     '''Emits IMDTabler page, using current profile frequencies.'''
     if Use_imdtabler_jar_flag:
         try:                          # get IMDTabler version string
@@ -3861,7 +3857,7 @@ def emit_imdtabler_rating():
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
-def emit_vrx_list(*args, **params):
+def emit_vrx_list(*_args, **params):
     ''' get list of connected VRx devices '''
     if vrx_controller:
         # if vrx_controller.has_connection:
@@ -4703,7 +4699,7 @@ def initVRxController():
         [node.frequency for node in INTERFACE.nodes],
         Language)
 
-def killVRxController(*args):
+def killVRxController(*_args):
     global vrx_controller
     logger.info('Killing VRxController')
     vrx_controller = None
