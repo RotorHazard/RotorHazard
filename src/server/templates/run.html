@@ -457,6 +457,7 @@
 		socket.on('heat_plan_result', function (msg) {
 			console.log(msg);
 			display_race_plan_result(msg);
+			// TODO: store data locally; wait for rotorhazard.event.heats population
 		});
 
 		function display_race_plan_result(msg) {
@@ -496,6 +497,7 @@
 
 					if (slot.pilot_id) {
 						/*
+						// rotorhazard.event.pilots not currently requested
 						var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == slot.pilot_id});
 						*/
 						var pilot = slot.callsign;
@@ -557,7 +559,7 @@
 				if (heat) {
 					return heat.displayname + " " + __('Rank') + " " + rank;
 				} else {
-					return __('Undefined Heat');
+					return '(' + __('Undefined Heat') + ')';
 				}
 			} else if (method == 2) { // class
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
@@ -565,10 +567,10 @@
 				if (race_class) {
 					return race_class.displayname + " " + __('Rank') + " " + rank;
 				} else {
-					return __('Undefined Class');
+					return '(' + __('Undefined Class') + ')';
 				}
 			}
-			return __('Undefined');
+			return '(' + __('Undefined') + ')';
 		}
 
 		socket.on('node_data', function (msg) {

@@ -56,7 +56,7 @@ import json
 
 import Config
 import Database
-from Database import HeatStatus
+from Database import HeatStatus, ProgramMethod
 import Results
 import Language
 import json_endpoints
@@ -3510,6 +3510,7 @@ def emit_heat_data(**params):
 
         current_heat['slots'] = []
         heatNodes = RHData.get_heatNodes_by_heat(heat.id)
+        is_dynamic = False
         for heatNode in heatNodes:
             current_node = {}
             current_node['id'] = heatNode.id
@@ -3520,6 +3521,11 @@ def emit_heat_data(**params):
             current_node['seed_rank'] = heatNode.seed_rank
             current_node['seed_id'] = heatNode.seed_id
             current_heat['slots'].append(current_node)
+
+            if current_node['method'] == ProgramMethod.HEAT_RESULT or current_node['method'] == ProgramMethod.CLASS_RESULT:
+                is_dynamic = True
+
+        current_heat['dynamic'] = is_dynamic 
 
         current_heat['locked'] = bool(RHData.savedRaceMetas_has_heat(heat.id))
         heats.append(current_heat)

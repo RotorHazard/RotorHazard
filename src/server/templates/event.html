@@ -10,6 +10,7 @@
 		'frequency_data',
 		'pilot_data',
 		'class_data',
+		'format_data',
 		'heat_data'
 	];
 
@@ -70,7 +71,11 @@
 
 		socket.on('class_data', function (msg) {
 			rotorhazard.event.classes = msg.classes;
-			rotorhazard.event.formats = msg.formats; // *** TODO: Split Formats
+			display_classes()
+		});
+
+		socket.on('format_data', function (msg) {
+			rotorhazard.event.formats = msg.formats;
 			display_classes()
 		});
 
@@ -125,33 +130,11 @@
 
 						for (var h in heat_list) {
 							var heat = heat_list[h];
-							var heat_group = $('<li class="heat">');
+							var heat_display_el = $('<li class="heat">');
 
-							heat_group.append('<h4>' + heat.displayname + '</h4>');
+							var heat_el = get_heat_display(heat, heat_display_el, 'h4');
 
-							var nodelist = $('<ol>');
-							for (p in heat.slots) {
-								var heatpilot = heat.slots[p].pilot_id;
-
-								var callsign = false;
-								for (var pd in rotorhazard.event.pilots) {
-									if (rotorhazard.event.pilots[pd].pilot_id == heatpilot) {
-										callsign = rotorhazard.event.pilots[pd].callsign;
-										break;
-									}
-								}
-
-								if (callsign) {
-									var slot = $('<li>');
-									slot.append('<div class="channel-block" data-node="' + p + '"><span class="ch"></span> <span class="fr"></span></div>');
-
-									slot.append('<div class="pilot-name">' + callsign + '</div>');
-									nodelist.append(slot);
-								}
-							}
-
-							heat_group.append(nodelist);
-							heat_groups.append(heat_group);
+							heat_groups.append(heat_el);
 							class_group.append(heat_groups);
 						}
 
@@ -165,38 +148,18 @@
 
 					for (var h in rotorhazard.event.heats) {
 						var heat = rotorhazard.event.heats[h];
-						var heat_group = $('<li class="heat">');
+						var heat_display_el = $('<li class="heat">');
+
+						var heat_el = get_heat_display(heat, heat_display_el, 'h3');
 
 						heat_group.append('<h3>' + heat.displayname + '</h3>');
 
-						var nodelist = $('<ol>');
-						for (p in heat.slots) {
-							var heatpilot = heat.slots[p].pilot_id;
-
-							var callsign = false;
-							for (var pd in rotorhazard.event.pilots) {
-								if (rotorhazard.event.pilots[pd].pilot_id == heatpilot) {
-									callsign = rotorhazard.event.pilots[pd].callsign;
-									break;
-								}
-							}
-
-							if (callsign) {
-								var slot = $('<li>');
-								slot.append('<div class="channel-block" data-node="' + p + '"><span class="ch"></span> <span class="fr"></span></div>');
-
-								slot.append('<div class="pilot-name">' + callsign + '</div>');
-								nodelist.append(slot);
-							}
-						}
-
-						heat_group.append(nodelist);
+						heat_group.append(heat_el);
 						heat_groups.append(heat_group);
 					}
 
 					$('#heat_list').append(heat_groups);
 				}
-
 
 				freq.updateBlocks();
 
@@ -216,8 +179,75 @@
 			}
 		}
 
+		function get_heat_display(heat, heat_display_el, header_tag) {
+			heat_display_el.append('<' + header_tag + '>' + heat.displayname + '</' + header_tag + '>');
+
+			var nodelist = $('<ul>');
+
+			if (heat.dynamic === false || heat.status == 2) { // HeatStatus.CONFIRMED
+				for (idx in heat.slots) {
+					var slot = heat.slots[idx];
+
+					if (slot.pilot_id) {
+						var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == slot.pilot_id});
+
+						if (pilot) {
+							var callsign = pilot.callsign;
+						} else {
+							var callsign = "(" + __("Pilot") + " " + slot.pilot_id + ")"
+						}
+
+						var slot_el = $('<li>');
+						slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
+
+						slot_el.append('<div class="pilot-name">' + callsign + '</div>');
+						nodelist.append(slot_el);
+					}
+				}
+			} else {
+				for (idx in heat.slots) {
+					var slot = heat.slots[idx];
+					var slot_el = $('<li>');
+
+					if (slot.method > -1) {
+						var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
+						slot_el.append('<div class="method">' + method_text + '</div>');
+
+						nodelist.append(slot_el);
+					}
+				}
+			}
+
+			heat_display_el.append(nodelist);
+
+			return heat_display_el
+		}
+
+		function get_method_descriptor (method, seed, rank) {
+			if (method == 0) { // pilot
+				return __("Pilot");
+			} else if (method == 1) { // heat
+				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
+
+				if (heat) {
+					return heat.displayname + " " + __('Rank') + " " + rank;
+				} else {
+					return '(' + __('Undefined Heat') + ')';
+				}
+			} else if (method == 2) { // class
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
+
+				if (race_class) {
+					return race_class.displayname + " " + __('Rank') + " " + rank;
+				} else {
+					return '(' + __('Undefined Class') + ')';
+				}
+			}
+			return '(' + __('Undefined') + ')';
+		}
+
 		function display_classes() {
-			if (rotorhazard.event.classes) {
+			if (rotorhazard.event.classes && rotorhazard.event.formats) {
 				$(".race_classes").empty();
 				$(".race_formats").empty();
 
@@ -228,11 +258,7 @@
 						var race_class = rotorhazard.event.classes[i];
 						var el = $('<li>');
 
-						if (race_class.name) {
-							el.append('<h3>' + race_class.name + '</h3>');
-						} else {
-							el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
-						}
+						el.append('<h3>' + race_class.displayname + '</h3>');
 
 						var class_info = $('<div class="class-info">');
 
@@ -243,16 +269,16 @@
 						}
 
 						if (race_class.format) {
-							for (var i in rotorhazard.event.formats) {
-								raceformat = rotorhazard.event.formats[i];
-								if (raceformat.id == race_class.format) {
-									class_info.append('<p><strong>Format:</strong> ' + raceformat.name + '</p>');
+							var raceformat = rotorhazard.event.formats.find(obj => {return obj.id == race_class.format});
 
-									if (!active_format_ids.includes(raceformat.id)) {
-										active_format_ids.push(raceformat.id);
-									}
-									break;
+							if (raceformat) {
+								class_info.append('<p><strong>Format:</strong> ' + raceformat.name + '</p>');
+
+								if (!active_format_ids.includes(raceformat.id)) {
+									active_format_ids.push(raceformat.id);
 								}
+							} else {
+								class_info.append('<p><strong>Format:</strong> (Undefined)</p>');
 							}
 						} else {
 							class_info.append('<p>' + __('No format restriction') + '</p>');

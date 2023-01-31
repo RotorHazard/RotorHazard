@@ -1,37 +1,37 @@
 @font-face {
-  font-family: 'Barlow';
-  font-style: normal;
-  font-weight: 400;
-  src: local(''),
-       url('fonts/BarlowRH-Light.woff2') format('woff2'),
-       url('fonts/BarlowRH-Light.woff') format('woff');
+	font-family: 'Barlow';
+	font-style: normal;
+	font-weight: 400;
+	src: local(''),
+			 url('fonts/BarlowRH-Light.woff2') format('woff2'),
+			 url('fonts/BarlowRH-Light.woff') format('woff');
 }
 
 @font-face {
-  font-family: 'Barlow';
-  font-style: italic;
-  font-weight: 400;
-  src: local(''),
-       url('fonts/Barlow-LightItalic.woff2') format('woff2'),
-       url('fonts/Barlow-LightItalic.woff') format('woff');
+	font-family: 'Barlow';
+	font-style: italic;
+	font-weight: 400;
+	src: local(''),
+			 url('fonts/Barlow-LightItalic.woff2') format('woff2'),
+			 url('fonts/Barlow-LightItalic.woff') format('woff');
 }
 
 @font-face {
-  font-family: 'Barlow';
-  font-style: normal;
-  font-weight: 700;
-  src: local(''),
-       url('fonts/BarlowRH-Bold.woff2') format('woff2'),
-       url('fonts/BarlowRH-Bold.woff') format('woff');
+	font-family: 'Barlow';
+	font-style: normal;
+	font-weight: 700;
+	src: local(''),
+			 url('fonts/BarlowRH-Bold.woff2') format('woff2'),
+			 url('fonts/BarlowRH-Bold.woff') format('woff');
 }
 
 @font-face {
-  font-family: 'Barlow';
-  font-style: italic;
-  font-weight: 700;
-  src: local(''),
-       url('fonts/Barlow-BoldItalic.woff2') format('woff2'),
-       url('fonts/Barlow-BoldItalic.woff') format('woff');
+	font-family: 'Barlow';
+	font-style: italic;
+	font-weight: 700;
+	src: local(''),
+			 url('fonts/Barlow-BoldItalic.woff2') format('woff2'),
+			 url('fonts/Barlow-BoldItalic.woff') format('woff');
 }
 
 [hidden] {
@@ -1345,14 +1345,16 @@ main.page-home {
 	}
 }
 
-.heats ol {
+.heats ol,
+.heats ul {
 	font-size: 1rem;
 	padding: 0.5rem 0.5rem 0;
 	list-style: none;
 	border-top: none;
 }
 
-.heats ol li {
+.heats ol li,
+.heats ul li {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -1452,6 +1454,25 @@ main.page-home {
 	}
 }
 
+.page-heats .race_classes>ol {
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	margin: 0 -0.25em;
+}
+
+.page-heats .race_classes>ol>li {
+	width: calc(33.3333% - 0.5em);
+	margin: 0 0.25em 0.5em;
+	padding: 0;
+	box-sizing: border-box;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+}
+
 .race_formats>ul {
 	padding: 0;
 	list-style: none;
@@ -1487,7 +1508,7 @@ main.page-home {
 }
 
 @media(min-width:30em) {
-	.race_classes>ol>li {
+	.page-format .race_classes>ol>li {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		row-gap: 0.5rem;
@@ -1581,7 +1602,7 @@ main.page-home {
 	flex-basis: 100%;
 }
 
-.race_classes h3 {
+.page-format .race_classes h3 {
 	color: transparent;
 }
 
@@ -2067,13 +2088,13 @@ button .wide {
 }
 
 .action > select:first-of-type {
-  order: -2;
-  flex: 1 1 0;
+	order: -2;
+	flex: 1 1 0;
 }
 
 .action > .delete-action {
-  order: -1;
-  flex: 0 0 auto;
+	order: -1;
+	flex: 0 0 auto;
 }
 
 .action > fieldset {
