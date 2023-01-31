@@ -114,13 +114,11 @@
 
 						class_label = __('Unclassified');
 						class_id = 0;
-						for (var rc in rotorhazard.event.classes) {
-							if (c == rotorhazard.event.classes[rc].id) {
-								var class_data = rotorhazard.event.classes[rc]
-								class_label = class_data.displayname;
-								class_id = class_data.id;
-								break;
-							}
+						var class_data = rotorhazard.event.classes.find(obj => {return obj.id == c});
+
+						if (class_data) {
+							class_label = class_data.displayname;
+							class_id = class_data.id;
 						}
 
 						class_group.attr('data-class-id', class_id);
@@ -232,7 +230,7 @@
 				if (heat) {
 					return heat.displayname + " " + __('Rank') + " " + rank;
 				} else {
-					return '(' + __('Undefined Heat') + ')';
+					return false;
 				}
 			} else if (method == 2) { // class
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
@@ -240,10 +238,10 @@
 				if (race_class) {
 					return race_class.displayname + " " + __('Rank') + " " + rank;
 				} else {
-					return '(' + __('Undefined Class') + ')';
+					return false;
 				}
 			}
-			return '(' + __('Undefined') + ')';
+			return false;
 		}
 
 		function display_classes() {
@@ -272,16 +270,52 @@
 							var raceformat = rotorhazard.event.formats.find(obj => {return obj.id == race_class.format});
 
 							if (raceformat) {
-								class_info.append('<p><strong>Format:</strong> ' + raceformat.name + '</p>');
+								class_info.append('<p><strong>'+ __('Format') + ':</strong> ' + raceformat.name + '</p>');
 
 								if (!active_format_ids.includes(raceformat.id)) {
 									active_format_ids.push(raceformat.id);
 								}
 							} else {
-								class_info.append('<p><strong>Format:</strong> (Undefined)</p>');
+								class_info.append('<p><strong>'+ __('Format') + ':</strong> (Undefined)</p>');
 							}
 						} else {
 							class_info.append('<p>' + __('No format restriction') + '</p>');
+						}
+
+						if (race_class.win_condition) {
+							var condition_text = 'Undefined';
+							switch (race_class.win_condition) {
+								case 1:
+									condition_text = 'Laps/Time';
+									break;
+								case 2:
+									condition_text = 'Fastest Lap';
+									break;
+								case 3:
+									condition_text = 'Fastest 3 Consecutive';
+									break;
+								case 4:
+									condition_text = 'Best Round (Laps/Time)';
+									break;
+								case 5:
+									condition_text = 'Best 2 Rounds (Laps/Time)';
+									break;
+								case 6:
+									condition_text = 'Best 3 Rounds (Laps/Time)';
+									break;
+								case 7:
+									condition_text = 'Best 4 Rounds (Laps/Time)';
+									break;
+								case 8:
+									condition_text = 'Best 5 Rounds (Laps/Time)';
+									break;
+							}
+
+							class_info.append('<p><strong>'+ __('Ranking') + ':</strong> '+ condition_text + '</p>');
+						}
+
+						if (race_class.rounds) {
+							class_info.append('<p><strong>' + __('Rounds') + '</strong>: ' + race_class.rounds + '</p>');
 						}
 
 						class_info.appendTo(el);
