@@ -122,7 +122,7 @@ class LEDEventManager:
 
         return colors
 
-    def getDisplayColor(self, node_index, from_result=False):
+    def getDisplayColor(self, node_index, from_result=False, no_pilot=False):
         if node_index is None:
             return hexToColor('#000000')
 
@@ -130,6 +130,8 @@ class LEDEventManager:
             return self.displayColorCache[node_index]
 
         mode = self.RHData.get_optionInt('ledColorMode', 0)
+        if mode == 1 and no_pilot:
+            mode = 0
         color = False
 
         if mode == 1: # by pilot

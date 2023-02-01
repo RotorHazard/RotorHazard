@@ -395,6 +395,10 @@
 			if (rotorhazard.event.heats && rotorhazard.event.classes) {
 				$('#set_current_heat').empty();
 
+				var opt = $('<option value="0">');
+				opt.html(__('Practice Mode'));
+				$('#set_current_heat').append(opt);
+
 				// assemble heats by class
 				var heats_by_class = {}
 				var single_class = true;
@@ -766,7 +770,11 @@
 			var race = msg.current;
 
 			heat = rotorhazard.event.heats.find(obj => {return obj.id == race.heat})
-			$('.current_heat').html(heat.displayname);
+			if (heat) {
+				$('.current_heat').html(heat.displayname);
+			} else {
+				$('.current_heat').html(__('Practice Mode'));
+			}
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();
@@ -788,7 +796,8 @@
 	
 					if (rotorhazard.voice_callsign == 1 ||
 								(rotorhazard.voice_callsign == 2 && (!msg.team_name))) {
-						ttstext = msg.callsign;
+						if (msg.callsign)
+							ttstext = msg.callsign;
 						if (msg.pilot)
 							ttstext = msg.pilot;
 					}
