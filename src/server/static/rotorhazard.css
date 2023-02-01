@@ -2018,6 +2018,7 @@ td.speak {
 	font-size: 0.75em;
 }
 
+#practice-warning,
 .race_status_message {
 	text-align: center;
 	justify-content: center;
@@ -2026,6 +2027,7 @@ td.speak {
 	font-weight: bold;
 }
 
+#practice-warning,
 .race_status_message>* {
 	margin: 0.5em 1em;
 }

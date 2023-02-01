@@ -1237,7 +1237,9 @@ def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RHData.alter_heat(data)
     if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
-        set_current_heat_data(heat.id)
+        result = set_current_heat_data(heat.id)
+        if result == False: # current heat no longer viable, set system to practice mode
+            set_current_heat_data(RHUtils.HEAT_ID_NONE)
     emit_heat_data(noself=True)
     if ('pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
@@ -1254,12 +1256,8 @@ def on_delete_heat(data):
     if result is not None:
         if LAST_RACE and LAST_RACE.current_heat == result:
             LAST_RACE = None  # if last-race heat deleted then clear last race
-        if RACE.current_heat == result:  # if current heat was deleted then load new heat data
-            heat_id = RHData.get_first_heat().id
-            if RACE.current_heat != heat_id:
-                logger.info('Changing current heat to Heat {0}'.format(heat_id))
-                RACE.current_heat = heat_id
-            set_current_heat_data(heat_id)
+        if RACE.current_heat == result:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
+            set_current_heat_data(RHUtils.HEAT_ID_NONE)
         emit_heat_data()
 
 @SOCKET_IO.on('add_race_class')
@@ -2666,10 +2664,13 @@ def set_current_heat_data(new_heat_id):
             (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False):
             finalize_current_heat_set(new_heat_id)
         else:
+            emit_heat_plan_result(new_heat_id, calc_result)
+
             if calc_result['calc_success'] is False:
                 logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
+                
+            return False
 
-            emit_heat_plan_result(new_heat_id, calc_result)
     else:
         finalize_current_heat_set(RHUtils.HEAT_ID_NONE)
 
@@ -2719,8 +2720,7 @@ def finalize_current_heat_set(new_heat_id):
     if new_heat_id == RHUtils.HEAT_ID_NONE:
         RACE.node_pilots = {}
         RACE.node_teams = {}
-        logger.info("Switching to practice mode; races will not be saved")
-        emit_priority_message(__("Switching to practice mode; races will not be saved"), False, nobroadcast=True)
+        logger.info("Switching to practice mode; races will not be saved until a heat is selected")
 
     else:
         RACE.node_pilots = {}
@@ -4681,19 +4681,9 @@ def init_race_state():
     on_set_profile({'profile': getCurrentProfile().id}, False)
 
     # Set current heat
-    first_heat = RHData.get_first_heat()
-    if first_heat:
-        RACE.current_heat = first_heat.id
-        RACE.node_pilots = {}
-        RACE.node_teams = {}
-        for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
-            if heatNode.node_index is not None:
-                RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-                if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                    RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
-                else:
-                    RACE.node_teams[heatNode.node_index] = None
+    RACE.current_heat = RHUtils.HEAT_ID_NONE
+    RACE.node_pilots = {}
+    RACE.node_teams = {}
 
     # Set race format
     race_format = RHData.get_first_raceFormat()
