@@ -917,7 +917,7 @@ class RHData():
             slot = self._Database.HeatNode.query.get(slot_id)
             slot.seed_rank = data['seed_rank']
         if 'status' in data:
-            heat.status = data['status'] 
+            heat.status = data['status']
 
         # alter existing saved races:
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
@@ -1167,7 +1167,7 @@ class RHData():
         logger.debug('running auto-frequency with {}'.format(calc_fn))
         heat = self._Database.Heat.query.get(heat_id)
         slots = self.get_heatNodes_by_heat(heat_id)
-        
+
         if heat.auto_frequency:
             # clear all node assignments
             for slot in slots:
@@ -1226,7 +1226,7 @@ class RHData():
                                     del(available_nodes[0])
                                 eliminated_slots[slot_idx] = None
                             eliminated_slots = [x for x in eliminated_slots if x is not None]
-                        else: 
+                        else:
                             for slot in slots:
                                 if slot.node_index is None and slot.pilot_id:
                                     if len(available_nodes):
@@ -1308,12 +1308,12 @@ class RHData():
     def alter_heatNodes_fast(self, data):
         # Alters heatNodes quickly, in batch
         # !! Unsafe for general use. Intentionally light type checking,    !!
-        # !! DOES NOT trigger events, clear results, or update cached data !! 
+        # !! DOES NOT trigger events, clear results, or update cached data !!
 
         for slot_data in data:
             slot_id = slot_data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
-                
+
             if 'pilot' in slot_data:
                 slot.pilot_id = slot_data['pilot']
             if 'method' in slot_data:
@@ -1672,18 +1672,18 @@ class RHData():
                 race_format.lap_grace_sec = init['lap_grace_sec']
             if 'staging_fixed_tones' in init:
                 race_format.staging_fixed_tones = init['staging_fixed_tones']
+            if 'staging_tones' in init:
+                race_format.staging_tones = init['staging_tones']
             if 'start_delay_min_ms' in init:
                 race_format.start_delay_min_ms = init['start_delay_min_ms']
             if 'start_delay_max_ms' in init:
                 race_format.start_delay_max_ms = init['start_delay_max_ms']
-            if 'staging_tones' in init:
-                race_format.staging_tones = init['staging_tones']
-            if 'number_laps_win' in init:
-                race_format.number_laps_win = init['number_laps_win']
             if 'start_behavior' in init:
                 race_format.start_behavior = init['start_behavior']
             if 'win_condition' in init:
                 race_format.win_condition = init['win_condition']
+            if 'number_laps_win' in init:
+                race_format.number_laps_win = init['number_laps_win']
             if 'team_racing_mode' in init:
                 race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
 
@@ -1741,18 +1741,18 @@ class RHData():
             race_format.lap_grace_sec = data['lap_grace_sec'] if isinstance(data['lap_grace_sec'], int) else 0
         if 'staging_fixed_tones' in data:
             race_format.staging_fixed_tones = data['staging_fixed_tones'] if isinstance(data['staging_fixed_tones'], int) else 0
-        if 'start_delay_min' in data:
-            race_format.start_delay_min_ms = data['start_delay_min'] if isinstance(data['start_delay_min'], int) else 0
-        if 'start_delay_max' in data:
-            race_format.start_delay_max_ms = data['start_delay_max'] if isinstance(data['start_delay_max'], int) else 0
         if 'staging_tones' in data:
             race_format.staging_tones = data['staging_tones'] if isinstance(data['staging_tones'], int) else 0
-        if 'number_laps_win' in data:
-            race_format.number_laps_win = data['number_laps_win'] if isinstance(data['number_laps_win'], int) else 0
+        if 'start_delay_min_ms' in data:
+            race_format.start_delay_min_ms = data['start_delay_min'] if isinstance(data['start_delay_min'], int) else 0
+        if 'start_delay_max_ms' in data:
+            race_format.start_delay_max_ms = data['start_delay_max'] if isinstance(data['start_delay_max'], int) else 0
         if 'start_behavior' in data:
             race_format.start_behavior = data['start_behavior'] if isinstance(data['start_behavior'], int) else 0
         if 'win_condition' in data:
             race_format.win_condition = data['win_condition'] if isinstance(data['win_condition'], int) else 0
+        if 'number_laps_win' in data:
+            race_format.number_laps_win = data['number_laps_win'] if isinstance(data['number_laps_win'], int) else 0
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = True if data['team_racing_mode'] else False
 

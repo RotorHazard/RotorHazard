@@ -31,6 +31,8 @@
 		rotorhazard.timer.race.staging_tones = msg.staging_tones;
 
 		rotorhazard.timer.race.start(race_start_pi, staging_start_pi);
+
+		rotorhazard.winner_declared_flag = false;
 	}
 
 	$(document).ready(function () {
@@ -135,6 +137,7 @@
 		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
 		$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
 		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
+		$('#voice_race_leader').val(rotorhazard.voice_race_leader);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -149,6 +152,7 @@
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#display_laps_reversed').prop("checked", rotorhazard.display_laps_reversed);
 		$('#display_chan_freq').prop("checked", rotorhazard.display_chan_freq);
+		$('#display_late_laps_cur').prop("checked", rotorhazard.display_late_laps_cur);
 		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
 		$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
@@ -266,7 +270,7 @@
 						}
 
 						$.each(curnode_data.laps, function (j, lap) { // j is loop num, lap is json object
-							if(!lap.late_lap) {
+							if(rotorhazard.display_late_laps_cur || !lap.late_lap) {
 								if(lap.splits) {
 									if(rotorhazard.display_laps_reversed) {
 										if(!current_laps_reversed && lap.splits.length > 1) {
@@ -415,6 +419,12 @@
 			$('.race_status_message').html(race.status_msg);
 		});
 
+		function callout_current_leader(pilot_phonetic) {
+			if (!rotorhazard.winner_declared_flag) {
+				speak('<div class="speech">' + pilot_phonetic + " " + __l('is leading') + '</div>');
+			}
+		}
+
 		socket.on('phonetic_data', function (msg) {
 			if (!msg.node_finished || rotorhazard.voice_if_node_finished) {
 				if ((rotorhazard.primaryPilot == 0 || rotorhazard.primaryPilot == msg.pilot_id)
@@ -451,7 +461,12 @@
 	
 					if (ttstext.length > 0) {
 						if (msg.leader_flag) {
-							speak(LEADER_FLAG_CHAR);
+							if (rotorhazard.beep_race_leader_lap) {
+								speak(LEADER_FLAG_CHAR);
+							}
+							if (rotorhazard.voice_race_leader && (!msg.team_name)) {
+								setTimeout(callout_current_leader, (rotorhazard.voice_race_leader * 1000), (msg.pilot ? msg.pilot : msg.callsign));
+							}
 						}
 						speak('<div class="speech">' + ttstext + '</div>');
 					}
@@ -480,7 +495,10 @@
 
 		socket.on('phonetic_text', function (msg) {
 			if (msg.winner_flag) {
-				speak(WINNER_FLAG_CHAR);
+				if (rotorhazard.beep_race_winner_declared) {
+					speak(WINNER_FLAG_CHAR);
+				}
+				rotorhazard.winner_declared_flag = true;
 			}
 			if (msg.text) {
 				if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
@@ -594,6 +612,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#voice_race_leader').change(function (event) {
+			rotorhazard.voice_race_leader = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
 		$('#voice-calls').change(function(){
 			rotorhazard.primaryPilot = parseInt($(this).val());
 			rotorhazard.saveData();
@@ -663,6 +686,12 @@
 			for (i = 0; i < rotorhazard.nodes.length; i++) {
 				$('.channel-block[data-node="' + i + '"]').toggle(rotorhazard.display_chan_freq);
 			}
+		});
+
+		$('#display_late_laps_cur').change(function (event) {
+			rotorhazard.display_late_laps_cur = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
 		});
 
 		$('#beep_race_leader_lap').change(function (event) {
@@ -850,6 +879,33 @@
 					</select>
 				</li>
 				{% endif %}
+				<li>
+					<div class="label-block">
+						<label for="voice_race_leader">{{ __('Race Leader Pilot') }}</label>
+					</div>
+					<select id="voice_race_leader">
+						<option value="0">{{ __('None') }}</option>
+						<option value="1">{{ __('After 1 Second') }}</option>
+						<option value="2">{{ __('After 2 Seconds') }}</option>
+						<option value="3">{{ __('After 3 Seconds') }}</option>
+						<option value="4">{{ __('After 4 Seconds') }}</option>
+						<option value="5">{{ __('After 5 Seconds') }}</option>
+						<option value="6">{{ __('After 6 Seconds') }}</option>
+						<option value="7">{{ __('After 7 Seconds') }}</option>
+						<option value="8">{{ __('After 8 Seconds') }}</option>
+						<option value="9">{{ __('After 9 Seconds') }}</option>
+						<option value="10">{{ __('After 10 Seconds') }}</option>
+						<option value="11">{{ __('After 11 Seconds') }}</option>
+						<option value="12">{{ __('After 12 Seconds') }}</option>
+						<option value="13">{{ __('After 13 Seconds') }}</option>
+						<option value="14">{{ __('After 14 Seconds') }}</option>
+						<option value="15">{{ __('After 15 Seconds') }}</option>
+						<option value="16">{{ __('After 16 Seconds') }}</option>
+						<option value="17">{{ __('After 17 Seconds') }}</option>
+						<option value="18">{{ __('After 18 Seconds') }}</option>
+						<option value="19">{{ __('After 19 Seconds') }}</option>
+					</select>
+				</li>
 			</li>
 			<li>
 				<div class="label-block">
@@ -902,6 +958,7 @@
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
+					<li><label><input type="checkbox" id="display_late_laps_cur"> {{ __('Show late laps') }}</label></li>
 				</ul>
 			</li>
 			<li>

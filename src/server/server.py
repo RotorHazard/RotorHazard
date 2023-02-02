@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "3.2.0-beta.2" # Public release version code
+RELEASE_VERSION = "3.2.0" # Public release version code
 SERVER_API = 38 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -296,7 +296,7 @@ def setCurrentRaceFormat(race_format, **kwargs):
             RACE.team_cacheStatus = Results.CacheStatus.INVALID
         else:
             RACE.format = race_format
-    
+
         if 'silent' not in kwargs:
             emit_current_laps()
     else:
@@ -2016,7 +2016,7 @@ def on_stage_race():
     global LAST_RACE
     valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
-    
+
     if heat_data:
         heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
         for heatNode in heatNodes:
@@ -2024,12 +2024,12 @@ def on_stage_race():
                 if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
                     valid_pilots = True
                     break
-    
+
         if request and valid_pilots is False:
             emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
     else:
         heatNodes = []
-        
+
         profile_freqs = json.loads(getCurrentProfile().frequencies)
 
         class FauxHeatNode():
@@ -2754,7 +2754,7 @@ def finalize_current_heat_set(new_heat_id):
         for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
             if heatNode.node_index is not None:
                 RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-    
+
                 if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
                     RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
                 else:
@@ -3586,7 +3586,7 @@ def emit_heat_data(**params):
             if current_node['method'] == Database.ProgramMethod.HEAT_RESULT or current_node['method'] == Database.ProgramMethod.CLASS_RESULT:
                 is_dynamic = True
 
-        current_heat['dynamic'] = is_dynamic 
+        current_heat['dynamic'] = is_dynamic
 
         current_heat['locked'] = bool(RHData.savedRaceMetas_has_heat(heat.id))
         heats.append(current_heat)
@@ -3744,7 +3744,7 @@ def emit_current_heat(**params):
 
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             heat_format = RHData.get_raceClass(heat_data.class_id).format_id
-            
+
     else:
         # Practice mode
         heat_note = __("Practice Mode")
@@ -3757,7 +3757,7 @@ def emit_current_heat(**params):
                 callsign = profile_freqs["b"][idx] + str(profile_freqs["c"][idx])
             else:
                 callsign = str(profile_freqs["f"][idx])
-            
+
             heatNode_data[idx] = {
                 'callsign': callsign,
                 'heatNodeColor': None,
@@ -3781,7 +3781,7 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
     '''Emits phonetic data.'''
     raw_time = lap_time
     phonetic_time = RHUtils.phonetictime_format(lap_time, RHData.get_option('timeFormatPhonetic'))
-        
+
     emit_payload = {
         'lap': lap_id,
         'raw_time': raw_time,
@@ -3791,7 +3791,7 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
         'leader_flag' : leader_flag,
         'node_finished': node_finished,
     }
-    
+
     pilot = RHData.get_pilot(pilot_id)
     if pilot:
         emit_payload['pilot'] = pilot.phonetic
@@ -3799,7 +3799,7 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
         emit_payload['pilot_id'] = pilot.id
     elif node_index is not None:
         profile_freqs = json.loads(getCurrentProfile().frequencies)
-        
+
         if (profile_freqs["b"][node_index] and profile_freqs["c"][node_index]):
             callsign = profile_freqs["b"][node_index] + str(profile_freqs["c"][node_index])
         else:
@@ -5162,8 +5162,9 @@ for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
         plugin.initialize(
             Events=Events,
-            Language=Language,
-            __=__)
+            __=__,
+            SOCKET_IO=SOCKET_IO, # Temporary and not supported. Treat as deprecated.
+            )
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
