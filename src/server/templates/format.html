@@ -407,20 +407,20 @@
 			for (j in heat.slots) {
 				var slot = heat.slots[j];
 				var heatpilot = heat.slots[j].pilot_id;
-				var slot_el = $('<li>');
-				slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
 
 				if (heat.dynamic && heat.status == 2) {
 					var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == heatpilot});
 
 					if (pilot) {
-						var callsign = pilot.callsign;
-					} else {
-						var callsign = "(" + __("None") + ")"
+						var slot_el = $('<li>');
+						slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
+						slot_el.append('<div class="pilot-name">' + pilot.callsign + '</div>');
+						nodelist.append(slot_el);
 					}
-
-					slot_el.append('<div class="pilot-name">' + callsign + '</div>');
 				} else {
+					var slot_el = $('<li>');
+					slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
+
 					// method
 					var selectmethod = $('<select class="set_method" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
 					selectmethod.append('<option value="-1">None</option>');
@@ -475,24 +475,27 @@
 					selectbox.prop('disabled', heat.locked);
 					pilot_el.append(selectbox);
 					slot_el.append(pilot_el);
+
+					nodelist.append(slot_el);
 				}
-				nodelist.append(slot_el);
 			}
 			el.append(nodelist);
 
+			var afc = $('<div class="autofrequency-control">');
 			var input = $('<input type="checkbox" id="heat-autofrequency-' + heat.id + '" class="set_heat_autofrequency" data-heat="' + heat.id + '">');
 			var label = $('<label class="auto_frequency">');
 			label.append(input);
 			label.append(__('Auto Frequency'));
 			input.prop('checked', heat.auto_frequency);
 			input.prop('disabled', heat.locked);
-			el.append(label);
+			afc.append(label);
+			el.append(afc);
 
-			if (heat.dynamic) {
+			if (heat.dynamic && heat.locked == false) {
 				if (heat.status == 2) {
-					el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">Reset to Plan</button>');
+					el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">' + __('Revert to Plan') + '</button>');
 				} else {
-					el.append('<button class="btn-danger plan-calc" data-id="' + heat.id + '">Calc Pilots</button>');
+					el.append('<button class="plan-calc" data-id="' + heat.id + '">' + __('Seed Now') + '</button>');
 				}
 			}
 
@@ -503,7 +506,9 @@
 		function update_heat_ui(el) {
 			if (el.hasClass('is-confirmed')) {
 				el.find('.channel-block').prop('hidden', false);
+				el.find('.autofrequency-control').prop('hidden', true);
 			} else {
+				el.find('.autofrequency-control').prop('hidden', false);
 				var autofrequency = el.find('.set_heat_autofrequency').prop('checked');
 				el.find('.channel-block').prop('hidden', autofrequency);
 
@@ -604,6 +609,137 @@
 			socket.emit('alter_heat', data);
 			update_heat_ui($(this).closest('li.rh-heat'));
 		});
+
+		$(document).on("click", 'button.plan-calc', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('calc_pilots', data);
+		});
+
+		$(document).on("click", 'button.plan-reset', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('calc_reset', data);
+		});
+
+		socket.on('heat_plan_result', function (msg) {
+			display_race_plan_result(msg);
+			// TODO: store data locally; wait for rotorhazard.event.heats population
+		});
+
+		function display_race_plan_result(msg) {
+			var plan_dialog_el = $('<div class="heat-plan-result popup">');
+			plan_dialog_el.append('<h2>' + __('Heat Plan') + ': ' + msg.displayname + '</h2>');
+			var message_content = $('<div class="popup-content dialog-content">');
+			plan_dialog_el.append(message_content);
+
+			if (msg.calc_result.calc_success == false) {
+				var message_el = $('<div class="notice warning">');
+				message_el.append('&#9888;&#xFE0E; ' + __("Heat plan is invalid"));
+				message_content.append(message_el);
+			} else if (msg.calc_result.unassigned_slots > 0) {
+				var message_el = $('<div class="notice">');
+				message_el.append('&#9888;&#xFE0E; ' + __("Heat contains empty slots"));
+				message_content.append(message_el);
+			}
+
+			var heat_el = $('<div class="heat-plan">');
+			var nodelist = $('<table>');
+			for (idx in msg.slots) {
+				var slot = msg.slots[idx];
+				var slot_el = $('<tr>');
+
+				if (slot.method > -1) {
+					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
+					slot_el.append('<td class="method">' + method_text + '</td>');
+
+					slot_el.append('<td class="calc_to">&#x2192;</td>');
+
+					if (Number.isInteger(slot.node_index)) {
+						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
+					} else {
+						slot_el.addClass('no-freq');
+						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
+					}
+
+					if (slot.pilot_id) {
+						/*
+						// rotorhazard.event.pilots not currently requested
+						var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == slot.pilot_id});
+						*/
+						var pilot = slot.callsign;
+
+						if (pilot) {
+							// var callsign = pilot.callsign;
+							var callsign = pilot;
+						} else {
+							var callsign = "(" + __("Pilot") + " " + slot.pilot_id + ")"
+						}
+						slot_el.append('<td class="pilot-name">' + callsign + '</td>');
+					} else {
+						slot_el.addClass('no-pilot');
+						slot_el.append('<td class="pilot-name">' + __('(None)') + '</td>');
+					}
+
+					nodelist.append(slot_el);
+				}
+			}
+			heat_el.append(nodelist);
+
+			message_content.append(heat_el);
+
+			var actions_el = $('<div class="dialog-actions">');
+			actions_el.append('<button class="cancel">' + __('Cancel') + '</button>');
+			actions_el.append('<button class="btn-danger confirm-heat-plan" data-heat_id="' + msg.heat + '">' + __('Confirm') + '</button>');
+			message_content.append(actions_el);
+
+			$.magnificPopup.open({
+				items: {
+					src: plan_dialog_el,
+					type: 'inline',
+				},
+				callbacks: {
+					open: function(){
+						$('#set_current_heat').val(rotorhazard.current_heat);
+					}
+				}
+			});
+
+			freq.updateBlocks();
+		}
+
+		$(document).on("click", '.confirm-heat-plan', function (event) {
+			$.magnificPopup.close();
+			var data = {
+				heat_id: parseInt($(this).data('heat_id')),
+			};
+			socket.emit('confirm_heat_plan', data);
+		});
+
+		function get_method_descriptor (method, seed, rank) {
+			if (method == 0) { // pilot
+				return __("Pilot");
+			} else if (method == 1) { // heat
+				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
+
+				if (heat) {
+					return heat.displayname + " " + __('Rank') + " " + rank;
+				} else {
+					return '(' + __('Undefined Heat') + ')';
+				}
+			} else if (method == 2) { // class
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
+
+				if (race_class) {
+					return race_class.displayname + " " + __('Rank') + " " + rank;
+				} else {
+					return '(' + __('Undefined Class') + ')';
+				}
+			}
+			return '(' + __('Undefined') + ')';
+		}
 
 		$('button#add_heat').click(function (event) {
 			socket.emit('add_heat');

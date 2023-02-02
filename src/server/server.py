@@ -56,7 +56,6 @@ import json
 
 import Config
 import Database
-from Database import HeatStatus, ProgramMethod
 import Results
 import Language
 import json_endpoints
@@ -1237,9 +1236,7 @@ def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RHData.alter_heat(data)
     if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
-        result = set_current_heat_data(heat.id)
-        if result == False: # current heat no longer viable, set system to practice mode
-            set_current_heat_data(RHUtils.HEAT_ID_NONE)
+        set_current_heat_data(heat.id, silent=True)
     emit_heat_data(noself=True)
     if ('pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
@@ -2631,8 +2628,6 @@ def clear_laps():
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    
-
     for node in INTERFACE.nodes:
         node.current_pilot_id = RHUtils.PILOT_ID_NONE
         if node.frequency and node.frequency > 0:
@@ -2646,11 +2641,24 @@ def init_node_cross_fields():
         node.first_cross_flag = False
         node.show_crossing_flag = False
 
-def set_current_heat_data(new_heat_id):
-    heat = RHData.get_heat(new_heat_id)
+@SOCKET_IO.on('calc_pilots')
+@catchLogExceptionsWrapper
+def on_calc_pilots(data):
+    heat_id = data['heat']
+    calc_heat(heat_id)
+
+@SOCKET_IO.on('calc_reset')
+@catchLogExceptionsWrapper
+def on_calc_reset(data):
+    data['status'] = Database.HeatStatus.PLANNED
+    on_alter_heat(data)
+    emit_heat_data()
+
+def calc_heat(heat_id, silent=False):
+    heat = RHData.get_heat(heat_id)
 
     if (heat):
-        calc_result = RHData.calc_heat_pilots(new_heat_id, Results)
+        calc_result = RHData.calc_heat_pilots(heat_id, Results)
 
         adaptive = bool(RHData.get_optionInt('calibrationMode'))
 
@@ -2658,27 +2666,40 @@ def set_current_heat_data(new_heat_id):
             calc_fn = RHUtils.find_best_slot_node_adaptive
         else:
             calc_fn = RHUtils.find_best_slot_node_basic
-        RHData.run_auto_frequency(new_heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
+
+        RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
         if calc_result['calc_success'] is None or \
             (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False):
-            finalize_current_heat_set(new_heat_id)
+            return 'success'
         else:
-            emit_heat_plan_result(new_heat_id, calc_result)
+            if request and not silent:
+                emit_heat_plan_result(heat_id, calc_result)
 
             if calc_result['calc_success'] is False:
                 logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
-                
-            return False
+
+            return 'fail'
 
     else:
+        return 'no-heat'
+
+def set_current_heat_data(new_heat_id, silent=False):
+    result = calc_heat(new_heat_id, silent)
+
+    if result == 'success':
+        finalize_current_heat_set(new_heat_id)
+    elif result == 'no-heat':
         finalize_current_heat_set(RHUtils.HEAT_ID_NONE)
 
 def emit_heat_plan_result(new_heat_id, calc_result):
     heat = RHData.get_heat(new_heat_id)
     heatNodes = []
 
-    for heatNode in RHData.get_heatNodes_by_heat(heat.id):
+    heatNode_objs = RHData.get_heatNodes_by_heat(heat.id)
+    heatNode_objs.sort(key=lambda x: x.id)
+
+    for heatNode in heatNode_objs:
         heatNode_data = {
             'node_index': heatNode.node_index,
             'pilot_id': heatNode.pilot_id,
@@ -2709,9 +2730,10 @@ def on_confirm_heat(data):
     if 'heat_id' in data:
         RHData.alter_heat({
             'heat': data['heat_id'],
-            'status': HeatStatus.CONFIRMED
+            'status': Database.HeatStatus.CONFIRMED
             }
         )
+        emit_heat_data()
         finalize_current_heat_set(data['heat_id'])
 
 def finalize_current_heat_set(new_heat_id):
@@ -2728,7 +2750,7 @@ def finalize_current_heat_set(new_heat_id):
         for idx in range(RACE.num_nodes):
             RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE
             RACE.node_teams[idx] = None
-    
+
         for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
             if heatNode.node_index is not None:
                 RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
@@ -2737,16 +2759,16 @@ def finalize_current_heat_set(new_heat_id):
                     RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
                 else:
                     RACE.node_teams[heatNode.node_index] = None
-    
+
         heat_data = RHData.get_heat(new_heat_id)
-    
+
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
             if class_format_id != RHUtils.FORMAT_ID_NONE:
                 class_format = RHData.get_raceFormat(class_format_id)
                 setCurrentRaceFormat(class_format)
                 logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
-    
+
         adaptive = bool(RHData.get_optionInt('calibrationMode'))
         if adaptive:
             autoUpdateCalibration()
@@ -3541,7 +3563,14 @@ def emit_heat_data(**params):
         current_heat['auto_frequency'] = heat.auto_frequency
 
         current_heat['slots'] = []
+
         heatNodes = RHData.get_heatNodes_by_heat(heat.id)
+        def heatNodeSorter(x):
+            if not x.node_index:
+                return -1
+            return x.node_index
+        heatNodes.sort(key=heatNodeSorter)
+
         is_dynamic = False
         for heatNode in heatNodes:
             current_node = {}
@@ -3554,7 +3583,7 @@ def emit_heat_data(**params):
             current_node['seed_id'] = heatNode.seed_id
             current_heat['slots'].append(current_node)
 
-            if current_node['method'] == ProgramMethod.HEAT_RESULT or current_node['method'] == ProgramMethod.CLASS_RESULT:
+            if current_node['method'] == Database.ProgramMethod.HEAT_RESULT or current_node['method'] == Database.ProgramMethod.CLASS_RESULT:
                 is_dynamic = True
 
         current_heat['dynamic'] = is_dynamic 

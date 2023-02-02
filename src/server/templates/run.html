@@ -459,7 +459,6 @@
 		}
 
 		socket.on('heat_plan_result', function (msg) {
-			console.log(msg);
 			display_race_plan_result(msg);
 			// TODO: store data locally; wait for rotorhazard.event.heats population
 		});

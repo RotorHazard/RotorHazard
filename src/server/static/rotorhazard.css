@@ -1499,7 +1499,7 @@ main.page-home {
 	top: 0.25rem;
 	right: 0.25em;
 	font-size: 0.9rem;
-	z-index: 200;
+	z-index: 90;
 }
 
 .actions button {
