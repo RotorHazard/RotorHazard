@@ -1076,7 +1076,7 @@ class RHData():
         heat = self._Database.Heat.query.get(heat_id)
 
         result = {
-             'calc_success': False,
+             'calc_success': True,
              'has_calc_pilots': False,
              'unassigned_slots': 0
              }
@@ -1123,12 +1123,12 @@ class RHData():
                             slot.pilot_id = RHUtils.PILOT_ID_NONE
                             result['unassigned_slots'] += 1
                     else:
+                        result['calc_success'] = False
                         logger.warning('Cancelling heat calc: Cache build failed')
                         self.rollback() # Release DB lock
-                        return result
                 else:
+                    result['calc_success'] = False
                     logger.warning("Can't seed from heat {}: does not exist".format(slot.seed_id))
-                    return result
 
             elif slot.method == ProgramMethod.CLASS_RESULT:
                 result['has_calc_pilots'] = True
@@ -1150,17 +1150,16 @@ class RHData():
                             slot.pilot_id = RHUtils.PILOT_ID_NONE
                             result['unassigned_slots'] += 1
                     else:
+                        result['calc_success'] = False
                         logger.warning('Cancelling heat calc: Cache build failed')
                         self.rollback() # Release DB lock
-                        return result
                 else:
+                    result['calc_success'] = False
                     logger.warning("Can't seed from class {}: does not exist".format(slot.seed_id))
-                    return result
 
             logger.debug('Pilot is {}'.format(slot.pilot_id))
 
         self.commit()
-        result['calc_success'] = True
         return result
 
     def run_auto_frequency(self, heat_id, current_frequencies, num_nodes, calc_fn):
