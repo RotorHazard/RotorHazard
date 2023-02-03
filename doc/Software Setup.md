@@ -114,7 +114,7 @@ Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/relea
 In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands using a terminal window:
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
 unzip temp.zip
 mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip
