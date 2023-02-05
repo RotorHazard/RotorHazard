@@ -37,14 +37,14 @@ class Pilot(DB.Model):
             return self.callsign
         if self.name:
             return self.name
-        return __('Pilot') + ' ' + id
+        return "{} {}".format(__('Pilot'), id)
 
     def displayName(self):
         if self.name:
             return self.name
         if self.callsign:
             return self.callsign
-        return __('Pilot') + ' ' + id
+        return "{} {}".format(__('Pilot'), id)
 
     def spokenName(self):
         if self.phonetic:
@@ -53,7 +53,7 @@ class Pilot(DB.Model):
             return self.callsign
         if self.name:
             return self.name
-        return __('Pilot') + ' ' + id
+        return "{} {}".format(__('Pilot'), id)
 
     def __repr__(self):
         return '<Pilot %r>' % self.id
@@ -72,7 +72,7 @@ class Heat(DB.Model):
     def displayname(self):
         if self.note:
             return self.note
-        return __('Heat') + ' ' + str(self.id)
+        return "{} {}".format(__('Heat'), str(self.id))
 
     def __repr__(self):
         return '<Heat %r>' % self.id
@@ -121,7 +121,7 @@ class RaceClass(DB.Model):
     def displayname(self):
         if self.name:
             return self.name
-        return __('Class') + ' ' + str(self.id)
+        return "{} {}".format(__('Class'), str(self.id))
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id

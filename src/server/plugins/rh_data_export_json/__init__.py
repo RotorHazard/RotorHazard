@@ -1,11 +1,12 @@
 '''JSON data exporter'''
 
 import logging
-logger = logging.getLogger(__name__)
 import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from data_export import DataExporter
+
+logger = logging.getLogger(__name__)
 
 def registerHandlers(args):
     if 'registerFn' in args:

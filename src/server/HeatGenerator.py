@@ -32,9 +32,7 @@ class HeatGeneratorManager():
             logger.warning('Invalid generator')
 
     def hasGenerator(self, generator_id):
-        if generator_id in self.generators:
-            return True
-        return False
+        return generator_id in self.generators
 
     def getGenerators(self):
         return self.generators
@@ -51,8 +49,8 @@ class HeatGeneratorManager():
     def apply(self, generated_heats, generate_args):
         pilot_pool = []
         filled_pool = False
-        input_class = generate_args['input_class'] if 'input_class' in generate_args else None 
-        output_class = generate_args['output_class'] if 'output_class' in generate_args else None
+        input_class = generate_args.get('input_class')  
+        output_class = generate_args.get('output_class')
 
         if output_class is None:
             new_class = self._RHData.add_raceClass()
@@ -125,7 +123,6 @@ class HeatGenerator():
         self.defaultArgs = defaultArgs
 
     def generate(self, RHData, Results, PageCache, generate_args=None):
-        if generate_args and self.defaultArgs:
-            generate_args = {**self.defaultArgs, **generate_args}
+        generate_args = {**(self.defaultArgs if self.defaultArgs else {}), **(generate_args if generate_args else {})}
 
         return self.generator(RHData, Results, PageCache, generate_args)

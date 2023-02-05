@@ -3,18 +3,19 @@
 # MultiGP: https://docs.google.com/document/d/1jWVjCnoIGdW1j_bklrbg-0D24c3x6YG5m_vmF7faG-U/edit#heading=h.hoxlrr3v86bb
 
 import logging
-logger = logging.getLogger(__name__)
 import RHUtils
 import random
 from HeatGenerator import HeatGenerator
 from Database import ProgramMethod
+
+logger = logging.getLogger(__name__)
 
 def registerHandlers(args):
     if 'registerFn' in args:
         for generator in discover():
             args['registerFn'](generator)
 
-def __(arg): # Replaced with language from initialize()
+def __(arg): # Replaced with outer language.__ during initialize()
     return arg
 
 def initialize(**kwargs):
@@ -24,7 +25,7 @@ def initialize(**kwargs):
         __ = kwargs['__']
 
 def getTotalPilots(RHData, Results, generate_args):
-    input_class_id = generate_args['input_class'] if 'input_class' in generate_args else None
+    input_class_id = generate_args.get('input_class')
 
     if input_class_id:
         race_class = RHData.get_raceClass(input_class_id)
@@ -48,8 +49,8 @@ def getTotalPilots(RHData, Results, generate_args):
     return total_pilots
 
 def generateLadder(RHData, Results, _PageCache, generate_args=None):
-    available_nodes = generate_args['available_nodes'] if 'available_nodes' in generate_args else None
-    suffix = generate_args['suffix'] if 'suffix' in generate_args else __('Main')
+    available_nodes = generate_args.get('available_nodes')
+    suffix = generate_args.get('suffix', __('Main'))
 
     if 'qualifiers_per_heat' in generate_args and 'advances_per_heat' in generate_args:
         qualifiers_per_heat = generate_args['qualifiers_per_heat']
@@ -125,8 +126,8 @@ def generateLadder(RHData, Results, _PageCache, generate_args=None):
     return heats
 
 def generateBalancedHeats(RHData, Results, _PageCache, generate_args=None):
-    available_nodes = generate_args['available_nodes'] if 'available_nodes' in generate_args else None
-    suffix = generate_args['suffix'] if 'suffix' in generate_args else __('Qualifier')
+    available_nodes = generate_args.get('available_nodes')
+    suffix = generate_args.get('suffix', __('Qualifier'))
 
     if 'qualifiers_per_heat' in generate_args:
         qualifiers_per_heat = generate_args['qualifiers_per_heat']

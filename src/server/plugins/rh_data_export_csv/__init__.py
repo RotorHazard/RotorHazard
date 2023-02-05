@@ -1,11 +1,12 @@
 '''CSV data exporter'''
 
 import logging
-logger = logging.getLogger(__name__)
 import RHUtils
 import io
 import csv
 from data_export import DataExporter
+
+logger = logging.getLogger(__name__)
 
 def registerHandlers(args):
     if 'registerFn' in args:

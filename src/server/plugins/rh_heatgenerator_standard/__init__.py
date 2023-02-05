@@ -3,16 +3,17 @@
 # MultiGP: https://docs.google.com/document/d/1jWVjCnoIGdW1j_bklrbg-0D24c3x6YG5m_vmF7faG-U/edit#heading=h.hoxlrr3v86bb
 
 import logging
-logger = logging.getLogger(__name__)
 from HeatGenerator import HeatGenerator
 from Database import ProgramMethod
+
+logger = logging.getLogger(__name__)
 
 def registerHandlers(args):
     if 'registerFn' in args:
         for generator in discover():
             args['registerFn'](generator)
 
-def __(arg): # Replaced with language from initialize()
+def __(arg): # Replaced with outer language.__ during initialize()
     return arg
 
 def initialize(**kwargs):
