@@ -958,48 +958,50 @@
 		}
 
 		function display_format() {
-			var format_id = parseInt($('#set_race_format').val());
-			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
-			var locked = rf.locked;
-
-			if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
-				var locked = true;
-				$('#unlock_race_format_button').prop('disabled', true);
-				$('#delete_race_format_button').prop('disabled', true);
-				$('#current_race_format_lock').show();
-			} else {
-				$('#unlock_race_format_button').prop('disabled', false);
-				$('#delete_race_format_button').prop('disabled', false);
-				$('#current_race_format_lock').hide();
+			if (rotorhazard.event.race_formats) {
+				var format_id = parseInt($('#set_race_format').val());
+				var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+				var locked = rf.locked;
+	
+				if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
+					var locked = true;
+					$('#unlock_race_format_button').prop('disabled', true);
+					$('#delete_race_format_button').prop('disabled', true);
+					$('#current_race_format_lock').show();
+				} else {
+					$('#unlock_race_format_button').prop('disabled', false);
+					$('#delete_race_format_button').prop('disabled', false);
+					$('#current_race_format_lock').hide();
+				}
+	
+				$('#unlock_race_format_button').toggle(locked);
+				$('#delete_race_format_button').prop('disabled', locked);
+				$('#set_format_name').val(rf.name);
+				$('#set_race_mode').val(rf.race_mode);
+				$('#set_race_mode').prop('disabled', locked);
+				$('#set_fix_race_time').val(rf.race_time_sec);
+				$('#set_fix_race_time').prop('disabled', locked);
+				$('#set_lap_grace_time').val(rf.lap_grace_sec);
+				$('#set_lap_grace_time').prop('disabled', locked);
+				$('#set_staging_fixed_tones').val(rf.staging_fixed_tones);
+				$('#set_staging_fixed_tones').prop('disabled', locked);
+				$('#set_staging_tones').val(rf.staging_tones);
+				$('#set_staging_tones').prop('disabled', locked);
+				$('#set_start_delay_min').val(rf.start_delay_min / 1000); // convert from ms
+				$('#set_start_delay_min').prop('disabled', locked);
+				$('#set_start_delay_max').val(rf.start_delay_max / 1000); // convert from ms
+				$('#set_start_delay_max').prop('disabled', locked);
+				$('#set_start_behavior').val(rf.start_behavior);
+				$('#set_start_behavior').prop('disabled', locked);
+				$('#set_win_condition').val(rf.win_condition);
+				$('#set_win_condition').prop('disabled', locked);
+				$('#set_number_laps_win').val(rf.number_laps_win);
+				$('#set_number_laps_win').prop('disabled', locked);
+				$('#set_team_racing_mode').val(rf.team_racing_mode);
+				$('#set_team_racing_mode').prop('disabled', locked);
+	
+				update_race_format_ui();
 			}
-
-			$('#unlock_race_format_button').toggle(locked);
-			$('#delete_race_format_button').prop('disabled', locked);
-			$('#set_format_name').val(rf.name);
-			$('#set_race_mode').val(rf.race_mode);
-			$('#set_race_mode').prop('disabled', locked);
-			$('#set_fix_race_time').val(rf.race_time_sec);
-			$('#set_fix_race_time').prop('disabled', locked);
-			$('#set_lap_grace_time').val(rf.lap_grace_sec);
-			$('#set_lap_grace_time').prop('disabled', locked);
-			$('#set_staging_fixed_tones').val(rf.staging_fixed_tones);
-			$('#set_staging_fixed_tones').prop('disabled', locked);
-			$('#set_staging_tones').val(rf.staging_tones);
-			$('#set_staging_tones').prop('disabled', locked);
-			$('#set_start_delay_min').val(rf.start_delay_min / 1000); // convert from ms
-			$('#set_start_delay_min').prop('disabled', locked);
-			$('#set_start_delay_max').val(rf.start_delay_max / 1000); // convert from ms
-			$('#set_start_delay_max').prop('disabled', locked);
-			$('#set_start_behavior').val(rf.start_behavior);
-			$('#set_start_behavior').prop('disabled', locked);
-			$('#set_win_condition').val(rf.win_condition);
-			$('#set_win_condition').prop('disabled', locked);
-			$('#set_number_laps_win').val(rf.number_laps_win);
-			$('#set_number_laps_win').prop('disabled', locked);
-			$('#set_team_racing_mode').val(rf.team_racing_mode);
-			$('#set_team_racing_mode').prop('disabled', locked);
-
-			update_race_format_ui();
 		}
 
 		function update_race_format_ui() {
