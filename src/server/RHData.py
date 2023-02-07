@@ -1743,9 +1743,9 @@ class RHData():
         if 'staging_tones' in data:
             race_format.staging_tones = data['staging_tones'] if isinstance(data['staging_tones'], int) else 0
         if 'start_delay_min_ms' in data:
-            race_format.start_delay_min_ms = data['start_delay_min'] if isinstance(data['start_delay_min'], int) else 0
+            race_format.start_delay_min_ms = data['start_delay_min_ms'] if isinstance(data['start_delay_min_ms'], int) else 0
         if 'start_delay_max_ms' in data:
-            race_format.start_delay_max_ms = data['start_delay_max'] if isinstance(data['start_delay_max'], int) else 0
+            race_format.start_delay_max_ms = data['start_delay_max_ms'] if isinstance(data['start_delay_max_ms'], int) else 0
         if 'start_behavior' in data:
             race_format.start_behavior = data['start_behavior'] if isinstance(data['start_behavior'], int) else 0
         if 'win_condition' in data:
