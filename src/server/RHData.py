@@ -931,13 +931,16 @@ class RHData():
                     self.clear_results_raceClass(old_class_id)
 
         if 'pilot' in data:
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+
             if len(race_list):
                 for race_meta in race_list:
                     for pilot_race in self._Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
-                        if pilot_race.node_index == data['node']:
+                        if pilot_race.node_index == slot.node_index:
                             pilot_race.pilot_id = data['pilot']
                     for race_lap in self._Database.SavedRaceLap.query.filter_by(race_id=race_meta.id):
-                        if race_lap.node_index == data['node']:
+                        if race_lap.node_index == slot.node_index:
                             race_lap.pilot_id = data['pilot']
 
                     self.clear_results_savedRaceMeta(race_meta.id)
@@ -2120,7 +2123,7 @@ class RHData():
             'race_id': race_id,
             })
 
-        logger.info('Race {0} reaasigned to heat {1}'.format(race_id, new_heat_id))
+        logger.info('Race {0} reassigned to heat {1}'.format(race_id, new_heat_id))
 
         return race_meta, new_heat
 
