@@ -720,7 +720,6 @@ def on_get_settings():
 @SOCKET_IO.on('reset_auto_calibration')
 @catchLogExceptionsWrapper
 def on_reset_auto_calibration(_data):
-    on_stop_race()
     on_discard_laps()
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
     emit_race_status()
@@ -2370,6 +2369,9 @@ def on_stop_race(doSave=False):
 
 @catchLogExceptionsWrapper
 def do_stop_race_actions(doSave=False):
+    RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+    INTERFACE.set_race_status(RaceStatus.DONE)
+
     if RACE.race_status == RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
@@ -2383,8 +2385,6 @@ def do_stop_race_actions(doSave=False):
         if len(min_laps_list) > 0:
             logger.info('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
-        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
-        INTERFACE.set_race_status(RaceStatus.DONE)
         Events.trigger(Evt.RACE_STOP, {
             'color': ColorVal.RED
         })
@@ -2395,9 +2395,6 @@ def do_stop_race_actions(doSave=False):
 
     else:
         logger.debug('No active race to stop')
-        RACE.race_status = RaceStatus.READY # Go back to ready state
-        INTERFACE.set_race_status(RaceStatus.READY)
-        Events.trigger(Evt.LAPS_CLEAR)
         delta_time = 0
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
@@ -4737,7 +4734,7 @@ def init_interface_state(startup=False):
         RACE.scheduled = False # also stop any deferred start
         SOCKET_IO.emit('stop_timer')
     else:
-        on_stop_race()
+        on_discard_laps()
     # Reset laps display
     reset_current_laps()
 
