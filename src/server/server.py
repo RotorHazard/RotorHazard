@@ -2440,7 +2440,6 @@ def do_save_actions():
     heat = RHData.get_heat(RACE.current_heat)
 
     # Clear caches
-    PageCache.set_valid(False)
     RHData.clear_results_heat(RACE.current_heat)
     RHData.clear_results_raceClass(heat.class_id)
 
@@ -2512,8 +2511,6 @@ def do_save_actions():
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
 def on_resave_laps(data):
-    PageCache.set_valid(False)
-
     heat_id = data['heat_id']
     round_id = data['round_id']
     callsign = data['callsign']
@@ -2531,6 +2528,12 @@ def on_resave_laps(data):
         'enter_at': enter_at,
         'exit_at': exit_at
         }
+
+    # Clear caches
+    RHData.clear_results_heat(heat_id)
+    heat = RHData.get_heat(heat_id)
+    RHData.clear_results_raceClass(heat.class_id)
+    RHData.clear_results_savedRaceMeta(race_id)
 
     RHData.alter_savedPilotRace(pilotrace_data)
 
