@@ -114,7 +114,7 @@ class BaseHardwareInterface(object):
                 item = upd_list[0]
                 node = item[0]
                 if node.node_lap_id != -1 and callable(self.pass_record_callback):
-                    gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
+                    self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
                 node.node_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
@@ -122,7 +122,7 @@ class BaseHardwareInterface(object):
                 for item in upd_list:
                     node = item[0]
                     if node.node_lap_id != -1 and callable(self.pass_record_callback):
-                        gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
+                        self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
                     node.node_lap_id = item[1]  # new_lap_id
 
     #
@@ -133,7 +133,7 @@ class BaseHardwareInterface(object):
         node = self.nodes[node_index]
         node.lap_timestamp = monotonic() - (ms_val / 1000.0)
         node.enter_at_timestamp = node.exit_at_timestamp = 0
-        gevent.spawn(self.pass_record_callback, node, node.lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
+        self.pass_record_callback(node, node.lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
     def set_race_status(self, race_status):
         self.race_status = race_status

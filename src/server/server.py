@@ -66,6 +66,7 @@ from RHUtils import catchLogExceptionsWrapper
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.SendAckQueue import SendAckQueue
+from util.InvokeFuncQueue import InvokeFuncQueue
 import RHGPIO
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
@@ -162,6 +163,7 @@ INTERFACE = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
 ClusterSendAckQueueObj = None
+PassInvokeFuncQueueObj = InvokeFuncQueue(logger)
 serverInfo = None
 serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
@@ -2280,6 +2282,7 @@ def race_expire_thread(start_token):
             logger.info("Race count-down timer reached expiration")
             RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
+            PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
             check_win_condition(at_finish=True, start_token=start_token)
             emit_current_leaderboard()
             if race_format.lap_grace_sec > -1:
@@ -2334,6 +2337,7 @@ def do_stop_race_actions(doSave=False):
         Events.trigger(Evt.RACE_STOP, {
             'color': ColorVal.RED
         })
+        PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
         check_win_condition()
 
         if CLUSTER and CLUSTER.hasSecondaries():
@@ -2813,6 +2817,7 @@ def on_delete_lap(data):
     if RACE.format.team_racing_mode:
         RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
         RACE.team_cacheStatus = Results.CacheStatus.VALID
+    PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
     emit_current_laps() # Race page, update web client
@@ -2858,6 +2863,7 @@ def on_restore_deleted_lap(data):
     if RACE.format.team_racing_mode:
         RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
         RACE.team_cacheStatus = Results.CacheStatus.VALID
+    PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
     emit_current_laps() # Race page, update web client
@@ -4220,10 +4226,14 @@ def ms_from_program_start():
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-@catchLogExcDBCloseWrapper
 def pass_record_callback(node, lap_timestamp_absolute, source):
+    PassInvokeFuncQueueObj.put(do_pass_record_callback, node, lap_timestamp_absolute, source)
+
+def do_pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
+    logger.debug('Pass record: Node={}, abs_ts={:.3f}, source={} ("{}")' \
+                 .format(node.index+1, lap_timestamp_absolute, source, INTERFACE.get_lap_source_str(source)))
     node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
@@ -4407,9 +4417,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)), \
                                                 node_finished_flag)
 
-                            check_win_condition() # check for and announce possible winner
-                            if RACE.win_status != WinStatus.NONE:
-                                emit_current_leaderboard()  # show current race status on leaderboard
+                            # check for and announce possible winner (but wait until pass-record processing(s) is finished)
+                            PassInvokeFuncQueueObj.put(check_win_condition, emit_leaderboard_on_win=True) 
 
                     else:
                         # record lap as 'invalid'
@@ -4511,6 +4520,10 @@ def check_win_condition(**kwargs):
                 logger.info("Maximum win condition consideration time has expired.")
                 check_win_condition(forced=True)
 
+        if 'emit_leaderboard_on_win' in kwargs:
+            if RACE.win_status != WinStatus.NONE:
+                emit_current_leaderboard()  # show current race status on leaderboard
+    
     return win_status_dict
 
 @catchLogExcDBCloseWrapper
