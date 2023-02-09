@@ -2434,7 +2434,6 @@ def do_save_actions():
         on_discard_laps(saved=True)
         return False
 
-    # if race_has_laps == True:
     if CLUSTER:
         CLUSTER.emitToSplits('save_laps')
 
@@ -2490,14 +2489,6 @@ def do_save_actions():
 
     RHData.add_race_data(race_data)
 
-    # spawn thread for updating results caches
-    cache_params = {
-        'race_id': new_race.id,
-        'heat_id': RACE.current_heat,
-        'round_id': new_race.round_id,
-    }
-    gevent.spawn(build_atomic_result_caches, cache_params)
-
     Events.trigger(Evt.LAPS_SAVE, {
         'race_id': new_race.id,
         })
@@ -2509,10 +2500,14 @@ def do_save_actions():
         on_set_current_heat({'heat':RHData.get_next_heat_id(heat, race_class)})
 
     on_discard_laps(saved=True) # Also clear the current laps
-    # else:
-    #    on_discard_laps()
-    #    message = __('Discarding empty race')
-    #    emit_priority_message(message, False, nobroadcast=True)
+
+    # spawn thread for updating results caches
+    cache_params = {
+        'race_id': new_race.id,
+        'heat_id': RACE.current_heat,
+        'round_id': new_race.round_id,
+    }
+    gevent.spawn(build_atomic_result_caches, cache_params)
 
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
