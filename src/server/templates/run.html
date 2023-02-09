@@ -935,11 +935,14 @@
 
 		$('button#start_race').click(function (event) {
 			if(!$(this).prop('disabled')) {
-				socket.emit('stage_race');
+				$('#set_current_heat').prop('disabled', true);
+				$('button#start_race').prop('disabled', true);
+				$('button#stop_race').prop('disabled', true);
+				$('button#save_laps').prop('disabled', true);
+				$('button#discard_laps').prop('disabled', true);
 				rotorhazard.timer.stopAll();
 				$('.time-display').html('--:--');
-				$('button#start_race').prop('disabled', true);
-				$('#set_current_heat').prop('disabled', true);
+				socket.emit('stage_race');
 				$("#main_panel").focus();  // make sure focus not on button
 			}
 			initSpeak(event);
@@ -953,9 +956,12 @@
 
 		$('button#stop_race').click(function (event) {
 			if(!$(this).prop('disabled')) {
-				socket.emit('stop_race');
-				rotorhazard.timer.stopAll();
+				$('button#start_race').prop('disabled', true);
 				$('button#stop_race').prop('disabled', true);
+				$('button#save_laps').prop('disabled', true);
+				$('button#discard_laps').prop('disabled', true);
+				rotorhazard.timer.stopAll();
+				socket.emit('stop_race');
 				$("#main_panel").focus();  // make sure focus not on button
 			}
 			return false;
@@ -968,9 +974,11 @@
 
 		$('button#save_laps').click(function (event) {
 			if(!$(this).prop('disabled')) {
-				socket.emit('save_laps');
+				$('button#start_race').prop('disabled', true);
+				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
+				socket.emit('save_laps');
 				$("#main_panel").focus();  // make sure focus not on button
 			}
 			return false;
@@ -983,10 +991,12 @@
 
 		$('button#discard_laps').click(function (event) {
 			if(!$(this).prop('disabled')) {
-				socket.emit('discard_laps');
-				$('.time-display').html('--:--');
+				$('button#start_race').prop('disabled', true);
+				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
+				$('.time-display').html('--:--');
+				socket.emit('discard_laps');
 				$("#main_panel").focus();  // make sure focus not on button
 			}
 			return false;
