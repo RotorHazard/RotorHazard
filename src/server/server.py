@@ -2137,6 +2137,10 @@ def on_stage_race():
 
 def autoUpdateCalibration():
     ''' Apply best tuning values to nodes '''
+    if RACE.current_heat == RHUtils.HEAT_ID_NONE:
+        logger.debug('Skipping auto calibration; server in practice mode')
+        return None
+
     for node_index, node in enumerate(INTERFACE.nodes):
         calibration = findBestValues(node, node_index)
 
