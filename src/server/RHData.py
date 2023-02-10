@@ -84,7 +84,7 @@ class RHData():
             logger.error('Error creating database: ' + str(ex))
             return False
 
-    def reset_all(self, nofill=False):
+    def do_reset_all(self, nofill):
         self.reset_pilots()
         if nofill:
             self.reset_heats(nofill=True)
@@ -95,6 +95,14 @@ class RHData():
         self.reset_raceFormats()
         self.reset_raceClasses()
         self.reset_options()
+
+    def reset_all(self, nofill=False):
+        try:
+            self.do_reset_all(nofill)
+        except Exception as ex:
+            logger.warning("Doing DB session rollback and retry after error: {}".format(ex))
+            self._Database.DB.session.rollback()
+            self.do_reset_all(nofill)
 
     def commit(self):
         try:
@@ -191,42 +199,84 @@ class RHData():
 
     def restore_table(self, class_type, table_query_data, **kwargs):
         if table_query_data:
+            table_name_str = "???"
             try:
-                for row_data in table_query_data:
-                    if (class_type is not self._Database.Pilot) or getattr(row_data, 'callsign', '') != '-' or \
-                                                  getattr(row_data, 'name', '') != '-None-':
-                        if 'id' in class_type.__table__.columns.keys() and \
-                            'id' in row_data.keys():
-                            db_update = class_type.query.filter(getattr(class_type,'id')==row_data['id']).first()
-                        else:
-                            db_update = None
+                table_name_str = getattr(class_type, '__name__', '???')
+                logger.debug("Restoring database table '{}' (len={})".format(table_name_str, len(table_query_data)))
+                restored_row_count = 0
+                for table_query_row in table_query_data:  # for each row of data queried from previous database
+                    try:
+                        # check if row is 'Pilot' entry that should be ignored
+                        if (class_type is not self._Database.Pilot) or getattr(table_query_row, 'callsign', '') != '-' or \
+                                                      getattr(table_query_row, 'name', '') != '-None-':
 
-                        if db_update is None:
-                            new_data = class_type()
-                            for col in class_type.__table__.columns.keys():
-                                if col in row_data.keys():
-                                    setattr(new_data, col, row_data[col])
-                                else:
-                                    setattr(new_data, col, kwargs['defaults'][col])
+                            # check if row with matching 'id' value already exists in new DB table
+                            if 'id' in class_type.__table__.columns.keys() and 'id' in table_query_row.keys():
+                                table_row_id = table_query_row['id']
+                                matching_row = class_type.query.filter(getattr(class_type,'id')==table_row_id).first()
+                            else:
+                                table_row_id = None
+                                matching_row = None
 
-                            #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
-                            self._Database.DB.session.add(new_data)
-                        else:
-                            #logger.info('DEBUG row_data update:  ' + str(getattr(row_data, match_name)))
-                            for col in class_type.__table__.columns.keys():
-                                if col in row_data.keys():
-                                    setattr(db_update, col, row_data[col])
-                                else:
-                                    if col != 'id':
-                                        setattr(db_update, col, kwargs['defaults'][col])
+                            # if row with matching 'id' value was found then update it; otherwise create new row data
+                            db_row_update = matching_row if matching_row is not None else class_type()
 
-                        self._Database.DB.session.flush()
-                logger.info('Database table "{0}" restored'.format(class_type.__name__))
+                            for col in class_type.__table__.columns.keys():  # for each column in new database table
+                                if col in table_query_row.keys() and table_query_row[col] is not None:  # matching column exists in previous DB table
+                                    col_val = table_query_row[col]
+                                    try:  # get column type in new database table
+                                        table_col_type = class_type.__table__.columns[col].type.python_type
+                                    except Exception as ex:
+                                        logger.debug("Unable to determine type for column '{}' in 'restore_table' ('{}'): {}".\
+                                                     format(col, table_name_str, getattr(type(ex), '__name__', '????')))
+                                        table_col_type = None
+                                    if table_col_type is not None and col_val is not None:
+                                        col_val_str = str(col_val)
+                                        if len(col_val_str) >= 50:
+                                            col_val_str = col_val_str[:50] + "..."
+                                        if logger.getEffectiveLevel() <= logging.DEBUG and len(table_query_data) <= 25:
+                                            logger.debug("restore_table ('{}'): col={}, coltype={}, val={}, valtype={}".\
+                                                         format(table_name_str, col, getattr(table_col_type, '__name__', '???'), \
+                                                                col_val_str, getattr(type(col_val), '__name__', '???')))
+                                        try:
+                                            col_val = table_col_type(col_val)  # explicitly cast value to new-DB column type
+                                        except:
+                                            logger.warning("Using default because of mismatched type in 'restore_table' ('{}'): col={}, coltype={}, newval={}, newtype={}".\
+                                                           format(table_name_str, col, getattr(table_col_type, '__name__', '???'), \
+                                                                  col_val_str, getattr(type(col_val), '__name__', '???')))
+                                            col_val = kwargs['defaults'].get(col)
+                                else:  # matching column does not exist in previous DB table; use default value
+                                    col_val = kwargs['defaults'].get(col) if col != 'id' else None
+
+                                if col_val is not None:
+                                    setattr(db_row_update, col, col_val)
+
+                            if matching_row is None:  # if new row data then add to table
+                                self._Database.DB.session.add(db_row_update)
+                                if logger.getEffectiveLevel() <= logging.DEBUG and len(table_query_data) <= 25:
+                                    logger.debug("restore_table: added new row to table '{}'".format(table_name_str))
+                            else:
+                                if logger.getEffectiveLevel() <= logging.DEBUG and len(table_query_data) <= 25:
+                                    logger.debug("restore_table: updated row in table '{}', id={}".format(table_name_str, table_row_id))
+
+                            self._Database.DB.session.flush()
+                            restored_row_count += 1
+
+                    except Exception as ex:
+                        logger.warning("Error restoring row for '{}' table from previous database: {}".\
+                                       format(table_name_str, getattr(type(ex), '__name__', '????')))
+                        logger.debug(traceback.format_exc())
+
+                if restored_row_count > 0:
+                    logger.info("Database table '{}' restored (rowcount={})".format(table_name_str, restored_row_count))
+                else:
+                    logger.info("No rows restored for database table '{}'".format(table_name_str))
+
             except Exception as ex:
-                logger.warning('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
+                logger.warning('Error restoring "{}" table from previous database: {}'.format(table_name_str, getattr(type(ex), '__name__', '????')))
                 logger.debug(traceback.format_exc())
         else:
-            logger.debug('Error restoring "{0}" table: no data'.format(class_type.__name__))
+            logger.debug('Unable to restore "{}" table: no data'.format(getattr(class_type, '__name__', '???')))
 
     def recover_database(self, dbfile, **kwargs):
         recover_status = {
