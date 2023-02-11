@@ -2369,9 +2369,6 @@ def on_stop_race(doSave=False):
 
 @catchLogExceptionsWrapper
 def do_stop_race_actions(doSave=False):
-    RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
-    INTERFACE.set_race_status(RaceStatus.DONE)
-
     if RACE.race_status == RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
@@ -2396,6 +2393,9 @@ def do_stop_race_actions(doSave=False):
     else:
         logger.debug('No active race to stop')
         delta_time = 0
+
+    RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+    INTERFACE.set_race_status(RaceStatus.DONE)
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
     if RHData.get_optionInt('startThreshLowerAmount') > 0 and \
