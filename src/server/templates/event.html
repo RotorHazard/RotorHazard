@@ -179,7 +179,7 @@
 
 			var nodelist = $('<ul>');
 
-			if (heat.dynamic === false || heat.status == 2) { // HeatStatus.CONFIRMED
+			if (heat.auto_frequency === false || heat.status == 2) { // HeatStatus.CONFIRMED
 				for (idx in heat.slots) {
 					var slot = heat.slots[idx];
 
@@ -205,7 +205,7 @@
 					var slot_el = $('<li>');
 
 					if (slot.method > -1) {
-						var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
+						var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank, slot.pilot_id)
 						slot_el.append('<div class="method">' + method_text + '</div>');
 
 						nodelist.append(slot_el);
@@ -218,9 +218,15 @@
 			return heat_display_el
 		}
 
-		function get_method_descriptor (method, seed, rank) {
+		function get_method_descriptor (method, seed, rank, pilot_id) {
 			if (method == 0) { // pilot
-				return __("Pilot");
+				var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
+
+				if (pilot) {
+					return pilot.callsign;
+				} else {
+					return false;
+				}
 			} else if (method == 1) { // heat
 				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
 

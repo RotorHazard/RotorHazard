@@ -2494,16 +2494,16 @@ def do_save_actions():
 
     logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
 
+    on_discard_laps(saved=True) # Also clear the current laps
+
     race_class = RHData.get_raceClass(heat.class_id)
     if race_class:
         on_set_current_heat({'heat':RHData.get_next_heat_id(heat, race_class)})
 
-    on_discard_laps(saved=True) # Also clear the current laps
-
     # spawn thread for updating results caches
     cache_params = {
         'race_id': new_race.id,
-        'heat_id': RACE.current_heat,
+        'heat_id': new_race.heat_id,
         'round_id': new_race.round_id,
     }
     gevent.spawn(build_atomic_result_caches, cache_params)

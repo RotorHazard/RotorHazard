@@ -1051,20 +1051,25 @@ class RHData():
                     next_heat_id = heats[0].id
                     if current_class.rounds:
                         max_round = self.get_max_round(current_heat.id)
-                        if current_class.rounds >= max_round:
+                        if max_round >= current_class.rounds:
                             race_classes = self.get_raceClasses()
                             race_classes.sort(key=orderSorter)
                             if race_classes[-1].id == current_heat.class_id:
-                                next_class_id = race_classes[0].id
-                                logger.debug('Completed last heat of last class, looping to first class')
+                                next_class_id = RHUtils.HEAT_ID_NONE
+                                logger.debug('Completed last heat of last class, shifting to practice mode')
                             else:
                                 for idx, race_class in enumerate(race_classes):
                                     if race_class.id == current_heat.class_id:
                                         next_class_id = race_classes[idx + 1].id
                                         break
 
-                            next_heats = self.get_heats_by_class(next_class_id)
-                            next_heat_id = next_heats[0].id
+                            if next_class_id:
+                                next_heats = self.get_heats_by_class(next_class_id)
+                                next_heat_id = next_heats[0].id
+                            else:
+                                next_heat_id = RHUtils.HEAT_ID_NONE
+                                logger.debug('No next class, shifting to practice mode')
+
                 else:
                     for idx, heat in enumerate(heats):
                         if heat.id == current_heat.id:
@@ -1197,11 +1202,12 @@ class RHData():
                     if used_frequencies_json:
                         used_frequencies = json.loads(used_frequencies_json)
                         for node in available_nodes:
+                            end_idx = len(used_frequencies) - 1
                             for f_idx, pilot_freq in enumerate(used_frequencies):
                                 if node['frq']['f'] == pilot_freq['f']:
                                     node['matches'].append({
                                             'slot': slot,
-                                            'priority': True if f_idx == 0 else False
+                                            'priority': True if f_idx == end_idx else False
                                          })
 
             eliminated_slots = []
