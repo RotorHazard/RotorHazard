@@ -715,6 +715,12 @@ class RHData():
             return pilot
         return False
 
+    def reset_pilot_used_frequencies(self):
+        for pilot in self.get_pilots():
+            pilot.used_frequencies = ""
+        self.commit()
+        return True
+
     def delete_pilot(self, pilot_id):
         pilot = self._Database.Pilot.query.get(pilot_id)
 
@@ -874,6 +880,10 @@ class RHData():
         heat_id = data['heat']
         heat = self._Database.Heat.query.get(heat_id)
 
+        if 'slot_id' in data:
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+
         if 'note' in data:
             self._PageCache.set_valid(False)
             heat.note = data['note']
@@ -882,39 +892,35 @@ class RHData():
             heat.class_id = data['class']
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
-            #TODO: Consider best method to exit auto frequency and assign node indexes
             if not heat.auto_frequency:
-                for idx, slot in enumerate(self.get_heatNodes_by_heat(heat_id)):
-                    slot.node_index = None
-                self.commit()
-                for idx, slot in enumerate(self.get_heatNodes_by_heat(heat_id)):
-                    slot.node_index = idx
+                used_nodes = []
+                slots = self.get_heatNodes_by_heat(heat_id)
+                for s in slots:
+                    used_nodes.append(s.node_index)
+
+                # create inverse of used_nodes
+                available_nodes = set(range(len(slots))) - set(used_nodes)
+
+                for s in slots:
+                    if s.node_index == None and len(available_nodes):
+                        s.node_index = available_nodes.pop()
+
         if 'pilot' in data:
-            slot_id = data['slot_id']
-            slot = self._Database.HeatNode.query.get(slot_id)
             slot.pilot_id = data['pilot']
         if 'method' in data:
-            slot_id = data['slot_id']
-            slot = self._Database.HeatNode.query.get(slot_id)
             slot.method = data['method']
             slot.seed_id = None
         if 'seed_heat_id' in data:
-            slot_id = data['slot_id']
-            slot = self._Database.HeatNode.query.get(slot_id)
             if slot.method == ProgramMethod.HEAT_RESULT:
                 slot.seed_id = data['seed_heat_id']
             else:
                 logger.warning('Rejecting attempt to set Heat seed id: method does not match')
         if 'seed_class_id' in data:
-            slot_id = data['slot_id']
-            slot = self._Database.HeatNode.query.get(slot_id)
             if slot.method == ProgramMethod.CLASS_RESULT:
                 slot.seed_id = data['seed_class_id']
             else:
                 logger.warning('Rejecting attempt to set Class seed id: method does not match')
         if 'seed_rank' in data:
-            slot_id = data['slot_id']
-            slot = self._Database.HeatNode.query.get(slot_id)
             slot.seed_rank = data['seed_rank']
         if 'status' in data:
             heat.status = data['status']
@@ -931,9 +937,6 @@ class RHData():
                     self.clear_results_raceClass(old_class_id)
 
         if 'pilot' in data:
-            slot_id = data['slot_id']
-            slot = self._Database.HeatNode.query.get(slot_id)
-
             if len(race_list):
                 for race_meta in race_list:
                     for pilot_race in self._Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
@@ -1195,7 +1198,7 @@ class RHData():
                         'matches': []
                         })
 
-            # find all frequency matches
+            # get frequency matches from pilots
             for slot in slots:
                 if slot.pilot_id:
                     used_frequencies_json = self.get_pilot(slot.pilot_id).used_frequencies
@@ -1213,8 +1216,10 @@ class RHData():
             eliminated_slots = []
             if callable(calc_fn):
                 while len(available_nodes):
+                    # request assignment from calc function
                     m_node, m_slot, an_idx = calc_fn(available_nodes)
                     if m_node and m_slot:
+                        # calc function returned assignment
                         m_slot.node_index = m_node['idx']
                         for slot_idx, slot_match in enumerate(m_node['matches']):
                             if slot_match['slot'] != m_slot:
@@ -1226,6 +1231,7 @@ class RHData():
                                     available_node['matches'][slot_idx] = None
                                 available_node['matches'] = [x for x in available_node['matches'] if x is not None]
                     else:
+                        # calc function didn't make an assignment
                         random.shuffle(available_nodes)
                         if len(eliminated_slots):
                             for slot_idx, slot_match in enumerate(eliminated_slots):
@@ -1242,7 +1248,7 @@ class RHData():
                                         del(available_nodes[0])
                                     else:
                                         logger.warning("Dropping pilot {}; No remaining available nodes for slot {}".format(slot.pilot_id, slot))
-                        break
+                            break
             else:
                 logger.error('calc_fn is not a valid auto-frequency algortihm')
                 return False
@@ -1288,6 +1294,11 @@ class RHData():
             self.add_heat()
             self._RACE.current_heat = self.get_first_heat().id
         logger.info('Database heats reset')
+
+    def reset_heat_plans(self):
+        for heat in self.get_heats():
+            heat.status = HeatStatus.PLANNED
+        return True
 
     # HeatNodes
     def get_heatNodes(self):
@@ -2260,6 +2271,8 @@ class RHData():
         self._Database.DB.session.query(self._Database.SavedRaceLap).delete()
         self._Database.DB.session.query(self._Database.LapSplit).delete()
         self.commit()
+        self.reset_pilot_used_frequencies()
+        self.reset_heat_plans()
         logger.info('Database saved races reset')
         return True
 
