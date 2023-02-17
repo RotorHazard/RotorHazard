@@ -1298,6 +1298,7 @@ class RHData():
     def reset_heat_plans(self):
         for heat in self.get_heats():
             heat.status = HeatStatus.PLANNED
+        self.commit()
         return True
 
     # HeatNodes
