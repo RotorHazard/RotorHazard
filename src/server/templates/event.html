@@ -179,7 +179,7 @@
 
 			var nodelist = $('<ul>');
 
-			if (heat.auto_frequency === false || heat.status == 2) { // HeatStatus.CONFIRMED
+			if (heat.locked || heat.status == 2 || heat.auto_frequency === false) { // HeatStatus.CONFIRMED
 				for (idx in heat.slots) {
 					var slot = heat.slots[idx];
 

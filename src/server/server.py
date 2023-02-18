@@ -2680,11 +2680,12 @@ def calc_heat(heat_id, silent=False):
         else:
             calc_fn = RHUtils.find_best_slot_node_basic
 
+        autofreq_result = None
         if calc_result['calc_success'] is not None:
-            RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
+            autofreq_result = RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
-        if calc_result['calc_success'] is None or \
-            (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False):
+        if autofreq_result is None and (calc_result['calc_success'] is None or \
+            (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False)):
             return 'success'
         else:
             if request and not silent:

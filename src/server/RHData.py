@@ -1140,6 +1140,7 @@ class RHData():
 
         if not heat:
             logger.error('Requested invalid heat {}'.format(heat_id))
+            result['calc_success'] = False
             return result
 
         # skip if heat status confirmed
