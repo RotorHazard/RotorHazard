@@ -2015,19 +2015,29 @@ def on_get_pi_time():
 @catchLogExceptionsWrapper
 def on_stage_race():
     global LAST_RACE
-    valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
+    race_format = getCurrentRaceFormat()
 
     if heat_data:
         heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
+        pilot_names_list = []
         for heatNode in heatNodes:
             if heatNode.node_index is not None and heatNode.node_index < RACE.num_nodes:
                 if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
-                    valid_pilots = True
-                    break
+                    pilot_obj = RHData.get_pilot(heatNode.pilot_id)
+                    if pilot_obj and pilot_obj.callsign:
+                        pilot_names_list.append(pilot_obj.callsign)
 
-        if request and valid_pilots is False:
+        if request and len(pilot_names_list) <= 0:
             emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
+
+        logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
+        heat_id_str = heat_data.note if heat_data.note else "Heat " + str(heat_data.id)
+        max_round = RHData.get_max_round(RACE.current_heat)
+        if max_round is None:
+            max_round = 0
+        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_id_str, (max_round+1),
+                                                                   ", ".join(pilot_names_list)))
     else:
         heatNodes = []
 
@@ -2045,8 +2055,6 @@ def on_stage_race():
 
     if CLUSTER:
         CLUSTER.emitToSplits('stage_race')
-
-    race_format = getCurrentRaceFormat()
 
     if RACE.race_status != RaceStatus.READY:
         if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
