@@ -2393,6 +2393,9 @@ def do_stop_race_actions(doSave=False):
         if len(min_laps_list) > 0:
             logger.info('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
+        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RaceStatus.DONE)
+
         Events.trigger(Evt.RACE_STOP, {
             'color': ColorVal.RED
         })
@@ -2403,11 +2406,11 @@ def do_stop_race_actions(doSave=False):
             CLUSTER.doClusterRaceStop()
 
     else:
+        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RaceStatus.DONE)
+
         logger.debug('No active race to stop')
         delta_time = 0
-
-    RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
-    INTERFACE.set_race_status(RaceStatus.DONE)
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
     if RHData.get_optionInt('startThreshLowerAmount') > 0 and \
