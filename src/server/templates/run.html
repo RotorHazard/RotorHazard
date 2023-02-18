@@ -55,6 +55,7 @@
 		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
 
 		socket.on('pi_time', function (msg) {
+			var max_samples = 10;
 			var response_time = window.performance.now();
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
@@ -92,7 +93,7 @@
 			rotorhazard.timer.deferred.sync();
 
 			// continue sampling for sync to improve accuracy
-			if (rotorhazard.server_time_differential_samples.length < 10) {
+			if (rotorhazard.server_time_differential_samples.length < max_samples) {
 				setTimeout(function(){
 					rotorhazard.pi_time_request = window.performance.now();
 					socket.emit('get_pi_time');
@@ -104,7 +105,7 @@
 			for (var i in rotorhazard.server_time_differential_samples) {
 				a = Math.min(a, rotorhazard.server_time_differential_samples[i].response);
 			}
-			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.server_time_differential_samples.length + ' samples)</p>');
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.server_time_differential_samples.length + '/' + max_samples + ' samples)</p>');
 		});
 
 		socket.on('language', function (msg) {
