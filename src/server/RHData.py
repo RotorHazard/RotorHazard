@@ -939,17 +939,7 @@ class RHData():
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
             if not heat.auto_frequency:
-                used_nodes = []
-                slots = self.get_heatNodes_by_heat(heat_id)
-                for s in slots:
-                    used_nodes.append(s.node_index)
-
-                # create inverse of used_nodes
-                available_nodes = set(range(len(slots))) - set(used_nodes)
-
-                for s in slots:
-                    if s.node_index == None and len(available_nodes):
-                        s.node_index = available_nodes.pop()
+                self.resolve_slot_unset_nodes(heat.id)
 
         if 'pilot' in data:
             slot.pilot_id = data['pilot']
@@ -1128,6 +1118,19 @@ class RHData():
             return next_heat_id
 
         return current_heat.id
+
+    def resolve_slot_unset_nodes(self, heat_id):
+        used_nodes = []
+        slots = self.get_heatNodes_by_heat(heat_id)
+        for s in slots:
+            used_nodes.append(s.node_index)
+
+        # create inverse of used_nodes
+        available_nodes = set(range(len(slots))) - set(used_nodes)
+
+        for s in slots:
+            if s.node_index == None and len(available_nodes):
+                s.node_index = available_nodes.pop()
 
     def calc_heat_pilots(self, heat_id, Results):
         heat = self._Database.Heat.query.get(heat_id)

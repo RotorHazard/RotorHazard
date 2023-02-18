@@ -2755,6 +2755,7 @@ def on_confirm_heat(data):
             'status': Database.HeatStatus.CONFIRMED
             }
         )
+        RHData.resolve_slot_unset_nodes(data['heat_id'])
         emit_heat_data()
         finalize_current_heat_set(data['heat_id'])
 
