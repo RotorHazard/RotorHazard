@@ -2213,6 +2213,11 @@
 			<button id="stop_race" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
 			<button id="save_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save and Clear') }}</span></button>
 			<button id="discard_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+
+			<label for="set_race_format" class="screen-reader-text">{{ __('Race Format') }}</label>
+			<select id="set_race_format">
+				<option>{{ __('Loading...') }}</option>
+			</select>
 		</div>
 
 		<div id="practice-warning" style="display:none">{{ __('Practice mode: Races will not be saved until a heat is selected') }}</div>
@@ -2334,14 +2339,6 @@
 				<div>
 					<label for="schedule_m" class="screen-reader-text">{{ __('Minutes') }}</label><input type="number" id="schedule_m" min="0" max="999" placeholder="mm">:<label for="schedule_s" class="screen-reader-text">{{ __('Seconds') }}</label><input type="number" id="schedule_s" min="0" max="59" placeholder="ss"> <button id="schedule_race">{{ __('Schedule Race') }}</button> <button id="cancel_schedule_race">{{ __('Cancel') }}</button>
 				</div>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_race_format">{{ __('Race Format') }}</label>
-				</div>
-				<select id="set_race_format">
-					<option>{{ __('Loading...') }}</option>
-				</select>
 			</li>
 			<li>
 				<div class="label-block">
