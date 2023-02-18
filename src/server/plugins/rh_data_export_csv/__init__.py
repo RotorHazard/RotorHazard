@@ -1,11 +1,12 @@
 '''CSV data exporter'''
 
 import logging
-logger = logging.getLogger(__name__)
 import RHUtils
 import io
 import csv
 from data_export import DataExporter
+
+logger = logging.getLogger(__name__)
 
 def registerHandlers(args):
     if 'registerFn' in args:
@@ -44,7 +45,7 @@ def assemble_all(RHData, PageCache, Language):
 
     return output
 
-def assemble_pilots(RHData, PageCache, Language):
+def assemble_pilots(RHData, _PageCache, Language):
     payload = [[Language.__('Callsign'), Language.__('Name'), Language.__('Team')]]
 
     pilots = RHData.get_pilots()
@@ -53,7 +54,7 @@ def assemble_pilots(RHData, PageCache, Language):
 
     return payload
 
-def assemble_heats(RHData, PageCache, Language):
+def assemble_heats(RHData, _PageCache, Language):
     payload = [[Language.__('Name'), Language.__('Class'), Language.__('Pilots')]]
     for heat in RHData.get_heats():
         note = heat.note
@@ -76,7 +77,7 @@ def assemble_heats(RHData, PageCache, Language):
 
     return payload
 
-def assemble_classes(RHData, PageCache, Language):
+def assemble_classes(RHData, _PageCache, Language):
     race_classes = RHData.get_raceClasses()
     payload = [[Language.__('Name'), Language.__('Description'), Language.__('Race Format')]]
 
@@ -92,7 +93,7 @@ def assemble_classes(RHData, PageCache, Language):
 
     return payload
 
-def assemble_formats(RHData, PageCache, Language):
+def assemble_formats(RHData, _PageCache, Language):
     timer_modes = [
         Language.__('Fixed Time'),
         Language.__('No Time Limit'),
@@ -187,7 +188,7 @@ def build_leaderboard(leaderboard, Language, **kwargs):
 
     return output
 
-def assemble_results(RHData, PageCache, Language):
+def assemble_results(_RHData, PageCache, Language):
     results = PageCache.get_cache()
     payload = []
 
@@ -288,7 +289,7 @@ def assemble_results(RHData, PageCache, Language):
 
     return payload
 
-def discover(*args, **kwargs):
+def discover(*_args, **_kwargs):
     # returns array of exporters with default arguments
     return [
         DataExporter(

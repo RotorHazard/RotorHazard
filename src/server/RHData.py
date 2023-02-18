@@ -14,9 +14,11 @@ import shutil
 import json
 import glob
 import RHUtils
+import random
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Results import CacheStatus
+from Database import ProgramMethod, HeatAdvanceType, HeatStatus
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
@@ -102,6 +104,14 @@ class RHData():
             return True
         except Exception as ex:
             logger.error('Error writing to database: ' + str(ex))
+            return False
+
+    def rollback(self):
+        try:
+            self._Database.DB.session.rollback()
+            return True
+        except Exception as ex:
+            logger.error('Error rolling back to database: ' + str(ex))
             return False
 
     def close(self):
@@ -343,7 +353,8 @@ class RHData():
                             'callsign': 'New Callsign',
                             'team': RHUtils.DEF_TEAM_NAME,
                             'phonetic': '',
-                            'color': None
+                            'color': None,
+                            'used_frequencies': None
                         })
                     for pilot in self._Database.Pilot.query.all():
                         if not pilot.color:
@@ -372,7 +383,9 @@ class RHData():
                                 'note': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID,
+                                'order': None,
+                                'status': 0,
                             })
 
                         # extract pilots from heats and load into heatnode
@@ -401,11 +414,17 @@ class RHData():
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID,
+                                'order': None,
+                                'status': 0,
+                                'auto_frequency': False
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
-                                'color': None
+                                'color': None,
+                                'method': 0,
+                                'seed_rank': None,
+                                'seed_id': None
                             })
 
                         self._RACE.current_heat = self.get_first_heat().id
@@ -418,18 +437,18 @@ class RHData():
                         for raceFormat in raceFormat_query_data:
                             if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ONE:
                                 raceFormat['staging_fixed_tones'] = 1
-                                
+
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
                                     del raceFormat['start_delay_min']
-    
+
                                 if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
                                     if 'start_delay_min_ms' in raceFormat:
                                         raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
                                         if raceFormat['start_delay_max_ms'] < 0:
                                             raceFormat['start_delay_max_ms'] = 0
                                     del raceFormat['start_delay_max']
-                                
+
                             elif 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ALL:
                                 raceFormat['staging_tones'] = StagingTones.TONES_ALL
 
@@ -444,15 +463,15 @@ class RHData():
                                         if raceFormat['start_delay_max_ms'] < 0:
                                             raceFormat['start_delay_max_ms'] = 0
                                     del raceFormat['start_delay_max']
-                                
+
                             else: # None or unsupported
                                 raceFormat['staging_fixed_tones'] = 0
                                 raceFormat['staging_tones'] = StagingTones.TONES_NONE
-                            
+
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
                                     del raceFormat['start_delay_min']
-    
+
                                 if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
                                     raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
                                     if raceFormat['start_delay_max_ms'] < 0:
@@ -491,7 +510,11 @@ class RHData():
                         'name': 'New class',
                         'format_id': 0,
                         'results': None,
-                        'cacheStatus': CacheStatus.INVALID
+                        'cacheStatus': CacheStatus.INVALID,
+                        'win_condition': 0,
+                        'rounds': 0,
+                        'heatAdvanceType': 1,
+                        'order': None,
                     })
 
                 self.reset_options()
@@ -590,7 +613,8 @@ class RHData():
             callsign='',
             team=RHUtils.DEF_TEAM_NAME,
             phonetic='',
-            color=color)
+            color=color,
+            used_frequencies=None)
 
         if init:
             if 'name' in init:
@@ -603,7 +627,7 @@ class RHData():
                 new_pilot.phonetic = init['phonetic']
             if 'color' in init:
                 new_pilot.color = init['color']
-                
+
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
 
@@ -669,6 +693,34 @@ class RHData():
 
         return pilot, race_list
 
+    def set_pilot_used_frequency(self, pilot_id, frequency):
+        pilot = self._Database.Pilot.query.get(pilot_id)
+        if pilot:
+            if pilot.used_frequencies:
+                used_freqs = json.loads(pilot.used_frequencies)
+            else:
+                used_freqs = []
+
+            for idx, freq in enumerate(used_freqs):
+                if freq['f'] == frequency['f'] and \
+                    freq['b'] == frequency['b'] and \
+                    freq['c'] == frequency['c']:
+
+                    del used_freqs[idx]
+
+            used_freqs.append(frequency)
+
+            pilot.used_frequencies = json.dumps(used_freqs)
+            self.commit()
+            return pilot
+        return False
+
+    def reset_pilot_used_frequencies(self):
+        for pilot in self.get_pilots():
+            pilot.used_frequencies = ""
+        self.commit()
+        return True
+
     def delete_pilot(self, pilot_id):
         pilot = self._Database.Pilot.query.get(pilot_id)
 
@@ -727,7 +779,10 @@ class RHData():
         # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
-            cacheStatus=CacheStatus.INVALID
+            cacheStatus=CacheStatus.INVALID,
+            order=None,
+            status=HeatStatus.PLANNED,
+            auto_frequency=False
             )
 
         if init:
@@ -735,6 +790,12 @@ class RHData():
                 new_heat.class_id = init['class_id']
             if 'note' in init:
                 new_heat.note = init['note']
+            if 'auto_frequency' in init:
+                new_heat.auto_frequency = init['auto_frequency']
+
+            defaultMethod = init['defaultMethod'] if 'defaultMethod' in init else ProgramMethod.ASSIGN
+        else:
+            defaultMethod = ProgramMethod.ASSIGN
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -745,7 +806,10 @@ class RHData():
             new_heatNode = self._Database.HeatNode(
                 heat_id=new_heat.id,
                 node_index=node_index,
-                pilot_id=RHUtils.PILOT_ID_NONE
+                pilot_id=RHUtils.PILOT_ID_NONE,
+                method=defaultMethod,
+                seed_rank=None,
+                seed_id=None
             )
 
             if initPilots and node_index in initPilots:
@@ -755,7 +819,7 @@ class RHData():
 
         self.commit()
 
-        self._Events.trigger(Evt.HEAT_DUPLICATE, {
+        self._Events.trigger(Evt.HEAT_ADD, {
             'heat_id': new_heat.id,
             })
 
@@ -778,10 +842,14 @@ class RHData():
         else:
             new_class = source_heat.class_id
 
-        new_heat = self._Database.Heat(note=new_heat_note,
+        new_heat = self._Database.Heat(
+            note=new_heat_note,
             class_id=new_class,
             results=None,
-            cacheStatus=CacheStatus.INVALID)
+            cacheStatus=CacheStatus.INVALID,
+            status=0,
+            auto_frequency=source_heat.auto_frequency
+            )
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -790,7 +858,11 @@ class RHData():
         for source_heatnode in self.get_heatNodes_by_heat(source_heat.id):
             new_heatnode = self._Database.HeatNode(heat_id=new_heat.id,
                 node_index=source_heatnode.node_index,
-                pilot_id=source_heatnode.pilot_id)
+                pilot_id=source_heatnode.pilot_id,
+                method=source_heatnode.method,
+                seed_rank=source_heatnode.seed_rank,
+                seed_id=source_heatnode.seed_id
+                )
             self._Database.DB.session.add(new_heatnode)
 
         self.commit()
@@ -808,17 +880,50 @@ class RHData():
         heat_id = data['heat']
         heat = self._Database.Heat.query.get(heat_id)
 
+        if 'slot_id' in data:
+            slot_id = data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+
         if 'note' in data:
             self._PageCache.set_valid(False)
             heat.note = data['note']
         if 'class' in data:
             old_class_id = heat.class_id
             heat.class_id = data['class']
+        if 'auto_frequency' in data:
+            heat.auto_frequency = data['auto_frequency']
+            if not heat.auto_frequency:
+                used_nodes = []
+                slots = self.get_heatNodes_by_heat(heat_id)
+                for s in slots:
+                    used_nodes.append(s.node_index)
+
+                # create inverse of used_nodes
+                available_nodes = set(range(len(slots))) - set(used_nodes)
+
+                for s in slots:
+                    if s.node_index == None and len(available_nodes):
+                        s.node_index = available_nodes.pop()
+
         if 'pilot' in data:
-            node_index = data['node']
-            heatnode = self._Database.HeatNode.query.filter_by(
-                heat_id=heat_id, node_index=node_index).one()
-            heatnode.pilot_id = data['pilot']
+            slot.pilot_id = data['pilot']
+        if 'method' in data:
+            slot.method = data['method']
+            slot.seed_id = None
+        if 'seed_heat_id' in data:
+            if slot.method == ProgramMethod.HEAT_RESULT:
+                slot.seed_id = data['seed_heat_id']
+            else:
+                logger.warning('Rejecting attempt to set Heat seed id: method does not match')
+        if 'seed_class_id' in data:
+            if slot.method == ProgramMethod.CLASS_RESULT:
+                slot.seed_id = data['seed_class_id']
+            else:
+                logger.warning('Rejecting attempt to set Class seed id: method does not match')
+        if 'seed_rank' in data:
+            slot.seed_rank = data['seed_rank']
+        if 'status' in data:
+            heat.status = data['status']
 
         # alter existing saved races:
         race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
@@ -835,10 +940,10 @@ class RHData():
             if len(race_list):
                 for race_meta in race_list:
                     for pilot_race in self._Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
-                        if pilot_race.node_index == data['node']:
+                        if pilot_race.node_index == slot.node_index:
                             pilot_race.pilot_id = data['pilot']
                     for race_lap in self._Database.SavedRaceLap.query.filter_by(race_id=race_meta.id):
-                        if race_lap.node_index == data['node']:
+                        if race_lap.node_index == slot.node_index:
                             race_lap.pilot_id = data['pilot']
 
                     self.clear_results_savedRaceMeta(race_meta.id)
@@ -925,6 +1030,232 @@ class RHData():
             logger.info('Refusing to delete only heat')
             return None
 
+    def get_next_heat_id(self, current_heat, current_class):
+        if current_heat.class_id:
+            heats = self.get_heats_by_class(current_heat.class_id)
+
+            if current_class.heatAdvanceType == HeatAdvanceType.NONE:
+                return current_heat.id
+
+            if current_class.heatAdvanceType == HeatAdvanceType.NEXT_ROUND:
+                max_round = self.get_max_round(current_heat.id)
+                if max_round < current_class.rounds:
+                    return current_heat.id
+
+            def orderSorter(x):
+                if not x.order:
+                    return 0
+                return x.order
+            heats.sort(key=orderSorter)
+
+            if len(heats):
+                next_heat_id = None
+                if heats[-1].id == current_heat.id:
+                    next_heat_id = heats[0].id
+                    if current_class.rounds:
+                        max_round = self.get_max_round(current_heat.id)
+                        if max_round >= current_class.rounds:
+                            race_classes = self.get_raceClasses()
+                            race_classes.sort(key=orderSorter)
+                            if race_classes[-1].id == current_heat.class_id:
+                                next_class_id = RHUtils.HEAT_ID_NONE
+                                logger.debug('Completed last heat of last class, shifting to practice mode')
+                            else:
+                                for idx, race_class in enumerate(race_classes):
+                                    if race_class.id == current_heat.class_id:
+                                        next_class_id = race_classes[idx + 1].id
+                                        break
+
+                            if next_class_id:
+                                next_heats = self.get_heats_by_class(next_class_id)
+                                next_heat_id = next_heats[0].id
+                            else:
+                                next_heat_id = RHUtils.HEAT_ID_NONE
+                                logger.debug('No next class, shifting to practice mode')
+
+                else:
+                    for idx, heat in enumerate(heats):
+                        if heat.id == current_heat.id:
+                            next_heat_id = heats[idx + 1].id
+                            break
+
+            return next_heat_id
+
+        return current_heat.id
+
+    def calc_heat_pilots(self, heat_id, Results):
+        heat = self._Database.Heat.query.get(heat_id)
+
+        result = {
+             'calc_success': True,
+             'has_calc_pilots': False,
+             'unassigned_slots': 0
+             }
+
+        if not heat:
+            logger.error('Requested invalid heat {}'.format(heat_id))
+            return result
+
+        # skip if heat status confirmed
+        if (heat.status == HeatStatus.CONFIRMED):
+            result['calc_success'] = None
+            logger.debug("Skipping pilot recalculation: Heat confirmed (heat {})".format(heat_id))
+            return result
+
+        # don't alter if saved races exist
+        race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
+        if (race_list):
+            result['calc_success'] = None
+            logger.debug("Skipping pilot recalculation: Races exist (heat {})".format(heat_id))
+            return result
+
+        slots = self.get_heatNodes_by_heat(heat_id)
+        for slot in slots:
+            if slot.method == ProgramMethod.NONE:
+                slot.pilot_id = RHUtils.PILOT_ID_NONE
+
+            elif slot.method == ProgramMethod.HEAT_RESULT:
+                result['has_calc_pilots'] = True
+                logger.debug('Seeding Slot {} from Heat {}'.format(slot.id, slot.seed_id))
+                seed_heat = self.get_heat(slot.seed_id)
+
+                if seed_heat:
+                    output = Results.get_results_heat(self, seed_heat)
+                    if output['result']:
+                        if output['data']:
+                            results = output['data'][output['data']['meta']['primary_leaderboard']]
+                            if slot.seed_rank - 1 < len(results):
+                                slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                            else:
+                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                result['unassigned_slots'] += 1
+                        else:
+                            logger.debug("Can't assign pilot from heat {}: Results not available".format(slot.seed_id))
+                            slot.pilot_id = RHUtils.PILOT_ID_NONE
+                            result['unassigned_slots'] += 1
+                    else:
+                        result['calc_success'] = False
+                        logger.warning('Cancelling heat calc: Cache build failed')
+                        self.rollback() # Release DB lock
+                else:
+                    result['calc_success'] = False
+                    logger.warning("Can't seed from heat {}: does not exist".format(slot.seed_id))
+
+            elif slot.method == ProgramMethod.CLASS_RESULT:
+                result['has_calc_pilots'] = True
+                logger.debug('Seeding Slot {} from Class {}'.format(slot.id, slot.seed_id))
+                seed_class = self.get_raceClass(slot.seed_id)
+
+                if seed_class:
+                    output = Results.get_results_race_class(self, seed_class)
+                    if output['result']:
+                        if output['data']:
+                            results = output['data'][output['data']['meta']['primary_leaderboard']]
+                            if slot.seed_rank - 1 < len(results):
+                                slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                            else:
+                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                result['unassigned_slots'] += 1
+                        else:
+                            logger.debug("Can't assign pilot from class {}: Results not available".format(slot.seed_id))
+                            slot.pilot_id = RHUtils.PILOT_ID_NONE
+                            result['unassigned_slots'] += 1
+                    else:
+                        result['calc_success'] = False
+                        logger.warning('Cancelling heat calc: Cache build failed')
+                        self.rollback() # Release DB lock
+                else:
+                    result['calc_success'] = False
+                    logger.warning("Can't seed from class {}: does not exist".format(slot.seed_id))
+
+            logger.debug('Pilot is {}'.format(slot.pilot_id))
+
+        self.commit()
+        return result
+
+    def run_auto_frequency(self, heat_id, current_frequencies, num_nodes, calc_fn):
+        logger.debug('running auto-frequency with {}'.format(calc_fn))
+        heat = self._Database.Heat.query.get(heat_id)
+        slots = self.get_heatNodes_by_heat(heat_id)
+
+        if heat.auto_frequency:
+            # clear all node assignments
+            for slot in slots:
+                slot.node_index = None
+
+            # collect node data
+            available_nodes = []
+            profile_freqs = json.loads(current_frequencies)
+            for node_index in range(num_nodes):
+                if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                    available_nodes.append({
+                        'idx': node_index,
+                        'frq': {
+                            'f': profile_freqs["f"][node_index],
+                            'b': profile_freqs["b"][node_index],
+                            'c': profile_freqs["c"][node_index]
+                            },
+                        'matches': []
+                        })
+
+            # get frequency matches from pilots
+            for slot in slots:
+                if slot.pilot_id:
+                    used_frequencies_json = self.get_pilot(slot.pilot_id).used_frequencies
+                    if used_frequencies_json:
+                        used_frequencies = json.loads(used_frequencies_json)
+                        for node in available_nodes:
+                            end_idx = len(used_frequencies) - 1
+                            for f_idx, pilot_freq in enumerate(used_frequencies):
+                                if node['frq']['f'] == pilot_freq['f']:
+                                    node['matches'].append({
+                                            'slot': slot,
+                                            'priority': True if f_idx == end_idx else False
+                                         })
+
+            eliminated_slots = []
+            if callable(calc_fn):
+                while len(available_nodes):
+                    # request assignment from calc function
+                    m_node, m_slot, an_idx = calc_fn(available_nodes)
+                    if m_node and m_slot:
+                        # calc function returned assignment
+                        m_slot.node_index = m_node['idx']
+                        for slot_idx, slot_match in enumerate(m_node['matches']):
+                            if slot_match['slot'] != m_slot:
+                                eliminated_slots.append(slot_match)
+                        del available_nodes[an_idx]
+                        for available_node in available_nodes:
+                            for slot_idx, slot_match in enumerate(available_node['matches']):
+                                if slot_match['slot'] == m_slot:
+                                    available_node['matches'][slot_idx] = None
+                                available_node['matches'] = [x for x in available_node['matches'] if x is not None]
+                    else:
+                        # calc function didn't make an assignment
+                        random.shuffle(available_nodes)
+                        if len(eliminated_slots):
+                            for slot_idx, slot_match in enumerate(eliminated_slots):
+                                if eliminated_slots[slot_idx] and eliminated_slots[slot_idx]['slot'].node_index is None:
+                                    eliminated_slots[slot_idx]['slot'].node_index = available_nodes[0]['idx']
+                                    del(available_nodes[0])
+                                eliminated_slots[slot_idx] = None
+                            eliminated_slots = [x for x in eliminated_slots if x is not None]
+                        else:
+                            for slot in slots:
+                                if slot.node_index is None and slot.pilot_id:
+                                    if len(available_nodes):
+                                        slot.node_index = available_nodes[0]['idx']
+                                        del(available_nodes[0])
+                                    else:
+                                        logger.warning("Dropping pilot {}; No remaining available nodes for slot {}".format(slot.pilot_id, slot))
+                            break
+            else:
+                logger.error('calc_fn is not a valid auto-frequency algortihm')
+                return False
+
+            self.commit()
+        return True
+
     def set_results_heat(self, heat_id, data):
         heat = self._Database.Heat.query.get(heat_id)
 
@@ -964,6 +1295,12 @@ class RHData():
             self._RACE.current_heat = self.get_first_heat().id
         logger.info('Database heats reset')
 
+    def reset_heat_plans(self):
+        for heat in self.get_heats():
+            heat.status = HeatStatus.PLANNED
+        self.commit()
+        return True
+
     # HeatNodes
     def get_heatNodes(self):
         return self._Database.HeatNode.query.all()
@@ -988,6 +1325,37 @@ class RHData():
         else:
             return None
 
+    def alter_heatNodes_fast(self, data):
+        # Alters heatNodes quickly, in batch
+        # !! Unsafe for general use. Intentionally light type checking,    !!
+        # !! DOES NOT trigger events, clear results, or update cached data !!
+
+        for slot_data in data:
+            slot_id = slot_data['slot_id']
+            slot = self._Database.HeatNode.query.get(slot_id)
+
+            if 'pilot' in slot_data:
+                slot.pilot_id = slot_data['pilot']
+            if 'method' in slot_data:
+                slot.method = slot_data['method']
+                slot.seed_id = None
+            if 'seed_heat_id' in slot_data:
+                if slot.method == ProgramMethod.HEAT_RESULT:
+                    slot.seed_id = slot_data['seed_heat_id']
+                else:
+                    logger.warning('Rejecting attempt to set Heat seed id: method does not match')
+            if 'seed_class_id' in slot_data:
+                if slot.method == ProgramMethod.CLASS_RESULT:
+                    slot.seed_id = slot_data['seed_class_id']
+                else:
+                    logger.warning('Rejecting attempt to set Class seed id: method does not match')
+            if 'seed_rank' in slot_data:
+                slot.seed_rank = slot_data['seed_rank']
+
+        self.commit()
+
+        return True
+
     # Race Classes
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
@@ -1001,7 +1369,11 @@ class RHData():
             name='',
             description='',
             format_id=RHUtils.FORMAT_ID_NONE,
-            cacheStatus=CacheStatus.INVALID
+            cacheStatus=CacheStatus.INVALID,
+            win_condition=0,
+            rounds=0,
+            heatAdvanceType=1,
+            order=None
             )
         self._Database.DB.session.add(new_race_class)
         self.commit()
@@ -1027,7 +1399,11 @@ class RHData():
             description=source_class.description,
             format_id=source_class.format_id,
             results=None,
-            cacheStatus=CacheStatus.INVALID)
+            cacheStatus=CacheStatus.INVALID,
+            win_condition=source_class.win_condition,
+            rounds=source_class.rounds,
+            heatAdvanceType=source_class.heatAdvanceType,
+            order=None)
 
         self._Database.DB.session.add(new_class)
         self._Database.DB.session.flush()
@@ -1056,10 +1432,18 @@ class RHData():
 
         if 'class_name' in data:
             race_class.name = data['class_name']
-        if 'class_format' in data:
-            race_class.format_id = data['class_format']
         if 'class_description' in data:
             race_class.description = data['class_description']
+        if 'class_format' in data:
+            race_class.format_id = data['class_format']
+        if 'win_condition' in data:
+            race_class.win_condition = data['win_condition']
+        if 'rounds' in data:
+            race_class.rounds = data['rounds']
+        if 'heat_advance' in data:
+            race_class.heatAdvanceType = data['heat_advance']
+        if 'order' in data:
+            race_class.order = data['order']
 
         race_list = self._Database.SavedRaceMeta.query.filter_by(class_id=race_class_id).all()
 
@@ -1080,6 +1464,8 @@ class RHData():
             heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
             for heat in heats:
                 self.clear_results_heat(heat.id)
+
+        #TODO: Clear cache appropriately for new values win_condition, rounds, order
 
         self.commit()
 
@@ -1306,20 +1692,20 @@ class RHData():
                 race_format.lap_grace_sec = init['lap_grace_sec']
             if 'staging_fixed_tones' in init:
                 race_format.staging_fixed_tones = init['staging_fixed_tones']
+            if 'staging_tones' in init:
+                race_format.staging_tones = init['staging_tones']
             if 'start_delay_min_ms' in init:
                 race_format.start_delay_min_ms = init['start_delay_min_ms']
             if 'start_delay_max_ms' in init:
                 race_format.start_delay_max_ms = init['start_delay_max_ms']
-            if 'staging_tones' in init:
-                race_format.staging_tones = init['staging_tones']
-            if 'number_laps_win' in init:
-                race_format.number_laps_win = init['number_laps_win']
-            if 'win_condition' in init:
-                race_format.win_condition = init['win_condition']
-            if 'team_racing_mode' in init:
-                race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
             if 'start_behavior' in init:
                 race_format.start_behavior = init['start_behavior']
+            if 'win_condition' in init:
+                race_format.win_condition = init['win_condition']
+            if 'number_laps_win' in init:
+                race_format.number_laps_win = init['number_laps_win']
+            if 'team_racing_mode' in init:
+                race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
 
         self._Database.DB.session.add(race_format)
         self.commit()
@@ -1368,27 +1754,27 @@ class RHData():
         if 'format_name' in data:
             race_format.name = data['format_name']
         if 'race_mode' in data:
-            race_format.race_mode = data['race_mode']
+            race_format.race_mode = data['race_mode'] if isinstance(data['race_mode'], int) else 0
         if 'race_time_sec' in data:
-            race_format.race_time_sec = data['race_time_sec']
+            race_format.race_time_sec = data['race_time_sec'] if isinstance(data['race_time_sec'], int) else 0
         if 'lap_grace_sec' in data:
-            race_format.lap_grace_sec = data['lap_grace_sec']
+            race_format.lap_grace_sec = data['lap_grace_sec'] if isinstance(data['lap_grace_sec'], int) else 0
         if 'staging_fixed_tones' in data:
-            race_format.staging_fixed_tones = data['staging_fixed_tones']
-        if 'start_delay_min_ms' in data:
-            race_format.start_delay_min_ms = data['start_delay_min_ms']
-        if 'start_delay_max_ms' in data:
-            race_format.start_delay_max_ms = data['start_delay_max_ms']
+            race_format.staging_fixed_tones = data['staging_fixed_tones'] if isinstance(data['staging_fixed_tones'], int) else 0
         if 'staging_tones' in data:
-            race_format.staging_tones = data['staging_tones']
-        if 'number_laps_win' in data:
-            race_format.number_laps_win = data['number_laps_win']
-        if 'win_condition' in data:
-            race_format.win_condition = data['win_condition']
-        if 'team_racing_mode' in data:
-            race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+            race_format.staging_tones = data['staging_tones'] if isinstance(data['staging_tones'], int) else 0
+        if 'start_delay_min_ms' in data:
+            race_format.start_delay_min_ms = data['start_delay_min_ms'] if isinstance(data['start_delay_min_ms'], int) else 0
+        if 'start_delay_max_ms' in data:
+            race_format.start_delay_max_ms = data['start_delay_max_ms'] if isinstance(data['start_delay_max_ms'], int) else 0
         if 'start_behavior' in data:
-            race_format.start_behavior = data['start_behavior']
+            race_format.start_behavior = data['start_behavior'] if isinstance(data['start_behavior'], int) else 0
+        if 'win_condition' in data:
+            race_format.win_condition = data['win_condition'] if isinstance(data['win_condition'], int) else 0
+        if 'number_laps_win' in data:
+            race_format.number_laps_win = data['number_laps_win'] if isinstance(data['number_laps_win'], int) else 0
+        if 'team_racing_mode' in data:
+            race_format.team_racing_mode = True if data['team_racing_mode'] else False
 
         self.commit()
 
@@ -1755,7 +2141,7 @@ class RHData():
             'race_id': race_id,
             })
 
-        logger.info('Race {0} reaasigned to heat {1}'.format(race_id, new_heat_id))
+        logger.info('Race {0} reassigned to heat {1}'.format(race_id, new_heat_id))
 
         return race_meta, new_heat
 
@@ -1886,6 +2272,8 @@ class RHData():
         self._Database.DB.session.query(self._Database.SavedRaceLap).delete()
         self._Database.DB.session.query(self._Database.LapSplit).delete()
         self.commit()
+        self.reset_pilot_used_frequencies()
+        self.reset_heat_plans()
         logger.info('Database saved races reset')
         return True
 

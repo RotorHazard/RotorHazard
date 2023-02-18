@@ -207,6 +207,7 @@ def appendToBaseFilename(fileNameStr, addStr):
         retStr += '.' + sList[1]
     return retStr
 
+# Converts Hue/Saturation/Lightness color to hexadecimal
 def hslToHex(h, s, l):
     if not h:
         h = random.randint(0, 359)
@@ -247,6 +248,7 @@ def hslToHex(h, s, l):
 
     return '#{0:02x}{1:02x}{2:02x}'.format(r, g, b)
 
+# Attempts to launch a web browser on host system
 def launchBrowser(hostStr, httpPortNum=0, pageNameStr=None, launchCmdStr=None):
     try:
         urlStr = hostStr
@@ -269,3 +271,80 @@ def launchBrowser(hostStr, httpPortNum=0, pageNameStr=None, launchCmdStr=None):
             webbrowser.open(urlStr)
     except Exception:
         logger.exception("Error launching browser")
+
+# Auto-frequency algorithm prioritizing minimum channel changes
+def find_best_slot_node_basic(available_nodes):
+    # if only one match has priority
+    for an_idx, node in enumerate(available_nodes):
+        num_priority = 0
+        best_match = 0
+        for idx, option in enumerate(node['matches']):
+            if option['priority']:
+                num_priority += 1
+                best_match = idx
+
+        if num_priority == 1:
+            return node, node['matches'][best_match]['slot'], an_idx
+
+    # if any match has priority
+    for an_idx, node in enumerate(available_nodes):
+        order = list(range(len(node['matches'])))
+        random.shuffle(order)
+        for idx in order:
+            if node['matches'][idx]['priority']:
+                return node, node['matches'][idx]['slot'], an_idx
+
+    # if only match
+    for an_idx, node in enumerate(available_nodes):
+        if len(node['matches']) == 1:
+            return node, node['matches'][0]['slot'], an_idx
+
+    # if any match
+    for an_idx, node in enumerate(available_nodes):
+        if len(node['matches']):
+            idx = random.randint(0, len(node['matches']) - 1)
+            return node, node['matches'][idx]['slot'], an_idx
+
+    return None, None, None
+
+# Auto-frequency algorithm suitable for Adaptive Calibration
+def find_best_slot_node_adaptive(available_nodes):
+    # if only match has priority
+    for an_idx, node in enumerate(available_nodes):
+        if len(node['matches']) == 1:
+            if node['matches'][0]['priority']:
+                return node, node['matches'][0]['slot'], an_idx
+
+    # if only match
+    for an_idx, node in enumerate(available_nodes):
+        if len(node['matches']) == 1:
+            return node, node['matches'][0]['slot'], an_idx
+
+    # if one match has priority
+    for an_idx, node in enumerate(available_nodes):
+        num_priority = 0
+        best_match = 0
+        for idx, option in enumerate(node['matches']):
+            if option['priority']:
+                num_priority += 1
+                best_match = idx
+
+        if num_priority == 1:
+            return node, node['matches'][best_match]['slot'], an_idx
+
+    # if any match has priority
+    for an_idx, node in enumerate(available_nodes):
+        order = list(range(len(node['matches'])))
+        random.shuffle(order)
+        for idx in order:
+            if node['matches'][idx]['priority']:
+                return node, node['matches'][idx]['slot'], an_idx
+
+    # if any match
+    for an_idx, node in enumerate(available_nodes):
+        if len(node['matches']):
+            idx = random.randint(0, len(node['matches']) - 1)
+            return node, node['matches'][idx]['slot'], an_idx
+
+    return None, None, None
+

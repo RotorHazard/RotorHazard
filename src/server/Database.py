@@ -9,6 +9,10 @@ from flask_sqlalchemy import SQLAlchemy
 
 DB = SQLAlchemy()
 
+# Language placeholder (Overwritten after module init)
+def __(*_args):
+    pass
+
 #
 # Database Models
 #
@@ -26,6 +30,21 @@ class Pilot(DB.Model):
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
+    used_frequencies = DB.Column(DB.String, nullable=True)
+
+    def displayCallsign(self):
+        if self.callsign:
+            return self.callsign
+        if self.name:
+            return self.name
+        return "{} {}".format(__('Pilot'), id)
+
+    def displayName(self):
+        if self.name:
+            return self.name
+        if self.callsign:
+            return self.callsign
+        return "{} {}".format(__('Pilot'), id)
 
     def spokenName(self):
         if self.phonetic:
@@ -34,7 +53,7 @@ class Pilot(DB.Model):
             return self.callsign
         if self.name:
             return self.name
-        return id
+        return "{} {}".format(__('Pilot'), id)
 
     def __repr__(self):
         return '<Pilot %r>' % self.id
@@ -46,9 +65,22 @@ class Heat(DB.Model):
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
+    order = DB.Column(DB.Integer, nullable=True)
+    status = DB.Column(DB.Integer, nullable=False)
+    auto_frequency = DB.Column(DB.Boolean, nullable=False)
+
+    def displayname(self):
+        if self.note:
+            return self.note
+        return "{} {}".format(__('Heat'), str(self.id))
 
     def __repr__(self):
         return '<Heat %r>' % self.id
+
+class HeatStatus:
+    PLANNED = 0
+    PROJECTED = 1
+    CONFIRMED = 2
 
 class HeatNode(DB.Model):
     __tablename__ = 'heat_node'
@@ -57,12 +89,21 @@ class HeatNode(DB.Model):
     )
     id = DB.Column(DB.Integer, primary_key=True)
     heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
+    node_index = DB.Column(DB.Integer, nullable=True)
     pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     color = DB.Column(DB.String(6), nullable=True)
+    method = DB.Column(DB.Integer, nullable=False)
+    seed_rank = DB.Column(DB.Integer, nullable=True)
+    seed_id = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<HeatNode %r>' % self.id
+
+class ProgramMethod:
+    NONE = -1
+    ASSIGN = 0
+    HEAT_RESULT = 1
+    CLASS_RESULT = 2
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'
@@ -70,11 +111,25 @@ class RaceClass(DB.Model):
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    win_condition = DB.Column(DB.Integer, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.Integer, nullable=False)
+    rounds = DB.Column(DB.Integer, nullable=False)
+    heatAdvanceType = DB.Column(DB.Integer, nullable=False)
+    order = DB.Column(DB.Integer, nullable=True)
+
+    def displayname(self):
+        if self.name:
+            return self.name
+        return "{} {}".format(__('Class'), str(self.id))
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
+
+class HeatAdvanceType:
+    NONE = 0
+    NEXT_HEAT = 1
+    NEXT_ROUND = 2
 
 class LapSplit(DB.Model):
     __tablename__ = 'lap_split'
@@ -185,3 +240,5 @@ class GlobalSettings(DB.Model):
     option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String, nullable=False)
 
+    def __repr__(self):
+        return '<GlobalSetting %r>' % self.id

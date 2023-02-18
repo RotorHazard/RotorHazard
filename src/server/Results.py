@@ -12,6 +12,8 @@ from monotonic import monotonic
 from eventmanager import Evt, EventManager
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
+CACHE_TIMEOUT = 10
+
 Events = EventManager()
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,7 @@ class CacheStatus:
 class Results():
     def __init__ (self, rhDataObj):
         self._RHData = rhDataObj
-    
+
 def invalidate_all_caches(rhDataObj):
     ''' Check all caches and invalidate any paused builds '''
     rhDataObj.clear_results_savedRaceMetas()
@@ -150,6 +152,131 @@ def build_atomic_results_caches(rhDataObj, params):
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
+def get_results_heat(RHData, heat):
+    if len(RHData.get_savedRaceMetas_by_heat(heat.id)):
+        if heat.cacheStatus == CacheStatus.INVALID:
+            logger.info('Rebuilding Heat %d cache', heat.id)
+            build = build_atomic_result_cache(RHData, heat_id=heat.id) 
+            RHData.set_results_heat(heat.id, build)
+            return {
+                'result': True,
+                'data': build['results']
+                }
+        else:
+            expires = monotonic() + CACHE_TIMEOUT
+            while True:
+                gevent.idle()
+                if heat.cacheStatus == CacheStatus.VALID:
+                    return {
+                        'result': True,
+                        'data': heat.results
+                        }
+                elif monotonic() > expires:
+                    return {
+                        'result': False,
+                        'data': None
+                        }
+    else:
+        return {
+            'result': True,
+            'data': None
+            }
+
+def get_results_race_class(RHData, race_class):
+    if len(RHData.get_savedRaceMetas_by_raceClass(race_class.id)):
+        if race_class.cacheStatus == CacheStatus.INVALID:
+            logger.info('Rebuilding Class %d cache', race_class.id)
+            build = build_atomic_result_cache(RHData, class_id=race_class.id)
+            RHData.set_results_raceClass(race_class.id, build)
+            return {
+                'result': True,
+                'data': build['results']
+                }
+        else:
+            expires = monotonic() + CACHE_TIMEOUT
+            while True:
+                gevent.idle()
+                if race_class.cacheStatus == CacheStatus.VALID:
+                    return {
+                        'result': True,
+                        'data': race_class.results
+                        }
+                elif monotonic() > expires:
+                    return {
+                        'result': False,
+                        'data': None
+                        }
+    else:
+        return {
+            'result': True,
+            'data': None
+            }
+
+def get_results_race(RHData, heat, race):
+    if race.cacheStatus == CacheStatus.INVALID:
+        logger.info('Rebuilding Race (Heat %d Round %d) cache', heat.id, race.round_id)
+        build = build_atomic_result_cache(RHData, heat_id=heat.id, round_id=race.round_id)
+        RHData.set_results_savedRaceMeta(race.id, build)
+        return {
+            'result': True,
+            'data': build['results']
+            }
+    else:
+        expires = monotonic() + CACHE_TIMEOUT
+        while True:
+            gevent.idle()
+            if race.cacheStatus == CacheStatus.VALID:
+                return {
+                    'result': True,
+                    'data': race.results
+                    }
+            elif monotonic() > expires:
+                return {
+                    'result': False,
+                    'data': None
+                    }
+
+def get_results_event(RHData):
+    if RHData.get_results_event()['cacheStatus'] == CacheStatus.INVALID:
+        logger.info('Rebuilding Event cache')
+        results = calc_leaderboard(RHData)
+        RHData.set_results_event({
+            'results': json.dumps(results),
+            'cacheStatus': CacheStatus.VALID
+            })
+        return {
+            'result': True,
+            'data': results
+            }
+    else:
+        expires = monotonic() + CACHE_TIMEOUT
+        while True:
+            gevent.idle()
+            eventCache = RHData.get_results_event()
+            if eventCache['cacheStatus'] == CacheStatus.VALID:
+                try:
+                    results = json.loads(eventCache['results'])
+                    return {
+                        'result': True,
+                        'data': results
+                        }
+                except:
+                    RHData.set_results_event({
+                        'results': False,
+                        'cacheStatus': CacheStatus.INVALID
+                        })
+                    logger.error('Unable to retrieve "valid" event cache from RHData')
+                    return {
+                        'result': False,
+                        'data': None
+                        }
+            elif monotonic() > expires:
+                logger.warning('Cache build timed out: Event Summary')
+                return {
+                    'result': False,
+                    'data': None
+                    }
+
 def calc_leaderboard(rhDataObj, **params):
     ''' Generates leaderboards '''
     USE_CURRENT = False
@@ -234,17 +361,10 @@ def calc_leaderboard(rhDataObj, **params):
 
     leaderboard = []
 
-    for pilot in rhDataObj.get_pilots():
-        gevent.sleep()
-        if USE_CURRENT:
-            found_pilot = False
-            node_index = 0
-            laps = []
-            for node_index in raceObj.node_pilots:
-                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
-                    laps = raceObj.get_active_laps()[node_index]
-                    found_pilot = True
-                    break
+    if USE_CURRENT and raceObj.current_heat == RHUtils.HEAT_ID_NONE:
+        for node_index in range(raceObj.num_nodes):
+            if node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
+                laps = raceObj.get_active_laps()[node_index]
 
             if laps:
                 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
@@ -254,83 +374,120 @@ def calc_leaderboard(rhDataObj, **params):
             else:
                 total_laps = 0
 
-            if found_pilot and profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+            if (profile_freqs["b"][node_index] and profile_freqs["c"][node_index]):
+                callsign = profile_freqs["b"][node_index] + str(profile_freqs["c"][node_index])
+            else:
+                callsign = str(profile_freqs["f"][node_index])
+
+            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
                 leaderboard.append({
-                    'pilot_id': pilot.id,
-                    'callsign': pilot.callsign,
-                    'team_name': pilot.team,
+                    'pilot_id': None,
+                    'callsign': callsign,
+                    'team_name': None,
                     'laps': total_laps,
                     'holeshots': None,
                     'starts': 1 if len(laps) > 0 else 0,
                     'node': node_index,
                     'current_laps': laps
                 })
-        else:
-            # find hole shots
-            holeshot_laps = []
-            pilotnode = None
-            total_laps = 0
-            race_starts = 0
+    else:
+        for pilot in rhDataObj.get_pilots():
+            gevent.sleep()
+            if USE_CURRENT:
+                found_pilot = False
+                node_index = 0
+                laps = []
+                for node_index in raceObj.node_pilots:
+                    if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
+                        laps = raceObj.get_active_laps()[node_index]
+                        found_pilot = True
+                        break
 
-            for race in selected_races:
-                if race_format:
-                    this_race_format = race_format
-                else:
-                    this_race_format = rhDataObj.get_raceFormat(race.format_id)
-
-                pilotraces = selected_pilotraces[race.id]
-
-                if len(pilotraces):
-                    pilot_crossings = []
-                    for lap in selected_race_laps:
-                        if lap.pilot_id == pilot.id:
-                            pilot_crossings.append(lap)
-
-                    for pilotrace in pilotraces:
-                        if pilotrace.pilot_id == pilot.id:
-                            pilotnode = pilotrace.node_index
-                            gevent.sleep()
-
-                            race_laps = []
-                            for lap in pilot_crossings:
-                                if lap.pilotrace_id == pilotrace.id:
-                                    race_laps.append(lap) 
-
-                            total_laps += len(race_laps)
-
-                            if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
-                                if len(race_laps):
-                                    race_starts += 1
-                            else:
-                                if len(race_laps):
-                                    holeshot_lap = race_laps[0]
-
-                                    if holeshot_lap:
-                                        holeshot_laps.append(holeshot_lap.id)
-                                        race_starts += 1
-                                        total_laps -= 1
-
-                    pilot_laps = []
-                    if len(holeshot_laps):
-                        for lap in selected_race_laps:
-                            if lap.pilot_id == pilot.id and \
-                                lap.id not in holeshot_laps:
-                                pilot_laps.append(lap)
+                if laps:
+                    if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                        total_laps = len(laps)
                     else:
-                        pilot_laps = pilot_crossings
+                        total_laps = len(laps) - 1
+                else:
+                    total_laps = 0
 
-            if race_starts > 0:
-                leaderboard.append({
-                    'pilot_id': pilot.id,
-                    'callsign': pilot.callsign,
-                    'team_name': pilot.team,
-                    'laps': total_laps,
-                    'holeshots': holeshot_laps,
-                    'starts': race_starts,
-                    'node': pilotnode,
-                    'pilot_crossings': pilot_crossings,
-                    'pilot_laps': pilot_laps
-                })
+                if found_pilot and profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                    leaderboard.append({
+                        'pilot_id': pilot.id,
+                        'callsign': pilot.callsign,
+                        'team_name': pilot.team,
+                        'laps': total_laps,
+                        'holeshots': None,
+                        'starts': 1 if len(laps) > 0 else 0,
+                        'node': node_index,
+                        'current_laps': laps
+                    })
+            else:
+                # find hole shots
+                holeshot_laps = []
+                pilotnode = None
+                total_laps = 0
+                race_starts = 0
+
+                for race in selected_races:
+                    if race_format:
+                        this_race_format = race_format
+                    else:
+                        this_race_format = rhDataObj.get_raceFormat(race.format_id)
+
+                    pilotraces = selected_pilotraces[race.id]
+
+                    if len(pilotraces):
+                        pilot_crossings = []
+                        for lap in selected_race_laps:
+                            if lap.pilot_id == pilot.id:
+                                pilot_crossings.append(lap)
+
+                        for pilotrace in pilotraces:
+                            if pilotrace.pilot_id == pilot.id:
+                                pilotnode = pilotrace.node_index
+                                gevent.sleep()
+
+                                race_laps = []
+                                for lap in pilot_crossings:
+                                    if lap.pilotrace_id == pilotrace.id:
+                                        race_laps.append(lap) 
+
+                                total_laps += len(race_laps)
+
+                                if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
+                                    if len(race_laps):
+                                        race_starts += 1
+                                else:
+                                    if len(race_laps):
+                                        holeshot_lap = race_laps[0]
+
+                                        if holeshot_lap:
+                                            holeshot_laps.append(holeshot_lap.id)
+                                            race_starts += 1
+                                            total_laps -= 1
+
+                        pilot_laps = []
+                        if len(holeshot_laps):
+                            for lap in selected_race_laps:
+                                if lap.pilot_id == pilot.id and \
+                                    lap.id not in holeshot_laps:
+                                    pilot_laps.append(lap)
+                        else:
+                            pilot_laps = pilot_crossings
+
+                if race_starts > 0:
+                    leaderboard.append({
+                        'pilot_id': pilot.id,
+                        'callsign': pilot.callsign,
+                        'team_name': pilot.team,
+                        'laps': total_laps,
+                        'holeshots': holeshot_laps,
+                        'starts': race_starts,
+                        'node': pilotnode,
+                        'pilot_crossings': pilot_crossings,
+                        'pilot_laps': pilot_laps
+                    })
 
     for result_pilot in leaderboard:
         gevent.sleep()
@@ -820,6 +977,115 @@ def calc_team_leaderboard(raceObj, rhDataObj):
         return leaderboard_output
     return None
 
+def calc_special_class_ranking_leaderboard(rhDataObj, race_class, rounds=None):
+    class_win_condition = race_class.win_condition
+
+    if class_win_condition >= 4:
+        if rounds is None:
+            rounds = class_win_condition - 3
+
+        race_format = rhDataObj.get_raceFormat(race_class.format_id)
+        heats = rhDataObj.get_heats_by_class(race_class.id)
+
+        pilotresults = {}
+        for heat in heats:
+            races = rhDataObj.get_savedRaceMetas_by_heat(heat.id)
+
+            for race in races:
+                race_result = get_results_race(rhDataObj, heat, race)
+
+                for pilotresult in race_result['data']['by_race_time']:
+                    if pilotresult['pilot_id'] not in pilotresults:
+                        pilotresults[pilotresult['pilot_id']] = []
+                    pilotresults[pilotresult['pilot_id']].append(pilotresult)
+
+        leaderboard = []
+        for pilotresultlist in pilotresults:
+            pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+            pilot_result = pilot_result[:rounds]
+
+            new_pilot_result = {}
+            new_pilot_result['pilot_id'] = pilot_result[0]['pilot_id']
+            new_pilot_result['callsign'] = pilot_result[0]['callsign']
+            new_pilot_result['team_name'] = pilot_result[0]['team_name']
+            new_pilot_result['node'] = pilot_result[0]['node']
+            new_pilot_result['laps'] = 0
+            new_pilot_result['starts'] = 0
+            new_pilot_result['total_time_raw'] = 0
+            new_pilot_result['total_time_laps_raw'] = 0
+
+            for race in pilot_result:
+                new_pilot_result['laps'] += race['laps']
+                new_pilot_result['starts'] += race['starts']
+                new_pilot_result['total_time_raw'] += race['total_time_raw']
+                new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
+
+                # new_leaderboard['fastest_lap'] += race['fastest_lap']
+                # new_leaderboard['fastest_lap_source'] += race['']
+                # new_leaderboard['consecutives'] += race['consecutives']
+                # new_leaderboard['consecutives_source'] += race['']
+
+            new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps']
+
+            timeFormat = rhDataObj.get_option('timeFormat')
+            new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
+            new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
+            new_pilot_result['average_lap'] = RHUtils.time_format(new_pilot_result['average_lap_raw'], timeFormat)
+
+            # result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
+            # result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
+            # result_pilot['consecutives_raw'] = result_pilot['consecutives']
+            # result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
+
+            leaderboard.append(new_pilot_result)
+
+        if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
+            # Sort by laps time
+            leaderboard = sorted(leaderboard, key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+
+            # determine ranking
+            last_rank = '-'
+            last_rank_laps = 0
+            last_rank_time = 0
+            for i, row in enumerate(leaderboard, start=1):
+                pos = i
+                if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
+                    pos = last_rank
+                last_rank = pos
+                last_rank_laps = row['laps']
+                last_rank_time = row['total_time_laps_raw']
+
+                row['position'] = pos
+        else:
+            # Sort by race time
+            leaderboard = sorted(leaderboard, key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+
+            # determine ranking
+            last_rank = '-'
+            last_rank_laps = 0
+            last_rank_time = 0
+            for i, row in enumerate(leaderboard, start=1):
+                pos = i
+                if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                    pos = last_rank
+                last_rank = pos
+                last_rank_laps = row['laps']
+                last_rank_time = row['total_time_raw']
+
+                row['position'] = pos
+                    
+        return leaderboard
+    return False
+
 def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
     race_format = raceObj.format
     if race_format:
@@ -1041,7 +1307,7 @@ def check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_first_to_x(raceObj, interfaceObj, **kwargs):
+def check_win_first_to_x(raceObj, interfaceObj, **_kwargs):
     race_format = raceObj.format
     if race_format.number_laps_win: # must have laps > 0 to win
         leaderboard = raceObj.results['by_race_time']
@@ -1378,7 +1644,7 @@ def check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
         'status': WinStatus.NONE
     }
 
-def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs):
+def check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **_kwargs):
     race_format = raceObj.format
     if race_format.number_laps_win: # must have laps > 0 to win
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_race_time']

@@ -1,11 +1,12 @@
 '''JSON data exporter'''
 
 import logging
-logger = logging.getLogger(__name__)
 import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from data_export import DataExporter
+
+logger = logging.getLogger(__name__)
 
 def registerHandlers(args):
     if 'registerFn' in args:
@@ -139,7 +140,6 @@ def assemble_formats(RHData, PageCache, Language):
     return payload
 
 def assemble_results(RHData, PageCache, Language):
-    # TODO: Make results friendly
     payload = PageCache.get_cache()
     return payload
 

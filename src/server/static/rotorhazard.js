@@ -1017,6 +1017,10 @@ var rotorhazard = {
 		1: 'One',
 		0: 'None',
 	},
+	//
+	event: {}, // race data
+	options: {}, // server options
+
 	language_strings: {},
 	interface_language: '',
 	// text-to-speech callout options
@@ -1538,7 +1542,7 @@ jQuery(document).ready(function($){
 	// Popup generics
 	init_popup_generics();
 
-	$('.cancel').click(function() {
+	$(document).on('click', '.cancel', function(el) {
 		$.magnificPopup.close();
 	});
 
@@ -1718,7 +1722,15 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				row.data('source', source_text);
 				row.attr('title', source_text);
 			} else {
-				row.append('<td class="fast">'+ lap +'</td>');
+				var el = $('<td class="fast">'+ lap +'</td>');
+				if ('min_lap' in rotorhazard
+					&& rotorhazard.min_lap > 0
+					&& leaderboard[i].fastest_lap_raw > 0
+					&& (rotorhazard.min_lap * 1000) > leaderboard[i].fastest_lap_raw
+					) {
+					el.addClass('min-lap-warning');
+				}
+				row.append(el);
 			}
 
 		}
@@ -2036,7 +2048,7 @@ var freq = {
 	updateBlock: function(fObj, node_idx) {
 		// populate channel block
 		var channelBlock = $('.channel-block[data-node="' + node_idx + '"]');
-		if (fObj.frequency == 0) {
+		if (fObj === null || fObj.frequency == 0) {
 			channelBlock.children('.ch').html('—');
 			channelBlock.children('.fr').html('');
 		} else {
@@ -2049,6 +2061,7 @@ var freq = {
 		for (var i in rotorhazard.nodes) {
 			this.updateBlock(rotorhazard.nodes[i].fObj, i);
 		}
+		this.updateBlock(null, null);
 	}
 }
 

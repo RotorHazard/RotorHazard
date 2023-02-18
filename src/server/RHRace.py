@@ -49,7 +49,7 @@ class RHRace():
     def init_node_finished_flags(self, heatNodes):
         self.node_has_finished = {}
         for heatNode in heatNodes:
-            if heatNode.node_index < self.num_nodes:
+            if heatNode.node_index is not None and heatNode.node_index < self.num_nodes:
                 if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
                     self.node_has_finished[heatNode.node_index] = False
                 else:

@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.3.0-dev.1" # Public release version code
-SERVER_API = 34 # Server API version
+SERVER_API = 38 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -82,11 +82,12 @@ from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from Plugins import Plugins, search_modules  #pylint: disable=import-error
+from Plugins import search_modules  #pylint: disable=import-error
 from Sensors import Sensors  #pylint: disable=import-error
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus, StagingTones
 from data_export import DataExportManager
+from HeatGenerator import HeatGeneratorManager
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -177,6 +178,7 @@ RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_
 PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
+Database.__ = __ # Pass language to Database module
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
 TONES_NONE = 0
@@ -284,18 +286,21 @@ def getCurrentDbRaceFormat():
         return None
 
 def setCurrentRaceFormat(race_format, **kwargs):
-    if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
-        RHData.set_option('currentFormat', race_format.id)
-        # create a shared instance
-        RACE.format = RHRaceFormat.copy(race_format)
-        RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
-        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-        RACE.team_cacheStatus = Results.CacheStatus.INVALID
-    else:
-        RACE.format = race_format
+    if RACE.race_status == RaceStatus.READY:
+        if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
+            RHData.set_option('currentFormat', race_format.id)
+            # create a shared instance
+            RACE.format = RHRaceFormat.copy(race_format)
+            RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
+            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+            RACE.team_cacheStatus = Results.CacheStatus.INVALID
+        else:
+            RACE.format = race_format
 
-    if 'silent' not in kwargs:
-        emit_current_laps()
+        if 'silent' not in kwargs:
+            emit_current_laps()
+    else:
+        logger.info('Preventing race format change: Race status not READY')
 
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
@@ -433,6 +438,13 @@ def render_current():
 def render_marshal():
     '''Route to race management page.'''
     return render_template('marshal.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        num_nodes=RACE.num_nodes)
+
+@APP.route('/format')
+@requires_auth
+def render_format():
+    '''Route to settings page.'''
+    return render_template('format.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
@@ -707,11 +719,10 @@ def on_get_settings():
 
 @SOCKET_IO.on('reset_auto_calibration')
 @catchLogExceptionsWrapper
-def on_reset_auto_calibration(data):
-    on_stop_race()
+def on_reset_auto_calibration(_data):
     on_discard_laps()
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
-    emit_race_format()
+    emit_race_status()
     on_stage_race()
 
 # Cluster events
@@ -737,7 +748,7 @@ def has_joined_cluster():
 @catchLogExceptionsWrapper
 def on_join_cluster():
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
-    emit_race_format()
+    emit_race_status()
     logger.info("Joined cluster")
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
@@ -765,7 +776,7 @@ def on_join_cluster_ex(data=None):
         except:
             logger.exception("Error making db-autoBkp / clearing races on split timer")
         setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
-        emit_race_format()
+        emit_race_status()
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
                 })
@@ -773,7 +784,7 @@ def on_join_cluster_ex(data=None):
 
 @SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
-def on_check_secondary_query(data):
+def on_check_secondary_query(_data):
     ''' Check-query received from primary; return response. '''
     payload = {
         'timestamp': monotonic_to_epoch_millis(monotonic())
@@ -845,14 +856,12 @@ def on_load_data(data):
             emit_heat_data(nobroadcast=True)
         elif load_type == 'class_data':
             emit_class_data(nobroadcast=True)
+        elif load_type == 'format_data':
+            emit_format_data(nobroadcast=True)
         elif load_type == 'pilot_data':
             emit_pilot_data(nobroadcast=True)
         elif load_type == 'result_data':
             emit_result_data(nobroadcast=True)
-        elif load_type == 'race_format':
-            emit_race_format(nobroadcast=True)
-        elif load_type == 'race_formats':
-            emit_race_formats(nobroadcast=True)
         elif load_type == 'node_tuning':
             emit_node_tuning(nobroadcast=True)
         elif load_type == 'enter_and_exit_at_levels':
@@ -895,10 +904,14 @@ def on_load_data(data):
             on_list_backups()
         elif load_type == 'exporter_list':
             emit_exporter_list()
+        elif load_type == 'heatgenerator_list':
+            emit_heatgenerator_list()
         elif load_type == 'cluster_status':
             emit_cluster_status()
         elif load_type == 'hardware_log_init':
             emit_current_log_file_to_socket()
+        else:
+            logger.warning('Called undefined load type: {}'.format(load_type))
 
 @SOCKET_IO.on('broadcast_message')
 @catchLogExceptionsWrapper
@@ -1202,9 +1215,12 @@ def on_set_scan(data):
 
 @SOCKET_IO.on('add_heat')
 @catchLogExceptionsWrapper
-def on_add_heat():
+def on_add_heat(data=None):
     '''Adds the next available heat number to the database.'''
-    RHData.add_heat()
+    if data and 'class' in data:
+        RHData.add_heat(init={'class_id': data['class']})
+    else:
+        RHData.add_heat()
     emit_heat_data()
 
 @SOCKET_IO.on('duplicate_heat')
@@ -1219,7 +1235,7 @@ def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RHData.alter_heat(data)
     if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
-        set_current_heat_data(heat.id)
+        set_current_heat_data(heat.id, silent=True)
     emit_heat_data(noself=True)
     if ('pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
@@ -1236,12 +1252,8 @@ def on_delete_heat(data):
     if result is not None:
         if LAST_RACE and LAST_RACE.current_heat == result:
             LAST_RACE = None  # if last-race heat deleted then clear last race
-        if RACE.current_heat == result:  # if current heat was deleted then load new heat data
-            heat_id = RHData.get_first_heat().id
-            if RACE.current_heat != heat_id:
-                logger.info('Changing current heat to Heat {0}'.format(heat_id))
-                RACE.current_heat = heat_id
-            set_current_heat_data(heat_id)
+        if RACE.current_heat == result:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
+            set_current_heat_data(RHUtils.HEAT_ID_NONE)
         emit_heat_data()
 
 @SOCKET_IO.on('add_race_class')
@@ -1429,13 +1441,7 @@ def on_alter_race(data):
 
     _race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    heatnote = new_heat.note
-    if heatnote:
-        name = heatnote
-    else:
-        name = new_heat.id
-
-    message = __('A race has been reassigned to {0}').format(name)
+    message = __('A race has been reassigned to {0}').format(new_heat.displayname())
     emit_priority_message(message, False)
 
     emit_race_list(nobroadcast=True)
@@ -1453,7 +1459,7 @@ def on_backup_database():
     if hasattr(base64, "encodebytes"):
         file_content = base64.encodebytes(file_content).decode()
     else:
-        file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+        file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method,undefined-variable
 
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
@@ -1599,7 +1605,7 @@ def on_reset_database(data):
         setCurrentRaceFormat(RHData.get_first_raceFormat())
     emit_heat_data()
     emit_pilot_data()
-    emit_race_format()
+    emit_format_data()
     emit_class_data()
     emit_current_laps()
     emit_result_data()
@@ -1639,6 +1645,43 @@ def on_export_database_file(data):
 
     logger.error('Data exporter "{0}" not found'.format(exporter))
     emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
+
+@SOCKET_IO.on('generate_heats_v2')
+@catchLogExceptionsWrapper
+def on_generate_heats_v2(data):
+    '''Run the selected Generator'''
+    available_nodes = 0
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
+    for node_index in range(RACE.num_nodes):
+        if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+            available_nodes += 1
+
+    generate_args = {
+        'input_class': data['input_class'],
+        'output_class': data['output_class'],
+        # 'suffix': data['suffix'],
+        # 'pilots_per_heat': int(data['pilots_per_heat']),
+        'available_nodes': available_nodes
+        }
+    generator = data['generator']
+
+    if heatgenerate_manager.hasGenerator(generator):
+        # do export
+        logger.info('Generating heats via {0}'.format(generator))
+        generate_result = heatgenerate_manager.generate(generator, generate_args)
+
+        if generate_result != False:
+            emit_heat_data()
+            emit_class_data()
+            Events.trigger(Evt.HEAT_GENERATE)
+        else:
+            logger.warning('Failed generating heats: generator returned no data')
+            emit_priority_message(__('Heat generation failed. (See log)'), False, nobroadcast=True)
+
+        return
+
+    logger.error('Heat generator "{0}" not found'.format(generator))
+    emit_priority_message(__('Heat generation failed. (See log)'), False, nobroadcast=True)
 
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
@@ -1712,7 +1755,7 @@ def on_download_logs(data):
             if hasattr(base64, "encodebytes"):
                 file_content = base64.encodebytes(file_content).decode()
             else:
-                file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+                file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method,undefined-variable
 
             emit_payload = {
                 'file_name': os.path.basename(zip_path_name),
@@ -1764,35 +1807,32 @@ def on_set_race_format(data):
             'race_format': race_format_val,
             })
 
-        emit_race_format()
+        emit_race_status()
         logger.info("set race format to '%s' (%s)" % (race_format.name, race_format.id))
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.info("Format change prevented by active race")
-        emit_race_format()
+        emit_race_status()
 
 @SOCKET_IO.on('add_race_format')
 @catchLogExceptionsWrapper
-def on_add_race_format():
+def on_add_race_format(data):
     '''Adds new format in the database by duplicating an existing one.'''
-    source_format = getCurrentRaceFormat()
-    new_format = RHData.duplicate_raceFormat(source_format.id)
-
-    on_set_race_format(data={ 'race_format': new_format.id })
+    source_format_id = data['source_format_id']
+    _new_format = RHData.duplicate_raceFormat(source_format_id)
+    emit_format_data()
 
 @SOCKET_IO.on('alter_race_format')
 @catchLogExceptionsWrapper
 def on_alter_race_format(data):
     ''' update race format '''
-    race_format = getCurrentDbRaceFormat()
-    data['format_id'] = race_format.id
     race_format, race_list = RHData.alter_raceFormat(data)
 
     if race_format != False:
         setCurrentRaceFormat(race_format)
 
         if 'format_name' in data:
-            emit_race_format()
+            emit_format_data()
             emit_class_data()
 
         if len(race_list):
@@ -1804,31 +1844,24 @@ def on_alter_race_format(data):
 
 @SOCKET_IO.on('delete_race_format')
 @catchLogExceptionsWrapper
-def on_delete_race_format():
-    '''Delete profile'''
-    raceformat = getCurrentDbRaceFormat()
-    result = RHData.delete_raceFormat(raceformat.id)
+def on_delete_race_format(data):
+    '''Delete race format'''
+    format_id = data['format_id']
+    result = RHData.delete_raceFormat(format_id)
 
     if result:
         first_raceFormat = RHData.get_first_raceFormat()
         setCurrentRaceFormat(first_raceFormat)
-        emit_race_format()
+        emit_format_data()
     else:
         if RACE.race_status == RaceStatus.READY:
             emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
         else:
             emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
 
-@SOCKET_IO.on("set_next_heat_behavior")
-@catchLogExceptionsWrapper
-def on_set_next_heat_behavior(data):
-    next_heat_behavior = int(data['next_heat_behavior'])
-    RHData.set_option("nextHeatBehavior", next_heat_behavior)
-    logger.info("set next heat behavior to %s" % next_heat_behavior)
-
 # LED Effects
 
-def emit_led_effect_setup(**params):
+def emit_led_effect_setup(**_params):
     '''Emits LED event/effect wiring options.'''
     if led_manager.isEnabled():
         effects = led_manager.getRegisteredEffects()
@@ -1875,7 +1908,7 @@ def emit_led_effect_setup(**params):
         # never broadcast
         emit('led_effect_setup_data', emit_payload)
 
-def emit_led_effects(**params):
+def emit_led_effects(**_params):
     if led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries()):
         effects = led_manager.getRegisteredEffects()
 
@@ -1982,18 +2015,35 @@ def on_stage_race():
     global LAST_RACE
     valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
-    heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
-    for heatNode in heatNodes:
-        if heatNode.node_index < RACE.num_nodes:
-            if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
-                valid_pilots = True
-                break
 
-    if request and valid_pilots is False:
-        emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
+    if heat_data:
+        heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
+        for heatNode in heatNodes:
+            if heatNode.node_index is not None and heatNode.node_index < RACE.num_nodes:
+                if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
+                    valid_pilots = True
+                    break
+
+        if request and valid_pilots is False:
+            emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
+    else:
+        heatNodes = []
+
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
+
+        class FauxHeatNode():
+            node_index = None
+            pilot_id = 1
+
+        for idx in range(RACE.num_nodes):
+            if (profile_freqs["f"][idx]):
+                heatNode = FauxHeatNode
+                heatNode.node_index = idx
+                heatNodes.append(heatNode)
 
     if CLUSTER:
         CLUSTER.emitToSplits('stage_race')
+
     race_format = getCurrentRaceFormat()
 
     if RACE.race_status != RaceStatus.READY:
@@ -2010,7 +2060,7 @@ def on_stage_race():
         # common race start events (do early to prevent processing delay when start is called)
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        if heat_data.class_id != RHUtils.CLASS_ID_NONE:
+        if heat_data and heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
             if class_format_id != RHUtils.FORMAT_ID_NONE:
                 class_format = RHData.get_raceFormat(class_format_id)
@@ -2032,7 +2082,6 @@ def on_stage_race():
         emit_current_laps() # Race page, blank laps to the web client
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
-        emit_race_format()
 
         staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
 
@@ -2087,6 +2136,10 @@ def on_stage_race():
 
 def autoUpdateCalibration():
     ''' Apply best tuning values to nodes '''
+    if RACE.current_heat == RHUtils.HEAT_ID_NONE:
+        logger.debug('Skipping auto calibration; server in practice mode')
+        return None
+
     for node_index, node in enumerate(INTERFACE.nodes):
         calibration = findBestValues(node, node_index)
 
@@ -2329,8 +2382,6 @@ def do_stop_race_actions(doSave=False):
         if len(min_laps_list) > 0:
             logger.info('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
-        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
-        INTERFACE.set_race_status(RaceStatus.DONE)
         Events.trigger(Evt.RACE_STOP, {
             'color': ColorVal.RED
         })
@@ -2341,10 +2392,10 @@ def do_stop_race_actions(doSave=False):
 
     else:
         logger.debug('No active race to stop')
-        RACE.race_status = RaceStatus.READY # Go back to ready state
-        INTERFACE.set_race_status(RaceStatus.READY)
-        Events.trigger(Evt.LAPS_CLEAR)
         delta_time = 0
+
+    RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+    INTERFACE.set_race_status(RaceStatus.DONE)
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
     if RHData.get_optionInt('startThreshLowerAmount') > 0 and \
@@ -2368,7 +2419,7 @@ def do_stop_race_actions(doSave=False):
 
 @SOCKET_IO.on('save_laps')
 @catchLogExceptionsWrapper
-def on_save_laps(data=None):
+def on_save_laps(_data=None):
     '''Handle "save" UI action'''
 
     if RACE.race_status == RaceStatus.RACING:
@@ -2379,12 +2430,19 @@ def on_save_laps(data=None):
 @catchLogExceptionsWrapper
 def do_save_actions():
     '''Save current laps data to the database.'''
+    if RACE.current_heat == RHUtils.HEAT_ID_NONE:
+        on_discard_laps(saved=True)
+        return False
 
-    # if race_has_laps == True:
     if CLUSTER:
         CLUSTER.emitToSplits('save_laps')
-    PageCache.set_valid(False)
+
     heat = RHData.get_heat(RACE.current_heat)
+
+    # Clear caches
+    RHData.clear_results_heat(RACE.current_heat)
+    RHData.clear_results_raceClass(heat.class_id)
+
     # Get the last saved round for the current heat
     max_round = RHData.get_max_round(RACE.current_heat)
 
@@ -2398,7 +2456,7 @@ def do_save_actions():
         'round_id': max_round+1,
         'heat_id': RACE.current_heat,
         'class_id': heat.class_id,
-        'format_id': RHData.get_option('currentFormat'),
+        'format_id': RACE.format.id if hasattr(RACE.format, 'id') else RHUtils.FORMAT_ID_NONE,
         'start_time': RACE.start_time_monotonic,
         'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -2411,42 +2469,48 @@ def do_save_actions():
         if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
             pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
 
-            race_data[node_index] = {
-                'race_id': new_race.id,
-                'pilot_id': pilot_id,
-                'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
-                'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
-                'enter_at': INTERFACE.nodes[node_index].enter_at_level,
-                'exit_at': INTERFACE.nodes[node_index].exit_at_level,
-                'laps': RACE.node_laps[node_index]
-                }
+            if pilot_id is not None:
+                race_data[node_index] = {
+                    'race_id': new_race.id,
+                    'pilot_id': pilot_id,
+                    'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
+                    'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
+                    'enter_at': INTERFACE.nodes[node_index].enter_at_level,
+                    'exit_at': INTERFACE.nodes[node_index].exit_at_level,
+                    'laps': RACE.node_laps[node_index]
+                    }
+
+                RHData.set_pilot_used_frequency(pilot_id, {
+                    'b': profile_freqs["b"][node_index],
+                    'c': profile_freqs["c"][node_index],
+                    'f': profile_freqs["f"][node_index]
+                    })
 
     RHData.add_race_data(race_data)
-
-    # spawn thread for updating results caches
-    cache_params = {
-        'race_id': new_race.id,
-        'heat_id': RACE.current_heat,
-        'round_id': new_race.round_id,
-    }
-    gevent.spawn(build_atomic_result_caches, cache_params)
 
     Events.trigger(Evt.LAPS_SAVE, {
         'race_id': new_race.id,
         })
 
     logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
+
     on_discard_laps(saved=True) # Also clear the current laps
-    # else:
-    #    on_discard_laps()
-    #    message = __('Discarding empty race')
-    #    emit_priority_message(message, False, nobroadcast=True)
+
+    race_class = RHData.get_raceClass(heat.class_id)
+    if race_class:
+        on_set_current_heat({'heat':RHData.get_next_heat_id(heat, race_class)})
+
+    # spawn thread for updating results caches
+    cache_params = {
+        'race_id': new_race.id,
+        'heat_id': new_race.heat_id,
+        'round_id': new_race.round_id,
+    }
+    gevent.spawn(build_atomic_result_caches, cache_params)
 
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
 def on_resave_laps(data):
-    PageCache.set_valid(False)
-
     heat_id = data['heat_id']
     round_id = data['round_id']
     callsign = data['callsign']
@@ -2464,6 +2528,12 @@ def on_resave_laps(data):
         'enter_at': enter_at,
         'exit_at': exit_at
         }
+
+    # Clear caches
+    RHData.clear_results_heat(heat_id)
+    heat = RHData.get_heat(heat_id)
+    RHData.clear_results_raceClass(heat.class_id)
+    RHData.clear_results_savedRaceMeta(race_id)
 
     RHData.alter_savedPilotRace(pilotrace_data)
 
@@ -2521,6 +2591,10 @@ def build_atomic_result_caches(params):
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
+
+    if RACE.race_status == RaceStatus.STAGING or RACE.race_status == RaceStatus.RACING:
+        on_stop_race()
+
     clear_laps()
     RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RaceStatus.READY)
@@ -2553,45 +2627,151 @@ def clear_laps():
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    heatnodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
-
     for node in INTERFACE.nodes:
         node.current_pilot_id = RHUtils.PILOT_ID_NONE
         if node.frequency and node.frequency > 0:
-            for heatnode in heatnodes:
-                if heatnode.node_index == node.index:
-                    node.current_pilot_id = heatnode.pilot_id
-                    break
+            if RACE.current_heat is not RHUtils.HEAT_ID_NONE:
+                heatnodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
+                for heatnode in heatnodes:
+                    if heatnode.node_index == node.index:
+                        node.current_pilot_id = heatnode.pilot_id
+                        break
 
         node.first_cross_flag = False
         node.show_crossing_flag = False
-    
-def set_current_heat_data(new_heat_id):
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
-    for idx in range(RACE.num_nodes):
-        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE
-        RACE.node_teams[idx] = None
 
-    for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
-        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+@SOCKET_IO.on('calc_pilots')
+@catchLogExceptionsWrapper
+def on_calc_pilots(data):
+    heat_id = data['heat']
+    calc_heat(heat_id)
 
-        if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-            RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
+@SOCKET_IO.on('calc_reset')
+@catchLogExceptionsWrapper
+def on_calc_reset(data):
+    data['status'] = Database.HeatStatus.PLANNED
+    on_alter_heat(data)
+    emit_heat_data()
+
+def calc_heat(heat_id, silent=False):
+    heat = RHData.get_heat(heat_id)
+
+    if (heat):
+        calc_result = RHData.calc_heat_pilots(heat_id, Results)
+
+        adaptive = bool(RHData.get_optionInt('calibrationMode'))
+
+        if adaptive:
+            calc_fn = RHUtils.find_best_slot_node_adaptive
         else:
-            RACE.node_teams[heatNode.node_index] = None
+            calc_fn = RHUtils.find_best_slot_node_basic
 
-    heat_data = RHData.get_heat(new_heat_id)
+        if calc_result['calc_success'] is not None:
+            RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
-    if heat_data.class_id != RHUtils.CLASS_ID_NONE:
-        class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
-        if class_format_id != RHUtils.FORMAT_ID_NONE:
-            class_format = RHData.get_raceFormat(class_format_id)
-            setCurrentRaceFormat(class_format)
-            logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
+        if calc_result['calc_success'] is None or \
+            (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False):
+            return 'success'
+        else:
+            if request and not silent:
+                emit_heat_plan_result(heat_id, calc_result)
 
-    if RHData.get_optionInt('calibrationMode'):
-        autoUpdateCalibration()
+            if calc_result['calc_success'] is False:
+                logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
+
+            return 'fail'
+
+    else:
+        return 'no-heat'
+
+def set_current_heat_data(new_heat_id, silent=False):
+    result = calc_heat(new_heat_id, silent)
+
+    if result == 'success':
+        finalize_current_heat_set(new_heat_id)
+    elif result == 'no-heat':
+        finalize_current_heat_set(RHUtils.HEAT_ID_NONE)
+
+def emit_heat_plan_result(new_heat_id, calc_result):
+    heat = RHData.get_heat(new_heat_id)
+    heatNodes = []
+
+    heatNode_objs = RHData.get_heatNodes_by_heat(heat.id)
+    heatNode_objs.sort(key=lambda x: x.id)
+
+    for heatNode in heatNode_objs:
+        heatNode_data = {
+            'node_index': heatNode.node_index,
+            'pilot_id': heatNode.pilot_id,
+            'callsign': None,
+            'method': heatNode.method,
+            'seed_rank': heatNode.seed_rank,
+            'seed_id': heatNode.seed_id
+            }
+        if heatNode.pilot_id:
+            pilot = RHData.get_pilot(heatNode.pilot_id)
+            if pilot:
+                heatNode_data['callsign'] = pilot.callsign
+
+        heatNodes.append(heatNode_data)
+
+    emit_payload = {
+        'heat': new_heat_id,
+        'displayname': heat.displayname(),
+        'slots': heatNodes,
+        'calc_result': calc_result
+    }
+
+    emit('heat_plan_result', emit_payload)
+
+@SOCKET_IO.on('confirm_heat_plan')
+@catchLogExceptionsWrapper
+def on_confirm_heat(data):
+    if 'heat_id' in data:
+        RHData.alter_heat({
+            'heat': data['heat_id'],
+            'status': Database.HeatStatus.CONFIRMED
+            }
+        )
+        emit_heat_data()
+        finalize_current_heat_set(data['heat_id'])
+
+def finalize_current_heat_set(new_heat_id):
+    RACE.current_heat = new_heat_id
+
+    if new_heat_id == RHUtils.HEAT_ID_NONE:
+        RACE.node_pilots = {}
+        RACE.node_teams = {}
+        logger.info("Switching to practice mode; races will not be saved until a heat is selected")
+
+    else:
+        RACE.node_pilots = {}
+        RACE.node_teams = {}
+        for idx in range(RACE.num_nodes):
+            RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE
+            RACE.node_teams[idx] = None
+
+        for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
+            if heatNode.node_index is not None:
+                RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+
+                if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
+                    RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
+                else:
+                    RACE.node_teams[heatNode.node_index] = None
+
+        heat_data = RHData.get_heat(new_heat_id)
+
+        if heat_data.class_id != RHUtils.CLASS_ID_NONE:
+            class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
+            if class_format_id != RHUtils.FORMAT_ID_NONE:
+                class_format = RHData.get_raceFormat(class_format_id)
+                setCurrentRaceFormat(class_format)
+                logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
+
+        adaptive = bool(RHData.get_optionInt('calibrationMode'))
+        if adaptive:
+            autoUpdateCalibration()
 
     Events.trigger(Evt.HEAT_SET, {
         'heat_id': new_heat_id,
@@ -2601,7 +2781,7 @@ def set_current_heat_data(new_heat_id):
     RACE.team_cacheStatus = Results.CacheStatus.INVALID
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
-    emit_race_format()
+    emit_race_status()
 
 @SOCKET_IO.on('set_current_heat')
 @catchLogExceptionsWrapper
@@ -2609,135 +2789,7 @@ def on_set_current_heat(data):
     '''Update the current heat variable and data.'''
     new_heat_id = data['heat']
     logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
-    RACE.current_heat = new_heat_id
     set_current_heat_data(new_heat_id)
-
-@SOCKET_IO.on('generate_heats')
-def on_generate_heats(data):
-    '''Spawn heat generator thread'''
-    gevent.spawn(generate_heats, data)
-
-@catchLogExceptionsWrapper
-def generate_heats(data):
-    '''Generate heats from qualifying class'''
-    RESULTS_TIMEOUT = 30 # maximum time to wait for results to generate
-
-    input_class = int(data['input_class'])
-    output_class = int(data['output_class'])
-    suffix = data['suffix']
-    pilots_per_heat = int(data['pilots_per_heat'])
-
-    if input_class == RHUtils.CLASS_ID_NONE:
-        results = {
-            'by_race_time': []
-        }
-        for pilot in RHData.get_pilots():
-            # *** if pilot is active
-            entry = {}
-            entry['pilot_id'] = pilot.id
-
-            pilot_node = RHData.get_recent_pilot_node(pilot.id)
-
-            if pilot_node:
-                entry['node'] = pilot_node.node_index
-            else:
-                entry['node'] = -1
-
-            results['by_race_time'].append(entry)
-
-        win_condition = WinCondition.NONE
-        cacheStatus = Results.CacheStatus.VALID
-    else:
-        race_class = RHData.get_raceClass(input_class)
-        race_format = RHData.get_raceFormat(race_class.format_id)
-        results = race_class.results
-        if race_format:
-            win_condition = race_format.win_condition
-            cacheStatus = race_class.cacheStatus
-        else:
-            win_condition = WinCondition.NONE
-            cacheStatus = Results.CacheStatus.VALID
-            logger.info('Unable to fetch format from race class {0}'.format(input_class))
-
-    if cacheStatus == Results.CacheStatus.INVALID:
-        # build new results if needed
-        logger.info("No class cache available for {0}; regenerating".format(input_class))
-        RHData.set_results_raceClass(race_class.id,
-            Results.build_atomic_result_cache(RHData, class_id=race_class.id)
-            )
-
-    time_now = monotonic()
-    timeout = time_now + RESULTS_TIMEOUT
-    while cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
-        gevent.sleep()
-        time_now = monotonic()
-
-    if cacheStatus == Results.CacheStatus.VALID:
-        if win_condition == WinCondition.NONE:
-
-            leaderboard = random.sample(results['by_race_time'], len(results['by_race_time']))
-        else:
-            leaderboard = results[results['meta']['primary_leaderboard']]
-
-        generated_heats = []
-        unplaced_pilots = []
-        new_heat = {}
-        assigned_pilots = 0
-
-        available_nodes = []
-
-        profile_freqs = json.loads(getCurrentProfile().frequencies)
-        for node_index in range(RACE.num_nodes):
-            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                available_nodes.append(node_index)
-
-        pilots_per_heat = min(pilots_per_heat, RACE.num_nodes, len(available_nodes))
-
-        for i,row in enumerate(leaderboard, start=1):
-            logger.debug("Placing {0} into heat {1}".format(row['pilot_id'], len(generated_heats)))
-
-            if row['node'] in new_heat or row['node'] not in available_nodes:
-                unplaced_pilots.append(row['pilot_id'])
-            else:
-                new_heat[row['node']] = row['pilot_id']
-
-            assigned_pilots += 1
-
-            if assigned_pilots >= pilots_per_heat or i == len(leaderboard):
-                # find slots for unassigned pilots
-                if len(unplaced_pilots):
-                    for pilot in unplaced_pilots:
-                        for index in available_nodes:
-                            if index in new_heat:
-                                continue
-                            else:
-                                new_heat[index] = pilot
-                                break
-
-                # heat is full, flush and start next heat
-                generated_heats.append(new_heat)
-                unplaced_pilots = []
-                new_heat = {}
-                assigned_pilots = 0
-
-        # commit generated heats to database, lower seeds first
-        letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-        for idx, heat in enumerate(reversed(generated_heats), start=1):
-            ladder = letters[len(generated_heats) - idx]
-            new_heat = RHData.add_heat({
-                'class_id': output_class,
-                'note': ladder + ' ' + suffix
-                }, heat)
-
-        logger.info("Generated {0} heats from class {1}".format(len(generated_heats), input_class))
-        SOCKET_IO.emit('heat_generate_done')
-
-        Events.trigger(Evt.HEAT_GENERATE)
-
-        emit_heat_data()
-    else:
-        logger.warning("Unable to generate heats from class {0}: can't get valid results".format(input_class))
-        SOCKET_IO.emit('heat_generate_done')
 
 @SOCKET_IO.on('delete_lap')
 @catchLogExceptionsWrapper
@@ -3049,6 +3101,7 @@ def emit_race_status(**params):
 
     emit_payload = {
             'race_status': RACE.race_status,
+            'race_format_id': RACE.format.id if hasattr(RACE.format, 'id') else None,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'race_staging_tones': race_format.staging_tones,
@@ -3248,71 +3301,6 @@ def emit_min_lap(**params):
     else:
         SOCKET_IO.emit('min_lap', emit_payload)
 
-def emit_race_format(**params):
-    '''Emits race format values.'''
-    race_format = getCurrentRaceFormat()
-    is_db_race_format = RHRaceFormat.isDbBased(race_format)
-    locked = not is_db_race_format or RHData.savedRaceMetas_has_raceFormat(race_format.id)
-    raceFormats = RHData.get_raceFormats()
-
-    emit_payload = {
-        'format_ids': [raceformat.id for raceformat in raceFormats],
-        'format_names': [raceformat.name for raceformat in raceFormats],
-        'current_format': race_format.id if is_db_race_format else None,
-        'format_name': race_format.name,
-        'race_mode': race_format.race_mode,
-        'race_time_sec': race_format.race_time_sec,
-        'lap_grace_sec': race_format.lap_grace_sec,
-        'staging_fixed_tones': race_format.staging_fixed_tones,
-        'start_delay_min': race_format.start_delay_min_ms,
-        'start_delay_max': race_format.start_delay_max_ms,
-        'staging_tones': race_format.staging_tones,
-        'number_laps_win': race_format.number_laps_win,
-        'win_condition': race_format.win_condition,
-        'start_behavior': race_format.start_behavior,
-        'team_racing_mode': 1 if race_format.team_racing_mode else 0,
-        'locked': locked
-    }
-    if ('nobroadcast' in params):
-        emit('race_format', emit_payload)
-    else:
-        SOCKET_IO.emit('race_format', emit_payload)
-        emit_current_leaderboard()
-
-def emit_race_formats(**params):
-    '''Emits all race formats.'''
-    formats = RHData.get_raceFormats()
-    emit_payload = {}
-    for race_format in formats:
-        format_copy = {
-            'format_name': race_format.name,
-            'race_mode': race_format.race_mode,
-            'race_time_sec': race_format.race_time_sec,
-            'lap_grace_sec': race_format.lap_grace_sec,
-            'staging_fixed_tones': race_format.staging_fixed_tones,
-            'start_delay_min': race_format.start_delay_min_ms,
-            'start_delay_max': race_format.start_delay_max_ms,
-            'staging_tones': race_format.staging_tones,
-            'number_laps_win': race_format.number_laps_win,
-            'win_condition': race_format.win_condition,
-            'start_behavior': race_format.start_behavior,
-            'team_racing_mode': 1 if race_format.team_racing_mode else 0,
-        }
-
-        has_race = RHData.savedRaceMetas_has_raceFormat(race_format.id)
-
-        if has_race:
-            format_copy['locked'] = True
-        else:
-            format_copy['locked'] = False
-
-        emit_payload[race_format.id] = format_copy
-
-    if ('nobroadcast' in params):
-        emit('race_formats', emit_payload)
-    else:
-        SOCKET_IO.emit('race_formats', emit_payload)
-
 def build_laps_list(active_race=RACE):
     current_laps = []
     for node_idx in range(active_race.num_nodes):
@@ -3354,15 +3342,15 @@ def build_laps_list(active_race=RACE):
                 'splits': splits
             })
 
-        if len(active_race.node_pilots) and active_race.node_pilots[node_idx]:
+        pilot_data = None
+        if node_idx in active_race.node_pilots:
             pilot = RHData.get_pilot(active_race.node_pilots[node_idx])
-            pilot_data = {
-                'id': pilot.id,
-                'name': pilot.name,
-                'callsign': pilot.callsign
-            }
-        else:
-            pilot_data = None
+            if pilot:
+                pilot_data = {
+                    'id': pilot.id,
+                    'name': pilot.name,
+                    'callsign': pilot.callsign
+                }
 
         current_laps.append({
             'laps': node_laps,
@@ -3418,7 +3406,6 @@ def emit_race_list(**params):
     heats = {}
     for heat in RHData.get_heats():
         if RHData.savedRaceMetas_has_heat(heat.id):
-            heatnote = RHData.get_heat_note(heat.id)
             rounds = {}
             for race in RHData.get_savedRaceMetas_by_heat(heat.id):
                 pilotraces = []
@@ -3445,7 +3432,7 @@ def emit_race_list(**params):
                 }
             heats[heat.id] = {
                 'heat_id': heat.id,
-                'note': heatnote,
+                'displayname': heat.displayname(),
                 'rounds': rounds,
             }
 
@@ -3563,57 +3550,49 @@ def emit_current_leaderboard(**params):
 
 def emit_heat_data(**params):
     '''Emits heat data.'''
-    current_heats = {}
+
+    heats = []
     for heat in RHData.get_heats():
-        heat_id = heat.id
-        note = heat.note
-        race_class = heat.class_id
+        current_heat = {}
+        current_heat['id'] = heat.id
+        current_heat['note'] = heat.note
+        current_heat['displayname'] = heat.displayname()
+        current_heat['class_id'] = heat.class_id
+        current_heat['order'] = heat.order
+        current_heat['status'] = heat.status
+        current_heat['auto_frequency'] = heat.auto_frequency
 
-        heatnodes = RHData.get_heatNodes_by_heat(heat.id)
-        pilots = []
-        for heatnode in heatnodes:
-            pilots.append(heatnode.pilot_id)
+        current_heat['slots'] = []
 
-        has_race = RHData.savedRaceMetas_has_heat(heat.id)
+        heatNodes = RHData.get_heatNodes_by_heat(heat.id)
+        def heatNodeSorter(x):
+            if not x.node_index:
+                return -1
+            return x.node_index
+        heatNodes.sort(key=heatNodeSorter)
 
-        if has_race:
-            locked = True
-        else:
-            locked = False
+        is_dynamic = False
+        for heatNode in heatNodes:
+            current_node = {}
+            current_node['id'] = heatNode.id
+            current_node['node_index'] = heatNode.node_index
+            current_node['pilot_id'] = heatNode.pilot_id
+            current_node['color'] = heatNode.color
+            current_node['method'] = heatNode.method
+            current_node['seed_rank'] = heatNode.seed_rank
+            current_node['seed_id'] = heatNode.seed_id
+            current_heat['slots'].append(current_node)
 
-        current_heats[heat_id] = {
-            'pilots': pilots,
-            'note': note,
-            'heat_id': heat_id,
-            'class_id': race_class,
-            'locked': locked}
+            if current_node['method'] == Database.ProgramMethod.HEAT_RESULT or current_node['method'] == Database.ProgramMethod.CLASS_RESULT:
+                is_dynamic = True
 
-    current_classes = []
-    for race_class in RHData.get_raceClasses():
-        current_class = {}
-        current_class['id'] = race_class.id
-        current_class['name'] = race_class.name
-        current_class['description'] = race_class.description
-        current_classes.append(current_class)
+        current_heat['dynamic'] = is_dynamic
 
-    pilots = []
-    for pilot in RHData.get_pilots():
-        pilots.append({
-            'pilot_id': pilot.id,
-            'callsign': pilot.callsign,
-            'name': pilot.name
-            })
-
-    if RHData.get_option('pilotSort') == 'callsign':
-        pilots.sort(key=lambda x: (x['callsign'], x['name']))
-    else:
-        pilots.sort(key=lambda x: (x['name'], x['callsign']))
+        current_heat['locked'] = bool(RHData.savedRaceMetas_has_heat(heat.id))
+        heats.append(current_heat)
 
     emit_payload = {
-        'heats': current_heats,
-        'pilot_data': pilots,
-        'classes': current_classes,
-        'pilotSort': RHData.get_option('pilotSort'),
+        'heats': heats,
     }
     if ('nobroadcast' in params):
         emit('heat_data', emit_payload)
@@ -3629,12 +3608,28 @@ def emit_class_data(**params):
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
+        current_class['displayname'] = race_class.displayname()
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
+        current_class['win_condition'] = race_class.win_condition
+        current_class['rounds'] = race_class.rounds
+        current_class['heat_advance'] = race_class.heatAdvanceType
+        current_class['order'] = race_class.order
         current_class['locked'] = RHData.savedRaceMetas_has_raceClass(race_class.id)
-
         current_classes.append(current_class)
 
+    emit_payload = {
+        'classes': current_classes,
+    }
+    if ('nobroadcast' in params):
+        emit('class_data', emit_payload)
+    elif ('noself' in params):
+        emit('class_data', emit_payload, broadcast=True, include_self=False)
+    else:
+        SOCKET_IO.emit('class_data', emit_payload)
+
+def emit_format_data(**params):
+    '''Emits format data.'''
     formats = []
     for race_format in RHData.get_raceFormats():
         raceformat = {}
@@ -3644,24 +3639,25 @@ def emit_class_data(**params):
         raceformat['race_time_sec'] = race_format.race_time_sec
         raceformat['lap_grace_sec'] = race_format.lap_grace_sec
         raceformat['staging_fixed_tones'] = race_format.staging_fixed_tones
+        raceformat['staging_tones'] = race_format.staging_tones
         raceformat['start_delay_min'] = race_format.start_delay_min_ms
         raceformat['start_delay_max'] = race_format.start_delay_max_ms
         raceformat['number_laps_win'] = race_format.number_laps_win
         raceformat['win_condition'] = race_format.win_condition
-        raceformat['team_racing_mode'] = race_format.team_racing_mode
+        raceformat['team_racing_mode'] = 1 if race_format.team_racing_mode else 0
         raceformat['start_behavior'] = race_format.start_behavior
+        raceformat['locked'] = RHData.savedRaceMetas_has_raceFormat(race_format.id)
         formats.append(raceformat)
 
     emit_payload = {
-        'classes': current_classes,
-        'formats': formats
+        'formats': formats,
     }
     if ('nobroadcast' in params):
-        emit('class_data', emit_payload)
+        emit('format_data', emit_payload)
     elif ('noself' in params):
-        emit('class_data', emit_payload, broadcast=True, include_self=False)
+        emit('format_data', emit_payload, broadcast=True, include_self=False)
     else:
-        SOCKET_IO.emit('class_data', emit_payload)
+        SOCKET_IO.emit('format_data', emit_payload)
 
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
@@ -3697,7 +3693,8 @@ def emit_pilot_data(**params):
             pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
 
     emit_payload = {
-        'pilots': pilots_list
+        'pilots': pilots_list,
+        'pilotSort': RHData.get_option('pilotSort')
     }
     if ('nobroadcast' in params):
         emit('pilot_data', emit_payload)
@@ -3710,55 +3707,82 @@ def emit_pilot_data(**params):
 
 def emit_current_heat(**params):
     '''Emits the current heat.'''
-    callsigns = []
-    pilot_ids = []
-
     heat_data = RHData.get_heat(RACE.current_heat)
 
     heatNode_data = {}
-    for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
-        heatNode_data[heatNode.node_index] = {
-            'pilot_id': heatNode.pilot_id,
+    for idx in range(RACE.num_nodes):
+        heatNode_data[idx] = {
+            'pilot_id': None,
             'callsign': None,
-            'heatNodeColor': heatNode.color,
+            'heatNodeColor': None,
             'pilotColor': None,
             'activeColor': None
-            }
-        pilot = RHData.get_pilot(heatNode.pilot_id)
-        if pilot:
-            heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
-            heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
-
-        if led_manager.isEnabled():
-            heatNode_data[heatNode.node_index]['activeColor'] = led_manager.getDisplayColor(heatNode.node_index)
+        }
 
     heat_format = None
-    if heat_data.class_id != RHUtils.CLASS_ID_NONE:
-        heat_format = RHData.get_raceClass(heat_data.class_id).format_id
+
+    if (heat_data):
+        heat_note = heat_data.note
+        heat_class = heat_data.class_id
+
+        for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
+            if heatNode.node_index is not None:
+                heatNode_data[heatNode.node_index] = {
+                    'pilot_id': heatNode.pilot_id,
+                    'callsign': None,
+                    'heatNodeColor': heatNode.color,
+                    'pilotColor': None,
+                    'activeColor': None
+                    }
+                pilot = RHData.get_pilot(heatNode.pilot_id)
+                if pilot:
+                    heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
+                    heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
+
+                if led_manager.isEnabled():
+                    heatNode_data[heatNode.node_index]['activeColor'] = led_manager.getDisplayColor(heatNode.node_index)
+
+        if heat_data.class_id != RHUtils.CLASS_ID_NONE:
+            heat_format = RHData.get_raceClass(heat_data.class_id).format_id
+
+    else:
+        # Practice mode
+        heat_note = __("Practice Mode")
+        heat_class = RHUtils.CLASS_ID_NONE
+
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
+
+        for idx in range(RACE.num_nodes):
+            if (profile_freqs["b"][idx] and profile_freqs["c"][idx]):
+                callsign = profile_freqs["b"][idx] + str(profile_freqs["c"][idx])
+            else:
+                callsign = str(profile_freqs["f"][idx])
+
+            heatNode_data[idx] = {
+                'callsign': callsign,
+                'heatNodeColor': None,
+                'pilotColor': None,
+                'activeColor': led_manager.getDisplayColor(idx)
+            }
 
     emit_payload = {
         'current_heat': RACE.current_heat,
         'heatNodes': heatNode_data,
-        'callsign': callsigns,
-        'pilot_ids': pilot_ids,
-        'heat_note': heat_data.note,
+        'heat_note': heat_note,
         'heat_format': heat_format,
-        'heat_class': heat_data.class_id
+        'heat_class': heat_class
     }
     if ('nobroadcast' in params):
         emit('current_heat', emit_payload)
     else:
         SOCKET_IO.emit('current_heat', emit_payload)
 
-def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, **params):
+def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, node_index=None, **params):
     '''Emits phonetic data.'''
     raw_time = lap_time
     phonetic_time = RHUtils.phonetictime_format(lap_time, RHData.get_option('timeFormatPhonetic'))
-    pilot = RHData.get_pilot(pilot_id)
+
     emit_payload = {
-        'pilot': pilot.phonetic,
-        'callsign': pilot.callsign,
-        'pilot_id': pilot.id,
         'lap': lap_id,
         'raw_time': raw_time,
         'phonetic': phonetic_time,
@@ -3767,6 +3791,28 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
         'leader_flag' : leader_flag,
         'node_finished': node_finished,
     }
+
+    pilot = RHData.get_pilot(pilot_id)
+    if pilot:
+        emit_payload['pilot'] = pilot.phonetic
+        emit_payload['callsign'] = pilot.callsign
+        emit_payload['pilot_id'] = pilot.id
+    elif node_index is not None:
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
+
+        if (profile_freqs["b"][node_index] and profile_freqs["c"][node_index]):
+            callsign = profile_freqs["b"][node_index] + str(profile_freqs["c"][node_index])
+        else:
+            callsign = str(profile_freqs["f"][node_index])
+
+        emit_payload['pilot'] = callsign
+        emit_payload['callsign'] = callsign
+        emit_payload['pilot_id'] = None
+    else:
+        emit_payload['pilot'] = None
+        emit_payload['callsign'] = None
+        emit_payload['pilot_id'] = None
+
     if ('nobroadcast' in params):
         emit('phonetic_data', emit_payload)
     else:
@@ -3865,7 +3911,7 @@ def emit_callouts():
     if callouts:
         emit('callouts', json.loads(callouts))
 
-def emit_imdtabler_page(**params):
+def emit_imdtabler_page(**_params):
     '''Emits IMDTabler page, using current profile frequencies.'''
     if Use_imdtabler_jar_flag:
         try:                          # get IMDTabler version string
@@ -3922,7 +3968,7 @@ def emit_imdtabler_rating():
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
-def emit_vrx_list(*args, **params):
+def emit_vrx_list(*_args, **params):
     ''' get list of connected VRx devices '''
     if vrx_controller:
         # if vrx_controller.has_connection:
@@ -4086,6 +4132,21 @@ def emit_exporter_list():
 
     emit('exporter_list', emit_payload)
 
+def emit_heatgenerator_list():
+    '''List Heat Generators'''
+
+    emit_payload = {
+        'generators': []
+    }
+
+    for name, exp in heatgenerate_manager.getGenerators().items():
+        emit_payload['generators'].append({
+            'name': name,
+            'label': exp.label
+        })
+
+    emit('heatgenerator_list', emit_payload)
+
 #
 # Program Functions
 #
@@ -4229,7 +4290,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     emit_node_data() # For updated triggers and peaks
 
     profile_freqs = json.loads(getCurrentProfile().frequencies)
-    if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
+    if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE :
         # always count laps if race is running, otherwise test if lap should have counted before race end
         if RACE.race_status is RaceStatus.RACING \
             or (RACE.race_status is RaceStatus.DONE and \
@@ -4240,7 +4301,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
             # reject passes before race start and with disabled (no-pilot) nodes
             race_format = getCurrentRaceFormat()
-            if pilot_id != RHUtils.PILOT_ID_NONE or race_format is SECONDARY_RACE_FORMAT:
+            if (pilot_id is not None and pilot_id != RHUtils.PILOT_ID_NONE) or race_format is SECONDARY_RACE_FORMAT or RACE.current_heat is RHUtils.HEAT_ID_NONE:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon
@@ -4304,7 +4365,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             (RACE.format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
                             RACE.set_node_finished_flag(node.index)
                             if not node_finished_flag:
-                                logger.info('Pilot {} done'.format(pilot_obj.callsign))
+                                logger.info('Pilot {} done'.format(pilot_obj.callsign if pilot_obj else node.index))
                                 Events.trigger(Evt.RACE_PILOT_DONE, {
                                     'node_index': node.index,
                                     'color': led_manager.getDisplayColor(node.index),
@@ -4400,12 +4461,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
                                                 (check_leader and \
                                                  team_name == Results.get_leading_team_name(RACE.team_results)), \
-                                                node_finished_flag)
+                                                node_finished_flag, node.index)
                             else:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
                                                 (check_leader and \
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)), \
-                                                node_finished_flag)
+                                                node_finished_flag, node.index)
 
                             check_win_condition() # check for and announce possible winner
                             if RACE.win_status != WinStatus.NONE:
@@ -4470,8 +4531,12 @@ def check_win_condition(**kwargs):
                 win_str = win_data.get('callsign', '')
                 status_msg_str = __('Winner is') + ' ' + win_str
                 log_msg_str = "Race status msg:  Winner is " + win_str
-                win_phon_name = RHData.get_pilot(win_data['pilot_id']).phonetic \
-                                if 'pilot_id' in win_data else None
+                if 'pilot_id' in win_data and win_data['pilot_id'] is not None:
+                    win_phon_name = RHData.get_pilot(win_data['pilot_id']).phonetic
+                elif win_data['callsign']:
+                    win_phon_name = win_data['callsign']
+                else:
+                    win_phon_name = None
                 if (not win_phon_name) or len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_data.get('callsign', '')
                 phonetic_str = __('Winner is') + ' ' + win_phon_name
@@ -4633,17 +4698,10 @@ def reset_current_laps():
 
 def expand_heats():
     ''' ensure loaded data includes enough slots for current nodes '''
-    heatNode_data = {}
-    for heatNode in RHData.get_heatNodes():
-        if heatNode.heat_id not in heatNode_data:
-            heatNode_data[heatNode.heat_id] = []
-
-        heatNode_data[heatNode.heat_id].append(heatNode.node_index)
-
-    for heat_id, nodes in heatNode_data.items():
-        for node_index in range(RACE.num_nodes):
-            if node_index not in nodes:
-                RHData.add_heatNode(heat_id, node_index)
+    for heat in RHData.get_heats():
+        heatNodes = RHData.get_heatNodes_by_heat(heat.id)
+        while len(heatNodes) < RACE.num_nodes:
+            RHData.add_heatNode(heat.id, None)
 
 def init_race_state():
     expand_heats()
@@ -4652,22 +4710,12 @@ def init_race_state():
     on_set_profile({'profile': getCurrentProfile().id}, False)
 
     # Set current heat
-    first_heat = RHData.get_first_heat()
-    if first_heat:
-        RACE.current_heat = first_heat.id
-        RACE.node_pilots = {}
-        RACE.node_teams = {}
-        for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
-            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-            if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
-            else:
-                RACE.node_teams[heatNode.node_index] = None
+    RACE.current_heat = RHUtils.HEAT_ID_NONE
+    RACE.node_pilots = {}
+    RACE.node_teams = {}
 
     # Set race format
-    raceformat_id = RHData.get_optionInt('currentFormat')
-    race_format = RHData.get_raceFormat(raceformat_id)
+    race_format = RHData.get_first_raceFormat()
     setCurrentRaceFormat(race_format, silent=True)
 
     # Normalize results caches
@@ -4684,7 +4732,7 @@ def init_interface_state(startup=False):
         RACE.scheduled = False # also stop any deferred start
         SOCKET_IO.emit('stop_timer')
     else:
-        on_stop_race()
+        on_discard_laps()
     # Reset laps display
     reset_current_laps()
 
@@ -4756,7 +4804,7 @@ def initVRxController():
         [node.frequency for node in INTERFACE.nodes],
         Language)
 
-def killVRxController(*args):
+def killVRxController(*_args):
     global vrx_controller
     logger.info('Killing VRxController')
     vrx_controller = None
@@ -5384,6 +5432,9 @@ if vrx_controller:
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language, Events)
+
+# heat generators
+heatgenerate_manager = HeatGeneratorManager(RHData, Results, PageCache, Language, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

@@ -15,39 +15,47 @@
 			}
 		});
 
+		socket.on('pilot_data', function (msg) {
+			rotorhazard.event.pilots = msg.pilots;
+			rotorhazard.options.pilotSort = msg.pilotSort;
+			display_heats();
+		});
+
 		socket.on('heat_data', function (msg) {
-			$('.heat_list').empty();
-			$('.heat_list').append('<li><a href="/stream/heat/0">' + __("Current Heat") + '</a></li>');
-
-			for (var i in msg.heats) {
-				var heat = msg.heats[i];
-
-				if (heat.note) {
-					heatname = heat.note;
-				} else {
-					heatname = __('Heat') + ' ' + heat.heat_id;
-				}
-
-				$('.heat_list').append('<li><a href="/stream/heat/' + heat.heat_id + '">' + heatname + '</a></li>');
-			}
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
 		});
 
 		socket.on('class_data', function (msg) {
-			$('.race_class_list').empty();
-			$('.race_class_list').append('<li><a href="/stream/class/0">' + __("Current Class") + '</a></li>');
-
-			for (var i in msg.classes) {
-				var race_class = msg.classes[i];
-
-				if (race_class.name) {
-					classname = race_class.name;
-				} else {
-					classname = __('Class') + ' ' + race_class.id;
-				}
-
-				$('.race_class_list').append('<li><a href="/stream/class/' + race_class.id + '">' + classname + '</a></li>');
-			}
+			rotorhazard.event.classes = msg.classes;
+			display_classes()
 		});
+
+		function display_heats() {
+			if (rotorhazard.event.heats) {
+				$('.heat_list').empty();
+				$('.heat_list').append('<li><a href="/stream/heat/0">' + __("Current Heat") + '</a></li>');
+
+				for (var i in rotorhazard.event.heats) {
+					var heat = rotorhazard.event.heats[i];
+
+					$('.heat_list').append('<li><a href="/stream/heat/' + heat.id + '">' + heat.displayname + '</a></li>');
+				}
+			}
+		}
+
+		function display_classes() {
+			if (rotorhazard.event.classes) {
+				$('.race_class_list').empty();
+				$('.race_class_list').append('<li><a href="/stream/class/0">' + __("Current Class") + '</a></li>');
+
+				for (var i in rotorhazard.event.classes) {
+					var race_class = rotorhazard.event.classes[i];
+
+					$('.race_class_list').append('<li><a href="/stream/class/' + race_class.id + '">' + race_class.displayname + '</a></li>');
+				}
+			}
+		}
 	});
 
 </script>
@@ -69,10 +77,14 @@
 			</ul>
 
 			<h2>{{ __("Heat Displays") }}</h2>
-			<ul class="heat_list"></ul>
+			<ul class="heat_list">
+				<li>Loading...</li>
+			</ul>
 
 			<h2>{{ __("Class Displays") }}</h2>
-			<ul class="race_class_list"></ul>
+			<ul class="race_class_list">
+				<li>Loading...</li>
+			</ul>
 		</div>
 	</div>
 </main>

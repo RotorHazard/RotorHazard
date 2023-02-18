@@ -5,7 +5,7 @@
 	var data_dependencies = [
 		'all_languages',
 		'language',
-		'race_format',
+		'race_status',
 		'leaderboard',
 		'current_laps',
 		'current_heat'
@@ -52,62 +52,69 @@
 			show_current_laps();
 		});
 
+		socket.on('race_status', function (msg) {
+			rotorhazard.event.race_status = msg;
+			show_current_laps();
+		}
+
 		function show_current_laps() {
-			var i = streamnode;
-			var node_index = current_laps.node_index[streamnode];
+			if (current_laps && rotorhazard.event.race_status) {
+				var i = streamnode;
+				var node_index = current_laps.node_index[streamnode];
 
-			$('#current_laps tr').remove();
+				$('#current_laps tr').remove();
 
-			display_laps = node_index.laps
-			while (display_laps.length > 10) {
-				display_laps.shift();
-			}
+				display_laps = node_index.laps
+				while (display_laps.length > 10) {
+					display_laps.shift();
+				}
 
-			$.each(display_laps, function (j, lap) { // j is loop num, lap is json object
-				var tr = '';
-				var lapTime = lap.lap_time;
-				if (lap.splits.length > 0) {
-					lapTime += ' (';
-					for (k=0; k<lap.splits.length; k++) {
-						var split = lap.splits[k];
-						if (k > 0) {
-							lapTime += ', ';
+				$.each(display_laps, function (j, lap) { // j is loop num, lap is json object
+					var tr = '';
+					var lapTime = lap.lap_time;
+					if (lap.splits.length > 0) {
+						lapTime += ' (';
+						for (k=0; k<lap.splits.length; k++) {
+							var split = lap.splits[k];
+							if (k > 0) {
+								lapTime += ', ';
+							}
+							lapTime += split.split_time;
+							if (split.split_speed) {
+								lapTime += '/' + split.split_speed;
+							}
 						}
-						lapTime += split.split_time;
-						if (split.split_speed) {
-							lapTime += '/' + split.split_speed;
-						}
+						lapTime += ')';
 					}
-					lapTime += ')';
-				}
 
-				tr = $('<tr>')
-				if (lap.lap_number == 0) {
-					tr.addClass('lap_0');
-					lap.lap_number = __('HS');
-				}
+					tr = $('<tr>')
+					if (lap.lap_number == 0) {
+						tr.addClass('lap_0');
+						lap.lap_number = __('HS');
+					}
 
-				if (lap.lap_index == node_index.fastest_lap_index) {
-					tr.addClass('fastest_lap');
-				}
+					if (lap.lap_index == node_index.fastest_lap_index) {
+						tr.addClass('fastest_lap');
+					}
 
-				tr.append(
-					$('<td class="display_lap_number">').text(lap.lap_number + ":")
-				);
-				$time_td = $('<td>').text(lap.lap_time + ' ');
-				$local_prepend = $('<span class="from_start">');
+					tr.append(
+						$('<td class="display_lap_number">').text(lap.lap_number + ":")
+					);
+					$time_td = $('<td>').text(lap.lap_time + ' ');
+					$local_prepend = $('<span class="from_start">');
 
-				$time_td.prepend($local_prepend);
-				tr.append($time_td);
+					$time_td.prepend($local_prepend);
+					tr.append($time_td);
 
-				if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
-					tr.addClass('min-lap-warning');
-				}
-				if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
-					tr.addClass('after-time-expired');
-				}
-				tr.appendTo('#current_laps');
-			});
+					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+						tr.addClass('min-lap-warning');
+					}
+					if (!rotorhazard.event.race_status.race_mode && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
+						tr.addClass('after-time-expired');
+					}
+					tr.appendTo('#current_laps');
+				});
+			}
 		}
 
 		socket.on('leaderboard', function (msg) {
@@ -150,10 +157,6 @@
 				$('#rank_stat').html('');
 				$('#current_laps').html('');
 			}
-		});
-
-		socket.on('race_format', function (msg) {
-			rotorhazard.race_formats = msg;
 		});
 	});
 
