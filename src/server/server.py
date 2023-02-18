@@ -447,7 +447,7 @@ def render_marshal():
 def render_format():
     '''Route to settings page.'''
     return render_template('format.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
-        num_nodes=RACE.num_nodes)
+        num_nodes=RACE.num_nodes, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/settings')
 @requires_auth
