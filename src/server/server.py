@@ -2714,6 +2714,8 @@ def emit_heat_plan_result(new_heat_id, calc_result):
     heatNode_objs = RHData.get_heatNodes_by_heat(heat.id)
     heatNode_objs.sort(key=lambda x: x.id)
 
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
+
     for heatNode in heatNode_objs:
         heatNode_data = {
             'node_index': heatNode.node_index,
@@ -2727,6 +2729,11 @@ def emit_heat_plan_result(new_heat_id, calc_result):
             pilot = RHData.get_pilot(heatNode.pilot_id)
             if pilot:
                 heatNode_data['callsign'] = pilot.callsign
+                if pilot.used_frequencies:
+                    used_freqs = json.loads(pilot.used_frequencies)
+                    heatNode_data['frequency_change'] = (used_freqs[-1]['f'] != profile_freqs["f"][heatNode.node_index])
+                else:
+                    heatNode_data['frequency_change'] = True
 
         heatNodes.append(heatNode_data)
 

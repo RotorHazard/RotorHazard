@@ -493,12 +493,18 @@
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
-					slot_el.append('<td class="calc_to">&#x2192;</td>');
-
 					if (Number.isInteger(slot.node_index)) {
+						if (slot.frequency_change) {
+							slot_el.addClass('freq-change');
+							slot_el.append('<td class="calc_to">&#x25c8;<span class="screen-reader-text">' + __('frequency change') + '</span></td>');
+						} else {
+							slot_el.append('<td class="calc_to">&#x2192;</td>');
+						}
+
 						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
 					} else {
 						slot_el.addClass('no-freq');
+						slot_el.append('<td class="calc_to">&#x00D7;</td>');
 						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
 					}
 
