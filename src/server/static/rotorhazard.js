@@ -1712,12 +1712,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				var source = leaderboard[i].fastest_lap_source;
 				row.append('<td class="fast">'+ lap +'</td>');
 
-				if (source.note) {
-					var source_text = source.note
-				} else {
-					var source_text = __('Heat') + ' ' + source.heat;
-				}
-				source_text += ' / ' + __('Round') + ' ' + source.round;
+				source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
 
 				row.data('source', source_text);
 				row.attr('title', source_text);
@@ -1745,12 +1740,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				var source = leaderboard[i].consecutives_source;
 				row.append('<td class="consecutive">'+ lap +'</td>');
 
-				if (source.note) {
-					var source_text = source.note;
-				} else {
-					var source_text = __('Heat') + ' ' + source.heat;
-				}
-				source_text += ' / ' + __('Round') + ' ' + source.round;
+				source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
 
 				row.data('source', source_text);
 				row.attr('title', source_text);

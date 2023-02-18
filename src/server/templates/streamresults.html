@@ -157,10 +157,7 @@
 				var race = msg.current;
 			}
 
-			var heatname = __('Heat') + ' ' + race.heat;
-			if (race.heat_note)
-				heatname = race.heat_note;
-			$('.current_heat').html(heatname);
+			$('.current_heat').html(race.displayname);
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();

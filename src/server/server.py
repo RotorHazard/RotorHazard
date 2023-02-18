@@ -1241,7 +1241,7 @@ def on_alter_heat(data):
     emit_heat_data(noself=True)
     if ('pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
-        message = __('Alterations made to heat: {0}').format(heat.note)
+        message = __('Alterations made to heat: {0}').format(heat.displayname())
         emit_priority_message(message, False)
 
 @SOCKET_IO.on('delete_heat')
@@ -2032,11 +2032,10 @@ def on_stage_race():
             emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
 
         logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
-        heat_id_str = heat_data.note if heat_data.note else "Heat " + str(heat_data.id)
         max_round = RHData.get_max_round(RACE.current_heat)
         if max_round is None:
             max_round = 0
-        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_id_str, (max_round+1),
+        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.displayname(), (max_round+1),
                                                                    ", ".join(pilot_names_list)))
     else:
         heatNodes = []
@@ -3525,9 +3524,13 @@ def emit_current_leaderboard(**params):
         'current': {}
     }
 
+    if RACE.current_heat is RHUtils.HEAT_ID_NONE:
+        emit_payload['current']['displayname'] = __("Practice")
+    else:
+        emit_payload['current']['displayname'] = RHData.get_heat(RACE.current_heat).displayname()
+
     # current
     emit_payload['current']['heat'] = RACE.current_heat
-    emit_payload['current']['heat_note'] = RHData.get_heat_note(RACE.current_heat)
     emit_payload['current']['status_msg'] = RACE.status_message
 
     if RACE.cacheStatus == Results.CacheStatus.VALID:
@@ -3555,7 +3558,11 @@ def emit_current_leaderboard(**params):
         if LAST_RACE.cacheStatus == Results.CacheStatus.VALID:
             emit_payload['last_race']['leaderboard'] = LAST_RACE.results
             emit_payload['last_race']['heat'] = LAST_RACE.current_heat
-            emit_payload['last_race']['heat_note'] = RHData.get_heat_note(LAST_RACE.current_heat)
+
+            if LAST_RACE.current_heat is RHUtils.HEAT_ID_NONE:
+                emit_payload['last_race']['displayname'] = __("Practice")
+            else:
+                emit_payload['last_race']['displayname'] = RHData.get_heat(LAST_RACE.current_heat).displayname()
 
         if LAST_RACE.team_cacheStatus == Results.CacheStatus.VALID and LAST_RACE.format.team_racing_mode:
             emit_payload['last_race']['team_leaderboard'] = LAST_RACE.team_results
@@ -3739,7 +3746,6 @@ def emit_current_heat(**params):
     heat_format = None
 
     if (heat_data):
-        heat_note = heat_data.note
         heat_class = heat_data.class_id
 
         for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
@@ -3764,7 +3770,6 @@ def emit_current_heat(**params):
 
     else:
         # Practice mode
-        heat_note = __("Practice Mode")
         heat_class = RHUtils.CLASS_ID_NONE
 
         profile_freqs = json.loads(getCurrentProfile().frequencies)
@@ -3785,7 +3790,6 @@ def emit_current_heat(**params):
     emit_payload = {
         'current_heat': RACE.current_heat,
         'heatNodes': heatNode_data,
-        'heat_note': heat_note,
         'heat_format': heat_format,
         'heat_class': heat_class
     }

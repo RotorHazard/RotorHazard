@@ -50,7 +50,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
         all_heats = {}
         for heat in RHData.get_heats():
             heat_id = heat.id
-            note = heat.note
+            displayname = heat.displayname()
             race_class = heat.class_id
 
             heatnodes = RHData.get_heatNodes_by_heat(heat.id)
@@ -61,7 +61,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
             locked = RHData.savedRaceMetas_has_heat(heat.id)
 
             all_heats[heat_id] = {
-                'note': note,
+                'displayname': displayname,
                 'heat_id': heat_id,
                 'class_id': race_class,
                 'nodes_pilots': pilots,
@@ -74,7 +74,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
     def api_heat(heat_id):
         heat = RHData.get_heat(heat_id)
         if heat:
-            note = heat.note
+            displayname = heat.displayname()
             race_class = heat.class_id
 
             heatnodes = RHData.get_heatNodes_by_heat(heat.id)
@@ -85,7 +85,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
             locked = RHData.savedRaceMetas_has_heat(heat.id)
 
             heat = {
-                'note': note,
+                'displayname': displayname,
                 'heat_id': heat_id,
                 'class_id': race_class,
                 'nodes_pilots': pilots,
