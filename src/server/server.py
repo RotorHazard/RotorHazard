@@ -2341,9 +2341,6 @@ def do_stop_race_actions(doSave=False):
 
     else:
         logger.debug('No active race to stop')
-        RACE.race_status = RaceStatus.READY # Go back to ready state
-        INTERFACE.set_race_status(RaceStatus.READY)
-        Events.trigger(Evt.LAPS_CLEAR)
         delta_time = 0
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
