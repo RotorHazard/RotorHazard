@@ -55,6 +55,7 @@
 		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
 
 		socket.on('pi_time', function (msg) {
+			var max_samples = 10;
 			var response_time = window.performance.now();
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
@@ -92,7 +93,7 @@
 			rotorhazard.timer.deferred.sync();
 
 			// continue sampling for sync to improve accuracy
-			if (rotorhazard.server_time_differential_samples.length < 10) {
+			if (rotorhazard.server_time_differential_samples.length < max_samples) {
 				setTimeout(function(){
 					rotorhazard.pi_time_request = window.performance.now();
 					socket.emit('get_pi_time');
@@ -104,7 +105,7 @@
 			for (var i in rotorhazard.server_time_differential_samples) {
 				a = Math.min(a, rotorhazard.server_time_differential_samples[i].response);
 			}
-			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.server_time_differential_samples.length + ' samples)</p>');
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.server_time_differential_samples.length + '/' + max_samples + ' samples)</p>');
 		});
 
 		socket.on('language', function (msg) {
@@ -492,12 +493,18 @@
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
-					slot_el.append('<td class="calc_to">&#x2192;</td>');
-
 					if (Number.isInteger(slot.node_index)) {
+						if (slot.frequency_change) {
+							slot_el.addClass('freq-change');
+							slot_el.append('<td class="calc_to">&#x25c8;<span class="screen-reader-text">' + __('frequency change') + '</span></td>');
+						} else {
+							slot_el.append('<td class="calc_to">&#x2192;</td>');
+						}
+
 						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
 					} else {
 						slot_el.addClass('no-freq');
+						slot_el.append('<td class="calc_to">&#x00D7;</td>');
 						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
 					}
 
@@ -2213,6 +2220,11 @@
 			<button id="stop_race" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
 			<button id="save_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save and Clear') }}</span></button>
 			<button id="discard_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+
+			<label for="set_race_format" class="screen-reader-text">{{ __('Race Format') }}</label>
+			<select id="set_race_format">
+				<option>{{ __('Loading...') }}</option>
+			</select>
 		</div>
 
 		<div id="practice-warning" style="display:none">{{ __('Practice mode: Races will not be saved until a heat is selected') }}</div>
@@ -2334,14 +2346,6 @@
 				<div>
 					<label for="schedule_m" class="screen-reader-text">{{ __('Minutes') }}</label><input type="number" id="schedule_m" min="0" max="999" placeholder="mm">:<label for="schedule_s" class="screen-reader-text">{{ __('Seconds') }}</label><input type="number" id="schedule_s" min="0" max="59" placeholder="ss"> <button id="schedule_race">{{ __('Schedule Race') }}</button> <button id="cancel_schedule_race">{{ __('Cancel') }}</button>
 				</div>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_race_format">{{ __('Race Format') }}</label>
-				</div>
-				<select id="set_race_format">
-					<option>{{ __('Loading...') }}</option>
-				</select>
 			</li>
 			<li>
 				<div class="label-block">

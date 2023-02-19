@@ -812,10 +812,6 @@ class RHData():
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
 
-    def get_heat_note(self, heat_id):
-        heat_data = self._Database.Heat.query.get(heat_id)
-        return heat_data.note if heat_data else None
-
     def get_heats(self):
         return self._Database.Heat.query.all()
 
@@ -943,17 +939,7 @@ class RHData():
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
             if not heat.auto_frequency:
-                used_nodes = []
-                slots = self.get_heatNodes_by_heat(heat_id)
-                for s in slots:
-                    used_nodes.append(s.node_index)
-
-                # create inverse of used_nodes
-                available_nodes = set(range(len(slots))) - set(used_nodes)
-
-                for s in slots:
-                    if s.node_index == None and len(available_nodes):
-                        s.node_index = available_nodes.pop()
+                self.resolve_slot_unset_nodes(heat.id)
 
         if 'pilot' in data:
             slot.pilot_id = data['pilot']
@@ -1133,6 +1119,19 @@ class RHData():
 
         return current_heat.id
 
+    def resolve_slot_unset_nodes(self, heat_id):
+        used_nodes = []
+        slots = self.get_heatNodes_by_heat(heat_id)
+        for s in slots:
+            used_nodes.append(s.node_index)
+
+        # create inverse of used_nodes
+        available_nodes = set(range(len(slots))) - set(used_nodes)
+
+        for s in slots:
+            if s.node_index == None and len(available_nodes):
+                s.node_index = available_nodes.pop()
+
     def calc_heat_pilots(self, heat_id, Results):
         heat = self._Database.Heat.query.get(heat_id)
 
@@ -1144,6 +1143,7 @@ class RHData():
 
         if not heat:
             logger.error('Requested invalid heat {}'.format(heat_id))
+            result['calc_success'] = False
             return result
 
         # skip if heat status confirmed

@@ -111,11 +111,7 @@
 
 								var panel_header = $('<div class="panel-header">');
 
-								if (heat.note) {
-									panel_header.append('<h3><button class="no-style">' + heat.note + '</button></h3>');
-								} else {
-									panel_header.append('<h3><button class="no-style">' + __('Heat') + ' ' + heat.heat_id + '</button></h3>');
-								}
+								panel_header.append('<h3><button class="no-style">' + heat.displayname + '</button></h3>');
 								panel.append(panel_header);
 
 								var panel_content = $('<div class="panel-content" style="display: none">');

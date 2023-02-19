@@ -179,7 +179,7 @@
 
 			var nodelist = $('<ul>');
 
-			if (heat.auto_frequency === false || heat.status == 2) { // HeatStatus.CONFIRMED
+			if (heat.locked || heat.status == 2 || heat.auto_frequency === false) { // HeatStatus.CONFIRMED
 				for (idx in heat.slots) {
 					var slot = heat.slots[idx];
 
@@ -343,12 +343,12 @@
 								format_details['Race Clock (seconds)'] = raceformat.race_time_sec
 							}
 
-							format_details['Fixed Staging Tones'] = rotorhazard.stagingTones[raceformat.staging_fixed_tones];
+							format_details['Fixed Staging Tones'] = raceformat.staging_fixed_tones;
 
-							if (raceformat.start_delay_min_ms == raceformat.start_delay_max_ms) {
-								format_details['Start Delay (seconds)'] = raceformat.start_delay_min_ms / 1000;
+							if (raceformat.start_delay_min == raceformat.start_delay_max) {
+								format_details['Start Delay (seconds)'] = raceformat.start_delay_min / 1000;
 							} else {
-								format_details['Start Delay (seconds)'] = raceformat.start_delay_min_ms / 1000 + '&#8211;' + raceformat.start_delay_max_ms / 1000;
+								format_details['Start Delay (seconds)'] = raceformat.start_delay_min / 1000 + '&#8211;' + (raceformat.start_delay_min + raceformat.start_delay_max) / 1000;
 							}
 
 							format_details['First Crossing'] = rotorhazard.startBehavior[raceformat.start_behavior];

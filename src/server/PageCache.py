@@ -137,7 +137,7 @@ class PageCache:
 
                     heats[heat.id] = {
                         'heat_id': heat.id,
-                        'note': heat.note,
+                        'displayname': heat.displayname(),
                         'rounds': rounds,
                         'leaderboard': results
                     }

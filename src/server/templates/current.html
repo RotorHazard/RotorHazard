@@ -390,10 +390,7 @@
 		socket.on('leaderboard', function (msg) {
 			if (msg && 'last_race' in msg) {
 				var race = msg.last_race;
-				var heatname = __('Heat') + ' ' + msg.current.heat;
-				if (msg.current.heat_note)
-					heatname = msg.current.heat_note;
-				$('.current-heat').html(heatname);
+				$('.current-heat').html(msg.current.displayname);
 
 				$('#next-race').slideDown();
 			} else {
@@ -401,10 +398,7 @@
 				$('#next-race').slideUp();
 			}
 
-			var heatname = __('Heat') + ' ' + race.heat;
-			if (race.heat_note)
-				heatname = race.heat_note;
-			$('.recent_heat').html(heatname);
+			$('.recent_heat').html(race.displayname);
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();

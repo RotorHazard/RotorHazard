@@ -57,14 +57,14 @@ def assemble_pilots(RHData, _PageCache, Language):
 def assemble_heats(RHData, _PageCache, Language):
     payload = [[Language.__('Name'), Language.__('Class'), Language.__('Pilots')]]
     for heat in RHData.get_heats():
-        note = heat.note
+        displayname = heat.displayname()
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
             race_class = RHData.get_raceClass(heat.class_id).name
         else:
             race_class = None
 
-        row = [note, race_class]
+        row = [displayname, race_class]
 
         heatnodes = RHData.get_heatNodes_by_heat(heat.id)
         for heatnode in heatnodes:
@@ -247,10 +247,7 @@ def assemble_results(_RHData, PageCache, Language):
 
                     payload.append([])
 
-                    if heat['note']:
-                        payload.append([Language.__('Heat') + ': ' + heat['note']])
-                    else:
-                        payload.append([Language.__('Heat') + ' ' + str(heat_id)])
+                    payload.append(heat['displayname'])
 
                     if len(heat['rounds']) > 1:
                         payload.append([])

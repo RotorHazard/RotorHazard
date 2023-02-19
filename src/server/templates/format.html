@@ -389,7 +389,7 @@
 			el.append(actions);
 
 			// nodes
-			if (heat.auto_frequency) {
+			if (heat.auto_frequency && heat.status != 2) {
 				heat.slots.sort((a,b) => {
 					if (a.method === -1 || (a.method === 0 && !a.pilot_id)) return 1;
 					if (b.method === -1 || (b.method === 0 && !b.pilot_id)) return -1;
@@ -506,7 +506,7 @@
 			afc.append(label);
 			el.append(afc);
 
-			if (heat.dynamic && heat.locked == false) {
+			if ((heat.dynamic || heat.auto_frequency) && heat.locked == false) {
 				if (heat.status == 2) {
 					el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">' + __('Revert to Plan') + '</button>');
 				} else {
@@ -521,6 +521,10 @@
 		function update_heat_ui(el) {
 			if (el.hasClass('is-confirmed')) {
 				el.find('.channel-block').prop('hidden', false);
+				el.find('.set_method').prop('hidden', true);
+				el.find('.set_class').prop('hidden', true);
+				el.find('.set_heat').prop('hidden', true);
+				el.find('.set_rank').prop('hidden', true);
 				el.find('.autofrequency-control').prop('hidden', true);
 			} else {
 				el.find('.autofrequency-control').prop('hidden', false);
@@ -670,12 +674,18 @@
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
-					slot_el.append('<td class="calc_to">&#x2192;</td>');
-
 					if (Number.isInteger(slot.node_index)) {
+						if (slot.frequency_change) {
+							slot_el.addClass('freq-change');
+							slot_el.append('<td class="calc_to">&#x25c8;<span class="screen-reader-text">' + __('frequency change') + '</span></td>');
+						} else {
+							slot_el.append('<td class="calc_to">&#x2192;</td>');
+						}
+
 						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
 					} else {
 						slot_el.addClass('no-freq');
+						slot_el.append('<td class="calc_to">&#x00D7;</td>');
 						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
 					}
 

@@ -69,10 +69,7 @@ def initializeEventActions(Events, RHData, RACE, emit_phonetic_text, emit_priori
             else:
                 heat = RHData.get_heat(RACE.current_heat)
 
-            if heat.note:
-                text = text.replace('%HEAT%', heat.note)
-            else:
-                text = text.replace('%HEAT%', Language.__("heat " + str(heat.id)))
+            text = text.replace('%HEAT%', heat.displayname())
 
             emit_phonetic_text(text)
 
@@ -88,10 +85,7 @@ def initializeEventActions(Events, RHData, RACE, emit_phonetic_text, emit_priori
             else:
                 heat = RHData.get_heat(RACE.current_heat)
 
-            if heat.note:
-                text = text.replace('%HEAT%', heat.note)
-            else:
-                text = text.replace('%HEAT%', Language.__("heat " + str(heat.id)))
+            text = text.replace('%HEAT%', heat.displayname())
 
             emit_priority_message(text)
 
@@ -107,10 +101,7 @@ def initializeEventActions(Events, RHData, RACE, emit_phonetic_text, emit_priori
             else:
                 heat = RHData.get_heat(RACE.current_heat)
 
-            if heat.note:
-                text = text.replace('%HEAT%', heat.note)
-            else:
-                text = text.replace('%HEAT%', Language.__("heat " + str(heat.id)))
+            text = text.replace('%HEAT%', heat.displayname())
 
             emit_priority_message(text, True)
 

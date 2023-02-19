@@ -572,7 +572,7 @@ def calc_leaderboard(rhDataObj, **params):
                             result_pilot['fastest_lap_source'] = {
                                 'round': race.round_id,
                                 'heat': race.heat_id,
-                                'note': heats_keyed[race.heat_id].note
+                                'displayname': heats_keyed[race.heat_id].displayname()
                                 }
                             break
 
@@ -634,7 +634,7 @@ def calc_leaderboard(rhDataObj, **params):
                         result_pilot['consecutives_source'] = {
                             'round': source_race.round_id,
                             'heat': source_race.heat_id,
-                            'note': heats_keyed[source_race.heat_id].note
+                            'displayname': heats_keyed[source_race.heat_id].displayname()
                             }
                     else:
                         result_pilot['consecutives_source'] = None
