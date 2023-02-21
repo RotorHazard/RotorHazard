@@ -1066,8 +1066,28 @@ class RHData():
             logger.info('Refusing to delete only heat')
             return None
 
-    def get_next_heat_id(self, current_heat, current_class):
+    def get_first_safe_heat_id(self):
+        heats = self.get_heats()
+
+        for heat in heats:
+            if heat.status == HeatStatus.CONFIRMED:
+                return heat.id
+
+            if not heat.auto_frequency:
+                slots = self.get_heatNodes_by_heat(heat.id)
+                is_dynamic = False
+                for slot in slots:
+                    if slot.method == ProgramMethod.HEAT_RESULT or slot.method == ProgramMethod.CLASS_RESULT:
+                        is_dynamic = True
+
+                if not is_dynamic:
+                    return heat.id
+
+        return RHUtils.HEAT_ID_NONE
+
+    def get_next_heat_id(self, current_heat):
         if current_heat.class_id:
+            current_class = self.get_raceClass(current_heat.class_id)
             heats = self.get_heats_by_class(current_heat.class_id)
 
             if current_class.heatAdvanceType == HeatAdvanceType.NONE:

@@ -2510,9 +2510,9 @@ def do_save_actions():
 
     on_discard_laps(saved=True) # Also clear the current laps
 
-    race_class = RHData.get_raceClass(heat.class_id)
-    if race_class:
-        on_set_current_heat({'heat':RHData.get_next_heat_id(heat, race_class)})
+    next_heat = RHData.get_next_heat_id(heat)
+    if next_heat is not heat.id:
+        on_set_current_heat({'heat': next_heat})
 
     # spawn thread for updating results caches
     cache_params = {
@@ -4746,14 +4746,14 @@ def init_race_state():
     # Send profile values to nodes
     on_set_profile({'profile': getCurrentProfile().id}, False)
 
-    # Set current heat
-    RACE.current_heat = RHUtils.HEAT_ID_NONE
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
-
     # Set race format
     race_format = RHData.get_first_raceFormat()
-    setCurrentRaceFormat(race_format, silent=True)
+
+    # Init laps
+    reset_current_laps()
+
+    # Set current heat
+    finalize_current_heat_set(RHData.get_first_safe_heat_id())
 
     # Normalize results caches
     Results.normalize_cache_status(RHData)
@@ -5377,6 +5377,46 @@ if not db_inited_flag:
         logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
+# Create LED object with appropriate configuration
+strip = None
+if Config.LED['LED_COUNT'] > 0:
+    led_type = os.environ.get('RH_LEDS', 'ws281x')
+    # note: any calls to 'RHData.get_option()' need to happen after the DB initialization,
+    #       otherwise it causes problems when run with no existing DB file
+    led_brightness = RHData.get_optionInt("ledBrightness")
+    try:
+        ledModule = importlib.import_module(led_type + '_leds')
+        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+    except ImportError:
+        # No hardware LED handler, the OpenCV emulation
+        try:
+            ledModule = importlib.import_module('cv2_leds')
+            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+        except ImportError:
+            # No OpenCV emulation, try console output
+            try:
+                ledModule = importlib.import_module('ANSI_leds')
+                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+            except ImportError:
+                ledModule = None
+                logger.info('LED: disabled (no modules available)')
+else:
+    logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
+if strip:
+    # Initialize the library (must be called once before other functions).
+    try:
+        strip.begin()
+        led_manager = LEDEventManager(Events, strip, RHData, RACE, Language, INTERFACE)
+        init_LED_effects()
+    except:
+        logger.exception("Error initializing LED support")
+        led_manager = NoLEDManager()
+elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
+    led_manager = ClusterLEDManager(Events)
+    init_LED_effects()
+else:
+    led_manager = NoLEDManager()
+
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors
 try:
@@ -5420,46 +5460,6 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
-# Create LED object with appropriate configuration
-strip = None
-if Config.LED['LED_COUNT'] > 0:
-    led_type = os.environ.get('RH_LEDS', 'ws281x')
-    # note: any calls to 'RHData.get_option()' need to happen after the DB initialization,
-    #       otherwise it causes problems when run with no existing DB file
-    led_brightness = RHData.get_optionInt("ledBrightness")
-    try:
-        ledModule = importlib.import_module(led_type + '_leds')
-        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-    except ImportError:
-        # No hardware LED handler, the OpenCV emulation
-        try:
-            ledModule = importlib.import_module('cv2_leds')
-            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-        except ImportError:
-            # No OpenCV emulation, try console output
-            try:
-                ledModule = importlib.import_module('ANSI_leds')
-                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-            except ImportError:
-                ledModule = None
-                logger.info('LED: disabled (no modules available)')
-else:
-    logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
-if strip:
-    # Initialize the library (must be called once before other functions).
-    try:
-        strip.begin()
-        led_manager = LEDEventManager(Events, strip, RHData, RACE, Language, INTERFACE)
-        init_LED_effects()
-    except:
-        logger.exception("Error initializing LED support")
-        led_manager = NoLEDManager()
-elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
-    led_manager = ClusterLEDManager(Events)
-    init_LED_effects()
-else:
-    led_manager = NoLEDManager()
 
 # start up VRx Control
 vrx_controller = initVRxController()
