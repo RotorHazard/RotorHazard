@@ -489,7 +489,8 @@
 				var slot = msg.slots[idx];
 				var slot_el = $('<tr>');
 
-				if (slot.method > -1) {
+				if (slot.method == 0 && slot.pilot_id ||
+					slot.method > 0 && slot.seed_id) {
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
@@ -570,17 +571,25 @@
 				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
 
 				if (heat) {
-					return heat.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return heat.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return heat.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Heat') + ')';
+					return '(' + __('Deleted Heat') + ')';
 				}
 			} else if (method == 2) { // class
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
 
 				if (race_class) {
-					return race_class.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return race_class.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return race_class.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Class') + ')';
+					return '(' + __('Deleted Class') + ')';
 				}
 			}
 			return '(' + __('Undefined') + ')';

@@ -417,6 +417,7 @@
 						
 						var pilot_el = $('<div class="pilot-name">');
 						var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
+						selectbox.append('<option value="0">-' + __('None') + '-</option>');
 						for (var k in rotorhazard.event.pilots) {
 							var pilot = rotorhazard.event.pilots[k];
 							if (rotorhazard.options.pilotSort == 'callsign') {
@@ -438,36 +439,64 @@
 
 					// method
 					var selectmethod = $('<select class="set_method" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-					selectmethod.append('<option value="-1">None</option>');
+					// selectmethod.append('<option value="-1">None</option>');
 					selectmethod.append('<option value="0">Pilot</option>');
 					selectmethod.append('<option value="1">Heat</option>');
 					selectmethod.append('<option value="2">Class</option>');
-					selectmethod.val(slot.method);
+					if (slot.method > 0) {
+						selectmethod.val(slot.method);
+					} else {
+						selectmethod.val(0);
+					}
 					selectmethod.prop('disabled', heat.locked);
 					slot_el.append(selectmethod);
 
 					// method-heat
 					var selectheat = $('<select class="set_heat" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+					selectheat.append('<option value="0">-' + __('None') + '-</option>');
 					for (var k in rotorhazard.event.heats) {
 						var h = rotorhazard.event.heats[k];
 						selectheat.append('<option value="' + h.id + '">' + h.displayname + '</option>');
 					}
-					selectheat.val(slot.seed_id);
+					if (slot.method == 1 && slot.seed_id) {
+						var heat_arr = Array.from(selectheat[0].options)
+						var selected_heat = heat_arr.find(obj => {return obj.value == slot.seed_id});
+						if (!selected_heat) {
+							selectheat.addClass('value-invalid');
+							selectheat.append('<option value="' + slot.seed_id + '" data-valid="false">&#9888;&#xFE0E; ' + __('Deleted Heat') + ' ' + slot.seed_id + '</option>');
+						}
+
+						selectheat.val(slot.seed_id);
+					} else {
+						selectheat.val(0);
+					}
 					selectheat.prop('disabled', heat.locked);
 					slot_el.append(selectheat);
 
 					// method-class
 					var selectclass = $('<select class="set_class" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+					selectclass.append('<option value="0">-' + __('None') + '-</option>');
 					for (var k in rotorhazard.event.classes) {
 						var c = rotorhazard.event.classes[k];
 						selectclass.append('<option value="' + c.id + '">' + c.displayname + '</option>');
 					}
-					selectclass.val(slot.seed_id);
+					if (slot.method == 2 && slot.seed_id) {
+						var class_arr = Array.from(selectclass[0].options)
+						var selected_class = class_arr.find(obj => {return obj.value == slot.seed_id});
+						if (!selected_class) {
+							selectclass.addClass('value-invalid');
+							selectclass.append('<option value="' + slot.seed_id + '" data-valid="false">&#9888;&#xFE0E; ' + __('Deleted Class') + ' ' + slot.seed_id + '</option>');
+						}
+
+						selectclass.val(slot.seed_id);
+					} else {
+						selectclass.val(0);
+					}
 					selectclass.prop('disabled', heat.locked);
 					slot_el.append(selectclass);
 
 					// rank
-					var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank">'); // TODO: Proper labels
+					var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank" required>'); // TODO: Proper labels
 					input.val(slot.seed_rank);
 					input.prop('disabled', heat.locked);
 					slot_el.append(input);
@@ -475,6 +504,7 @@
 					var pilot_el = $('<div class="pilot-name">');
 					// pilot selectors
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
+					selectbox.append('<option value="0">-' + __('None') + '-</option>');
 					for (var k in rotorhazard.event.pilots) {
 						var pilot = rotorhazard.event.pilots[k];
 						if (rotorhazard.options.pilotSort == 'callsign') {
@@ -484,8 +514,8 @@
 						}
 					}
 					selectbox.val(heatpilot);
-					if (slot.method === 0 && !heatpilot) {
-						selectmethod.val(-1);
+					if (slot.method == -1 || !heatpilot) {
+						selectbox.val(0);
 					}
 					selectbox.prop('disabled', heat.locked);
 					pilot_el.append(selectbox);
@@ -579,13 +609,22 @@
 			var data = {
 				heat: parseInt($(this).data('heat')),
 				slot_id: parseInt($(this).data('slot')),
-				method: parseInt($(this).val())
+				method: parseInt($(this).val()),
+				seed_heat_id: parseInt($(this).val()),
+				seed_class_id: parseInt($(this).val())
 			};
 			socket.emit('alter_heat', data);
 			update_heat_ui($(this).closest('li.rh-heat'));
 		});
 
 		$(document).on("change", '.set_heat', function (event) {
+			var option = $(this).find('option:selected');
+			if (option.attr('data-valid') == "false") {
+				$(this).addClass('value-invalid');
+			} else {
+				$(this).removeClass('value-invalid');
+			}
+
 			var data = {
 				heat: parseInt($(this).data('heat')),
 				slot_id: parseInt($(this).data('slot')),
@@ -595,6 +634,13 @@
 		});
 
 		$(document).on("change", '.set_class', function (event) {
+			var option = $(this).find('option:selected');
+			if (option.attr('data-valid') == "false") {
+				$(this).addClass('value-invalid');
+			} else {
+				$(this).removeClass('value-invalid');
+			}
+
 			var data = {
 				heat: parseInt($(this).data('heat')),
 				slot_id: parseInt($(this).data('slot')),
@@ -670,7 +716,8 @@
 				var slot = msg.slots[idx];
 				var slot_el = $('<tr>');
 
-				if (slot.method > -1) {
+				if (slot.method == 0 && slot.pilot_id ||
+					slot.method > 0 && slot.seed_id) {
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
@@ -750,17 +797,25 @@
 				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
 
 				if (heat) {
-					return heat.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return heat.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return heat.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Heat') + ')';
+					return '(' + __('Deleted Heat') + ')';
 				}
 			} else if (method == 2) { // class
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
 
 				if (race_class) {
-					return race_class.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return race_class.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return race_class.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Class') + ')';
+					return '(' + __('Deleted Class') + ')';
 				}
 			}
 			return '(' + __('Undefined') + ')';
