@@ -2347,9 +2347,12 @@ def race_expire_thread(start_token):
             emit_current_leaderboard()
             if race_format.lap_grace_sec > -1:
                 gevent.sleep((RACE.start_time_monotonic + race_format.race_time_sec + race_format.lap_grace_sec) - monotonic())
-                on_stop_race()
+                if RACE.race_status == RaceStatus.RACING and RACE.start_token == start_token:
+                    on_stop_race()
+                else:
+                    logger.debug("Grace period timer {} is unused".format(start_token))
         else:
-            logger.debug("Finished unused race-time-expire thread")
+            logger.debug("Race-time-expire thread {} is unused".format(start_token))
 
 @SOCKET_IO.on('stop_race')
 @catchLogExceptionsWrapper
