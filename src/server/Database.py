@@ -114,6 +114,8 @@ class RaceClass(DB.Model):
     win_condition = DB.Column(DB.Integer, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.String(16), nullable=False)
+    ranking = DB.Column(DB.PickleType, nullable=True)
+    rankStatus = DB.Column(DB.String(16), nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
     heatAdvanceType = DB.Column(DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)

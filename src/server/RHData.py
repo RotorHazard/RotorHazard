@@ -15,6 +15,9 @@ import json
 import glob
 import RHUtils
 import random
+import Database
+import Results
+from monotonic import monotonic
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Results import CacheStatus
@@ -561,6 +564,8 @@ class RHData():
                         'format_id': 0,
                         'results': None,
                         'cacheStatus': CacheStatus.INVALID,
+                        'ranking': None,
+                        'rankStatus': CacheStatus.INVALID,
                         'win_condition': 0,
                         'rounds': 0,
                         'heatAdvanceType': 1,
@@ -811,6 +816,18 @@ class RHData():
     # Heats
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
+
+    def get_heat_object(self, heat_or_id):
+        if isinstance(heat_or_id, Database.Heat):
+            heat = heat_or_id
+        else:
+            heat = self._Database.Heat.query.get(heat_or_id)
+
+        if not heat:
+            logger.error('Unable to locate Heat {}'.format(heat_or_id))
+            return False
+
+        return heat
 
     def get_heats(self):
         return self._Database.Heat.query.all()
@@ -1194,7 +1211,7 @@ class RHData():
                         seed_heat = self.get_heat(slot.seed_id)
 
                         if seed_heat:
-                            output = Results.get_results_heat(self, seed_heat)
+                            output = self.get_results_heat(seed_heat)
                             if output['result']:
                                 if output['data']:
                                     results = output['data'][output['data']['meta']['primary_leaderboard']]
@@ -1229,7 +1246,7 @@ class RHData():
                         seed_class = self.get_raceClass(slot.seed_id)
 
                         if seed_class:
-                            output = Results.get_results_race_class(self, seed_class)
+                            output = self.get_results_raceClass(seed_class)
                             if output['result']:
                                 if output['data']:
                                     results = output['data'][output['data']['meta']['primary_leaderboard']]
@@ -1344,29 +1361,95 @@ class RHData():
             self.commit()
         return True
 
-    def set_results_heat(self, heat_id, data):
-        heat = self._Database.Heat.query.get(heat_id)
+    def get_results_heat(self, heat_or_id):
+        heat = self.get_heat_object(heat_or_id)
 
-        if not heat:
+        if heat is False:
             return False
 
-        if 'results' in data:
-            heat.results = data['results']
-        if 'cacheStatus' in data:
-            heat.cacheStatus = data['cacheStatus']
+        if len(self.get_savedRaceMetas_by_heat(heat.id)) < 1:
+            # no races exist, skip calculating
+            return {
+                'result': True,
+                'data': None
+            }
+
+        cache_invalid = False
+        if heat.cacheStatus:
+            try:
+                cacheStatus = json.loads(heat.cacheStatus)
+                token = cacheStatus['data_ver']
+                if cacheStatus['data_ver'] == cacheStatus['build_ver']:
+                    # cache hit
+                    return {
+                        'result': True,
+                        'data': heat.results
+                    }
+                # else: cache miss
+            except ValueError:
+                cache_invalid = True
+        else:
+            cache_invalid = True
+
+        if cache_invalid:
+            logger.error('Heat {} cache has invalid status'.format(heat.id))
+            token = monotonic()
+            self.clear_results_heat(heat, token)
+
+        # cache rebuild
+        logger.debug('Building Heat {} results'.format(heat.id))
+        build = Results.build_atomic_result_cache(self, heat_id=heat.id)
+        self.set_results_heat(heat, token, build)
+        return {
+            'result': True,
+            'data': build['results']
+        }
+
+    def set_results_heat(self, heat_or_id, token, results):
+        heat = self.get_heat_object(heat_or_id)
+
+        if heat is False:
+            return False
+
+        cacheStatus = json.loads(heat.cacheStatus)
+        if cacheStatus['data_ver'] == token:
+            cacheStatus['build_ver'] = token
+            heat.results = results
+            heat.cacheStatus = json.dumps(cacheStatus)
+            
+            self.commit()
+            return heat
+        else:
+            logger.info('Ignoring cache write; token mismatch {} / {}'.format(cacheStatus['data_ver'], token))
+            return False
+
+    def clear_results_heat(self, heat_or_id, token=None):
+        heat = self.get_heat_object(heat_or_id)
+
+        if heat is False:
+            return False
+
+        if token is None:
+            token = monotonic()
+
+        heat.cacheStatus = json.dumps({
+            'data_ver': token,
+            'build_ver': None
+        })
 
         self.commit()
         return heat
 
-    def clear_results_heat(self, heat_id):
-        self._Database.Heat.query.filter_by(id=heat_id).update({
-            self._Database.Heat.cacheStatus: CacheStatus.INVALID
-            })
-        self.commit()
-
     def clear_results_heats(self):
+        token = monotonic()
+
+        initStatus = json.dumps({
+            'data_ver': token,
+            'build_ver': None
+        })
+
         self._Database.Heat.query.update({
-            self._Database.Heat.cacheStatus: CacheStatus.INVALID
+            self._Database.Heat.cacheStatus: initStatus
             })
         self.commit()
 
@@ -1448,6 +1531,18 @@ class RHData():
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
 
+    def get_raceClass_object(self, race_class_or_id):
+        if isinstance(race_class_or_id, Database.RaceClass):
+            race_class = race_class_or_id
+        else:
+            race_class = self._Database.RaceClass.query.get(race_class_or_id)
+
+        if not race_class:
+            logger.error('Unable to locate RaceClass {}'.format(race_class_or_id))
+            return False
+
+        return race_class
+
     def get_raceClasses(self):
         return self._Database.RaceClass.query.all()
 
@@ -1458,6 +1553,7 @@ class RHData():
             description='',
             format_id=RHUtils.FORMAT_ID_NONE,
             cacheStatus=CacheStatus.INVALID,
+            rankStatus=CacheStatus.INVALID,
             win_condition=0,
             rounds=0,
             heatAdvanceType=1,
@@ -1589,29 +1685,188 @@ class RHData():
 
             return True
 
-    def set_results_raceClass(self, class_id, data):
-        race_class = self._Database.RaceClass.query.get(class_id)
+    def get_results_raceClass(self, race_class_or_id):
+        race_class = self.get_raceClass_object(race_class_or_id)
 
-        if not race_class:
+        if race_class is False:
             return False
 
-        if 'results' in data:
-            race_class.results = data['results']
-        if 'cacheStatus' in data:
-            race_class.cacheStatus = data['cacheStatus']
+        if len(self.get_savedRaceMetas_by_raceClass(race_class.id)) < 1:
+            # no races exist, skip calculating
+            return {
+                'result': True,
+                'data': None
+            }
+
+        cache_invalid = False
+        if race_class.cacheStatus:
+            try:
+                cacheStatus = json.loads(race_class.cacheStatus)
+                token = cacheStatus['data_ver']
+                if cacheStatus['data_ver'] == cacheStatus['build_ver']:
+                    # cache hit
+                    return {
+                        'result': True,
+                        'data': race_class.results
+                    }
+                # else: cache miss
+            except ValueError:
+                cache_invalid = True
+        else:
+            cache_invalid = True
+
+        if cache_invalid:
+            logger.error('Class {} cache has invalid status'.format(race_class.id))
+            token = monotonic()
+            self.clear_results_raceClass(race_class, token)
+
+        # cache rebuild
+        logger.info('Building Class {} results'.format(race_class.id))
+        build = Results.build_atomic_result_cache(self, class_id=race_class.id)
+        self.set_results_raceClass(race_class, token, build)
+        return {
+            'result': True,
+            'data': build['results']
+        }
+
+    def get_ranking_raceClass(self, race_class_or_id):
+        race_class = self.get_raceClass_object(race_class_or_id)
+
+        if race_class is False:
+            return False
+
+        if len(self.get_savedRaceMetas_by_raceClass(race_class.id)) < 1:
+            # no races exist, skip calculating
+            return {
+                'result': True,
+                'data': None
+            }
+
+        cache_invalid = False
+        if race_class.rankStatus:
+            try:
+                rankStatus = json.loads(race_class.rankStatus)
+                token = rankStatus['data_ver']
+                if rankStatus['data_ver'] == rankStatus['build_ver']:
+                    # cache hit
+                    return {
+                        'result': True,
+                        'data': race_class.ranking
+                    }
+                # else: cache miss
+            except ValueError:
+                cache_invalid = True
+        else:
+            cache_invalid = True
+
+        if cache_invalid:
+            logger.error('Class {} ranking has invalid status'.format(race_class.id))
+            token = monotonic()
+            self.clear_ranking_raceClass(race_class, token)
+
+        # cache rebuild
+        logger.debug('Building Class {} ranking'.format(race_class.id))
+        build = Results.build_atomic_ranking(self, class_id=race_class.id)
+        self.set_ranking_raceClass(race_class, token, build)
+        return {
+            'result': True,
+            'data': build['results']
+        }
+
+    def set_results_raceClass(self, race_class_or_id, token, results):
+        race_class = self.get_raceClass_object(race_class_or_id)
+
+        if race_class is False:
+            return False
+
+        if race_class.cacheStatus:
+            cacheStatus = json.loads(race_class.cacheStatus)
+            if cacheStatus['data_ver'] == token:
+                cacheStatus['build_ver'] = token
+                race_class.results = results
+                race_class.cacheStatus = json.dumps(cacheStatus)
+                
+                self.commit()
+                return race_class
+            else:
+                logger.info('Ignoring cache write; token mismatch {} / {}'.format(cacheStatus['data_ver'], token))
+                return False
+        else:
+            logger.error('Ignoring cache write for class {}: status is invalid'.format(race_class.id))
+            return False
+
+    def set_ranking_raceClass(self, race_class_or_id, token, results):
+        race_class = self.get_raceClass_object(race_class_or_id)
+
+        if race_class is False:
+            return False
+
+        if race_class.rankStatus:
+            rankStatus = json.loads(race_class.rankStatus)
+            if rankStatus['data_ver'] == token:
+                rankStatus['build_ver'] = token
+                race_class.ranking = results
+                race_class.rankStatus = json.dumps(rankStatus)
+                
+                self.commit()
+                return race_class
+            else:
+                logger.info('Ignoring ranking write; token mismatch {} / {}'.format(rankStatus['data_ver'], token))
+                return False
+        else:
+            logger.error('Ignoring ranking writefor class {}: status is invalid'.format(race_class.id))
+            return False
+
+    def clear_results_raceClass(self, race_class_or_id, token=None):
+        race_class = self.get_raceClass_object(race_class_or_id)
+
+        if race_class is False:
+            return False
+
+        if token is None:
+            token = monotonic()
+
+        initStatus = {
+            'data_ver': token,
+            'build_ver': None
+        }
+        jsonStatus = json.dumps(initStatus)
+        race_class.cacheStatus = jsonStatus
+        race_class.rankStatus = jsonStatus
 
         self.commit()
         return race_class
 
-    def clear_results_raceClass(self, class_id):
-        self._Database.RaceClass.query.filter_by(id=class_id).update({
-            self._Database.RaceClass.cacheStatus: CacheStatus.INVALID
-            })
+    def clear_ranking_raceClass(self, race_class_or_id, token=None):
+        race_class = self.get_raceClass_object(race_class_or_id)
+
+        if race_class is False:
+            return False
+
+        if token is None:
+            token = monotonic()
+
+        initStatus = json.dumps({
+            'data_ver': token,
+            'build_ver': None
+        })
+        race_class.rankStatus = initStatus
+
         self.commit()
+        return race_class
 
     def clear_results_raceClasses(self):
+        token = monotonic()
+
+        initStatus = {
+            'data_ver': token,
+            'build_ver': None
+        }
+        jsonStatus = json.dumps(initStatus)
+
         self._Database.RaceClass.query.update({
-            self._Database.RaceClass.cacheStatus: CacheStatus.INVALID
+            self._Database.RaceClass.cacheStatus: jsonStatus,
+            self._Database.RaceClass.rankStatus: jsonStatus
             })
         self.commit()
 
@@ -2115,6 +2370,18 @@ class RHData():
     def get_savedRaceMeta(self, raceMeta_id):
         return self._Database.SavedRaceMeta.query.get(raceMeta_id)
 
+    def get_savedRaceMeta_object(self, race_or_id):
+        if isinstance(race_or_id, Database.SavedRaceMeta):
+            race = race_or_id
+        else:
+            race = self._Database.SavedRaceMeta.query.get(race_or_id)
+
+        if not race:
+            logger.error('Unable to locate Race {}'.format(race_or_id))
+            return False
+
+        return race
+
     def get_savedRaceMeta_by_heat_round(self, heat_id, round_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
 
@@ -2233,29 +2500,92 @@ class RHData():
 
         return race_meta, new_heat
 
-    def set_results_savedRaceMeta(self, race_id, data):
-        race = self._Database.SavedRaceMeta.query.get(race_id)
+    def get_results_savedRaceMeta(self, race_or_id):
+        race = self.get_savedRaceMeta_object(race_or_id)
 
-        if not race:
+        if race is False:
             return False
 
-        if 'results' in data:
-            race.results = data['results']
-        if 'cacheStatus' in data:
-            race.cacheStatus = data['cacheStatus']
+        cache_invalid = False
+        if race.cacheStatus:
+            try:
+                cacheStatus = json.loads(race.cacheStatus)
+                token = cacheStatus['data_ver']
+                if cacheStatus['data_ver'] == cacheStatus['build_ver']:
+                    # cache hit
+                    return {
+                        'result': True,
+                        'data': race.results
+                    }
+                # else: cache miss
+            except ValueError:
+                cache_invalid = True
+        else:
+            cache_invalid = True
+
+        if cache_invalid:
+            logger.error('Race {} cache has invalid status'.format(race.id))
+            token = monotonic()
+            self.clear_results_savedRaceMeta(race, token)
+
+        # cache rebuild
+        logger.debug('Building Race {} (Heat {} Round {}) results'.format(race.id, race.heat_id, race.round_id))
+        build = Results.build_atomic_result_cache(self, heat_id=race.heat_id, round_id=race.round_id)
+        self.set_results_savedRaceMeta(race, token, build)
+        return {
+            'result': True,
+            'data': build['results']
+        }
+
+    def set_results_savedRaceMeta(self, race_or_id, token, results):
+        race = self.get_savedRaceMeta_object(race_or_id)
+
+        if race is False:
+            return False
+
+        if race.cacheStatus:
+            cacheStatus = json.loads(race.cacheStatus)
+            if cacheStatus['data_ver'] == token:
+                cacheStatus['build_ver'] = token
+                race.results = results
+                race.cacheStatus = json.dumps(cacheStatus)
+                
+                self.commit()
+                return race
+            else:
+                logger.info('Ignoring cache write; token mismatch {} / {}'.format(cacheStatus['data_ver'], token))
+                return False
+        else:
+            logger.error('Ignoring cache write for race {}: status is invalid'.format(race.id))
+            return False
+
+    def clear_results_savedRaceMeta(self, race_or_id, token=None):
+        race = self.get_savedRaceMeta_object(race_or_id)
+
+        if race is False:
+            return False
+
+        if token is None:
+            token = monotonic()
+
+        race.cacheStatus = json.dumps({
+            'data_ver': token,
+            'build_ver': None
+        })
 
         self.commit()
         return race
 
-    def clear_results_savedRaceMeta(self, race_id):
-        self._Database.SavedRaceMeta.query.filter_by(id=race_id).update({
-            self._Database.SavedRaceMeta.cacheStatus: CacheStatus.INVALID
-            })
-        self.commit()
-
     def clear_results_savedRaceMetas(self):
+        token = monotonic()
+
+        initStatus = json.dumps({
+            'data_ver': token,
+            'build_ver': None
+        })
+
         self._Database.SavedRaceMeta.query.update({
-            self._Database.SavedRaceMeta.cacheStatus: CacheStatus.INVALID
+            self._Database.SavedRaceMeta.cacheStatus: initStatus
             })
         self.commit()
 
@@ -2508,20 +2838,65 @@ class RHData():
         logger.info("Reset global settings")
 
     # Event Results (Options)
-    def set_results_event(self, data):
-        if 'results' in data:
-            self.set_option("eventResults", data['results'])
-        if 'cacheStatus' in data:
-            self.set_option("eventResults_cacheStatus", data['cacheStatus'])
-
-        return self.get_results_event()
-
     def get_results_event(self):
+        if len(self.get_savedRaceMetas()) < 1:
+            # no races exist, skip calculating
+            return {
+                'result': True,
+                'data': None
+            }
+
+        cache_invalid = False
+        eventStatus = self.get_option("eventResults_cacheStatus")
+        if eventStatus:
+            try:
+                cacheStatus = json.loads(eventStatus)
+                token = cacheStatus['data_ver']
+                if cacheStatus['data_ver'] == cacheStatus['build_ver']:
+                    # cache hit
+                    return {
+                        'result': True,
+                        'data': json.loads(self.get_option("eventResults"))
+                    }
+                # else: cache miss
+            except ValueError:
+                cache_invalid = True
+        else:
+            cache_invalid = True
+        
+        if cache_invalid:
+            logger.error('Event cache has invalid status')
+            token = monotonic()
+            self.clear_results_event(token)
+
+        # cache rebuild
+        logger.debug('Building Event results')
+        build = Results.calc_leaderboard(self)
+        self.set_results_event(token, build)
         return {
-            'results': self.get_option("eventResults"),
-            'cacheStatus': self.get_option("eventResults_cacheStatus")
+            'result': True,
+            'data': build
         }
 
-    def clear_results_event(self):
-        self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
+    def set_results_event(self, token, results):
+        eventStatus = self.get_option("eventResults_cacheStatus")
+        cacheStatus = json.loads(eventStatus)
+        if cacheStatus['data_ver'] == token:
+            cacheStatus['build_ver'] = token
+            self.set_option("eventResults", json.dumps(results))
+            self.set_option("eventResults_cacheStatus", json.dumps(cacheStatus))
+
+        self.commit()
+        return True
+
+    def clear_results_event(self, token=None):
+        if token is None:
+            token = monotonic()
+
+        eventStatus = json.dumps({
+            'data_ver': token,
+            'build_ver': None
+        })
+
+        self.set_option("eventResults_cacheStatus", eventStatus)
         return True

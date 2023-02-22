@@ -37,28 +37,15 @@ def invalidate_all_caches(rhDataObj):
 
     logger.debug('All Result caches invalidated')
 
-def normalize_cache_status(rhDataObj):
-    ''' Check all caches and invalidate any paused builds '''
-    for race in rhDataObj.get_savedRaceMetas():
-        if race.cacheStatus != CacheStatus.VALID:
-            rhDataObj.clear_results_savedRaceMeta(race.id)
-
-    for heat in rhDataObj.get_heats():
-        if heat.cacheStatus != CacheStatus.VALID:
-            rhDataObj.clear_results_heat(heat.id)
-
-    for race_class in rhDataObj.get_raceClasses():
-        if race_class.cacheStatus != CacheStatus.VALID:
-            rhDataObj.clear_results_raceClass(race_class.id)
-
-    if rhDataObj.get_results_event()['cacheStatus'] != CacheStatus.VALID:
-        rhDataObj.clear_results_event()
-
-    logger.debug('All Result caches normalized')
-
 def build_atomic_result_cache(rhDataObj, **params):
     return {
         'results': calc_leaderboard(rhDataObj, **params),
+        'cacheStatus': CacheStatus.VALID
+    }
+
+def build_atomic_ranking(rhDataObj, **params):
+    return {
+        'results': calc_class_ranking_leaderboard(rhDataObj, **params),
         'cacheStatus': CacheStatus.VALID
     }
 
@@ -100,6 +87,9 @@ def build_atomic_results_caches(rhDataObj, params):
         race_class = rhDataObj.set_results_raceClass(class_id, {
             'cacheStatus': token
             })
+        class_rank = rhDataObj.set_ranking_raceClass(class_id, {
+            'cacheStatus': token
+            })
 
     rhDataObj.set_results_event({
         'cacheStatus': token
@@ -109,173 +99,34 @@ def build_atomic_results_caches(rhDataObj, params):
     if 'race_id' in params:
         gevent.sleep()
         timing['race'] = monotonic()
-        if race.cacheStatus == token:
-            raceResult = build_atomic_result_cache(rhDataObj, heat_id=heat_id, round_id=round_id)
-            rhDataObj.set_results_savedRaceMeta(race.id, {
-                'results': raceResult['results'],
-                'cacheStatus': raceResult['cacheStatus']
-            })
-        logger.debug('Race {0} cache built in {1}s'.format(params['race_id'], monotonic() - timing['race']))
+        rhDataObj.get_results_race(params['race_id'])
+        logger.debug('Race {} results built in {}s'.format(params['race_id'], monotonic() - timing['race']))
 
     # rebuild heat summary
     if 'heat_id' in params:
         gevent.sleep()
         timing['heat'] = monotonic()
-        if heat.cacheStatus == token:
-            heatResult = build_atomic_result_cache(rhDataObj, heat_id=heat_id)
-            rhDataObj.set_results_heat(heat.id, {
-                'results': heatResult['results'],
-                'cacheStatus': heatResult['cacheStatus']
-            })
-        logger.debug('Heat {0} cache built in {1}s'.format(heat_id, monotonic() - timing['heat']))
+        rhDataObj.get_results_heat(heat)
+        logger.debug('Heat {} results built in {}s'.format(heat_id, monotonic() - timing['heat']))
 
     # rebuild class summary
     if USE_CLASS:
         gevent.sleep()
         timing['class'] = monotonic()
-        if race_class.cacheStatus == token:
-            classResult = build_atomic_result_cache(rhDataObj, class_id=class_id)
-            rhDataObj.set_results_raceClass(race_class.id, {
-                'results': classResult['results'],
-                'cacheStatus': classResult['cacheStatus']
-            })
-        logger.debug('Class {0} cache built in {1}s'.format(class_id, monotonic() - timing['class']))
+        rhDataObj.get_results_raceClass(race_class)
+        logger.debug('Class {} results built in {}s'.format(class_id, monotonic() - timing['class']))
+
+        timing['class_rank'] = monotonic()
+        rhDataObj.get_ranking_raceClass(race_class)
+        logger.debug('Class {} ranking built in {}s'.format(class_id, monotonic() - timing['class_rank']))
 
     # rebuild event summary
     gevent.sleep()
     timing['event'] = monotonic()
-    rhDataObj.set_results_event({
-        'results': json.dumps(calc_leaderboard(rhDataObj)),
-        'cacheStatus': CacheStatus.VALID
-        })
-    logger.debug('Event cache built in %fs', monotonic() - timing['event'])
+    rhDataObj.get_results_event()
+    logger.debug('Event cache built in {}s'.format(monotonic() - timing['event']))
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
-
-def get_results_heat(RHData, heat):
-    if len(RHData.get_savedRaceMetas_by_heat(heat.id)):
-        if heat.cacheStatus == CacheStatus.INVALID:
-            logger.info('Rebuilding Heat %d cache', heat.id)
-            build = build_atomic_result_cache(RHData, heat_id=heat.id) 
-            RHData.set_results_heat(heat.id, build)
-            return {
-                'result': True,
-                'data': build['results']
-                }
-        else:
-            expires = monotonic() + CACHE_TIMEOUT
-            while True:
-                gevent.idle()
-                if heat.cacheStatus == CacheStatus.VALID:
-                    return {
-                        'result': True,
-                        'data': heat.results
-                        }
-                elif monotonic() > expires:
-                    return {
-                        'result': False,
-                        'data': None
-                        }
-    else:
-        return {
-            'result': True,
-            'data': None
-            }
-
-def get_results_race_class(RHData, race_class):
-    if len(RHData.get_savedRaceMetas_by_raceClass(race_class.id)):
-        if race_class.cacheStatus == CacheStatus.INVALID:
-            logger.info('Rebuilding Class %d cache', race_class.id)
-            build = build_atomic_result_cache(RHData, class_id=race_class.id)
-            RHData.set_results_raceClass(race_class.id, build)
-            return {
-                'result': True,
-                'data': build['results']
-                }
-        else:
-            expires = monotonic() + CACHE_TIMEOUT
-            while True:
-                gevent.idle()
-                if race_class.cacheStatus == CacheStatus.VALID:
-                    return {
-                        'result': True,
-                        'data': race_class.results
-                        }
-                elif monotonic() > expires:
-                    return {
-                        'result': False,
-                        'data': None
-                        }
-    else:
-        return {
-            'result': True,
-            'data': None
-            }
-
-def get_results_race(RHData, heat, race):
-    if race.cacheStatus == CacheStatus.INVALID:
-        logger.info('Rebuilding Race (Heat %d Round %d) cache', heat.id, race.round_id)
-        build = build_atomic_result_cache(RHData, heat_id=heat.id, round_id=race.round_id)
-        RHData.set_results_savedRaceMeta(race.id, build)
-        return {
-            'result': True,
-            'data': build['results']
-            }
-    else:
-        expires = monotonic() + CACHE_TIMEOUT
-        while True:
-            gevent.idle()
-            if race.cacheStatus == CacheStatus.VALID:
-                return {
-                    'result': True,
-                    'data': race.results
-                    }
-            elif monotonic() > expires:
-                return {
-                    'result': False,
-                    'data': None
-                    }
-
-def get_results_event(RHData):
-    if RHData.get_results_event()['cacheStatus'] == CacheStatus.INVALID:
-        logger.info('Rebuilding Event cache')
-        results = calc_leaderboard(RHData)
-        RHData.set_results_event({
-            'results': json.dumps(results),
-            'cacheStatus': CacheStatus.VALID
-            })
-        return {
-            'result': True,
-            'data': results
-            }
-    else:
-        expires = monotonic() + CACHE_TIMEOUT
-        while True:
-            gevent.idle()
-            eventCache = RHData.get_results_event()
-            if eventCache['cacheStatus'] == CacheStatus.VALID:
-                try:
-                    results = json.loads(eventCache['results'])
-                    return {
-                        'result': True,
-                        'data': results
-                        }
-                except:
-                    RHData.set_results_event({
-                        'results': False,
-                        'cacheStatus': CacheStatus.INVALID
-                        })
-                    logger.error('Unable to retrieve "valid" event cache from RHData')
-                    return {
-                        'result': False,
-                        'data': None
-                        }
-            elif monotonic() > expires:
-                logger.warning('Cache build timed out: Event Summary')
-                return {
-                    'result': False,
-                    'data': None
-                    }
 
 def calc_leaderboard(rhDataObj, **params):
     ''' Generates leaderboards '''
@@ -977,113 +828,121 @@ def calc_team_leaderboard(raceObj, rhDataObj):
         return leaderboard_output
     return None
 
-def calc_special_class_ranking_leaderboard(rhDataObj, race_class, rounds=None):
-    class_win_condition = race_class.win_condition
+def calc_class_ranking_leaderboard(rhDataObj, race_class=None, class_id=None, rounds=None):
+    if class_id:
+        race_class = rhDataObj.get_raceClass(class_id)
 
-    if class_win_condition >= 4:
-        if rounds is None:
-            rounds = class_win_condition - 3
+    if race_class:
+        class_win_condition = race_class.win_condition
 
-        race_format = rhDataObj.get_raceFormat(race_class.format_id)
-        heats = rhDataObj.get_heats_by_class(race_class.id)
+        if class_win_condition >= 4:
+            if rounds is None:
+                rounds = class_win_condition - 3
 
-        pilotresults = {}
-        for heat in heats:
-            races = rhDataObj.get_savedRaceMetas_by_heat(heat.id)
+            race_format = rhDataObj.get_raceFormat(race_class.format_id)
+            heats = rhDataObj.get_heats_by_class(race_class.id)
 
-            for race in races:
-                race_result = get_results_race(rhDataObj, heat, race)
+            pilotresults = {}
+            for heat in heats:
+                races = rhDataObj.get_savedRaceMetas_by_heat(heat.id)
 
-                for pilotresult in race_result['data']['by_race_time']:
-                    if pilotresult['pilot_id'] not in pilotresults:
-                        pilotresults[pilotresult['pilot_id']] = []
-                    pilotresults[pilotresult['pilot_id']].append(pilotresult)
-
-        leaderboard = []
-        for pilotresultlist in pilotresults:
-            pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
-                -x['laps'], # reverse lap count
-                x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
-            ))
-            pilot_result = pilot_result[:rounds]
-
-            new_pilot_result = {}
-            new_pilot_result['pilot_id'] = pilot_result[0]['pilot_id']
-            new_pilot_result['callsign'] = pilot_result[0]['callsign']
-            new_pilot_result['team_name'] = pilot_result[0]['team_name']
-            new_pilot_result['node'] = pilot_result[0]['node']
-            new_pilot_result['laps'] = 0
-            new_pilot_result['starts'] = 0
-            new_pilot_result['total_time_raw'] = 0
-            new_pilot_result['total_time_laps_raw'] = 0
-
-            for race in pilot_result:
-                new_pilot_result['laps'] += race['laps']
-                new_pilot_result['starts'] += race['starts']
-                new_pilot_result['total_time_raw'] += race['total_time_raw']
-                new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
-
-                # new_leaderboard['fastest_lap'] += race['fastest_lap']
-                # new_leaderboard['fastest_lap_source'] += race['']
-                # new_leaderboard['consecutives'] += race['consecutives']
-                # new_leaderboard['consecutives_source'] += race['']
-
-            new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps']
-
-            timeFormat = rhDataObj.get_option('timeFormat')
-            new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
-            new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
-            new_pilot_result['average_lap'] = RHUtils.time_format(new_pilot_result['average_lap_raw'], timeFormat)
-
-            # result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
-            # result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
-            # result_pilot['consecutives_raw'] = result_pilot['consecutives']
-            # result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
-
-            leaderboard.append(new_pilot_result)
-
-        if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
-            # Sort by laps time
-            leaderboard = sorted(leaderboard, key = lambda x: (
-                -x['laps'], # reverse lap count
-                x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
-            ))
-
-            # determine ranking
-            last_rank = '-'
-            last_rank_laps = 0
-            last_rank_time = 0
-            for i, row in enumerate(leaderboard, start=1):
-                pos = i
-                if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
-                    pos = last_rank
-                last_rank = pos
-                last_rank_laps = row['laps']
-                last_rank_time = row['total_time_laps_raw']
-
-                row['position'] = pos
-        else:
-            # Sort by race time
-            leaderboard = sorted(leaderboard, key = lambda x: (
-                -x['laps'], # reverse lap count
-                x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
-            ))
-
-            # determine ranking
-            last_rank = '-'
-            last_rank_laps = 0
-            last_rank_time = 0
-            for i, row in enumerate(leaderboard, start=1):
-                pos = i
-                if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
-                    pos = last_rank
-                last_rank = pos
-                last_rank_laps = row['laps']
-                last_rank_time = row['total_time_raw']
-
-                row['position'] = pos
+                for race in races:
+                    race_result = rhDataObj.get_results_savedRaceMeta(race)
                     
-        return leaderboard
+                    if race_result['result']:
+                        for pilotresult in race_result['data']['results']['by_race_time']:
+                            if pilotresult['pilot_id'] not in pilotresults:
+                                pilotresults[pilotresult['pilot_id']] = []
+                            pilotresults[pilotresult['pilot_id']].append(pilotresult)
+                    else:
+                        logger.warning("Failed building ranking, race result not available")
+                        return False
+
+            leaderboard = []
+            for pilotresultlist in pilotresults:
+                pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
+                    -x['laps'], # reverse lap count
+                    x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+                ))
+                pilot_result = pilot_result[:rounds]
+
+                new_pilot_result = {}
+                new_pilot_result['pilot_id'] = pilot_result[0]['pilot_id']
+                new_pilot_result['callsign'] = pilot_result[0]['callsign']
+                new_pilot_result['team_name'] = pilot_result[0]['team_name']
+                new_pilot_result['node'] = pilot_result[0]['node']
+                new_pilot_result['laps'] = 0
+                new_pilot_result['starts'] = 0
+                new_pilot_result['total_time_raw'] = 0
+                new_pilot_result['total_time_laps_raw'] = 0
+
+                for race in pilot_result:
+                    new_pilot_result['laps'] += race['laps']
+                    new_pilot_result['starts'] += race['starts']
+                    new_pilot_result['total_time_raw'] += race['total_time_raw']
+                    new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
+
+                    # new_leaderboard['fastest_lap'] += race['fastest_lap']
+                    # new_leaderboard['fastest_lap_source'] += race['']
+                    # new_leaderboard['consecutives'] += race['consecutives']
+                    # new_leaderboard['consecutives_source'] += race['']
+
+                new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps']
+
+                timeFormat = rhDataObj.get_option('timeFormat')
+                new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
+                new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
+                new_pilot_result['average_lap'] = RHUtils.time_format(new_pilot_result['average_lap_raw'], timeFormat)
+
+                # result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
+                # result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
+                # result_pilot['consecutives_raw'] = result_pilot['consecutives']
+                # result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
+
+                leaderboard.append(new_pilot_result)
+
+            if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
+                # Sort by laps time
+                leaderboard = sorted(leaderboard, key = lambda x: (
+                    -x['laps'], # reverse lap count
+                    x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+                ))
+
+                # determine ranking
+                last_rank = '-'
+                last_rank_laps = 0
+                last_rank_time = 0
+                for i, row in enumerate(leaderboard, start=1):
+                    pos = i
+                    if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
+                        pos = last_rank
+                    last_rank = pos
+                    last_rank_laps = row['laps']
+                    last_rank_time = row['total_time_laps_raw']
+
+                    row['position'] = pos
+            else:
+                # Sort by race time
+                leaderboard = sorted(leaderboard, key = lambda x: (
+                    -x['laps'], # reverse lap count
+                    x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+                ))
+
+                # determine ranking
+                last_rank = '-'
+                last_rank_laps = 0
+                last_rank_time = 0
+                for i, row in enumerate(leaderboard, start=1):
+                    pos = i
+                    if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                        pos = last_rank
+                    last_rank = pos
+                    last_rank_laps = row['laps']
+                    last_rank_time = row['total_time_raw']
+
+                    row['position'] = pos
+
+            return leaderboard
     return False
 
 def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
