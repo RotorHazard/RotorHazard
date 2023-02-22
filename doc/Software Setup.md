@@ -255,6 +255,7 @@ ExecStart=/usr/bin/python server.py
 [Install]
 WantedBy=multi-user.target
 ```
+*Note: if username was changed during Pi OS setup, be sure to change `pi` in `User` and `WorkingDirectory` to match your username.
 
 Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, remove `User=pi` from this config.
 
