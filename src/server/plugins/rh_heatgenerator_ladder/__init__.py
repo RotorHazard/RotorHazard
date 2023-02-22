@@ -29,7 +29,7 @@ def getTotalPilots(RHData, Results, generate_args):
 
     if input_class_id:
         race_class = RHData.get_raceClass(input_class_id)
-        class_results = Results.get_results_race_class(RHData, race_class)
+        class_results = RHData.get_results_raceClass(race_class)
         if class_results['result'] and type(class_results['result']) == dict: 
             # fill from available results
             # TODO: Check class finalized status

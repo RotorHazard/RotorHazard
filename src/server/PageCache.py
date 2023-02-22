@@ -116,7 +116,7 @@ class PageCache:
                                 'laps': laps
                             })
 
-                        output = Results.get_results_race(self._RHData, heat, race)
+                        output = self._RHData.get_results_savedRaceMeta(race)
                         results = output['data']
                         if not output['result']:
                             error_flag = True
@@ -129,7 +129,7 @@ class PageCache:
                             'leaderboard': results
                         })
 
-                    output = Results.get_results_heat(self._RHData, heat)
+                    output = self._RHData.get_results_heat(heat)
                     results = output['data']
                     if not output['result']:
                         error_flag = True
@@ -156,18 +156,24 @@ class PageCache:
             gevent.sleep()
             current_classes = {}
             for race_class in self._RHData.get_raceClasses():
-                output = Results.get_results_race_class(self._RHData, race_class)
+                output = self._RHData.get_results_raceClass(race_class)
                 results = output['data']
                 if not output['result']:
                     error_flag = True
                     logger.warning('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
 
+                output = self._RHData.get_ranking_raceClass(race_class)
+                ranking = output['data']
+                if not output['result']:
+                    error_flag = True
+                    logger.warning('T{}: Rebuild timed out: Class Ranking {}'.format(timing['start'], race_class.id))
+
                 current_class = {}
                 current_class['id'] = race_class.id
                 current_class['name'] = race_class.name
-                current_class['description'] = race_class.name
+                current_class['description'] = race_class.description
                 current_class['leaderboard'] = results
-                current_class['special_leaderboard'] = Results.calc_special_class_ranking_leaderboard(self._RHData, race_class)
+                current_class['ranking'] = ranking
 
                 current_classes[race_class.id] = current_class
 
@@ -175,7 +181,7 @@ class PageCache:
             logger.debug('T%d: results by class assembled in %.3fs', timing['start'], timing['event'] - timing['by_class'])
 
             gevent.sleep()
-            output = Results.get_results_event(self._RHData)
+            output = self._RHData.get_results_event()
             results = output['data']
             if not output['result']:
                 error_flag = True

@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.3.0-dev.1" # Public release version code
-SERVER_API = 38 # Server API version
+SERVER_API = 39 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -4765,7 +4765,6 @@ def init_race_state():
     finalize_current_heat_set(RHData.get_first_safe_heat_id())
 
     # Normalize results caches
-    Results.normalize_cache_status(RHData)
     PageCache.set_valid(False)
 
 def init_interface_state(startup=False):
