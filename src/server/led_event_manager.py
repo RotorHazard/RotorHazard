@@ -14,7 +14,6 @@ import copy
 import json
 import RHRace
 import gevent
-from Results import CacheStatus
 from eventmanager import Evt
 from six.moves import UserDict
 import logging
@@ -28,11 +27,12 @@ class LEDEventManager:
     eventThread = None
     displayColorCache = []
 
-    def __init__(self, eventmanager, strip, RHData, RACE, Language, INTERFACE):
+    def __init__(self, eventmanager, strip, RHData, RACE, LAST_RACE, Language, INTERFACE):
         self.Events = eventmanager
         self.strip = strip
         self.RHData = RHData
         self.RACE = RACE
+        self.LAST_RACE = LAST_RACE
         self.Language = Language
         self.INTERFACE = INTERFACE
 
@@ -91,6 +91,7 @@ class LEDEventManager:
             'strip': self.strip,
             'RHData': self.RHData,
             'RACE': self.RACE,
+            'LAST_RACE': self.LAST_RACE,
             'Language': self.Language,
             'INTERFACE': self.INTERFACE,
             'manager': self,
@@ -137,13 +138,16 @@ class LEDEventManager:
         if mode == 1: # by pilot
             color = '#ffffff'
             if from_result:
-                if self.RACE.last_race_results and self.RACE.last_race_cacheStatus == CacheStatus.VALID and 'by_race_time' in self.RACE.last_race_results:
-                    for line in self.RACE.last_race_results['by_race_time']:
+                last_results = self.LAST_RACE.get_results(self.RHData)
+                results = self.RACE.get_results(self.RHData)
+
+                if last_results and 'by_race_time' in last_results:
+                    for line in last_results['by_race_time']:
                         if line['node'] == node_index:
                             color = self.RHData.get_pilot(line['pilot_id']).color
                             break
-                elif self.RACE.results and 'by_race_time' in self.RACE.results:
-                    for line in self.RACE.results['by_race_time']:
+                elif results and 'by_race_time' in results:
+                    for line in results['by_race_time']:
                         if line['node'] == node_index:
                             color = self.RHData.get_pilot(line['pilot_id']).color
                             break
