@@ -2349,6 +2349,7 @@ def race_expire_thread(start_token):
                 gevent.sleep((RACE.start_time_monotonic + race_format.race_time_sec + race_format.lap_grace_sec) - monotonic())
                 if RACE.race_status == RaceStatus.RACING and RACE.start_token == start_token:
                     on_stop_race()
+                    logger.debug("Race grace period reached")
                 else:
                     logger.debug("Grace period timer {} is unused".format(start_token))
         else:
@@ -2407,10 +2408,14 @@ def do_stop_race_actions(doSave=False):
         if CLUSTER and CLUSTER.hasSecondaries():
             CLUSTER.doClusterRaceStop()
 
-    else:
-        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
-        INTERFACE.set_race_status(RaceStatus.DONE)
+    elif RACE.race_status == RaceStatus.STAGING:
+        logger.info('Stopping race during staging')
+        RACE.race_status = RaceStatus.READY # Go back to ready state
+        INTERFACE.set_race_status(RaceStatus.READY)
+        Events.trigger(Evt.LAPS_CLEAR)
+        delta_time = 0
 
+    else:
         logger.debug('No active race to stop')
         delta_time = 0
 
