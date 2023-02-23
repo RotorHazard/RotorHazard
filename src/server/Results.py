@@ -18,10 +18,6 @@ Events = EventManager()
 
 logger = logging.getLogger(__name__)
 
-class CacheStatus:
-    INVALID = 'invalid'
-    VALID = 'valid'
-
 class Results():
     def __init__ (self, rhDataObj):
         self._RHData = rhDataObj
@@ -38,16 +34,10 @@ def invalidate_all_caches(rhDataObj):
     logger.debug('All Result caches invalidated')
 
 def build_atomic_result_cache(rhDataObj, **params):
-    return {
-        'results': calc_leaderboard(rhDataObj, **params),
-        'cacheStatus': CacheStatus.VALID
-    }
+    return calc_leaderboard(rhDataObj, **params)
 
 def build_atomic_ranking(rhDataObj, **params):
-    return {
-        'results': calc_class_ranking_leaderboard(rhDataObj, **params),
-        'cacheStatus': CacheStatus.VALID
-    }
+    return calc_class_ranking_leaderboard(rhDataObj, **params)
 
 @catchLogExceptionsWrapper
 def build_atomic_results_caches(rhDataObj, params):
@@ -57,19 +47,11 @@ def build_atomic_results_caches(rhDataObj, params):
     }
 
     if 'race_id' in params:
-        race = rhDataObj.set_results_savedRaceMeta(params['race_id'], {
-            'cacheStatus': token
-            }) 
-        if 'round_id' in params:
-            round_id = params['round_id']
-        else:
-            round_id = race.round_id
+        race = rhDataObj.get_savedRaceMeta(params['race_id'])
 
     if 'heat_id' in params:
         heat_id = params['heat_id']
-        heat = rhDataObj.set_results_heat(heat_id, {
-            'cacheStatus': token
-            })
+        heat = rhDataObj.get_heat(heat_id)
     elif 'race_id' in params:
         heat_id = race.heat_id
         heat = rhDataObj.get_heat(heat_id)
@@ -83,23 +65,11 @@ def build_atomic_results_caches(rhDataObj, params):
     else:
         USE_CLASS = False
 
-    if USE_CLASS:
-        race_class = rhDataObj.set_results_raceClass(class_id, {
-            'cacheStatus': token
-            })
-        class_rank = rhDataObj.set_ranking_raceClass(class_id, {
-            'cacheStatus': token
-            })
-
-    rhDataObj.set_results_event({
-        'cacheStatus': token
-        })
-
     # rebuild race result
     if 'race_id' in params:
         gevent.sleep()
         timing['race'] = monotonic()
-        rhDataObj.get_results_race(params['race_id'])
+        rhDataObj.get_results_savedRaceMeta(params['race_id'])
         logger.debug('Race {} results built in {}s'.format(params['race_id'], monotonic() - timing['race']))
 
     # rebuild heat summary
@@ -113,18 +83,18 @@ def build_atomic_results_caches(rhDataObj, params):
     if USE_CLASS:
         gevent.sleep()
         timing['class'] = monotonic()
-        rhDataObj.get_results_raceClass(race_class)
+        rhDataObj.get_results_raceClass(class_id)
         logger.debug('Class {} results built in {}s'.format(class_id, monotonic() - timing['class']))
 
         timing['class_rank'] = monotonic()
-        rhDataObj.get_ranking_raceClass(race_class)
+        rhDataObj.get_ranking_raceClass(class_id)
         logger.debug('Class {} ranking built in {}s'.format(class_id, monotonic() - timing['class_rank']))
 
     # rebuild event summary
     gevent.sleep()
     timing['event'] = monotonic()
     rhDataObj.get_results_event()
-    logger.debug('Event cache built in {}s'.format(monotonic() - timing['event']))
+    logger.debug('Event results built in {}s'.format(monotonic() - timing['event']))
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
@@ -850,7 +820,7 @@ def calc_class_ranking_leaderboard(rhDataObj, race_class=None, class_id=None, ro
                     race_result = rhDataObj.get_results_savedRaceMeta(race)
                     
                     if race_result['result']:
-                        for pilotresult in race_result['data']['results']['by_race_time']:
+                        for pilotresult in race_result['data']['by_race_time']:
                             if pilotresult['pilot_id'] not in pilotresults:
                                 pilotresults[pilotresult['pilot_id']] = []
                             pilotresults[pilotresult['pilot_id']].append(pilotresult)

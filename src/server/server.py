@@ -183,10 +183,6 @@ __ = Language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
-TONES_NONE = 0
-TONES_ONE = 1
-TONES_ALL = 2
-
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
     item = {}
@@ -294,8 +290,7 @@ def setCurrentRaceFormat(race_format, **kwargs):
             # create a shared instance
             RACE.format = RHRaceFormat.copy(race_format)
             RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
-            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-            RACE.team_cacheStatus = Results.CacheStatus.INVALID
+            RACE.clear_results() # refresh leaderboard
         else:
             RACE.format = race_format
 
@@ -1322,8 +1317,7 @@ def on_alter_pilot(data):
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    RACE.clear_results() # refresh current leaderboard
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1375,6 +1369,7 @@ def on_set_profile(data, emit_vals=True):
     if profile:
         RHData.set_option("currentProfile", data['profile'])
         logger.info("Set Profile to '%s'" % profile_val)
+        RACE.profile = profile
         # set freqs, enter_ats, and exit_ats
         freqs = json.loads(profile.frequencies)
         moreNodesFlag = False
@@ -2465,6 +2460,7 @@ def do_save_actions():
     # Clear caches
     RHData.clear_results_heat(RACE.current_heat)
     RHData.clear_results_raceClass(heat.class_id)
+    RHData.clear_results_event()
 
     # Get the last saved round for the current heat
     max_round = RHData.get_max_round(RACE.current_heat)
@@ -2809,8 +2805,8 @@ def finalize_current_heat_set(new_heat_id):
         'heat_id': new_heat_id,
         })
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    RACE.clear_results() # refresh leaderboard
+
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     emit_race_status()
@@ -2892,11 +2888,7 @@ def on_delete_lap(data):
 
     logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-    RACE.cacheStatus = Results.CacheStatus.VALID
-    if RACE.format.team_racing_mode:
-        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-        RACE.team_cacheStatus = Results.CacheStatus.VALID
+    RACE.clear_results()
     PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
@@ -2938,11 +2930,7 @@ def on_restore_deleted_lap(data):
 
     logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-    RACE.cacheStatus = Results.CacheStatus.VALID
-    if RACE.format.team_racing_mode:
-        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-        RACE.team_cacheStatus = Results.CacheStatus.VALID
+    RACE.clear_results()
     PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
@@ -3542,48 +3530,36 @@ def emit_current_leaderboard(**params):
         'current': {}
     }
 
+    # current
     if RACE.current_heat is RHUtils.HEAT_ID_NONE:
         emit_payload['current']['displayname'] = __("Practice")
     else:
         emit_payload['current']['displayname'] = RHData.get_heat(RACE.current_heat).displayname()
 
-    # current
     emit_payload['current']['heat'] = RACE.current_heat
     emit_payload['current']['status_msg'] = RACE.status_message
 
-    if RACE.cacheStatus == Results.CacheStatus.VALID:
-        emit_payload['current']['leaderboard'] = RACE.results
-    else:
-        results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-        RACE.results = results
-        RACE.cacheStatus = Results.CacheStatus.VALID
-        emit_payload['current']['leaderboard'] = results
+    emit_payload['current']['leaderboard'] = RACE.get_results(RHData)
 
     if RACE.format.team_racing_mode:
-        if RACE.team_cacheStatus == Results.CacheStatus.VALID:
-            emit_payload['current']['team_leaderboard'] = RACE.team_results
-        else:
-            team_results = Results.calc_team_leaderboard(RACE, RHData)
-            RACE.team_results = team_results
-            RACE.team_cacheStatus = Results.CacheStatus.VALID
-            emit_payload['current']['team_leaderboard'] = team_results
+        emit_payload['current']['team_leaderboard'] = RACE.get_team_results()
 
     # cache
     if LAST_RACE is not None:
         emit_payload['last_race'] = {}
+
+        if LAST_RACE.current_heat is RHUtils.HEAT_ID_NONE:
+            emit_payload['last_race']['displayname'] = __("Practice")
+        else:
+            emit_payload['last_race']['displayname'] = RHData.get_heat(LAST_RACE.current_heat).displayname()
+
+        emit_payload['last_race']['heat'] = LAST_RACE.current_heat
         emit_payload['last_race']['status_msg'] = LAST_RACE.status_message
 
-        if LAST_RACE.cacheStatus == Results.CacheStatus.VALID:
-            emit_payload['last_race']['leaderboard'] = LAST_RACE.results
-            emit_payload['last_race']['heat'] = LAST_RACE.current_heat
+        emit_payload['last_race']['leaderboard'] = LAST_RACE.get_results(RHData)
 
-            if LAST_RACE.current_heat is RHUtils.HEAT_ID_NONE:
-                emit_payload['last_race']['displayname'] = __("Practice")
-            else:
-                emit_payload['last_race']['displayname'] = RHData.get_heat(LAST_RACE.current_heat).displayname()
-
-        if LAST_RACE.team_cacheStatus == Results.CacheStatus.VALID and LAST_RACE.format.team_racing_mode:
-            emit_payload['last_race']['team_leaderboard'] = LAST_RACE.team_results
+        if LAST_RACE.format.team_racing_mode:
+            emit_payload['last_race']['team_leaderboard'] = LAST_RACE.get_team_results()
 
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
@@ -4462,18 +4438,13 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                         }
                         RACE.node_laps[node.index].append(lap_data)
 
-                        RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-                        RACE.cacheStatus = Results.CacheStatus.VALID
-
-                        if race_format.team_racing_mode:
-                            RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-                            RACE.team_cacheStatus = Results.CacheStatus.VALID
+                        RACE.clear_results()
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
                             'color': led_manager.getDisplayColor(node.index),
                             'lap': lap_data,
-                            'results': RACE.results
+                            'results': RACE.get_results(RHData)
                             })
 
                         emit_current_laps() # update all laps on the race page
@@ -4738,8 +4709,7 @@ def reset_current_laps():
     for idx in range(RACE.num_nodes):
         RACE.node_laps[idx] = []
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    RACE.clear_results()
     logger.debug('Database current laps reset')
 
 def expand_heats():
@@ -5414,7 +5384,7 @@ if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
-        led_manager = LEDEventManager(Events, strip, RHData, RACE, Language, INTERFACE)
+        led_manager = LEDEventManager(Events, strip, RHData, RACE, LAST_RACE, Language, INTERFACE)
         init_LED_effects()
     except:
         logger.exception("Error initializing LED support")

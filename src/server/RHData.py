@@ -20,7 +20,6 @@ import Results
 from monotonic import monotonic
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
-from Results import CacheStatus
 from Database import ProgramMethod, HeatAdvanceType, HeatStatus
 
 class RHData():
@@ -436,7 +435,7 @@ class RHData():
                                 'note': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID,
+                                'cacheStatus': None,
                                 'order': None,
                                 'status': 0,
                             })
@@ -467,7 +466,7 @@ class RHData():
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': CacheStatus.INVALID,
+                                'cacheStatus': None,
                                 'order': None,
                                 'status': 0,
                                 'auto_frequency': False
@@ -563,9 +562,9 @@ class RHData():
                         'name': 'New class',
                         'format_id': 0,
                         'results': None,
-                        'cacheStatus': CacheStatus.INVALID,
+                        'cacheStatus': None,
                         'ranking': None,
-                        'rankStatus': CacheStatus.INVALID,
+                        'rankStatus': None,
                         'win_condition': 0,
                         'rounds': 0,
                         'heatAdvanceType': 1,
@@ -603,7 +602,7 @@ class RHData():
                     else:
                         self.restore_table(self._Database.SavedRaceMeta, raceMeta_query_data, defaults={
                             'results': None,
-                            'cacheStatus': CacheStatus.INVALID
+                            'cacheStatus': None
                         })
                         self.restore_table(self._Database.SavedPilotRace, racePilot_query_data, defaults={
                             'history_values': None,
@@ -842,7 +841,10 @@ class RHData():
         # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
-            cacheStatus=CacheStatus.INVALID,
+            cacheStatus=json.dumps({
+                'data_ver': monotonic(),
+                'build_ver': None
+            }),
             order=None,
             status=HeatStatus.PLANNED,
             auto_frequency=False
@@ -909,7 +911,7 @@ class RHData():
             note=new_heat_note,
             class_id=new_class,
             results=None,
-            cacheStatus=CacheStatus.INVALID,
+            cacheStatus=None,
             status=0,
             auto_frequency=source_heat.auto_frequency
             )
@@ -1404,7 +1406,7 @@ class RHData():
         self.set_results_heat(heat, token, build)
         return {
             'result': True,
-            'data': build['results']
+            'data': build
         }
 
     def set_results_heat(self, heat_or_id, token, results):
@@ -1550,12 +1552,17 @@ class RHData():
 
     def add_raceClass(self):
         # Add new race class
+        initStatus = json.dumps({
+            'data_ver': monotonic(),
+            'build_ver': None
+        })
+            
         new_race_class = self._Database.RaceClass(
             name='',
             description='',
             format_id=RHUtils.FORMAT_ID_NONE,
-            cacheStatus=CacheStatus.INVALID,
-            rankStatus=CacheStatus.INVALID,
+            cacheStatus=initStatus,
+            rankStatus=initStatus,
             win_condition=0,
             rounds=0,
             heatAdvanceType=1,
@@ -1585,7 +1592,7 @@ class RHData():
             description=source_class.description,
             format_id=source_class.format_id,
             results=None,
-            cacheStatus=CacheStatus.INVALID,
+            cacheStatus=None,
             win_condition=source_class.win_condition,
             rounds=source_class.rounds,
             heatAdvanceType=source_class.heatAdvanceType,
@@ -1728,7 +1735,7 @@ class RHData():
         self.set_results_raceClass(race_class, token, build)
         return {
             'result': True,
-            'data': build['results']
+            'data': build
         }
 
     def get_ranking_raceClass(self, race_class_or_id):
@@ -1772,7 +1779,7 @@ class RHData():
         self.set_ranking_raceClass(race_class, token, build)
         return {
             'result': True,
-            'data': build['results']
+            'data': build
         }
 
     def set_results_raceClass(self, race_class_or_id, token, results):
@@ -2413,7 +2420,10 @@ class RHData():
             format_id=data['format_id'],
             start_time=data['start_time'],
             start_time_formatted=data['start_time_formatted'],
-            cacheStatus=CacheStatus.INVALID
+            cacheStatus=json.dumps({
+                'data_ver': monotonic(),
+                'build_ver': None
+            })
         )
         self._Database.DB.session.add(new_race)
         self.commit()
@@ -2486,7 +2496,7 @@ class RHData():
         self.clear_results_heat(old_heat.id)
 
         if old_format_id != new_format_id:
-            race_meta.cacheStatus = CacheStatus.INVALID
+            self.clear_results_savedRaceMeta(race_meta)
 
         if old_heat.class_id != new_heat.class_id:
             self.clear_results_raceClass(new_class.id)
@@ -2536,7 +2546,7 @@ class RHData():
         self.set_results_savedRaceMeta(race, token, build)
         return {
             'result': True,
-            'data': build['results']
+            'data': build
         }
 
     def set_results_savedRaceMeta(self, race_or_id, token, results):
@@ -2831,7 +2841,7 @@ class RHData():
         # LED settings
         self.set_option("ledBrightness", "32")
         # Event results cache
-        self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
+        self.set_option("eventResults_cacheStatus", None)
 
         self.set_option("startThreshLowerAmount", "0")
         self.set_option("startThreshLowerDuration", "0")
