@@ -1402,7 +1402,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Heat {} results'.format(heat.id))
-        build = Results.build_atomic_result_cache(self, heat_id=heat.id)
+        build = Results.calc_leaderboard(self, heat_id=heat.id)
         self.set_results_heat(heat, token, build)
         return {
             'result': True,
@@ -1731,7 +1731,7 @@ class RHData():
 
         # cache rebuild
         logger.info('Building Class {} results'.format(race_class.id))
-        build = Results.build_atomic_result_cache(self, class_id=race_class.id)
+        build = Results.calc_leaderboard(self, class_id=race_class.id)
         self.set_results_raceClass(race_class, token, build)
         return {
             'result': True,
@@ -1775,7 +1775,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Class {} ranking'.format(race_class.id))
-        build = Results.build_atomic_ranking(self, class_id=race_class.id)
+        build = Results.calc_class_ranking_leaderboard(self, class_id=race_class.id)
         self.set_ranking_raceClass(race_class, token, build)
         return {
             'result': True,
@@ -2542,7 +2542,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Race {} (Heat {} Round {}) results'.format(race.id, race.heat_id, race.round_id))
-        build = Results.build_atomic_result_cache(self, heat_id=race.heat_id, round_id=race.round_id)
+        build = Results.calc_leaderboard(self, heat_id=race.heat_id, round_id=race.round_id)
         self.set_results_savedRaceMeta(race, token, build)
         return {
             'result': True,
