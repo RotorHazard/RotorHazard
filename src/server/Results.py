@@ -33,12 +33,6 @@ def invalidate_all_caches(rhDataObj):
 
     logger.debug('All Result caches invalidated')
 
-def build_atomic_result_cache(rhDataObj, **params):
-    return calc_leaderboard(rhDataObj, **params)
-
-def build_atomic_ranking(rhDataObj, **params):
-    return calc_class_ranking_leaderboard(rhDataObj, **params)
-
 @catchLogExceptionsWrapper
 def build_atomic_results_caches(rhDataObj, params):
     token = monotonic()
@@ -86,6 +80,7 @@ def build_atomic_results_caches(rhDataObj, params):
         rhDataObj.get_results_raceClass(class_id)
         logger.debug('Class {} results built in {}s'.format(class_id, monotonic() - timing['class']))
 
+        gevent.sleep()
         timing['class_rank'] = monotonic()
         rhDataObj.get_ranking_raceClass(class_id)
         logger.debug('Class {} ranking built in {}s'.format(class_id, monotonic() - timing['class_rank']))
