@@ -4755,7 +4755,7 @@ def init_race_state():
     on_set_profile({'profile': getCurrentProfile().id}, False)
 
     # Set race format
-    race_format = RHData.get_first_raceFormat()
+    RACE.format = RHData.get_first_raceFormat()
 
     # Init laps
     reset_current_laps()
