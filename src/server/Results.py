@@ -802,7 +802,7 @@ def calc_class_ranking_leaderboard(rhDataObj, race_class=None, class_id=None, ro
 
         if class_win_condition >= 4:
             if rounds is None:
-                rounds = class_win_condition - 3
+                rounds = class_win_condition - 3 #TODO: Make selection not based on condition ID
 
             race_format = rhDataObj.get_raceFormat(race_class.format_id)
             heats = rhDataObj.get_heats_by_class(race_class.id)
