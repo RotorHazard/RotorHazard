@@ -1154,6 +1154,8 @@ class RHData():
             if s.node_index == None and len(available_nodes):
                 s.node_index = available_nodes.pop()
 
+        self.commit()
+
     def calc_heat_pilots(self, heat_id, Results):
         heat = self._Database.Heat.query.get(heat_id)
 

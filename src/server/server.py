@@ -1605,6 +1605,7 @@ def on_reset_database(data):
         reset_current_laps()
         RHData.reset_raceFormats()
         setCurrentRaceFormat(RHData.get_first_raceFormat())
+    finalize_current_heat_set(RHData.get_first_safe_heat_id())
     emit_heat_data()
     emit_pilot_data()
     emit_format_data()
