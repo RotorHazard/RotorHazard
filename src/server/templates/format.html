@@ -477,7 +477,6 @@
 				input.prop('disabled', heat.locked);
 				slot_el.append(input);
 
-				var pilot_el = $('<div class="pilot-name">');
 				// pilot selectors
 				var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
 				selectbox.append('<option value="0">-' + __('None') + '-</option>');
@@ -494,8 +493,7 @@
 					selectbox.val(0);
 				}
 				selectbox.prop('disabled', heat.locked);
-				pilot_el.append(selectbox);
-				slot_el.append(pilot_el);
+				slot_el.append(selectbox);
 
 				nodelist.append(slot_el);
 			}
