@@ -714,7 +714,7 @@ class RHData():
 
         self.commit()
 
-        self._RACE.cacheStatus = CacheStatus.INVALID  # refresh current leaderboard
+        self._RACE.clear_results()  # refresh current leaderboard
 
         self._Events.trigger(Evt.PILOT_ALTER, {
             'pilot_id': pilot_id,
@@ -790,7 +790,7 @@ class RHData():
 
             logger.info('Pilot {0} deleted'.format(pilot.id))
 
-            self._RACE.cacheStatus = CacheStatus.INVALID  # refresh leaderboard
+            self._RACE.clear_results() # refresh leaderboard
 
             return True
 
@@ -1032,7 +1032,7 @@ class RHData():
                     self._RACE.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
                 else:
                     self._RACE.node_teams[heatNode.node_index] = None
-            self._RACE.cacheStatus = CacheStatus.INVALID  # refresh leaderboard
+            self._RACE.clear_results() # refresh leaderboard
 
         logger.info('Heat {0} altered with {1}'.format(heat_id, data))
 
@@ -1216,22 +1216,17 @@ class RHData():
 
                         if seed_heat:
                             output = self.get_results_heat(seed_heat)
-                            if output['result']:
-                                if output['data']:
-                                    results = output['data'][output['data']['meta']['primary_leaderboard']]
-                                    if slot.seed_rank - 1 < len(results):
-                                        slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
-                                    else:
-                                        slot.pilot_id = RHUtils.PILOT_ID_NONE
-                                        result['unassigned_slots'] += 1
+                            if output:
+                                results = output[output['meta']['primary_leaderboard']]
+                                if slot.seed_rank - 1 < len(results):
+                                    slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
                                 else:
-                                    logger.debug("Can't assign pilot from heat {}: Results not available".format(slot.seed_id))
                                     slot.pilot_id = RHUtils.PILOT_ID_NONE
                                     result['unassigned_slots'] += 1
                             else:
-                                result['calc_success'] = False
-                                logger.warning('Cancelling heat calc: Cache build failed')
-                                self.rollback() # Release DB lock
+                                logger.debug("Can't assign pilot from heat {}: Results not available".format(slot.seed_id))
+                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                result['unassigned_slots'] += 1
                         else:
                             result['calc_success'] = False
                             logger.info("Can't seed from heat {}: does not exist".format(slot.seed_id))
@@ -1250,23 +1245,26 @@ class RHData():
                         seed_class = self.get_raceClass(slot.seed_id)
 
                         if seed_class:
-                            output = self.get_results_raceClass(seed_class)
-                            if output['result']:
-                                if output['data']:
-                                    results = output['data'][output['data']['meta']['primary_leaderboard']]
-                                    if slot.seed_rank - 1 < len(results):
-                                        slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
-                                    else:
-                                        slot.pilot_id = RHUtils.PILOT_ID_NONE
-                                        result['unassigned_slots'] += 1
+                            positions = None
+
+                            ranking = self.get_ranking_raceClass(seed_class)
+                            if ranking: # manual ranking
+                                positions = ranking
+                            else: # auto ranking
+                                results = self.get_results_raceClass(seed_class)
+                                if results:
+                                    positions = results[results['meta']['primary_leaderboard']]
+
+                            if positions:
+                                if slot.seed_rank - 1 < len(positions):
+                                    slot.pilot_id = positions[slot.seed_rank - 1]['pilot_id']
                                 else:
-                                    logger.debug("Can't assign pilot from class {}: Results not available".format(slot.seed_id))
                                     slot.pilot_id = RHUtils.PILOT_ID_NONE
                                     result['unassigned_slots'] += 1
                             else:
-                                result['calc_success'] = False
-                                logger.warning('Cancelling heat calc: Cache build failed')
-                                self.rollback() # Release DB lock
+                                logger.debug("Can't assign pilot from class {}: Results not available".format(slot.seed_id))
+                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                result['unassigned_slots'] += 1
                         else:
                             result['calc_success'] = False
                             logger.info("Can't seed from class {}: does not exist".format(slot.seed_id))
@@ -1373,10 +1371,7 @@ class RHData():
 
         if len(self.get_savedRaceMetas_by_heat(heat.id)) < 1:
             # no races exist, skip calculating
-            return {
-                'result': True,
-                'data': None
-            }
+            return None
 
         cache_invalid = False
         if heat.cacheStatus:
@@ -1385,10 +1380,7 @@ class RHData():
                 token = cacheStatus['data_ver']
                 if cacheStatus['data_ver'] == cacheStatus['build_ver']:
                     # cache hit
-                    return {
-                        'result': True,
-                        'data': heat.results
-                    }
+                    return heat.results
                 # else: cache miss
             except ValueError:
                 cache_invalid = True
@@ -1404,10 +1396,7 @@ class RHData():
         logger.debug('Building Heat {} results'.format(heat.id))
         build = Results.calc_leaderboard(self, heat_id=heat.id)
         self.set_results_heat(heat, token, build)
-        return {
-            'result': True,
-            'data': build
-        }
+        return build
 
     def set_results_heat(self, heat_or_id, token, results):
         heat = self.get_heat_object(heat_or_id)
@@ -1644,21 +1633,21 @@ class RHData():
             if len(race_list):
                 self._PageCache.set_valid(False)
 
-        if 'class_format' in data:
+        if 'class_format' in data or 'win_condition' in data:
             if len(race_list):
                 self._PageCache.set_valid(False)
                 self.clear_results_event()
                 self.clear_results_raceClass(race_class.id)
 
-            for race_meta in race_list:
-                race_meta.format_id = data['class_format']
-                self.clear_results_savedRaceMeta(race_meta.id)
+            if 'class_format' in data:
+                if int(data['class_format']):
+                    for race_meta in race_list:
+                        race_meta.format_id = data['class_format']
+                        self.clear_results_savedRaceMeta(race_meta.id)
 
-            heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
-            for heat in heats:
-                self.clear_results_heat(heat.id)
-
-        #TODO: Clear cache appropriately for new values win_condition, rounds, order
+                    heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
+                    for heat in heats:
+                        self.clear_results_heat(heat.id)
 
         self.commit()
 
@@ -1702,10 +1691,7 @@ class RHData():
 
         if len(self.get_savedRaceMetas_by_raceClass(race_class.id)) < 1:
             # no races exist, skip calculating
-            return {
-                'result': True,
-                'data': None
-            }
+            return None
 
         cache_invalid = False
         if race_class.cacheStatus:
@@ -1714,10 +1700,7 @@ class RHData():
                 token = cacheStatus['data_ver']
                 if cacheStatus['data_ver'] == cacheStatus['build_ver']:
                     # cache hit
-                    return {
-                        'result': True,
-                        'data': race_class.results
-                    }
+                    return race_class.results
                 # else: cache miss
             except ValueError:
                 cache_invalid = True
@@ -1733,10 +1716,7 @@ class RHData():
         logger.info('Building Class {} results'.format(race_class.id))
         build = Results.calc_leaderboard(self, class_id=race_class.id)
         self.set_results_raceClass(race_class, token, build)
-        return {
-            'result': True,
-            'data': build
-        }
+        return build
 
     def get_ranking_raceClass(self, race_class_or_id):
         race_class = self.get_raceClass_object(race_class_or_id)
@@ -1746,10 +1726,7 @@ class RHData():
 
         if len(self.get_savedRaceMetas_by_raceClass(race_class.id)) < 1:
             # no races exist, skip calculating
-            return {
-                'result': True,
-                'data': None
-            }
+            return None
 
         cache_invalid = False
         if race_class.rankStatus:
@@ -1758,10 +1735,7 @@ class RHData():
                 token = rankStatus['data_ver']
                 if rankStatus['data_ver'] == rankStatus['build_ver']:
                     # cache hit
-                    return {
-                        'result': True,
-                        'data': race_class.ranking
-                    }
+                    return race_class.ranking
                 # else: cache miss
             except ValueError:
                 cache_invalid = True
@@ -1777,10 +1751,7 @@ class RHData():
         logger.debug('Building Class {} ranking'.format(race_class.id))
         build = Results.calc_class_ranking_leaderboard(self, class_id=race_class.id)
         self.set_ranking_raceClass(race_class, token, build)
-        return {
-            'result': True,
-            'data': build
-        }
+        return build
 
     def set_results_raceClass(self, race_class_or_id, token, results):
         race_class = self.get_raceClass_object(race_class_or_id)
@@ -2130,7 +2101,7 @@ class RHData():
 
         self.commit()
 
-        self._RACE.cacheStatus = CacheStatus.INVALID  # refresh leaderboard
+        self._RACE.clear_results() # refresh leaderboard
 
         race_list = []
 
@@ -2525,10 +2496,7 @@ class RHData():
                 token = cacheStatus['data_ver']
                 if cacheStatus['data_ver'] == cacheStatus['build_ver']:
                     # cache hit
-                    return {
-                        'result': True,
-                        'data': race.results
-                    }
+                    return race.results
                 # else: cache miss
             except ValueError:
                 cache_invalid = True
@@ -2544,10 +2512,7 @@ class RHData():
         logger.debug('Building Race {} (Heat {} Round {}) results'.format(race.id, race.heat_id, race.round_id))
         build = Results.calc_leaderboard(self, heat_id=race.heat_id, round_id=race.round_id)
         self.set_results_savedRaceMeta(race, token, build)
-        return {
-            'result': True,
-            'data': build
-        }
+        return build
 
     def set_results_savedRaceMeta(self, race_or_id, token, results):
         race = self.get_savedRaceMeta_object(race_or_id)
@@ -2853,10 +2818,7 @@ class RHData():
     def get_results_event(self):
         if len(self.get_savedRaceMetas()) < 1:
             # no races exist, skip calculating
-            return {
-                'result': True,
-                'data': None
-            }
+            return None
 
         cache_invalid = False
         eventStatus = self.get_option("eventResults_cacheStatus")
@@ -2866,10 +2828,7 @@ class RHData():
                 token = cacheStatus['data_ver']
                 if cacheStatus['data_ver'] == cacheStatus['build_ver']:
                     # cache hit
-                    return {
-                        'result': True,
-                        'data': json.loads(self.get_option("eventResults"))
-                    }
+                    return json.loads(self.get_option("eventResults"))
                 # else: cache miss
             except ValueError:
                 cache_invalid = True
@@ -2885,10 +2844,7 @@ class RHData():
         logger.debug('Building Event results')
         build = Results.calc_leaderboard(self)
         self.set_results_event(token, build)
-        return {
-            'result': True,
-            'data': build
-        }
+        return build
 
     def set_results_event(self, token, results):
         eventStatus = self.get_option("eventResults_cacheStatus")

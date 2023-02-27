@@ -814,8 +814,8 @@ def calc_class_ranking_leaderboard(rhDataObj, race_class=None, class_id=None, ro
                 for race in races:
                     race_result = rhDataObj.get_results_savedRaceMeta(race)
                     
-                    if race_result['result']:
-                        for pilotresult in race_result['data']['by_race_time']:
+                    if race_result:
+                        for pilotresult in race_result['by_race_time']:
                             if pilotresult['pilot_id'] not in pilotresults:
                                 pilotresults[pilotresult['pilot_id']] = []
                             pilotresults[pilotresult['pilot_id']].append(pilotresult)

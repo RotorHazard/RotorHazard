@@ -1234,7 +1234,7 @@ def on_alter_heat(data):
     if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
         set_current_heat_data(heat.id, silent=True)
     emit_heat_data(noself=True)
-    if ('pilot' in data or 'class' in data) and len(altered_race_list):
+    if ('note' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
         message = __('Alterations made to heat: {0}').format(heat.displayname())
         emit_priority_message(message, False)
@@ -1275,7 +1275,7 @@ def on_alter_race_class(data):
     '''Update race class.'''
     race_class, altered_race_list = RHData.alter_raceClass(data)
 
-    if ('class_format' in data or 'class_name' in data) and len(altered_race_list):
+    if ('class_format' in data or 'class_name' in data or 'win_condition' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.name)
         emit_priority_message(message, False)
