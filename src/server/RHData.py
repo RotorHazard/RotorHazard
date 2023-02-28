@@ -1436,7 +1436,7 @@ class RHData():
             cacheStatus['build_ver'] = token
             heat.results = results
             heat.cacheStatus = json.dumps(cacheStatus)
-            
+
             self.commit()
             return heat
         else:
@@ -1574,7 +1574,7 @@ class RHData():
             'data_ver': monotonic(),
             'build_ver': None
         })
-            
+
         new_race_class = self._Database.RaceClass(
             name='',
             description='',
@@ -1794,7 +1794,7 @@ class RHData():
                 cacheStatus['build_ver'] = token
                 race_class.results = results
                 race_class.cacheStatus = json.dumps(cacheStatus)
-                
+
                 self.commit()
                 return race_class
             else:
@@ -1816,7 +1816,7 @@ class RHData():
                 rankStatus['build_ver'] = token
                 race_class.ranking = results
                 race_class.rankStatus = json.dumps(rankStatus)
-                
+
                 self.commit()
                 return race_class
             else:
@@ -2555,7 +2555,7 @@ class RHData():
                 cacheStatus['build_ver'] = token
                 race.results = results
                 race.cacheStatus = json.dumps(cacheStatus)
-                
+
                 self.commit()
                 return race
             else:
@@ -2863,7 +2863,7 @@ class RHData():
                 cache_invalid = True
         else:
             cache_invalid = True
-        
+
         if cache_invalid:
             logger.error('Event cache has invalid status')
             token = monotonic()

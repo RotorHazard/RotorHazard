@@ -2412,6 +2412,9 @@ def do_stop_race_actions(doSave=False):
         delta_time = 0
 
     else:
+        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RaceStatus.DONE)
+
         logger.debug('No active race to stop')
         delta_time = 0
 
@@ -3529,6 +3532,11 @@ def emit_current_leaderboard(**params):
     emit_payload = {
         'current': {}
     }
+
+    if RACE.current_heat is RHUtils.HEAT_ID_NONE:
+        emit_payload['current']['displayname'] = __("Practice")
+    else:
+        emit_payload['current']['displayname'] = RHData.get_heat(RACE.current_heat).displayname()
 
     # current
     if RACE.current_heat is RHUtils.HEAT_ID_NONE:

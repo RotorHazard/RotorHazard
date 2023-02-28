@@ -84,10 +84,11 @@ This layout can be used as a primary board for up to 4 nodes when directly conne
 * Bridge JP1 on PCB1. A physical jumper is recommended in this position. Bridging on PCB2 is not required.
 * If using 5–8 nodes, connect "PCB2" headers between each board, being careful to match polarity. You may use a standard 2×5 pin ribbon cable or wire these insidivdually. On PCB2, bridge pads at the bottom marked "BRIDGE ON PCB2" (JP2)
 * If using an odd number of nodes, bridge one and only one pad on the back of one board that corresponds to the highest numbered node in use:
-1 node: PCB1 JP3
-3 nodes: PCB1 JP4
-5 nodes: PCB2 JP3
-7 nodes: PCB2 JP4
+  * 1 node: PCB1 JP3
+  * 3 nodes: PCB1 JP4
+  * 5 nodes: PCB2 JP3
+  * 7 nodes: PCB2 JP4
+* If using an even number of nodes, do not bridge JP3 and JP4.
 * Connect a 5V voltage regulator and a 3.3V regulator on PCB1. Use either the upper (3) or lower (4) set of pins depending on the chosen regulator's pinout. Do not use both upper and lower sets at once for the same voltage.
 * Connect input voltage connector or wires at VIN. Use XT30 connector if desired.
 * STOP. Perform continuity testing to ensure there are no shorts from power to ground. Connect power at VIN and test 5V, 3.3V, and GND at test points on back of board before proceeding. Use a fuse or "smoke stopper" during these tests.
