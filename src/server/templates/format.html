@@ -1411,6 +1411,14 @@
 				backup_file: $('#database_list').val()
 			};
 			socket.emit('restore_database', data);
+
+			$.magnificPopup.open({
+				items: {
+					src: '#database_restore_progress',
+					type: 'inline',
+				}
+			});
+
 			return false;
 		});
 
@@ -1616,6 +1624,13 @@
 				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
 				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_restore_progress" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Database restore in progress. Please wait...') }}</p>
 			</div>
 		</div>
 

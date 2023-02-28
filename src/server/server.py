@@ -4717,6 +4717,7 @@ def expand_heats():
     for heat in RHData.get_heats():
         heatNodes = RHData.get_heatNodes_by_heat(heat.id)
         while len(heatNodes) < RACE.num_nodes:
+            heatNodes = RHData.get_heatNodes_by_heat(heat.id)
             RHData.add_heatNode(heat.id, None)
 
 def init_race_state():

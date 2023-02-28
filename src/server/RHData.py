@@ -435,9 +435,13 @@ class RHData():
                                 'note': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': None,
+                                'cacheStatus': json.dumps({
+                                    'data_ver': monotonic(),
+                                    'build_ver': None
+                                }),
                                 'order': None,
                                 'status': 0,
+                                'auto_frequency': False
                             })
 
                         # extract pilots from heats and load into heatnode
@@ -449,6 +453,9 @@ class RHData():
                             heatnode_row['heat_id'] = int(row['heat_id'])
                             heatnode_row['node_index'] = int(row['node_index'])
                             heatnode_row['pilot_id'] = int(row['pilot_id'])
+                            heatnode_row['method'] = 0
+                            heatnode_row['seed_rank'] = None
+                            heatnode_row['seed_id'] = None
                             heatnode_extracted_data.append(heatnode_row)
                             heatnode_dummy_id += 1
 
@@ -466,7 +473,10 @@ class RHData():
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': None,
+                                'cacheStatus': json.dumps({
+                                    'data_ver': monotonic(),
+                                    'build_ver': None
+                                }),
                                 'order': None,
                                 'status': 0,
                                 'auto_frequency': False
@@ -562,9 +572,15 @@ class RHData():
                         'name': 'New class',
                         'format_id': 0,
                         'results': None,
-                        'cacheStatus': None,
+                        'cacheStatus': json.dumps({
+                            'data_ver': monotonic(),
+                            'build_ver': None
+                        }),
                         'ranking': None,
-                        'rankStatus': None,
+                        'rankStatus': json.dumps({
+                            'data_ver': monotonic(),
+                            'build_ver': None
+                        }),
                         'win_condition': 0,
                         'rounds': 0,
                         'heatAdvanceType': 1,
@@ -602,7 +618,10 @@ class RHData():
                     else:
                         self.restore_table(self._Database.SavedRaceMeta, raceMeta_query_data, defaults={
                             'results': None,
-                            'cacheStatus': None
+                            'cacheStatus': json.dumps({
+                                'data_ver': monotonic(),
+                                'build_ver': None
+                            })
                         })
                         self.restore_table(self._Database.SavedPilotRace, racePilot_query_data, defaults={
                             'history_values': None,
@@ -612,6 +631,11 @@ class RHData():
                             'enter_at': None,
                             'exit_at': None
                         })
+
+                        for lap in raceLap_query_data:
+                            if 'lap_time' in lap and (type(lap['lap_time']) == str or lap['lap_time'] is None):
+                                lap['lap_time'] = 0
+
                         self.restore_table(self._Database.SavedRaceLap, raceLap_query_data, defaults={
                             'source': None,
                             'deleted': False
@@ -911,7 +935,10 @@ class RHData():
             note=new_heat_note,
             class_id=new_class,
             results=None,
-            cacheStatus=None,
+            cacheStatus=json.dumps({
+                'data_ver': monotonic(),
+                'build_ver': None
+            }),
             status=0,
             auto_frequency=source_heat.auto_frequency
             )
@@ -1476,10 +1503,12 @@ class RHData():
         new_heatNode = self._Database.HeatNode(
             heat_id=heat_id,
             node_index=node_index,
-            pilot_id=RHUtils.PILOT_ID_NONE
+            pilot_id=RHUtils.PILOT_ID_NONE,
+            method=0,
             )
 
         self._Database.DB.session.add(new_heatNode)
+        self.commit()
         return True
 
     def get_pilot_from_heatNode(self, heat_id, node_index):
