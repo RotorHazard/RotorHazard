@@ -153,7 +153,7 @@
 						}
 						el.append(actions);
 
-						var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + '" maxlength="256">');
+						var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + ' (' + __('Accepts Markdown') + ')" maxlength="256">');
 						input.val(race_class.description);
 						el.append(input);
 
@@ -1575,6 +1575,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set_event_description">{{ __('Event Description') }}</label>
+					<p class="desc">{{ __('Accepts Markdown') }}</p>
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
 			</li>
