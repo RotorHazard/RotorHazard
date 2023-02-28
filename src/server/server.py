@@ -1664,11 +1664,14 @@ def on_generate_heats_v2(data):
     generator = data['generator']
 
     if heatgenerate_manager.hasGenerator(generator):
+        generatorObj = heatgenerate_manager.getGenerator(generator)
+
         # do export
-        logger.info('Generating heats via {0}'.format(generator))
+        logger.info('Generating heats via {0}'.format(generatorObj.label))
         generate_result = heatgenerate_manager.generate(generator, generate_args)
 
         if generate_result != False:
+            emit_priority_message(__('Generated heats via {0}'.format(generatorObj.label)), False, nobroadcast=True)
             emit_heat_data()
             emit_class_data()
             Events.trigger(Evt.HEAT_GENERATE)

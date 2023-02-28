@@ -87,7 +87,7 @@
 			var input_val = $('#generator_input_class').val();
 			var output_val = $('#generator_output_class').val();
 
-			$('#generator_input_class').empty().append($('<option value="0">' + __('All Pilots') + '</option>'));
+			$('#generator_input_class').empty().append($('<option value="0">-' + __('All Pilots') + '-</option>'));
 			$('#generator_output_class').empty().append($('<option value="">-' + __('New Class') + '-</option>'));
 
 			if (class_data.classes.length) {
@@ -105,7 +105,7 @@
 				}
 			}
 
-			$('#generator_output_class').append($('<option value="0">' + __('Unclassified') + '</option>'));
+			$('#generator_output_class').append($('<option value="0">(' + __('Unclassified') + ')</option>'));
 
 			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
 				$('#generator_input_class').val(input_val);
@@ -365,6 +365,10 @@
 			display_classes();
 			display_unclassified_heats();
 			freq.updateBlocks();
+			if (rotorhazard.generators) {
+				$('#generate_heats_2').prop('disabled', false);
+			}
+			$('#generating-message').prop('hidden', true);
 		});
 
 		function create_heat_ui(heat) {
@@ -1505,6 +1509,7 @@
 		});
 
 		socket.on('heatgenerator_list', function (msg) {
+			rotorhazard.generators = msg.generators;
 			$('#generator_list').empty();
 			if ('generators' in msg && msg.generators.length) {
 				msg.generators.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
@@ -1518,6 +1523,7 @@
 				$('#generator_list').append('<option value="-">' + __('No generators') + '</option>');
 				$('#generator_list').prop('disabled', true);
 				$('#generate_heats_2').prop('disabled', true);
+				$('#generate_heats_2').prop('hidden', true);
 			}
 		});
 
@@ -1530,6 +1536,8 @@
 				generator: $('#generator_list').val()
 			};
 			socket.emit('generate_heats_v2', data);
+			$('#generate_heats_2').prop('disabled', true);
+			$('#generating-message').prop('hidden', false);
 			return false;
 		});
 
@@ -1746,6 +1754,7 @@
 		<div class="control-set">
 			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
 		</div>
+		<div id="generating-message" hidden="" class="control-set">{{ __('Generating Heats...') }}</div>
 	</div>
 </div>
 

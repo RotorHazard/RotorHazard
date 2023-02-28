@@ -34,6 +34,9 @@ class HeatGeneratorManager():
     def hasGenerator(self, generator_id):
         return generator_id in self.generators
 
+    def getGenerator(self, generator_id):
+        return self.generators[generator_id]
+
     def getGenerators(self):
         return self.generators
 
