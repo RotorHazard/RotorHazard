@@ -1277,7 +1277,7 @@ def on_alter_race_class(data):
 
     if ('class_format' in data or 'class_name' in data or 'win_condition' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
-        message = __('Alterations made to race class: {0}').format(race_class.name)
+        message = __('Alterations made to race class: {0}').format(race_class.displayname())
         emit_priority_message(message, False)
 
     emit_class_data(noself=True)
