@@ -1388,6 +1388,9 @@ class RHData():
                 return False
 
             self.commit()
+        else:
+            logger.debug('requested auto-frequency when disabled')
+
         return True
 
     def get_results_heat(self, heat_or_id):

@@ -792,11 +792,6 @@
 				items: {
 					src: plan_dialog_el,
 					type: 'inline',
-				},
-				callbacks: {
-					open: function(){
-						$('#set_current_heat').val(rotorhazard.current_heat);
-					}
 				}
 			});
 
@@ -893,10 +888,6 @@
 			$('button#generate_heats').prop('disabled', true);
 			socket.emit('generate_heats', data);
 			return false;
-		});
-
-		socket.on('heat_generate_done', function (msg) {
-			$('button#generate_heats').prop('disabled', false);
 		});
 
 		/* Pilots */

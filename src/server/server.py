@@ -2684,6 +2684,17 @@ def calc_heat(heat_id, silent=False):
     if (heat):
         calc_result = RHData.calc_heat_pilots(heat_id, Results)
 
+        if calc_result['calc_success'] is False:
+            logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
+
+        if calc_result['calc_success'] is None:
+            # Heat is confirmed or has saved races
+            return 'safe'
+
+        if calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False and not heat.auto_frequency:
+            # Heat has no calc issues, no dynamic slots, and auto-frequnecy is off
+            return 'safe'
+
         adaptive = bool(RHData.get_optionInt('calibrationMode'))
 
         if adaptive:
@@ -2691,21 +2702,12 @@ def calc_heat(heat_id, silent=False):
         else:
             calc_fn = RHUtils.find_best_slot_node_basic
 
-        autofreq_result = None
-        if calc_result['calc_success'] is not None:
-            autofreq_result = RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
+        RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
-        if autofreq_result is None and (calc_result['calc_success'] is None or \
-            (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False)):
-            return 'success'
-        else:
-            if request and not silent:
-                emit_heat_plan_result(heat_id, calc_result)
+        if request and not silent:
+            emit_heat_plan_result(heat_id, calc_result)
 
-            if calc_result['calc_success'] is False:
-                logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
-
-            return 'fail'
+        return 'unsafe'
 
     else:
         return 'no-heat'
@@ -2713,7 +2715,7 @@ def calc_heat(heat_id, silent=False):
 def set_current_heat_data(new_heat_id, silent=False):
     result = calc_heat(new_heat_id, silent)
 
-    if result == 'success':
+    if result == 'safe':
         finalize_current_heat_set(new_heat_id)
     elif result == 'no-heat':
         finalize_current_heat_set(RHUtils.HEAT_ID_NONE)
