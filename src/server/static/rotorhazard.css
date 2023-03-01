@@ -2500,4 +2500,8 @@ button.color-picker {
 	.panel-content {
 		display: block !important;
 	}
+
+	.unprinted {
+		display: none !important;
+	}
 }
