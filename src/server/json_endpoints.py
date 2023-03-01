@@ -148,16 +148,11 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
 
     @APP.route('/api/race/current')
     def api_race_current():
-        if RACE.cacheStatus == Results.CacheStatus.VALID:
-            results = RACE.results
-        else:
-            results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-            RACE.results = results
-            RACE.cacheStatus = Results.CacheStatus.VALID
+        results = RACE.get_results(RHData)
 
         payload = {
             "raw_laps": RACE.node_laps,
-            "leaderboard": results
+            "leaderboard": results['data']
         }
 
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}

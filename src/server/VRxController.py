@@ -211,234 +211,222 @@ class VRxController:
             self.logger.warning('Failed to send results: Seat not specified')
             return False
 
-        # wait for results to generate
-        time_now = monotonic()
-        timeout = time_now + RESULTS_TIMEOUT
-        while self.RACE.cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
-            time_now = monotonic()
-            gevent.sleep()
+        '''
+        Get relevant results
+        '''
 
-        if self.RACE.cacheStatus == Results.CacheStatus.VALID:
-            '''
-            Get relevant results
-            '''
+        results = self.RACE.get_results(self._RHData)
 
-            results = self.RACE.results
+        # select correct results
+        # *** leaderboard = results[results['meta']['primary_leaderboard']]
+        win_condition = self.RACE.format.win_condition
 
-            # select correct results
-            # *** leaderboard = results[results['meta']['primary_leaderboard']]
-            win_condition = self.RACE.format.win_condition
+        if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+            leaderboard = results['by_consecutives']
+        elif win_condition == WinCondition.FASTEST_LAP:
+            leaderboard = results['by_fastest_lap']
+        else:
+            # WinCondition.MOST_LAPS
+            # WinCondition.FIRST_TO_LAP_X
+            # WinCondition.NONE
+            leaderboard = results['by_race_time']
 
-            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                leaderboard = results['by_consecutives']
-            elif win_condition == WinCondition.FASTEST_LAP:
-                leaderboard = results['by_fastest_lap']
-            else:
-                # WinCondition.MOST_LAPS
-                # WinCondition.FIRST_TO_LAP_X
-                # WinCondition.NONE
-                leaderboard = results['by_race_time']
+        # get this seat's results
+        for index, result in enumerate(leaderboard):
+            if result['node'] == seat_index: #TODO issue408
+                rank_index = index
+                break
 
-            # get this seat's results
-            for index, result in enumerate(leaderboard):
-                if result['node'] == seat_index: #TODO issue408
-                    rank_index = index
-                    break
+        # check for best lap
+        is_best_lap = False
+        if result['fastest_lap_raw'] == result['last_lap_raw']:
+            is_best_lap = True
 
-            # check for best lap
-            is_best_lap = False
-            if result['fastest_lap_raw'] == result['last_lap_raw']:
-                is_best_lap = True
+        # get the next faster results
+        next_rank_split = None
+        next_rank_split_result = None
+        if result['position'] > 1:
+            next_rank_split_result = leaderboard[rank_index - 1]
 
-            # get the next faster results
-            next_rank_split = None
-            next_rank_split_result = None
-            if result['position'] > 1:
-                next_rank_split_result = leaderboard[rank_index - 1]
-
-                if next_rank_split_result['total_time_raw']:
-                    if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                        if next_rank_split_result['consecutives_raw']:
-                            next_rank_split = result['consecutives_raw'] - next_rank_split_result['consecutives_raw']
-                    elif win_condition == WinCondition.FASTEST_LAP:
-                        if next_rank_split_result['fastest_lap_raw']:
-                            next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
-                    else:
-                        # WinCondition.MOST_LAPS
-                        # WinCondition.FIRST_TO_LAP_X
-                        next_rank_split = result['total_time_raw'] - next_rank_split_result['total_time_raw']
-                        next_rank_split_fastest = ''
-            else:
-                # check split to self
-                next_rank_split_result = leaderboard[rank_index]
-
-                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE or win_condition == WinCondition.FASTEST_LAP:
+            if next_rank_split_result['total_time_raw']:
+                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                    if next_rank_split_result['consecutives_raw']:
+                        next_rank_split = result['consecutives_raw'] - next_rank_split_result['consecutives_raw']
+                elif win_condition == WinCondition.FASTEST_LAP:
                     if next_rank_split_result['fastest_lap_raw']:
-                        if result['last_lap_raw'] > next_rank_split_result['fastest_lap_raw']:
-                            next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
+                        next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
+                else:
+                    # WinCondition.MOST_LAPS
+                    # WinCondition.FIRST_TO_LAP_X
+                    next_rank_split = result['total_time_raw'] - next_rank_split_result['total_time_raw']
+                    next_rank_split_fastest = ''
+        else:
+            # check split to self
+            next_rank_split_result = leaderboard[rank_index]
 
-            # get the next slower results
-            prev_rank_split = None
-            prev_rank_split_result = None
-            if rank_index + 1 in leaderboard:
-                prev_rank_split_result = leaderboard[rank_index - 1]
+            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE or win_condition == WinCondition.FASTEST_LAP:
+                if next_rank_split_result['fastest_lap_raw']:
+                    if result['last_lap_raw'] > next_rank_split_result['fastest_lap_raw']:
+                        next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
 
-                if prev_rank_split_result['total_time_raw']:
-                    if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                        if prev_rank_split_result['consecutives_raw']:
-                            prev_rank_split = result['consecutives_raw'] - prev_rank_split_result['consecutives_raw']
-                            prev_rank_split_fastest = prev_rank_split
-                    elif win_condition == WinCondition.FASTEST_LAP:
-                        if prev_rank_split_result['fastest_lap_raw']:
-                            prev_rank_split = result['last_lap_raw'] - prev_rank_split_result['fastest_lap_raw']
-                            prev_rank_split_fastest = result['fastest_lap_raw'] - prev_rank_split_result['fastest_lap_raw']
-                    else:
-                        # WinCondition.MOST_LAPS
-                        # WinCondition.FIRST_TO_LAP_X
-                        prev_rank_split = result['total_time_raw'] - prev_rank_split_result['total_time_raw']
-                        prev_rank_split_fastest = ''
+        # get the next slower results
+        prev_rank_split = None
+        prev_rank_split_result = None
+        if rank_index + 1 in leaderboard:
+            prev_rank_split_result = leaderboard[rank_index - 1]
 
-            # get the fastest result
-            first_rank_split = None
-            first_rank_split_result = None
-            if result['position'] > 2:
-                first_rank_split_result = leaderboard[0]
+            if prev_rank_split_result['total_time_raw']:
+                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                    if prev_rank_split_result['consecutives_raw']:
+                        prev_rank_split = result['consecutives_raw'] - prev_rank_split_result['consecutives_raw']
+                        prev_rank_split_fastest = prev_rank_split
+                elif win_condition == WinCondition.FASTEST_LAP:
+                    if prev_rank_split_result['fastest_lap_raw']:
+                        prev_rank_split = result['last_lap_raw'] - prev_rank_split_result['fastest_lap_raw']
+                        prev_rank_split_fastest = result['fastest_lap_raw'] - prev_rank_split_result['fastest_lap_raw']
+                else:
+                    # WinCondition.MOST_LAPS
+                    # WinCondition.FIRST_TO_LAP_X
+                    prev_rank_split = result['total_time_raw'] - prev_rank_split_result['total_time_raw']
+                    prev_rank_split_fastest = ''
 
-                if next_rank_split_result['total_time_raw']:
-                    if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                        if first_rank_split_result['consecutives_raw']:
-                            first_rank_split = result['consecutives_raw'] - first_rank_split_result['consecutives_raw']
-                    elif win_condition == WinCondition.FASTEST_LAP:
-                        if first_rank_split_result['fastest_lap_raw']:
-                            first_rank_split = result['last_lap_raw'] - first_rank_split_result['fastest_lap_raw']
-                    else:
-                        # WinCondition.MOST_LAPS
-                        # WinCondition.FIRST_TO_LAP_X
-                        first_rank_split = result['total_time_raw'] - first_rank_split_result['total_time_raw']
+        # get the fastest result
+        first_rank_split = None
+        first_rank_split_result = None
+        if result['position'] > 2:
+            first_rank_split_result = leaderboard[0]
 
-            '''
-            Set up output objects
-            '''
+            if next_rank_split_result['total_time_raw']:
+                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                    if first_rank_split_result['consecutives_raw']:
+                        first_rank_split = result['consecutives_raw'] - first_rank_split_result['consecutives_raw']
+                elif win_condition == WinCondition.FASTEST_LAP:
+                    if first_rank_split_result['fastest_lap_raw']:
+                        first_rank_split = result['last_lap_raw'] - first_rank_split_result['fastest_lap_raw']
+                else:
+                    # WinCondition.MOST_LAPS
+                    # WinCondition.FIRST_TO_LAP_X
+                    first_rank_split = result['total_time_raw'] - first_rank_split_result['total_time_raw']
 
-            osd = {
+        '''
+        Set up output objects
+        '''
+
+        osd = {
+            'position_prefix': POS_HEADER,
+            'position': str(result['position']),
+            'callsign': result['callsign'],
+            'lap_prefix': LAP_HEADER,
+            'lap_number': '',
+            'last_lap_time': '',
+            'total_time': result['total_time'],
+            'total_time_laps': result['total_time_laps'],
+            'consecutives': result['consecutives'],
+            'is_best_lap': is_best_lap,
+        }
+
+        if result['laps']:
+            osd['lap_number'] = str(result['laps'])
+            osd['last_lap_time'] = result['last_lap']
+        else:
+            osd['lap_prefix'] = ''
+            osd['lap_number'] = self._Language.__('HS')
+            osd['last_lap_time'] = result['total_time']
+            osd['is_best_lap'] = False
+
+        if next_rank_split:
+            osd_next_split = {
                 'position_prefix': POS_HEADER,
-                'position': str(result['position']),
-                'callsign': result['callsign'],
+                'position': str(next_rank_split_result['position']),
+                'callsign': next_rank_split_result['callsign'],
+                'split_time': RHUtils.time_format(next_rank_split, self._RHData.get_option('timeFormat')),
+            }
+
+            osd_next_rank = {
+                'position_prefix': POS_HEADER,
+                'position': str(next_rank_split_result['position']),
+                'callsign': next_rank_split_result['callsign'],
                 'lap_prefix': LAP_HEADER,
                 'lap_number': '',
                 'last_lap_time': '',
                 'total_time': result['total_time'],
-                'total_time_laps': result['total_time_laps'],
-                'consecutives': result['consecutives'],
-                'is_best_lap': is_best_lap,
             }
 
-            if result['laps']:
-                osd['lap_number'] = str(result['laps'])
-                osd['last_lap_time'] = result['last_lap']
+            if next_rank_split_result['laps']:
+                osd_next_rank['lap_number'] = str(next_rank_split_result['laps'])
+                osd_next_rank['last_lap_time'] = next_rank_split_result['last_lap']
             else:
-                osd['lap_prefix'] = ''
-                osd['lap_number'] = self._Language.__('HS')
-                osd['last_lap_time'] = result['total_time']
-                osd['is_best_lap'] = False
+                osd_next_rank['lap_prefix'] = ''
+                osd_next_rank['lap_number'] = self._Language.__('HS')
+                osd_next_rank['last_lap_time'] = next_rank_split_result['total_time']
 
+        if first_rank_split:
+            osd_first_split = {
+                'position_prefix': POS_HEADER,
+                'position': str(first_rank_split_result['position']),
+                'callsign': first_rank_split_result['callsign'],
+                'split_time': RHUtils.time_format(first_rank_split, self._RHData.get_option('timeFormat')),
+            }
+
+        '''
+        Format and send messages
+        '''
+
+        # "Pos-Callsign L[n]|0:00:00"
+        message = osd['position_prefix'] + osd['position'] + '-' + osd['callsign'][:10] + ' ' + osd['lap_prefix'] + osd['lap_number'] + '|' + osd['last_lap_time']
+
+        if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+            # "Pos-Callsign L[n]|0:00:00 | #/0:00.000" (current | best consecutives)
+            if result['laps'] >= 3:
+                message += ' | 3/' + osd['consecutives']
+            elif result['laps'] == 2:
+                message += ' | 2/' + osd['total_time_laps']
+
+        elif win_condition == WinCondition.FASTEST_LAP:
             if next_rank_split:
-                osd_next_split = {
-                    'position_prefix': POS_HEADER,
-                    'position': str(next_rank_split_result['position']),
-                    'callsign': next_rank_split_result['callsign'],
-                    'split_time': RHUtils.time_format(next_rank_split, self._RHData.get_option('timeFormat')),
-                }
+                # pilot in 2nd or lower
+                # "Pos-Callsign L[n]|0:00:00 / +0:00.000 Callsign"
+                message += ' / +' + osd_next_split['split_time'] + ' ' + osd_next_split['callsign'][:10]
+            elif osd['is_best_lap']:
+                # pilot in 1st and is best lap
+                # "Pos:Callsign L[n]:0:00:00 / Best"
+                message += ' / ' + self._Language.__('Best Lap')
+        else:
+            # WinCondition.MOST_LAPS
+            # WinCondition.FIRST_TO_LAP_X
+            # WinCondition.NONE
 
-                osd_next_rank = {
-                    'position_prefix': POS_HEADER,
-                    'position': str(next_rank_split_result['position']),
-                    'callsign': next_rank_split_result['callsign'],
-                    'lap_prefix': LAP_HEADER,
-                    'lap_number': '',
-                    'last_lap_time': '',
-                    'total_time': result['total_time'],
-                }
+            # "Pos-Callsign L[n]|0:00:00 / +0:00.000 Callsign"
+            if next_rank_split:
+                message += ' / +' + osd_next_split['split_time'] + ' ' + osd_next_split['callsign'][:10]
 
-                if next_rank_split_result['laps']:
-                    osd_next_rank['lap_number'] = str(next_rank_split_result['laps'])
-                    osd_next_rank['last_lap_time'] = next_rank_split_result['last_lap']
-                else:
-                    osd_next_rank['lap_prefix'] = ''
-                    osd_next_rank['lap_number'] = self._Language.__('HS')
-                    osd_next_rank['last_lap_time'] = next_rank_split_result['total_time']
+        # send message to crosser
+        seat_dest = seat_index
+        self.set_message_direct(seat_dest, message)
+        self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
 
-            if first_rank_split:
-                osd_first_split = {
-                    'position_prefix': POS_HEADER,
-                    'position': str(first_rank_split_result['position']),
-                    'callsign': first_rank_split_result['callsign'],
-                    'split_time': RHUtils.time_format(first_rank_split, self._RHData.get_option('timeFormat')),
-                }
+        # show split when next pilot crosses
+        if next_rank_split:
+            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE or win_condition == WinCondition.FASTEST_LAP:
+                # don't update
+                pass
 
-            '''
-            Format and send messages
-            '''
-
-            # "Pos-Callsign L[n]|0:00:00"
-            message = osd['position_prefix'] + osd['position'] + '-' + osd['callsign'][:10] + ' ' + osd['lap_prefix'] + osd['lap_number'] + '|' + osd['last_lap_time']
-
-            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                # "Pos-Callsign L[n]|0:00:00 | #/0:00.000" (current | best consecutives)
-                if result['laps'] >= 3:
-                    message += ' | 3/' + osd['consecutives']
-                elif result['laps'] == 2:
-                    message += ' | 2/' + osd['total_time_laps']
-
-            elif win_condition == WinCondition.FASTEST_LAP:
-                if next_rank_split:
-                    # pilot in 2nd or lower
-                    # "Pos-Callsign L[n]|0:00:00 / +0:00.000 Callsign"
-                    message += ' / +' + osd_next_split['split_time'] + ' ' + osd_next_split['callsign'][:10]
-                elif osd['is_best_lap']:
-                    # pilot in 1st and is best lap
-                    # "Pos:Callsign L[n]:0:00:00 / Best"
-                    message += ' / ' + self._Language.__('Best Lap')
             else:
                 # WinCondition.MOST_LAPS
                 # WinCondition.FIRST_TO_LAP_X
                 # WinCondition.NONE
 
-                # "Pos-Callsign L[n]|0:00:00 / +0:00.000 Callsign"
-                if next_rank_split:
-                    message += ' / +' + osd_next_split['split_time'] + ' ' + osd_next_split['callsign'][:10]
+                # update pilot ahead with split-behind
 
-            # send message to crosser
-            seat_dest = seat_index
-            self.set_message_direct(seat_dest, message)
-            self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
+                # "Pos-Callsign L[n]|0:00:00"
+                message = osd_next_rank['position_prefix'] + osd_next_rank['position'] + '-' + osd_next_rank['callsign'][:10] + ' ' + osd_next_rank['lap_prefix'] + osd_next_rank['lap_number'] + '|' + osd_next_rank['last_lap_time']
 
-            # show split when next pilot crosses
-            if next_rank_split:
-                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE or win_condition == WinCondition.FASTEST_LAP:
-                    # don't update
-                    pass
+                # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
+                message += ' / -' + osd_next_split['split_time'] + ' ' + osd['callsign'][:10]
 
-                else:
-                    # WinCondition.MOST_LAPS
-                    # WinCondition.FIRST_TO_LAP_X
-                    # WinCondition.NONE
-
-                    # update pilot ahead with split-behind
-
-                    # "Pos-Callsign L[n]|0:00:00"
-                    message = osd_next_rank['position_prefix'] + osd_next_rank['position'] + '-' + osd_next_rank['callsign'][:10] + ' ' + osd_next_rank['lap_prefix'] + osd_next_rank['lap_number'] + '|' + osd_next_rank['last_lap_time']
-
-                    # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
-                    message += ' / -' + osd_next_split['split_time'] + ' ' + osd['callsign'][:10]
-
-                    seat_dest = leaderboard[rank_index - 1]['node']
-                    self.set_message_direct(seat_dest, message)
-                    self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
-
-        else:
-            self.logger.warning('Failed to send results: Results not available')
-            return False
+                seat_dest = leaderboard[rank_index - 1]['node']
+                self.set_message_direct(seat_dest, message)
+                self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
 
     ##############
     ## MQTT Status

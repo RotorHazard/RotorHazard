@@ -24,16 +24,16 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def getTotalPilots(RHData, Results, generate_args):
+def getTotalPilots(RHData, generate_args):
     input_class_id = generate_args.get('input_class')
 
     if input_class_id:
         race_class = RHData.get_raceClass(input_class_id)
-        class_results = Results.get_results_race_class(RHData, race_class)
-        if class_results['result'] and type(class_results['result']) == dict: 
+        class_results = RHData.get_results_raceClass(race_class)
+        if class_results and type(class_results) == dict:
             # fill from available results
             # TODO: Check class finalized status
-            total_pilots = len(class_results['result']['by_race_time'])
+            total_pilots = len(class_results['by_race_time'])
         else:
             if 'total_pilots' in generate_args:
                 total_pilots = generate_args['total_pilots']
@@ -48,7 +48,7 @@ def getTotalPilots(RHData, Results, generate_args):
 
     return total_pilots
 
-def generateLadder(RHData, Results, _PageCache, generate_args=None):
+def generateLadder(RHData, _Results, _PageCache, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
     suffix = generate_args.get('suffix', __('Main'))
 
@@ -70,7 +70,7 @@ def generateLadder(RHData, Results, _PageCache, generate_args=None):
             logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 0')
             return False
 
-    total_pilots = getTotalPilots(RHData, Results, generate_args)
+    total_pilots = getTotalPilots(RHData, generate_args)
 
     if total_pilots == 0:
         logger.warning('Unable to seed ladder: no pilots available')
@@ -125,7 +125,7 @@ def generateLadder(RHData, Results, _PageCache, generate_args=None):
 
     return heats
 
-def generateBalancedHeats(RHData, Results, _PageCache, generate_args=None):
+def generateBalancedHeats(RHData, _Results, _PageCache, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
     suffix = generate_args.get('suffix', __('Qualifier'))
 
@@ -138,7 +138,7 @@ def generateBalancedHeats(RHData, Results, _PageCache, generate_args=None):
         logger.warning('Unable to seed ladder: provided qualifiers must be > 1')
         return False
 
-    total_pilots = getTotalPilots(RHData, Results, generate_args)
+    total_pilots = getTotalPilots(RHData, generate_args)
 
     if total_pilots == 0:
         logger.warning('Unable to seed heats: no pilots available')
@@ -173,7 +173,7 @@ def generateBalancedHeats(RHData, Results, _PageCache, generate_args=None):
 
     return heats
 
-def discover(*args, **kwargs):
+def discover(*_args, **_kwargs):
     # returns array of exporters with default arguments
     return [
         HeatGenerator(

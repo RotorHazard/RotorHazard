@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.3.0-dev.1" # Public release version code
-SERVER_API = 38 # Server API version
+SERVER_API = 39 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -183,10 +183,6 @@ __ = Language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
-TONES_NONE = 0
-TONES_ONE = 1
-TONES_ALL = 2
-
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
     item = {}
@@ -294,8 +290,7 @@ def setCurrentRaceFormat(race_format, **kwargs):
             # create a shared instance
             RACE.format = RHRaceFormat.copy(race_format)
             RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
-            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-            RACE.team_cacheStatus = Results.CacheStatus.INVALID
+            RACE.clear_results() # refresh leaderboard
         else:
             RACE.format = race_format
 
@@ -1239,7 +1234,7 @@ def on_alter_heat(data):
     if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
         set_current_heat_data(heat.id, silent=True)
     emit_heat_data(noself=True)
-    if ('pilot' in data or 'class' in data) and len(altered_race_list):
+    if ('note' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
         message = __('Alterations made to heat: {0}').format(heat.displayname())
         emit_priority_message(message, False)
@@ -1280,9 +1275,9 @@ def on_alter_race_class(data):
     '''Update race class.'''
     race_class, altered_race_list = RHData.alter_raceClass(data)
 
-    if ('class_format' in data or 'class_name' in data) and len(altered_race_list):
+    if ('class_format' in data or 'class_name' in data or 'win_condition' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
-        message = __('Alterations made to race class: {0}').format(race_class.name)
+        message = __('Alterations made to race class: {0}').format(race_class.displayname())
         emit_priority_message(message, False)
 
     emit_class_data(noself=True)
@@ -1322,8 +1317,7 @@ def on_alter_pilot(data):
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    RACE.clear_results() # refresh current leaderboard
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1375,6 +1369,7 @@ def on_set_profile(data, emit_vals=True):
     if profile:
         RHData.set_option("currentProfile", data['profile'])
         logger.info("Set Profile to '%s'" % profile_val)
+        RACE.profile = profile
         # set freqs, enter_ats, and exit_ats
         freqs = json.loads(profile.frequencies)
         moreNodesFlag = False
@@ -1605,6 +1600,7 @@ def on_reset_database(data):
         reset_current_laps()
         RHData.reset_raceFormats()
         setCurrentRaceFormat(RHData.get_first_raceFormat())
+    finalize_current_heat_set(RHData.get_first_safe_heat_id())
     emit_heat_data()
     emit_pilot_data()
     emit_format_data()
@@ -1668,11 +1664,14 @@ def on_generate_heats_v2(data):
     generator = data['generator']
 
     if heatgenerate_manager.hasGenerator(generator):
+        generatorObj = heatgenerate_manager.getGenerator(generator)
+
         # do export
-        logger.info('Generating heats via {0}'.format(generator))
+        logger.info('Generating heats via {0}'.format(generatorObj.label))
         generate_result = heatgenerate_manager.generate(generator, generate_args)
 
         if generate_result != False:
+            emit_priority_message(__('Generated heats via {0}'.format(generatorObj.label)), False, nobroadcast=True)
             emit_heat_data()
             emit_class_data()
             Events.trigger(Evt.HEAT_GENERATE)
@@ -2347,9 +2346,13 @@ def race_expire_thread(start_token):
             emit_current_leaderboard()
             if race_format.lap_grace_sec > -1:
                 gevent.sleep((RACE.start_time_monotonic + race_format.race_time_sec + race_format.lap_grace_sec) - monotonic())
-                on_stop_race()
+                if RACE.race_status == RaceStatus.RACING and RACE.start_token == start_token:
+                    on_stop_race()
+                    logger.debug("Race grace period reached")
+                else:
+                    logger.debug("Grace period timer {} is unused".format(start_token))
         else:
-            logger.debug("Finished unused race-time-expire thread")
+            logger.debug("Race-time-expire thread {} is unused".format(start_token))
 
 @SOCKET_IO.on('stop_race')
 @catchLogExceptionsWrapper
@@ -2404,6 +2407,13 @@ def do_stop_race_actions(doSave=False):
         if CLUSTER and CLUSTER.hasSecondaries():
             CLUSTER.doClusterRaceStop()
 
+    elif RACE.race_status == RaceStatus.STAGING:
+        logger.info('Stopping race during staging')
+        RACE.race_status = RaceStatus.READY # Go back to ready state
+        INTERFACE.set_race_status(RaceStatus.READY)
+        Events.trigger(Evt.LAPS_CLEAR)
+        delta_time = 0
+
     else:
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
@@ -2456,6 +2466,7 @@ def do_save_actions():
     # Clear caches
     RHData.clear_results_heat(RACE.current_heat)
     RHData.clear_results_raceClass(heat.class_id)
+    RHData.clear_results_event()
 
     # Get the last saved round for the current heat
     max_round = RHData.get_max_round(RACE.current_heat)
@@ -2510,9 +2521,9 @@ def do_save_actions():
 
     on_discard_laps(saved=True) # Also clear the current laps
 
-    race_class = RHData.get_raceClass(heat.class_id)
-    if race_class:
-        on_set_current_heat({'heat':RHData.get_next_heat_id(heat, race_class)})
+    next_heat = RHData.get_next_heat_id(heat)
+    if next_heat is not heat.id:
+        on_set_current_heat({'heat': next_heat})
 
     # spawn thread for updating results caches
     cache_params = {
@@ -2673,6 +2684,17 @@ def calc_heat(heat_id, silent=False):
     if (heat):
         calc_result = RHData.calc_heat_pilots(heat_id, Results)
 
+        if calc_result['calc_success'] is False:
+            logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
+
+        if calc_result['calc_success'] is None:
+            # Heat is confirmed or has saved races
+            return 'safe'
+
+        if calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False and not heat.auto_frequency:
+            # Heat has no calc issues, no dynamic slots, and auto-frequnecy is off
+            return 'safe'
+
         adaptive = bool(RHData.get_optionInt('calibrationMode'))
 
         if adaptive:
@@ -2680,21 +2702,12 @@ def calc_heat(heat_id, silent=False):
         else:
             calc_fn = RHUtils.find_best_slot_node_basic
 
-        autofreq_result = None
-        if calc_result['calc_success'] is not None:
-            autofreq_result = RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
+        RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
-        if autofreq_result is None and (calc_result['calc_success'] is None or \
-            (calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False)):
-            return 'success'
-        else:
-            if request and not silent:
-                emit_heat_plan_result(heat_id, calc_result)
+        if request and not silent:
+            emit_heat_plan_result(heat_id, calc_result)
 
-            if calc_result['calc_success'] is False:
-                logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
-
-            return 'fail'
+        return 'unsafe'
 
     else:
         return 'no-heat'
@@ -2702,7 +2715,7 @@ def calc_heat(heat_id, silent=False):
 def set_current_heat_data(new_heat_id, silent=False):
     result = calc_heat(new_heat_id, silent)
 
-    if result == 'success':
+    if result == 'safe':
         finalize_current_heat_set(new_heat_id)
     elif result == 'no-heat':
         finalize_current_heat_set(RHUtils.HEAT_ID_NONE)
@@ -2800,8 +2813,8 @@ def finalize_current_heat_set(new_heat_id):
         'heat_id': new_heat_id,
         })
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    RACE.clear_results() # refresh leaderboard
+
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     emit_race_status()
@@ -2883,11 +2896,7 @@ def on_delete_lap(data):
 
     logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-    RACE.cacheStatus = Results.CacheStatus.VALID
-    if RACE.format.team_racing_mode:
-        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-        RACE.team_cacheStatus = Results.CacheStatus.VALID
+    RACE.clear_results()
     PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
@@ -2929,11 +2938,7 @@ def on_restore_deleted_lap(data):
 
     logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-    RACE.cacheStatus = Results.CacheStatus.VALID
-    if RACE.format.team_racing_mode:
-        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-        RACE.team_cacheStatus = Results.CacheStatus.VALID
+    RACE.clear_results()
     PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
     check_win_condition(deletedLap=True)  # handle possible change in win status
 
@@ -3539,42 +3544,35 @@ def emit_current_leaderboard(**params):
         emit_payload['current']['displayname'] = RHData.get_heat(RACE.current_heat).displayname()
 
     # current
+    if RACE.current_heat is RHUtils.HEAT_ID_NONE:
+        emit_payload['current']['displayname'] = __("Practice")
+    else:
+        emit_payload['current']['displayname'] = RHData.get_heat(RACE.current_heat).displayname()
+
     emit_payload['current']['heat'] = RACE.current_heat
     emit_payload['current']['status_msg'] = RACE.status_message
 
-    if RACE.cacheStatus == Results.CacheStatus.VALID:
-        emit_payload['current']['leaderboard'] = RACE.results
-    else:
-        results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-        RACE.results = results
-        RACE.cacheStatus = Results.CacheStatus.VALID
-        emit_payload['current']['leaderboard'] = results
+    emit_payload['current']['leaderboard'] = RACE.get_results(RHData)
 
     if RACE.format.team_racing_mode:
-        if RACE.team_cacheStatus == Results.CacheStatus.VALID:
-            emit_payload['current']['team_leaderboard'] = RACE.team_results
-        else:
-            team_results = Results.calc_team_leaderboard(RACE, RHData)
-            RACE.team_results = team_results
-            RACE.team_cacheStatus = Results.CacheStatus.VALID
-            emit_payload['current']['team_leaderboard'] = team_results
+        emit_payload['current']['team_leaderboard'] = RACE.get_team_results()
 
     # cache
     if LAST_RACE is not None:
         emit_payload['last_race'] = {}
+
+        if LAST_RACE.current_heat is RHUtils.HEAT_ID_NONE:
+            emit_payload['last_race']['displayname'] = __("Practice")
+        else:
+            emit_payload['last_race']['displayname'] = RHData.get_heat(LAST_RACE.current_heat).displayname()
+
+        emit_payload['last_race']['heat'] = LAST_RACE.current_heat
         emit_payload['last_race']['status_msg'] = LAST_RACE.status_message
 
-        if LAST_RACE.cacheStatus == Results.CacheStatus.VALID:
-            emit_payload['last_race']['leaderboard'] = LAST_RACE.results
-            emit_payload['last_race']['heat'] = LAST_RACE.current_heat
+        emit_payload['last_race']['leaderboard'] = LAST_RACE.get_results(RHData)
 
-            if LAST_RACE.current_heat is RHUtils.HEAT_ID_NONE:
-                emit_payload['last_race']['displayname'] = __("Practice")
-            else:
-                emit_payload['last_race']['displayname'] = RHData.get_heat(LAST_RACE.current_heat).displayname()
-
-        if LAST_RACE.team_cacheStatus == Results.CacheStatus.VALID and LAST_RACE.format.team_racing_mode:
-            emit_payload['last_race']['team_leaderboard'] = LAST_RACE.team_results
+        if LAST_RACE.format.team_racing_mode:
+            emit_payload['last_race']['team_leaderboard'] = LAST_RACE.get_team_results()
 
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
@@ -4453,18 +4451,13 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                         }
                         RACE.node_laps[node.index].append(lap_data)
 
-                        RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-                        RACE.cacheStatus = Results.CacheStatus.VALID
-
-                        if race_format.team_racing_mode:
-                            RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
-                            RACE.team_cacheStatus = Results.CacheStatus.VALID
+                        RACE.clear_results()
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
                             'color': led_manager.getDisplayColor(node.index),
                             'lap': lap_data,
-                            'results': RACE.results
+                            'results': RACE.get_results(RHData)
                             })
 
                         emit_current_laps() # update all laps on the race page
@@ -4729,8 +4722,7 @@ def reset_current_laps():
     for idx in range(RACE.num_nodes):
         RACE.node_laps[idx] = []
 
-    RACE.cacheStatus = Results.CacheStatus.INVALID
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+    RACE.clear_results()
     logger.debug('Database current laps reset')
 
 def expand_heats():
@@ -4738,6 +4730,7 @@ def expand_heats():
     for heat in RHData.get_heats():
         heatNodes = RHData.get_heatNodes_by_heat(heat.id)
         while len(heatNodes) < RACE.num_nodes:
+            heatNodes = RHData.get_heatNodes_by_heat(heat.id)
             RHData.add_heatNode(heat.id, None)
 
 def init_race_state():
@@ -4746,17 +4739,16 @@ def init_race_state():
     # Send profile values to nodes
     on_set_profile({'profile': getCurrentProfile().id}, False)
 
-    # Set current heat
-    RACE.current_heat = RHUtils.HEAT_ID_NONE
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
-
     # Set race format
-    race_format = RHData.get_first_raceFormat()
-    setCurrentRaceFormat(race_format, silent=True)
+    RACE.format = RHData.get_first_raceFormat()
+
+    # Init laps
+    reset_current_laps()
+
+    # Set current heat
+    finalize_current_heat_set(RHData.get_first_safe_heat_id())
 
     # Normalize results caches
-    Results.normalize_cache_status(RHData)
     PageCache.set_valid(False)
 
 def init_interface_state(startup=False):
@@ -5377,6 +5369,46 @@ if not db_inited_flag:
         logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
+# Create LED object with appropriate configuration
+strip = None
+if Config.LED['LED_COUNT'] > 0:
+    led_type = os.environ.get('RH_LEDS', 'ws281x')
+    # note: any calls to 'RHData.get_option()' need to happen after the DB initialization,
+    #       otherwise it causes problems when run with no existing DB file
+    led_brightness = RHData.get_optionInt("ledBrightness")
+    try:
+        ledModule = importlib.import_module(led_type + '_leds')
+        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+    except ImportError:
+        # No hardware LED handler, the OpenCV emulation
+        try:
+            ledModule = importlib.import_module('cv2_leds')
+            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+        except ImportError:
+            # No OpenCV emulation, try console output
+            try:
+                ledModule = importlib.import_module('ANSI_leds')
+                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+            except ImportError:
+                ledModule = None
+                logger.info('LED: disabled (no modules available)')
+else:
+    logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
+if strip:
+    # Initialize the library (must be called once before other functions).
+    try:
+        strip.begin()
+        led_manager = LEDEventManager(Events, strip, RHData, RACE, LAST_RACE, Language, INTERFACE)
+        init_LED_effects()
+    except:
+        logger.exception("Error initializing LED support")
+        led_manager = NoLEDManager()
+elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
+    led_manager = ClusterLEDManager(Events)
+    init_LED_effects()
+else:
+    led_manager = NoLEDManager()
+
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors
 try:
@@ -5420,46 +5452,6 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
-# Create LED object with appropriate configuration
-strip = None
-if Config.LED['LED_COUNT'] > 0:
-    led_type = os.environ.get('RH_LEDS', 'ws281x')
-    # note: any calls to 'RHData.get_option()' need to happen after the DB initialization,
-    #       otherwise it causes problems when run with no existing DB file
-    led_brightness = RHData.get_optionInt("ledBrightness")
-    try:
-        ledModule = importlib.import_module(led_type + '_leds')
-        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-    except ImportError:
-        # No hardware LED handler, the OpenCV emulation
-        try:
-            ledModule = importlib.import_module('cv2_leds')
-            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-        except ImportError:
-            # No OpenCV emulation, try console output
-            try:
-                ledModule = importlib.import_module('ANSI_leds')
-                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-            except ImportError:
-                ledModule = None
-                logger.info('LED: disabled (no modules available)')
-else:
-    logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
-if strip:
-    # Initialize the library (must be called once before other functions).
-    try:
-        strip.begin()
-        led_manager = LEDEventManager(Events, strip, RHData, RACE, Language, INTERFACE)
-        init_LED_effects()
-    except:
-        logger.exception("Error initializing LED support")
-        led_manager = NoLEDManager()
-elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
-    led_manager = ClusterLEDManager(Events)
-    init_LED_effects()
-else:
-    led_manager = NoLEDManager()
 
 # start up VRx Control
 vrx_controller = initVRxController()

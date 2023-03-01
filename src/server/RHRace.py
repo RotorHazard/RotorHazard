@@ -1,6 +1,11 @@
 '''Class to hold race management variables.'''
 
+import logging
 import RHUtils
+import Results
+from monotonic import monotonic
+
+logger = logging.getLogger(__name__)
 
 class RHRace():
     '''Class to hold race management variables.'''
@@ -11,6 +16,7 @@ class RHRace():
         self.node_pilots = {} # current race pilots, by node, filled on heat change
         self.node_teams = {} # current race teams, by node, filled on heat change
         self.format = None # raceformat object
+        self.profile = None
         # sequence
         self.scheduled = False # Whether to start a race when time
         self.scheduled_time = 0 # Start race when time reaches this value
@@ -29,11 +35,11 @@ class RHRace():
         self.end_time = 0 # Monotonic, updated when race is stopped
         # leaderboard/cache
         self.results = None # current race results
-        self.cacheStatus = CacheStatus.INVALID # whether cache is valid
+        self.cacheStatus = None # whether cache is valid
         self.status_message = '' # Race status message (winner, team info)
 
         self.team_results = None # current race results
-        self.team_cacheStatus = CacheStatus.INVALID # whether cache is valid
+        self.team_cacheStatus = None # whether cache is valid
         self.win_status = WinStatus.NONE # whether race is won
 
         '''
@@ -82,6 +88,78 @@ class RHRace():
                 return True
         return False
 
+    def get_results(self, RHData):
+        if 'data_ver' in self.cacheStatus and 'build_ver' in self.cacheStatus:
+            token = self.cacheStatus['data_ver']
+            if self.cacheStatus['data_ver'] == self.cacheStatus['build_ver']:
+                # cache hit
+                return self.results
+            # else: cache miss
+        else:
+            logger.error('Race cache has invalid status')
+            token = monotonic()
+            self.clear_results(token)
+
+        # cache rebuild
+        logger.debug('Building current race results')
+        build = Results.calc_leaderboard(RHData, current_race=self, current_profile=self.profile)
+        self.set_results(token, build)
+        return build
+
+    def get_team_results(self):
+        if 'data_ver' in self.team_cacheStatus and 'build_ver' in self.team_cacheStatus:
+            token = self.team_cacheStatus['data_ver']
+            if self.team_cacheStatus['data_ver'] == self.team_cacheStatus['build_ver']:
+                # cache hit
+                return self.team_results
+            # else: cache miss
+        else:
+            logger.error('Race cache has invalid status')
+            token = monotonic()
+            self.clear_team_results(token)
+
+        # cache rebuild
+        logger.debug('Building current race results')
+        build = Results.calc_team_leaderboard(self, self.RHData)
+        self.set_team_results(token, build)
+        return build
+
+    def set_results(self, token, results):
+        if self.cacheStatus['data_ver'] == token:
+            self.cacheStatus['build_ver'] = token
+            self.results = results
+        return True
+
+    def set_team_results(self, token, results):
+        if self.team_cacheStatus['data_ver'] == token:
+            self.team_cacheStatus['build_ver'] = token
+            self.team_results = results
+        return True
+
+    def clear_results(self, token=None):
+        if token is None:
+            token = monotonic()
+
+        self.cacheStatus = {
+            'data_ver': token,
+            'build_ver': None
+        }
+        self.team_cacheStatus = {
+            'data_ver': token,
+            'build_ver': None
+        }
+        return True
+
+    def clear_team_results(self, token=None):
+        if token is None:
+            token = monotonic()
+
+        self.team_cacheStatus = {
+            'data_ver': token,
+            'build_ver': None
+        }
+        return True
+
 class StagingTones():
     TONES_NONE = 0
     TONES_ONE = 1
@@ -115,6 +193,3 @@ class RaceStatus():
     RACING = 1
     DONE = 2
 
-class CacheStatus:
-    INVALID = 'invalid'
-    VALID = 'valid'

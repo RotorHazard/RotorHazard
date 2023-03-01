@@ -208,7 +208,7 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<h3>' + __('Environment Status') + '</h3><table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 			}
 		});
 
@@ -216,8 +216,6 @@
 			$('#cluster-status').empty();
 
 			if (msg.secondaries && msg.secondaries.length > 0) {
-				var cluster_header = $('<h3>' + __('Cluster Status') + '</h3>');
-
 				var cluster_body = $('<ul>');
 
 				for (i=0; i < msg.secondaries.length; i++) {
@@ -253,7 +251,7 @@
 					cluster_body.append(item);
 				}
 
-				$('#cluster-status').append(cluster_header).append(cluster_body);
+				$('#cluster-status').append(cluster_body);
 			}
 		});
 
@@ -2084,9 +2082,13 @@
 		<h2>{{ __('Status') }}</h2>
 	</div>
 	<div class="panel-content">
+		<h3>{{ __('Cluster Status') }}</h3>
 		<div id="cluster-status" class="control-set">
+			<p>No cluster status available.</p>
 		</div>
+		<h3>{{ __('Environment Status') }}</h3>
 		<div id="env-data-table" class="control-set">
+			<p>No environment status available.</p>
 		</div>
 	</div>
 </div>

@@ -114,6 +114,8 @@ class RaceClass(DB.Model):
     win_condition = DB.Column(DB.Integer, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.String(16), nullable=False)
+    ranking = DB.Column(DB.PickleType, nullable=True)
+    rankStatus = DB.Column(DB.String(16), nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
     heatAdvanceType = DB.Column(DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
@@ -238,7 +240,7 @@ class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(40), nullable=False)
-    option_value = DB.Column(DB.String, nullable=False)
+    option_value = DB.Column(DB.String, nullable=True)
 
     def __repr__(self):
         return '<GlobalSetting %r>' % self.id

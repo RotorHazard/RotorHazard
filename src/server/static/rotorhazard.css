@@ -230,6 +230,20 @@ select {
 	width: 100%;
 }
 
+input:invalid,
+textarea:invalid,
+.value-invalid {
+	border-color: hsl(13.1, 64.6%, 37.6%);
+}
+
+@media (prefers-color-scheme: dark) {
+	input:invalid,
+	textarea:invalid,
+	.value-invalid {
+		border-color: hsl(8.2, 86.5%, 53.7%);
+	}
+}
+
 button, select, .button-like {
 	border: solid 0.125em hsl(212.7, 67.8%, 29.2%);
 	border-radius: 0.25rem;
@@ -1182,6 +1196,10 @@ main.page-home {
 	margin-right: auto;
 }
 
+.item-blocks .set_rank {
+	flex: 0 0 5em;
+}
+
 .item-blocks .unlock {
 	flex: 0 0 auto;
 	width: 2em;
@@ -1309,7 +1327,7 @@ main.page-home {
 	}
 }
 
-@media (max-width: 30em){
+@media (max-width: 35em){
 	.page-format .heats>li {
 		width: 100%;
 	}

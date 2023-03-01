@@ -87,7 +87,7 @@
 			var input_val = $('#generator_input_class').val();
 			var output_val = $('#generator_output_class').val();
 
-			$('#generator_input_class').empty().append($('<option value="0">' + __('All Pilots') + '</option>'));
+			$('#generator_input_class').empty().append($('<option value="0">-' + __('All Pilots') + '-</option>'));
 			$('#generator_output_class').empty().append($('<option value="">-' + __('New Class') + '-</option>'));
 
 			if (class_data.classes.length) {
@@ -105,7 +105,7 @@
 				}
 			}
 
-			$('#generator_output_class').append($('<option value="0">' + __('Unclassified') + '</option>'));
+			$('#generator_output_class').append($('<option value="0">(' + __('Unclassified') + ')</option>'));
 
 			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
 				$('#generator_input_class').val(input_val);
@@ -153,7 +153,7 @@
 						}
 						el.append(actions);
 
-						var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + '" maxlength="256">');
+						var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + ' (' + __('Accepts Markdown') + ')" maxlength="256">');
 						input.val(race_class.description);
 						el.append(input);
 
@@ -172,10 +172,12 @@
 						var field = $('<div class="field field-ranking">');
 						field.append('<label for="class_win_condition_' + race_class.id + '">' + __('Ranking') + '</label>');
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-						selectbox.append('<option value="0">-' + __('Automatic') + '-</option>');
+						selectbox.append('<option value="0">' + __('From Race Format') + '</option>');
+						/*
 						selectbox.append('<option value="1">Laps/Time</option>');
 						selectbox.append('<option value="2">Fastest Lap</option>');
 						selectbox.append('<option value="3">Fastest 3 Consecutive</option>');
+						*/
 						selectbox.append('<option value="4">Best Round (Laps/Time)</option>');
 						selectbox.append('<option value="5">Best 2 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="6">Best 3 Rounds (Laps/Time)</option>');
@@ -363,10 +365,14 @@
 			display_classes();
 			display_unclassified_heats();
 			freq.updateBlocks();
+			if (rotorhazard.generators) {
+				$('#generate_heats_2').prop('disabled', false);
+			}
+			$('#generating-message').prop('hidden', true);
 		});
 
 		function create_heat_ui(heat) {
-			var el = $('<li class="rh-heat">');
+			var el = $('<li class="rh-heat" data-heat="' + heat.id + '">');
 
 			if (heat.status == 2) {
 				el.addClass('is-confirmed');
@@ -408,91 +414,92 @@
 				var slot = heat.slots[j];
 				var heatpilot = heat.slots[j].pilot_id;
 
-				if (heat.dynamic && heat.status == 2) {
-					var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == heatpilot});
+				var slot_el = $('<li>');
+				slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
 
-					if (pilot) {
-						var slot_el = $('<li>');
-						slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
-						
-						var pilot_el = $('<div class="pilot-name">');
-						var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
-						for (var k in rotorhazard.event.pilots) {
-							var pilot = rotorhazard.event.pilots[k];
-							if (rotorhazard.options.pilotSort == 'callsign') {
-								selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.callsign + ' (' + pilot.name + ')</option>');
-							} else {
-								selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.name + ' (' + pilot.callsign + ')</option>');
-							}
-						}
-						selectbox.val(heatpilot);
-						selectbox.prop('disabled', heat.locked);
-						pilot_el.append(selectbox);
-						slot_el.append(pilot_el);
-						
-						nodelist.append(slot_el);
-					}
-				} else {
-					var slot_el = $('<li>');
-					slot_el.append('<div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div>');
-
-					// method
-					var selectmethod = $('<select class="set_method" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-					selectmethod.append('<option value="-1">None</option>');
-					selectmethod.append('<option value="0">Pilot</option>');
-					selectmethod.append('<option value="1">Heat</option>');
-					selectmethod.append('<option value="2">Class</option>');
+				// method
+				var selectmethod = $('<select class="set_method" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+				// selectmethod.append('<option value="-1">None</option>');
+				selectmethod.append('<option value="0">Pilot</option>');
+				selectmethod.append('<option value="1">Heat</option>');
+				selectmethod.append('<option value="2">Class</option>');
+				if (slot.method > 0) {
 					selectmethod.val(slot.method);
-					selectmethod.prop('disabled', heat.locked);
-					slot_el.append(selectmethod);
-
-					// method-heat
-					var selectheat = $('<select class="set_heat" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-					for (var k in rotorhazard.event.heats) {
-						var h = rotorhazard.event.heats[k];
-						selectheat.append('<option value="' + h.id + '">' + h.displayname + '</option>');
-					}
-					selectheat.val(slot.seed_id);
-					selectheat.prop('disabled', heat.locked);
-					slot_el.append(selectheat);
-
-					// method-class
-					var selectclass = $('<select class="set_class" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
-					for (var k in rotorhazard.event.classes) {
-						var c = rotorhazard.event.classes[k];
-						selectclass.append('<option value="' + c.id + '">' + c.displayname + '</option>');
-					}
-					selectclass.val(slot.seed_id);
-					selectclass.prop('disabled', heat.locked);
-					slot_el.append(selectclass);
-
-					// rank
-					var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank">'); // TODO: Proper labels
-					input.val(slot.seed_rank);
-					input.prop('disabled', heat.locked);
-					slot_el.append(input);
-
-					var pilot_el = $('<div class="pilot-name">');
-					// pilot selectors
-					var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
-					for (var k in rotorhazard.event.pilots) {
-						var pilot = rotorhazard.event.pilots[k];
-						if (rotorhazard.options.pilotSort == 'callsign') {
-							selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.callsign + ' (' + pilot.name + ')</option>');
-						} else {
-							selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.name + ' (' + pilot.callsign + ')</option>');
-						}
-					}
-					selectbox.val(heatpilot);
-					if (slot.method === 0 && !heatpilot) {
-						selectmethod.val(-1);
-					}
-					selectbox.prop('disabled', heat.locked);
-					pilot_el.append(selectbox);
-					slot_el.append(pilot_el);
-
-					nodelist.append(slot_el);
+				} else {
+					selectmethod.val(0);
 				}
+				selectmethod.prop('disabled', heat.locked);
+				slot_el.append(selectmethod);
+
+				// method-heat
+				var selectheat = $('<select class="set_heat" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+				selectheat.append('<option value="0">-' + __('None') + '-</option>');
+				for (var k in rotorhazard.event.heats) {
+					var h = rotorhazard.event.heats[k];
+					selectheat.append('<option value="' + h.id + '">' + h.displayname + '</option>');
+				}
+				if (slot.method == 1 && slot.seed_id) {
+					var heat_arr = Array.from(selectheat[0].options)
+					var selected_heat = heat_arr.find(obj => {return obj.value == slot.seed_id});
+					if (!selected_heat) {
+						selectheat.addClass('value-invalid');
+						selectheat.append('<option value="' + slot.seed_id + '" data-valid="false">&#9888;&#xFE0E; ' + __('Deleted Heat') + ' ' + slot.seed_id + '</option>');
+					}
+
+					selectheat.val(slot.seed_id);
+				} else {
+					selectheat.val(0);
+				}
+				selectheat.prop('disabled', heat.locked);
+				slot_el.append(selectheat);
+
+				// method-class
+				var selectclass = $('<select class="set_class" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" >')
+				selectclass.append('<option value="0">-' + __('None') + '-</option>');
+				for (var k in rotorhazard.event.classes) {
+					var c = rotorhazard.event.classes[k];
+					selectclass.append('<option value="' + c.id + '">' + c.displayname + '</option>');
+				}
+				if (slot.method == 2 && slot.seed_id) {
+					var class_arr = Array.from(selectclass[0].options)
+					var selected_class = class_arr.find(obj => {return obj.value == slot.seed_id});
+					if (!selected_class) {
+						selectclass.addClass('value-invalid');
+						selectclass.append('<option value="' + slot.seed_id + '" data-valid="false">&#9888;&#xFE0E; ' + __('Deleted Class') + ' ' + slot.seed_id + '</option>');
+					}
+
+					selectclass.val(slot.seed_id);
+				} else {
+					selectclass.val(0);
+				}
+				selectclass.prop('disabled', heat.locked);
+				slot_el.append(selectclass);
+
+				// rank
+				var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank" required>'); // TODO: Proper labels
+				input.val(slot.seed_rank);
+				input.prop('disabled', heat.locked);
+				slot_el.append(input);
+
+				// pilot selectors
+				var selectbox = $('<select class="set_pilot_position" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '">')
+				selectbox.append('<option value="0">-' + __('None') + '-</option>');
+				for (var k in rotorhazard.event.pilots) {
+					var pilot = rotorhazard.event.pilots[k];
+					if (rotorhazard.options.pilotSort == 'callsign') {
+						selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.callsign + ' (' + pilot.name + ')</option>');
+					} else {
+						selectbox.append('<option value="' + pilot.pilot_id + '">' + pilot.name + ' (' + pilot.callsign + ')</option>');
+					}
+				}
+				selectbox.val(heatpilot);
+				if (slot.method == -1 || !heatpilot) {
+					selectbox.val(0);
+				}
+				selectbox.prop('disabled', heat.locked);
+				slot_el.append(selectbox);
+
+				nodelist.append(slot_el);
 			}
 			el.append(nodelist);
 
@@ -506,20 +513,20 @@
 			afc.append(label);
 			el.append(afc);
 
-			if ((heat.dynamic || heat.auto_frequency) && heat.locked == false) {
-				if (heat.status == 2) {
-					el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">' + __('Revert to Plan') + '</button>');
-				} else {
-					el.append('<button class="plan-calc" data-id="' + heat.id + '">' + __('Seed Now') + '</button>');
-				}
-			}
+			el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">' + __('Revert to Plan') + '</button>');
+			el.append('<button class="plan-calc" data-id="' + heat.id + '">' + __('Seed Now') + '</button>');
 
-			update_heat_ui(el);
+			update_heat_ui(el, heat.id);
 			return el;
 		}
 
-		function update_heat_ui(el) {
-			if (el.hasClass('is-confirmed')) {
+		function update_heat_ui(el, heat_id) {
+			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
+
+			is_dynamic = heat.slots.some(obj => obj.method > 0)
+
+			// option selector visibility
+			if (heat.status == 2) {
 				el.find('.channel-block').prop('hidden', false);
 				el.find('.set_method').prop('hidden', true);
 				el.find('.set_class').prop('hidden', true);
@@ -528,8 +535,7 @@
 				el.find('.autofrequency-control').prop('hidden', true);
 			} else {
 				el.find('.autofrequency-control').prop('hidden', false);
-				var autofrequency = el.find('.set_heat_autofrequency').prop('checked');
-				el.find('.channel-block').prop('hidden', autofrequency);
+				el.find('.channel-block').prop('hidden', heat.auto_frequency);
 
 				el.find('li').each(function(){
 					var method = parseInt($(this).find('.set_method').val());
@@ -537,24 +543,53 @@
 						$(this).find('.set_class').prop('hidden', true);
 						$(this).find('.set_heat').prop('hidden', true);
 						$(this).find('.set_rank').prop('hidden', true);
-						$(this).find('.pilot-name').prop('hidden', true);
+						$(this).find('.set_pilot_position').prop('hidden', true);
 					} else if (method == 0) { // Pilot
 						$(this).find('.set_class').prop('hidden', true);
 						$(this).find('.set_heat').prop('hidden', true);
 						$(this).find('.set_rank').prop('hidden', true);
-						$(this).find('.pilot-name').prop('hidden', false);
+						$(this).find('.set_pilot_position').prop('hidden', false);
 					} else if (method == 1) { // Heat
 						$(this).find('.set_class').prop('hidden', true);
 						$(this).find('.set_heat').prop('hidden', false);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.pilot-name').prop('hidden', true);
+						$(this).find('.set_pilot_position').prop('hidden', true);
 					} else if (method == 2) { // Class
 						$(this).find('.set_class').prop('hidden', false);
 						$(this).find('.set_heat').prop('hidden', true);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.pilot-name').prop('hidden', true);
+						$(this).find('.set_pilot_position').prop('hidden', true);
 					}
 				});
+			}
+
+			// pilot visibility
+			el.find('li').each(function(){
+				if ((is_dynamic || heat.auto_frequency) && heat.status == 2){
+					if ($(this).find('.set_pilot_position').val() == 0) {
+						$(this).prop('hidden', true);
+					} else {
+						$(this).prop('hidden', false);
+						$(this).find('.set_pilot_position').prop('disabled', true);
+					}
+				} else {
+					$(this).prop('hidden', false);
+				}
+
+			});
+
+			// plan buttons
+			if ((is_dynamic || heat.auto_frequency) && heat.locked == false) {
+				if (heat.status == 2) {
+					el.find('.plan-reset').prop('hidden', false);
+					el.find('.plan-calc').prop('hidden', true);
+				} else {
+					el.find('.plan-reset').prop('hidden', true);
+					el.find('.plan-calc').prop('hidden', false);
+				}
+			} else {
+				el.find('.plan-reset').prop('hidden', true);
+				el.find('.plan-calc').prop('hidden', true);
 			}
 		}
 
@@ -576,16 +611,34 @@
 		});
 
 		$(document).on("change", '.set_method', function (event) {
+			var heat_id = parseInt($(this).data('heat'));
+			var slot_id = parseInt($(this).data('slot'));
+			var method = parseInt($(this).val());
+
 			var data = {
-				heat: parseInt($(this).data('heat')),
-				slot_id: parseInt($(this).data('slot')),
-				method: parseInt($(this).val())
+				heat: heat_id,
+				slot_id: slot_id,
+				method: method,
+				seed_heat_id: parseInt($(this).val()),
+				seed_class_id: parseInt($(this).val())
 			};
 			socket.emit('alter_heat', data);
-			update_heat_ui($(this).closest('li.rh-heat'));
+
+			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_id});
+			var slot_idx = rotorhazard.event.heats[heat_idx].slots.findIndex(obj => {return obj.id == slot_id});
+			rotorhazard.event.heats[heat_idx].slots[slot_idx].method = method;
+
+			update_heat_ui($(this).closest('li.rh-heat'), parseInt($(this).data('heat')));
 		});
 
 		$(document).on("change", '.set_heat', function (event) {
+			var option = $(this).find('option:selected');
+			if (option.attr('data-valid') == "false") {
+				$(this).addClass('value-invalid');
+			} else {
+				$(this).removeClass('value-invalid');
+			}
+
 			var data = {
 				heat: parseInt($(this).data('heat')),
 				slot_id: parseInt($(this).data('slot')),
@@ -595,6 +648,13 @@
 		});
 
 		$(document).on("change", '.set_class', function (event) {
+			var option = $(this).find('option:selected');
+			if (option.attr('data-valid') == "false") {
+				$(this).addClass('value-invalid');
+			} else {
+				$(this).removeClass('value-invalid');
+			}
+
 			var data = {
 				heat: parseInt($(this).data('heat')),
 				slot_id: parseInt($(this).data('slot')),
@@ -621,12 +681,19 @@
 		});
 
 		$(document).on("change", '.set_heat_autofrequency', function (event) {
+			var heat_id = parseInt($(this).data('heat'));
+			var auto_frequency = $(this).prop("checked");
+
 			var data = {
-				heat: parseInt($(this).data('heat')),
-				auto_frequency: $(this).prop("checked")
+				heat: heat_id,
+				auto_frequency: auto_frequency
 			};
 			socket.emit('alter_heat', data);
-			update_heat_ui($(this).closest('li.rh-heat'));
+
+			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_id});
+			rotorhazard.event.heats[heat_idx].auto_frequency = auto_frequency;
+
+			update_heat_ui($(this).closest('li.rh-heat'), parseInt($(this).data('heat')));
 		});
 
 		$(document).on("click", 'button.plan-calc', function (event) {
@@ -670,7 +737,8 @@
 				var slot = msg.slots[idx];
 				var slot_el = $('<tr>');
 
-				if (slot.method > -1) {
+				if (slot.method == 0 && slot.pilot_id ||
+					slot.method > 0 && slot.seed_id) {
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
@@ -724,11 +792,6 @@
 				items: {
 					src: plan_dialog_el,
 					type: 'inline',
-				},
-				callbacks: {
-					open: function(){
-						$('#set_current_heat').val(rotorhazard.current_heat);
-					}
 				}
 			});
 
@@ -750,17 +813,25 @@
 				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
 
 				if (heat) {
-					return heat.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return heat.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return heat.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Heat') + ')';
+					return '(' + __('Deleted Heat') + ')';
 				}
 			} else if (method == 2) { // class
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
 
 				if (race_class) {
-					return race_class.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return race_class.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return race_class.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Class') + ')';
+					return '(' + __('Deleted Class') + ')';
 				}
 			}
 			return '(' + __('Undefined') + ')';
@@ -784,8 +855,20 @@
 
 		$(document).on("click", '#unlock_heat', function (event) {
 			$.magnificPopup.close();
-			var heat = $('[data-heat=' + heat_to_unlock + ']');
-			$(heat).prop('disabled', false);
+			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_to_unlock });
+
+			var el = $('.rh-heat[data-heat="' + heat_to_unlock + '"]')
+			update_heat_ui(el, heat_to_unlock);
+
+			el.find('li').each(function(){
+				$(this).prop('hidden', false);
+				$(this).find('.set_pilot_position').prop('disabled', false);
+			});
+
+			freq.updateBlocks();
+
+			// var heat_els = $('[data-heat=' + heat_to_unlock + ']');
+			// $(heat_els).prop('disabled', false);
 		});
 
 		$(document).on("click", '.duplicate_heat', function (event) {
@@ -805,10 +888,6 @@
 			$('button#generate_heats').prop('disabled', true);
 			socket.emit('generate_heats', data);
 			return false;
-		});
-
-		socket.on('heat_generate_done', function (msg) {
-			$('button#generate_heats').prop('disabled', false);
 		});
 
 		/* Pilots */
@@ -1327,6 +1406,14 @@
 				backup_file: $('#database_list').val()
 			};
 			socket.emit('restore_database', data);
+
+			$.magnificPopup.open({
+				items: {
+					src: '#database_restore_progress',
+					type: 'inline',
+				}
+			});
+
 			return false;
 		});
 
@@ -1413,6 +1500,7 @@
 		});
 
 		socket.on('heatgenerator_list', function (msg) {
+			rotorhazard.generators = msg.generators;
 			$('#generator_list').empty();
 			if ('generators' in msg && msg.generators.length) {
 				msg.generators.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
@@ -1426,6 +1514,7 @@
 				$('#generator_list').append('<option value="-">' + __('No generators') + '</option>');
 				$('#generator_list').prop('disabled', true);
 				$('#generate_heats_2').prop('disabled', true);
+				$('#generate_heats_2').prop('hidden', true);
 			}
 		});
 
@@ -1438,6 +1527,8 @@
 				generator: $('#generator_list').val()
 			};
 			socket.emit('generate_heats_v2', data);
+			$('#generate_heats_2').prop('disabled', true);
+			$('#generating-message').prop('hidden', false);
 			return false;
 		});
 
@@ -1483,6 +1574,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set_event_description">{{ __('Event Description') }}</label>
+					<p class="desc">{{ __('Accepts Markdown') }}</p>
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
 			</li>
@@ -1532,6 +1624,13 @@
 				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
 				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_restore_progress" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Database restore in progress. Please wait...') }}</p>
 			</div>
 		</div>
 
@@ -1646,6 +1745,7 @@
 		<div class="control-set">
 			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
 		</div>
+		<div id="generating-message" hidden="" class="control-set">{{ __('Generating Heats...') }}</div>
 	</div>
 </div>
 

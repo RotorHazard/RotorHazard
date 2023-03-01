@@ -489,7 +489,8 @@
 				var slot = msg.slots[idx];
 				var slot_el = $('<tr>');
 
-				if (slot.method > -1) {
+				if (slot.method == 0 && slot.pilot_id ||
+					slot.method > 0 && slot.seed_id) {
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
@@ -570,17 +571,25 @@
 				var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
 
 				if (heat) {
-					return heat.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return heat.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return heat.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Heat') + ')';
+					return '(' + __('Deleted Heat') + ')';
 				}
 			} else if (method == 2) { // class
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
 
 				if (race_class) {
-					return race_class.displayname + " " + __('Rank') + " " + rank;
+					if (rank) {
+						return race_class.displayname + " " + __('Rank') + " " + rank;
+					} else {
+						return race_class.displayname + " -" + __('Undefined Rank') + "-";
+					}
 				} else {
-					return '(' + __('Undefined Class') + ')';
+					return '(' + __('Deleted Class') + ')';
 				}
 			}
 			return '(' + __('Undefined') + ')';
@@ -1534,7 +1543,7 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<h3>' + __('Environment Status') + '</h3><table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 			}
 		});
 
@@ -1542,8 +1551,6 @@
 			$('#cluster-status').empty();
 
 			if (msg.secondaries && msg.secondaries.length > 0) {
-				var cluster_header = $('<h3>' + __('Cluster Status') + '</h3>');
-
 				var cluster_body = $('<ul>');
 
 				for (i=0; i < msg.secondaries.length; i++) {
@@ -1579,7 +1586,7 @@
 					cluster_body.append(item);
 				}
 
-				$('#cluster-status').append(cluster_header).append(cluster_body);
+				$('#cluster-status').append(cluster_body);
 			}
 		});
 
@@ -2678,9 +2685,13 @@
 		<h2>{{ __('Status') }}</h2>
 	</div>
 	<div class="panel-content">
+		<h3>{{ __('Cluster Status') }}</h3>
 		<div id="cluster-status" class="control-set">
+			<p>No cluster status available.</p>
 		</div>
+		<h3>{{ __('Environment Status') }}</h3>
 		<div id="env-data-table" class="control-set">
+			<p>No environment status available.</p>
 		</div>
 	</div>
 </div>
