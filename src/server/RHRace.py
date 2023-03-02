@@ -106,7 +106,7 @@ class RHRace():
         self.set_results(token, build)
         return build
 
-    def get_team_results(self):
+    def get_team_results(self, RHData):
         if 'data_ver' in self.team_cacheStatus and 'build_ver' in self.team_cacheStatus:
             token = self.team_cacheStatus['data_ver']
             if self.team_cacheStatus['data_ver'] == self.team_cacheStatus['build_ver']:
@@ -120,7 +120,7 @@ class RHRace():
 
         # cache rebuild
         logger.debug('Building current race results')
-        build = Results.calc_team_leaderboard(self, self.RHData)
+        build = Results.calc_team_leaderboard(self, RHData)
         self.set_team_results(token, build)
         return build
 

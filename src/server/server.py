@@ -3555,7 +3555,7 @@ def emit_current_leaderboard(**params):
     emit_payload['current']['leaderboard'] = RACE.get_results(RHData)
 
     if RACE.format.team_racing_mode:
-        emit_payload['current']['team_leaderboard'] = RACE.get_team_results()
+        emit_payload['current']['team_leaderboard'] = RACE.get_team_results(RHData)
 
     # cache
     if LAST_RACE is not None:
@@ -3572,7 +3572,7 @@ def emit_current_leaderboard(**params):
         emit_payload['last_race']['leaderboard'] = LAST_RACE.get_results(RHData)
 
         if LAST_RACE.format.team_racing_mode:
-            emit_payload['last_race']['team_leaderboard'] = LAST_RACE.get_team_results()
+            emit_payload['last_race']['team_leaderboard'] = LAST_RACE.get_team_results(RHData)
 
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
