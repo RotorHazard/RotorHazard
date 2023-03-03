@@ -44,6 +44,11 @@ class VRxControlManager():
                 logger.warning('Overwriting VRx Controller "{0}"'.format(controller.name))
 
             controller.manager = self
+            controller.RHData = self.RHData
+            controller.Events = self.Events
+            controller.RACE = self.RACE
+            controller.nodes = self.nodes
+            controller.Language = self.Language
             self.controllers[controller.name] = controller
             logger.info('Importing VRx Controller {}'.format(controller.name))
         else:
@@ -192,8 +197,11 @@ class VRxController():
         self.devices = {} # collection of VRxDevices
         self.deviceMap = {} # collection of VRxDeviceMap; maps devices to usage scenarios (by pilot, by seat) so they can be selected
 
-        # self.enabled = None
-        # self.hasConnection = None
+        self.RHData = None
+        self.Events = None
+        self.RACE = None
+        self.nodes = []
+        self.Language = None
 
         self.setup()
 
