@@ -1683,6 +1683,9 @@
 		/* VRx */
 		socket.on('vrx_list', function (msg) {
 			if (msg.enabled) {
+				console.log(msg);
+
+				/*
 				vrx_by_node = {}
 
 				for (var vrx_id in msg.vrx) {
@@ -1721,6 +1724,7 @@
 						header.append(__('VRx locks') + ': 0/0');
 					}
 				}
+				*/
 			}
 		});
 

@@ -337,6 +337,9 @@
 
 		socket.on('vrx_list', function (msg) {
 			if (msg.enabled) {
+				console.log(msg);
+
+				/*
 				vrx_by_node = {}
 
 				for (var vrx_id in msg.vrx) {
@@ -476,6 +479,7 @@
 				} else {
 					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
 				}
+				*/
 			} else {
 				$('.vrx-warning').empty();
 			}

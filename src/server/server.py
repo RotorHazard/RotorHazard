@@ -88,6 +88,7 @@ from Sensors import Sensors  #pylint: disable=import-error
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus, StagingTones
 from data_export import DataExportManager
+from VRxControl import VRxControlManager
 from HeatGenerator import HeatGeneratorManager
 
 APP = Flask(__name__, static_url_path='/static')
@@ -3998,26 +3999,17 @@ def emit_imdtabler_rating():
 
 def emit_vrx_list(*_args, **params):
     ''' get list of connected VRx devices '''
-    if vrx_controller:
-        # if vrx_controller.has_connection:
-        vrx_list = {}
-        for vrx in vrx_controller.rx_data:
-            vrx_list[vrx] = vrx_controller.rx_data[vrx]
-
+    if vrx_manager.isEnabled():
         emit_payload = {
             'enabled': True,
-            'connection': True,
-            'vrx': vrx_list
+            'controllers': vrx_manager.getControllerStatus(),
+            'devices': vrx_manager.getAllDeviceStatus()
         }
-        # else:
-            # emit_payload = {
-            #     'enabled': True,
-            #     'connection': False,
-            # }
     else:
         emit_payload = {
             'enabled': False,
-            'connection': False
+            'controllers': None,
+            'devices': None
         }
 
     if ('nobroadcast' in params):
@@ -4128,8 +4120,12 @@ def set_vrx_node(data):
     vrx_id = data['vrx_id']
     node = data['node']
 
-    if vrx_controller:
-        vrx_controller.set_seat_number(serial_num=vrx_id, desired_seat_num=node)
+    if vrx_manager.isEnabled():
+        # TODO: vrx_manager.setDeviceMethod(device_id, method)
+        # TODO: vrx_manager.setDeviceSeat(device_id, method)
+        # TODO: vrx_manager.setDevicePilot(device_id, method)
+
+        # vrx_controller.set_seat_number(serial_num=vrx_id, desired_seat_num=node)
         logger.info("Set VRx {0} to node {1}".format(vrx_id, node))
     else:
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
@@ -4206,14 +4202,13 @@ def heartbeat_thread_function():
 
             # collect vrx lock status
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
-                if vrx_controller:
+                if vrx_manager.isEnabled():
                     # if vrx_controller.has_connection
-                    vrx_controller.get_seat_lock_status()
-                    vrx_controller.request_variable_status()
+                    vrx_manager.updateStatus()
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
                 # emit display status with offset
-                if vrx_controller:
+                if vrx_manager.isEnabled():
                     emit_vrx_list()
 
             # emit environment data less often:
@@ -4801,42 +4796,6 @@ def init_LED_effects():
     for item in effects:
         led_manager.setEventEffect(item, effects[item])
 
-def initVRxController():
-    try:
-        vrx_config = Config.VRX_CONTROL
-        try:
-            vrx_enabled = vrx_config["ENABLED"]
-            if vrx_enabled:
-                try:
-                    from VRxController import VRxController
-                except ImportError as e:
-                    logger.error("VRxController unable to be imported")
-                    logger.error(e)
-                    return None
-            else:
-                logger.debug('VRxController disabled by config option')
-                return None
-        except KeyError:
-            logger.error('VRxController disabled: config needs "ENABLED" key.')
-            return None
-    except AttributeError:
-        logger.info('VRxController disabled: No VRX_CONTROL config option')
-        return None
-
-    # If got through import success, create the VRxController object
-    vrx_config = Config.VRX_CONTROL
-    return VRxController(
-        RHData,
-        Events,
-        vrx_config,
-        RACE,
-        [node.frequency for node in INTERFACE.nodes],
-        Language)
-
-def killVRxController(*_args):
-    global vrx_controller
-    logger.info('Killing VRxController')
-    vrx_controller = None
 
 def determineHostAddress(maxRetrySecs=10):
     ''' Determines local host IP address.  Will wait and retry to get valid IP, in
@@ -5179,8 +5138,11 @@ if os.path.isdir('./plugins'):
     for name in dirs:
         try:
             plugin_module = importlib.import_module('plugins.' + name)
-            plugin_modules.append(plugin_module)
-            logger.info('Loaded plugin module {0}'.format(name))
+            if plugin_module.__file__:
+                plugin_modules.append(plugin_module)
+                logger.info('Loaded plugin module {0}'.format(name))
+            else:
+                logger.warning('Plugin module {0} not imported (unable to load file)'.format(name))
         except ImportError as ex:
             logger.warning('Plugin module {0} not imported (not supported or may require additional dependencies)'.format(name))
             logger.debug(ex)
@@ -5451,13 +5413,10 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
         except Exception:
             logger.exception('Error checking IMDTabler:  ')
 else:
-    logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
-# start up VRx Control
-vrx_controller = initVRxController()
-
-if vrx_controller:
-    Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
+    logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+# VRx Controllers
+vrx_manager = VRxControlManager(RHData, Events, RACE, INTERFACE.nodes, Language, legacy_config=Config.VRX_CONTROL)
+Events.on(Evt.CLUSTER_JOIN, 'VRx', vrx_manager.kill)
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language, Events)

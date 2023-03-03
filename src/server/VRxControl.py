@@ -1,0 +1,339 @@
+#
+# VRx Control
+#
+
+#
+#
+
+import logging
+from eventmanager import Evt
+
+logger = logging.getLogger(__name__)
+
+class VRxControlManager():
+    def __init__(self, RHData, Events, RACE, nodes, Language, **_kwargs):
+        self.RHData = RHData
+        self.Events = Events
+        self.RACE = RACE
+        self.nodes = nodes
+        self.Language = Language
+
+        self.enabled = True
+        self.controllers = {} # collection of VRxControllers
+
+        self.Events.trigger('VRxC_Initialize', {
+            'registerFn': self.registerController
+            })
+
+        self.Events.on(Evt.STARTUP, 'VRx', self.doStartup)
+        self.Events.on(Evt.HEAT_SET, 'VRx', self.doHeatSet)
+        self.Events.on(Evt.RACE_STAGE, 'VRx', self.doRaceStage, {}, 75)
+        self.Events.on(Evt.RACE_START, 'VRx', self.doRaceStart, {}, 75)
+        self.Events.on(Evt.RACE_FINISH, 'VRx', self.doRaceFinish)
+        self.Events.on(Evt.RACE_STOP, 'VRx', self.doRaceStop)
+        self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.doRaceLapRecorded, {}, 200, True)
+        self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.doLapsClear)
+        self.Events.on(Evt.LAP_DELETE, 'VRx', self.doLapDelete)
+        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.doFrequencySet, {}, 200, True)
+        self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.doSendPriorityMessage)
+        self.Events.on(Evt.OPTION_SET, 'VRx', self.doOptionSet)
+
+    def registerController(self, controller):
+        if hasattr(controller, 'name'):
+            if controller.name in self.controllers:
+                logger.warning('Overwriting VRx Controller "{0}"'.format(controller.name))
+
+            controller.manager = self
+            self.controllers[controller.name] = controller
+            logger.info('Importing VRx Controller {}'.format(controller.name))
+        else:
+            logger.warning('Invalid controller')
+
+    def isEnabled(self):
+        if not self.enabled:
+            return False 
+
+        for controller in self.controllers.values(): # should this check be done?
+            if controller.ready:
+                return True
+
+        return False
+
+    def kill(self):
+        logger.info('Killing VRx Control')
+        self.enabled = False
+        return True
+
+    def updateStatus(self):
+        for controller in self.controllers.values():
+            controller.updateStatus()
+
+    def getControllerStatus(self):
+        status = {}
+        for controller in self.controllers.values():
+            status[controller.name] = controller.getStatus()
+        return status
+
+    def getAllDeviceStatus(self):
+        devices = {}
+        for controller in self.controllers.values():
+            status = controller.getAllDeviceStatus()
+            for device in status:
+                manager_device_id = str(controller.name) + ":" + str(device.id)
+                devices[manager_device_id] = device
+
+        return devices
+
+    def getDevices(self):
+        devices = {}
+        for controller in self.controllers.values():
+            for device in controller.devices:
+                manager_device_id = str(controller.name) + ":" + str(device.id)
+                devices[manager_device_id] = device
+
+        return devices
+
+    def getActiveDevices(self, seat, pilot_id):
+        devices = {}
+        for controller in self.controllers.values():
+            for device in controller.devices:
+                manager_device_id = str(controller.name) + ":" + str(device.id)
+                if device.method == VRxDeviceMethod.ALL:
+                    devices[manager_device_id] = device
+                elif device.method == VRxDeviceMethod.PILOT and device.pilot_id == pilot_id:
+                    devices[manager_device_id] = device
+                elif device.method == VRxDeviceMethod.SEAT and device.pilot_id == seat:
+                    devices[manager_device_id] = device
+
+        return devices
+
+    def setDeviceMethod(self, device_id, method):
+        for controller in self.controllers.values():
+            for device in controller.devices:
+                manager_device_id = str(controller.name) + ":" + str(device.id)
+                if manager_device_id == device_id:
+                    controller.setDeviceMethod(device.id, method)
+                    return True
+        return False
+
+    def setDeviceSeat(self, device_id, seat):
+        for controller in self.controllers.values():
+            for device in controller.devices:
+                manager_device_id = str(controller.name) + ":" + str(device.id)
+                if manager_device_id == device_id:
+                    controller.setDeviceSeat(device.id, seat)
+                    return True
+        return False
+
+    def setDevicePilot(self, device_id, pilot_id):
+        for controller in self.controllers.values():
+            for device in controller.devices:
+                manager_device_id = str(controller.name) + ":" + str(device.id)
+                if manager_device_id == device_id:
+                    controller.setDevicePilot(device.id, pilot_id)
+                    return True
+        return False
+
+    def doStartup(self, args):
+        for controller in self.controllers.values():
+            controller.onStartup(args)
+
+    def doHeatSet(self, args):
+        for controller in self.controllers.values():
+            controller.onHeatSet(args)
+
+    def doRaceStage(self, args):
+        for controller in self.controllers.values():
+            controller.onRaceStage(args)
+
+    def doRaceStart(self, args):
+        for controller in self.controllers.values():
+            controller.onRaceStart(args)
+
+    def doRaceFinish(self, args):
+        for controller in self.controllers.values():
+            controller.onRaceFinish(args)
+
+    def doRaceStop(self, args):
+        for controller in self.controllers.values():
+            controller.onRaceStop(args)
+
+    def doRaceLapRecorded(self, args):
+        for controller in self.controllers.values():
+            controller.onRaceLapRecorded(args)
+
+    def doLapsClear(self, args):
+        for controller in self.controllers.values():
+            controller.onLapsClear(args)
+
+    def doLapDelete(self, args):
+        for controller in self.controllers.values():
+            controller.onLapDelete(args)
+
+    def doFrequencySet(self, args):
+        for controller in self.controllers.values():
+            controller.onFrequencySet(args)
+
+    def doSendPriorityMessage(self, args):
+        for controller in self.controllers.values():
+            controller.onSendMessage(args)
+
+    def doOptionSet(self, args):
+        for controller in self.controllers.values():
+            controller.onOptionSet(args)
+
+class VRxController():
+    def __init__(self, name, label):
+        self.name = name
+        self.label = label
+
+        self.manager = None
+        self.ready = False
+        self.devices = {} # collection of VRxDevices
+        self.deviceMap = {} # collection of VRxDeviceMap; maps devices to usage scenarios (by pilot, by seat) so they can be selected
+
+        # self.enabled = None
+        # self.hasConnection = None
+
+        self.setup()
+
+    def setup(self):
+        self.ready = True
+
+    def updateStatus(self):
+        pass
+
+    def getStatus(self):
+        return {
+            'ready': self.ready,
+            'mapping': self.deviceMap
+        }
+
+    def addDevice(self, device):
+        self.devices[device.id] = device
+        # self.manager.addDevice(device.id, self)
+
+    def removeDevice(self, device):
+        # self.manager.removeDevice(device.id, self)
+        self.devices.pop(device.id)
+
+    def updateDevice(self, _device_id):
+        # set frequency, etc
+        pass
+
+    def getAllDeviceStatus(self):
+        status = []
+        for device in self.devices.values():
+            status.append(self.getDeviceStatus(device))
+        return status
+        #request_variable_status
+        #rx_data
+        #get_seat_lock_status
+
+    def getDeviceStatus(self, device):
+        return device.getStatus()
+
+    def setDeviceMethod(self, device_id, method):
+        if device_id in self.deviceMap:
+            self.devices[device_id].map.method = method
+            self.updateDevice(device_id)
+            return True
+        else:
+            return False
+
+    def setDeviceSeat(self, device_id, seat):
+        if device_id in self.deviceMap:
+            self.devices[device_id].map.seat = seat
+            self.updateDevice(device_id)
+            return True
+        else:
+            return False
+
+    def setDevicePilot(self, device_id, pilot_id):
+        if device_id in self.deviceMap:
+            self.devices[device_id].map.pilot_id = pilot_id
+            self.updateDevice(device_id)
+            return True
+        else:
+            return False
+
+    def onStartup(self, _args):
+        pass
+
+    def onHeatSet(self, _args):
+        pass
+
+    def onRaceStage(self, _args):
+        pass
+
+    def onRaceStart(self, _args):
+        pass
+
+    def onRaceFinish(self, _args):
+        pass
+
+    def onRaceStop(self, _args):
+        pass
+
+    def onRaceLapRecorded(self, _args):
+        pass
+
+    def onLapsClear(self, _args):
+        pass
+
+    def onLapDelete(self, args):
+        self.onRaceLapRecorded(args)
+
+    def onFrequencySet(self, _args):
+        pass
+
+    def onSendMessage(self, _args):
+        pass
+
+    def onOptionSet(self, _args):
+        pass
+
+class VRxDeviceMap():
+    def __init__(self):
+        self.method = VRxDeviceMethod.ALL
+        self.pilot_id = None
+        self.seat = None # node_number
+
+class VRxDeviceMethod():
+    ALL = 0 # Receive all events
+    PILOT = 1 # Receive events for assigned pilot
+    SEAT = 2 # Receive events for assigned seat number
+
+class VRxDevice():
+    def __init__(self):
+        self.id = None
+        self.ready = False # valid_rx
+        self.video_lock = False # lock_status
+
+        self.type = None 
+        self.name = None
+        self.address = None
+        self.map = VRxDeviceMap()
+
+        self.extended_properties = {}
+#        self.seat = None # node_number ***
+#        self.cam_forced_or_auto = None
+#        self.chosen_camera_type = None
+#        self.ip = None
+#        self.dev = None
+
+    def getStatus(self):
+        return VRxDeviceStatus(self)
+
+    def updateStatus(self):
+        pass
+
+class VRxDeviceStatus():
+    def __init__(self, device):
+        self.id = device.id
+        self.ready = device.ready
+        self.video_lock = device.video_lock
+        self.type = device.type 
+        self.name = device.name
+        self.address = device.address
+        self.extended_properties = device.extended_properties
