@@ -361,7 +361,8 @@ class RHData():
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
                 "nextHeatBehavior",
-                "voiceCallouts"
+                "voiceCallouts",
+                "actions"
             ]
 
             # RSSI reduced by half for 2.0.0
