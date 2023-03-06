@@ -1610,15 +1610,23 @@ class RHData():
         else:
             new_class_name = ''
 
-        new_class = self._Database.RaceClass(name=new_class_name,
+        initStatus = json.dumps({
+            'data_ver': monotonic(),
+            'build_ver': None
+        })
+
+        new_class = self._Database.RaceClass(
+            name=new_class_name,
             description=source_class.description,
             format_id=source_class.format_id,
             results=None,
-            cacheStatus=None,
+            cacheStatus=initStatus,
+            rankStatus=initStatus,
             win_condition=source_class.win_condition,
             rounds=source_class.rounds,
             heatAdvanceType=source_class.heatAdvanceType,
-            order=None)
+            order=None
+            )
 
         self._Database.DB.session.add(new_class)
         self._Database.DB.session.flush()
