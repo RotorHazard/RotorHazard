@@ -91,7 +91,7 @@
 			$('#generator_output_class').empty().append($('<option value="">-' + __('New Class') + '-</option>'));
 
 			if (class_data.classes.length) {
-				class_data.classes.sort((a, b) => (a.order > b.order) ? 1 : -1);
+				class_data.classes.sort((a, b) => a.order - b.order || a.id - b.id);
 				for (var i in class_data.classes) {
 					var race_class = class_data.classes[i];
 
@@ -129,8 +129,8 @@
 				$(".race_classes").empty();
 
 				var classlist = $('<ol>');
-				rotorhazard.event.classes.sort((a, b) => (a.order > b.order) ? 1 : -1);
-				rotorhazard.event.heats.sort((a, b) => (a.order > b.order) ? 1 : -1);
+				rotorhazard.event.classes.sort((a, b) => a.order - b.order || a.id - b.id);
+				rotorhazard.event.heats.sort((a, b) => a.order - b.order || a.id - b.id);
 				if (rotorhazard.event.classes.length) {
 					for (var i in rotorhazard.event.classes) {
 						var race_class = rotorhazard.event.classes[i];
@@ -240,7 +240,7 @@
 				unclassified_el.append(header);
 
 				var heats_el = $('<ol class="heats">');
-				rotorhazard.event.heats.sort((a, b) => (a.order > b.order) ? 1 : -1);
+				rotorhazard.event.heats.sort((a, b) => a.order - b.order || a.id - b.id);
 				for (var i in rotorhazard.event.heats) {
 					var heat = rotorhazard.event.heats[i];
 					if (heat.class_id == 0) {
