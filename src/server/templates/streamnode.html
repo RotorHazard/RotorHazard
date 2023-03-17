@@ -12,6 +12,7 @@
 	];
 
 	rotorhazard.show_messages = false;
+	current_laps = false;
 	streamnode = {{ node_id }}
 
 	$(document).ready(function () {
@@ -55,14 +56,14 @@
 		socket.on('race_status', function (msg) {
 			rotorhazard.event.race_status = msg;
 			show_current_laps();
-		}
+		});
 
 		function show_current_laps() {
 			if (current_laps && rotorhazard.event.race_status) {
 				var i = streamnode;
 				var node_index = current_laps.node_index[streamnode];
 
-				$('#current_laps tr').remove();
+				$('#current-laps tr').remove();
 
 				display_laps = node_index.laps
 				while (display_laps.length > 10) {
@@ -112,7 +113,7 @@
 					if (!rotorhazard.event.race_status.race_mode && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
 						tr.addClass('after-time-expired');
 					}
-					tr.appendTo('#current_laps');
+					tr.appendTo('#current-laps');
 				});
 			}
 		}
@@ -155,7 +156,7 @@
 				$('#position').html('');
 				$('#callsign').html('');
 				$('#rank_stat').html('');
-				$('#current_laps').html('');
+				$('#current-laps').html('');
 			}
 		});
 	});
@@ -169,6 +170,6 @@
 		<div id="callsign"></div>
 		<div id="rank_stat"></div>
 	</div>
-	<div id="current_laps"></div>
+	<div id="current-laps"></div>
 </main>
 {% endblock %}
