@@ -169,7 +169,6 @@ PassInvokeFuncQueueObj = InvokeFuncQueue(logger)
 serverInfo = None
 serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
-vrx_controller = None
 server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
@@ -409,7 +408,7 @@ def render_run():
 
     return render_template('run.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
-        vrx_enabled=vrx_controller!=None,
+        vrx_enabled=vrx_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
         nodes=nodes,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
@@ -471,7 +470,7 @@ def render_settings():
     return render_template('settings.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         led_events_enabled=led_manager.isEnabled(),
-        vrx_enabled=vrx_controller!=None,
+        vrx_enabled=vrx_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
         server_messages=server_messages_formatted,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
@@ -4203,7 +4202,6 @@ def heartbeat_thread_function():
             # collect vrx lock status
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 if vrx_manager.isEnabled():
-                    # if vrx_controller.has_connection
                     vrx_manager.updateStatus()
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:

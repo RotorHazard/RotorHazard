@@ -107,7 +107,7 @@ class VRxControlManager():
         for controller in self.controllers.values():
             status = controller.getAllDeviceStatus()
             for device in status:
-                manager_device_id = str(controller.name) + ":" + str(device.id)
+                manager_device_id = str(controller.name) + ":" + str(device['id'])
                 devices[manager_device_id] = device
 
         return devices
@@ -265,7 +265,7 @@ class VRxController():
         return device.getStatus()
 
     def setDeviceMethod(self, device_id, method):
-        if device_id in self.deviceMap:
+        if device_id in self.devices:
             self.devices[device_id].map.method = method
             self.updateDevice(device_id)
             return True
@@ -273,7 +273,7 @@ class VRxController():
             return False
 
     def setDeviceSeat(self, device_id, seat):
-        if device_id in self.deviceMap:
+        if device_id in self.devices:
             self.devices[device_id].map.seat = seat
             self.updateDevice(device_id)
             return True
@@ -281,7 +281,7 @@ class VRxController():
             return False
 
     def setDevicePilot(self, device_id, pilot_id):
-        if device_id in self.deviceMap:
+        if device_id in self.devices:
             self.devices[device_id].map.pilot_id = pilot_id
             self.updateDevice(device_id)
             return True
@@ -338,20 +338,15 @@ class VRxDeviceMethod():
 class VRxDevice():
     def __init__(self):
         self.id = None
-        self.ready = False # valid_rx
+        self.ready = False # valid_rx ***
+        self.connected = False # Communication established
         self.video_lock = False # lock_status
-
         self.type = None 
         self.name = None
         self.address = None
         self.map = VRxDeviceMap()
-
+        
         self.extended_properties = {}
-#        self.seat = None # node_number ***
-#        self.cam_forced_or_auto = None
-#        self.chosen_camera_type = None
-#        self.ip = None
-#        self.dev = None
 
     def getStatus(self):
         return VRxDeviceStatus(self)
@@ -359,12 +354,18 @@ class VRxDevice():
     def updateStatus(self):
         pass
 
-class VRxDeviceStatus():
+class VRxDeviceStatus(dict):
     def __init__(self, device):
-        self.id = device.id
-        self.ready = device.ready
-        self.video_lock = device.video_lock
-        self.type = device.type 
-        self.name = device.name
-        self.address = device.address
-        self.extended_properties = device.extended_properties
+        dict.__init__(self,
+            id = device.id,
+            ready = device.ready,
+            connected = device.connected,
+            video_lock = device.video_lock,
+            type = device.type,
+            name = device.name,
+            address = device.address,
+            extended_properties = device.extended_properties,
+            map_method = device.map.method,
+            map_pilot_id = device.map.pilot_id,
+            map_seat = device.map.seat,
+        )

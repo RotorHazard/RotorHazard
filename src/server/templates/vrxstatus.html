@@ -18,6 +18,7 @@
 
 			for (var i in msg.controllers) {
 				var item = $('<li>');
+				item.append('<h3>Controller</h3>');
 				var properties = $('<dl>');
 
 				item.append('<dt>id</dt>');
@@ -35,14 +36,15 @@
 
 			for (var i in msg.devices) {
 				var item = $('<li>');
+				item.append('<h3>Device</h3>');
 				var properties = $('<dl>');
 
-				item.append('<dt>id</dt>');
+				item.append('<dt>manager id</dt>');
 				item.append('<dd>' + i + '</dd>');
 
-				$.each(msg.controllers[i], function(key, val){
+				$.each(msg.devices[i], function(key, val){
 					item.append('<dt>' + key + '</dt>');
-					item.append('<dd>' + val + '</dd>');
+					item.append('<dd><pre>' + JSON.stringify(val, null, 2) + '</pre></dd>');
 				});
 				$('#vrx-items').append(item);
 			}
