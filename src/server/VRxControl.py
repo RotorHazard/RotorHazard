@@ -18,25 +18,31 @@ class VRxControlManager():
         self.nodes = nodes
         self.Language = Language
 
-        self.enabled = True
+        self.enabled = None
         self.controllers = {} # collection of VRxControllers
 
         self.Events.trigger('VRxC_Initialize', {
             'registerFn': self.registerController
             })
 
-        self.Events.on(Evt.STARTUP, 'VRx', self.doStartup)
-        self.Events.on(Evt.HEAT_SET, 'VRx', self.doHeatSet)
-        self.Events.on(Evt.RACE_STAGE, 'VRx', self.doRaceStage, {}, 75)
-        self.Events.on(Evt.RACE_START, 'VRx', self.doRaceStart, {}, 75)
-        self.Events.on(Evt.RACE_FINISH, 'VRx', self.doRaceFinish)
-        self.Events.on(Evt.RACE_STOP, 'VRx', self.doRaceStop)
-        self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.doRaceLapRecorded, {}, 200, True)
-        self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.doLapsClear)
-        self.Events.on(Evt.LAP_DELETE, 'VRx', self.doLapDelete)
-        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.doFrequencySet, {}, 200, True)
-        self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.doSendPriorityMessage)
-        self.Events.on(Evt.OPTION_SET, 'VRx', self.doOptionSet)
+        if len(self.controllers):
+            logger.info('VRx Control enabled')
+            self.enabled = True
+            self.Events.on(Evt.STARTUP, 'VRx', self.doStartup)
+            self.Events.on(Evt.HEAT_SET, 'VRx', self.doHeatSet)
+            self.Events.on(Evt.RACE_STAGE, 'VRx', self.doRaceStage, {}, 75)
+            self.Events.on(Evt.RACE_START, 'VRx', self.doRaceStart, {}, 75)
+            self.Events.on(Evt.RACE_FINISH, 'VRx', self.doRaceFinish)
+            self.Events.on(Evt.RACE_STOP, 'VRx', self.doRaceStop)
+            self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.doRaceLapRecorded, {}, 200, True)
+            self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.doLapsClear)
+            self.Events.on(Evt.LAP_DELETE, 'VRx', self.doLapDelete)
+            self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.doFrequencySet, {}, 200, True)
+            self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.doSendPriorityMessage)
+            self.Events.on(Evt.OPTION_SET, 'VRx', self.doOptionSet)
+        else:
+            logger.info('VRx Control disabled: no registered controllers')
+            self.enabled = False
 
     def registerController(self, controller):
         if hasattr(controller, 'name'):
@@ -58,15 +64,32 @@ class VRxControlManager():
         if not self.enabled:
             return False 
 
-        for controller in self.controllers.values(): # should this check be done?
+        for controller in self.controllers.values(): # TODO: should this check be done?
             if controller.ready:
                 return True
 
         return False
 
     def kill(self):
-        logger.info('Killing VRx Control')
-        self.enabled = False
+        if self.enabled:
+            logger.info('Killing active VRx Control')
+            self.enabled = False
+    
+            self.Events.off(Evt.STARTUP, 'VRx')
+            self.Events.off(Evt.HEAT_SET, 'VRx')
+            self.Events.off(Evt.RACE_STAGE, 'VRx')
+            self.Events.off(Evt.RACE_START, 'VRx')
+            self.Events.off(Evt.RACE_FINISH, 'VRx')
+            self.Events.off(Evt.RACE_STOP, 'VRx')
+            self.Events.off(Evt.RACE_LAP_RECORDED, 'VRx')
+            self.Events.off(Evt.LAPS_CLEAR, 'VRx')
+            self.Events.off(Evt.LAP_DELETE, 'VRx')
+            self.Events.off(Evt.FREQUENCY_SET, 'VRx')
+            self.Events.off(Evt.MESSAGE_INTERRUPT, 'VRx')
+            self.Events.off(Evt.OPTION_SET, 'VRx')
+        else:
+            logger.info('VRx Control already disabled')
+
         return True
 
     def updateStatus(self):
