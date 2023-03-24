@@ -2,12 +2,11 @@
 # VRx Control
 #
 
-#
-#
-
 import logging
+from monotonic import monotonic
 from eventmanager import Evt
 
+DEVICE_TIMEOUT = 30 # Consider devices if no response received within X seconds
 logger = logging.getLogger(__name__)
 
 class VRxControlManager():
@@ -138,27 +137,27 @@ class VRxControlManager():
     def setDeviceMethod(self, device_id, method):
         for controller in self.controllers.values():
             for device in controller.devices:
-                manager_device_id = str(controller.name) + ":" + str(device.id)
+                manager_device_id = controller.name + ":" + device
                 if manager_device_id == device_id:
-                    controller.setDeviceMethod(device.id, method)
+                    controller.setDeviceMethod(device, method)
                     return True
         return False
 
     def setDeviceSeat(self, device_id, seat):
         for controller in self.controllers.values():
             for device in controller.devices:
-                manager_device_id = str(controller.name) + ":" + str(device.id)
+                manager_device_id = controller.name + ":" + device
                 if manager_device_id == device_id:
-                    controller.setDeviceSeat(device.id, seat)
+                    controller.setDeviceSeat(device, seat)
                     return True
         return False
 
     def setDevicePilot(self, device_id, pilot_id):
         for controller in self.controllers.values():
             for device in controller.devices:
-                manager_device_id = str(controller.name) + ":" + str(device.id)
+                manager_device_id = controller.name + ":" + device
                 if manager_device_id == device_id:
-                    controller.setDevicePilot(device.id, pilot_id)
+                    controller.setDevicePilot(device, pilot_id)
                     return True
         return False
 
@@ -218,7 +217,6 @@ class VRxController():
         self.manager = None
         self.ready = False
         self.devices = {} # collection of VRxDevices
-        self.deviceMap = {} # collection of VRxDeviceMap; maps devices to usage scenarios (by pilot, by seat) so they can be selected
 
         self.RHData = None
         self.Events = None
@@ -237,29 +235,20 @@ class VRxController():
     def getStatus(self):
         return {
             'ready': self.ready,
-            'mapping': self.deviceMap
+            'devices': len(self.devices)
         }
 
     def addDevice(self, device):
         self.devices[device.id] = device
-        # self.manager.addDevice(device.id, self)
 
     def removeDevice(self, device):
-        # self.manager.removeDevice(device.id, self)
         self.devices.pop(device.id)
-
-    def updateDevice(self, _device_id):
-        # set frequency, etc
-        pass
 
     def getAllDeviceStatus(self):
         status = []
         for device in self.devices.values():
             status.append(self.getDeviceStatus(device))
         return status
-        #request_variable_status
-        #rx_data
-        #get_seat_lock_status
 
     def getDeviceStatus(self, device):
         return device.getStatus()
@@ -267,7 +256,6 @@ class VRxController():
     def setDeviceMethod(self, device_id, method):
         if device_id in self.devices:
             self.devices[device_id].map.method = method
-            self.updateDevice(device_id)
             return True
         else:
             return False
@@ -275,7 +263,6 @@ class VRxController():
     def setDeviceSeat(self, device_id, seat):
         if device_id in self.devices:
             self.devices[device_id].map.seat = seat
-            self.updateDevice(device_id)
             return True
         else:
             return False
@@ -283,7 +270,6 @@ class VRxController():
     def setDevicePilot(self, device_id, pilot_id):
         if device_id in self.devices:
             self.devices[device_id].map.pilot_id = pilot_id
-            self.updateDevice(device_id)
             return True
         else:
             return False
@@ -324,6 +310,27 @@ class VRxController():
     def onOptionSet(self, _args):
         pass
 
+class VRxDevice():
+    def __init__(self):
+        self.id = None
+        self.ready = False # currently connected and available for commands
+        self.connected = False # Communication established
+        self.last_request = None # timestamp of last request made
+        self.last_response = None # timestamp of last response received
+        self.video_lock = False # lock_status
+        self.type = None 
+        self.name = None
+        self.address = None
+        self.map = VRxDeviceMap()
+
+        self.extended_properties = {}
+
+    def getStatus(self):
+        return VRxDeviceStatus(self)
+
+    def updateStatus(self):
+        pass
+
 class VRxDeviceMap():
     def __init__(self):
         self.method = VRxDeviceMethod.ALL
@@ -335,37 +342,32 @@ class VRxDeviceMethod():
     PILOT = 1 # Receive events for assigned pilot
     SEAT = 2 # Receive events for assigned seat number
 
-class VRxDevice():
-    def __init__(self):
-        self.id = None
-        self.ready = False # valid_rx ***
-        self.connected = False # Communication established
-        self.video_lock = False # lock_status
-        self.type = None 
-        self.name = None
-        self.address = None
-        self.map = VRxDeviceMap()
-        
-        self.extended_properties = {}
-
-    def getStatus(self):
-        return VRxDeviceStatus(self)
-
-    def updateStatus(self):
-        pass
-
 class VRxDeviceStatus(dict):
     def __init__(self, device):
         dict.__init__(self,
             id = device.id,
             ready = device.ready,
             connected = device.connected,
+            response_time = None,
             video_lock = device.video_lock,
             type = device.type,
             name = device.name,
             address = device.address,
+            map = {
+                'method': device.map.method,
+                'pilot_id': device.map.pilot_id,
+                'seat': device.map.seat,
+            },
             extended_properties = device.extended_properties,
-            map_method = device.map.method,
-            map_pilot_id = device.map.pilot_id,
-            map_seat = device.map.seat,
+            last_request = device.last_request,
+            last_response = device.last_response,
         )
+
+        if device.last_response is not None and device.last_request is not None:
+            self['response_time'] = device.last_response - device.last_request
+            if device.last_request > device.last_response and monotonic() > device.last_request + DEVICE_TIMEOUT:
+                self['connected'] = False
+
+        if not self['connected']:
+            self['ready'] = False
+

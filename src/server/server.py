@@ -4121,8 +4121,9 @@ def set_vrx_node(data):
 
     if vrx_manager.isEnabled():
         # TODO: vrx_manager.setDeviceMethod(device_id, method)
-        # TODO: vrx_manager.setDeviceSeat(device_id, method)
-        # TODO: vrx_manager.setDevicePilot(device_id, method)
+        # TODO: vrx_manager.setDevicePilot(device_id, pilot_id)
+
+        vrx_manager.setDeviceSeat(vrx_id, node)
 
         # vrx_controller.set_seat_number(serial_num=vrx_id, desired_seat_num=node)
         logger.info("Set VRx {0} to node {1}".format(vrx_id, node))
