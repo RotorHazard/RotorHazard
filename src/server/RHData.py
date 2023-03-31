@@ -852,6 +852,19 @@ class RHData():
 
         return self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
 
+    def get_pilot_attribute_value(self, pilot_or_id, name, default_value=False):
+        if isinstance(pilot_or_id, Database.Pilot):
+            pilot_id = pilot_or_id
+        else:
+            pilot_id = self._Database.Pilot.query.get(pilot_or_id).id
+
+        attr = self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
+
+        if attr:
+            return attr.value
+        else:
+            return default_value
+
     def get_pilot_attributes(self, pilot_or_id):
         if isinstance(pilot_or_id, Database.Pilot):
             pilot_id = pilot_or_id
