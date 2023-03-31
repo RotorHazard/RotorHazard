@@ -1453,6 +1453,11 @@ main.page-home {
 	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
 }
 
+.pilot_attr,
+.set_pilot_attr {
+	flex-basis: 100%;
+}
+
 @media (max-width: 45em) {
 	.responsive-wrap th {
 		font-size: 0.75em;

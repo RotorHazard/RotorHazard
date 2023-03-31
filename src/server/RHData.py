@@ -736,6 +736,13 @@ class RHData():
         if 'color' in data:
             pilot.color = data['color']
 
+        if 'pilot_attr' in data and 'value' in data:
+            attribute = self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=data['pilot_attr']).one_or_none()
+            if attribute:
+                attribute.value = data['value']
+            else:
+                self._Database.DB.session.add(self._Database.PilotAttribute(id=pilot_id, name=data['pilot_attr'], value=data['value']))
+
         self.commit()
 
         self._RACE.clear_results()  # refresh current leaderboard
@@ -835,6 +842,23 @@ class RHData():
                 })
         logger.info('Database pilots reset')
         return True
+
+    #Pilot Attributes
+    def get_pilot_attribute(self, pilot_or_id, name):
+        if isinstance(pilot_or_id, Database.Pilot):
+            pilot_id = pilot_or_id
+        else:
+            pilot_id = self._Database.Pilot.query.get(pilot_or_id).id
+
+        return self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
+
+    def get_pilot_attributes(self, pilot_or_id):
+        if isinstance(pilot_or_id, Database.Pilot):
+            pilot_id = pilot_or_id
+        else:
+            pilot_id = self._Database.Pilot.query.get(pilot_or_id).id
+
+        return self._Database.PilotAttribute.query.filter_by(id=pilot_id).all()
 
     # Heats
     def get_heat(self, heat_id):

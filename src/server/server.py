@@ -63,6 +63,7 @@ import EventActions
 import RHData
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
+import RHUI
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.SendAckQueue import SendAckQueue
@@ -177,6 +178,7 @@ RACE = RHRace.RHRace() # For storing race management variables
 LAST_RACE = None
 SECONDARY_RACE_FORMAT = None
 RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
+RHUI = RHUI.RHUI() # User Interface Manager
 PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
@@ -3693,6 +3695,15 @@ def emit_format_data(**params):
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
     pilots_list = []
+    
+    attrs = []
+    for attr in RHUI.get_pilot_attributes():
+        attrs.append({
+            'name': attr.name,
+            'label': attr.label,
+            'fieldtype': attr.fieldtype
+        })
+
     for pilot in RHData.get_pilots():
         opts_str = '' # create team-options string for each pilot, with current team selected
         for name in TEAM_NAMES_LIST:
@@ -3709,9 +3720,14 @@ def emit_pilot_data(**params):
             'team': pilot.team,
             'phonetic': pilot.phonetic,
             'name': pilot.name,
+            'active': pilot.active,
             'team_options': opts_str,
             'locked': locked,
         }
+
+        pilot_attributes = RHData.get_pilot_attributes(pilot.id)
+        for attr in pilot_attributes: 
+            pilot_data[attr.name] = attr.value
 
         if led_manager.isEnabled():
             pilot_data['color'] = pilot.color
@@ -3725,7 +3741,8 @@ def emit_pilot_data(**params):
 
     emit_payload = {
         'pilots': pilots_list,
-        'pilotSort': RHData.get_option('pilotSort')
+        'pilotSort': RHData.get_option('pilotSort'),
+        'attributes': attrs
     }
     if ('nobroadcast' in params):
         emit('pilot_data', emit_payload)
@@ -5153,6 +5170,7 @@ for plugin in plugin_modules:
         plugin.initialize(
             Events=Events,
             __=__,
+            RHUI=RHUI,
             SOCKET_IO=SOCKET_IO, # Temporary and not supported. Treat as deprecated.
             )
 

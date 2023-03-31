@@ -904,6 +904,7 @@
 
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
+			rotorhazard.event.pilot_attributes = msg.attributes;
 			rotorhazard.event.pilots = msg.pilots;
 			rotorhazard.options.pilotSort = msg.pilotSort;
 			display_pilots();
@@ -932,6 +933,20 @@
 						phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 						el.append(phonetic);
 						el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+
+						for (var attr_idx in rotorhazard.event.pilot_attributes) {
+							var pilot_attr = rotorhazard.event.pilot_attributes[attr_idx];
+							var attr_label = $('<label class="pilot_attr" for="attr_' + pilot_attr.name + '_' + pilot.pilot_id + '">' + __(pilot_attr.label) + '</label>');
+							var attr_field = $('<input type="text" class="set_pilot_attr" id="attr_' + pilot_attr.name + '_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-attr="' + pilot_attr.name + '">');
+
+							if (pilot[pilot_attr.name] != undefined) {
+								attr_field.val(pilot[pilot_attr.name])
+							}
+
+							el.append(attr_label);
+							el.append(attr_field);
+						}
+
 						if (!pilot.locked) {
 							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
 						}
@@ -975,7 +990,7 @@
 			pilot.name = pilot_name;
 			display_classes();
 			display_unclassified_heats();
-		})
+		});
 
 		$(document).on("focus", '.set_pilot_callsign', function(){
 			$(this).select();
@@ -993,7 +1008,7 @@
 			pilot.callsign = pilot_callsign;
 			display_classes();
 			display_unclassified_heats();
-		})
+		});
 
 		$(document).on("click", '.set_pilot_color', function (event) {
 			pilot_id = parseInt($(event.target).data('pilot_id'));
@@ -1008,7 +1023,7 @@
 				socket.emit('alter_pilot', data);
 				$('#color_' + pilot_id).data('color', hexcolor).css('background-color', hexcolor);
 			})
-		})
+		});
 
 		$(document).on("change", '.set_pilot_team', function (event) {
 			var data = {
@@ -1016,7 +1031,7 @@
 				team_name: $(this).val()
 			};
 			socket.emit('alter_pilot', data);
-		})
+		});
 
 		$(document).on("focus", '.set_pilot_phonetic', function(){
 			$(this).select();
@@ -1028,7 +1043,7 @@
 				phonetic: $(this).val()
 			};
 			socket.emit('alter_pilot', data);
-		})
+		});
 
 		$(document).on("click", 'button.speak_pilot', function (event) {
 			var el = $(this).closest('li');
@@ -1042,6 +1057,26 @@
 			doSpeak('<div class="speech">' + ttstext + '</div>');
 			return false;
 		});
+
+		$(document).on("focus", '.set_pilot_attr', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_attr', function (event) {
+			var pilot_id = parseInt($(this).data('pilot_id'));
+			var pilot_attr = $(this).data('attr');
+			var value = $(this).val();
+			var data = {
+				pilot_id: pilot_id,
+				pilot_attr: pilot_attr,
+				value: value
+			};
+			socket.emit('alter_pilot', data);
+			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
+			pilot[pilot_attr] = value;
+			// display_classes();
+			// display_unclassified_heats();
+		})
 
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');

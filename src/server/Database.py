@@ -31,6 +31,7 @@ class Pilot(DB.Model):
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
     used_frequencies = DB.Column(DB.String, nullable=True)
+    active = DB.Column(DB.Boolean, nullable=False, default=True)
 
     def displayCallsign(self):
         if self.callsign:
@@ -58,6 +59,12 @@ class Pilot(DB.Model):
     def __repr__(self):
         return '<Pilot %r>' % self.id
 
+class PilotAttribute(DB.Model):
+    __tablename__ = 'pilot_attribute'
+    id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False, primary_key=True)
+    name = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    value = DB.Column(DB.String(), nullable=True)
+
 class Heat(DB.Model):
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
@@ -68,6 +75,7 @@ class Heat(DB.Model):
     order = DB.Column(DB.Integer, nullable=True)
     status = DB.Column(DB.Integer, nullable=False)
     auto_frequency = DB.Column(DB.Boolean, nullable=False)
+    active = DB.Column(DB.Boolean, nullable=False, default=True)
 
     def displayname(self):
         if self.note:
@@ -119,6 +127,7 @@ class RaceClass(DB.Model):
     rounds = DB.Column(DB.Integer, nullable=False)
     heatAdvanceType = DB.Column(DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
+    active = DB.Column(DB.Boolean, nullable=False, default=True)
 
     def displayname(self):
         if self.name:
