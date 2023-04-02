@@ -430,8 +430,6 @@
 									}
 
 									table_items['Format'] = cam_labels[device.extended_properties.cam_forced_or_auto] + ": " + cam_types[device.extended_properties.chosen_camera_type];
-								} else {
-									console.log("No cam_forced_or_auto and chosen_camera_type in device")
 								}
 
 								if ('video_lock' in device) {
