@@ -337,144 +337,136 @@
 
 		socket.on('vrx_list', function (msg) {
 			if (msg.enabled) {
-				vrx_by_node = {}
-
-				for (var vrx_id in msg.vrx) {
-					var vrx = msg.vrx[vrx_id]
-					if (vrx.device_type == 'rx' && vrx.valid_rx) {
-						seat_num = vrx.seat
-
-						if (!vrx_by_node[seat_num]) {
-							vrx_by_node[seat_num] = [];
-						}
-						vrx_by_node[seat_num].push(vrx_id)
-					}
-				}
+				devices_by_node = {}
 
 				// Frequency panel
-				for (i = 0; i < {{ num_nodes }}; i++) {
-					var header = $('.node[data-node=' + i + '] .vrx-header');
-					header.empty();
-
-					var locks = 0;
-					if (i in vrx_by_node) {
-						for (j in vrx_by_node[i]) {
-							var vrx_id = vrx_by_node[i][j];
-							var vrx = msg.vrx[vrx_id];
-							if (vrx.lock_status == 'L') {
-								locks++;
-							}
-						}
-
-						if (locks == vrx_by_node[i].length) {
-							header.removeClass('has-unlocked')
-						} else {
-							header.addClass('has-unlocked')
-						}
-
-						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
-					} else {
-						header.removeClass('has-unlocked')
-						header.append(__('VRx locks') + ': 0/0');
-					}
-				}
-
-				if (msg.connection) {
+				if (Object.keys(msg.devices).length) {
 					$('.vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Changes may cause pilots to lose video."));
-				} else {
-					$('.vrx-warning').empty();
-				}
 
-				// VRx Control Panel
-				if (msg.connection) {
+					// Devices by node
+					for (var device_id in msg.devices) {
+						var device = msg.devices[device_id]
+						if (device.ready) {
+							if (!devices_by_node[device.map.seat]) {
+								devices_by_node[device.map.seat] = [];
+							}
+							devices_by_node[device.map.seat].push(device_id)
+						}
+					}
+
+					for (i = 0; i < {{ num_nodes }}; i++) {
+						var header = $('.node[data-node=' + i + '] .vrx-header');
+						header.empty();
+
+						var locks = 0;
+						if (i in devices_by_node) {
+							for (j in devices_by_node[i]) {
+								var device_id = devices_by_node[i][j];
+								var device = msg.devices[device_id];
+								if (device.video_lock) {
+									locks++;
+								}
+							}
+
+							if (locks == devices_by_node[i].length) {
+								header.removeClass('has-unlocked')
+							} else {
+								header.addClass('has-unlocked')
+							}
+
+							header.append(__('VRx locks') + ': ' + locks + '/' + devices_by_node[i].length);
+						} else {
+							header.removeClass('has-unlocked')
+							header.append(__('VRx locks') + ': 0/0');
+						}
+					}
+
+					// VRx Control Panel
 					$('#vrx-control-setup').empty();
 
-					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
+					vrx_header = '<h3>' + __('Connected Devices') + '</h3>';
 
 					var vrx_list = $('<ul class="vrx-list">')
-					for (var vrx_id in msg.vrx) {
-						var vrx = msg.vrx[vrx_id]
-						if (vrx_id != 'VRxController') {
-							var li = $('<li>')
-							var table = $('<table>');
+					for (var device_id in msg.devices) {
+						var device = msg.devices[device_id]
+						var li = $('<li>')
+						var table = $('<table>');
 
-							table_items = {};
+						table_items = {};
 
-							table_items['ID'] = vrx_id;
+						table_items['ID'] = device_id;
+						table_items['Name'] = device.name;
+						table_items['Type'] = device.type;
 
-							if (vrx.device_name) {
-								table_items['Name'] = vrx.device_name;
-							}
+						if (device.connected) {
+							if (device.ready) {
+								table_items['Status'] = __("Ready");
 
-							if (vrx.device_type == 'rx') {
-								if (vrx.valid_rx) {
-									table_items['Status'] = __("Connected");
-
-									if ('seat' in vrx) {
-										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
-										for (var i = 0; i < {{ num_nodes }}; i++) {
-											var opt = '<option value="' + i + '"';
-											if (i == vrx.seat) {
-												opt += 'selected="selected"';
-											}
-											opt += '>' + (parseInt(i)+1) + '</option>';
-											selectbox += opt;
+								if ('map' in device) {
+									var selectbox = '<select class="vrx-node" data-vrx-id="' + device_id + '">'
+									for (var i = 0; i < {{ num_nodes }}; i++) {
+										var opt = '<option value="' + i + '"';
+										if (i == device.map.seat) {
+											opt += 'selected="selected"';
 										}
-										table_items['Seat'] = selectbox;
-									} else {
-										console.warn("No seat number available")
+										opt += '>' + (parseInt(i)+1) + '</option>';
+										selectbox += opt;
 									}
-
-									if ('cam_forced_or_auto' in vrx
-										&& 'chosen_camera_type' in vrx) {
-										var cam_labels = {
-											"A": __("Auto"),
-											"F": __("Forced")
-										}
-										var cam_types = {
-											"N": __("NTSC"),
-											"P": __("PAL")
-										}
-
-										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
-									} else {
-										console.log("No cam_forced_or_auto and chosen_camera_type in vrx")
-									}
-
-									if ('lock' in vrx) {
-										if(vrx.lock_status == 'L') {
-											table_items['Lock'] = __('Locked');
-										} else {
-											table_items['Lock'] = __('Unlocked');
-										}
-									} else {
-										console.warn("No lock in vrx")
-									}
-
+									table_items['Seat'] = selectbox;
 								} else {
-									table_items['Status'] = __("No receiver");
+									console.warn("No seat number available")
 								}
+
+								// CV2-specific items. TODO: Abstract to generic
+								if ('cam_forced_or_auto' in device.extended_properties
+									&& 'chosen_camera_type' in device.extended_properties) {
+									var cam_labels = {
+										"A": __("Auto"),
+										"F": __("Forced")
+									}
+									var cam_types = {
+										"N": __("NTSC"),
+										"P": __("PAL")
+									}
+
+									table_items['Format'] = cam_labels[device.extended_properties.cam_forced_or_auto] + ": " + cam_types[device.extended_properties.chosen_camera_type];
+								}
+
+								if ('video_lock' in device) {
+									if (device.video_lock) {
+										table_items['Lock'] = __('Locked');
+									} else {
+										table_items['Lock'] = __('Unlocked');
+									}
+								}
+
 							} else {
-								table_items['Status'] = __("No connection");
+								table_items['Status'] = __("Not Ready");
 							}
-
-							for (var item in table_items) {
-								if (item == 'ID' && vrx.ip) {
-									table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + vrx.ip + '">' + table_items[item] + '</a></td></tr>');
-								} else {
-									table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
-								}
-							}
-
-							li.append(table)
-							vrx_list.append(li);
+						} else {
+							table_items['Status'] = __("Unreachable");
 						}
+
+						for (var item in table_items) {
+							if (item == 'ID' && device.ip) {
+								table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + device.ip + '">' + table_items[item] + '</a></td></tr>');
+							} else {
+								table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+							}
+						}
+
+						li.append(table)
+						vrx_list.append(li);
 					}
 
 					$('#vrx-control-setup').append(vrx_header)
 					$('#vrx-control-setup').append(vrx_list)
 				} else {
-					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+					$('.vrx-warning').empty();
+
+					if (!Object.keys(msg.controllers).length) {
+						$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+					}
 				}
 			} else {
 				$('.vrx-warning').empty();

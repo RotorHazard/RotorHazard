@@ -16,17 +16,36 @@
 		socket.on('vrx_list', function (msg) {
 			$('#vrx-items').empty();
 
-			for (var i in msg.vrx) {
+			for (var i in msg.controllers) {
 				var item = $('<li>');
+				item.append('<h3>Controller</h3>');
 				var properties = $('<dl>');
 
 				item.append('<dt>id</dt>');
 				item.append('<dd>' + i + '</dd>');
 
-				$.each(msg.vrx[i], function(key, val){
+				item.append('<dt>ready</dt>');
+				item.append('<dd>' + msg.controllers[i].ready + '</dd>');
+
+				$.each(msg.controllers[i].mapping, function(key, val){
 					item.append('<dt>' + key + '</dt>');
 					item.append('<dd>' + val + '</dd>');
-				})
+				});
+				$('#vrx-items').append(item);
+			}
+
+			for (var i in msg.devices) {
+				var item = $('<li>');
+				item.append('<h3>Device</h3>');
+				var properties = $('<dl>');
+
+				item.append('<dt>manager id</dt>');
+				item.append('<dd>' + i + '</dd>');
+
+				$.each(msg.devices[i], function(key, val){
+					item.append('<dt>' + key + '</dt>');
+					item.append('<dd><pre>' + JSON.stringify(val, null, 2) + '</pre></dd>');
+				});
 				$('#vrx-items').append(item);
 			}
 		});

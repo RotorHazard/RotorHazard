@@ -1683,15 +1683,15 @@
 		/* VRx */
 		socket.on('vrx_list', function (msg) {
 			if (msg.enabled) {
-				vrx_by_node = {}
+				devices_by_node = {}
 
-				for (var vrx_id in msg.vrx) {
-					var vrx = msg.vrx[vrx_id]
-					if (vrx.dev == 'rx' && parseInt(vrx.valid_rx)) {
-						if (!vrx_by_node[vrx.node_number]) {
-							vrx_by_node[vrx.node_number] = [];
+				for (var device_id in msg.devices) {
+					var device = msg.devices[device_id]
+					if (device.ready) {
+						if (!devices_by_node[device.map_seat]) {
+							devices_by_node[device.map_seat] = [];
 						}
-						vrx_by_node[vrx.node_number].push(vrx_id)
+						devices_by_node[device.map_seat].push(device_id)
 					}
 				}
 
@@ -1700,26 +1700,31 @@
 					header.empty();
 
 					var locks = 0;
-					if (i in vrx_by_node) {
-						for (j in vrx_by_node[i]) {
-							var vrx_id = vrx_by_node[i][j];
-							var vrx = msg.vrx[vrx_id];
-							if (vrx.lock_status == 'L') {
+					if (i in devices_by_node) {
+						for (j in devices_by_node[i]) {
+							var device_id = devices_by_node[i][j];
+							var device = msg.devices[device_id];
+							if (device.video_lock) {
 								locks++;
 							}
 						}
 
-						if (locks == vrx_by_node[i].length) {
+						if (locks == devices_by_node[i].length) {
 							header.removeClass('has-unlocked')
 						} else {
 							header.addClass('has-unlocked')
 						}
 
-						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
+						header.append(__('VRx locks') + ': ' + locks + '/' + devices_by_node[i].length);
 					} else {
 						header.removeClass('has-unlocked')
 						header.append(__('VRx locks') + ': 0/0');
 					}
+				}
+			} else {
+				for (i = 0; i < {{ num_nodes }}; i++) {
+					var header = $('#node-' + i + ' .vrx-header');
+					header.empty();
 				}
 			}
 		});
