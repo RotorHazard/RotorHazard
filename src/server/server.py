@@ -3333,105 +3333,20 @@ def emit_min_lap(**params):
     else:
         SOCKET_IO.emit('min_lap', emit_payload)
 
-def build_laps_list(active_race=RACE):
-    current_laps = []
-    for node_idx in range(active_race.num_nodes):
-        node_laps = []
-        fastest_lap_time = float("inf")
-        fastest_lap_index = None
-        last_lap_id = -1
-        for idx, lap in enumerate(active_race.node_laps[node_idx]):
-            if (not lap.get('invalid', False)) and \
-                ((not lap['deleted']) or lap.get('late_lap', False)):
-                if not lap.get('late_lap', False):
-                    last_lap_id = lap_number = lap['lap_number']
-                    if active_race.format and active_race.format.start_behavior == StartBehavior.FIRST_LAP:
-                        lap_number += 1
-                    splits = get_splits(node_idx, lap['lap_number'], True)
-                    if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
-                        fastest_lap_time = lap['lap_time']
-                        fastest_lap_index = idx
-                else:
-                    lap_number = -1
-                    splits = []
-
-                node_laps.append({
-                    'lap_index': idx,
-                    'lap_number': lap_number,
-                    'lap_raw': lap['lap_time'],
-                    'lap_time': lap['lap_time_formatted'],
-                    'lap_time_stamp': lap['lap_time_stamp'],
-                    'splits': splits,
-                    'late_lap': lap.get('late_lap', False)
-                })
-
-        splits = get_splits(node_idx, last_lap_id+1, False)
-        if splits:
-            node_laps.append({
-                'lap_number': last_lap_id+1,
-                'lap_time': '',
-                'lap_time_stamp': 0,
-                'splits': splits
-            })
-
-        pilot_data = None
-        if node_idx in active_race.node_pilots:
-            pilot = RHData.get_pilot(active_race.node_pilots[node_idx])
-            if pilot:
-                pilot_data = {
-                    'id': pilot.id,
-                    'name': pilot.name,
-                    'callsign': pilot.callsign
-                }
-
-        current_laps.append({
-            'laps': node_laps,
-            'fastest_lap_index': fastest_lap_index,
-            'pilot': pilot_data,
-            'finished_flag': active_race.get_node_finished_flag(node_idx)
-        })
-    current_laps = {
-        'node_index': current_laps
-    }
-    return current_laps
-
 def emit_current_laps(**params):
     '''Emits current laps.'''
     emit_payload = {
         'current': {}
     }
-    emit_payload['current'] = build_laps_list(RACE)
+    emit_payload['current'] = RACE.get_lap_results(RHData, CLUSTER)
 
     if LAST_RACE is not None:
-        emit_payload['last_race'] = build_laps_list(LAST_RACE)
+        emit_payload['last_race'] = LAST_RACE.get_lap_results(RHData, CLUSTER)
 
     if ('nobroadcast' in params):
         emit('current_laps', emit_payload)
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
-
-def get_splits(node_idx, lap_id, lapCompleted):
-    splits = []
-    if CLUSTER:
-        for secondary_index in range(len(CLUSTER.secondaries)):
-            if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-                split = RHData.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
-                if split:
-                    split_payload = {
-                        'split_id': secondary_index,
-                        'split_raw': split.split_time,
-                        'split_time': split.split_time_formatted,
-                        'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
-                    }
-                elif lapCompleted:
-                    split_payload = {
-                        'split_id': secondary_index,
-                        'split_time': '-'
-                    }
-                else:
-                    break
-                splits.append(split_payload)
-    return splits
 
 def emit_race_list(**params):
     '''Emits race listing'''
