@@ -67,7 +67,7 @@ from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.SendAckQueue import SendAckQueue
 from util.InvokeFuncQueue import InvokeFuncQueue
-import RHGPIO
+from src.server.util import RHGPIO
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 
@@ -4932,11 +4932,11 @@ def _do_init_rh_interface():
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
             INTERFACE = interfaceModule.get_hardware_interface(config=Config, \
-                            isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
+                                                               isS32BPillFlag=RHGPIO.is_blue_pill_board(), **hardwareHelpers)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
             if INTERFACE and ((not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0) and \
-                        RHUtils.isSysRaspberryPi() and (not RHGPIO.isS32BPillBoard()) and \
+                        RHUtils.isSysRaspberryPi() and (not RHGPIO.is_blue_pill_board()) and \
                         ((not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0):
                 try:
                     importlib.import_module('smbus2')
@@ -5195,13 +5195,13 @@ for plugin in plugin_modules:
             SOCKET_IO=SOCKET_IO, # Temporary and not supported. Treat as deprecated.
             )
 
-if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
-    RHGPIO.setS32BPillBoardFlag()
+if (not RHGPIO.is_blue_pill_board()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
+    RHGPIO.set_blue_pill_board_flag()
     logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
 logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
-                                        RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
-if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
+                                                             RHGPIO.is_real_gpio(), RHGPIO.is_blue_pill_board()))
+if RHUtils.isSysRaspberryPi() and not RHGPIO.is_real_gpio():
     logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
     set_ui_message(
         'gpio',
@@ -5221,7 +5221,7 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
-if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
+if RHUtils.isSysRaspberryPi() and RHGPIO.is_blue_pill_board():
     try:
         if Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
             logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
