@@ -1,4 +1,7 @@
 '''RotorHazard server script'''
+from RHInterface import RHInterface
+from util.GracefulKiller import GracefulKiller
+
 RELEASE_VERSION = "4.0.0-dev.2" # Public release version code
 SERVER_API = 39 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -81,6 +84,7 @@ EventActionsObj = None
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
 sys.path.append('../interface')
+#TODO support users other than pi
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
 from Plugins import search_modules  #pylint: disable=import-error
@@ -160,7 +164,7 @@ SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENER
 # thus set up logging for good.
 Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 
-INTERFACE = None  # initialized later
+INTERFACE:RHInterface = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
 ClusterSendAckQueueObj = None
@@ -1684,62 +1688,101 @@ def on_generate_heats_v2(data):
     logger.error('Heat generator "{0}" not found'.format(generator))
     emit_priority_message(__('Heat generation failed. (See log)'), False, nobroadcast=True)
 
+#There is no good way to tell
+#the signal listener that the shutdown or reboot
+#actions were initiated from within Rotorhazard
+#so we are forced to use a global to do so.
+#this should be set to true when the shutdown or reboot
+#are initiated from within Rotorhazard.
+global_user_initiated_shutdown=False
+def kill_signal_listener(signal, handler):
+    """
+    When initiated, executes the code necessary to shut down
+    the Rotorhazard Server.
+    This function is registered to the Graceful Killer class
+    and will execute when ether a SIGTERM or SIGHUP system signal
+    is fired.
+    """
+    logger.info(f'kill_signal_listener triggered signal:{signal} handler={handler}')
+    '''Shutdown the raspberry pi.'''
+    if not global_user_initiated_shutdown:
+        if  INTERFACE.send_shutdown_started_message():
+            gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
+        if CLUSTER:
+            CLUSTER.emit('shutdown_pi')
+        emit_priority_message(__('Server has shut down.'), True, caller='shutdown')
+    logger.info('Performing rotorhazard shutdown')
+    Events.trigger(Evt.SHUTDOWN)
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
 def on_shutdown_pi():
-    '''Shutdown the raspberry pi.'''
+    """
+    Shutdown the raspberry pi.
+    """
+    global global_user_initiated_shutdown
+    global_user_initiated_shutdown=True
     if  INTERFACE.send_shutdown_started_message():
         gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
     if CLUSTER:
         CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True, caller='shutdown')
     logger.info('Performing system shutdown')
-    Events.trigger(Evt.SHUTDOWN)
-    stop_background_threads()
-    gevent.sleep(0.5)
-    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
     if RHUtils.isSysRaspberryPi():
         gevent.sleep(0.1)
-        logger.debug("Executing system command:  sudo shutdown now")
-        log.wait_for_queue_empty()
-        log.close_logging()
         os.system("sudo shutdown now")
     else:
         logger.warning("Not executing system shutdown command because not RPi")
+        #Since we are not going to trigger a system signal we need
+        #To call this manually.
+        kill_signal_listener(0, None)
+
+
+
 
 @SOCKET_IO.on('reboot_pi')
 @catchLogExceptionsWrapper
 def on_reboot_pi():
-    '''Reboot the raspberry pi.'''
+    """
+    Reboot the raspberry pi.
+    The majority of the work to clean up rotorhazard
+    is be handled by the kill_signal_listener
+    when the system emits SIGTERM during
+    shutdown.
+    """
+    global global_user_initiated_shutdown
+    global_user_initiated_shutdown=True
     if CLUSTER:
         CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True, caller='shutdown')
     logger.info('Performing system reboot')
-    Events.trigger(Evt.SHUTDOWN)
-    stop_background_threads()
-    gevent.sleep(0.5)
-    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
     if RHUtils.isSysRaspberryPi():
         gevent.sleep(0.1)
         logger.debug("Executing system command:  sudo reboot now")
-        log.wait_for_queue_empty()
-        log.close_logging()
         os.system("sudo reboot now")
     else:
         logger.warning("Not executing system reboot command because not RPi")
+        #Since we are not going to trigger a system signal we need
+        #To call this manually.
+        kill_signal_listener(0, None)
 
 @SOCKET_IO.on('kill_server')
 @catchLogExceptionsWrapper
 def on_kill_server():
-    '''Shutdown this server.'''
+    """
+    Shutdown the Rotorhazard server process.
+    """
     if CLUSTER:
         CLUSTER.emit('kill_server')
     emit_priority_message(__('Server has stopped.'), True, caller='shutdown')
     logger.info('Killing RotorHazard server')
-    Events.trigger(Evt.SHUTDOWN)
-    stop_background_threads()
-    gevent.sleep(0.5)
-    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    #Leave the rest of the server shutdown to the kill listener.
+    global global_user_initiated_shutdown
+    global_user_initiated_shutdown=True
+    kill_signal_listener(0, None)
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -3101,7 +3144,7 @@ def emit_frontend_load(**params):
     else:
         SOCKET_IO.emit('load_all')
 
-def emit_priority_message(message, interrupt=False, caller=False, **params):
+def emit_priority_message(message, interrupt=False, caller:str=None, **params):
     ''' Emits message to all clients '''
     emit_payload = {
         'message': message,
@@ -5199,10 +5242,12 @@ if (not RHGPIO.is_blue_pill_board()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.set_blue_pill_board_flag()
     logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
-logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
-                                                             RHGPIO.is_real_gpio(), RHGPIO.is_blue_pill_board()))
+logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(),
+                                                             RHGPIO.is_real_gpio(),
+                                                             RHGPIO.is_blue_pill_board()))
+# TODO: make SBC agnostic.
 if RHUtils.isSysRaspberryPi() and not RHGPIO.is_real_gpio():
-    logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
+    logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install gpiod")
     set_ui_message(
         'gpio',
         __("Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>"),
@@ -5221,8 +5266,17 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
+#Just instantiating this class sets up the listeners
+#needed to listen for SIGTERM and SIGHUP signals.
+#it takes an array of functions and call them
+#in specified order. Right now we only have one function to call
+graceful_killer = GracefulKiller([kill_signal_listener])
+
 if RHUtils.isSysRaspberryPi() and RHGPIO.is_blue_pill_board():
     try:
+        # For this to still work using gpiod, the SHUTDOWN_BUTTON_GPIOPIN
+        # must be a different pin than the system shutdown button.
+        # or disable the system shutdown.
         if Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
             logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
                          Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], \
