@@ -37,7 +37,6 @@ class ButtonInputHandler:
             self.line_config.flags = self.line_config.FLAG_BIAS_PULL_UP
             #actually request to activate the line.
             self.line.request(self.line_config)
-            # GPIO.setup(gpioPinNum, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         except Exception as up:
             self.enabledFlag = False
             logger.exception("Exception error in ButtonInputHandler setup")
@@ -67,8 +66,8 @@ class ButtonInputHandler:
                         self.buttonReleasedCallbackFn(self.longPressReachedFlag)
                 self.lastInputLevel = in_lvl
                 return (in_lvl == RHGPIO.LOW) or self.longPressReachedFlag
-            else:
-                self.logger.log(logging.INFO, "ButtonHandler not enabled.")
+            # else:
+            #     self.logger.log(logging.INFO, "ButtonHandler not enabled.")
         except:
             self.errorLoggedCount += 1
             # log the first ten, but then only 1 per 100 after that
