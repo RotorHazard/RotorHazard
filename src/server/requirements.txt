@@ -23,3 +23,5 @@ RPi.GPIO==0.7.*
 rpi-ws281x==4.3.*
 pi-ina219==1.4.*
 RPi.bme280==0.2.*
+gpiod==1.5.*
+
