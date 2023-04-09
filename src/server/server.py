@@ -4882,7 +4882,7 @@ def shutdown_button_thread_fn():
             if not ShutdownButtonInputHandler.isEnabled():  # if button handler disabled
                 break                                       #  then exit thread
             # poll button input and invoke callbacks
-            bStatFlg = ShutdownButtonInputHandler.pollProcessInput(monotonic())
+            bStatFlg = ShutdownButtonInputHandler.poll_process_input(monotonic())
             # while background thread not started and button not pressed
             #  send periodic server-idle messages to node
             if (HEARTBEAT_THREAD is None) and BACKGROUND_THREADS_ENABLED and INTERFACE:

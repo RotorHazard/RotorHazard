@@ -1,9 +1,9 @@
 import sys
-
 sys.path.append('..')
 import unittest
 from server.util.sbcUtil import is_raspberry, is_libre
 import time
+
 
 
 # to run:
@@ -83,12 +83,27 @@ class GPIOTest(unittest.TestCase):
             s32_b_pill_board_flag = not line.get_value()
             self.assertTrue(s32_b_pill_board_flag)
             line.release()
-            chip.close()
 
 
 
-
-
+    def test_dump_gpio_lines(self):
+        import gpiod
+        for chip in gpiod.make_chip_iter():
+            print(f'{chip.name} - {chip.num_lines}')
+            for offset in range(chip.num_lines):
+                line = chip.get_line(offset)
+                offset = line.offset
+                name = line.name
+                consumer = line.consumer
+                direction = line.direction
+                active_state = line.active_state
+                print(f'''
+    line {name}
+    offset {offset}
+    consumer {consumer}
+    direction {'OUTPUT' if direction == line.DIRECTION_OUTPUT else 'INPUT'}
+    active: {'HIGH' if active_state ==  line.ACTIVE_HIGH else 'LOW'}
+''')
 
 
 

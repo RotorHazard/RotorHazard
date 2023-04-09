@@ -1,22 +1,16 @@
 # ButtonInputHandler:  Handler for a button connected to a GPIO input pin
-
+import logging
 import sys
-from RHGPIO import is_real_gpio, is_blue_pill_board
-
+import server.util.RHGPIO as RHGPIO
 sys.path.append('util')  # needed at runtime to find FakeRPiGPIO module
+import gpiod
 
-try:
-    import RPi.GPIO as GPIO
-except ImportError:
-    import FakeRPiGPIO as GPIO
-except:  # need extra exception catch for Travis CI tests
-    import FakeRPiGPIO as GPIO
-# if RPi.GPIO not available then use FakeRiGPIO from https://github.com/sn4k3/FakeRPi
+##TOD what to do when gpiod isn't real?
 
 class ButtonInputHandler:
     """ Handler for a button connected to a GPIO input pin """
-    def __init__(self, gpioPinNum, logger, buttonPressedCallbackFn=None, \
-                 buttonReleasedCallbackFn=None, buttonLongPressCallbackFn=None, \
+    def __init__(self, gpioPinNum, logger, buttonPressedCallbackFn=None,
+                 buttonReleasedCallbackFn=None, buttonLongPressCallbackFn=None,
                  buttonLongPressDelayMs=3000, startEnabledFlag=True):
         self.gpioPinNum = gpioPinNum
         self.logger = logger
@@ -28,38 +22,53 @@ class ButtonInputHandler:
                                                                    else self.noop
         self.buttonLongPressDelayMs = buttonLongPressDelayMs
         self.longPressReachedFlag = False
-        self.lastInputLevel = GPIO.UNKNOWN
+        self.lastInputLevel = RHGPIO.UNKNOWN
         self.pressedStartTimeSecs = 0
         self.enabledFlag = startEnabledFlag
         self.errorLoggedCount = 0
         try:
-            GPIO.setup(gpioPinNum, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        except:
+            self.line = RHGPIO.get_line(gpioPinNum)
+            if not self.line:
+                logger.exception("Exception error in ButtonInputHandler setup")
+                raise Exception("unable to get GPIO line for buttonInputHandler")
+            self.line_config = gpiod.line_request()
+            self.line_config.consumer = "RotorHazard"
+            self.line_config.request_type = gpiod.line_request.DIRECTION_INPUT
+            self.line_config.flags = self.line_config.FLAG_BIAS_PULL_UP
+            #actually request to activate the line.
+            self.line.request(self.line_config)
+            # GPIO.setup(gpioPinNum, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        except Exception as up:
+            self.enabledFlag = False
             logger.exception("Exception error in ButtonInputHandler setup")
+            logger.exception(up)
+
 
     # function called on a periodic basis to poll the input and invoke callbacks
     # returns True if button currently pressed or long press detected
-    def pollProcessInput(self, nowTimeSecs):
+    def poll_process_input(self, now_time_secs):
         try:
             if self.enabledFlag:
-                inLvl = GPIO.input(self.gpioPinNum)
-                if self.lastInputLevel == GPIO.HIGH:
-                    if inLvl == GPIO.LOW:  # new button press detected
-                        self.pressedStartTimeSecs = nowTimeSecs
+                in_lvl = self.line.get_value()
+                if self.lastInputLevel == RHGPIO.HIGH:
+                    if in_lvl == RHGPIO.LOW:  # new button press detected
+                        self.pressedStartTimeSecs = now_time_secs
                         self.longPressReachedFlag = False
                         self.buttonPressedCallbackFn()
-                elif self.lastInputLevel == GPIO.LOW:
-                    if inLvl == GPIO.LOW:  # button long-press detected
+                elif self.lastInputLevel == RHGPIO.LOW:
+                    if in_lvl == RHGPIO.LOW:  # button long-press detected
                         if self.pressedStartTimeSecs > 0 and \
-                                    (nowTimeSecs - self.pressedStartTimeSecs) * 1000 > \
+                                    (now_time_secs - self.pressedStartTimeSecs) * 1000 > \
                                     self.buttonLongPressDelayMs:
                             if not self.longPressReachedFlag:
                                 self.longPressReachedFlag = True
                                 self.buttonLongPressCallbackFn()
                     else:
                         self.buttonReleasedCallbackFn(self.longPressReachedFlag)
-                self.lastInputLevel = inLvl
-                return (inLvl == GPIO.LOW) or self.longPressReachedFlag
+                self.lastInputLevel = in_lvl
+                return (in_lvl == RHGPIO.LOW) or self.longPressReachedFlag
+            else:
+                self.logger.log(logging.INFO, "ButtonHandler not enabled.")
         except:
             self.errorLoggedCount += 1
             # log the first ten, but then only 1 per 100 after that
@@ -71,7 +80,7 @@ class ButtonInputHandler:
         self.enabledFlag = flgVal
         if not flgVal:
             self.longPressReachedFlag = False
-            self.lastInputLevel = GPIO.UNKNOWN
+            self.lastInputLevel = RHGPIO.UNKNOWN
             self.pressedStartTimeSecs = 0
 
     def isEnabled(self):
