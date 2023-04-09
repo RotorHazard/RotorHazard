@@ -68,16 +68,17 @@ def getPythonVersionStr():
 def idAndLogSystemInfo():
     global IS_SYS_RASPBERRY_PI
     IS_SYS_RASPBERRY_PI = False
+    import util.sbcUtil as sbc
     try:
         modelStr = None
+        IS_SYS_RASPBERRY_PI = sbc.is_known_sbc()
         try:
             fileHnd = open("/proc/device-tree/model", "r")
             modelStr = fileHnd.read()
             fileHnd.close()
         except:
             pass
-        if modelStr and "raspberry pi" in modelStr.lower():
-            IS_SYS_RASPBERRY_PI = True
+        if modelStr :
             logger.info("Host machine: " + modelStr.strip('\0'))
         logger.info("Host OS: {} {}".format(platform.system(), platform.release()))
         logger.info("Python version: {}".format(getPythonVersionStr()))

@@ -14,7 +14,6 @@ from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUN
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
 SERIAL_BAUD_RATES = [921600, 115200]
-DEF_S32BPILL_SERIAL_PORT = "/dev/serial0"
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +227,8 @@ class SerialNode(Node):
 def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     nodes = []
     config_ser_ports = getattr(config, 'SERIAL_PORTS', [])
+
+    DEF_S32BPILL_SERIAL_PORT = getattr(config, 'BPILL_SERIAL_PORT', "/dev/serial0")
     if isS32BPillFlag and len(config_ser_ports) == 0:
         config_ser_ports.append(DEF_S32BPILL_SERIAL_PORT)
         logger.debug("Using default serial port ('{}') for S32_BPill board".format(DEF_S32BPILL_SERIAL_PORT))

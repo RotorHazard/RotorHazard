@@ -16,6 +16,7 @@ LED = {}
 SERIAL_PORTS = []
 LOGGING = {}
 VRX_CONTROL = {}
+BPILL_SERIAL_PORT = '/dev/serial0'
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
@@ -97,6 +98,8 @@ try:
         SENSORS.update(ExternalConfig['SENSORS'])
     if 'SERIAL_PORTS' in ExternalConfig:
         SERIAL_PORTS.extend(ExternalConfig['SERIAL_PORTS'])
+    if 'BPILL_SERIAL_PORT' in ExternalConfig:
+        BPILL_SERIAL_PORT = ExternalConfig['BPILL_SERIAL_PORT']
     GENERAL['configFile'] = 1
     InitResultStr = "Using configuration file '{0}'".format(CONFIG_FILE_NAME)
     InitResultLogLevel = logging.INFO

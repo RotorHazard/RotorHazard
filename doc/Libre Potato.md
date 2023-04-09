@@ -6,11 +6,33 @@ libretech,aml-s905x-ccamlogic,s905xamlogic,meson-gxl`
 Libre Computer AML-S905X-CC
 
 # Enable i2c interface on the correct pins
-`sudo ldto merge i2c-ao`
+```bash
+sudo ldto merge i2c-ao`
+```
 
 # Enable spi interface on the correct pins
 Single SPI on CE0 pin 24
-`sudo ldto merge spicc spicc-spidev`
+
+```bash
+sudo ldto merge spicc spicc-spidev
+```
+
+# Enable serial on /dev/serial0
+Libre puts serial on ttyAML*
+ttyAML6 is what pi calls serial0
+```bash
+sudo ldto enable uart-a
+```
+Edit config.json and change BPILL_SERIAL_PORT to point to /dev/ttyAML6
+```json
+{
+	...,
+	"SERIAL_PORTS": [],
+	"BPILL_SERIAL_PORT": "/dev/ttyAML6",
+	...
+}
+
+```
 
 ## Le Potato supports hardware SPI on the 40-pin GPIO header with the same pinout as Raspberry Pi 2/3/4 Model B/B+ boards.
 

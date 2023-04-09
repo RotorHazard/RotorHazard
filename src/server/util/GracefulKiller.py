@@ -65,7 +65,6 @@ class GracefulKiller:
         self.log_or_print(f'Ignoring {signum}, {frame}')
 
     def process_handlers(self, code, frame):
-        self.log_or_print(f"Code: {code}  Frame: {frame}\n")
         for todo in self.handlers:
             todo(code, frame)
         self.actually_die()

@@ -12,6 +12,7 @@
 	"SENSORS": {
 	},
 	"SERIAL_PORTS": [],
+	"BPILL_SERIAL_PORT": "/dev/serial0",
 	"LED": {
 		"LED_COUNT": 0,
 		"LED_ROWS": 1,

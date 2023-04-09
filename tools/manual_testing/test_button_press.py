@@ -1,5 +1,6 @@
 import sys
 sys.path.append('../../src')
+sys.path.append('../../src/server')
 
 import time
 import logging
@@ -17,7 +18,7 @@ def button_long_press():
 
 if __name__ == '__main__':
     button_input_handler = ButtonInputHandler(
-        16, logging.getLogger("button_pres"),
+        12, logging.getLogger("button_pres"),
             button_pressed, button_released,
             button_long_press)
     

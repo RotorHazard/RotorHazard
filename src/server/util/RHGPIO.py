@@ -20,7 +20,6 @@ else:
 global s32_blue_pill_board_flag
 s32_blue_pill_board_flag = None
 def is_real_gpio():
-    print(f'asked is real:{RealGPIOFlag}')
     return RealGPIOFlag
 
 
@@ -28,7 +27,6 @@ def is_blue_pill_board():
 
     global s32_blue_pill_board_flag
 
-    print(f'asked is bluepill:{s32_blue_pill_board_flag}')
     if s32_blue_pill_board_flag is None:
         if RealGPIOFlag:
             line = None
