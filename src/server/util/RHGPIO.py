@@ -5,12 +5,8 @@
 # https://lloydrochester.com/post/hardware/libgpiod-intro-rpi/
 
 import time
-
-from gpiod.libgpiodcxx import line
-
-from server.util.sbcUtil import *
+from util.sbcUtil import *
 import gpiod
-from typing import Union
 
 HIGH = 1
 LOW = 0
@@ -21,19 +17,20 @@ if is_raspberry() or is_libre():
 else:
     RealGPIOFlag = False
 
-
+global s32_blue_pill_board_flag
 s32_blue_pill_board_flag = None
-
-
 def is_real_gpio():
+    print(f'asked is real:{RealGPIOFlag}')
     return RealGPIOFlag
 
 
 def is_blue_pill_board():
+
     global s32_blue_pill_board_flag
+
+    print(f'asked is bluepill:{s32_blue_pill_board_flag}')
     if s32_blue_pill_board_flag is None:
         if RealGPIOFlag:
-            chip = None
             line = None
             if is_raspberry():
                 #on raspberry the 40pin header on is on chip 0
@@ -41,7 +38,7 @@ def is_blue_pill_board():
                 line = get_line(25)
             elif is_libre():
                 line = get_line(22)
-            if chip and line:
+            if line:
                 line_config = gpiod.line_request()
                 line_config.consumer = "RotorHazard"
                 line_config.request_type = gpiod.line_request.DIRECTION_INPUT

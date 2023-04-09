@@ -67,7 +67,7 @@ from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.SendAckQueue import SendAckQueue
 from util.InvokeFuncQueue import InvokeFuncQueue
-from src.server.util import RHGPIO
+from util import RHGPIO
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 
@@ -4931,7 +4931,7 @@ def _do_init_rh_interface():
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
-            INTERFACE = interfaceModule.get_hardware_interface(config=Config, \
+            INTERFACE = interfaceModule.get_hardware_interface(config=Config,
                                                                isS32BPillFlag=RHGPIO.is_blue_pill_board(), **hardwareHelpers)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed

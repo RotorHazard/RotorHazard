@@ -1,7 +1,6 @@
 # ButtonInputHandler:  Handler for a button connected to a GPIO input pin
-import logging
 import sys
-import server.util.RHGPIO as RHGPIO
+import util.RHGPIO as RHGPIO
 sys.path.append('util')  # needed at runtime to find FakeRPiGPIO module
 import gpiod
 
