@@ -1,4 +1,23 @@
 '''RotorHazard server script'''
+# This must be the first import for the time being. It is
+# necessary to set up logging *before* anything else
+# because there is a lot of code run through imports, and
+# we would miss messages otherwise.
+import logging
+import log
+log.early_stage_setup()
+logger = logging.getLogger(__name__)
+
+import io
+import os
+import sys
+import base64
+import subprocess
+import importlib
+import copy
+sys.path.append('../interface')
+#TODO support users other than pi
+sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 from RHInterface import RHInterface
 from util.GracefulKiller import GracefulKiller
 
@@ -8,18 +27,9 @@ NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
 
-# This must be the first import for the time being. It is
-# necessary to set up logging *before* anything else
-# because there is a lot of code run through imports, and
-# we would miss messages otherwise.
-import logging
-import log
 from datetime import datetime
 from monotonic import monotonic
 import RHTimeFns
-
-log.early_stage_setup()
-logger = logging.getLogger(__name__)
 
 EPOCH_START = RHTimeFns.getEpochStartTime()
 
@@ -38,13 +48,6 @@ logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 import gevent.monkey
 gevent.monkey.patch_all()
 
-import io
-import os
-import sys
-import base64
-import subprocess
-import importlib
-import copy
 from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
@@ -83,9 +86,6 @@ EventActionsObj = None
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
-sys.path.append('../interface')
-#TODO support users other than pi
-sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
 from Plugins import search_modules  #pylint: disable=import-error
 from Sensors import Sensors  #pylint: disable=import-error

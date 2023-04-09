@@ -61,8 +61,8 @@ class GracefulKiller:
         signal.signal(signal.SIGQUIT, self.process_handlers)
 
 
-    def ignore(self, signal, frame):
-        self.log_or_print(f'Ignoring {signal}, {frame}')
+    def ignore(self, signum, frame):
+        self.log_or_print(f'Ignoring {signum}, {frame}')
 
     def process_handlers(self, code, frame):
         self.log_or_print(f"Code: {code}  Frame: {frame}\n")
@@ -80,5 +80,5 @@ class GracefulKiller:
     def log_or_print(self, message):
         if self.logger:
             self.logger.debug(message)
-        else
+        else:
             print(message)
