@@ -103,7 +103,7 @@ body {
 	flex: 0 0 auto;
 }
 
-#current_laps {
+#current-laps {
 	position: absolute;
 	top: 4rem;
 	padding: 0.25rem 0.5rem;
