@@ -3,16 +3,18 @@ model = None
 def get_sbc_model() -> str:
     global model
     if not model:
-        with open('/proc/device-tree/model') as f:
-            model = f.read()
+        try:
+            with open('/proc/device-tree/model') as f:
+                model = f.read()
+        except FileNotFoundError:
+            model = ""
     return model
 
 def is_raspberry() -> bool:
-    return get_sbc_model().find('Raspberry') > -1
+    return "Raspberry" in get_sbc_model()
 
 def is_libre() -> bool:
-    return get_sbc_model().find('Libre') > -1
+    return "Libre" in get_sbc_model()
 
 def is_known_sbc() -> bool:
     return is_raspberry() or is_libre()
-
