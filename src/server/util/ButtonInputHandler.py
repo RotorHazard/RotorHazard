@@ -2,7 +2,6 @@
 import sys
 import util.RHGPIO as RHGPIO
 sys.path.append('util')  # needed at runtime to find FakeRPiGPIO module
-import gpiod
 
 ##TOD what to do when gpiod isn't real?
 
@@ -26,6 +25,7 @@ class ButtonInputHandler:
         self.enabledFlag = startEnabledFlag
         self.errorLoggedCount = 0
         try:
+            import gpiod
             self.line = RHGPIO.get_line(gpioPinNum)
             if not self.line:
                 logger.exception("Exception error in ButtonInputHandler setup")
@@ -86,4 +86,3 @@ class ButtonInputHandler:
 
     def noop(self, param1=None):
         pass
-    

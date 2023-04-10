@@ -6,7 +6,6 @@
 
 import time
 from util.sbcUtil import *
-import gpiod
 
 HIGH = 1
 LOW = 0
@@ -14,6 +13,7 @@ UNKNOWN = -1
 
 if is_raspberry() or is_libre():
     RealGPIOFlag = True
+    import gpiod
 else:
     RealGPIOFlag = False
 
@@ -53,7 +53,7 @@ def set_blue_pill_board_flag():
     s32_blue_pill_board_flag = True
 
 
-def get_line(pin_number) -> gpiod.line:
+def get_line(pin_number):
     """
     returns a handle to a gpiod.line object.
     if system is a raspberry then it treats pin_number as the GPIO number.
@@ -67,7 +67,7 @@ def get_line(pin_number) -> gpiod.line:
         line_name = f'7J1 Header Pin{pin_number}'
     return get_line_by_name(line_name)
 
-def get_line_by_name(line_name) -> gpiod.line:
+def get_line_by_name(line_name):
     """
     If you already know the name of the line you want to use
     you can use this method to get a handle to the line
