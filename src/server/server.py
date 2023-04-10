@@ -19,7 +19,7 @@ sys.path.append('../interface')
 #TODO support users other than pi
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 from RHInterface import RHInterface
-from util.GracefulKiller import GracefulKiller
+from util.signal_handling import register_signal_handlers
 
 RELEASE_VERSION = "4.0.0-dev.2" # Public release version code
 SERVER_API = 39 # Server API version
@@ -1695,7 +1695,7 @@ def on_generate_heats_v2(data):
 #this should be set to true when the shutdown or reboot
 #are initiated from within Rotorhazard.
 global_user_initiated_shutdown=False
-def kill_signal_listener(signal, handler):
+def shutdown_action():
     """
     When initiated, executes the code necessary to shut down
     the Rotorhazard Server.
@@ -1703,7 +1703,7 @@ def kill_signal_listener(signal, handler):
     and will execute when ether a SIGTERM or SIGHUP system signal
     is fired.
     """
-    logger.info(f'kill_signal_listener triggered signal:{signal} handler={handler}')
+    logger.info(f'shutdown_action triggered')
     '''Shutdown the raspberry pi.'''
     if not global_user_initiated_shutdown:
         if  INTERFACE.send_shutdown_started_message():
@@ -1738,7 +1738,7 @@ def on_shutdown_pi():
         logger.warning("Not executing system shutdown command because not RPi")
         #Since we are not going to trigger a system signal we need
         #To call this manually.
-        kill_signal_listener(0, None)
+        shutdown_action()
 
 
 
@@ -1749,7 +1749,7 @@ def on_reboot_pi():
     """
     Reboot the raspberry pi.
     The majority of the work to clean up rotorhazard
-    is be handled by the kill_signal_listener
+    is be handled by the shutdown_action
     when the system emits SIGTERM during
     shutdown.
     """
@@ -1767,7 +1767,7 @@ def on_reboot_pi():
         logger.warning("Not executing system reboot command because not RPi")
         #Since we are not going to trigger a system signal we need
         #To call this manually.
-        kill_signal_listener(0, None)
+        shutdown_action()
 
 @SOCKET_IO.on('kill_server')
 @catchLogExceptionsWrapper
@@ -1782,7 +1782,7 @@ def on_kill_server():
     #Leave the rest of the server shutdown to the kill listener.
     global global_user_initiated_shutdown
     global_user_initiated_shutdown=True
-    kill_signal_listener(0, None)
+    shutdown_action()
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -3352,7 +3352,7 @@ def emit_action_setup(**params):
         emit('action_setup', emit_payload)
     else:
         SOCKET_IO.emit('action_setup', emit_payload)
-    
+
 def emit_event_actions(**params):
     '''Emits event actions.'''
     emit_payload = {
@@ -4451,7 +4451,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             logger.info('Ignoring lap after pilot done: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
                                                INTERFACE.get_lap_source_str(source), pilot_namestr))
-                            
+
                         if RACE.win_status == WinStatus.DECLARED and \
                             race_format.race_mode == 1 and \
                             RACE.format.team_racing_mode and \
@@ -4539,7 +4539,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                                                 node_finished_flag, node.index)
 
                             # check for and announce possible winner (but wait until pass-record processing(s) is finished)
-                            PassInvokeFuncQueueObj.put(check_win_condition, emit_leaderboard_on_win=True) 
+                            PassInvokeFuncQueueObj.put(check_win_condition, emit_leaderboard_on_win=True)
 
                     else:
                         # record lap as 'invalid'
@@ -4648,7 +4648,7 @@ def check_win_condition(**kwargs):
         if 'emit_leaderboard_on_win' in kwargs:
             if RACE.win_status != WinStatus.NONE:
                 emit_current_leaderboard()  # show current race status on leaderboard
-    
+
     return win_status_dict
 
 @catchLogExcDBCloseWrapper
@@ -5266,11 +5266,7 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
-#Just instantiating this class sets up the listeners
-#needed to listen for SIGTERM and SIGHUP signals.
-#it takes an array of functions and call them
-#in specified order. Right now we only have one function to call
-graceful_killer = GracefulKiller([kill_signal_listener])
+register_signal_handlers(shutdown_action)
 
 if RHUtils.isSysRaspberryPi() and RHGPIO.is_blue_pill_board():
     try:
@@ -5565,6 +5561,7 @@ def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
                                port_val, pageStr, cmdStr)
 
     try:
+        port_val = 12345
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
         logger.info("Server is shutting down")
