@@ -954,8 +954,11 @@ def on_set_frequency(data):
         'profile_id': profile.id,
         'frequencies': freqs
         })
+    RACE.profile = profile
 
     INTERFACE.set_frequency(node_index, frequency)
+
+    RACE.clear_results()
 
     Events.trigger(Evt.FREQUENCY_SET, {
         'nodeIndex': node_index,
@@ -1011,6 +1014,7 @@ def on_set_frequency_preset(data):
         "c": channels,
         "f": freqs
     }
+
     set_all_frequencies(payload)
     emit_frequency_data()
     hardware_set_all_frequencies(payload)
@@ -1031,12 +1035,15 @@ def set_all_frequencies(freqs):
         'profile_id': profile.id,
         'frequencies': profile_freqs
         })
+    RACE.profile = profile
 
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     logger.debug("Sending frequency values to nodes: " + str(freqs["f"]))
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs["f"][idx])
+
+        RACE.clear_results()
 
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
@@ -1083,6 +1090,7 @@ def on_set_enter_at_level(data):
         'profile_id': profile.id,
         'enter_ats': enter_ats
         })
+    RACE.profile = profile
 
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
 
@@ -1121,6 +1129,7 @@ def on_set_exit_at_level(data):
         'profile_id': profile.id,
         'exit_ats': exit_ats
         })
+    RACE.profile = profile
 
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
 
@@ -1347,6 +1356,7 @@ def on_alter_profile(data):
     profile = getCurrentProfile()
     data['profile_id'] = profile.id
     profile = RHData.alter_profile(data)
+    RACE.profile = profile
 
     emit_node_tuning(noself=True)
 
@@ -1417,6 +1427,7 @@ def on_set_profile(data, emit_vals=True):
             RHData.alter_profile({'profile_id': profile_val, 'frequencies': freqs,
                                   'enter_ats': enter_ats_loaded, 'exit_ats': exit_ats_loaded})
 
+        RACE.profile = profile
         Events.trigger(Evt.PROFILE_SET, {
             'profile_id': profile_val,
             })
@@ -4692,6 +4703,7 @@ def assign_frequencies():
 
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs["f"][idx])
+        RACE.clear_results()
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
             'frequency': freqs["f"][idx],
