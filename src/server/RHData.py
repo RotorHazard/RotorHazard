@@ -772,7 +772,7 @@ class RHData():
             if heatnodes:
                 for heatnode in heatnodes:
                     heat = self.get_heat(heatnode.heat_id)
-                    self.clear_results_heat(heat.id)
+                    self.clear_results_heat(heat)
 
                     if heat.class_id != RHUtils.CLASS_ID_NONE:
                         self.clear_results_raceClass(heat.class_id)
@@ -785,7 +785,7 @@ class RHData():
                 self.clear_results_event()
 
                 for race in race_list:
-                    self.clear_results_savedRaceMeta(race.id)
+                    self.clear_results_savedRaceMeta(race)
 
                 self.commit()
 
@@ -1022,7 +1022,7 @@ class RHData():
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
             if not heat.auto_frequency:
-                self.resolve_slot_unset_nodes(heat.id)
+                self.resolve_slot_unset_nodes(heat)
 
         if 'pilot' in data:
             slot.pilot_id = data['pilot']
@@ -1067,9 +1067,9 @@ class RHData():
                         if race_lap.node_index == slot.node_index:
                             race_lap.pilot_id = data['pilot']
 
-                    self.clear_results_savedRaceMeta(race_meta.id)
+                    self.clear_results_savedRaceMeta(race_meta)
 
-                self.clear_results_heat(heat.id)
+                self.clear_results_heat(heat)
 
         if 'pilot' in data or 'class' in data:
             if len(race_list):
@@ -1683,7 +1683,7 @@ class RHData():
         self._Database.DB.session.refresh(new_class)
 
         for heat in self._Database.Heat.query.filter_by(class_id=source_class.id).all():
-            self.duplicate_heat(heat.id, dest_class=new_class.id)
+            self.duplicate_heat(heat, dest_class=new_class.id)
 
         self.commit()
 
@@ -1728,17 +1728,17 @@ class RHData():
             if len(race_list):
                 self._PageCache.set_valid(False)
                 self.clear_results_event()
-                self.clear_results_raceClass(race_class.id)
+                self.clear_results_raceClass(race_class)
 
             if 'class_format' in data:
                 if int(data['class_format']):
                     for race_meta in race_list:
                         race_meta.format_id = data['class_format']
-                        self.clear_results_savedRaceMeta(race_meta.id)
+                        self.clear_results_savedRaceMeta(race_meta)
 
                     heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
                     for heat in heats:
-                        self.clear_results_heat(heat.id)
+                        self.clear_results_heat(heat)
 
         self.commit()
 
@@ -2228,17 +2228,17 @@ class RHData():
                 self.clear_results_event()
 
                 for race in race_list:
-                    self.clear_results_savedRaceMeta(race.id)
+                    self.clear_results_savedRaceMeta(race)
 
                 classes = self._Database.RaceClass.query.filter_by(format_id=race_format.id).all()
 
                 for race_class in classes:
-                    self.clear_results_raceClass(race_class.id)
+                    self.clear_results_raceClass(race_class)
 
                     heats = self._Database.Heat.query.filter_by(class_id=race_class.id).all()
 
                     for heat in heats:
-                        self.clear_results_heat(heat.id)
+                        self.clear_results_heat(heat)
 
                 self.commit()
 
@@ -2578,15 +2578,15 @@ class RHData():
         # cache cleaning
         self._PageCache.set_valid(False)
 
-        self.clear_results_heat(new_heat.id)
-        self.clear_results_heat(old_heat.id)
+        self.clear_results_heat(new_heat)
+        self.clear_results_heat(old_heat)
 
         if old_format_id != new_format_id:
             self.clear_results_savedRaceMeta(race_meta)
 
         if old_heat.class_id != new_heat.class_id:
-            self.clear_results_raceClass(new_class.id)
-            self.clear_results_raceClass(old_class.id)
+            self.clear_results_raceClass(new_class)
+            self.clear_results_raceClass(old_class)
 
         self.commit()
 
