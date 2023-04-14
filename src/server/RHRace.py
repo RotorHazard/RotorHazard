@@ -10,13 +10,15 @@ logger = logging.getLogger(__name__)
 class RHRace():
     '''Class to hold race management variables.'''
     def __init__(self):
+        # internal references
+        self._rhdata = None
         # setup/options
         self.num_nodes = 0
         self.current_heat = 1 # heat ID
         self.node_pilots = {} # current race pilots, by node, filled on heat change
         self.node_teams = {} # current race teams, by node, filled on heat change
-        self.format = None # raceformat object
-        self.profile = None
+        self._format = None # raceformat object
+        self._profile = None
         # sequence
         self.scheduled = False # Whether to start a race when time
         self.scheduled_time = 0 # Start race when time reaches this value
@@ -159,6 +161,175 @@ class RHRace():
             'build_ver': None
         }
         return True
+
+    def build_laps_list(self, RHData, CLUSTER):
+        current_laps = []
+        for node_idx in range(self.num_nodes):
+            node_laps = []
+            fastest_lap_time = float("inf")
+            fastest_lap_index = None
+            last_lap_id = -1
+            for idx, lap in enumerate(self.node_laps[node_idx]):
+                if (not lap.get('invalid', False)) and \
+                    ((not lap['deleted']) or lap.get('late_lap', False)):
+                    if not lap.get('late_lap', False):
+                        last_lap_id = lap_number = lap['lap_number']
+                        if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
+                            lap_number += 1
+                        splits = self.get_splits(RHData, CLUSTER, node_idx, lap['lap_number'], True)
+                        if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
+                            fastest_lap_time = lap['lap_time']
+                            fastest_lap_index = idx
+                    else:
+                        lap_number = -1
+                        splits = []
+
+                    node_laps.append({
+                        'lap_index': idx,
+                        'lap_number': lap_number,
+                        'lap_raw': lap['lap_time'],
+                        'lap_time': lap['lap_time_formatted'],
+                        'lap_time_stamp': lap['lap_time_stamp'],
+                        'splits': splits,
+                        'late_lap': lap.get('late_lap', False)
+                    })
+
+            splits = self.get_splits(RHData, CLUSTER, node_idx, last_lap_id+1, False)
+            if splits:
+                node_laps.append({
+                    'lap_number': last_lap_id+1,
+                    'lap_time': '',
+                    'lap_time_stamp': 0,
+                    'splits': splits
+                })
+
+            pilot_data = None
+            if node_idx in self.node_pilots:
+                pilot = RHData.get_pilot(self.node_pilots[node_idx])
+                if pilot:
+                    pilot_data = {
+                        'id': pilot.id,
+                        'name': pilot.name,
+                        'callsign': pilot.callsign
+                    }
+
+            current_laps.append({
+                'laps': node_laps,
+                'fastest_lap_index': fastest_lap_index,
+                'pilot': pilot_data,
+                'finished_flag': self.get_node_finished_flag(node_idx)
+            })
+        current_laps = {
+            'node_index': current_laps
+        }
+        return current_laps
+
+    def get_splits(self, RHData, CLUSTER, node_idx, lap_id, lapCompleted):
+        splits = []
+        if CLUSTER:
+            for secondary_index in range(len(CLUSTER.secondaries)):
+                if CLUSTER.isSplitSecondaryAvailable(secondary_index):
+                    split = RHData.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
+                    if split:
+                        split_payload = {
+                            'split_id': secondary_index,
+                            'split_raw': split.split_time,
+                            'split_time': split.split_time_formatted,
+                            'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
+                        }
+                    elif lapCompleted:
+                        split_payload = {
+                            'split_id': secondary_index,
+                            'split_time': '-'
+                        }
+                    else:
+                        break
+                    splits.append(split_payload)
+        return splits
+
+    @property
+    def profile(self):
+        if self._profile is None:
+            stored_profile = self._rhdata.get_optionInt('currentProfile')
+            self._profile = self._rhdata.get_profile(stored_profile)
+        return self._profile
+    
+    @profile.setter
+    def profile(self, value):
+        self._profile = value
+
+    @property
+    def format(self):
+        if self._format is None:
+            stored_format = self._rhdata.get_optionInt('currentFormat')
+            if stored_format:
+                race_format = self._rhdata.get_raceFormat(stored_format)
+                if not race_format:
+                    race_format = self._rhdata.get_first_raceFormat()
+                    self._rhdata.set_option('currentFormat', race_format.id)
+            else:
+                race_format = self._rhdata.get_first_raceFormat()
+
+            # create a shared instance
+            self._format = RHRaceFormat.copy(race_format)
+            self._format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
+        return self._format
+
+    def getDbRaceFormat(self):
+        if self.format is None or RHRaceFormat.isDbBased(self.format):
+            stored_format = self._rhdata.get_optionInt('currentFormat')
+            return self._rhdata.get_raceFormat(stored_format)
+        else:
+            return None
+
+    @format.setter
+    def format(self, race_format):
+        if self.race_status == RaceStatus.READY:
+            if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
+                self._rhdata.set_option('currentFormat', race_format.id)
+                # create a shared instance
+                self._format = RHRaceFormat.copy(race_format)
+                self._format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
+                self.clear_results() # refresh leaderboard
+            else:
+                self._format = race_format
+        else:
+            logger.info('Preventing race format change: Race status not READY')
+
+class RHRaceFormat():
+    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
+        self.name = name
+        self.race_mode = race_mode  # 0 for count down, 1 for count up
+        self.race_time_sec = race_time_sec
+        self.lap_grace_sec = lap_grace_sec
+        self.staging_fixed_tones = staging_fixed_tones
+        self.start_delay_min_ms = start_delay_min_ms
+        self.start_delay_max_ms = start_delay_max_ms
+        self.staging_tones = staging_tones
+        self.number_laps_win = number_laps_win
+        self.win_condition = win_condition
+        self.team_racing_mode = team_racing_mode
+        self.start_behavior = start_behavior
+
+    @classmethod
+    def copy(cls, race_format):
+        return RHRaceFormat(name=race_format.name,
+                            race_mode=race_format.race_mode,
+                            race_time_sec=race_format.race_time_sec,
+                            lap_grace_sec=race_format.lap_grace_sec,
+                            staging_fixed_tones=race_format.staging_fixed_tones,
+                            start_delay_min_ms=race_format.start_delay_min_ms,
+                            start_delay_max_ms=race_format.start_delay_max_ms,
+                            staging_tones=race_format.staging_tones,
+                            number_laps_win=race_format.number_laps_win,
+                            win_condition=race_format.win_condition,
+                            team_racing_mode=race_format.team_racing_mode,
+                            start_behavior=race_format.start_behavior)
+
+    @classmethod
+    def isDbBased(cls, race_format):
+        return hasattr(race_format, 'id')
+
 
 class StagingTones():
     TONES_NONE = 0

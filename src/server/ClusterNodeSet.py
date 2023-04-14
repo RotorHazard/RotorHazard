@@ -10,6 +10,7 @@ from RHRace import RaceStatus
 from eventmanager import Evt
 from util.RunningMedian import RunningMedian
 from util.Averager import Averager
+from util.SendAckQueue import SendAckQueue
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,13 @@ class SecondaryNode:
     TIMEDIFF_MEDIAN_SIZE = 30
     TIMEDIFF_CORRECTION_THRESH_MS = 250  # correct split times if secondary clock more off than this
 
-    def __init__(self, idVal, info, RACE, RHData, getCurrentProfile, \
+    def __init__(self, idVal, info, RACE, RHData, \
                  emit_split_pass_info, monotonic_to_epoch_millis, \
                  emit_cluster_connect_change, server_release_version):
         self.id = idVal
         self.info = info
         self.RACE = RACE
         self.RHData = RHData
-        self.getCurrentProfile = getCurrentProfile
         self.emit_split_pass_info = emit_split_pass_info
         self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
         self.emit_cluster_connect_change = emit_cluster_connect_change
@@ -123,9 +123,9 @@ class SecondaryNode:
                     if not self.freqsSentFlag:
                         try:
                             self.freqsSentFlag = True
-                            if (not self.isMirrorMode) and self.getCurrentProfile:
+                            if (not self.isMirrorMode) and self.RACE.getProfile:
                                 logger.info("Sending node frequencies to secondary {0} at {1}".format(self.id+1, self.address))
-                                for idx, freq in enumerate(json.loads(self.getCurrentProfile().frequencies)["f"]):
+                                for idx, freq in enumerate(json.loads(self.RACE.getProfile().frequencies)["f"]):
                                     data = { 'node':idx, 'frequency':freq }
                                     self.emit('set_frequency', data)
                                     gevent.sleep(0.001)
@@ -476,6 +476,23 @@ class ClusterNodeSet:
         self.splitSecondaries = []
         self.recEventsSecondaries = []
         self.Events = eventmanager
+        self.ClusterSendAckQueueObj = None
+
+    def emit_cluster_msg_to_primary(self, SOCKET_IO, messageType, messagePayload, waitForAckFlag=True):
+        '''Emits cluster message to primary timer.'''
+        if not self.ClusterSendAckQueueObj:
+            self.ClusterSendAckQueueObj = SendAckQueue(20, SOCKET_IO, logger)
+        self.ClusterSendAckQueueObj.put(messageType, messagePayload, waitForAckFlag)
+
+    def emit_join_cluster_response(self, SOCKET_IO, serverInfoItems):
+        '''Emits 'join_cluster_response' message to primary timer.'''
+        payload = {
+            'server_info': json.dumps(serverInfoItems)
+        }
+        self.emit_cluster_msg_to_primary(SOCKET_IO, 'join_cluster_response', payload, False)
+
+    def has_joined_cluster(self):
+        return True if self.ClusterSendAckQueueObj else False
 
     def init_repeater(self):
         self.Events.on(Evt.ALL, 'cluster', self.event_repeater, priority=75, unique=True)

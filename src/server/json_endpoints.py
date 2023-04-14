@@ -27,7 +27,7 @@ class AlchemyEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self, obj)
 
-def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
+def createBlueprint(RHData, Results, RACE, serverInfo):
     APP = Blueprint('json', __name__)
 
     @APP.route('/api/pilot/all')
