@@ -123,9 +123,9 @@ class SecondaryNode:
                     if not self.freqsSentFlag:
                         try:
                             self.freqsSentFlag = True
-                            if (not self.isMirrorMode) and self.RACE.getProfile:
+                            if (not self.isMirrorMode) and self.RACE.profile:
                                 logger.info("Sending node frequencies to secondary {0} at {1}".format(self.id+1, self.address))
-                                for idx, freq in enumerate(json.loads(self.RACE.getProfile().frequencies)["f"]):
+                                for idx, freq in enumerate(json.loads(self.RACE.profile.frequencies)["f"]):
                                     data = { 'node':idx, 'frequency':freq }
                                     self.emit('set_frequency', data)
                                     gevent.sleep(0.001)

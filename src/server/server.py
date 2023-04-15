@@ -2579,13 +2579,52 @@ def on_discard_laps(**kwargs):
 
 def clear_laps():
     '''Clear the current laps table.'''
-    global LAST_RACE
-    # LAST_RACE = copy.deepcopy(RACE) #TODO: restore functionality
+    branch_race_obj()
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.winning_lap_id = 0
     reset_current_laps() # Clear out the current laps table
     RHData.clear_lapSplits()
     logger.info('Current laps cleared')
+
+def branch_race_obj():
+    global LAST_RACE
+    LAST_RACE = RHRace.RHRace()
+
+    LAST_RACE._rhdata = RHData
+
+    LAST_RACE.num_nodes = RACE.num_nodes
+    LAST_RACE.current_heat = RACE.current_heat
+    LAST_RACE.node_pilots = RACE.node_pilots
+    LAST_RACE.node_teams = RACE.node_teams
+    LAST_RACE.format = RACE.format
+    LAST_RACE.profile = RACE.profile 
+    # sequence
+    LAST_RACE.scheduled = RACE.scheduled
+    LAST_RACE.scheduled_time = RACE.scheduled_time
+    LAST_RACE.start_token = RACE.start_token
+    # status
+    LAST_RACE.race_status = RACE.race_status
+    LAST_RACE.timer_running = RACE.timer_running
+    LAST_RACE.stage_time_monotonic = RACE.stage_time_monotonic
+    LAST_RACE.start_time = RACE.start_time
+    LAST_RACE.start_time_monotonic = RACE.start_time_monotonic
+    LAST_RACE.start_time_epoch_ms = RACE.start_time_epoch_ms
+    LAST_RACE.node_laps = RACE.node_laps 
+    LAST_RACE.node_has_finished = RACE.node_has_finished 
+    LAST_RACE.any_races_started = RACE.any_races_started
+    # concluded
+    LAST_RACE.end_time = RACE.end_time
+    # leaderboard/cache
+    LAST_RACE.results = RACE.results
+    LAST_RACE.cacheStatus = RACE.cacheStatus
+    LAST_RACE.status_message = RACE.status_message
+
+    LAST_RACE.team_results = RACE.team_results
+    LAST_RACE.team_cacheStatus = RACE.team_cacheStatus
+    LAST_RACE.win_status = RACE.win_status
+
+    led_manager.LAST_RACE = LAST_RACE
+    RHUI._last_race = LAST_RACE
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
