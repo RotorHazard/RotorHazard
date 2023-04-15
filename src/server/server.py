@@ -5250,7 +5250,7 @@ if RHUtils.isSysRaspberryPi() and not RHGPIO.is_real_gpio():
     logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install gpiod")
     set_ui_message(
         'gpio',
-        __("Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>"),
+        __("Unable to access real GPIO on Pi. Try: <code>sudo pip install gpiod</code>"),
         header='Warning',
         subclass='no-access'
         )
