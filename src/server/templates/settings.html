@@ -6,6 +6,10 @@
 	var data_dependencies = [
 		'all_languages',
 		'language',
+		{
+			'type': 'ui',
+			'value': 'settings'
+		},
 		'node_data',
 		'environmental_data',
 		'frequency_data',
@@ -121,6 +125,25 @@
 			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
+
+		socket.on('ui', function (msg) {
+			console.log(msg);
+
+			for (var i in msg) {
+				var panel = msg[i];
+
+				var panel_el = $('<div class="panel collapsing">');
+				var panel_header_el = $('<div class="panel-header">');
+				panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+				var panel_content_el = $('<div class="panel-content">');
+				panel_content_el.html("panel.settings");
+
+				panel_el.append(panel_header_el);
+				panel_el.append(panel_content_el);
+				$('main').append(panel_el);
+
+			}
+		});
 
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks

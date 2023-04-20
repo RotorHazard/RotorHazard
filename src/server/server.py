@@ -761,7 +761,10 @@ def on_load_data(data):
     '''Allow pages to load needed data'''
     load_types = data['load_types']
     for load_type in load_types:
-        if load_type == 'node_data':
+        if isinstance(load_type, dict):
+            if load_type['type'] == 'ui':
+                RHUI.emit_ui(load_type['value'], nobroadcast=True)
+        elif load_type == 'node_data':
             RHUI.emit_node_data(nobroadcast=True)
         elif load_type == 'environmental_data':
             RHUI.emit_environmental_data(nobroadcast=True)

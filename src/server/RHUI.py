@@ -2,6 +2,7 @@
 # RHUI Helper
 # Provides abstraction for user interface
 #
+from dataclasses import dataclass
 from flask import request
 from flask_socketio import emit
 from eventmanager import Evt
@@ -34,7 +35,13 @@ class RHUI():
         self._led_manager = LED_Manager
         self._vrx_manager = VRX_Manager
 
-        self.pilot_attributes = []
+        self._interface = None
+        self._export_manager = None
+        self._heatgenerate_manager = None
+
+        self._pilot_attributes = []
+        self._ui_panels = []
+        self._general_settings = []
 
     def late_init(self, INTERFACE, CLUSTER, LED_Manager, VRX_Manager, export_manager, heatgenerate_manager):
         self._interface = INTERFACE
@@ -44,20 +51,78 @@ class RHUI():
         self._export_manager = export_manager
         self._heatgenerate_manager = heatgenerate_manager
 
+    # Pilot Attributes
     def register_pilot_attribute(self, name, label, fieldtype="text"):
-        self.pilot_attributes.append(PilotAttribute(name, label, fieldtype="text"))
-        return True
+        self._pilot_attributes.append(PilotAttribute(name, label, fieldtype))
+        return self._pilot_attributes
 
-    def get_pilot_attributes(self):
-        return self.pilot_attributes
+    @property
+    def pilot_attributes(self):
+        return self._pilot_attributes
 
+    # UI Panels
+    def register_ui_panel(self, name, label, page, order=0):
+        self.ui_panels.append(UIPanel(name, label, page, order))
+        return self.ui_panels
+
+    @property
+    def ui_panels(self):
+        return self._ui_panels
+
+    # General Settings
+    def register_general_setting(self, name, label, panel=None, fieldtype="text", order=0):
+        self._general_settings.append(GeneralSetting(name, label, panel, fieldtype, order))
+        return self._general_settings
+
+    @property
+    def general_settings(self):
+        return self._general_settings
+
+    def get_panel_settings(self, name):
+        payload = []
+        for setting in self.general_settings:
+            if setting.panel == name:
+                payload.append(setting)
+        return payload
+
+    # General Emits
     def emit_frontend_load(self, **params):
         '''Emits reload command.'''
         if ('nobroadcast' in params):
             emit('load_all')
         else:
             self._socket.emit('load_all')
-    
+
+    def emit_ui(self, page, **params):
+        '''Emits UI objects'''
+
+        emit_payload = []
+
+        for panel in self.ui_panels:
+            if panel.page == page:
+                settings = []
+                for setting in self.get_panel_settings(panel.name):
+                    settings.append({
+                        'name': setting.name,
+                        'label': setting.label,
+                        'order': setting.order,
+                        'fieldtype': setting.fieldtype
+                    })
+
+                emit_payload.append({
+                    'panel': {
+                        'name': panel.name,
+                        'label': panel.label,
+                        'order': panel.order,
+                    },
+                    'settings': settings
+                })
+
+        if ('nobroadcast' in params):
+            emit('ui', emit_payload)
+        else:
+            self._socket.emit('ui', emit_payload)
+
     def emit_priority_message(self, message, interrupt=False, caller=False, **params):
         ''' Emits message to all clients '''
         emit_payload = {
@@ -902,8 +967,23 @@ class RHUI():
 
         emit('heatgenerator_list', emit_payload)
 
+@dataclass
 class PilotAttribute():
-    def __init__(self, name, label, fieldtype="text"):
-        self.name = name
-        self.label = label
-        self.fieldtype = fieldtype
+    name: str
+    label: str
+    fieldtype: str = "text"
+
+@dataclass
+class UIPanel():
+    name: str
+    label: str
+    page: str
+    order: int = 0
+
+@dataclass
+class GeneralSetting():
+    name: str
+    label: str
+    panel: str = None
+    fieldtype: str = "text"
+    order: int = 0
