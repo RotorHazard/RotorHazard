@@ -1345,7 +1345,7 @@ def on_delete_pilot(data):
 def on_add_profile():
     '''Adds new profile (frequency set) in the database.'''
     source_profile = getCurrentProfile()
-    new_profile = RHData.duplicate_profile(source_profile.id)
+    new_profile = RHData.duplicate_profile(source_profile)
 
     on_set_profile({ 'profile': new_profile.id })
 
@@ -1365,7 +1365,7 @@ def on_alter_profile(data):
 def on_delete_profile():
     '''Delete profile'''
     profile = getCurrentProfile()
-    result = RHData.delete_profile(profile.id)
+    result = RHData.delete_profile(profile)
 
     if result:
         first_profile_id = RHData.get_first_profile().id
@@ -2568,8 +2568,8 @@ def on_resave_laps(data):
         }
 
     # Clear caches
-    RHData.clear_results_heat(heat_id)
     heat = RHData.get_heat(heat_id)
+    RHData.clear_results_heat(heat)
     RHData.clear_results_raceClass(heat.class_id)
     RHData.clear_results_savedRaceMeta(race_id)
 
@@ -2695,7 +2695,7 @@ def calc_heat(heat_id, silent=False):
     heat = RHData.get_heat(heat_id)
 
     if (heat):
-        calc_result = RHData.calc_heat_pilots(heat_id, Results)
+        calc_result = RHData.calc_heat_pilots(heat, Results)
 
         if calc_result['calc_success'] is False:
             logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
@@ -2715,7 +2715,7 @@ def calc_heat(heat_id, silent=False):
         else:
             calc_fn = RHUtils.find_best_slot_node_basic
 
-        RHData.run_auto_frequency(heat_id, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
+        RHData.run_auto_frequency(heat, getCurrentProfile().frequencies, RACE.num_nodes, calc_fn)
 
         if request and not silent:
             emit_heat_plan_result(heat_id, calc_result)
@@ -3651,7 +3651,7 @@ def emit_pilot_data(**params):
             'locked': locked,
         }
 
-        pilot_attributes = RHData.get_pilot_attributes(pilot.id)
+        pilot_attributes = RHData.get_pilot_attributes(pilot)
         for attr in pilot_attributes: 
             pilot_data[attr.name] = attr.value
 

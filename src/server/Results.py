@@ -63,7 +63,7 @@ def build_atomic_results_caches(rhDataObj, params):
     if 'race_id' in params:
         gevent.sleep()
         timing['race'] = monotonic()
-        rhDataObj.get_results_savedRaceMeta(params['race_id'])
+        rhDataObj.get_results_savedRaceMeta(race)
         logger.debug('Race {} results built in {}s'.format(params['race_id'], monotonic() - timing['race']))
 
     # rebuild heat summary

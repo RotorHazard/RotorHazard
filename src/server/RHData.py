@@ -678,6 +678,18 @@ class RHData():
         return freqs
 
     # Pilots
+    def resolve_pilot_from_pilot_or_id(self, pilot_or_id):
+        if isinstance(pilot_or_id, Database.Pilot):
+            return pilot_or_id
+        else:
+            return self._Database.Pilot.query.get(pilot_or_id)
+
+    def resolve_id_from_pilot_or_id(self, pilot_or_id):
+        if isinstance(pilot_or_id, Database.Pilot):
+            return pilot_or_id.id
+        else:
+            return pilot_or_id
+
     def get_pilot(self, pilot_id):
         return self._Database.Pilot.query.get(pilot_id)
 
@@ -760,7 +772,7 @@ class RHData():
             if heatnodes:
                 for heatnode in heatnodes:
                     heat = self.get_heat(heatnode.heat_id)
-                    self.clear_results_heat(heat.id)
+                    self.clear_results_heat(heat)
 
                     if heat.class_id != RHUtils.CLASS_ID_NONE:
                         self.clear_results_raceClass(heat.class_id)
@@ -773,14 +785,14 @@ class RHData():
                 self.clear_results_event()
 
                 for race in race_list:
-                    self.clear_results_savedRaceMeta(race.id)
+                    self.clear_results_savedRaceMeta(race)
 
                 self.commit()
 
         return pilot, race_list
 
-    def set_pilot_used_frequency(self, pilot_id, frequency):
-        pilot = self._Database.Pilot.query.get(pilot_id)
+    def set_pilot_used_frequency(self, pilot_or_id, frequency):
+        pilot = self.resolve_pilot_from_pilot_or_id(pilot_or_id) 
         if pilot:
             if pilot.used_frequencies:
                 used_freqs = json.loads(pilot.used_frequencies)
@@ -807,8 +819,8 @@ class RHData():
         self.commit()
         return True
 
-    def delete_pilot(self, pilot_id):
-        pilot = self._Database.Pilot.query.get(pilot_id)
+    def delete_pilot(self, pilot_or_id):
+        pilot = self.resolve_pilot_from_pilot_or_id(pilot_or_id)
 
         if self.savedPilotRaces_has_pilot(pilot.id):
             logger.info('Refusing to delete pilot {0}: is in use'.format(pilot.id))
@@ -846,49 +858,36 @@ class RHData():
 
     #Pilot Attributes
     def get_pilot_attribute(self, pilot_or_id, name):
-        if isinstance(pilot_or_id, Database.Pilot):
-            pilot_id = pilot_or_id
-        else:
-            pilot_id = self._Database.Pilot.query.get(pilot_or_id).id
-
+        pilot_id = self.resolve_id_from_pilot_or_id(pilot_or_id)
         return self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
 
-    def get_pilot_attribute_value(self, pilot_or_id, name, default_value=False):
-        if isinstance(pilot_or_id, Database.Pilot):
-            pilot_id = pilot_or_id
-        else:
-            pilot_id = self._Database.Pilot.query.get(pilot_or_id).id
+    def get_pilot_attribute_value(self, pilot_or_id, name, default_value=None):
+        attr = self._Database.PilotAttribute.query.filter_by(id=pilot_or_id, name=name).one_or_none()
 
-        attr = self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
-
-        if attr:
+        if attr is not None:
             return attr.value
         else:
             return default_value
 
     def get_pilot_attributes(self, pilot_or_id):
-        if isinstance(pilot_or_id, Database.Pilot):
-            pilot_id = pilot_or_id
-        else:
-            pilot_id = self._Database.Pilot.query.get(pilot_or_id).id
-
+        pilot_id = self.resolve_id_from_pilot_or_id(pilot_or_id)
         return self._Database.PilotAttribute.query.filter_by(id=pilot_id).all()
 
     # Heats
+    def resolve_heat_from_heat_or_id(self, heat_or_id):
+        if isinstance(heat_or_id, Database.Heat):
+            return heat_or_id
+        else:
+            return self._Database.Heat.query.get(heat_or_id)
+
+    def resolve_id_from_heat_or_id(self, heat_or_id):
+        if isinstance(heat_or_id, Database.Heat):
+            return heat_or_id.id
+        else:
+            return heat_or_id
+
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
-
-    def get_heat_object(self, heat_or_id):
-        if isinstance(heat_or_id, Database.Heat):
-            heat = heat_or_id
-        else:
-            heat = self._Database.Heat.query.get(heat_or_id)
-
-        if not heat:
-            logger.error('Unable to locate Heat {}'.format(heat_or_id))
-            return False
-
-        return heat
 
     def get_heats(self):
         return self._Database.Heat.query.all()
@@ -954,9 +953,9 @@ class RHData():
 
         return new_heat
 
-    def duplicate_heat(self, source, **kwargs):
+    def duplicate_heat(self, source_heat_or_id, **kwargs):
         # Add new heat by duplicating an existing one
-        source_heat = self.get_heat(source)
+        source_heat = self.resolve_heat_from_heat_or_id(source_heat_or_id)
 
         if source_heat.note:
             all_heat_notes = [heat.note for heat in self.get_heats()]
@@ -1001,7 +1000,7 @@ class RHData():
             'heat_id': new_heat.id,
             })
 
-        logger.info('Heat {0} duplicated to heat {1}'.format(source, new_heat.id))
+        logger.info('Heat {0} duplicated to heat {1}'.format(source_heat.id, new_heat.id))
 
         return new_heat
 
@@ -1023,7 +1022,7 @@ class RHData():
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
             if not heat.auto_frequency:
-                self.resolve_slot_unset_nodes(heat.id)
+                self.resolve_slot_unset_nodes(heat)
 
         if 'pilot' in data:
             slot.pilot_id = data['pilot']
@@ -1068,9 +1067,9 @@ class RHData():
                         if race_lap.node_index == slot.node_index:
                             race_lap.pilot_id = data['pilot']
 
-                    self.clear_results_savedRaceMeta(race_meta.id)
+                    self.clear_results_savedRaceMeta(race_meta)
 
-                self.clear_results_heat(heat.id)
+                self.clear_results_heat(heat)
 
         if 'pilot' in data or 'class' in data:
             if len(race_list):
@@ -1103,10 +1102,10 @@ class RHData():
 
         return heat, race_list
 
-    def delete_heat(self, heat_id):
+    def delete_heat(self, heat_or_id):
         # Deletes heat. Returns heat-ID if successful, None if not
+        heat = self.resolve_heat_from_heat_or_id(heat_or_id)
         heat_count = self._Database.Heat.query.count()
-        heat = self._Database.Heat.query.get(heat_id)
         if heat and heat_count > 1: # keep at least one heat
             heatnodes = self._Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(self._Database.HeatNode.node_index).all()
 
@@ -1124,7 +1123,7 @@ class RHData():
                 logger.info('Heat {0} deleted'.format(heat.id))
 
                 self._Events.trigger(Evt.HEAT_DELETE, {
-                    'heat_id': heat_id,
+                    'heat_id': heat.id,
                     })
 
                 # if only one heat remaining then set ID to 1
@@ -1171,7 +1170,8 @@ class RHData():
 
         return RHUtils.HEAT_ID_NONE
 
-    def get_next_heat_id(self, current_heat):
+    def get_next_heat_id(self, current_heat_or_id):
+        current_heat = self.resolve_heat_from_heat_or_id(current_heat_or_id)
         if current_heat.class_id:
             current_class = self.get_raceClass(current_heat.class_id)
             heats = self.get_heats_by_class(current_heat.class_id)
@@ -1225,7 +1225,8 @@ class RHData():
 
         return current_heat.id
 
-    def resolve_slot_unset_nodes(self, heat_id):
+    def resolve_slot_unset_nodes(self, heat_or_id):
+        heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
         used_nodes = []
         slots = self.get_heatNodes_by_heat(heat_id)
         for s in slots:
@@ -1240,8 +1241,8 @@ class RHData():
 
         self.commit()
 
-    def calc_heat_pilots(self, heat_id, Results):
-        heat = self._Database.Heat.query.get(heat_id)
+    def calc_heat_pilots(self, heat_or_id, Results):
+        heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
         result = {
              'calc_success': True,
@@ -1250,24 +1251,24 @@ class RHData():
              }
 
         if not heat:
-            logger.error('Requested invalid heat {}'.format(heat_id))
+            logger.error('Requested invalid heat {}'.format(heat.id))
             result['calc_success'] = False
             return result
 
         # skip if heat status confirmed
         if (heat.status == HeatStatus.CONFIRMED):
             result['calc_success'] = None
-            logger.debug("Skipping pilot recalculation: Heat confirmed (heat {})".format(heat_id))
+            logger.debug("Skipping pilot recalculation: Heat confirmed (heat {})".format(heat.id))
             return result
 
         # don't alter if saved races exist
-        race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
+        race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).all()
         if (race_list):
             result['calc_success'] = None
-            logger.debug("Skipping pilot recalculation: Races exist (heat {})".format(heat_id))
+            logger.debug("Skipping pilot recalculation: Races exist (heat {})".format(heat.id))
             return result
 
-        slots = self.get_heatNodes_by_heat(heat_id)
+        slots = self.get_heatNodes_by_heat(heat.id)
         for slot in slots:
             if slot.method == ProgramMethod.NONE:
                 slot.pilot_id = RHUtils.PILOT_ID_NONE
@@ -1345,10 +1346,10 @@ class RHData():
         self.commit()
         return result
 
-    def run_auto_frequency(self, heat_id, current_frequencies, num_nodes, calc_fn):
+    def run_auto_frequency(self, heat_or_id, current_frequencies, num_nodes, calc_fn):
         logger.debug('running auto-frequency with {}'.format(calc_fn))
-        heat = self._Database.Heat.query.get(heat_id)
-        slots = self.get_heatNodes_by_heat(heat_id)
+        heat = self.resolve_heat_from_heat_or_id(heat_or_id)
+        slots = self.get_heatNodes_by_heat(heat.id)
 
         if heat.auto_frequency:
             # clear all node assignments
@@ -1432,7 +1433,7 @@ class RHData():
         return True
 
     def get_results_heat(self, heat_or_id):
-        heat = self.get_heat_object(heat_or_id)
+        heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
         if heat is False:
             return False
@@ -1467,7 +1468,7 @@ class RHData():
         return build
 
     def set_results_heat(self, heat_or_id, token, results):
-        heat = self.get_heat_object(heat_or_id)
+        heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
         if heat is False:
             return False
@@ -1485,7 +1486,7 @@ class RHData():
             return False
 
     def clear_results_heat(self, heat_or_id, token=None):
-        heat = self.get_heat_object(heat_or_id)
+        heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
         if heat is False:
             return False
@@ -1534,6 +1535,18 @@ class RHData():
         return True
 
     # HeatNodes
+    #def resolve_heatNode_from_heatNode_or_id(self, heatNode_or_id):
+    #    if isinstance(heatNode_or_id, Database.HeatNode):
+    #        return heatNode_or_id
+    #    else:
+    #        return self._Database.HeatNode.query.get(heatNode_or_id)
+
+    #def resolve_id_from_heatNode_or_id(self, heatNode_or_id):
+    #    if isinstance(heatNode_or_id, Database.HeatNode):
+    #        return heatNode_or_id.id
+    #    else:
+    #        return heatNode_or_id
+    
     def get_heatNodes(self):
         return self._Database.HeatNode.query.all()
 
@@ -1591,20 +1604,20 @@ class RHData():
         return True
 
     # Race Classes
+    def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):
+        if isinstance(raceClass_or_id, Database.RaceClass):
+            return raceClass_or_id
+        else:
+            return self._Database.RaceClass.query.get(raceClass_or_id)
+
+    def resolve_id_from_raceClass_or_id(self, raceClass_or_id):
+        if isinstance(raceClass_or_id, Database.RaceClass):
+            return raceClass_or_id.id
+        else:
+            return raceClass_or_id
+    
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
-
-    def get_raceClass_object(self, race_class_or_id):
-        if isinstance(race_class_or_id, Database.RaceClass):
-            race_class = race_class_or_id
-        else:
-            race_class = self._Database.RaceClass.query.get(race_class_or_id)
-
-        if not race_class:
-            logger.error('Unable to locate RaceClass {}'.format(race_class_or_id))
-            return False
-
-        return race_class
 
     def get_raceClasses(self):
         return self._Database.RaceClass.query.all()
@@ -1638,8 +1651,8 @@ class RHData():
 
         return new_race_class
 
-    def duplicate_raceClass(self, source_class_id):
-        source_class = self.get_raceClass(source_class_id)
+    def duplicate_raceClass(self, source_class_or_id):
+        source_class = self.resolve_raceClass_from_raceClass_or_id(source_class_or_id)
 
         if source_class.name:
             all_class_names = [race_class.name for race_class in self.get_raceClasses()]
@@ -1669,8 +1682,8 @@ class RHData():
         self._Database.DB.session.flush()
         self._Database.DB.session.refresh(new_class)
 
-        for heat in self._Database.Heat.query.filter_by(class_id=source_class_id).all():
-            self.duplicate_heat(heat.id, dest_class=new_class.id)
+        for heat in self._Database.Heat.query.filter_by(class_id=source_class.id).all():
+            self.duplicate_heat(heat, dest_class=new_class.id)
 
         self.commit()
 
@@ -1715,17 +1728,17 @@ class RHData():
             if len(race_list):
                 self._PageCache.set_valid(False)
                 self.clear_results_event()
-                self.clear_results_raceClass(race_class.id)
+                self.clear_results_raceClass(race_class)
 
             if 'class_format' in data:
                 if int(data['class_format']):
                     for race_meta in race_list:
                         race_meta.format_id = data['class_format']
-                        self.clear_results_savedRaceMeta(race_meta.id)
+                        self.clear_results_savedRaceMeta(race_meta)
 
                     heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
                     for heat in heats:
-                        self.clear_results_heat(heat.id)
+                        self.clear_results_heat(heat)
 
         self.commit()
 
@@ -1737,8 +1750,8 @@ class RHData():
 
         return race_class, race_list
 
-    def delete_raceClass(self, class_id):
-        race_class = self._Database.RaceClass.query.get(class_id)
+    def delete_raceClass(self, raceClass_or_id):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
         has_race = self.savedRaceMetas_has_raceClass(race_class.id)
 
@@ -1761,8 +1774,8 @@ class RHData():
 
             return True
 
-    def get_results_raceClass(self, race_class_or_id):
-        race_class = self.get_raceClass_object(race_class_or_id)
+    def get_results_raceClass(self, raceClass_or_id):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
         if race_class is False:
             return False
@@ -1796,8 +1809,8 @@ class RHData():
         self.set_results_raceClass(race_class, token, build)
         return build
 
-    def get_ranking_raceClass(self, race_class_or_id):
-        race_class = self.get_raceClass_object(race_class_or_id)
+    def get_ranking_raceClass(self, raceClass_or_id):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
         if race_class is False:
             return False
@@ -1831,8 +1844,8 @@ class RHData():
         self.set_ranking_raceClass(race_class, token, build)
         return build
 
-    def set_results_raceClass(self, race_class_or_id, token, results):
-        race_class = self.get_raceClass_object(race_class_or_id)
+    def set_results_raceClass(self, raceClass_or_id, token, results):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
         if race_class is False:
             return False
@@ -1853,8 +1866,8 @@ class RHData():
             logger.error('Ignoring cache write for class {}: status is invalid'.format(race_class.id))
             return False
 
-    def set_ranking_raceClass(self, race_class_or_id, token, results):
-        race_class = self.get_raceClass_object(race_class_or_id)
+    def set_ranking_raceClass(self, raceClass_or_id, token, results):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
         if race_class is False:
             return False
@@ -1875,8 +1888,8 @@ class RHData():
             logger.error('Ignoring ranking writefor class {}: status is invalid'.format(race_class.id))
             return False
 
-    def clear_results_raceClass(self, race_class_or_id, token=None):
-        race_class = self.get_raceClass_object(race_class_or_id)
+    def clear_results_raceClass(self, raceClass_or_id, token=None):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
         if race_class is False:
             return False
@@ -1895,8 +1908,8 @@ class RHData():
         self.commit()
         return race_class
 
-    def clear_ranking_raceClass(self, race_class_or_id, token=None):
-        race_class = self.get_raceClass_object(race_class_or_id)
+    def clear_ranking_raceClass(self, raceClass_or_id, token=None):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
         if race_class is False:
             return False
@@ -1939,6 +1952,18 @@ class RHData():
         return True
 
     # Profiles
+    def resolve_profile_from_profile_or_id(self, profile_or_id):
+        if isinstance(profile_or_id, Database.Profiles):
+            return profile_or_id
+        else:
+            return self._Database.Pilot.query.get(profile_or_id)
+
+    def resolve_id_from_profile_or_id(self, profile_or_id):
+        if isinstance(profile_or_id, Database.Profiles):
+            return profile_or_id.id
+        else:
+            return profile_or_id
+
     def get_profile(self, profile_id):
         return self._Database.Profiles.query.get(profile_id)
 
@@ -1969,8 +1994,8 @@ class RHData():
         self._Database.DB.session.add(new_profile)
         self.commit()
 
-    def duplicate_profile(self, source_profile_id):
-        source_profile = self.get_profile(source_profile_id)
+    def duplicate_profile(self, source_profile_or_id):
+        source_profile = self.resolve_profile_from_profile_or_id(source_profile_or_id)
 
         all_profile_names = [profile.name for profile in self.get_profiles()]
 
@@ -2019,14 +2044,14 @@ class RHData():
 
         return profile
 
-    def delete_profile(self, profile_id):
+    def delete_profile(self, profile_or_id):
         if len(self.get_profiles()) > 1: # keep one profile
-            profile = self._Database.Profiles.query.get(profile_id)
+            profile = self.resolve_profile_from_profile_or_id(profile_or_id)
             self._Database.DB.session.delete(profile)
             self.commit()
 
             self._Events.trigger(Evt.PROFILE_DELETE, {
-                'profile_id': profile_id,
+                'profile_id': profile.id,
                 })
 
             return True
@@ -2059,6 +2084,18 @@ class RHData():
         return True
 
     # Formats
+    def resolve_raceFormat_from_raceFormat_or_id(self, raceFormat_or_id):
+        if isinstance(raceFormat_or_id, Database.RaceFormat):
+            return raceFormat_or_id
+        else:
+            return self._Database.Pilot.query.get(raceFormat_or_id)
+
+    def resolve_id_from_raceFormat_or_id(self, raceFormat_or_id):
+        if isinstance(raceFormat_or_id, Database.RaceFormat):
+            return raceFormat_or_id.id
+        else:
+            return raceFormat_or_id
+
     def get_raceFormat(self, raceFormat_id):
         return self._Database.RaceFormat.query.get(raceFormat_id)
 
@@ -2111,8 +2148,8 @@ class RHData():
         self._Database.DB.session.add(race_format)
         self.commit()
 
-    def duplicate_raceFormat(self, source_format_id):
-        source_format = self.get_raceFormat(source_format_id)
+    def duplicate_raceFormat(self, source_format_or_id):
+        source_format = self.resolve_raceFormat_from_raceFormat_or_id(source_format_or_id)
 
         all_format_names = [raceformat.name for raceformat in self.get_raceFormats()]
 
@@ -2191,17 +2228,17 @@ class RHData():
                 self.clear_results_event()
 
                 for race in race_list:
-                    self.clear_results_savedRaceMeta(race.id)
+                    self.clear_results_savedRaceMeta(race)
 
                 classes = self._Database.RaceClass.query.filter_by(format_id=race_format.id).all()
 
                 for race_class in classes:
-                    self.clear_results_raceClass(race_class.id)
+                    self.clear_results_raceClass(race_class)
 
                     heats = self._Database.Heat.query.filter_by(class_id=race_class.id).all()
 
                     for heat in heats:
-                        self.clear_results_heat(heat.id)
+                        self.clear_results_heat(heat)
 
                 self.commit()
 
@@ -2425,20 +2462,20 @@ class RHData():
         return True
 
     # Race Meta
+    def resolve_savedRaceMeta_from_savedRaceMeta_or_id(self, savedRaceMeta_or_id):
+        if isinstance(savedRaceMeta_or_id, Database.SavedRaceMeta):
+            return savedRaceMeta_or_id
+        else:
+            return self._Database.Pilot.query.get(savedRaceMeta_or_id)
+
+    def resolve_id_from_savedRaceMeta_or_id(self, savedRaceMeta_or_id):
+        if isinstance(savedRaceMeta_or_id, Database.SavedRaceMeta):
+            return savedRaceMeta_or_id.id
+        else:
+            return savedRaceMeta_or_id
+
     def get_savedRaceMeta(self, raceMeta_id):
         return self._Database.SavedRaceMeta.query.get(raceMeta_id)
-
-    def get_savedRaceMeta_object(self, race_or_id):
-        if isinstance(race_or_id, Database.SavedRaceMeta):
-            race = race_or_id
-        else:
-            race = self._Database.SavedRaceMeta.query.get(race_or_id)
-
-        if not race:
-            logger.error('Unable to locate Race {}'.format(race_or_id))
-            return False
-
-        return race
 
     def get_savedRaceMeta_by_heat_round(self, heat_id, round_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
@@ -2481,8 +2518,8 @@ class RHData():
 
         return new_race
 
-    def reassign_savedRaceMeta_heat(self, race_id, new_heat_id):
-        race_meta = self._Database.SavedRaceMeta.query.get(race_id)
+    def reassign_savedRaceMeta_heat(self, savedRaceMeta_or_id, new_heat_id):
+        race_meta = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
         old_heat_id = race_meta.heat_id
         old_heat = self.get_heat(old_heat_id)
@@ -2509,7 +2546,7 @@ class RHData():
         # reassign pilots to pilotRaces
         new_pilots = self.get_heatNodes_by_heat(new_heat_id)
         for np in new_pilots:
-            for pilot_race in self.get_savedPilotRaces_by_savedRaceMeta(race_id):
+            for pilot_race in self.get_savedPilotRaces_by_savedRaceMeta(race_meta.id):
                 if pilot_race.node_index == np.node_index:
                     pilot_race.pilot_id = np.pilot_id
                     for lap in self.get_savedRaceLaps_by_savedPilotRace(pilot_race.id):
@@ -2541,28 +2578,28 @@ class RHData():
         # cache cleaning
         self._PageCache.set_valid(False)
 
-        self.clear_results_heat(new_heat.id)
-        self.clear_results_heat(old_heat.id)
+        self.clear_results_heat(new_heat)
+        self.clear_results_heat(old_heat)
 
         if old_format_id != new_format_id:
             self.clear_results_savedRaceMeta(race_meta)
 
         if old_heat.class_id != new_heat.class_id:
-            self.clear_results_raceClass(new_class.id)
-            self.clear_results_raceClass(old_class.id)
+            self.clear_results_raceClass(new_class)
+            self.clear_results_raceClass(old_class)
 
         self.commit()
 
         self._Events.trigger(Evt.RACE_ALTER, {
-            'race_id': race_id,
+            'race_id': race_meta.id,
             })
 
-        logger.info('Race {0} reassigned to heat {1}'.format(race_id, new_heat_id))
+        logger.info('Race {0} reassigned to heat {1}'.format(race_meta.id, new_heat_id))
 
         return race_meta, new_heat
 
-    def get_results_savedRaceMeta(self, race_or_id):
-        race = self.get_savedRaceMeta_object(race_or_id)
+    def get_results_savedRaceMeta(self, savedRaceMeta_or_id):
+        race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
         if race is False:
             return False
@@ -2592,8 +2629,8 @@ class RHData():
         self.set_results_savedRaceMeta(race, token, build)
         return build
 
-    def set_results_savedRaceMeta(self, race_or_id, token, results):
-        race = self.get_savedRaceMeta_object(race_or_id)
+    def set_results_savedRaceMeta(self, savedRaceMeta_or_id, token, results):
+        race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
         if race is False:
             return False
@@ -2614,8 +2651,8 @@ class RHData():
             logger.error('Ignoring cache write for race {}: status is invalid'.format(race.id))
             return False
 
-    def clear_results_savedRaceMeta(self, race_or_id, token=None):
-        race = self.get_savedRaceMeta_object(race_or_id)
+    def clear_results_savedRaceMeta(self, savedRaceMeta_or_id, token=None):
+        race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
         if race is False:
             return False
