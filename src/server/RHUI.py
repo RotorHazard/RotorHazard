@@ -53,6 +53,7 @@ class RHUI():
 
     # Pilot Attributes
     def register_pilot_attribute(self, name, label, fieldtype="text"):
+        # TODO: prevent duplicate attributes
         self._pilot_attributes.append(PilotAttribute(name, label, fieldtype))
         return self._pilot_attributes
 
@@ -62,6 +63,7 @@ class RHUI():
 
     # UI Panels
     def register_ui_panel(self, name, label, page, order=0):
+        # TODO: prevent duplicate panels
         self.ui_panels.append(UIPanel(name, label, page, order))
         return self.ui_panels
 
@@ -71,6 +73,7 @@ class RHUI():
 
     # General Settings
     def register_general_setting(self, name, label, panel=None, fieldtype="text", order=0):
+        # TODO: prevent duplicate settings
         self._general_settings.append(GeneralSetting(name, label, panel, fieldtype, order))
         return self._general_settings
 
@@ -106,7 +109,8 @@ class RHUI():
                         'name': setting.name,
                         'label': setting.label,
                         'order': setting.order,
-                        'fieldtype': setting.fieldtype
+                        'fieldtype': setting.fieldtype,
+                        'value': self._rhdata.get_option(setting.name, None)
                     })
 
                 emit_payload.append({
