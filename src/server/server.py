@@ -63,6 +63,7 @@ import RHData
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 import RHUI
+import RHAPI
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.InvokeFuncQueue import InvokeFuncQueue
@@ -188,6 +189,8 @@ RHUI = RHUI.RHUI(APP, SOCKET_IO, Events, RACE, LAST_RACE, SENSORS, CLUSTER, RHDa
 RHUI.__ = Language.__ # Pass translation shortcut
 
 RHData.late_init(PageCache, Language) # Give RHData additional references
+
+RHAPI = RHAPI.RHAPI(RHData, RHUI, Language)
 
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
@@ -4210,9 +4213,8 @@ for plugin in plugin_modules:
         plugin.initialize(
             Events=Events,
             __=__,
-            RHUI=RHUI,
-            SOCKET_IO=SOCKET_IO, # Temporary and not supported. Treat as deprecated.
-            )
+            RHAPI=RHAPI,
+        )
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
