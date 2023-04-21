@@ -50,7 +50,7 @@ class ActionEffect():
         self.effectFn = effectFn
         self.fields = fields
 
-def initializeEventActions(Events, RHData, RACE, emit_phonetic_text, emit_priority_message, \
+def initializeEventActions(Events, RHData, RACE, RHUI, \
                            Language, logger):
     eventActionsObj = None
     try:
@@ -71,7 +71,7 @@ def initializeEventActions(Events, RHData, RACE, emit_phonetic_text, emit_priori
 
             text = text.replace('%HEAT%', heat.displayname())
 
-            emit_phonetic_text(text)
+            RHUI.emit_phonetic_text(text)
 
         @catchLogExceptionsWrapper
         def messageEffect(action, args):
@@ -87,7 +87,7 @@ def initializeEventActions(Events, RHData, RACE, emit_phonetic_text, emit_priori
 
             text = text.replace('%HEAT%', heat.displayname())
 
-            emit_priority_message(text)
+            RHUI.emit_priority_message(text)
 
         @catchLogExceptionsWrapper
         def alertEffect(action, args):
@@ -103,7 +103,7 @@ def initializeEventActions(Events, RHData, RACE, emit_phonetic_text, emit_priori
 
             text = text.replace('%HEAT%', heat.displayname())
 
-            emit_priority_message(text, True)
+            RHUI.emit_priority_message(text, True)
 
         eventActionsObj.registerEffect(
             ActionEffect(

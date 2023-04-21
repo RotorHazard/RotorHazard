@@ -15,6 +15,7 @@ import json
 import glob
 import RHUtils
 import random
+from six import unichr
 import Database
 import Results
 from monotonic import monotonic
@@ -24,6 +25,7 @@ from Database import ProgramMethod, HeatAdvanceType, HeatStatus
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
+    TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
     def __init__(self, Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME):
         self._Database = Database

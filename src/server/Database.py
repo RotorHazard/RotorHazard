@@ -10,8 +10,8 @@ from flask_sqlalchemy import SQLAlchemy
 DB = SQLAlchemy()
 
 # Language placeholder (Overwritten after module init)
-def __(*_args):
-    pass
+def __(*args):
+    return args
 
 #
 # Database Models
