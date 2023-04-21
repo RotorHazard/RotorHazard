@@ -623,7 +623,7 @@ class RHUI():
                 'locked': locked,
             }
 
-            pilot_attributes = self._rhdata.get_pilot_attributes(pilot.id)
+            pilot_attributes = self._rhdata.get_pilot_attributes(pilot)
             for attr in pilot_attributes: 
                 pilot_data[attr.name] = attr.value
 
