@@ -1271,7 +1271,7 @@ def on_delete_pilot(data):
 def on_add_profile():
     '''Adds new profile (frequency set) in the database.'''
     source_profile = RACE.profile
-    new_profile = RHData.duplicate_profile(source_profile.id)
+    new_profile = RHData.duplicate_profile(source_profile)
 
     on_set_profile({ 'profile': new_profile.id })
 
@@ -1291,7 +1291,7 @@ def on_alter_profile(data):
 def on_delete_profile():
     '''Delete profile'''
     profile = RACE.profile
-    result = RHData.delete_profile(profile.id)
+    result = RHData.delete_profile(profile)
 
     if result:
         first_profile_id = RHData.get_first_profile().id
@@ -2498,8 +2498,8 @@ def on_resave_laps(data):
         }
 
     # Clear caches
-    RHData.clear_results_heat(heat_id)
     heat = RHData.get_heat(heat_id)
+    RHData.clear_results_heat(heat)
     RHData.clear_results_raceClass(heat.class_id)
     RHData.clear_results_savedRaceMeta(race_id)
 
@@ -2664,7 +2664,7 @@ def calc_heat(heat_id, silent=False):
     heat = RHData.get_heat(heat_id)
 
     if (heat):
-        calc_result = RHData.calc_heat_pilots(heat_id, Results)
+        calc_result = RHData.calc_heat_pilots(heat, Results)
 
         if calc_result['calc_success'] is False:
             logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
@@ -2684,7 +2684,7 @@ def calc_heat(heat_id, silent=False):
         else:
             calc_fn = RHUtils.find_best_slot_node_basic
 
-        RHData.run_auto_frequency(heat_id, RACE.profile.frequencies, RACE.num_nodes, calc_fn)
+        RHData.run_auto_frequency(heat, RACE.profile.frequencies, RACE.num_nodes, calc_fn)
 
         if request and not silent:
             emit_heat_plan_result(heat_id, calc_result)
@@ -3111,7 +3111,6 @@ def get_pilotrace(data):
             'enter_at': pilotrace.enter_at,
             'exit_at': pilotrace.exit_at,
         })
-
 
 @SOCKET_IO.on('check_bpillfw_file')
 @catchLogExceptionsWrapper
@@ -4472,7 +4471,8 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
         except Exception:
             logger.exception('Error checking IMDTabler:  ')
 else:
-    logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+    logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+
 # VRx Controllers
 vrx_manager = VRxControlManager(RHData, Events, RACE, INTERFACE.nodes, Language, legacy_config=Config.VRX_CONTROL)
 Events.on(Evt.CLUSTER_JOIN, 'VRx', vrx_manager.kill)

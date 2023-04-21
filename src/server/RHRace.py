@@ -36,6 +36,10 @@ class RHRace():
         # concluded
         self.end_time = 0 # Monotonic, updated when race is stopped
         # leaderboard/cache
+        self.lap_results = None # current race results
+        self.lap_cacheStatus = None # whether cache is valid
+        self.lap_status_message = '' # Race status message (winner, team info)
+
         self.results = None # current race results
         self.cacheStatus = None # whether cache is valid
         self.status_message = '' # Race status message (winner, team info)
@@ -90,6 +94,109 @@ class RHRace():
                 return True
         return False
 
+    def build_laps_list(self, RHData, CLUSTER):
+        current_laps = []
+        for node_idx in range(self.num_nodes):
+            node_laps = []
+            fastest_lap_time = float("inf")
+            fastest_lap_index = None
+            last_lap_id = -1
+            for idx, lap in enumerate(self.node_laps[node_idx]):
+                if (not lap.get('invalid', False)) and \
+                    ((not lap['deleted']) or lap.get('late_lap', False)):
+                    if not lap.get('late_lap', False):
+                        last_lap_id = lap_number = lap['lap_number']
+                        if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
+                            lap_number += 1
+                        splits = self.get_splits(RHData, CLUSTER, node_idx, lap['lap_number'], True)
+                        if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
+                            fastest_lap_time = lap['lap_time']
+                            fastest_lap_index = idx
+                    else:
+                        lap_number = -1
+                        splits = []
+    
+                    node_laps.append({
+                        'lap_index': idx,
+                        'lap_number': lap_number,
+                        'lap_raw': lap['lap_time'],
+                        'lap_time': lap['lap_time_formatted'],
+                        'lap_time_stamp': lap['lap_time_stamp'],
+                        'splits': splits,
+                        'late_lap': lap.get('late_lap', False)
+                    })
+
+            splits = self.get_splits(RHData, CLUSTER, node_idx, last_lap_id+1, False)
+            if splits:
+                node_laps.append({
+                    'lap_number': last_lap_id+1,
+                    'lap_time': '',
+                    'lap_time_stamp': 0,
+                    'splits': splits
+                })
+
+            pilot_data = None
+            if node_idx in self.node_pilots:
+                pilot = RHData.get_pilot(self.node_pilots[node_idx])
+                if pilot:
+                    pilot_data = {
+                        'id': pilot.id,
+                        'name': pilot.name,
+                        'callsign': pilot.callsign
+                    }
+
+            current_laps.append({
+                'laps': node_laps,
+                'fastest_lap_index': fastest_lap_index,
+                'pilot': pilot_data,
+                'finished_flag': self.get_node_finished_flag(node_idx)
+            })
+        current_laps = {
+            'node_index': current_laps
+        }
+        return current_laps
+
+    def get_splits(self, RHData, CLUSTER, node_idx, lap_id, lapCompleted):
+        splits = []
+        if CLUSTER:
+            for secondary_index in range(len(CLUSTER.secondaries)):
+                if CLUSTER.isSplitSecondaryAvailable(secondary_index):
+                    split = RHData.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
+                    if split:
+                        split_payload = {
+                            'split_id': secondary_index,
+                            'split_raw': split.split_time,
+                            'split_time': split.split_time_formatted,
+                            'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
+                        }
+                    elif lapCompleted:
+                        split_payload = {
+                            'split_id': secondary_index,
+                            'split_time': '-'
+                        }
+                    else:
+                        break
+                    splits.append(split_payload)
+        return splits
+
+    def get_lap_results(self, RHData, CLUSTER=None):
+        if 'data_ver' in self.lap_cacheStatus and 'build_ver' in self.lap_cacheStatus:
+            token = self.lap_cacheStatus['data_ver']
+            if self.lap_cacheStatus['data_ver'] == self.lap_cacheStatus['build_ver']:
+                # cache hit
+                return self.lap_results
+            # else: cache miss
+        else:
+            logger.error('Laps cache has invalid status')
+            token = monotonic()
+            self.clear_lap_results(token)
+
+        # cache rebuild
+        # logger.debug('Building current race results')
+        build = self.build_laps_list(RHData, CLUSTER)
+        self.set_lap_results(token, build)
+        return build
+
     def get_results(self, RHData):
         if 'data_ver' in self.cacheStatus and 'build_ver' in self.cacheStatus:
             token = self.cacheStatus['data_ver']
@@ -103,7 +210,7 @@ class RHRace():
             self.clear_results(token)
 
         # cache rebuild
-        logger.debug('Building current race results')
+        # logger.debug('Building current race results')
         build = Results.calc_leaderboard(RHData, current_race=self, current_profile=self.profile)
         self.set_results(token, build)
         return build
@@ -126,6 +233,12 @@ class RHRace():
         self.set_team_results(token, build)
         return build
 
+    def set_lap_results(self, token, lap_results):
+        if self.lap_cacheStatus['data_ver'] == token:
+            self.lap_cacheStatus['build_ver'] = token
+            self.lap_results = lap_results
+        return True
+
     def set_results(self, token, results):
         if self.cacheStatus['data_ver'] == token:
             self.cacheStatus['build_ver'] = token
@@ -138,10 +251,24 @@ class RHRace():
             self.team_results = results
         return True
 
+    def clear_lap_results(self, token=None):
+        if token is None:
+            token = monotonic()
+
+        self.lap_cacheStatus = {
+            'data_ver': token,
+            'build_ver': None
+        }
+        return True
+
     def clear_results(self, token=None):
         if token is None:
             token = monotonic()
 
+        self.lap_cacheStatus = {
+            'data_ver': token,
+            'build_ver': None
+        }
         self.cacheStatus = {
             'data_ver': token,
             'build_ver': None
