@@ -5530,7 +5530,6 @@ def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
         RHData.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
 
     APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
-    logger.info("Running http server at port " + str(port_val))
     init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP, {
         'color': ColorVal.ORANGE,
@@ -5561,7 +5560,7 @@ def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
                                port_val, pageStr, cmdStr)
 
     try:
-        port_val = 12345
+        logger.info("Running http server at port " + str(port_val))
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
         logger.info("Server is shutting down")
