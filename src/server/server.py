@@ -874,7 +874,7 @@ def on_set_frequency(data):
     freqs["f"][node_index] = frequency
     logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
 
-    RHData.alter_profile({
+    profile = RHData.alter_profile({
         'profile_id': profile.id,
         'frequencies': freqs
         })
@@ -958,7 +958,7 @@ def set_all_frequencies(freqs):
         profile_freqs["f"][idx] = freqs["f"][idx]
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
-    RHData.alter_profile({
+    profile = RHData.alter_profile({
         'profile_id': profile.id,
         'frequencies': profile_freqs
         })

@@ -1131,24 +1131,23 @@ class RHData():
                 # if only one heat remaining then set ID to 1
                 if heat_count == 2 and self._RACE.race_status == RaceStatus.READY:
                     try:
-                        heat_obj = self._Database.Heat.query.first()
-                        if heat_obj.id != 1:
-                            heatnodes = self._Database.HeatNode.query.filter_by(heat_id=heat_obj.id).order_by(self._Database.HeatNode.node_index).all()
+                        heat = self._Database.Heat.query.first()
+                        if heat.id != 1:
+                            heatnodes = self._Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(self._Database.HeatNode.node_index).all()
 
-                            if not self.savedRaceMetas_has_heat(heat_obj.id):
-                                logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat_obj.id))
-                                heat_obj.id = 1
+                            if not self.savedRaceMetas_has_heat(heat.id):
+                                logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat.id))
+                                heat.id = 1
                                 for heatnode in heatnodes:
-                                    heatnode.heat_id = heat_obj.id
+                                    heatnode.heat_id = heat.id
                                 self.commit()
                                 self._RACE.current_heat = 1
-                                heat_id = 1  # set value so heat data is updated
                             else:
-                                logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
+                                logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat.id))
                     except Exception as ex:
                         logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
-                return heat_id
+                return heat.id
         else:
             logger.info('Refusing to delete only heat')
             return None
