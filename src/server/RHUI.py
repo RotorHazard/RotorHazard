@@ -21,35 +21,19 @@ def __(*args):
     return args
 
 class RHUI():
-    def __init__(self, APP, SOCKET_IO, Events, RACE, LAST_RACE, SENSORS, CLUSTER, RHData, Language, PageCache, LED_Manager, VRX_Manager):
+    def __init__(self, APP, SOCKET_IO, RHManager, Events):
         self._app = APP
         self._socket = SOCKET_IO
+        self._rhmanager = RHManager
         self._events = Events
-        self._race = RACE
-        self._last_race = LAST_RACE
-        self._sensors = SENSORS
-        self._cluster = CLUSTER
-        self._rhdata = RHData
-        self._language = Language
-        self._pagecache = PageCache
-        self._led_manager = LED_Manager
-        self._vrx_manager = VRX_Manager
 
         self._interface = None
-        self._export_manager = None
-        self._heatgenerate_manager = None
+        self._rhmanager.export_manager = None
+        self._rhmanager.heat_generate_manager = None
 
         self._pilot_attributes = []
         self._ui_panels = []
         self._general_settings = []
-
-    def late_init(self, INTERFACE, CLUSTER, LED_Manager, VRX_Manager, export_manager, heatgenerate_manager):
-        self._interface = INTERFACE
-        self._cluster = CLUSTER
-        self._led_manager = LED_Manager
-        self._vrx_manager = VRX_Manager
-        self._export_manager = export_manager
-        self._heatgenerate_manager = heatgenerate_manager
 
     # Pilot Attributes
     def register_pilot_attribute(self, name, label, fieldtype="text"):
@@ -110,7 +94,7 @@ class RHUI():
                         'label': setting.label,
                         'order': setting.order,
                         'fieldtype': setting.fieldtype,
-                        'value': self._rhdata.get_option(setting.name, None)
+                        'value': self._rhmanager.rhdata.get_option(setting.name, None)
                     })
 
                 emit_payload.append({
@@ -153,17 +137,17 @@ class RHUI():
 
     def emit_race_status(self, **params):
         '''Emits race status.'''
-        race_format = self._race.format
+        race_format = self._rhmanager.race.format
 
         emit_payload = {
-                'race_status': self._race.race_status,
-                'race_format_id': self._race.format.id if hasattr(self._race.format, 'id') else None,
+                'race_status': self._rhmanager.race.race_status,
+                'race_format_id': self._rhmanager.race.format.id if hasattr(self._rhmanager.race.format, 'id') else None,
                 'race_mode': race_format.race_mode,
                 'race_time_sec': race_format.race_time_sec,
                 'race_staging_tones': race_format.staging_tones,
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
-                'pi_starts_at_s': self._race.start_time_monotonic,
-                'pi_staging_at_s': self._race.stage_time_monotonic,
+                'pi_starts_at_s': self._rhmanager.race.start_time_monotonic,
+                'pi_staging_at_s': self._rhmanager.race.stage_time_monotonic,
             }
         if ('nobroadcast' in params):
             emit('race_status', emit_payload)
@@ -172,10 +156,10 @@ class RHUI():
 
     def emit_frequency_data(self, **params):
         '''Emits node data.'''
-        profile_freqs = json.loads(self._race.profile.frequencies)
+        profile_freqs = json.loads(self._rhmanager.race.profile.frequencies)
 
         fdata = []
-        for idx in range(self._race.num_nodes):
+        for idx in range(self._rhmanager.race.num_nodes):
             fdata.append({
                     'band': profile_freqs["b"][idx],
                     'channel': profile_freqs["c"][idx],
@@ -192,7 +176,7 @@ class RHUI():
             self._socket.emit('frequency_data', emit_payload)
 
             # send changes to LiveTime
-            for n in range(self._race.num_nodes):
+            for n in range(self._rhmanager.race.num_nodes):
                 # if session.get('LiveTime', False):
                 self._socket.emit('frequency_set', {
                     'node': n,
@@ -216,7 +200,7 @@ class RHUI():
     def emit_environmental_data(self, **params):
         '''Emits environmental data.'''
         emit_payload = []
-        for sensor in self._sensors:
+        for sensor in self._rhmanager.sensors:
             emit_payload.append({sensor.name: sensor.getReadings()})
 
         if ('nobroadcast' in params):
@@ -226,13 +210,13 @@ class RHUI():
 
     def emit_enter_and_exit_at_levels(self, **params):
         '''Emits enter-at and exit-at levels for nodes.'''
-        profile = self._race.profile
+        profile = self._rhmanager.race.profile
         profile_enter_ats = json.loads(profile.enter_ats)
         profile_exit_ats = json.loads(profile.exit_ats)
 
         emit_payload = {
-            'enter_at_levels': profile_enter_ats["v"][:self._race.num_nodes],
-            'exit_at_levels': profile_exit_ats["v"][:self._race.num_nodes]
+            'enter_at_levels': profile_enter_ats["v"][:self._rhmanager.race.num_nodes],
+            'exit_at_levels': profile_exit_ats["v"][:self._rhmanager.race.num_nodes]
         }
         if ('nobroadcast' in params):
             emit('enter_and_exit_at_levels', emit_payload)
@@ -241,16 +225,16 @@ class RHUI():
 
     def emit_cluster_status(self, **params):
         '''Emits cluster status information.'''
-        if self._cluster:
+        if self._rhmanager.cluster:
             if ('nobroadcast' in params):
-                emit('cluster_status', self._cluster.getClusterStatusInfo())
+                emit('cluster_status', self._rhmanager.cluster.getClusterStatusInfo())
             else:
-                self._socket.emit('cluster_status', self._cluster.getClusterStatusInfo())
+                self._socket.emit('cluster_status', self._rhmanager.cluster.getClusterStatusInfo())
 
     def emit_start_thresh_lower_amount(self, **params):
         '''Emits current start_thresh_lower_amount.'''
         emit_payload = {
-            'start_thresh_lower_amount': self._rhdata.get_optionInt('startThreshLowerAmount'),
+            'start_thresh_lower_amount': self._rhmanager.rhdata.get_optionInt('startThreshLowerAmount'),
         }
         if ('nobroadcast' in params):
             emit('start_thresh_lower_amount', emit_payload)
@@ -260,7 +244,7 @@ class RHUI():
     def emit_start_thresh_lower_duration(self, **params):
         '''Emits current start_thresh_lower_duration.'''
         emit_payload = {
-            'start_thresh_lower_duration': self._rhdata.get_optionInt('startThreshLowerDuration'),
+            'start_thresh_lower_duration': self._rhmanager.rhdata.get_optionInt('startThreshLowerDuration'),
         }
         if ('nobroadcast' in params):
             emit('start_thresh_lower_duration', emit_payload)
@@ -269,11 +253,11 @@ class RHUI():
 
     def emit_node_tuning(self, **params):
         '''Emits node tuning values.'''
-        tune_val = self._race.profile
+        tune_val = self._rhmanager.race.profile
         emit_payload = {
-            'profile_ids': [profile.id for profile in self._rhdata.get_profiles()],
-            'profile_names': [profile.name for profile in self._rhdata.get_profiles()],
-            'current_profile': self._rhdata.get_optionInt('currentProfile'),
+            'profile_ids': [profile.id for profile in self._rhmanager.rhdata.get_profiles()],
+            'profile_names': [profile.name for profile in self._rhmanager.rhdata.get_profiles()],
+            'current_profile': self._rhmanager.rhdata.get_optionInt('currentProfile'),
             'profile_name': tune_val.name,
             'profile_description': tune_val.description
         }
@@ -285,8 +269,8 @@ class RHUI():
     def emit_language(self, **params):
         '''Emits race status.'''
         emit_payload = {
-                'language': self._rhdata.get_option("currentLanguage"),
-                'languages': self._language.getLanguages()
+                'language': self._rhmanager.rhdata.get_option("currentLanguage"),
+                'languages': self._rhmanager.language.getLanguages()
             }
         if ('nobroadcast' in params):
             emit('language', emit_payload)
@@ -296,7 +280,7 @@ class RHUI():
     def emit_all_languages(self, **params):
         '''Emits full language dictionary.'''
         emit_payload = {
-                'languages': self._language.getAllLanguages()
+                'languages': self._rhmanager.language.getAllLanguages()
             }
         if ('nobroadcast' in params):
             emit('all_languages', emit_payload)
@@ -334,7 +318,7 @@ class RHUI():
     def emit_event_actions(self, **params):
         '''Emits event actions.'''
         emit_payload = {
-            'actions': self._rhdata.get_option('actions'),
+            'actions': self._rhmanager.rhdata.get_option('actions'),
         }
         if ('nobroadcast' in params):
             emit('event_actions', emit_payload)
@@ -344,8 +328,8 @@ class RHUI():
     def emit_min_lap(self, **params):
         '''Emits current minimum lap.'''
         emit_payload = {
-            'min_lap': self._rhdata.get_optionInt('MinLapSec'),
-            'min_lap_behavior': self._rhdata.get_optionInt("MinLapBehavior")
+            'min_lap': self._rhmanager.rhdata.get_optionInt('MinLapSec'),
+            'min_lap_behavior': self._rhmanager.rhdata.get_optionInt("MinLapBehavior")
         }
         if ('nobroadcast' in params):
             emit('min_lap', emit_payload)
@@ -357,10 +341,10 @@ class RHUI():
         emit_payload = {
             'current': {}
         }
-        emit_payload['current'] = self._race.build_laps_list(self._rhdata, self._cluster)
+        emit_payload['current'] = self._rhmanager.race.get_lap_results()
 
-        if self._last_race is not None:
-            emit_payload['last_race'] = self._last_race.build_laps_list(self._rhdata, self._cluster)
+        if self._rhmanager.last_race is not None:
+            emit_payload['last_race'] = self._rhmanager.last_race.get_lap_results()
 
         if ('nobroadcast' in params):
             emit('current_laps', emit_payload)
@@ -370,13 +354,13 @@ class RHUI():
     def emit_race_list(self, **params):
         '''Emits race listing'''
         heats = {}
-        for heat in self._rhdata.get_heats():
-            if self._rhdata.savedRaceMetas_has_heat(heat.id):
+        for heat in self._rhmanager.rhdata.get_heats():
+            if self._rhmanager.rhdata.savedRaceMetas_has_heat(heat.id):
                 rounds = {}
-                for race in self._rhdata.get_savedRaceMetas_by_heat(heat.id):
+                for race in self._rhmanager.rhdata.get_savedRaceMetas_by_heat(heat.id):
                     pilotraces = []
-                    for pilotrace in self._rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
-                        pilot_data = self._rhdata.get_pilot(pilotrace.pilot_id)
+                    for pilotrace in self._rhmanager.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
+                        pilot_data = self._rhmanager.rhdata.get_pilot(pilotrace.pilot_id)
                         if pilot_data:
                             nodepilot = pilot_data.callsign
                         else:
@@ -424,7 +408,7 @@ class RHUI():
     def emit_result_data_thread(self, params, sid=None):
         with self._app.test_request_context():
 
-            emit_payload = self._pagecache.get_cache()
+            emit_payload = self._rhmanager.pagecache.get_cache()
 
             if 'nobroadcast' in params and sid != None:
                 emit('result_data', emit_payload, namespace='/', room=sid)
@@ -438,41 +422,44 @@ class RHUI():
             'current': {}
         }
 
-        if self._race.current_heat is RHUtils.HEAT_ID_NONE:
+        if self._rhmanager.race.current_heat is RHUtils.HEAT_ID_NONE:
             emit_payload['current']['displayname'] = __("Practice")
         else:
-            emit_payload['current']['displayname'] = self._rhdata.get_heat(self._race.current_heat).displayname()
+            emit_payload['current']['displayname'] = self._rhmanager.rhdata.get_heat(self._rhmanager.race.current_heat).displayname()
 
         # current
-        if self._race.current_heat is RHUtils.HEAT_ID_NONE:
+        if self._rhmanager.race.current_heat is RHUtils.HEAT_ID_NONE:
             emit_payload['current']['displayname'] = __("Practice")
         else:
-            emit_payload['current']['displayname'] = self._rhdata.get_heat(self._race.current_heat).displayname()
+            emit_payload['current']['displayname'] = self._rhmanager.rhdata.get_heat(self._rhmanager.race.current_heat).displayname()
 
-        emit_payload['current']['heat'] = self._race.current_heat
-        emit_payload['current']['status_msg'] = self._race.status_message
+        emit_payload['current']['heat'] = self._rhmanager.race.current_heat
+        emit_payload['current']['status_msg'] = self._rhmanager.race.status_message
 
-        emit_payload['current']['leaderboard'] = self._race.get_results(self._rhdata)
+        emit_payload['current']['leaderboard'] = self._rhmanager.race.get_results()
 
-        if self._race.format.team_racing_mode:
-            emit_payload['current']['team_leaderboard'] = self._race.get_team_results(self._rhdata)
+        if self._rhmanager.race.format.team_racing_mode:
+            emit_payload['current']['team_leaderboard'] = self._rhmanager.race.get_team_results(self._rhmanager.rhdata)
 
         # cache
-        if self._last_race is not None:
+        if self._rhmanager.last_race is not None:
             emit_payload['last_race'] = {}
 
-            if self._last_race.current_heat is RHUtils.HEAT_ID_NONE:
+            if self._rhmanager.last_race.current_heat is RHUtils.HEAT_ID_NONE:
                 emit_payload['last_race']['displayname'] = __("Practice")
             else:
-                emit_payload['last_race']['displayname'] = self._rhdata.get_heat(self._last_race.current_heat).displayname()
+                if (self._rhmanager.last_race):
+                    heat = self._rhmanager.rhdata.get_heat(self._rhmanager.last_race.current_heat)
+                    if heat:
+                        emit_payload['last_race']['displayname'] = self._rhmanager.rhdata.get_heat(self._rhmanager.last_race.current_heat).displayname()
 
-            emit_payload['last_race']['heat'] = self._last_race.current_heat
-            emit_payload['last_race']['status_msg'] = self._last_race.status_message
+            emit_payload['last_race']['heat'] = self._rhmanager.last_race.current_heat
+            emit_payload['last_race']['status_msg'] = self._rhmanager.last_race.status_message
 
-            emit_payload['last_race']['leaderboard'] = self._last_race.get_results(self._rhdata)
+            emit_payload['last_race']['leaderboard'] = self._rhmanager.last_race.get_results()
 
-            if self._last_race.format.team_racing_mode:
-                emit_payload['last_race']['team_leaderboard'] = self._last_race.get_team_results(self._rhdata)
+            if self._rhmanager.last_race.format.team_racing_mode:
+                emit_payload['last_race']['team_leaderboard'] = self._rhmanager.last_race.get_team_results(self._rhmanager.rhdata)
 
         if ('nobroadcast' in params):
             emit('leaderboard', emit_payload)
@@ -483,7 +470,7 @@ class RHUI():
         '''Emits heat data.'''
 
         heats = []
-        for heat in self._rhdata.get_heats():
+        for heat in self._rhmanager.rhdata.get_heats():
             current_heat = {}
             current_heat['id'] = heat.id
             current_heat['note'] = heat.note
@@ -495,7 +482,7 @@ class RHUI():
 
             current_heat['slots'] = []
 
-            heatNodes = self._rhdata.get_heatNodes_by_heat(heat.id)
+            heatNodes = self._rhmanager.rhdata.get_heatNodes_by_heat(heat.id)
             def heatNodeSorter(x):
                 if not x.node_index:
                     return -1
@@ -519,7 +506,7 @@ class RHUI():
 
             current_heat['dynamic'] = is_dynamic
 
-            current_heat['locked'] = bool(self._rhdata.savedRaceMetas_has_heat(heat.id))
+            current_heat['locked'] = bool(self._rhmanager.rhdata.savedRaceMetas_has_heat(heat.id))
             heats.append(current_heat)
 
         emit_payload = {
@@ -535,7 +522,7 @@ class RHUI():
     def emit_class_data(self, **params):
         '''Emits class data.'''
         current_classes = []
-        for race_class in self._rhdata.get_raceClasses():
+        for race_class in self._rhmanager.rhdata.get_raceClasses():
             current_class = {}
             current_class['id'] = race_class.id
             current_class['name'] = race_class.name
@@ -546,7 +533,7 @@ class RHUI():
             current_class['rounds'] = race_class.rounds
             current_class['heat_advance'] = race_class.heatAdvanceType
             current_class['order'] = race_class.order
-            current_class['locked'] = self._rhdata.savedRaceMetas_has_raceClass(race_class.id)
+            current_class['locked'] = self._rhmanager.rhdata.savedRaceMetas_has_raceClass(race_class.id)
             current_classes.append(current_class)
 
         emit_payload = {
@@ -562,7 +549,7 @@ class RHUI():
     def emit_format_data(self, **params):
         '''Emits format data.'''
         formats = []
-        for race_format in self._rhdata.get_raceFormats():
+        for race_format in self._rhmanager.rhdata.get_raceFormats():
             raceformat = {}
             raceformat['id'] = race_format.id
             raceformat['name'] = race_format.name
@@ -577,7 +564,7 @@ class RHUI():
             raceformat['win_condition'] = race_format.win_condition
             raceformat['team_racing_mode'] = 1 if race_format.team_racing_mode else 0
             raceformat['start_behavior'] = race_format.start_behavior
-            raceformat['locked'] = self._rhdata.savedRaceMetas_has_raceFormat(race_format.id)
+            raceformat['locked'] = self._rhmanager.rhdata.savedRaceMetas_has_raceFormat(race_format.id)
             formats.append(raceformat)
 
         emit_payload = {
@@ -602,15 +589,15 @@ class RHUI():
                 'fieldtype': attr.fieldtype
             })
 
-        for pilot in self._rhdata.get_pilots():
+        for pilot in self._rhmanager.rhdata.get_pilots():
             opts_str = '' # create team-options string for each pilot, with current team selected
-            for name in self._rhdata.TEAM_NAMES_LIST:
+            for name in self._rhmanager.rhdata.TEAM_NAMES_LIST:
                 opts_str += '<option value="' + name + '"'
                 if name == pilot.team:
                     opts_str += ' selected'
                 opts_str += '>' + name + '</option>'
 
-            locked = self._rhdata.savedPilotRaces_has_pilot(pilot.id)
+            locked = self._rhmanager.rhdata.savedPilotRaces_has_pilot(pilot.id)
 
             pilot_data = {
                 'pilot_id': pilot.id,
@@ -623,23 +610,23 @@ class RHUI():
                 'locked': locked,
             }
 
-            pilot_attributes = self._rhdata.get_pilot_attributes(pilot)
+            pilot_attributes = self._rhmanager.rhdata.get_pilot_attributes(pilot)
             for attr in pilot_attributes: 
                 pilot_data[attr.name] = attr.value
 
-            if self._led_manager.isEnabled():
+            if self._rhmanager.led_manager.isEnabled():
                 pilot_data['color'] = pilot.color
 
             pilots_list.append(pilot_data)
 
-            if self._rhdata.get_option('pilotSort') == 'callsign':
+            if self._rhmanager.rhdata.get_option('pilotSort') == 'callsign':
                 pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
             else:
                 pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
 
         emit_payload = {
             'pilots': pilots_list,
-            'pilotSort': self._rhdata.get_option('pilotSort'),
+            'pilotSort': self._rhmanager.rhdata.get_option('pilotSort'),
             'attributes': attrs
         }
         if ('nobroadcast' in params):
@@ -653,10 +640,10 @@ class RHUI():
 
     def emit_current_heat(self, **params):
         '''Emits the current heat.'''
-        heat_data = self._rhdata.get_heat(self._race.current_heat)
+        heat_data = self._rhmanager.rhdata.get_heat(self._rhmanager.race.current_heat)
 
         heatNode_data = {}
-        for idx in range(self._race.num_nodes):
+        for idx in range(self._rhmanager.race.num_nodes):
             heatNode_data[idx] = {
                 'pilot_id': None,
                 'callsign': None,
@@ -670,7 +657,7 @@ class RHUI():
         if (heat_data):
             heat_class = heat_data.class_id
 
-            for heatNode in self._rhdata.get_heatNodes_by_heat(self._race.current_heat):
+            for heatNode in self._rhmanager.rhdata.get_heatNodes_by_heat(self._rhmanager.race.current_heat):
                 if heatNode.node_index is not None:
                     heatNode_data[heatNode.node_index] = {
                         'pilot_id': heatNode.pilot_id,
@@ -679,24 +666,24 @@ class RHUI():
                         'pilotColor': None,
                         'activeColor': None
                         }
-                    pilot = self._rhdata.get_pilot(heatNode.pilot_id)
+                    pilot = self._rhmanager.rhdata.get_pilot(heatNode.pilot_id)
                     if pilot:
                         heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
                         heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
 
-                    if self._led_manager.isEnabled():
-                        heatNode_data[heatNode.node_index]['activeColor'] = self._led_manager.getDisplayColor(heatNode.node_index)
+                    if self._rhmanager.led_manager.isEnabled():
+                        heatNode_data[heatNode.node_index]['activeColor'] = self._rhmanager.led_manager.getDisplayColor(heatNode.node_index)
 
             if heat_data.class_id != RHUtils.CLASS_ID_NONE:
-                heat_format = self._rhdata.get_raceClass(heat_data.class_id).format_id
+                heat_format = self._rhmanager.rhdata.get_raceClass(heat_data.class_id).format_id
 
         else:
             # Practice mode
             heat_class = RHUtils.CLASS_ID_NONE
 
-            profile_freqs = json.loads(self._race.profile.frequencies)
+            profile_freqs = json.loads(self._rhmanager.race.profile.frequencies)
 
-            for idx in range(self._race.num_nodes):
+            for idx in range(self._rhmanager.race.num_nodes):
                 if (profile_freqs["b"][idx] and profile_freqs["c"][idx]):
                     callsign = profile_freqs["b"][idx] + str(profile_freqs["c"][idx])
                 else:
@@ -706,11 +693,11 @@ class RHUI():
                     'callsign': callsign,
                     'heatNodeColor': None,
                     'pilotColor': None,
-                    'activeColor': self._led_manager.getDisplayColor(idx)
+                    'activeColor': self._rhmanager.led_manager.getDisplayColor(idx)
                 }
 
         emit_payload = {
-            'current_heat': self._race.current_heat,
+            'current_heat': self._rhmanager.race.current_heat,
             'heatNodes': heatNode_data,
             'heat_format': heat_format,
             'heat_class': heat_class
@@ -723,7 +710,7 @@ class RHUI():
     def emit_phonetic_data(self, pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, node_index=None, **params):
         '''Emits phonetic data.'''
         raw_time = lap_time
-        phonetic_time = RHUtils.phonetictime_format(lap_time, self._rhdata.get_option('timeFormatPhonetic'))
+        phonetic_time = RHUtils.phonetictime_format(lap_time, self._rhmanager.rhdata.get_option('timeFormatPhonetic'))
 
         emit_payload = {
             'lap': lap_id,
@@ -735,13 +722,13 @@ class RHUI():
             'node_finished': node_finished,
         }
 
-        pilot = self._rhdata.get_pilot(pilot_id)
+        pilot = self._rhmanager.rhdata.get_pilot(pilot_id)
         if pilot:
             emit_payload['pilot'] = pilot.phonetic
             emit_payload['callsign'] = pilot.callsign
             emit_payload['pilot_id'] = pilot.id
         elif node_index is not None:
-            profile_freqs = json.loads(self._race.profile.frequencies)
+            profile_freqs = json.loads(self._rhmanager.race.profile.frequencies)
 
             if (profile_freqs["b"][node_index] and profile_freqs["c"][node_index]):
                 callsign = profile_freqs["b"][node_index] + str(profile_freqs["c"][node_index])
@@ -789,9 +776,9 @@ class RHUI():
 
     def emit_phonetic_split(self, pilot_id, split_id, split_time, **params):
         '''Emits phonetic split-pass data.'''
-        pilot = self._rhdata.get_pilot(pilot_id)
+        pilot = self._rhmanager.rhdata.get_pilot(pilot_id)
         phonetic_name = pilot.phonetic or pilot.callsign
-        phonetic_time = RHUtils.phonetictime_format(split_time, self._rhdata.get_option('timeFormatPhonetic'))
+        phonetic_time = RHUtils.phonetictime_format(split_time, self._rhmanager.rhdata.get_option('timeFormatPhonetic'))
         emit_payload = {
             'pilot_name': phonetic_name,
             'split_id': str(split_id+1),
@@ -850,7 +837,7 @@ class RHUI():
             self._socket.emit('cluster_connect_change', emit_payload)
 
     def emit_callouts(self):
-        callouts = self._rhdata.get_option('voiceCallouts')
+        callouts = self._rhmanager.rhdata.get_option('voiceCallouts')
         if callouts:
             emit('callouts', json.loads(callouts))
 
@@ -860,8 +847,8 @@ class RHUI():
             try:                          # get IMDTabler version string
                 imdtabler_ver = subprocess.check_output( \
                                     'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).decode("utf-8").rstrip()
-                profile_freqs = json.loads(self._race.profile.frequencies)
-                fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:self._race.num_nodes]))  # remove duplicates
+                profile_freqs = json.loads(self._rhmanager.race.profile.frequencies)
+                fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:self._rhmanager.race.num_nodes]))  # remove duplicates
                 fs_list = []
                 for val in fi_list:  # convert list of integers to list of strings
                     if val > 0:      # drop any zero entries
@@ -893,9 +880,9 @@ class RHUI():
     def emit_imdtabler_rating(self, IMDTABLER_JAR_NAME):
         '''Emits IMDTabler rating for current profile frequencies.'''
         try:
-            profile_freqs = json.loads(self._race.profile.frequencies)
+            profile_freqs = json.loads(self._rhmanager.race.profile.frequencies)
             imd_val = None
-            fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:self._race.num_nodes]))  # remove duplicates
+            fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:self._rhmanager.race.num_nodes]))  # remove duplicates
             fs_list = []
             for val in fi_list:  # convert list of integers to list of strings
                 if val > 0:      # drop any zero entries
@@ -917,17 +904,17 @@ class RHUI():
         payload = {
             'node': node.index,
             'frequency': node.frequency,
-            'timestamp': lap_time_stamp + self._race.start_time_epoch_ms
+            'timestamp': lap_time_stamp + self._rhmanager.race.start_time_epoch_ms
         }
-        self._cluster.emit_cluster_msg_to_primary(self._socket, 'pass_record', payload)
+        self._rhmanager.cluster.emit_cluster_msg_to_primary(self._socket, 'pass_record', payload)
 
     def emit_vrx_list(self, *_args, **params):
         ''' get list of connected VRx devices '''
-        if self._vrx_manager.isEnabled():
+        if self._rhmanager.vrx_manager.isEnabled():
             emit_payload = {
                 'enabled': True,
-                'controllers': self._vrx_manager.getControllerStatus(),
-                'devices': self._vrx_manager.getAllDeviceStatus()
+                'controllers': self._rhmanager.vrx_manager.getControllerStatus(),
+                'devices': self._rhmanager.vrx_manager.getAllDeviceStatus()
             }
         else:
             emit_payload = {
@@ -948,7 +935,7 @@ class RHUI():
             'exporters': []
         }
 
-        for name, exp in self._export_manager.getExporters().items():
+        for name, exp in self._rhmanager.export_manager.getExporters().items():
             emit_payload['exporters'].append({
                 'name': name,
                 'label': exp.label
@@ -963,7 +950,7 @@ class RHUI():
             'generators': []
         }
 
-        for name, exp in self._heatgenerate_manager.getGenerators().items():
+        for name, exp in self._rhmanager.heat_generate_manager.getGenerators().items():
             emit_payload['generators'].append({
                 'name': name,
                 'label': exp.label

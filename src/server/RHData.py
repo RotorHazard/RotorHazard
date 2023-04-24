@@ -27,22 +27,16 @@ class RHData():
     _OptionsCache = {} # Local Python cache for global settings
     TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
-    def __init__(self, Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME):
+    def __init__(self, Database, Events, RHManager, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME):
         self._Database = Database
         self._Events = Events
-        self._RACE = RACE
+        self._rhmanager = RHManager
         self._SERVER_API = SERVER_API
         self._DB_FILE_NAME = DB_FILE_NAME
         self._DB_BKP_DIR_NAME = DB_BKP_DIR_NAME
-        self._PageCache = None
-        self._Language = None
-
-    def late_init(self, PageCache, Language):
-        self._PageCache = PageCache
-        self._Language = Language
 
     def __(self, *args, **kwargs):
-        return self._Language.__(*args, **kwargs)
+        return self._rhmanager.language.__(*args, **kwargs)
 
     # Integrity Checking
     def check_integrity(self):
@@ -384,8 +378,8 @@ class RHData():
                 for profile in profiles_query_data:
                     if 'frequencies' in profile and profile['frequencies']:
                         freqs = json.loads(profile['frequencies'])
-                        freqs["b"] = [None for _i in range(max(self._RACE.num_nodes,8))]
-                        freqs["c"] = [None for _i in range(max(self._RACE.num_nodes,8))]
+                        freqs["b"] = [None for _i in range(max(self._rhmanager.Race.num_nodes,8))]
+                        freqs["c"] = [None for _i in range(max(self._rhmanager.Race.num_nodes,8))]
                         profile['frequencies'] = json.dumps(freqs)
 
             recover_status['stage_0'] = True
@@ -492,7 +486,7 @@ class RHData():
                                 'seed_id': None
                             })
 
-                        self._RACE.current_heat = self.get_first_heat().id
+                        self._rhmanager.Race.current_heat = self.get_first_heat().id
                     else:
                         self.reset_heats()
 
@@ -564,8 +558,8 @@ class RHData():
                     self.restore_table(self._Database.Profiles, profiles_query_data, defaults={
                             'name': self.__("Migrated Profile"),
                             'frequencies': json.dumps(self.default_frequencies()),
-                            'enter_ats': json.dumps({'v': [None for _i in range(max(self._RACE.num_nodes,8))]}),
-                            'exit_ats': json.dumps({'v': [None for _i in range(max(self._RACE.num_nodes,8))]}),
+                            'enter_ats': json.dumps({'v': [None for _i in range(max(self._rhmanager.Race.num_nodes,8))]}),
+                            'exit_ats': json.dumps({'v': [None for _i in range(max(self._rhmanager.Race.num_nodes,8))]}),
                             'f_ratio': None
                         })
                 else:
@@ -659,7 +653,7 @@ class RHData():
 
     def default_frequencies(self):
         '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
-        if self._RACE.num_nodes < 5:
+        if self._rhmanager.Race.num_nodes < 5:
             freqs = {
                 'b': ['R', 'R', 'R', 'R'],
                 'c': [1, 3, 6, 7],
@@ -672,7 +666,7 @@ class RHData():
                 'f': [5658, 5695, 5760, 5800, 5880, 5917]
             }
 
-        while self._RACE.num_nodes > len(freqs['f']):
+        while self._rhmanager.Race.num_nodes > len(freqs['f']):
             freqs['b'].append(None)
             freqs['c'].append(None)
             freqs['f'].append(RHUtils.FREQUENCY_ID_NONE)
@@ -760,7 +754,7 @@ class RHData():
 
         self.commit()
 
-        self._RACE.clear_results()  # refresh current leaderboard
+        self._rhmanager.Race.clear_results()  # refresh current leaderboard
 
         self._Events.trigger(Evt.PILOT_ALTER, {
             'pilot_id': pilot_id,
@@ -783,7 +777,7 @@ class RHData():
                         race_list.append(race)
 
             if len(race_list):
-                self._PageCache.set_valid(False)
+                self._rhmanager.pagecache.set_valid(False)
                 self.clear_results_event()
 
                 for race in race_list:
@@ -836,7 +830,7 @@ class RHData():
 
             logger.info('Pilot {0} deleted'.format(pilot.id))
 
-            self._RACE.clear_results() # refresh leaderboard
+            self._rhmanager.Race.clear_results() # refresh leaderboard
 
             return True
 
@@ -850,7 +844,7 @@ class RHData():
 
     def reset_pilots(self):
         self.clear_pilots()
-        for node in range(self._RACE.num_nodes):
+        for node in range(self._rhmanager.Race.num_nodes):
             self.add_pilot({
                 'callsign': 'Callsign {0}'.format(node+1),
                 'name': 'Pilot {0} Name'.format(node+1)
@@ -930,7 +924,7 @@ class RHData():
         self._Database.DB.session.refresh(new_heat)
 
         # Add heatnodes
-        for node_index in range(self._RACE.num_nodes):
+        for node_index in range(self._rhmanager.Race.num_nodes):
             new_heatNode = self._Database.HeatNode(
                 heat_id=new_heat.id,
                 node_index=node_index,
@@ -1016,7 +1010,7 @@ class RHData():
             slot = self._Database.HeatNode.query.get(slot_id)
 
         if 'note' in data:
-            self._PageCache.set_valid(False)
+            self._rhmanager.pagecache.set_valid(False)
             heat.note = data['note']
         if 'class' in data:
             old_class_id = heat.class_id
@@ -1079,7 +1073,7 @@ class RHData():
                     self.clear_results_raceClass(heat.class_id)
 
                 self.clear_results_event()
-                self._PageCache.set_valid(False)
+                self._rhmanager.pagecache.set_valid(False)
 
         self.commit()
 
@@ -1088,17 +1082,17 @@ class RHData():
             })
 
         # update current race
-        if heat_id == self._RACE.current_heat:
-            self._RACE.node_pilots = {}
-            self._RACE.node_teams = {}
+        if heat_id == self._rhmanager.Race.current_heat:
+            self._rhmanager.Race.node_pilots = {}
+            self._rhmanager.Race.node_teams = {}
             for heatNode in self.get_heatNodes_by_heat(heat_id):
-                self._RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+                self._rhmanager.Race.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
                 if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                    self._RACE.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
+                    self._rhmanager.Race.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
                 else:
-                    self._RACE.node_teams[heatNode.node_index] = None
-            self._RACE.clear_results() # refresh leaderboard
+                    self._rhmanager.Race.node_teams[heatNode.node_index] = None
+            self._rhmanager.Race.clear_results() # refresh leaderboard
 
         logger.info('Heat {0} altered with {1}'.format(heat_id, data))
 
@@ -1113,7 +1107,7 @@ class RHData():
 
             has_race = self.savedRaceMetas_has_heat(heat.id)
 
-            if has_race or (self._RACE.current_heat == heat.id and self._RACE.race_status != RaceStatus.READY):
+            if has_race or (self._rhmanager.Race.current_heat == heat.id and self._rhmanager.Race.race_status != RaceStatus.READY):
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
                 return None
             else:
@@ -1129,7 +1123,7 @@ class RHData():
                     })
 
                 # if only one heat remaining then set ID to 1
-                if heat_count == 2 and self._RACE.race_status == RaceStatus.READY:
+                if heat_count == 2 and self._rhmanager.Race.race_status == RaceStatus.READY:
                     try:
                         heat = self._Database.Heat.query.first()
                         if heat.id != 1:
@@ -1141,7 +1135,7 @@ class RHData():
                                 for heatnode in heatnodes:
                                     heatnode.heat_id = heat.id
                                 self.commit()
-                                self._RACE.current_heat = 1
+                                self._rhmanager.Race.current_heat = 1
                             else:
                                 logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat.id))
                     except Exception as ex:
@@ -1550,7 +1544,7 @@ class RHData():
         self.clear_heats()
         if not nofill:
             self.add_heat()
-            self._RACE.current_heat = self.get_first_heat().id
+            self._rhmanager.Race.current_heat = self.get_first_heat().id
         logger.info('Database heats reset')
 
     def reset_heat_plans(self):
@@ -1747,11 +1741,11 @@ class RHData():
 
         if 'class_name' in data:
             if len(race_list):
-                self._PageCache.set_valid(False)
+                self._rhmanager.pagecache.set_valid(False)
 
         if 'class_format' in data or 'win_condition' in data:
             if len(race_list):
-                self._PageCache.set_valid(False)
+                self._rhmanager.pagecache.set_valid(False)
                 self.clear_results_event()
                 self.clear_results_raceClass(race_class)
 
@@ -2027,7 +2021,7 @@ class RHData():
         if source_profile.name:
             new_profile_name = RHUtils.uniqueName(source_profile.name, all_profile_names)
         else:
-            new_profile_name = RHUtils.uniqueName(self._Language.__('New Profile'), all_profile_names)
+            new_profile_name = RHUtils.uniqueName(self._rhmanager.language.__('New Profile'), all_profile_names)
 
         new_profile = self._Database.Profiles(
             name=new_profile_name,
@@ -2095,7 +2089,7 @@ class RHData():
         new_freqs = self.default_frequencies()
 
         template = {}
-        template["v"] = [None for _i in range(max(self._RACE.num_nodes,8))]
+        template["v"] = [None for _i in range(max(self._rhmanager.Race.num_nodes,8))]
 
         self.add_profile({
             'name': self.__("Default"),
@@ -2181,7 +2175,7 @@ class RHData():
         if source_format.name:
             new_format_name = RHUtils.uniqueName(source_format.name, all_format_names)
         else:
-            new_format_name = RHUtils.uniqueName(self._Language.__('New Format'), all_format_names)
+            new_format_name = RHUtils.uniqueName(self._rhmanager.language.__('New Format'), all_format_names)
 
         new_format = self._Database.RaceFormat(
             name=new_format_name,
@@ -2210,7 +2204,7 @@ class RHData():
 
         # Prevent active race format change
         if self.get_optionInt('currentFormat') == data['format_id'] and \
-            self._RACE.race_status != RaceStatus.READY:
+            self._rhmanager.Race.race_status != RaceStatus.READY:
             logger.warning('Preventing race format alteration: race in progress')
             return False, False
 
@@ -2241,7 +2235,7 @@ class RHData():
 
         self.commit()
 
-        self._RACE.clear_results() # refresh leaderboard
+        self._rhmanager.Race.clear_results() # refresh leaderboard
 
         race_list = []
 
@@ -2249,7 +2243,7 @@ class RHData():
             race_list = self._Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
 
             if len(race_list):
-                self._PageCache.set_valid(False)
+                self._rhmanager.pagecache.set_valid(False)
                 self.clear_results_event()
 
                 for race in race_list:
@@ -2278,7 +2272,7 @@ class RHData():
     def delete_raceFormat(self, format_id):
         # Prevent active race format change
         if self.get_optionInt('currentFormat') == format_id and \
-            self._RACE.race_status != RaceStatus.READY:
+            self._rhmanager.Race.race_status != RaceStatus.READY:
             logger.warning('Preventing race format deletion: race in progress')
             return False
 
@@ -2601,7 +2595,7 @@ class RHData():
         self.commit()
 
         # cache cleaning
-        self._PageCache.set_valid(False)
+        self._rhmanager.pagecache.set_valid(False)
 
         self.clear_results_heat(new_heat)
         self.clear_results_heat(old_heat)

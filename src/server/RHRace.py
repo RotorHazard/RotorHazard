@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class RHRace():
     '''Class to hold race management variables.'''
-    def __init__(self):
+    def __init__(self, RHManager):
         # internal references
-        self._rhdata = None
+        self._rhmanager = RHManager
         # setup/options
         self.num_nodes = 0
         self.current_heat = 1 # heat ID
@@ -94,7 +94,7 @@ class RHRace():
                 return True
         return False
 
-    def build_laps_list(self, RHData, CLUSTER):
+    def build_laps_list(self):
         current_laps = []
         for node_idx in range(self.num_nodes):
             node_laps = []
@@ -108,7 +108,7 @@ class RHRace():
                         last_lap_id = lap_number = lap['lap_number']
                         if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
                             lap_number += 1
-                        splits = self.get_splits(RHData, CLUSTER, node_idx, lap['lap_number'], True)
+                        splits = self.get_splits(node_idx, lap['lap_number'], True)
                         if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
                             fastest_lap_time = lap['lap_time']
                             fastest_lap_index = idx
@@ -126,7 +126,7 @@ class RHRace():
                         'late_lap': lap.get('late_lap', False)
                     })
 
-            splits = self.get_splits(RHData, CLUSTER, node_idx, last_lap_id+1, False)
+            splits = self.get_splits(node_idx, last_lap_id+1, False)
             if splits:
                 node_laps.append({
                     'lap_number': last_lap_id+1,
@@ -137,7 +137,7 @@ class RHRace():
 
             pilot_data = None
             if node_idx in self.node_pilots:
-                pilot = RHData.get_pilot(self.node_pilots[node_idx])
+                pilot = self._rhmanager.rhdata.get_pilot(self.node_pilots[node_idx])
                 if pilot:
                     pilot_data = {
                         'id': pilot.id,
@@ -156,12 +156,12 @@ class RHRace():
         }
         return current_laps
 
-    def get_splits(self, RHData, CLUSTER, node_idx, lap_id, lapCompleted):
+    def get_splits(self, node_idx, lap_id, lapCompleted):
         splits = []
-        if CLUSTER:
-            for secondary_index in range(len(CLUSTER.secondaries)):
-                if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-                    split = RHData.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
+        if self._rhmanager.cluster:
+            for secondary_index in range(len(self._rhmanager.cluster.secondaries)):
+                if self._rhmanager.cluster.isSplitSecondaryAvailable(secondary_index):
+                    split = self._rhmanager.rhdata.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
                     if split:
                         split_payload = {
                             'split_id': secondary_index,
@@ -179,7 +179,7 @@ class RHRace():
                     splits.append(split_payload)
         return splits
 
-    def get_lap_results(self, RHData, CLUSTER=None):
+    def get_lap_results(self):
         if 'data_ver' in self.lap_cacheStatus and 'build_ver' in self.lap_cacheStatus:
             token = self.lap_cacheStatus['data_ver']
             if self.lap_cacheStatus['data_ver'] == self.lap_cacheStatus['build_ver']:
@@ -193,11 +193,11 @@ class RHRace():
 
         # cache rebuild
         # logger.debug('Building current race results')
-        build = self.build_laps_list(RHData, CLUSTER)
+        build = self.build_laps_list()
         self.set_lap_results(token, build)
         return build
 
-    def get_results(self, RHData):
+    def get_results(self):
         if 'data_ver' in self.cacheStatus and 'build_ver' in self.cacheStatus:
             token = self.cacheStatus['data_ver']
             if self.cacheStatus['data_ver'] == self.cacheStatus['build_ver']:
@@ -211,11 +211,11 @@ class RHRace():
 
         # cache rebuild
         # logger.debug('Building current race results')
-        build = Results.calc_leaderboard(RHData, current_race=self, current_profile=self.profile)
+        build = Results.calc_leaderboard(self._rhmanager.rhdata, current_race=self, current_profile=self.profile)
         self.set_results(token, build)
         return build
 
-    def get_team_results(self, RHData):
+    def get_team_results(self):
         if 'data_ver' in self.team_cacheStatus and 'build_ver' in self.team_cacheStatus:
             token = self.team_cacheStatus['data_ver']
             if self.team_cacheStatus['data_ver'] == self.team_cacheStatus['build_ver']:
@@ -229,7 +229,7 @@ class RHRace():
 
         # cache rebuild
         logger.debug('Building current race results')
-        build = Results.calc_team_leaderboard(self, RHData)
+        build = Results.calc_team_leaderboard(self, self._rhmanager.rhdata)
         self.set_team_results(token, build)
         return build
 
@@ -289,96 +289,11 @@ class RHRace():
         }
         return True
 
-    def build_laps_list(self, RHData, CLUSTER):
-        current_laps = []
-        for node_idx in range(self.num_nodes):
-            node_laps = []
-            fastest_lap_time = float("inf")
-            fastest_lap_index = None
-            last_lap_id = -1
-            for idx, lap in enumerate(self.node_laps[node_idx]):
-                if (not lap.get('invalid', False)) and \
-                    ((not lap['deleted']) or lap.get('late_lap', False)):
-                    if not lap.get('late_lap', False):
-                        last_lap_id = lap_number = lap['lap_number']
-                        if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
-                            lap_number += 1
-                        splits = self.get_splits(RHData, CLUSTER, node_idx, lap['lap_number'], True)
-                        if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
-                            fastest_lap_time = lap['lap_time']
-                            fastest_lap_index = idx
-                    else:
-                        lap_number = -1
-                        splits = []
-
-                    node_laps.append({
-                        'lap_index': idx,
-                        'lap_number': lap_number,
-                        'lap_raw': lap['lap_time'],
-                        'lap_time': lap['lap_time_formatted'],
-                        'lap_time_stamp': lap['lap_time_stamp'],
-                        'splits': splits,
-                        'late_lap': lap.get('late_lap', False)
-                    })
-
-            splits = self.get_splits(RHData, CLUSTER, node_idx, last_lap_id+1, False)
-            if splits:
-                node_laps.append({
-                    'lap_number': last_lap_id+1,
-                    'lap_time': '',
-                    'lap_time_stamp': 0,
-                    'splits': splits
-                })
-
-            pilot_data = None
-            if node_idx in self.node_pilots:
-                pilot = RHData.get_pilot(self.node_pilots[node_idx])
-                if pilot:
-                    pilot_data = {
-                        'id': pilot.id,
-                        'name': pilot.name,
-                        'callsign': pilot.callsign
-                    }
-
-            current_laps.append({
-                'laps': node_laps,
-                'fastest_lap_index': fastest_lap_index,
-                'pilot': pilot_data,
-                'finished_flag': self.get_node_finished_flag(node_idx)
-            })
-        current_laps = {
-            'node_index': current_laps
-        }
-        return current_laps
-
-    def get_splits(self, RHData, CLUSTER, node_idx, lap_id, lapCompleted):
-        splits = []
-        if CLUSTER:
-            for secondary_index in range(len(CLUSTER.secondaries)):
-                if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-                    split = RHData.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
-                    if split:
-                        split_payload = {
-                            'split_id': secondary_index,
-                            'split_raw': split.split_time,
-                            'split_time': split.split_time_formatted,
-                            'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
-                        }
-                    elif lapCompleted:
-                        split_payload = {
-                            'split_id': secondary_index,
-                            'split_time': '-'
-                        }
-                    else:
-                        break
-                    splits.append(split_payload)
-        return splits
-
     @property
     def profile(self):
         if self._profile is None:
-            stored_profile = self._rhdata.get_optionInt('currentProfile')
-            self._profile = self._rhdata.get_profile(stored_profile)
+            stored_profile = self._rhmanager.rhdata.get_optionInt('currentProfile')
+            self._profile = self._rhmanager.rhdata.get_profile(stored_profile)
         return self._profile
     
     @profile.setter
@@ -388,14 +303,14 @@ class RHRace():
     @property
     def format(self):
         if self._format is None:
-            stored_format = self._rhdata.get_optionInt('currentFormat')
+            stored_format = self._rhmanager.rhdata.get_optionInt('currentFormat')
             if stored_format:
-                race_format = self._rhdata.get_raceFormat(stored_format)
+                race_format = self._rhmanager.rhdata.get_raceFormat(stored_format)
                 if not race_format:
-                    race_format = self._rhdata.get_first_raceFormat()
-                    self._rhdata.set_option('currentFormat', race_format.id)
+                    race_format = self._rhmanager.rhdata.get_first_raceFormat()
+                    self._rhmanager.rhdata.set_option('currentFormat', race_format.id)
             else:
-                race_format = self._rhdata.get_first_raceFormat()
+                race_format =self._rhmanager.rhdata.get_first_raceFormat()
 
             # create a shared instance
             self._format = RHRaceFormat.copy(race_format)
@@ -404,8 +319,8 @@ class RHRace():
 
     def getDbRaceFormat(self):
         if self.format is None or RHRaceFormat.isDbBased(self.format):
-            stored_format = self._rhdata.get_optionInt('currentFormat')
-            return self._rhdata.get_raceFormat(stored_format)
+            stored_format = self._rhmanager.rhdata.get_optionInt('currentFormat')
+            return self._rhmanager.rhdata.get_raceFormat(stored_format)
         else:
             return None
 
@@ -413,7 +328,7 @@ class RHRace():
     def format(self, race_format):
         if self.race_status == RaceStatus.READY:
             if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
-                self._rhdata.set_option('currentFormat', race_format.id)
+                self._rhmanager.rhdata.set_option('currentFormat', race_format.id)
                 # create a shared instance
                 self._format = RHRaceFormat.copy(race_format)
                 self._format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
@@ -456,7 +371,6 @@ class RHRaceFormat():
     @classmethod
     def isDbBased(cls, race_format):
         return hasattr(race_format, 'id')
-
 
 class StagingTones():
     TONES_NONE = 0

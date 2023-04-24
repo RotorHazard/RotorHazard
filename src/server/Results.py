@@ -18,10 +18,6 @@ Events = EventManager()
 
 logger = logging.getLogger(__name__)
 
-class Results():
-    def __init__ (self, rhDataObj):
-        self._RHData = rhDataObj
-
 def invalidate_all_caches(rhDataObj):
     ''' Check all caches and invalidate any paused builds '''
     rhDataObj.clear_results_savedRaceMetas()

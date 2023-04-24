@@ -148,7 +148,7 @@ def createBlueprint(RHData, Results, RACE, serverInfo):
 
     @APP.route('/api/race/current')
     def api_race_current():
-        results = RACE.get_results(RHData)
+        results = RACE.get_results()
 
         payload = {
             "raw_laps": RACE.node_laps,
