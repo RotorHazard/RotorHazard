@@ -1385,10 +1385,11 @@ class RHData():
                                 if node['frq']['f'] == pilot_freq['f']:
                                     node['matches'].append({
                                             'slot': slot,
+                                            'band': pilot_freq['b'],
                                             'priority': True if f_idx == end_idx else False
                                          })
 
-            eliminated_slots = []
+            eliminated_matches = []
             if callable(calc_fn):
                 while len(available_nodes):
                     # request assignment from calc function
@@ -1398,7 +1399,7 @@ class RHData():
                         m_slot.node_index = m_node['idx']
                         for slot_idx, slot_match in enumerate(m_node['matches']):
                             if slot_match['slot'] != m_slot:
-                                eliminated_slots.append(slot_match)
+                                eliminated_matches.append(slot_match)
                         del available_nodes[an_idx]
                         for available_node in available_nodes:
                             for slot_idx, slot_match in enumerate(available_node['matches']):
@@ -1408,13 +1409,36 @@ class RHData():
                     else:
                         # calc function didn't make an assignment
                         random.shuffle(available_nodes)
-                        if len(eliminated_slots):
-                            for slot_idx, slot_match in enumerate(eliminated_slots):
-                                if eliminated_slots[slot_idx] and eliminated_slots[slot_idx]['slot'].node_index is None:
-                                    eliminated_slots[slot_idx]['slot'].node_index = available_nodes[0]['idx']
+                        if len(eliminated_matches):
+                            # Stay on D-band if needed
+                            for slot_idx, slot_match in enumerate(eliminated_matches):
+                                if eliminated_matches[slot_idx] \
+                                and eliminated_matches[slot_idx]['band'] == 'D' \
+                                and eliminated_matches[slot_idx]['priority'] == True \
+                                and eliminated_matches[slot_idx]['slot'].node_index is None:
+                                    for n_idx, node in enumerate(available_nodes):
+                                        if node['frq']['b'] == 'D':
+                                            eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
+                                            available_nodes[n_idx] = None
+                                            eliminated_matches[slot_idx] = None
+                                            break
+                                    available_nodes = [x for x in available_nodes if x is not None]
+                                else:
+                                    for n_idx, node in enumerate(available_nodes):
+                                        if node['frq']['b'] != 'D':
+                                            eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
+                                            available_nodes[n_idx] = None
+                                            eliminated_matches[slot_idx] = None
+                                            break
+                                    available_nodes = [x for x in available_nodes if x is not None]
+
+                            for slot_idx, slot_match in enumerate(eliminated_matches):
+                                if eliminated_matches[slot_idx] and eliminated_matches[slot_idx]['slot'].node_index is None:
+                                    eliminated_matches[slot_idx]['slot'].node_index = available_nodes[0]['idx']
                                     del(available_nodes[0])
-                                eliminated_slots[slot_idx] = None
-                            eliminated_slots = [x for x in eliminated_slots if x is not None]
+                                eliminated_matches[slot_idx] = None
+                            
+                            eliminated_matches = [x for x in eliminated_matches if x is not None]
                         else:
                             for slot in slots:
                                 if slot.node_index is None and slot.pilot_id:
