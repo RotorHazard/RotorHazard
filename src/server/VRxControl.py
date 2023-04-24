@@ -39,6 +39,7 @@ class VRxControlManager():
             self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.doFrequencySet, {}, 200, True)
             self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.doSendPriorityMessage)
             self.Events.on(Evt.OPTION_SET, 'VRx', self.doOptionSet)
+            self.Events.on(Evt.SHUTDOWN, 'VRx', self.doShutdown)
         else:
             logger.info('VRx Control disabled: no registered controllers')
             self.enabled = False
@@ -86,6 +87,7 @@ class VRxControlManager():
             self.Events.off(Evt.FREQUENCY_SET, 'VRx')
             self.Events.off(Evt.MESSAGE_INTERRUPT, 'VRx')
             self.Events.off(Evt.OPTION_SET, 'VRx')
+            self.Events.off(Evt.SHUTDOWN, 'VRx')
         else:
             logger.info('VRx Control already disabled')
 
@@ -209,6 +211,10 @@ class VRxControlManager():
         for controller in self.controllers.values():
             controller.onOptionSet(args)
 
+    def doShutdown(self, args):
+        for controller in self.controllers.values():
+            controller.onShutdown(args)
+
 class VRxController():
     def __init__(self, name, label):
         self.name = name
@@ -308,6 +314,9 @@ class VRxController():
         pass
 
     def onOptionSet(self, _args):
+        pass
+
+    def onShutdown(self, _args):
         pass
 
 class VRxDevice():
