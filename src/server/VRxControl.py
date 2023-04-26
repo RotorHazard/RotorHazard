@@ -10,8 +10,8 @@ DEVICE_TIMEOUT = 30 # Consider devices if no response received within X seconds
 logger = logging.getLogger(__name__)
 
 class VRxControlManager():
-    def __init__(self, Events, RHManager, **_kwargs):
-        self._rhmanager = RHManager
+    def __init__(self, Events, RaceContext, **_kwargs):
+        self._racecontext = RaceContext
         self.Events = Events
 
         self.enabled = None
@@ -47,11 +47,11 @@ class VRxControlManager():
                 logger.warning('Overwriting VRx Controller "{0}"'.format(controller.name))
 
             controller.manager = self
-            controller.RHData = self._rhmanager.rhdata
+            controller.RHData = self._racecontext.rhdata
             controller.Events = self.Events
-            controller.RACE = self._rhmanager.race
-            controller.nodes = self._rhmanager.interface.nodes
-            controller.Language = self._rhmanager.language
+            controller.RACE = self._racecontext.race
+            controller.nodes = self._racecontext.interface.nodes
+            controller.Language = self._racecontext.language
             self.controllers[controller.name] = controller
             logger.info('Importing VRx Controller {}'.format(controller.name))
         else:

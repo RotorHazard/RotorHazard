@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class RHRace():
     '''Class to hold race management variables.'''
-    def __init__(self, RHManager):
+    def __init__(self, RaceContext):
         # internal references
-        self._rhmanager = RHManager
+        self._racecontext = RaceContext
         # setup/options
         self.num_nodes = 0
         self.current_heat = 1 # heat ID
@@ -137,7 +137,7 @@ class RHRace():
 
             pilot_data = None
             if node_idx in self.node_pilots:
-                pilot = self._rhmanager.rhdata.get_pilot(self.node_pilots[node_idx])
+                pilot = self._racecontext.rhdata.get_pilot(self.node_pilots[node_idx])
                 if pilot:
                     pilot_data = {
                         'id': pilot.id,
@@ -158,10 +158,10 @@ class RHRace():
 
     def get_splits(self, node_idx, lap_id, lapCompleted):
         splits = []
-        if self._rhmanager.cluster:
-            for secondary_index in range(len(self._rhmanager.cluster.secondaries)):
-                if self._rhmanager.cluster.isSplitSecondaryAvailable(secondary_index):
-                    split = self._rhmanager.rhdata.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
+        if self._racecontext.cluster:
+            for secondary_index in range(len(self._racecontext.cluster.secondaries)):
+                if self._racecontext.cluster.isSplitSecondaryAvailable(secondary_index):
+                    split = self._racecontext.rhdata.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
                     if split:
                         split_payload = {
                             'split_id': secondary_index,
@@ -211,7 +211,7 @@ class RHRace():
 
         # cache rebuild
         # logger.debug('Building current race results')
-        build = Results.calc_leaderboard(self._rhmanager.rhdata, current_race=self, current_profile=self.profile)
+        build = Results.calc_leaderboard(self._racecontext.rhdata, current_race=self, current_profile=self.profile)
         self.set_results(token, build)
         return build
 
@@ -229,7 +229,7 @@ class RHRace():
 
         # cache rebuild
         logger.debug('Building current race results')
-        build = Results.calc_team_leaderboard(self, self._rhmanager.rhdata)
+        build = Results.calc_team_leaderboard(self, self._racecontext.rhdata)
         self.set_team_results(token, build)
         return build
 
@@ -292,8 +292,8 @@ class RHRace():
     @property
     def profile(self):
         if self._profile is None:
-            stored_profile = self._rhmanager.rhdata.get_optionInt('currentProfile')
-            self._profile = self._rhmanager.rhdata.get_profile(stored_profile)
+            stored_profile = self._racecontext.rhdata.get_optionInt('currentProfile')
+            self._profile = self._racecontext.rhdata.get_profile(stored_profile)
         return self._profile
     
     @profile.setter
@@ -303,14 +303,14 @@ class RHRace():
     @property
     def format(self):
         if self._format is None:
-            stored_format = self._rhmanager.rhdata.get_optionInt('currentFormat')
+            stored_format = self._racecontext.rhdata.get_optionInt('currentFormat')
             if stored_format:
-                race_format = self._rhmanager.rhdata.get_raceFormat(stored_format)
+                race_format = self._racecontext.rhdata.get_raceFormat(stored_format)
                 if not race_format:
-                    race_format = self._rhmanager.rhdata.get_first_raceFormat()
-                    self._rhmanager.rhdata.set_option('currentFormat', race_format.id)
+                    race_format = self._racecontext.rhdata.get_first_raceFormat()
+                    self._racecontext.rhdata.set_option('currentFormat', race_format.id)
             else:
-                race_format =self._rhmanager.rhdata.get_first_raceFormat()
+                race_format =self._racecontext.rhdata.get_first_raceFormat()
 
             # create a shared instance
             self._format = RHRaceFormat.copy(race_format)
@@ -319,8 +319,8 @@ class RHRace():
 
     def getDbRaceFormat(self):
         if self.format is None or RHRaceFormat.isDbBased(self.format):
-            stored_format = self._rhmanager.rhdata.get_optionInt('currentFormat')
-            return self._rhmanager.rhdata.get_raceFormat(stored_format)
+            stored_format = self._racecontext.rhdata.get_optionInt('currentFormat')
+            return self._racecontext.rhdata.get_raceFormat(stored_format)
         else:
             return None
 
@@ -328,7 +328,7 @@ class RHRace():
     def format(self, race_format):
         if self.race_status == RaceStatus.READY:
             if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
-                self._rhmanager.rhdata.set_option('currentFormat', race_format.id)
+                self._racecontext.rhdata.set_option('currentFormat', race_format.id)
                 # create a shared instance
                 self._format = RHRaceFormat.copy(race_format)
                 self._format.id = race_format.id  #pylint: disable=attribute-defined-outside-init

@@ -27,10 +27,10 @@ class LEDEventManager:
     eventThread = None
     displayColorCache = []
 
-    def __init__(self, eventmanager, strip, RHManager):
+    def __init__(self, eventmanager, strip, RaceContext):
         self.Events = eventmanager
         self.strip = strip
-        self._rhmanager = RHManager
+        self._racecontext = RaceContext
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *_args: None, {
@@ -85,11 +85,11 @@ class LEDEventManager:
         args.update({
             'handlerFn': self.eventEffects[name]['handlerFn'],
             'strip': self.strip,
-            'RHData': self._rhmanager.rhdata,
-            'RACE': self._rhmanager.race,
-            'LAST_RACE': self._rhmanager.last_race,
-            'Language': self._rhmanager.language,
-            'INTERFACE': self._rhmanager.interface,
+            'RHData': self._racecontext.rhdata,
+            'RACE': self._racecontext.race,
+            'LAST_RACE': self._racecontext.last_race,
+            'Language': self._racecontext.language,
+            'INTERFACE': self._racecontext.interface,
             'manager': self,
             })
 
@@ -126,7 +126,7 @@ class LEDEventManager:
         if node_index < len(self.displayColorCache):
             return self.displayColorCache[node_index]
 
-        mode = self._rhmanager.rhdata.get_optionInt('ledColorMode', 0)
+        mode = self._racecontext.rhdata.get_optionInt('ledColorMode', 0)
         if mode == 1 and no_pilot:
             mode = 0
         color = False
@@ -134,29 +134,29 @@ class LEDEventManager:
         if mode == 1: # by pilot
             color = '#ffffff'
             if from_result:
-                last_results = self._rhmanager.last_race.get_results()
-                results = self._rhmanager.race.get_results()
+                last_results = self._racecontext.last_race.get_results()
+                results = self._racecontext.race.get_results()
 
                 if last_results and 'by_race_time' in last_results:
                     for line in last_results['by_race_time']:
                         if line['node'] == node_index:
-                            color = self._rhmanager.rhdata.get_pilot(line['pilot_id']).color
+                            color = self._racecontext.rhdata.get_pilot(line['pilot_id']).color
                             break
                 elif results and 'by_race_time' in results:
                     for line in results['by_race_time']:
                         if line['node'] == node_index:
-                            color = self._rhmanager.rhdata.get_pilot(line['pilot_id']).color
+                            color = self._racecontext.rhdata.get_pilot(line['pilot_id']).color
                             break
             else:
-                if self._rhmanager.race.current_heat:
-                    for heatNode in self._rhmanager.rhdata.get_heatNodes_by_heat(self._rhmanager.race.current_heat):
+                if self._racecontext.race.current_heat:
+                    for heatNode in self._racecontext.rhdata.get_heatNodes_by_heat(self._racecontext.race.current_heat):
                         if heatNode.node_index == node_index:
                             if heatNode.pilot_id:
-                                color = self._rhmanager.rhdata.get_pilot(heatNode.pilot_id).color
+                                color = self._racecontext.rhdata.get_pilot(heatNode.pilot_id).color
                             break
         elif mode == 2: # by frequency
 
-            profile = self._rhmanager.rhdata.get_profile(self._rhmanager.rhdata.get_optionInt('currentProfile'))
+            profile = self._racecontext.rhdata.get_profile(self._racecontext.rhdata.get_optionInt('currentProfile'))
             profile_freqs = json.loads(profile.frequencies)
             freq = profile_freqs["f"][node_index]
 
@@ -178,7 +178,7 @@ class LEDEventManager:
                 color = '#ff0080' # Deep Pink
 
         else: # by node
-            colorNodeSerial = self._rhmanager.rhdata.get_option('ledColorNodes', False)
+            colorNodeSerial = self._racecontext.rhdata.get_option('ledColorNodes', False)
             if colorNodeSerial:
                 colorNodes = json.loads(colorNodeSerial)
             else:
@@ -221,11 +221,11 @@ class LEDEventManager:
     def activateIdle(self):
         gevent.idle()
         event = None
-        if self._rhmanager.race.race_status == RHRace.RaceStatus.DONE:
+        if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
             event = LEDEvent.IDLE_DONE
-        elif self._rhmanager.race.race_status == RHRace.RaceStatus.READY:
+        elif self._racecontext.race.race_status == RHRace.RaceStatus.READY:
             event = LEDEvent.IDLE_READY
-        elif self._rhmanager.race.race_status == RHRace.RaceStatus.RACING:
+        elif self._racecontext.race.race_status == RHRace.RaceStatus.RACING:
             event = LEDEvent.IDLE_RACING
 
         if event and event in self.events:

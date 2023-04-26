@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class RHManager():
+class RaceContext():
     '''Class to hold race management variables.'''
     def __init__(self):
         self.interface = None
