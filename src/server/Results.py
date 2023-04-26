@@ -9,28 +9,12 @@ import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 import logging
 from monotonic import monotonic
-from eventmanager import Evt, EventManager
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
-
-CACHE_TIMEOUT = 10
-
-Events = EventManager()
 
 logger = logging.getLogger(__name__)
 
-def invalidate_all_caches(rhDataObj):
-    ''' Check all caches and invalidate any paused builds '''
-    rhDataObj.clear_results_savedRaceMetas()
-    rhDataObj.clear_results_heats()
-    rhDataObj.clear_results_raceClasses()
-    rhDataObj.clear_results_event()
-
-    Events.trigger(Evt.CACHE_CLEAR)
-
-    logger.debug('All Result caches invalidated')
-
 @catchLogExceptionsWrapper
-def build_atomic_results_caches(rhDataObj, params):
+def build_atomic_results(rhDataObj, params):
     token = monotonic()
     timing = {
         'start': token
@@ -58,6 +42,7 @@ def build_atomic_results_caches(rhDataObj, params):
     # rebuild race result
     if 'race_id' in params:
         gevent.sleep()
+        rhDataObj.clear_results_event()
         timing['race'] = monotonic()
         rhDataObj.get_results_savedRaceMeta(race)
         logger.debug('Race {} results built in {}s'.format(params['race_id'], monotonic() - timing['race']))
@@ -65,6 +50,7 @@ def build_atomic_results_caches(rhDataObj, params):
     # rebuild heat summary
     if 'heat_id' in params:
         gevent.sleep()
+        rhDataObj.clear_results_event()
         timing['heat'] = monotonic()
         rhDataObj.get_results_heat(heat)
         logger.debug('Heat {} results built in {}s'.format(heat_id, monotonic() - timing['heat']))
@@ -72,6 +58,7 @@ def build_atomic_results_caches(rhDataObj, params):
     # rebuild class summary
     if USE_CLASS:
         gevent.sleep()
+        rhDataObj.clear_results_event()
         timing['class'] = monotonic()
         rhDataObj.get_results_raceClass(class_id)
         logger.debug('Class {} results built in {}s'.format(class_id, monotonic() - timing['class']))

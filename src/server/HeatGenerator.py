@@ -38,7 +38,7 @@ class HeatGeneratorManager():
         return self.generators
 
     def generate(self, generator_id, generate_args=None):
-        generated_heats = self.generators[generator_id].generate(self._racecontext.rhdata, self._racecontext.pagecache, generate_args)
+        generated_heats = self.generators[generator_id].generate(self._racecontext, generate_args)
         if generated_heats:
             self.apply(generated_heats, generate_args)
             return True
@@ -122,7 +122,7 @@ class HeatGenerator():
         self.generator = generatorFn
         self.defaultArgs = defaultArgs
 
-    def generate(self, RHData, PageCache, generate_args=None):
+    def generate(self, RaceContext, generate_args=None):
         generate_args = {**(self.defaultArgs if self.defaultArgs else {}), **(generate_args if generate_args else {})}
 
-        return self.generator(RHData, PageCache, generate_args)
+        return self.generator(RaceContext, generate_args)

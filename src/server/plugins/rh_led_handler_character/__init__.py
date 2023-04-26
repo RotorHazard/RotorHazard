@@ -165,16 +165,13 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'RACE' in args:
-        RACE = args['RACE']
+    if 'raceContext' in args:
+        ctx = args['raceContext']
+
+        RACE = ctx.race
+        result = ctx.race.get_results()
     else:
         RACE = None
-
-    if 'results' in args and args['results']:
-        result = args['results']
-    elif 'RACE' in args and hasattr(args['RACE'], 'results'):
-        result = args['RACE'].results
-    else:
         return False
 
     if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 

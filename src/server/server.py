@@ -72,13 +72,13 @@ import RHGPIO
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 
-# Create context
+# Create shared context
 RaceContext = RaceContext.RaceContext()
 
 # Events manager
 from eventmanager import Evt, EventManager
 
-Events = EventManager()
+Events = EventManager(RaceContext)
 EventActionsObj = None
 
 # LED imports
@@ -176,7 +176,7 @@ Server_secondary_mode = None
 
 RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 SECONDARY_RACE_FORMAT = None
-RaceContext.rhdata = RHData.RHData(Database, Events, RaceContext.race, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
+RaceContext.rhdata = RHData.RHData(Database, Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
 
@@ -654,8 +654,6 @@ def on_reset_auto_calibration(_data):
     on_stage_race()
 
 # Cluster events
-
-
 
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
@@ -2235,7 +2233,6 @@ def race_start_thread(start_token):
 
         # do time-critical tasks
         Events.trigger(Evt.RACE_START, {
-            'race': RaceContext.race,
             'color': ColorVal.GREEN
             })
 
@@ -2545,7 +2542,7 @@ def on_resave_laps(data):
 @catchLogExceptionsWrapper
 def build_atomic_result_caches(params):
     RaceContext.pagecache.set_valid(False)
-    Results.build_atomic_results_caches(RaceContext.rhdata, params)
+    Results.build_atomic_results(RaceContext.rhdata, params)
     RaceContext.rhui.emit_result_data()
 
 @SOCKET_IO.on('discard_laps')
@@ -2825,7 +2822,6 @@ def on_delete_lap(data):
         logger.exception("Error deleting split laps")
 
     Events.trigger(Evt.LAP_DELETE, {
-        #'race': RaceContext.race,  # TODO this causes exceptions via 'json.loads()', so leave out for now
         'node_index': node_index,
         })
 
@@ -2867,7 +2863,6 @@ def on_restore_deleted_lap(data):
             lap_number += 1
 
     Events.trigger(Evt.LAP_RESTORE_DELETED, {
-        #'race': RaceContext.race,  # TODO this causes exceptions via 'json.loads()', so leave out for now
         'node_index': node_index,
         })
 
@@ -3017,7 +3012,8 @@ def imdtabler_update_freqs(data):
 @catchLogExceptionsWrapper
 def clean_results_cache():
     ''' wipe all results caches '''
-    Results.invalidate_all_caches(RaceContext.rhdata)
+    Events.trigger(Evt.CACHE_CLEAR)
+    RaceContext.rhdata.clear_results_all()
     RaceContext.pagecache.set_valid(False)
 
 @SOCKET_IO.on('retry_secondary')
@@ -3581,7 +3577,6 @@ def check_win_condition(**kwargs):
                     'node_index': win_data.get('node', None),
                     'color': RaceContext.led_manager.getDisplayColor(win_data['node']) \
                                             if 'node' in win_data else None,
-                    'results': RaceContext.race.results
                     })
 
         elif win_status_dict['status'] == WinStatus.TIE:
@@ -4276,9 +4271,7 @@ try:
                 subclass='mirror'
                 )
             break
-        secondary = SecondaryNode(sec_idx, secondary_info, RaceContext.race, RaceContext.rhdata, \
-                          RaceContext.rhui.emit_split_pass_info, monotonic_to_epoch_millis, \
-                          RaceContext.rhui.emit_cluster_connect_change, RELEASE_VERSION)
+        secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, monotonic_to_epoch_millis, RELEASE_VERSION)
         RaceContext.cluster.addSecondary(secondary)
 except:
     logger.exception("Error adding secondary to cluster")
@@ -4430,7 +4423,7 @@ RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, legacy_config=C
 Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters
-RaceContext.export_manager = DataExportManager(RaceContext.rhdata, RaceContext.pagecache, RaceContext.language, Events)
+RaceContext.export_manager = DataExportManager(RaceContext, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
@@ -4438,10 +4431,10 @@ RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
 # register endpoints
-APP.register_blueprint(json_endpoints.createBlueprint(RaceContext.rhdata, Results, RaceContext.race, serverInfo))
+APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, serverInfo))
 
 #register event actions
-EventActionsObj = EventActions.initializeEventActions(Events, RaceContext.rhdata, RaceContext.race, RHUI, RaceContext.language, logger)
+EventActionsObj = EventActions.initializeEventActions(Events, RaceContext, logger)
 
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):

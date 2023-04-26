@@ -85,12 +85,8 @@ class LEDEventManager:
         args.update({
             'handlerFn': self.eventEffects[name]['handlerFn'],
             'strip': self.strip,
-            'RHData': self._racecontext.rhdata,
-            'RACE': self._racecontext.race,
-            'LAST_RACE': self._racecontext.last_race,
-            'Language': self._racecontext.language,
-            'INTERFACE': self._racecontext.interface,
             'manager': self,
+            'raceContext': self._racecontext
             })
 
         if event in [LEDEvent.IDLE_READY, LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING]:

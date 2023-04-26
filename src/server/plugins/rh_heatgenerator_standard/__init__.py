@@ -22,7 +22,7 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def bracket_1e_16_fai(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_1e_16_fai(_RaceContext, _generate_args=None):
     heats = [
         {
             'name': __('Race') + ' 1',
@@ -212,7 +212,7 @@ def bracket_1e_16_fai(_RHData, _Results, _PageCache, _generate_args=None):
 
     return heats
 
-def bracket_1e_32_fai(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_1e_32_fai(_RaceContext, _generate_args=None):
     heats = [
         {
             'name': __('Race') + ' 1 (E1)',
@@ -586,7 +586,7 @@ def bracket_1e_32_fai(_RHData, _Results, _PageCache, _generate_args=None):
 
     return heats
 
-def bracket_1e_64_fai(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_1e_64_fai(_RaceContext, _generate_args=None):
     heats = [
         {
             'name': __('Race') + ' 1 (E1)',
@@ -1328,7 +1328,7 @@ def bracket_1e_64_fai(_RHData, _Results, _PageCache, _generate_args=None):
 
     return heats
 
-def bracket_2e_16_fai(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_2e_16_fai(_RaceContexte, _generate_args=None):
     heats = [
        {
             'name': __('Race') + ' 1',
@@ -1668,7 +1668,7 @@ def bracket_2e_16_fai(_RHData, _Results, _PageCache, _generate_args=None):
 
     return heats
 
-def bracket_2e_32_fai(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_2e_32_fai(_RaceContext, _generate_args=None):
     heats = [
         {
             'name': __('Race') + ' 1 (E1)',
@@ -2392,7 +2392,7 @@ def bracket_2e_32_fai(_RHData, _Results, _PageCache, _generate_args=None):
 
     return heats
 
-def bracket_2e_64_fai(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_2e_64_fai(_RaceContext, _generate_args=None):
     heats = [
         {
             'name': __('Race') + ' 1 (E1)',
@@ -4221,10 +4221,10 @@ mgp_26_16_heats = [
     }
 ]
 
-def bracket_2e_16_mgp(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_2e_16_mgp(_RaceContext, _generate_args=None):
     return mgp_26_16_heats
 
-def bracket_2e_16_mgp_next(_RHData, _Results, _PageCache, _generate_args=None):
+def bracket_2e_16_mgp_next(_RaceContext, _generate_args=None):
     heats = mgp_26_16_heats
     for heat in heats[:4]:
         for slot in heat['slots']:
