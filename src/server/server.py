@@ -3455,7 +3455,8 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             'node_index': node.index,
                             'color': RaceContext.led_manager.getDisplayColor(node.index),
                             'lap': lap_data,
-                            'results': RaceContext.race.get_results()
+                            'results': RaceContext.race.get_results(),
+                            'gap_info': Results.get_gap_info(RaceContext, node.index)
                             })
 
                         RaceContext.rhui.emit_current_laps() # update all laps on the race page

@@ -352,8 +352,6 @@ class RHData():
                 "ledBrightness",
                 "ledColorNodes",
                 "ledColorFreqs",
-                "osd_lapHeader",
-                "osd_positionHeader",
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
                 "nextHeatBehavior",

@@ -47,11 +47,9 @@ class VRxControlManager():
                 logger.warning('Overwriting VRx Controller "{0}"'.format(controller.name))
 
             controller.manager = self
-            controller.RHData = self._racecontext.rhdata
+            controller.racecontext = self._racecontext
             controller.Events = self.Events
-            controller.RACE = self._racecontext.race
-            controller.nodes = self._racecontext.interface.nodes
-            controller.Language = self._racecontext.language
+
             self.controllers[controller.name] = controller
             logger.info('Importing VRx Controller {}'.format(controller.name))
         else:
@@ -221,11 +219,8 @@ class VRxController():
         self.ready = False
         self.devices = {} # collection of VRxDevices
 
-        self.RHData = None
+        self.racecontext = None
         self.Events = None
-        self.RACE = None
-        self.nodes = []
-        self.Language = None
 
         self.setup()
 

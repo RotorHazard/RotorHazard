@@ -1670,7 +1670,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 	for (var i in leaderboard) {
 		var row = $('<tr>');
 
-		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
+		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
 		if (meta.team_racing_mode) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
@@ -1788,7 +1788,7 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 
 	for (var i in leaderboard) {
 		var row = $('<tr>');
-		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
+		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
 		row.append('<td class="team">'+ leaderboard[i].name +'</td>');
 		row.append('<td class="contribution">'+ leaderboard[i].contributing + '/' + leaderboard[i].members + '</td>');
 		if (display_type == 'by_race_time') {
