@@ -8,7 +8,7 @@ def get_sbc_model() -> str:
                 model = f.read()
         except FileNotFoundError:
             model = ""
-    return model
+    return model.strip('\x00')
 
 def is_raspberry() -> bool:
     return "Raspberry" in get_sbc_model()

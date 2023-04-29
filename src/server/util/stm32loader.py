@@ -127,7 +127,7 @@ class ShowProgress:
         """
         Construct the context manager object.
 
-        :param progress_bar_type type: Type of progress bar to use.
+        :param progress_bar_type: Type of progress bar to use.
            Set to None if you don't want progress bar output.
         """
         self.progress_bar_type = progress_bar_type
@@ -683,6 +683,7 @@ class Stm32Bootloader:
     def _reset(self):
         """Enable or disable the reset IO line (if possible)."""
         if not hasattr(self.connection, "enable_reset"):
+            Console_output_fn("no Attribute enable_reset")
             return
         self.connection.enable_reset(True)
         time.sleep(0.1)
@@ -692,6 +693,8 @@ class Stm32Bootloader:
     def _enable_boot0(self, enable=True):
         """Enable or disable the boot0 IO line (if possible)."""
         if not hasattr(self.connection, "enable_boot0"):
+
+            Console_output_fn("no Attribute enable_boot0")
             return
 
         self.connection.enable_boot0(enable)
@@ -724,13 +727,14 @@ class Stm32Bootloader:
 
 import serial
 import requests
+from sbcUtil import is_known_sbc
 
 DEF_SERIAL_PORT = "/dev/serial0"
 DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
 MAX_SRC_FILE_SIZE = 999999
 
-GPIO_RESET_PIN = 17
-GPIO_BOOT0_PIN = 27
+GPIO_RESET_PIN = 11 # GPIO17 # Board pin 11
+GPIO_BOOT0_PIN = 13 #GPIO27 # Board pin 13
 
 # set function to use for console/log output
 def set_console_output_fn(conOutFn):
@@ -741,56 +745,57 @@ def set_console_output_fn(conOutFn):
         Console_output_fn = print
 
 # returns True if host system detected as Raspberry Pi
-def is_sys_raspberry_pi():
-    try:
-        modelStr = None
-        try:
-            fileHnd = open("/proc/device-tree/model", "r")
-            modelStr = fileHnd.read()
-            fileHnd.close()
-        except:
-            pass
-        if modelStr and "raspberry pi" in modelStr.lower():
-            return True
-    except Exception as ex:
-        Console_output_fn("Error in 'is_sys_raspberry_pi()': " + str(ex))
-    return False
-
 # reset BPill processor into bootloader mode
 def reset_to_boot_0():
     try:
-        import RPi.GPIO as GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(GPIO_RESET_PIN, GPIO.OUT)
-        GPIO.output(GPIO_RESET_PIN, GPIO.HIGH)  # reset pin high (inactive)
-        GPIO.setup(GPIO_BOOT0_PIN, GPIO.OUT)
-        GPIO.output(GPIO_BOOT0_PIN, GPIO.HIGH)  # boot0 pin high (active)
+        Console_output_fn("using gpiod to reset_to_boot_0")
+        import gpiod
+        import util.RHGPIO as RHGPIO
+        reset_line = RHGPIO.get_line_by_board_pin(GPIO_RESET_PIN)
+        boot0_line = RHGPIO.get_line_by_board_pin(GPIO_BOOT0_PIN)
+        reset_request = gpiod.line_request()
+        reset_request.consumer = "RotorHazard Reset Line"
+        reset_request.request_type = gpiod.line_request.DIRECTION_OUTPUT
+        reset_line.request(reset_request, 1)
+        boot0_request = gpiod.line_request()
+        boot0_request.consumer = "RotorHazard Boot0 Line"
+        boot0_request.request_type = gpiod.line_request.DIRECTION_OUTPUT
+        boot0_line.request(boot0_request, 1)
+        reset_line.set_value(1) # reset pin high (inactive)
+        boot0_line.set_value(1) # boot0 pin high (active)
         time.sleep(0.01)
-        GPIO.output(GPIO_RESET_PIN, GPIO.LOW)   # reset pin low (active)
+        reset_line.set_value(0) # reset pin low (active)
         time.sleep(0.05)
-        GPIO.output(GPIO_RESET_PIN, GPIO.HIGH)  # reset pin high (inactive)
+        reset_line.set_value(1) # reset pin high (inactive)
         time.sleep(0.1)
-        GPIO.output(GPIO_BOOT0_PIN, GPIO.LOW)   # boot0 pin low (inactive)
-        GPIO.setup(GPIO_RESET_PIN, GPIO.IN)
-        GPIO.setup(GPIO_BOOT0_PIN, GPIO.IN)
+        boot0_line.set_value(0) # boot0 pin low (inactive)
+        time.sleep(0.05)
+        reset_line.release()
+        boot0_line.release()
+
     except ImportError as ex:
         Console_output_fn("ImportError in 'reset_to_boot_0()': " + str(ex))
     except Exception as ex:
         Console_output_fn("Error in 'reset_to_boot_0()': " + str(ex))
-
 # reset BPill processor
 def reset_to_run():
     try:
-        import RPi.GPIO as GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(GPIO_RESET_PIN, GPIO.OUT)
-        GPIO.output(GPIO_RESET_PIN, GPIO.HIGH)  # reset pin high (inactive)
+        Console_output_fn("using gpiod to reset_to_run")
+        import gpiod
+        import util.RHGPIO as RHGPIO
+        reset_line = RHGPIO.get_line_by_board_pin(GPIO_RESET_PIN)
+        reset_request = gpiod.line_request()
+        reset_request.consumer = "RotorHazard Reset Line"
+        reset_request.request_type = gpiod.line_request.DIRECTION_OUTPUT
+        reset_line.request(reset_request, 1)
+        reset_line.set_value(1) # reset pin high (inactive)
         time.sleep(0.01)
-        GPIO.output(GPIO_RESET_PIN, GPIO.LOW)   # reset pin low (active)
+        reset_line.set_value(0) # reset pin low (active)
         time.sleep(0.05)
-        GPIO.output(GPIO_RESET_PIN, GPIO.HIGH)  # reset pin high (inactive)
-        time.sleep(0.1)
-        GPIO.setup(GPIO_RESET_PIN, GPIO.IN)
+        reset_line.set_value(1) # reset pin high (inactive)
+        time.sleep(0.05)
+        reset_line.release()
+
     except ImportError as ex:
         Console_output_fn("ImportError in 'reset_to_run()': " + str(ex))
     except Exception as ex:
@@ -853,7 +858,7 @@ def flash_file_to_stm32(portStr, srcStr):
         memoryAddress = 0x08000000
         goAddress = 0x08000000
         
-        isRPiFlag = is_sys_raspberry_pi()
+        isRPiFlag = is_known_sbc()
         
         Console_output_fn("stm32loader using port %s" % portStr)
         try:
@@ -884,16 +889,16 @@ def flash_file_to_stm32(portStr, srcStr):
                 Console_output_fn("Resetting BPill with Boot0 via GPIO")
                 reset_to_boot_0()
                 try:
-                    Console_output_fn("Activating bootloader")
+                    Console_output_fn("Activating bootloader SBC")
                     bootloaderObj.reset_from_system_memory()
                 except CommandError:
                     Console_output_fn("Can't init into bootloader - ensure that Boot0 jumper is installed and RH server is not running")
-                    Console_output_fn("Resetting BPill via GPIO")
+                    Console_output_fn(f"Resetting BPill via GPIO {GPIO_RESET_PIN}")
                     reset_to_run()
                     return False
         else:
             try:
-                Console_output_fn("Activating bootloader")
+                Console_output_fn("Activating bootloader non-sbc")
                 bootloaderObj.reset_from_system_memory()
             except CommandError:
                 Console_output_fn("Can't init into bootloader - ensure that Boot0 is enabled and reset the device")

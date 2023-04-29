@@ -1,15 +1,27 @@
 # Utility class for Raspberry Pi GPIO functions
-
+import json
+import logging
 # resources:
 # https://www.ics.com/blog/gpio-programming-exploring-libgpiod-library
 # https://lloydrochester.com/post/hardware/libgpiod-intro-rpi/
 
 import time
 from util.sbcUtil import *
+logger = logging.getLogger(__name__)
+
 
 HIGH = 1
 LOW = 0
 UNKNOWN = -1
+
+gpio_lookup = {}
+gpio_model_lookup = {
+    "Raspberry Pi 3 Model B Rev 1.2" : "pi3b_gpio.json",
+    "Libre Computer AML-S905X-CC" : "potato_gpio.json",
+    "Raspberry Pi Zero W Rev 1.1": "pizero_gpio.json",
+    "raspberry pi 4": "pi4_gpio.json"
+}
+
 
 if is_raspberry() or is_libre():
     RealGPIOFlag = True
@@ -17,11 +29,9 @@ if is_raspberry() or is_libre():
 else:
     RealGPIOFlag = False
 
-global s32_blue_pill_board_flag
 s32_blue_pill_board_flag = None
 def is_real_gpio():
     return RealGPIOFlag
-
 
 def is_blue_pill_board():
 
@@ -29,13 +39,7 @@ def is_blue_pill_board():
 
     if s32_blue_pill_board_flag is None:
         if RealGPIOFlag:
-            line = None
-            if is_raspberry():
-                #on raspberry the 40pin header on is on chip 0
-                #and we want to use GPIO25
-                line = get_line(25)
-            elif is_libre():
-                line = get_line(22)
+            line = get_line_by_board_pin(22)
             if line:
                 line_config = gpiod.line_request()
                 line_config.consumer = "RotorHazard"
@@ -84,3 +88,55 @@ def get_line_by_name(line_name):
                 if line_name == the_name:
                     return the_line
     return None
+
+def load_lookup_table():
+    """
+    We are storing the lookup tables for converting from board pin to line offset in
+    json files within this directory.
+    each json file contains an array of dicts in the form
+    {
+        "Board_Pin": 28,
+        "Chip": "gpiochip0",
+        "Line": "line   1:",
+        "Offset": 1,
+        "Name": "ID_SCL",
+        "Info": "I2C_ ID EEPROM"
+    }
+    """
+    try:
+        import importlib.resources as pkg_resources
+    except ImportError:
+        # Try backported to PY<37 `importlib_resources`.
+        import importlib_resources as pkg_resources
+
+    global gpio_lookup
+    sbc_model = ''
+    if not gpio_lookup:
+        sbc_model = get_sbc_model()
+        if not sbc_model:
+            sbc_model = "Raspberry Pi 3 Model B Rev 1.2"
+    logger.info(f"sbc_model is: {sbc_model}")
+    try:
+
+        json_name = gpio_model_lookup[sbc_model]
+        logger.info(f"gpio info file is: {json_name}")
+    except Exception as up:
+        logger.warning(f"Failed to find gpio info file. sbc:'{sbc_model}")
+        logger.warning(f"Defaulting to pi3b")
+        json_name = 'pi3b_gpio.json'
+    import util
+    gpio_lookup = json.loads(pkg_resources.read_text(util, json_name))
+
+def get_line_by_board_pin(board_pin):
+    load_lookup_table()
+    for record in gpio_lookup:
+        if record["Board_Pin"] == board_pin:
+            chip = gpiod.chip(record["Chip"])
+            logger.info(f"Using gpio record: {record}")
+            return chip.get_line(record["Offset"])
+
+
+
+
+
+

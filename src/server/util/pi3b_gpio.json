@@ -1,0 +1,515 @@
+[
+    {
+        "Board_Pin": 27,
+        "Chip": "gpiochip0",
+        "Line": "line   0:",
+        "Offset": 0,
+        "Name": "ID_SDA",
+        "Info": "I2C_ ID EEPROM"
+    },
+    {
+        "Board_Pin": 28,
+        "Chip": "gpiochip0",
+        "Line": "line   1:",
+        "Offset": 1,
+        "Name": "ID_SCL",
+        "Info": "I2C_ ID EEPROM"
+    },
+    {
+        "Board_Pin": 3,
+        "Chip": "gpiochip0",
+        "Line": "line   2:",
+        "Offset": 2,
+        "Name": "SDA1",
+        "Info": "GPIO2, I2C"
+    },
+    {
+        "Board_Pin": 5,
+        "Chip": "gpiochip0",
+        "Line": "line   3:",
+        "Offset": 3,
+        "Name": "SCL1",
+        "Info": "GPI03, I2C"
+    },
+    {
+        "Board_Pin": 7,
+        "Chip": "gpiochip0",
+        "Line": "line   4:",
+        "Offset": 4,
+        "Name": "GPIO_GCLK",
+        "Info": "GPI04"
+    },
+    {
+        "Board_Pin": 29,
+        "Chip": "gpiochip0",
+        "Line": "line   5:",
+        "Offset": 5,
+        "Name": "GPIO5",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 31,
+        "Chip": "gpiochip0",
+        "Line": "line   6:",
+        "Offset": 6,
+        "Name": "GPIO6",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 24,
+        "Chip": "gpiochip0",
+        "Line": "line   7:",
+        "Offset": 7,
+        "Name": "SPI_CE1_N",
+        "Info": "GPIO7"
+    },
+    {
+        "Board_Pin": 26,
+        "Chip": "gpiochip0",
+        "Line": "line   8:",
+        "Offset": 8,
+        "Name": "SPI_CE0_N",
+        "Info": "GPIO8"
+    },
+    {
+        "Board_Pin": 21,
+        "Chip": "gpiochip0",
+        "Line": "line   9:",
+        "Offset": 9,
+        "Name": "SPI_MISO",
+        "Info": "GPIO9"
+    },
+    {
+        "Board_Pin": 19,
+        "Chip": "gpiochip0",
+        "Line": "line  10:",
+        "Offset": 10,
+        "Name": "SPI_MOSI",
+        "Info": "GPI010"
+    },
+    {
+        "Board_Pin": 23,
+        "Chip": "gpiochip0",
+        "Line": "line  11:",
+        "Offset": 11,
+        "Name": "SPI_SCLK",
+        "Info": "GPIO11"
+    },
+    {
+        "Board_Pin": 32,
+        "Chip": "gpiochip0",
+        "Line": "line  12:",
+        "Offset": 12,
+        "Name": "GPIO12",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 33,
+        "Chip": "gpiochip0",
+        "Line": "line  13:",
+        "Offset": 13,
+        "Name": "GPIO13",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  14:",
+        "Offset": 14,
+        "Name": "TXD1",
+        "Info": "GPI014 UART1TX"
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  15:",
+        "Offset": 15,
+        "Name": "RXD1",
+        "Info": "GPIO15 UART1RX"
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  16:",
+        "Offset": 16,
+        "Name": "GPIO16",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 11,
+        "Chip": "gpiochip0",
+        "Line": "line  17:",
+        "Offset": 17,
+        "Name": "GPIO17",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 12,
+        "Chip": "gpiochip0",
+        "Line": "line  18:",
+        "Offset": 18,
+        "Name": "GPIO18",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 35,
+        "Chip": "gpiochip0",
+        "Line": "line  19:",
+        "Offset": 19,
+        "Name": "GPIO19",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 38,
+        "Chip": "gpiochip0",
+        "Line": "line  20:",
+        "Offset": 20,
+        "Name": "GPIO20",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 40,
+        "Chip": "gpiochip0",
+        "Line": "line  21:",
+        "Offset": 21,
+        "Name": "GPIO21",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 15,
+        "Chip": "gpiochip0",
+        "Line": "line  22:",
+        "Offset": 22,
+        "Name": "GPIO22",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 16,
+        "Chip": "gpiochip0",
+        "Line": "line  23:",
+        "Offset": 23,
+        "Name": "GPIO23",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 18,
+        "Chip": "gpiochip0",
+        "Line": "line  24:",
+        "Offset": 24,
+        "Name": "GPIO24",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 22,
+        "Chip": "gpiochip0",
+        "Line": "line  25:",
+        "Offset": 25,
+        "Name": "GPIO25",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 37,
+        "Chip": "gpiochip0",
+        "Line": "line  26:",
+        "Offset": 26,
+        "Name": "GPIO26",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 13,
+        "Chip": "gpiochip0",
+        "Line": "line  27:",
+        "Offset": 27,
+        "Name": "GPIO27",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  28:",
+        "Offset": 28,
+        "Name": "NC",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  29:",
+        "Offset": 29,
+        "Name": "LAN_RUN_BOOT",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  30:",
+        "Offset": 30,
+        "Name": "CTS0",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  31:",
+        "Offset": 31,
+        "Name": "RTS0",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 8,
+        "Chip": "gpiochip0",
+        "Line": "line  32:",
+        "Offset": 32,
+        "Name": "TXD0",
+        "Info": "UART0TX"
+    },
+    {
+        "Board_Pin": 10,
+        "Chip": "gpiochip0",
+        "Line": "line  33:",
+        "Offset": 33,
+        "Name": "RXD0",
+        "Info": "UART0RX"
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  34:",
+        "Offset": 34,
+        "Name": "SD1_CLK",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  35:",
+        "Offset": 35,
+        "Name": "SD1_CMD",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  36:",
+        "Offset": 36,
+        "Name": "SD1_DATA0",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  37:",
+        "Offset": 37,
+        "Name": "SD1_DATA1",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  38:",
+        "Offset": 38,
+        "Name": "SD1_DATA2",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  39:",
+        "Offset": 39,
+        "Name": "SD1_DATA3",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  40:",
+        "Offset": 40,
+        "Name": "PWM0_OUT",
+        "Info": ""
+    },
+    {
+        "Board_Pin": 33,
+        "Chip": "gpiochip0",
+        "Line": "line  41:",
+        "Offset": 41,
+        "Name": "PWM1_OUT",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  42:",
+        "Offset": 42,
+        "Name": "ETH_CLK",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  43:",
+        "Offset": 43,
+        "Name": "WIFI_CLK",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  44:",
+        "Offset": 44,
+        "Name": "SDA0",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  45:",
+        "Offset": 45,
+        "Name": "SCL0",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  46:",
+        "Offset": 46,
+        "Name": "SMPS_SCL",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  47:",
+        "Offset": 47,
+        "Name": "SMPS_SDA",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  48:",
+        "Offset": 48,
+        "Name": "SD_CLK_R",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  49:",
+        "Offset": 49,
+        "Name": "SD_CMD_R",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  50:",
+        "Offset": 50,
+        "Name": "SD_DATA0_R",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  51:",
+        "Offset": 51,
+        "Name": "SD_DATA1_R",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  52:",
+        "Offset": 52,
+        "Name": "SD_DATA2_R",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip0",
+        "Line": "line  53:",
+        "Offset": 53,
+        "Name": "SD_DATA3_R",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip1",
+        "Line": "line   0:",
+        "Offset": 0,
+        "Name": "unnamed",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip1",
+        "Line": "line   1:",
+        "Offset": 1,
+        "Name": "unnamed",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   0:",
+        "Offset": 0,
+        "Name": "BT_ON",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   1:",
+        "Offset": 1,
+        "Name": "WL_ON",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   2:",
+        "Offset": 2,
+        "Name": "STATUS_LED",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   3:",
+        "Offset": 3,
+        "Name": "LAN_RUN",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   4:",
+        "Offset": 4,
+        "Name": "HDMI_HPD_N",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   5:",
+        "Offset": 5,
+        "Name": "CAM_GPIO0",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   6:",
+        "Offset": 6,
+        "Name": "CAM_GPIO1",
+        "Info": ""
+    },
+    {
+        "Board_Pin": "",
+        "Chip": "gpiochip2",
+        "Line": "line   7:",
+        "Offset": 7,
+        "Name": "PWR_LOW_N",
+        "Info": ""
+    },
+    {}
+]
