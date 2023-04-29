@@ -95,6 +95,10 @@ Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
 sudo apt install python3-dev libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
 ```
+Install linux gpio tools.
+```shell
+sudo apt install gpiod libgpiod-dev python3-libgpiod
+```
 The minimum version of Python supported is 3.5 Check the current default version of Python by entering the following command:
 ```
 python --version
