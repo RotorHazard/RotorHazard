@@ -21,10 +21,8 @@ logger = logging.getLogger(__name__)
 class DataExportManager():
     exporters = {}
 
-    def __init__(self, RHData, PageCache, Language, Events):
-        self._RHData = RHData
-        self._PageCache = PageCache
-        self._Language = Language
+    def __init__(self, RaceContext, Events):
+        self._racecontext = RaceContext
         self.Events = Events
 
         self.Events.trigger('Export_Initialize', {
@@ -49,7 +47,7 @@ class DataExportManager():
         return self.exporters
 
     def export(self, exporter_id):
-        return self.exporters[exporter_id].export(self._RHData, self._PageCache, self._Language)
+        return self.exporters[exporter_id].export(self._racecontext)
 
 class DataExporter():
     def __init__(self, name, label, formatterFn, assemblerFn):

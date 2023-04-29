@@ -11,7 +11,6 @@ if new data becomes available during the build process.
 import logging
 from monotonic import monotonic
 from eventmanager import Evt
-import Results
 import RHUtils
 import gevent
 
@@ -23,8 +22,8 @@ DB = SQLAlchemy()
 class PageCache:
     _CACHE_TIMEOUT = 10
 
-    def __init__(self, RHData, Events):
-        self._RHData = RHData
+    def __init__(self, RaceContext, Events):
+        self._racecontext = RaceContext
         self._Events = Events
         self._cache = {} # Cache of complete results page
         self._buildToken = False # Time of result generation or false if no results are being calculated
@@ -85,15 +84,15 @@ class PageCache:
             self.set_buildToken(monotonic())
 
             heats = {}
-            for heat in self._RHData.get_heats():
-                if self._RHData.savedRaceMetas_has_heat(heat.id):
+            for heat in self._racecontext.rhdata.get_heats():
+                if self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id):
                     rounds = []
-                    for race in self._RHData.get_savedRaceMetas_by_heat(heat.id):    
+                    for race in self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id):    
                         pilotraces = []
-                        for pilotrace in self._RHData.get_savedPilotRaces_by_savedRaceMeta(race.id):
+                        for pilotrace in self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
                             gevent.sleep()
                             laps = []
-                            for lap in self._RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
+                            for lap in self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
                                 laps.append({
                                     'id': lap.id,
                                     'lap_time_stamp': lap.lap_time_stamp,
@@ -103,7 +102,7 @@ class PageCache:
                                     'deleted': lap.deleted
                                 })
 
-                            pilot_data = self._RHData.get_pilot(pilotrace.pilot_id)
+                            pilot_data = self._racecontext.rhdata.get_pilot(pilotrace.pilot_id)
                             if pilot_data:
                                 nodepilot = pilot_data.callsign
                             else:
@@ -116,7 +115,7 @@ class PageCache:
                                 'laps': laps
                             })
 
-                        results = self._RHData.get_results_savedRaceMeta(race)
+                        results = self._racecontext.rhdata.get_results_savedRaceMeta(race)
                         rounds.append({
                             'id': race.round_id,
                             'start_time_formatted': race.start_time_formatted,
@@ -124,7 +123,7 @@ class PageCache:
                             'leaderboard': results
                         })
 
-                    results = self._RHData.get_results_heat(heat)
+                    results = self._racecontext.rhdata.get_results_heat(heat)
                     heats[heat.id] = {
                         'heat_id': heat.id,
                         'displayname': heat.displayname(),
@@ -137,17 +136,17 @@ class PageCache:
 
             gevent.sleep()
             heats_by_class = {}
-            heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in self._RHData.get_heats_by_class(RHUtils.CLASS_ID_NONE)]
-            for race_class in self._RHData.get_raceClasses():
-                heats_by_class[race_class.id] = [heat.id for heat in self._RHData.get_heats_by_class(race_class.id)]
+            heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in self._racecontext.rhdata.get_heats_by_class(RHUtils.CLASS_ID_NONE)]
+            for race_class in self._racecontext.rhdata.get_raceClasses():
+                heats_by_class[race_class.id] = [heat.id for heat in self._racecontext.rhdata.get_heats_by_class(race_class.id)]
 
             timing['by_class'] = monotonic()
 
             gevent.sleep()
             current_classes = {}
-            for race_class in self._RHData.get_raceClasses():
-                results = self._RHData.get_results_raceClass(race_class)
-                ranking = self._RHData.get_ranking_raceClass(race_class)
+            for race_class in self._racecontext.rhdata.get_raceClasses():
+                results = self._racecontext.rhdata.get_results_raceClass(race_class)
+                ranking = self._racecontext.rhdata.get_ranking_raceClass(race_class)
                 current_class = {}
                 current_class['id'] = race_class.id
                 current_class['name'] = race_class.name
@@ -161,7 +160,7 @@ class PageCache:
             logger.debug('T%d: results by class assembled in %.3fs', timing['start'], timing['event'] - timing['by_class'])
 
             gevent.sleep()
-            results = self._RHData.get_results_event()
+            results = self._racecontext.rhdata.get_results_event()
 
             timing['event_end'] = monotonic()
             logger.debug('T%d: event results assembled in %.3fs', timing['start'], timing['event_end'] - timing['event'])

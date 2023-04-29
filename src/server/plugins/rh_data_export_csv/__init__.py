@@ -28,13 +28,13 @@ def write_csv(data):
         'ext': 'csv'
     }
 
-def assemble_all(RHData, PageCache, Language):
+def assemble_all(RaceContext):
     payload = {}
-    payload['Pilots'] = assemble_pilots(RHData, PageCache, Language)
-    payload['Heats'] = assemble_heats(RHData, PageCache, Language)
-    payload['Classes'] = assemble_classes(RHData, PageCache, Language)
-    payload['Formats'] = assemble_formats(RHData, PageCache, Language)
-    payload['Results'] = assemble_results(RHData, PageCache, Language)
+    payload['Pilots'] = assemble_pilots(RaceContext)
+    payload['Heats'] = assemble_heats(RaceContext)
+    payload['Classes'] = assemble_classes(RaceContext)
+    payload['Formats'] = assemble_formats(RaceContext)
+    payload['Results'] = assemble_results(RaceContext)
 
     output = []
     for datatype in payload:
@@ -45,31 +45,31 @@ def assemble_all(RHData, PageCache, Language):
 
     return output
 
-def assemble_pilots(RHData, _PageCache, Language):
-    payload = [[Language.__('Callsign'), Language.__('Name'), Language.__('Team')]]
+def assemble_pilots(RaceContext):
+    payload = [[RaceContext.language.__('Callsign'), RaceContext.language.__('Name'), RaceContext.language.__('Team')]]
 
-    pilots = RHData.get_pilots()
+    pilots = RaceContext.rhdata.get_pilots()
     for pilot in pilots:
         payload.append([pilot.callsign, pilot.name, pilot.team])
 
     return payload
 
-def assemble_heats(RHData, _PageCache, Language):
-    payload = [[Language.__('Name'), Language.__('Class'), Language.__('Pilots')]]
-    for heat in RHData.get_heats():
+def assemble_heats(RaceContext):
+    payload = [[RaceContext.language.__('Name'), RaceContext.language.__('Class'), RaceContext.language.__('Pilots')]]
+    for heat in RaceContext.rhdata.get_heats():
         displayname = heat.displayname()
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
-            race_class = RHData.get_raceClass(heat.class_id).name
+            race_class = RaceContext.rhdata.get_raceClass(heat.class_id).name
         else:
             race_class = None
 
         row = [displayname, race_class]
 
-        heatnodes = RHData.get_heatNodes_by_heat(heat.id)
+        heatnodes = RaceContext.rhdata.get_heatNodes_by_heat(heat.id)
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
-                row.append(RHData.get_pilot(heatnode.pilot_id).callsign)
+                row.append(RaceContext.rhdata.get_pilot(heatnode.pilot_id).callsign)
             else:
                 row.append('-')
 
@@ -77,13 +77,13 @@ def assemble_heats(RHData, _PageCache, Language):
 
     return payload
 
-def assemble_classes(RHData, _PageCache, Language):
-    race_classes = RHData.get_raceClasses()
-    payload = [[Language.__('Name'), Language.__('Description'), Language.__('Race Format')]]
+def assemble_classes(RaceContext):
+    race_classes = RaceContext.rhdata.get_raceClasses()
+    payload = [[RaceContext.language.__('Name'), RaceContext.language.__('Description'), RaceContext.language.__('Race Format')]]
 
     for race_class in race_classes:
         # expand format id to name
-        race_format = RHData.get_raceFormat(race_class.format_id)
+        race_format = RaceContext.rhdata.get_raceFormat(race_class.format_id)
         if race_format:
             format_string = race_format.name
         else:
@@ -93,43 +93,43 @@ def assemble_classes(RHData, _PageCache, Language):
 
     return payload
 
-def assemble_formats(RHData, _PageCache, Language):
+def assemble_formats(RaceContext):
     timer_modes = [
-        Language.__('Fixed Time'),
-        Language.__('No Time Limit'),
+        RaceContext.language.__('Fixed Time'),
+        RaceContext.language.__('No Time Limit'),
     ]
     tones = [
-        Language.__('None'),
-        Language.__('One'),
-        Language.__('Each Second')
+        RaceContext.language.__('None'),
+        RaceContext.language.__('One'),
+        RaceContext.language.__('Each Second')
     ]
     win_conditions = [
-        Language.__('None'),
-        Language.__('Most Laps in Fastest Time'),
-        Language.__('First to X Laps'),
-        Language.__('Fastest Lap'),
-        Language.__('Fastest 3 Consecutive Laps'),
-        Language.__('Most Laps Only'),
-        Language.__('Most Laps Only with Overtime')
+        RaceContext.language.__('None'),
+        RaceContext.language.__('Most Laps in Fastest Time'),
+        RaceContext.language.__('First to X Laps'),
+        RaceContext.language.__('Fastest Lap'),
+        RaceContext.language.__('Fastest 3 Consecutive Laps'),
+        RaceContext.language.__('Most Laps Only'),
+        RaceContext.language.__('Most Laps Only with Overtime')
     ]
     start_behaviors = [
-        Language.__('Hole Shot'),
-        Language.__('First Lap'),
-        Language.__('Staggered Start'),
+        RaceContext.language.__('Hole Shot'),
+        RaceContext.language.__('First Lap'),
+        RaceContext.language.__('Staggered Start'),
     ]
 
-    formats = RHData.get_raceFormats()
+    formats = RaceContext.rhdata.get_raceFormats()
     payload = [[
-        Language.__('Name'),
-        Language.__('Race Clock Mode'),
-        Language.__('Timer Duration (seconds)'),
-        Language.__('Minimum Start Delay'),
-        Language.__('Maximum Start Delay'),
-        Language.__('Staging Tones'),
-        Language.__('First Crossing'),
-        Language.__('Win Condition'),
-        Language.__('Number of Laps to Win'),
-        Language.__('Team Racing Mode'),
+        RaceContext.language.__('Name'),
+        RaceContext.language.__('Race Clock Mode'),
+        RaceContext.language.__('Timer Duration (seconds)'),
+        RaceContext.language.__('Minimum Start Delay'),
+        RaceContext.language.__('Maximum Start Delay'),
+        RaceContext.language.__('Staging Tones'),
+        RaceContext.language.__('First Crossing'),
+        RaceContext.language.__('Win Condition'),
+        RaceContext.language.__('Number of Laps to Win'),
+        RaceContext.language.__('Team Racing Mode'),
     ]]
 
     for race_format in formats:
@@ -147,7 +147,7 @@ def assemble_formats(RHData, _PageCache, Language):
 
     return payload
 
-def build_leaderboard(leaderboard, Language, **kwargs):
+def build_leaderboard(leaderboard, RaceContext, **kwargs):
     meta = leaderboard['meta']
     if 'primary_leaderboard' in kwargs and kwargs['primary_leaderboard'] in leaderboard:
         primary_leaderboard = leaderboard[kwargs['primary_leaderboard']]
@@ -155,22 +155,22 @@ def build_leaderboard(leaderboard, Language, **kwargs):
         primary_leaderboard = leaderboard[meta['primary_leaderboard']]
 
     if meta['start_behavior'] == 2:
-        total_label = Language.__('Laps Total')
+        total_label = RaceContext.language.__('Laps Total')
         total_source = 'total_time_laps'
     else:
-        total_label = Language.__('Total')
+        total_label = RaceContext.language.__('Total')
         total_source = 'total_time'
 
     output = [[
-        Language.__('Seat'),
-        Language.__('Rank'),
-        Language.__('Pilot'),
-        Language.__('Laps'),
-        Language.__(total_label),
-        Language.__('Avg.'),
-        Language.__('Fastest'),
-        Language.__('3 Consecutive'),
-        Language.__('Team'),
+        RaceContext.language.__('Seat'),
+        RaceContext.language.__('Rank'),
+        RaceContext.language.__('Pilot'),
+        RaceContext.language.__('Laps'),
+        RaceContext.language.__(total_label),
+        RaceContext.language.__('Avg.'),
+        RaceContext.language.__('Fastest'),
+        RaceContext.language.__('3 Consecutive'),
+        RaceContext.language.__('Team'),
     ]]
 
     for entry in primary_leaderboard:
@@ -188,26 +188,26 @@ def build_leaderboard(leaderboard, Language, **kwargs):
 
     return output
 
-def assemble_results(_RHData, PageCache, Language):
-    results = PageCache.get_cache()
+def assemble_results(RaceContext):
+    results = RaceContext.pagecache.get_cache()
     payload = []
 
-    payload.append([Language.__('Event Leaderboards') + ': ' + Language.__('Race Totals')])
-    for row in build_leaderboard(results['event_leaderboard'], Language, primary_leaderboard='by_race_time'):
+    payload.append([RaceContext.language.__('Event Leaderboards') + ': ' + RaceContext.language.__('Race Totals')])
+    for row in build_leaderboard(results['event_leaderboard'], RaceContext, primary_leaderboard='by_race_time'):
         payload.append(row[1:])
 
     payload.append([''])
-    payload.append([Language.__('Event Leaderboards') + ': ' + Language.__('Fastest Laps')])
-    for row in build_leaderboard(results['event_leaderboard'], Language, primary_leaderboard='by_fastest_lap'):
+    payload.append([RaceContext.language.__('Event Leaderboards') + ': ' + RaceContext.language.__('Fastest Laps')])
+    for row in build_leaderboard(results['event_leaderboard'], RaceContext, primary_leaderboard='by_fastest_lap'):
         payload.append(row[1:])
 
     payload.append([''])
-    payload.append([Language.__('Event Leaderboards') + ': ' + Language.__('Fastest 3 Consecutive Laps')])
-    for row in build_leaderboard(results['event_leaderboard'], Language, primary_leaderboard='by_consecutives'):
+    payload.append([RaceContext.language.__('Event Leaderboards') + ': ' + RaceContext.language.__('Fastest 3 Consecutive Laps')])
+    for row in build_leaderboard(results['event_leaderboard'], RaceContext, primary_leaderboard='by_consecutives'):
         payload.append(row[1:])
 
     payload.append([''])
-    payload.append([Language.__('Class Leaderboards')])
+    payload.append([RaceContext.language.__('Class Leaderboards')])
 
     # move unclassified heats to end
     all_classes = sorted(list(results['heats_by_class'].keys()))
@@ -230,16 +230,16 @@ def assemble_results(_RHData, PageCache, Language):
 
             payload.append([])
             if race_class:
-                payload.append([Language.__('Class') + ': ' + race_class['name']])
+                payload.append([RaceContext.language.__('Class') + ': ' + race_class['name']])
                 payload.append([])
-                payload.append([Language.__('Class Summary')])
-                for row in build_leaderboard(race_class['leaderboard'], Language):
+                payload.append([RaceContext.language.__('Class Summary')])
+                for row in build_leaderboard(race_class['leaderboard'], RaceContext):
                     payload.append(row[1:])
             else:
                 if len(results['classes']):
-                    payload.append([Language.__('Unclassified')])
+                    payload.append([RaceContext.language.__('Unclassified')])
                 else:
-                    payload.append([Language.__('Heats')])
+                    payload.append([RaceContext.language.__('Heats')])
 
             for heat_id in results['heats_by_class'][class_id]:
                 if heat_id in results['heats']:
@@ -251,18 +251,18 @@ def assemble_results(_RHData, PageCache, Language):
 
                     if len(heat['rounds']) > 1:
                         payload.append([])
-                        payload.append([Language.__('Heat Summary')])
+                        payload.append([RaceContext.language.__('Heat Summary')])
 
-                        for row in build_leaderboard(heat['leaderboard'], Language):
+                        for row in build_leaderboard(heat['leaderboard'], RaceContext):
                             payload.append(row[1:])
 
                     for heat_round in heat['rounds']:
                         payload.append([])
-                        payload.append([Language.__('Round {0}').format(heat_round['id'])])
+                        payload.append([RaceContext.language.__('Round {0}').format(heat_round['id'])])
 
                         laptimes = []
 
-                        for row in build_leaderboard(heat_round['leaderboard'], Language):
+                        for row in build_leaderboard(heat_round['leaderboard'], RaceContext):
                             for node in heat_round['nodes']:
                                 if row[0] == node['node_index']:
                                     laplist = []
@@ -279,7 +279,7 @@ def assemble_results(_RHData, PageCache, Language):
 
 
                         payload.append([])
-                        payload.append([Language.__('Round {0} Times').format(str(heat_round['id']))])
+                        payload.append([RaceContext.language.__('Round {0} Times').format(str(heat_round['id']))])
 
                         for row in laptimes:
                             payload.append(row)

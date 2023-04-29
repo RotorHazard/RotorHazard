@@ -24,16 +24,11 @@ class SecondaryNode:
     TIMEDIFF_MEDIAN_SIZE = 30
     TIMEDIFF_CORRECTION_THRESH_MS = 250  # correct split times if secondary clock more off than this
 
-    def __init__(self, idVal, info, RACE, RHData, \
-                 emit_split_pass_info, monotonic_to_epoch_millis, \
-                 emit_cluster_connect_change, server_release_version):
+    def __init__(self, idVal, info, RaceContext, monotonic_to_epoch_millis, server_release_version):
         self.id = idVal
         self.info = info
-        self.RACE = RACE
-        self.RHData = RHData
-        self.emit_split_pass_info = emit_split_pass_info
+        self._racecontext = RaceContext
         self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
-        self.emit_cluster_connect_change = emit_cluster_connect_change
         self.server_release_version = server_release_version
         addr = info['address']
         if not '://' in addr:
@@ -85,8 +80,8 @@ class SecondaryNode:
                     self.secsSinceDisconnect = monotonic() - self.startConnectTime
                     if self.secsSinceDisconnect >= 1.0:  # if disconnect just happened then wait a second before reconnect
                         # if never connected then only retry if race not in progress
-                        if self.numDisconnects > 0 or (self.RACE.race_status != RaceStatus.STAGING and \
-                                                        self.RACE.race_status != RaceStatus.RACING):
+                        if self.numDisconnects > 0 or (self._racecontext.race.race_status != RaceStatus.STAGING and \
+                                                        self._racecontext.race.race_status != RaceStatus.RACING):
                             # if first-ever attempt or was previously connected then show log msg
                             if oldSecsSinceDis == 0 or self.numDisconnects > 0:
                                 logger.log((logging.INFO if self.secsSinceDisconnect <= self.info['timeout'] else logging.DEBUG), \
@@ -114,8 +109,8 @@ class SecondaryNode:
                                             logger.warning(err_msg)     # if never connected then give up
                                             logger.warning("Reached timeout; no longer trying to connect to secondary {0} at {1}".\
                                                         format(self.id+1, self.address))
-                                            if self.runningFlag and self.emit_cluster_connect_change:
-                                                self.emit_cluster_connect_change(False)  # play one disconnect tone
+                                            if self.runningFlag and self._racecontext.rhui.emit_cluster_connect_change:
+                                                self._racecontext.rhui.emit_cluster_connect_change(False)  # play one disconnect tone
                                             self.runningFlag = False
                                             return  # exit worker thread
                 else:  # if current status is connected
@@ -123,9 +118,9 @@ class SecondaryNode:
                     if not self.freqsSentFlag:
                         try:
                             self.freqsSentFlag = True
-                            if (not self.isMirrorMode) and self.RACE.profile:
+                            if (not self.isMirrorMode) and self._racecontext.race.profile:
                                 logger.info("Sending node frequencies to secondary {0} at {1}".format(self.id+1, self.address))
-                                for idx, freq in enumerate(json.loads(self.RACE.profile.frequencies)["f"]):
+                                for idx, freq in enumerate(json.loads(self._racecontext.race.profile.frequencies)["f"]):
                                     data = { 'node':idx, 'frequency':freq }
                                     self.emit('set_frequency', data)
                                     gevent.sleep(0.001)
@@ -233,10 +228,10 @@ class SecondaryNode:
                 }
                 self.emit('join_cluster_ex', payload)
                 if (not self.isMirrorMode) and \
-                        (self.RACE.race_status == RaceStatus.STAGING or self.RACE.race_status == RaceStatus.RACING):
+                        (self._racecontext.race.race_status == RaceStatus.STAGING or self._racecontext.race.race_status == RaceStatus.RACING):
                     self.emit('stage_race')  # if race in progress then make sure running on secondary
-                if self.runningFlag and self.emit_cluster_connect_change:
-                    self.emit_cluster_connect_change(True)
+                if self.runningFlag and self._racecontext.rhui.emit_cluster_connect_change:
+                    self._racecontext.rhui.emit_cluster_connect_change(True)
             else:
                 self.lastContactTime = monotonic()
                 logger.debug("Received extra 'on_connect' event for secondary {0} at {1}".format(self.id+1, self.address))
@@ -254,8 +249,8 @@ class SecondaryNode:
                 upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
                 logger.warning("Disconnected from " + self.get_log_str(upSecs))
                 self.totalUpTimeSecs += upSecs
-                if self.runningFlag and self.emit_cluster_connect_change:
-                    self.emit_cluster_connect_change(False)
+                if self.runningFlag and self._racecontext.rhui.emit_cluster_connect_change:
+                    self._racecontext.rhui.emit_cluster_connect_change(False)
             else:
                 logger.debug("Received extra 'on_disconnect' event for secondary {0} at {1}".format(self.id+1, self.address))
         except Exception:
@@ -304,7 +299,7 @@ class SecondaryNode:
                            (float(totUpSecs)/upDownTotal if upDownTotal > 0 else 0),
                            ((", numDisconnsDuringRace=" + str(self.numDisconnsDuringRace)) if \
                                     (self.numDisconnsDuringRace > 0 and \
-                                     (stoppedRaceFlag or self.RACE.race_status == RaceStatus.RACING)) else ""))
+                                     (stoppedRaceFlag or self._racecontext.race.race_status == RaceStatus.RACING)) else ""))
 
     def on_pass_record(self, data):
         try:
@@ -312,23 +307,23 @@ class SecondaryNode:
             self.numContacts += 1
             node_index = data['node']
 
-            if self.RACE.race_status is RaceStatus.RACING:
+            if self._racecontext.race.race_status is RaceStatus.RACING:
 
-                pilot_id = self.RHData.get_pilot_from_heatNode(self.RACE.current_heat, node_index) 
+                pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self._racecontext.race.current_heat, node_index) 
                 
                 if pilot_id != RHUtils.PILOT_ID_NONE:
 
                     # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
-                    split_ts = data['timestamp'] - self.RACE.start_time_epoch_ms
+                    split_ts = data['timestamp'] - self._racecontext.race.start_time_epoch_ms
 
-                    act_laps_list = self.RACE.get_active_laps()[node_index]
+                    act_laps_list = self._racecontext.race.get_active_laps()[node_index]
                     lap_count = max(0, len(act_laps_list) - 1)
                     split_id = self.id
 
                     # get timestamp for last lap pass (including lap 0)
                     if len(act_laps_list) > 0:
                         last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-                        lap_split = self.RHData.get_lapSplits_by_lap(node_index, lap_count)
+                        lap_split = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_count)
 
                         if len(lap_split) <= 0: # first split for this lap
                             if split_id > 0:
@@ -355,12 +350,12 @@ class SecondaryNode:
 
                         split_time = split_ts - last_split_ts
                         split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                        split_time_str = RHUtils.time_format(split_time, self.RHData.get_option('timeFormat'))
+                        split_time_str = RHUtils.time_format(split_time, self._racecontext.rhdata.get_option('timeFormat'))
                         logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
                             .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
                             ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
 
-                        self.RHData.add_lapSplit({
+                        self._racecontext.rhdata.add_lapSplit({
                             'node_index': node_index,
                             'pilot_id': pilot_id,
                             'lap_id': lap_count,
@@ -371,7 +366,7 @@ class SecondaryNode:
                             'split_speed': split_speed
                         })
                         
-                        self.emit_split_pass_info(pilot_id, split_id, split_time)
+                        self._racecontext.rhui.emit_split_pass_info(pilot_id, split_id, split_time)
 
                 else:
                     logger.info('Split pass record dismissed: Node: {0}, no pilot on node'.format(node_index+1))

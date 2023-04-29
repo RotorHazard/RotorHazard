@@ -7,8 +7,8 @@ class EventActions:
     eventActionsList = []
     effects = {}
 
-    def __init__(self, eventmanager, RHData):
-        self._RHData = RHData
+    def __init__(self, eventmanager, RaceContext):
+        self._racecontext = RaceContext
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -28,7 +28,7 @@ class EventActions:
         return self.effects
 
     def loadActions(self, _args=None):
-        actionSetting = self._RHData.get_option('actions')
+        actionSetting = self._racecontext.rhdata.get_option('actions')
         if actionSetting:
             try:
                 self.eventActionsList = json.loads(actionSetting)
@@ -50,60 +50,59 @@ class ActionEffect():
         self.effectFn = effectFn
         self.fields = fields
 
-def initializeEventActions(Events, RHData, RACE, RHUI, \
-                           Language, logger):
+def initializeEventActions(Events, RaceContext, logger):
     eventActionsObj = None
     try:
-        eventActionsObj = EventActions(Events, RHData)
+        eventActionsObj = EventActions(Events, RaceContext)
 
         #register built-in effects
         @catchLogExceptionsWrapper
         def speakEffect(action, args):
             text = action['text']
             if 'node_index' in args:
-                pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+                pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.spokenName())
 
             if 'heat_id' in args:
-                heat = RHData.get_heat(args['heat_id'])
+                heat = RaceContext.rhdata.get_heat(args['heat_id'])
             else:
-                heat = RHData.get_heat(RACE.current_heat)
+                heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
 
             text = text.replace('%HEAT%', heat.displayname())
 
-            RHUI.emit_phonetic_text(text)
+            RaceContext.rhui.emit_phonetic_text(text)
 
         @catchLogExceptionsWrapper
         def messageEffect(action, args):
             text = action['text']
             if 'node_index' in args:
-                pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+                pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.callsign)
 
             if 'heat_id' in args:
-                heat = RHData.get_heat(args['heat_id'])
+                heat = RaceContext.rhdata.get_heat(args['heat_id'])
             else:
-                heat = RHData.get_heat(RACE.current_heat)
+                heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
 
             text = text.replace('%HEAT%', heat.displayname())
 
-            RHUI.emit_priority_message(text)
+            RaceContext.rhui.emit_priority_message(text)
 
         @catchLogExceptionsWrapper
         def alertEffect(action, args):
             text = action['text']
             if 'node_index' in args:
-                pilot = RHData.get_pilot(RACE.node_pilots[args['node_index']])
+                pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.callsign)
 
             if 'heat_id' in args:
-                heat = RHData.get_heat(args['heat_id'])
+                heat = RaceContext.rhdata.get_heat(args['heat_id'])
             else:
-                heat = RHData.get_heat(RACE.current_heat)
+                heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
 
             text = text.replace('%HEAT%', heat.displayname())
 
-            RHUI.emit_priority_message(text, True)
+            RaceContext.rhui.emit_priority_message(text, True)
 
         eventActionsObj.registerEffect(
             ActionEffect(

@@ -11,11 +11,8 @@ logger = logging.getLogger(__name__)
 class HeatGeneratorManager():
     generators = {}
 
-    def __init__(self, RHData, Results, PageCache, Language, Events):
-        self._RHData = RHData
-        self._Results = Results
-        self._PageCache = PageCache
-        self._Language = Language
+    def __init__(self, RaceContext, Events):
+        self._racecontext = RaceContext
         self.Events = Events
 
         self.Events.trigger('HeatGenerator_Initialize', {
@@ -41,7 +38,7 @@ class HeatGeneratorManager():
         return self.generators
 
     def generate(self, generator_id, generate_args=None):
-        generated_heats = self.generators[generator_id].generate(self._RHData, self._Results, self._PageCache, generate_args)
+        generated_heats = self.generators[generator_id].generate(self._racecontext, generate_args)
         if generated_heats:
             self.apply(generated_heats, generate_args)
             return True
@@ -56,12 +53,12 @@ class HeatGeneratorManager():
         output_class = generate_args.get('output_class')
 
         if output_class is None:
-            new_class = self._RHData.add_raceClass()
+            new_class = self._racecontext.rhdata.add_raceClass()
             output_class = new_class.id
 
         heat_id_mapping = []
         for heat_plan in generated_heats:
-            new_heat = self._RHData.add_heat(init={
+            new_heat = self._racecontext.rhdata.add_heat(init={
                 'class_id': output_class,
                 'note': heat_plan['name'],
                 'auto_frequency': True,
@@ -71,7 +68,7 @@ class HeatGeneratorManager():
 
         for h_idx, heat_plan in enumerate(generated_heats):
             heat_alterations = []
-            heat_slots = self._RHData.get_heatNodes_by_heat(heat_id_mapping[h_idx])
+            heat_slots = self._racecontext.rhdata.get_heatNodes_by_heat(heat_id_mapping[h_idx])
 
             if len(heat_slots) < len(heat_plan['slots']):
                 logger.warning('Not enough actual slots for requested heat generation')
@@ -91,7 +88,7 @@ class HeatGeneratorManager():
                         else:
                             # randomly seed 
                             if filled_pool == False:
-                                for pilot in self._RHData.get_pilots():
+                                for pilot in self._racecontext.rhdata.get_pilots():
                                     pilot_pool.append(pilot.id)
 
                                 random.shuffle(pilot_pool)
@@ -113,7 +110,7 @@ class HeatGeneratorManager():
 
                 heat_alterations.append(data)
 
-            self._RHData.alter_heatNodes_fast(heat_alterations)
+            self._racecontext.rhdata.alter_heatNodes_fast(heat_alterations)
 
         if filled_pool and len(pilot_pool):
             logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
@@ -125,7 +122,7 @@ class HeatGenerator():
         self.generator = generatorFn
         self.defaultArgs = defaultArgs
 
-    def generate(self, RHData, Results, PageCache, generate_args=None):
+    def generate(self, RaceContext, generate_args=None):
         generate_args = {**(self.defaultArgs if self.defaultArgs else {}), **(generate_args if generate_args else {})}
 
-        return self.generator(RHData, Results, PageCache, generate_args)
+        return self.generator(RaceContext, generate_args)

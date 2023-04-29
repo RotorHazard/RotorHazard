@@ -16,8 +16,8 @@ class EventManager:
     eventOrder = {}
     eventThreads = {}
 
-    def __init__(self):
-        pass
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
 
     def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
         if defaultArgs == None:
@@ -30,7 +30,8 @@ class EventManager:
             "handlerFn": handlerFn,
             "defaultArgs": defaultArgs,
             "priority": priority,
-            "unique": unique
+            "unique": unique,
+            "raceContext": self._racecontext
         }
 
         self.eventOrder[event] = [key for key, _value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
