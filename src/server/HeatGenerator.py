@@ -40,13 +40,13 @@ class HeatGeneratorManager():
     def generate(self, generator_id, generate_args=None):
         generated_heats = self.generators[generator_id].generate(self._racecontext, generate_args)
         if generated_heats:
-            self.apply(generated_heats, generate_args)
+            self.apply(generator_id, generated_heats, generate_args)
             return True
         else:
             logger.error('Generation stage failed or refused to produce output: see log')
             return False
 
-    def apply(self, generated_heats, generate_args):
+    def apply(self, generator_id, generated_heats, generate_args):
         pilot_pool = []
         filled_pool = False
         input_class = generate_args.get('input_class')  
@@ -54,6 +54,7 @@ class HeatGeneratorManager():
 
         if output_class is None:
             new_class = self._racecontext.rhdata.add_raceClass()
+            new_class.name = self.generators[generator_id].label
             output_class = new_class.id
 
         heat_id_mapping = []
