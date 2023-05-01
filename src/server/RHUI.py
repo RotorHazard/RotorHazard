@@ -138,6 +138,8 @@ class RHUI():
         emit_payload = {
                 'race_status': self._racecontext.race.race_status,
                 'race_format_id': self._racecontext.race.format.id if hasattr(self._racecontext.race.format, 'id') else None,
+                'race_heat_id': self._racecontext.race.current_heat,
+                'race_class_id': self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).class_id,
                 'race_mode': race_format.race_mode,
                 'race_time_sec': race_format.race_time_sec,
                 'race_staging_tones': race_format.staging_tones,
@@ -744,6 +746,20 @@ class RHUI():
         else:
             self._socket.emit('phonetic_data', emit_payload)
 
+    def emit_race_saved(self, new_race, race_data, **params):
+        emit_payload = {
+            'race_id': new_race.id,
+            'heat_id': new_race.heat_id,
+            'class_id': new_race.class_id,
+            'format_id': new_race.format_id,
+            'pilot_ids': [race_data[x]['pilot_id'] for x in race_data]
+        }
+
+        if ('nobroadcast' in params):
+            emit('race_saved', emit_payload)
+        else:
+            self._socket.emit('race_saved', emit_payload)
+        
     def emit_first_pass_registered(self, node_idx, **params):
         '''Emits when first pass (lap 0) is registered during a race'''
         emit_payload = {

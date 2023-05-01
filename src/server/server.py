@@ -2465,6 +2465,8 @@ def do_save_actions():
         'round_id': new_race.round_id,
     }
     gevent.spawn(build_atomic_result_caches, cache_params)
+    
+    RaceContext.rhui.emit_race_saved(new_race, race_data)
 
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper

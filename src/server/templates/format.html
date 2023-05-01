@@ -78,6 +78,51 @@
 		socket.on('race_status', function (msg) {
 			rotorhazard.event.race_status = msg;
 			display_format();
+			display_classes();
+			display_unclassified_heats();
+
+			if (rotorhazard.event.race_status.race_status) {
+				$('#active_race_lock').show();
+			} else {
+				$('#active_race_lock').hide();
+			}
+		});
+
+		socket.on('race_saved', function (msg) {
+			if (typeof rotorhazard.event.classes != "undefined") {
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == msg.class_id});
+				if (race_class) {
+					race_class.locked = true;
+				}
+			}
+
+			if (typeof rotorhazard.event.heats != "undefined") {
+				var heat = rotorhazard.event.heats.find(obj => {return obj.id == msg.heat_id});
+				if (heat) {
+					heat.locked = true;
+				}
+			}
+
+			if (typeof rotorhazard.event.race_formats != "undefined") {
+				var format = rotorhazard.event.race_formats.find(obj => {return obj.id == msg.format_id});
+				if (format) {
+					format.locked = true;
+				}
+			}
+
+			if (typeof rotorhazard.event.pilots != "undefined") {
+				for (var p in msg.pilot_ids) {
+					var pilot_id = msg.pilot_ids[p]
+					var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
+					if (pilot_id) {
+						pilot.locked = true	;
+					}
+				}
+			}
+			display_format();
+			display_classes();
+			display_unclassified_heats();
+			display_pilots();
 		});
 
 		/* Classes */
@@ -140,14 +185,23 @@
 
 						el.append(header);
 
+						var locked = race_class.locked;
+						var active = false;
+						if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_class_id == race_class.id) {
+							active = true;
+							locked = true;
+						}
+
 						var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
 						input.val(race_class.name);
 						el.append(input);
 
 						var actions = $('<div class="actions">');
 						actions.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class.displayname + '">+</button>');
-						if (race_class.locked) {
-							actions.append('<button class="btn-warning open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class.displayname + '">' + svg_asset.lock + '</button>');
+						if (locked) {
+							if (!active) {
+								actions.append('<button class="btn-warning open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class.displayname + '">' + svg_asset.lock + '</button>');
+							}
 						} else {
 							actions.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
 						}
@@ -165,7 +219,7 @@
 							selectbox.append('<option value="' + rotorhazard.event.race_formats[j].id +'">' + rotorhazard.event.race_formats[j].name + '</option>');
 						}
 						selectbox.val(race_class.format);
-						selectbox.prop('disabled', race_class.locked);
+						selectbox.prop('disabled', locked);
 						field.append(selectbox);
 						el.append(field);
 
@@ -185,7 +239,7 @@
 						selectbox.append('<option value="8">Best 5 Rounds (Laps/Time)</option>');
 						
 						selectbox.val(race_class.win_condition);
-						selectbox.prop('disabled', race_class.locked);
+						selectbox.prop('disabled', locked);
 						field.append(selectbox);
 						el.append(field);
 
@@ -378,6 +432,13 @@
 				el.addClass('is-confirmed');
 			}
 
+			var locked = heat.locked;
+			var active = false
+			if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_heat_id == heat.id) {
+				active = true;
+				locked = true;
+			}
+
 			var header = $('<h4>Heat ' + heat.id + '</h4>');
 			el.append(header);
 
@@ -387,8 +448,10 @@
 
 			var actions = $('<div class="actions">');
 			actions.append('<button class="duplicate_heat" data-id="' + heat.id + '" title="' + __('Duplicate Heat') + ': ' + heat.displayname + '">+</button>');
-			if (heat.locked) {
-				actions.append('<button class="btn-warning open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heat.id + '" title="' + __('Force Modify Heat') + ': ' + heat.displayname + '">' + svg_asset.lock + '</button>');
+			if (locked) {
+				if (!active) {
+					actions.append('<button class="btn-warning open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heat.id + '" title="' + __('Force Modify Heat') + ': ' + heat.displayname + '">' + svg_asset.lock + '</button>');
+				}
 			} else if (Object.keys(rotorhazard.event.heats).length > 1) {
 				actions.append('<button class="delete_heat btn-danger" data-id="' + heat.id + '" title="Delete Heat ' + heat.id + '">&#215;</button>');
 			}
@@ -428,7 +491,7 @@
 				} else {
 					selectmethod.val(0);
 				}
-				selectmethod.prop('disabled', heat.locked);
+				selectmethod.prop('disabled', locked);
 				slot_el.append(selectmethod);
 
 				// method-heat
@@ -450,7 +513,7 @@
 				} else {
 					selectheat.val(0);
 				}
-				selectheat.prop('disabled', heat.locked);
+				selectheat.prop('disabled', locked);
 				slot_el.append(selectheat);
 
 				// method-class
@@ -472,13 +535,13 @@
 				} else {
 					selectclass.val(0);
 				}
-				selectclass.prop('disabled', heat.locked);
+				selectclass.prop('disabled', locked);
 				slot_el.append(selectclass);
 
 				// rank
 				var input = $('<input type="number" class="set_rank" id="heat_' + heat.id + '_node_' + j + '" data-heat="' + heat.id + '" data-slot="' + slot.id + '" step="1" min="1" placeholder="Rank" required>'); // TODO: Proper labels
 				input.val(slot.seed_rank);
-				input.prop('disabled', heat.locked);
+				input.prop('disabled', locked);
 				slot_el.append(input);
 
 				// pilot selectors
@@ -496,7 +559,7 @@
 				if (slot.method == -1 || !heatpilot) {
 					selectbox.val(0);
 				}
-				selectbox.prop('disabled', heat.locked);
+				selectbox.prop('disabled', locked);
 				slot_el.append(selectbox);
 
 				nodelist.append(slot_el);
@@ -509,7 +572,7 @@
 			label.append(input);
 			label.append(__('Auto Frequency'));
 			input.prop('checked', heat.auto_frequency);
-			input.prop('disabled', heat.locked);
+			input.prop('disabled', locked);
 			afc.append(label);
 			el.append(afc);
 
@@ -1095,6 +1158,7 @@
 			rotorhazard.event.race_formats = msg.formats;
 			update_race_formats();
 			display_classes();
+			display_unclassified_heats();
 		});
 
 		function update_race_formats() {
@@ -1115,7 +1179,7 @@
 				var locked = rf.locked;
 	
 				if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
-					var locked = true;
+					locked = true;
 					$('#unlock_race_format_button').prop('disabled', true);
 					$('#delete_race_format_button').prop('disabled', true);
 					$('#current_race_format_lock').show();
@@ -1726,6 +1790,10 @@
 		<h2>{{ __('Classes and Heats') }}</h2>
 	</div>
 	<div class="panel-content">
+		<p id="active_race_lock" class="form-note">{{ __('Some options cannot be changed for currently active race.') }}
+			<button id="stop_save" class="btn-danger">{{ __('Stop/Save') }}</button>
+			<button id="stop_discard" class="btn-danger">{{ __('Stop/Discard') }}</button></p>
+
 		<div id="race_classes" class="race_classes item-blocks">
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
