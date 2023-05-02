@@ -47,10 +47,33 @@ def showBitmap(args):
             img = Image.open(bitmap['image'])
             delay = bitmap['delay']
 
-            img = img.rotate(90 * Config.LED['PANEL_ROTATE'])
-            img = img.resize((Config.LED['LED_COUNT'] // Config.LED['LED_ROWS'], Config.LED['LED_ROWS']))
+            panel_w = Config.LED['LED_COUNT'] // Config.LED['LED_ROWS']
+            panel_h = Config.LED['LED_ROWS']
 
-            setPixels(img)
+            if Config.LED['PANEL_ROTATE'] % 2:
+                output_w = panel_h
+                output_h = panel_w
+            else:
+                output_w = panel_w
+                output_h = panel_h
+
+            size = img.size
+
+            ratio_w = output_w / size[0]
+            ratio_h = output_h / size[1]
+
+            ratio = min(ratio_w, ratio_h)
+
+            img = img.resize((int(size[0]*ratio), int(size[1]*ratio)))
+
+            output_img = Image.new(img.mode, (output_w, output_h))
+            size = img.size
+            pad_left = int((output_w - size[0]) / 2) 
+            pad_top = int((output_h - size[1]) / 2)
+            output_img.paste(img, (pad_left, pad_top))
+            output_img = output_img.rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
+
+            setPixels(output_img)
             strip.show()
             gevent.sleep(delay/1000.0)
 

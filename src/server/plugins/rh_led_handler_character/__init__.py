@@ -115,7 +115,7 @@ def printCharacter(args):
 
     panel['draw'].text((int((panel['width']-w)/2), int((panel['height']-h)/2)), text, font=font, fill=(color))
 
-    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
+    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
 
     setPixels(strip, img)
     strip.show()
@@ -154,7 +154,7 @@ def scrollText(args):
     for i in range(-panel['width'], w + panel['width']):
         panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
         panel['draw'].text((-i, draw_y), text, font=font, fill=(color))
-        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
+        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
         setPixels(strip, img)
         strip.show()
         gevent.sleep(10/1000.0)
@@ -235,13 +235,21 @@ def multiLapGrid(args):
 
             panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
 
-    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
+    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
     setPixels(strip, img)
     strip.show()
 
 def getPanelImg(strip):
-    width = int(strip.numPixels() / Config.LED['LED_ROWS'])
-    height = Config.LED['LED_ROWS']
+    panel_w = Config.LED['LED_COUNT'] // Config.LED['LED_ROWS']
+    panel_h = Config.LED['LED_ROWS']
+
+    if Config.LED['PANEL_ROTATE'] % 2:
+        width = panel_h
+        height = panel_w
+    else:
+        width = panel_w
+        height = panel_h
+
     im = Image.new('RGB', [width, height])
     return {
         'width': width,
