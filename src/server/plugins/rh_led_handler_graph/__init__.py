@@ -24,8 +24,8 @@ def rssiGraph(args):
     else:
         return False
 
-    if 'INTERFACE' in args:
-        INTERFACE = args['INTERFACE']
+    if 'raceContext' in args:
+        INTERFACE = args['raceContext'].interface
     else:
         return False
 
@@ -34,15 +34,24 @@ def rssiGraph(args):
 
     panel = getPanelImg(strip)
 
-    if panel['width'] < len(INTERFACE.nodes):
+    if 'active_only' in args and args['active_only'] == True:
+        active_nodes = []
+        for node in INTERFACE.nodes:
+            if node.frequency:
+                active_nodes.append(node)
+
+    else:
+        active_nodes = INTERFACE.nodes
+
+    if panel['width'] < len(active_nodes):
         barWidth = 1
     else:
-        barWidth = panel['width'] // len(INTERFACE.nodes)
+        barWidth = panel['width'] // len(active_nodes)
 
     while True:
         panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
 
-        for node in INTERFACE.nodes:
+        for node in active_nodes:
             rssi_min = node.node_nadir_rssi
             rssi_max = node.node_peak_rssi
             rssi_val = node.current_rssi
@@ -56,15 +65,23 @@ def rssiGraph(args):
 
                 panel['draw'].rectangle((barWidth * node.index, point, (barWidth * node.index) + barWidth - 1, panel['height']), fill=color)
 
-        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
+        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
         setPixels(strip, img)
         strip.show()
 
         gevent.idle()
 
 def getPanelImg(strip):
-    width = int(strip.numPixels() / Config.LED['LED_ROWS'])
-    height = Config.LED['LED_ROWS']
+    panel_w = Config.LED['LED_COUNT'] // Config.LED['LED_ROWS']
+    panel_h = Config.LED['LED_ROWS']
+
+    if Config.LED['PANEL_ROTATE'] % 2:
+        width = panel_h
+        height = panel_w
+    else:
+        width = panel_w
+        height = panel_h
+
     im = Image.new('RGB', [width, height])
     return {
         'width': width,
@@ -100,12 +117,23 @@ def discover(*args, **kwargs):
     effects = [
     LEDEffect(
         "graphRSSI",
-        "Graph: RSSI",
+        "Graph: RSSI (all)",
         rssiGraph, {
             'include': [],
             'exclude': [],
             'recommended': []
         }, {}
+        ),
+    LEDEffect(
+        "graphRSSIActive",
+        "Graph: RSSI (enabled)",
+        rssiGraph, {
+            'include': [],
+            'exclude': [],
+            'recommended': []
+        }, {
+            'active_only': True
+        }
         )
     ]
 
