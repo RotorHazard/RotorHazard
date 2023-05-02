@@ -319,12 +319,9 @@
 			};
 			socket.emit('alter_race_class', data);
 
-			for (var i in rotorhazard.event.classes) {
-				var race_class = rotorhazard.event.classes[i];
-				if (race_class['id'] == data.class_id) {
-					race_class.name = data.class_name;
-					break;
-				}
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.name = data.class_name;
 			}
 			update_class_selectors();
 		});
@@ -335,6 +332,11 @@
 				class_description: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.description = data.class_description;
+			}
 		});
 
 		$(document).on("change", '.set_race_class_format', function (event) {
@@ -343,6 +345,11 @@
 				class_format: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.format = data.class_format;
+			}
 		});
 
 		$(document).on("change", '.set_race_class_win_condition', function (event) {
@@ -351,6 +358,11 @@
 				win_condition: parseInt($(this).val()),
 			};
 			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.win_condition = data.win_condition;
+			}
 		});
 
 		$(document).on("change", '.set_race_class_rounds', function (event) {
@@ -359,6 +371,11 @@
 				rounds: parseInt($(this).val()),
 			};
 			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.rounds = data.rounds;
+			}
 		});
 
 		$(document).on("change", '.set_race_class_heat_advance', function (event) {
@@ -367,6 +384,11 @@
 				heat_advance: parseInt($(this).val()),
 			};
 			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.heat_advance = data.heat_advance;
+			}
 		});
 
 		$(document).on("change", '.set_race_class_order', function (event) {
@@ -375,6 +397,11 @@
 				order: parseInt($(this).val()),
 			};
 			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.order = data.order;
+			}
 		});
 
 		$(document).on("click", '.unlock_class', function (event) {

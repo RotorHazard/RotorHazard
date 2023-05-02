@@ -139,7 +139,7 @@ class RHUI():
                 'race_status': self._racecontext.race.race_status,
                 'race_format_id': self._racecontext.race.format.id if hasattr(self._racecontext.race.format, 'id') else None,
                 'race_heat_id': self._racecontext.race.current_heat,
-                'race_class_id': self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).class_id,
+                'race_class_id': self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).class_id or None,
                 'race_mode': race_format.race_mode,
                 'race_time_sec': race_format.race_time_sec,
                 'race_staging_tones': race_format.staging_tones,
