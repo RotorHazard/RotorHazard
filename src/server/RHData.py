@@ -1908,7 +1908,7 @@ class RHData():
     def clear_results_raceClass(self, raceClass_or_id, token=None):
         race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
-        if race_class is False:
+        if not race_class:
             return False
 
         if token is None:
