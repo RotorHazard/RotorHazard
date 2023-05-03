@@ -1401,36 +1401,40 @@ class RHData():
                         # calc function didn't make an assignment
                         random.shuffle(available_nodes)
                         if len(eliminated_matches):
-                            # Stay on D-band if needed
-                            for slot_idx, slot_match in enumerate(eliminated_matches):
-                                if eliminated_matches[slot_idx] \
-                                and eliminated_matches[slot_idx]['band'] == 'D' \
-                                and eliminated_matches[slot_idx]['priority'] == True \
-                                and eliminated_matches[slot_idx]['slot'].node_index is None:
-                                    for n_idx, node in enumerate(available_nodes):
-                                        if node['frq']['b'] == 'D':
-                                            eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
-                                            available_nodes[n_idx] = None
-                                            eliminated_matches[slot_idx] = None
-                                            break
-                                    available_nodes = [x for x in available_nodes if x is not None]
-                                else:
-                                    for n_idx, node in enumerate(available_nodes):
-                                        if node['frq']['b'] != 'D':
-                                            eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
-                                            available_nodes[n_idx] = None
-                                            eliminated_matches[slot_idx] = None
-                                            break
-                                    available_nodes = [x for x in available_nodes if x is not None]
 
                             for slot_idx, slot_match in enumerate(eliminated_matches):
-                                if eliminated_matches[slot_idx] and eliminated_matches[slot_idx]['slot'].node_index is None:
-                                    eliminated_matches[slot_idx]['slot'].node_index = available_nodes[0]['idx']
-                                    del(available_nodes[0])
+                                if eliminated_matches[slot_idx]['slot'].node_index is None:
+                                # Stay on D-band if needed
+                                    if eliminated_matches[slot_idx] \
+                                    and eliminated_matches[slot_idx]['band'] == 'D' \
+                                    and eliminated_matches[slot_idx]['priority'] == True:
+                                        for n_idx, node in enumerate(available_nodes):
+                                            if node['frq']['b'] == 'D':
+                                                eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
+                                                available_nodes[n_idx] = None
+                                                break
+                                    else:
+                                        # Stay off D-band if not already used
+                                        for n_idx, node in enumerate(available_nodes):
+                                            if node['frq']['b'] != 'D':
+                                                eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
+                                                available_nodes[n_idx] = None
+                                                break
+
                                 eliminated_matches[slot_idx] = None
-                            
+                                available_nodes = [x for x in available_nodes if x is not None]
+
+                            if len(available_nodes):
+                                # can't keep D/non-D but nodes not full
+                                for slot_idx, slot_match in enumerate(eliminated_matches):
+                                    if eliminated_matches[slot_idx] and eliminated_matches[slot_idx]['slot'].node_index is None:
+                                        eliminated_matches[slot_idx]['slot'].node_index = available_nodes[0]['idx']
+                                        del(available_nodes[0])
+                                    eliminated_matches[slot_idx] = None
+                                
                             eliminated_matches = [x for x in eliminated_matches if x is not None]
                         else:
+                            # place pilots with no history into first available slots
                             for slot in slots:
                                 if slot.node_index is None and slot.pilot_id:
                                     if len(available_nodes):
