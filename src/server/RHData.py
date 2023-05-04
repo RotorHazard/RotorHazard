@@ -2109,7 +2109,7 @@ class RHData():
         if isinstance(raceFormat_or_id, Database.RaceFormat):
             return raceFormat_or_id
         else:
-            return self._Database.Pilot.query.get(raceFormat_or_id)
+            return self._Database.RaceFormat.query.get(raceFormat_or_id)
 
     def resolve_id_from_raceFormat_or_id(self, raceFormat_or_id):
         if isinstance(raceFormat_or_id, Database.RaceFormat):
