@@ -1404,7 +1404,7 @@ class RHData():
 
                             for slot_idx, slot_match in enumerate(eliminated_matches):
                                 if eliminated_matches[slot_idx]['slot'].node_index is None:
-                                # Stay on D-band if needed
+                                    # Stay on D-band if needed
                                     if eliminated_matches[slot_idx] \
                                     and eliminated_matches[slot_idx]['band'] == 'D' \
                                     and eliminated_matches[slot_idx]['priority'] == True:
@@ -1414,15 +1414,15 @@ class RHData():
                                                 available_nodes[n_idx] = None
                                                 break
                                     else:
-                                        # Stay off D-band if not already used
+                                        # else explicity avoid D-band
                                         for n_idx, node in enumerate(available_nodes):
                                             if node['frq']['b'] != 'D':
                                                 eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
                                                 available_nodes[n_idx] = None
                                                 break
 
+                                    available_nodes = [x for x in available_nodes if x is not None]
                                 eliminated_matches[slot_idx] = None
-                                available_nodes = [x for x in available_nodes if x is not None]
 
                             if len(available_nodes):
                                 # can't keep D/non-D but nodes not full
