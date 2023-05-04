@@ -69,7 +69,6 @@
 <body>
 	<div id="banner-msg">
 		<div class="message"></div>
-		<button id="banner-dismiss" class="no-style">×<span class="screen-reader-text"> Close</span></button>
 	</div>
 	<header>
 		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getOption("timerName") }}</a></div>
@@ -109,6 +108,16 @@
 	<footer>
 		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
 	</footer>
+
+	<a id="message-notification" hidden href="#message-center" class="open-mfp-popup"><span class="screen-reader-text">Open</span> <span id="message-count">0</span> <span class="screen-reader-text">messages</span></button>
+
+	<div id="message-center" class="mfp-hide popup">
+		<h2>{{ __("Messages") }}</h2>
+		<div class="popup-content">
+			<button id="message-dismiss-all">Dismiss All</button>
+			<ol id="message-queue"></ol>
+		</div>
+	</div>
 
 	<div id="about" class="mfp-hide popup">
 		<h2>{{ __("About RotorHazard") }}</h2>
