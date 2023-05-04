@@ -42,7 +42,7 @@ Guarde y salga del archivo con Ctrl-X
 Instale el código RotorHazard en '/ home / pi /' en la Raspberry Pi de la siguiente manera: Vaya a [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) para el proyecto y tenga en cuenta el código de versión. En los siguientes comandos, reemplace las dos apariciones de "1.2.3" con el código de la versión actual e ingrese los comandos:
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
 unzip temp.zip
 mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip

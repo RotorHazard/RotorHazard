@@ -295,7 +295,7 @@ So aktualisieren Sie eine vorhandene RotorHazard-Installation: Gehen Sie zur Sei
 
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
 unzip temp.zip
 mv RotorHazard RotorHazard.old
 mv RotorHazard-1.2.3 RotorHazard
