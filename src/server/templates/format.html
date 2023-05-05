@@ -56,6 +56,10 @@
 			$('#set_pilotSort').val('callsign');
 		}
 
+		if (parseInt('{{ getOption('ledColorMode') }}')) {
+			$('#set_ledColorMode').val('{{ getOption('ledColorMode') }}');
+		}
+
 		$('#unlock_race_format_button').html(svg_asset.lock);
 
 		// set up node local store
@@ -1789,14 +1793,6 @@
 		<h2>{{ __('Pilots') }}</h2>
 	</div>
 	<div class="panel-content">
-		<ul class="pilots">
-			<li>{{ __('Loading...') }}</li>
-		</ul>
-
-		<div class="control-set">
-			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
-		</div>
-
 		<ol class="form">
 			<li>
 				<div class="label-block">
@@ -1807,7 +1803,25 @@
 					<option value="callsign">{{ __('Callsign') }}</option>
 				</select>
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_ledColorMode">{{ __('Color Mode') }}</label>
+				</div>
+				<select id="set_ledColorMode" class="set-option" data-option="ledColorMode">
+					<option value="0">{{ __('Seat') }}</option>
+					<option value="1">{{ __('Pilot') }}</option>
+					<option value="2">{{ __('Frequency') }}</option>
+				</select>
+			</li>
 		</ol>
+
+		<ul class="pilots">
+			<li>{{ __('Loading...') }}</li>
+		</ul>
+
+		<div class="control-set">
+			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
+		</div>
 	</div>
 </div>
 
