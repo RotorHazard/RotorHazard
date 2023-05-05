@@ -568,31 +568,28 @@ body>header {
 	background: #000;
 	color: #fff;
 	display: flex;
-	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: center;
-	padding: 0;
+	padding: 0 0.5rem;
 	position: relative;
 	line-height: 1;
 }
 
 #timer-name {
-	margin: 0.5rem 0 0.5rem 0.5rem;
-	width: 15rem;
+	margin: 0.5rem 0;
+	flex: 1 0 0;
+	min-width: 12em;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
 	overflow: clip;
+	color: #fff;
+	text-decoration: none;
 }
 
 #timer-name img {
 	height: 1em;
 	vertical-align: -0.1em;
-}
-
-#timer-name a {
-	color: #fff;
-	text-decoration: none;
 }
 
 .hamburger {
@@ -608,7 +605,8 @@ body>header {
 
 /* Top level nav */
 nav {
-	margin: 0.5rem;
+	margin: 0;
+	flex: 0 1 auto;
 }
 
 nav>ul {
@@ -622,7 +620,7 @@ nav>ul {
 }
 
 nav>ul>li {
-	margin: 0 1em;
+	margin: 0.5rem 1em;
 	padding: 0;
 }
 
@@ -631,6 +629,10 @@ nav a {
 	text-decoration: none;
 	display: block;
 	transition: 0.1s linear all;
+}
+
+nav .extra {
+	margin-left: auto;
 }
 
 /* Dropdowns */
@@ -667,13 +669,14 @@ nav>ul>li>ul li {
 	position: static;
 }
 
-@media (max-width: 52em){
+@media (max-width: 60em){
 	nav {
 		margin: 0;
 	}
 
 	#timer-name {
 		width: calc(100% - 9rem);
+		min-width: 0;
 	}
 	.hamburger {
 		display: block;
@@ -716,10 +719,7 @@ nav>ul>li>ul li {
 
 @media (max-width: 20em){
 	#timer-name {
-		width: 1.2em;
-	}
-	#timer-name a {
-		display: none;
+		flex: 0 0 1.2em;
 	}
 
 	.hamburger {

@@ -959,15 +959,8 @@
 				rotorhazard.timer.stopAll();
 				$('.time-display').html('--:--');
 				socket.emit('stage_race');
-				$("#main_panel").focus();  // make sure focus not on button
 			}
 			initSpeak(event);
-			return false;
-		});
-
-		$('button#start_race').mousedown(function (event) {
-			event.preventDefault();  // prevent keyboard focus on button
-			return false;
 		});
 
 		$('button#stop_race').click(function (event) {
@@ -978,14 +971,7 @@
 				$('button#discard_laps').prop('disabled', true);
 				rotorhazard.timer.stopAll();
 				socket.emit('stop_race');
-				$("#main_panel").focus();  // make sure focus not on button
 			}
-			return false;
-		});
-
-		$('button#stop_race').mousedown(function (event) {
-			event.preventDefault();  // prevent keyboard focus on button
-			return false;
 		});
 
 		$('button#save_laps').click(function (event) {
@@ -995,14 +981,7 @@
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
 				socket.emit('save_laps');
-				$("#main_panel").focus();  // make sure focus not on button
 			}
-			return false;
-		});
-
-		$('button#save_laps').mousedown(function (event) {
-			event.preventDefault();  // prevent keyboard focus on button
-			return false;
 		});
 
 		$('button#discard_laps').click(function (event) {
@@ -1013,14 +992,7 @@
 				$('button#discard_laps').prop('disabled', true);
 				$('.time-display').html('--:--');
 				socket.emit('discard_laps');
-				$("#main_panel").focus();  // make sure focus not on button
 			}
-			return false;
-		});
-
-		$('button#discard_laps').mousedown(function (event) {
-			event.preventDefault();  // prevent keyboard focus on button
-			return false;
 		});
 
 		$('.set_enter_at_level').change(function (event) {
@@ -1053,7 +1025,6 @@
 			};
 			$('#set_enter_at_level_' + data.node_index).val('');
 			socket.emit('cap_enter_at_btn', data);
-			return false;
 		});
 
 		$('button.cap_exit_at_btn').click(function (event) {
@@ -1062,7 +1033,6 @@
 			};
 			$('#set_exit_at_level_' + data.node_index).val('');
 			socket.emit('cap_exit_at_btn', data);
-			return false;
 		});
 
 		$('button.pause_graph').click(function (event) {
@@ -1109,7 +1079,6 @@
 				};
 				socket.emit('simulate_lap', data);
 			// }
-			return false;
 		});
 
 		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
@@ -1118,7 +1087,6 @@
 				lap_index: parseInt($(this).data('lap-index')),
 			};
 			socket.emit('delete_lap', data);
-			return false;
 		});
 
 		$(document).on("click", ".restore_deleted_lap", function (event) { // Needed for buttons added after document load
@@ -1127,7 +1095,6 @@
 				lap_index: parseInt($(this).data('lap-index')),
 			};
 			socket.emit('restore_deleted_lap', data);
-			return false;
 		});
 
 		$('#set_current_heat').change(function (event) {
@@ -1435,7 +1402,6 @@
 
 			$('#message_body').val('');
 			$('#message_interrupt').prop('checked', false);
-			return false;
 		});
 
 		/* Calibration Profiles */
@@ -1635,7 +1601,6 @@
 					blue: colors.b,
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$('button.LED-off').click(function (event) {
@@ -1643,7 +1608,6 @@
 					off: true
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$('#set_led_color').change(function (event) {
@@ -1654,7 +1618,6 @@
 					blue: colors.b,
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$(document).on("click", '#set_led_color', function (event) {
@@ -1831,7 +1794,6 @@
 			}
 
 			speak('<div class="speech">' + callout + '</div>');
-			return false;
 		});
 
 		$(document).on('click', '.del-callout-action', function (event) {
@@ -2058,7 +2020,6 @@
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race start: z
 						$('#start_race').trigger('click');
-						$("#main_panel").focus();  // make sure focus not on Heat selector
 					}
 					break;
 				case 88:  // X
@@ -2195,15 +2156,12 @@
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						if (!($('#start_race').prop('disabled'))) {
 							$('#start_race').trigger('click');
-							$("#main_panel").focus();  // make sure focus not on Heat selector
 						}
 						else if (!($('#stop_race').prop('disabled'))) {
 							$('#stop_race').trigger('click');
-							$("#main_panel").focus();  // make sure focus not on Heat selector
 						}
 						else if (!($('#save_laps').prop('disabled'))) {
 							$('#save_laps').trigger('click');
-							$("#main_panel").focus();  // make sure focus not on Heat selector
 						}
 					}
 					e.preventDefault();  // consume key event
@@ -2216,7 +2174,7 @@
 {% endblock %} {% block content %}
 <main class="page-race">
 
-<div id="main_panel" class="panel" tabindex="1">
+<div id="main_panel" class="panel">
 	<div class="panel-content full-width">
 		<div class="timer">
 			<div class="timing-clock"><div class="warning" title="Browser Sync Loss">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
@@ -2225,13 +2183,13 @@
 		<!--Buttons for controlling the race-->
 		<div class="control-set">
 			<label for="set_current_heat" class="screen-reader-text">{{ __('Current Heat') }}</label>
-			<select id="set_current_heat" tabindex="-1">
+			<select id="set_current_heat">
 				<option value="">{{ __('Loading...') }}</option>
 			</select>
-			<button id="start_race" tabindex="-1"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
-			<button id="stop_race" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
-			<button id="save_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save and Clear') }}</span></button>
-			<button id="discard_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+			<button id="start_race"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
+			<button id="stop_race" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
+			<button id="save_laps" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save and Clear') }}</span></button>
+			<button id="discard_laps" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 
 			<label for="set_race_format" class="screen-reader-text">{{ __('Race Format') }}</label>
 			<select id="set_race_format">
