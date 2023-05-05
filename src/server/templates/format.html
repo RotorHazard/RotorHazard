@@ -314,6 +314,7 @@
 				uc_ol.append(unclassified_el);
 				$("#unclassified_heats").append(uc_ol);
 			}
+			freq.updateBlocks();
 		}
 
 		$(document).on("change", '.set_race_class_name', function (event) {
@@ -449,7 +450,6 @@
 			rotorhazard.event.heats = msg.heats;
 			display_classes();
 			display_unclassified_heats();
-			freq.updateBlocks();
 			if (rotorhazard.generators) {
 				$('#generate_heats_2').prop('disabled', false);
 			}

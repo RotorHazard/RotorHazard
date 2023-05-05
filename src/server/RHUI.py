@@ -499,7 +499,7 @@ class RHUI():
                 current_node['id'] = heatNode.id
                 current_node['node_index'] = heatNode.node_index
                 current_node['pilot_id'] = heatNode.pilot_id
-                current_node['color'] = heatNode.color
+                # current_node['color'] = heatNode.color
                 current_node['method'] = heatNode.method
                 current_node['seed_rank'] = heatNode.seed_rank
                 current_node['seed_id'] = heatNode.seed_id
