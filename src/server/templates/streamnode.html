@@ -1,4 +1,4 @@
-{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Seat') }}{% endblock %}{% block head %}
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Seat') }} {{ node_id + 1 }}{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/streamnode.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
