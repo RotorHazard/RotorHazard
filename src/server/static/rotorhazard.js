@@ -1380,12 +1380,21 @@ rotorhazard.timer.race.callbacks.self_resync = function(timer){
 var socket = false;
 var standard_message_queue = [];
 var interrupt_message_queue = [];
+var system_messages = [];
 
 function get_standard_message() {
 	if (rotorhazard.show_messages) {
 		msg = standard_message_queue[0];
 		$('#banner-msg .message').html(msg);
 		$('#banner-msg').slideDown();
+		setTimeout(function(){
+			$('#banner-msg').slideUp(400, function(){
+				standard_message_queue.shift()
+				if (standard_message_queue.length) {
+					get_standard_message()
+				}
+			});
+		}, 4000);
 	}
 }
 
@@ -1560,6 +1569,7 @@ jQuery(document).ready(function($){
 
 	// popup messaging
 	socket.on('priority_message', function (msg) {
+		system_messages.push(msg.message);
 		if (msg.interrupt) {
 			interrupt_message_queue.push(msg.message);
 			if (interrupt_message_queue.length == 1) {
@@ -1571,16 +1581,35 @@ jQuery(document).ready(function($){
 				get_standard_message()
 			}
 		}
+
+		update_system_message_display();
+		$('#message-notification').prop('hidden', false);
 	});
 
-	$(document).on('click', '#banner-msg', function(el){
-		$('#banner-msg').slideUp(400, function(){
-			standard_message_queue.shift()
-			if (standard_message_queue.length) {
-				get_standard_message()
-			}
-		});
+	$(document).on('click', '#message-dismiss-all', function(el){
+		system_messages = [];
+		update_system_message_display();
+		$.magnificPopup.close();
 	});
+
+	$(document).on('click', '#message-queue button', function(el){
+		var index = $(this).parent().index();
+		system_messages.splice(index, 1);
+		update_system_message_display();
+	});
+
+	function update_system_message_display() {
+		$('#message-count').html(system_messages.length);
+		$('#message-queue').empty();
+		if (system_messages.length) {
+			for (var m in system_messages) {
+				var sysmsg = system_messages[m];
+				$('#message-queue').append('<li><div class="message">' + sysmsg + '</div><button class="no-style">×<span class="screen-reader-text"> dismiss</span></button></li>');
+			}
+		} else {
+			$('#message-notification').prop('hidden', true);
+		}
+	}
 
 	document.onkeyup = function(e) {
 		if (e.which == 27) {

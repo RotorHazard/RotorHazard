@@ -43,7 +43,6 @@ html {
 	color: #000;
 	margin: 0;
 	padding: 0;
-	overflow-x: hidden;
 	overflow-x: clip;
 	font-family: 'Barlow', sans-serif;
 	font-variant-numeric: tabular-nums;
@@ -64,7 +63,6 @@ body {
 	flex-direction: column;
 	min-height: 100vh;
 	max-width:100vw;
-	overflow-x: hidden;
 	overflow-x: clip;
 }
 
@@ -429,8 +427,8 @@ ol.form li+li {
 
 .popup-content {
 	padding: 0 1rem;
-	overflow: hidden;
 	overflow: clip;
+	display: flow-root;
 }
 
 .panel {
@@ -535,7 +533,7 @@ ol.form li+li {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	z-index: 9999;
+	z-index: 900;
 	display: none;
 	border-bottom-color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
 	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
@@ -581,7 +579,6 @@ body>header {
 	width: 15rem;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	overflow: hidden;
 	overflow: clip;
 }
 
@@ -1147,7 +1144,6 @@ main.page-home {
 	background: hsl(25, 85%, 55%);
 	color: #000;
 	white-space: nowrap;
-	overflow: hidden;
 	overflow: clip;
 	font-size: 1rem;
 	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
@@ -1218,7 +1214,6 @@ main.page-home {
 }
 
 .race-results h4 {
-	overflow: hidden;
 	overflow: clip;
 }
 
@@ -1657,7 +1652,6 @@ main.page-home {
 	border: solid 0.0625em #d1d3d4;
 	border-top: none;
 	padding: 0 1em;
-	overflow: hidden;
 	overflow: clip;
 }
 
@@ -2456,6 +2450,47 @@ button.color-picker {
 
 .dialog-actions > * {
 	margin: 0.5rem 0.5rem 0;
+}
+
+#message-notification {
+	position: fixed;
+	bottom: 0.5rem;
+	left: 0.5rem;
+	width: auto;
+	z-index: 950;
+	padding: 0.5rem;
+	min-width: 2em;
+	text-align: center;
+	border-radius: 2em;
+	background-color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+	color: var(--contrast_1_high);
+	text-decoration: none;
+	min-width: 2em;
+	font-weight: bold;
+}
+
+#message-center {
+	max-width: 40rem;
+}
+
+#message-center .popup-content {
+	margin-top: 1rem;
+}
+
+#message-queue {
+	margin: 1rem 0;
+	padding: 0;
+	list-style: none;
+}
+
+#message-queue>li {
+	margin: 0.5rem 0;
+	padding: 0;
+	display: flex;
+}
+
+#message-queue>li>button {
+	margin-left: auto;
 }
 
 /* ************* */
