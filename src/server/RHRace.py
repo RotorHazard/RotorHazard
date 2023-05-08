@@ -471,7 +471,7 @@ class WinCondition():
     MOST_PROGRESS = 1 # most laps in fastest time
     FIRST_TO_LAP_X = 2
     FASTEST_LAP = 3
-    FASTEST_3_CONSECUTIVE = 4
+    FASTEST_CONSECUTIVE = 4
     MOST_LAPS = 5 # lap count only
     MOST_LAPS_OVERTIME = 6 # lap count only, laps and time after T=0
 

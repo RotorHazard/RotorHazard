@@ -108,7 +108,7 @@ def assemble_formats(RaceContext):
         RaceContext.language.__('Most Laps in Fastest Time'),
         RaceContext.language.__('First to X Laps'),
         RaceContext.language.__('Fastest Lap'),
-        RaceContext.language.__('Fastest 3 Consecutive Laps'),
+        RaceContext.language.__('Fastest Consecutive Laps'),
         RaceContext.language.__('Most Laps Only'),
         RaceContext.language.__('Most Laps Only with Overtime')
     ]
@@ -169,7 +169,7 @@ def build_leaderboard(leaderboard, RaceContext, **kwargs):
         RaceContext.language.__(total_label),
         RaceContext.language.__('Avg.'),
         RaceContext.language.__('Fastest'),
-        RaceContext.language.__('3 Consecutive'),
+        RaceContext.language.__('Consecutive'),
         RaceContext.language.__('Team'),
     ]]
 
@@ -202,7 +202,7 @@ def assemble_results(RaceContext):
         payload.append(row[1:])
 
     payload.append([''])
-    payload.append([RaceContext.language.__('Event Leaderboards') + ': ' + RaceContext.language.__('Fastest 3 Consecutive Laps')])
+    payload.append([RaceContext.language.__('Event Leaderboards') + ': ' + RaceContext.language.__('Fastest Consecutive Laps')])
     for row in build_leaderboard(results['event_leaderboard'], RaceContext, primary_leaderboard='by_consecutives'):
         payload.append(row[1:])
 

@@ -109,7 +109,7 @@ def assemble_formats(RaceContext):
         RaceContext.language.__('Most Laps in Fastest Time'),
         RaceContext.language.__('First to X Laps'),
         RaceContext.language.__('Fastest Lap'),
-        RaceContext.language.__('Fastest 3 Consecutive Laps'),
+        RaceContext.language.__('Fastest Consecutive Laps'),
         RaceContext.language.__('Most Laps Only'),
         RaceContext.language.__('Most Laps Only with Overtime')
     ]

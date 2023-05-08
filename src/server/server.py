@@ -2980,6 +2980,17 @@ def on_set_option(data):
         'value': data['value'],
         })
 
+@SOCKET_IO.on('set_consecutives_count')
+@catchLogExceptionsWrapper
+def on_set_consecutives_count(data):
+    RaceContext.rhdata.set_option('consecutivesCount', data['count'])
+    RaceContext.rhdata.clear_results_all()
+    RaceContext.pagecache.set_valid(False)
+    Events.trigger(Evt.OPTION_SET, {
+        'option': 'consecutivesCount',
+        'value': data['count'],
+        })
+
 @SOCKET_IO.on('get_race_scheduled')
 @catchLogExceptionsWrapper
 def get_race_elapsed():
