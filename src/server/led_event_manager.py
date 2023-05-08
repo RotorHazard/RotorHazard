@@ -11,8 +11,8 @@ Wires events to handlers
 '''
 
 import copy
-import json
 import RHRace
+import RHUtils
 import gevent
 from eventmanager import Evt
 from six.moves import UserDict
@@ -105,96 +105,28 @@ class LEDEventManager:
         self.setEventEffect(Evt.LED_MANUAL, 'clear')
         self.Events.trigger(Evt.LED_MANUAL, {'time': None, 'preventIdle': True})
 
-    def setDisplayColorCache(self, colorCache):
-        self.displayColorCache = colorCache
+    def getDisplayColor(self, seat_index, from_result=False):
+        if seat_index is None:
+            return RHUtils.hexToColor('#000000')
 
-    def getNodeColors(self, num_nodes):
-        colors = []
-        for node_index in range(num_nodes):
-            colors.append(self.getDisplayColor(node_index))
+        if from_result and self._racecontext.rhdata.get_optionInt('ledColorMode', 0) == 1:
+            last_results = self._racecontext.last_race.get_results()
+            results = self._racecontext.race.get_results()
 
-        return colors
+            if last_results and 'by_race_time' in last_results:
+                for line in last_results['by_race_time']:
+                    if line['node'] == seat_index:
+                        return RHUtils.hexToColor(self._racecontext.rhdata.get_pilot(line['pilot_id']).color)
+            elif results and 'by_race_time' in results:
+                for line in results['by_race_time']:
+                    if line['node'] == seat_index:
+                        return RHUtils.hexToColor(self._racecontext.rhdata.get_pilot(line['pilot_id']).color)
 
-    def getDisplayColor(self, node_index, from_result=False, no_pilot=False):
-        if node_index is None:
-            return hexToColor('#000000')
+        seat_colors = self._racecontext.race.seat_colors 
+        if seat_index < len(seat_colors):
+            return seat_colors[seat_index]
 
-        if node_index < len(self.displayColorCache):
-            return self.displayColorCache[node_index]
-
-        mode = self._racecontext.rhdata.get_optionInt('ledColorMode', 0)
-        if mode == 1 and no_pilot:
-            mode = 0
-        color = False
-
-        if mode == 1: # by pilot
-            color = '#ffffff'
-            if from_result:
-                last_results = self._racecontext.last_race.get_results()
-                results = self._racecontext.race.get_results()
-
-                if last_results and 'by_race_time' in last_results:
-                    for line in last_results['by_race_time']:
-                        if line['node'] == node_index:
-                            color = self._racecontext.rhdata.get_pilot(line['pilot_id']).color
-                            break
-                elif results and 'by_race_time' in results:
-                    for line in results['by_race_time']:
-                        if line['node'] == node_index:
-                            color = self._racecontext.rhdata.get_pilot(line['pilot_id']).color
-                            break
-            else:
-                if self._racecontext.race.current_heat:
-                    for heatNode in self._racecontext.rhdata.get_heatNodes_by_heat(self._racecontext.race.current_heat):
-                        if heatNode.node_index == node_index:
-                            if heatNode.pilot_id:
-                                color = self._racecontext.rhdata.get_pilot(heatNode.pilot_id).color
-                            break
-        elif mode == 2: # by frequency
-
-            profile = self._racecontext.rhdata.get_profile(self._racecontext.rhdata.get_optionInt('currentProfile'))
-            profile_freqs = json.loads(profile.frequencies)
-            freq = profile_freqs["f"][node_index]
-
-            if freq <= 5672:
-                color = '#ffffff' # White
-            elif freq <= 5711:
-                color = '#ff0000' # Red
-            elif freq <= 5750:
-                color = '#ff8000' # Orange
-            elif freq <= 5789:
-                color = '#ffff00' # Yellow
-            elif freq <= 5829:
-                color = '#00ff00' # Green
-            elif freq <= 5867:
-                color = '#0000ff' # Blue
-            elif freq <= 5906:
-                color = '#8000ff' # Dark Violet
-            else:
-                color = '#ff0080' # Deep Pink
-
-        else: # by node
-            colorNodeSerial = self._racecontext.rhdata.get_option('ledColorNodes', False)
-            if colorNodeSerial:
-                colorNodes = json.loads(colorNodeSerial)
-            else:
-                colorNodes = [
-                    "#0022ff", # Blue
-                    "#ff5500", # Orange
-                    "#00ff22", # Green
-                    "#ff0055", # Magenta
-                    "#ddff00", # Yellow
-                    "#7700ff", # Purple
-                    "#00ffdd", # Teal
-                    "#aaaaaa", # White
-                ]
-
-            color = colorNodes[node_index % len(colorNodes)]
-
-        if not color:
-            color = '#ffffff'
-
-        return hexToColor(color)
+        return RHUtils.hexToColor('#ffffff')
 
     def activateEffect(self, args):
         if 'caller' in args and args['caller'] == 'shutdown':
@@ -273,8 +205,7 @@ def Color(red, green, blue):
     """
     return (red << 16) | (green << 8) | blue
 
-def hexToColor(hexColor):
-    return int(hexColor.replace('#', ''), 16)
+
 
 class ColorVal:
     NONE = Color(0,0,0)

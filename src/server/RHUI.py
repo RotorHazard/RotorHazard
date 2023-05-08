@@ -499,7 +499,7 @@ class RHUI():
                 current_node['id'] = heatNode.id
                 current_node['node_index'] = heatNode.node_index
                 current_node['pilot_id'] = heatNode.pilot_id
-                current_node['color'] = heatNode.color
+                # current_node['color'] = heatNode.color
                 current_node['method'] = heatNode.method
                 current_node['seed_rank'] = heatNode.seed_rank
                 current_node['seed_id'] = heatNode.seed_id
@@ -611,15 +611,13 @@ class RHUI():
                 'name': pilot.name,
                 'active': pilot.active,
                 'team_options': opts_str,
+                'color': pilot.color,
                 'locked': locked,
             }
 
             pilot_attributes = self._racecontext.rhdata.get_pilot_attributes(pilot)
             for attr in pilot_attributes: 
                 pilot_data[attr.name] = attr.value
-
-            if self._racecontext.led_manager.isEnabled():
-                pilot_data['color'] = pilot.color
 
             pilots_list.append(pilot_data)
 
@@ -653,7 +651,7 @@ class RHUI():
                 'callsign': None,
                 'heatNodeColor': None,
                 'pilotColor': None,
-                'activeColor': None
+                'activeColor': self._racecontext.race.seat_colors[idx]
             }
 
         heat_format = None
@@ -663,20 +661,13 @@ class RHUI():
 
             for heatNode in self._racecontext.rhdata.get_heatNodes_by_heat(self._racecontext.race.current_heat):
                 if heatNode.node_index is not None:
-                    heatNode_data[heatNode.node_index] = {
-                        'pilot_id': heatNode.pilot_id,
-                        'callsign': None,
-                        'heatNodeColor': heatNode.color,
-                        'pilotColor': None,
-                        'activeColor': None
-                        }
+                    heatNode_data[heatNode.node_index]['pilot_id'] = heatNode.pilot_id
+                    heatNode_data[heatNode.node_index]['heatNodeColor'] = heatNode.color
+
                     pilot = self._racecontext.rhdata.get_pilot(heatNode.pilot_id)
                     if pilot:
                         heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
                         heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
-
-                    if self._racecontext.led_manager.isEnabled():
-                        heatNode_data[heatNode.node_index]['activeColor'] = self._racecontext.led_manager.getDisplayColor(heatNode.node_index)
 
             if heat_data.class_id != RHUtils.CLASS_ID_NONE:
                 heat_format = self._racecontext.rhdata.get_raceClass(heat_data.class_id).format_id
@@ -693,12 +684,7 @@ class RHUI():
                 else:
                     callsign = str(profile_freqs["f"][idx])
 
-                heatNode_data[idx] = {
-                    'callsign': callsign,
-                    'heatNodeColor': None,
-                    'pilotColor': None,
-                    'activeColor': self._racecontext.led_manager.getDisplayColor(idx)
-                }
+                heatNode_data[idx]['callsign'] = callsign
 
         emit_payload = {
             'current_heat': self._racecontext.race.current_heat,

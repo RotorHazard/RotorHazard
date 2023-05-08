@@ -1,4 +1,4 @@
-{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Seat') }}{% endblock %}{% block head %}
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Seat') }} {{ node_id + 1 }}{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/streamnode.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
@@ -24,18 +24,18 @@
 			}
 		});
 
-		/*
 		socket.on('current_heat', function (msg) {
 			for (var idx in msg.heatNodes) {
 				hn = msg.heatNodes[streamnode];
 				if (hn.activeColor) {
-					color = colorvalToHex(hn.activeColor)
+					var color = colorvalToHex(hn.activeColor);
+					var contrast_color = contrastColor(color);
 					$('html').css('--pilot_color', color);
-					$('html').css('--contrast_pilot_color', contrastColor(color));
+					$('html').css('--contrast_pilot_color', contrast_color);
 					$('html').css('--position_foreground_color', color);
-					$('html').css('--position_background_color', contrastColor(color));
+					$('html').css('--position_background_color', contrast_color);
 					$('html').css('--fast_lap_color', color);
-					$('html').css('--contrast_fast_lap_color', contrastColor(color));
+					$('html').css('--contrast_fast_lap_color', contrast_color);
 				} else {
 					$('html').css('--pilot_color', 'hsl(var(--hue_0), var(--sat_0), var(--lum_0_low))');
 					$('html').css('--contrast_pilot_color', 'var(--contrast_0_low)');
@@ -46,7 +46,6 @@
 				}
 			}
 		});
-		*/
 
 		socket.on('current_laps', function (msg) {
 			current_laps = msg.current;

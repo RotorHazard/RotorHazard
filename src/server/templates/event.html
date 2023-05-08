@@ -204,7 +204,7 @@
 					var slot = heat.slots[idx];
 					var slot_el = $('<li>');
 
-					if (slot.method > -1) {
+					if (slot.method > -1 && !(slot.method == 0 && !slot.pilot_id)) {
 						var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank, slot.pilot_id)
 						slot_el.append('<div class="method">' + method_text + '</div>');
 

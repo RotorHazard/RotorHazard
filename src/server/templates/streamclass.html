@@ -1,4 +1,4 @@
-{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Class') }}{% endblock %}{% block head %}
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Class') }}: {{ class_id or __('Current') }}{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
@@ -57,7 +57,13 @@
 							}
 							$('#header h1').html(class_name)
 
-							if (current_class.leaderboard[current_class.leaderboard.meta.primary_leaderboard].length) {
+							if (current_class.ranking) {
+								leaderboard = build_leaderboard(current_class.ranking, 'by_race_time', undefined);
+
+								leaderboard.find('tbody tr').filter(':nth-child(n+11)').remove();
+
+								$('#leaderboard').html(leaderboard);
+							} else if (current_class.leaderboard[current_class.leaderboard.meta.primary_leaderboard].length) {
 								leaderboard = build_leaderboard(current_class.leaderboard[current_class.leaderboard.meta.primary_leaderboard], current_class.leaderboard.meta.primary_leaderboard, msg.meta);
 
 								leaderboard.find('tbody tr').filter(':nth-child(n+11)').remove();
