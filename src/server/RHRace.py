@@ -1,6 +1,7 @@
 '''Class to hold race management variables.'''
 
 import logging
+import json
 import RHUtils
 import Results
 from monotonic import monotonic
@@ -47,6 +48,9 @@ class RHRace():
         self.team_results = None # current race results
         self.team_cacheStatus = None # whether cache is valid
         self.win_status = WinStatus.NONE # whether race is won
+
+        self._seat_colors = []
+        self.external_flag = False # is race data controlled externally (from cluster)
 
         '''
         Lap Object (dict) for node_laps:
@@ -288,6 +292,85 @@ class RHRace():
             'build_ver': None
         }
         return True
+
+    @property
+    def seat_colors(self):
+        return self._seat_colors
+
+    @seat_colors.setter
+    def seat_colors(self, value):
+        self._seat_colors = value
+
+    def updateSeatColors(self, mode_override=False):
+        if self.external_flag:
+            return self.seat_colors
+
+        colors = []
+        if mode_override is not False:
+            mode = mode_override
+        else:
+            mode = self._racecontext.rhdata.get_optionInt('ledColorMode', 0)
+
+        if self.current_heat == RHUtils.HEAT_ID_NONE:
+            practice_flag = True
+            if mode == 1:
+                mode = 0
+        else:
+            practice_flag = False
+
+        if mode == 0:
+            seatColorOpt = self._racecontext.rhdata.get_option('seatColors', False)
+            if seatColorOpt:
+                seatColors = json.loads(seatColorOpt)
+            else:
+                seatColors = [
+                    "#0022ff", # Blue
+                    "#ff5500", # Orange
+                    "#00ff22", # Green
+                    "#ff0055", # Magenta
+                    "#ddff00", # Yellow
+                    "#7700ff", # Purple
+                    "#00ffdd", # Teal
+                    "#aaaaaa", # White
+                ]
+        elif mode == 2:
+            profile_freqs = json.loads(self.profile.frequencies)
+
+        for node_index in range(self.num_nodes):
+            color = '#ffffff'
+
+            if not practice_flag and (not self.node_pilots or self.node_pilots[node_index] == RHUtils.PILOT_ID_NONE):
+                color = '#222222'
+
+            elif mode == 0: # by seat
+                color = seatColors[node_index % len(seatColors)]
+
+            elif mode == 1: # by pilot
+                color = self._racecontext.rhdata.get_pilot(self.node_pilots[node_index]).color
+
+            elif mode == 2: # by frequency, following https://betaflight.com/docs/development/LedStrip#vtx-frequency
+                freq = profile_freqs["f"][node_index]
+
+                if freq <= 5672:
+                    color = '#ffffff' # White
+                elif freq <= 5711:
+                    color = '#ff0000' # Red
+                elif freq <= 5750:
+                    color = '#ff8000' # Orange
+                elif freq <= 5789:
+                    color = '#ffff00' # Yellow
+                elif freq <= 5829:
+                    color = '#00ff00' # Green
+                elif freq <= 5867:
+                    color = '#0000ff' # Blue
+                elif freq <= 5906:
+                    color = '#8000ff' # Dark Violet
+                else:
+                    color = '#ff0080' # Deep Pink
+
+            colors.append(RHUtils.hexToColor(color))
+
+        self._seat_colors = colors 
 
     @property
     def profile(self):

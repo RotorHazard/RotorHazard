@@ -82,7 +82,7 @@ Events = EventManager(RaceContext)
 EventActionsObj = None
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
+from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -717,11 +717,11 @@ def on_cluster_event_trigger(data):
         if evtName == Evt.RACE_STAGE:
             RaceContext.race.race_status = RaceStatus.STAGING
             RaceContext.race.results = None
-            if RaceContext.led_manager.isEnabled():
-                if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
-                    RaceContext.led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
-                else:
-                    RaceContext.rhdata.set_option('ledColorMode', 0)
+            RaceContext.race.external_flag = True
+            if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
+                RaceContext.race.seat_colors = evtArgs['race_node_colors']
+            else:
+                RaceContext.race.updateSeatColors(mode_override=0)
         elif evtName == Evt.RACE_START:
             RaceContext.race.race_status = RaceStatus.RACING
         elif evtName == Evt.RACE_STOP:
@@ -1900,7 +1900,7 @@ def on_use_led_effect(data):
         if 'args' in data:
             args = data['args']
         if 'color' in data:
-            args['color'] = hexToColor(data['color'])
+            args['color'] = RHUtils.hexToColor(data['color'])
 
         Events.trigger(Evt.LED_MANUAL, args)
 
@@ -2057,10 +2057,7 @@ def on_stage_race():
             'color': ColorVal.ORANGE,
         }
 
-        if RaceContext.led_manager.isEnabled():
-            eventPayload['race_node_colors'] = RaceContext.led_manager.getNodeColors(RaceContext.race.num_nodes)
-        else:
-            eventPayload['race_node_colors'] = None
+        eventPayload['race_node_colors'] = RaceContext.race.seat_colors
 
         Events.trigger(Evt.RACE_STAGE, eventPayload)
 
@@ -2676,7 +2673,7 @@ def emit_heat_plan_result(new_heat_id, calc_result):
             pilot = RaceContext.rhdata.get_pilot(heatNode.pilot_id)
             if pilot:
                 heatNode_data['callsign'] = pilot.callsign
-                if pilot.used_frequencies:
+                if pilot.used_frequencies and heatNode.node_index:
                     used_freqs = json.loads(pilot.used_frequencies)
                     heatNode_data['frequency_change'] = (used_freqs[-1]['f'] != profile_freqs["f"][heatNode.node_index])
                 else:
@@ -2742,6 +2739,8 @@ def finalize_current_heat_set(new_heat_id):
         adaptive = bool(RaceContext.rhdata.get_optionInt('calibrationMode'))
         if adaptive:
             autoUpdateCalibration()
+
+    RaceContext.race.updateSeatColors()
 
     Events.trigger(Evt.HEAT_SET, {
         'heat_id': new_heat_id,
@@ -2885,7 +2884,7 @@ def on_simulate_lap(data):
     logger.info('Simulated lap: Node {0}'.format(node_index+1))
     Events.trigger(Evt.CROSSING_EXIT, {
         'nodeIndex': node_index,
-        'color': RaceContext.led_manager.getDisplayColor(node_index)
+        'color': RaceContext.race.seat_colors[node_index]
         })
     RaceContext.interface.intf_simulate_lap(node_index, 0)
 
@@ -3400,7 +3399,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                                 logger.info('Pilot {} done'.format(pilot_obj.callsign if pilot_obj else node.index))
                                 Events.trigger(Evt.RACE_PILOT_DONE, {
                                     'node_index': node.index,
-                                    'color': RaceContext.led_manager.getDisplayColor(node.index),
+                                    'color': RaceContext.race.seat_colors[node.index],
                                     })
 
                         if node_finished_flag:
@@ -3455,7 +3454,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
-                            'color': RaceContext.led_manager.getDisplayColor(node.index),
+                            'color': RaceContext.race.seat_colors[node.index],
                             'lap': lap_data,
                             'results': RaceContext.race.get_results(),
                             'gap_info': Results.get_gap_info(RaceContext, node.index)
@@ -3578,7 +3577,7 @@ def check_win_condition(**kwargs):
                     'win_status': win_status_dict,
                     'message': RaceContext.race.status_message,
                     'node_index': win_data.get('node', None),
-                    'color': RaceContext.led_manager.getDisplayColor(win_data['node']) \
+                    'color': RaceContext.race.seat_colors[win_data['node']] \
                                             if 'node' in win_data else None,
                     })
 
@@ -3640,14 +3639,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 Events.trigger(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
-                    'color': RaceContext.led_manager.getDisplayColor(node.index)
+                    'color': RaceContext.race.seat_colors[node.index]
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     Events.trigger(Evt.CROSSING_EXIT, {
                         'nodeIndex': node.index,
-                        'color': RaceContext.led_manager.getDisplayColor(node.index)
+                        'color': RaceContext.race.seat_colors[node.index]
                         })
                 else:
                     node.show_crossing_flag = True

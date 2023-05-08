@@ -107,10 +107,6 @@
 			$('#set_pilotSort').val('callsign');
 		}
 
-		if (parseInt('{{ getOption('ledColorMode') }}')) {
-			$('#set_ledColorMode').val('{{ getOption('ledColorMode') }}');
-		}
-
 		$('#unlock_race_format_button').html(svg_asset.lock);
 
 		// populate frequency selects
@@ -1914,19 +1910,6 @@
 		<h2>{{ __('LED Events') }}</h2>
 	</div>
 	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_ledColorMode">{{ __('Color Mode') }}</label>
-				</div>
-				<select id="set_ledColorMode" class="set-option" data-option="ledColorMode">
-					<option value="0">{{ __('Node') }}</option>
-					<option value="1">{{ __('Pilot') }}</option>
-					<option value="2">{{ __('Frequency') }}</option>
-				</select>
-			</li>
-		</ol>
-		<hr />
 		<div id="LED-effect-setup"></div>
 	</div>
 </div>

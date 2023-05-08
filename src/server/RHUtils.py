@@ -248,6 +248,10 @@ def hslToHex(h, s, l):
 
     return '#{0:02x}{1:02x}{2:02x}'.format(r, g, b)
 
+# converts hexadecimal to int color
+def hexToColor(hexColor):
+    return int(hexColor.replace('#', ''), 16)
+
 # Attempts to launch a web browser on host system
 def launchBrowser(hostStr, httpPortNum=0, pageNameStr=None, launchCmdStr=None):
     try:

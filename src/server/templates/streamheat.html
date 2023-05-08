@@ -1,4 +1,4 @@
-{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Heat') }}{% endblock %}{% block head %}
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Heat') }}: {{ heat_id or __('Current') }}{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
@@ -83,24 +83,73 @@
 
 				var tbody = $('<tbody>');
 				var callsign;
-				for (j in heat.slots) {
-					var heatpilot = heat.slots[j].pilot_id;
-					var slot_el = $('<tr>');
-					slot_el.append('<td class="channel"><div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div></td>');
 
-					callsign = '-';
-					name = '-';
+				if (heat.locked || heat.status == 2 || heat.auto_frequency === false) { // HeatStatus.CONFIRMED
+					for (idx in heat.slots) {
+						var slot = heat.slots[idx];
 
-					pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == heatpilot});
+						if (slot.pilot_id) {
+							var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == slot.pilot_id});
 
-					if (pilot) {
-						callsign = pilot.callsign;
-						name = pilot.name;
+							if (pilot) {
+								var callsign = pilot.callsign;
+								var name = pilot.name;
+							} else {
+								var callsign = "(" + __("Pilot") + " " + slot.pilot_id + ")"
+								var name = '-';
+							}
+
+							var slot_el = $('<tr>');
+							slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
+
+							slot_el.append('<td class="pilot">' + callsign + '</td>');
+							slot_el.append('<td class="pilot">' + name + '</td>');
+
+							tbody.append(slot_el);
+						}
 					}
+				} else {
+					for (idx in heat.slots) {
+						var slot = heat.slots[idx];
+						var slot_el = $('<tr>');
 
-					slot_el.append('<td class="pilot">' + callsign + '</td>');
-					slot_el.append('<td class="pilot">' + name + '</td>');
-					tbody.append(slot_el);
+						if (slot.method > -1 && !(slot.method == 0 && !slot.pilot_id)) {
+							var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank, slot.pilot_id)
+							slot_el.append('<td class="channel"></td>');
+							slot_el.append('<td colspan="2" class="pilot">' + method_text + '</td>');
+
+							tbody.append(slot_el);
+						}
+					}
+				}
+
+				function get_method_descriptor (method, seed, rank, pilot_id) {
+					if (method == 0) { // pilot
+						var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
+
+						if (pilot) {
+							return pilot.callsign;
+						} else {
+							return false;
+						}
+					} else if (method == 1) { // heat
+						var heat = rotorhazard.event.heats.find(obj => {return obj.id == seed});
+
+						if (heat) {
+							return heat.displayname + " " + __('Rank') + " " + rank;
+						} else {
+							return false;
+						}
+					} else if (method == 2) { // class
+						var race_class = rotorhazard.event.classes.find(obj => {return obj.id == seed});
+
+						if (race_class) {
+							return race_class.displayname + " " + __('Rank') + " " + rank;
+						} else {
+							return false;
+						}
+					}
+					return false;
 				}
 
 				// class indicator
