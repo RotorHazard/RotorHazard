@@ -182,7 +182,7 @@ def build_leaderboard(leaderboard, RaceContext, **kwargs):
             entry[total_source],
             entry['average_lap'],
             entry['fastest_lap'],
-            entry['consecutives'],
+            F"{entry['consecutives_base']}/{entry['consecutives']}",
             entry['team_name'],
          ])
 
@@ -247,7 +247,7 @@ def assemble_results(RaceContext):
 
                     payload.append([])
 
-                    payload.append(heat['displayname'])
+                    payload.append([heat['displayname']])
 
                     if len(heat['rounds']) > 1:
                         payload.append([])

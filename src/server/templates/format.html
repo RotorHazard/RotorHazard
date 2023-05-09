@@ -1720,6 +1720,22 @@
 				</div>
 				<input type="number" id="set_consecutives_count" class="set-consecutive-count" min="2" max="999" value="{{ getOption('consecutivesCount') }}" placeholder="3">
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
+					<p class="desc">{{ __('In seconds') }}</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
+				</div>
+				<select id="set_min_lap_behavior">
+					<option value="0">{{ __('Highlight Short Laps') }}</option>
+					<option value="1">{{ __('Discard New Short Laps') }}</option>
+				</select>
+			</li>
 		</ol>
 
 		<div class="control-set">
@@ -2044,28 +2060,6 @@
 		</ol>
 
 		<div id="race_format_suggestions" class="form-note emphasis"></div>
-
-		<hr />
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
-					<p class="desc">{{ __('In seconds') }}</p>
-				</div>
-				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
-				</div>
-				<select id="set_min_lap_behavior">
-					<option value="0">{{ __('Highlight Short Laps') }}</option>
-					<option value="1">{{ __('Discard New Short Laps') }}</option>
-				</select>
-			</li>
-
-		</ol>
 	</div>
 </div>
 

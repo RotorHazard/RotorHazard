@@ -917,7 +917,13 @@ def calc_class_ranking_leaderboard(rhDataObj, race_class=None, class_id=None, ro
 
 class LapInfo():
     class race:
+        total_pilots: None
+        lap_max: None
+        consecutives_base: None
         win_condition = None
+        best_lap: None
+        best_lap_callsign: None
+        split_count: None
 
     class current:
         pilot_id = None
@@ -973,6 +979,7 @@ def get_gap_info(RaceContext, seat_index):
 
     # select correct results
     win_condition = RaceContext.race.format.win_condition
+    consecutivesCount = RaceContext.rhdata.get_optionInt('consecutivesCount', 3)
 
     if win_condition == WinCondition.FASTEST_CONSECUTIVE:
         leaderboard = RaceContext.race.results['by_consecutives']
@@ -1007,7 +1014,7 @@ def get_gap_info(RaceContext, seat_index):
 
         if next_rank_split_result['total_time_raw']:
             if win_condition == WinCondition.FASTEST_CONSECUTIVE:
-                if next_rank_split_result['consecutives_raw']:
+                if next_rank_split_result['consecutives_raw'] and next_rank_split_result['consecutives_base'] == consecutivesCount:
                     next_rank_split = result['consecutives_raw'] - next_rank_split_result['consecutives_raw']
             elif win_condition == WinCondition.FASTEST_LAP:
                 if next_rank_split_result['fastest_lap_raw']:
@@ -1031,8 +1038,8 @@ def get_gap_info(RaceContext, seat_index):
     if isinstance(result['position'], int) and result['position'] > 2:
         first_rank_split_result = leaderboard[0]
 
-        if next_rank_split_result['total_time_raw']:
-            if win_condition == WinCondition.FASTEST_CONSECUTIVE:
+        if first_rank_split_result['total_time_raw']:
+            if win_condition == WinCondition.FASTEST_CONSECUTIVE and result['consecutives_base'] == consecutivesCount:
                 if first_rank_split_result['consecutives_raw']:
                     first_rank_split = result['consecutives_raw'] - first_rank_split_result['consecutives_raw']
             elif win_condition == WinCondition.FASTEST_LAP:
@@ -1048,7 +1055,13 @@ def get_gap_info(RaceContext, seat_index):
     pass_info = LapInfo()
 
     # Race
+    #TODO pass_info.race.total_pilots = None
+    #TODO pass_info.race.lap_max = None
+    pass_info.race.consecutives_base = consecutivesCount
     pass_info.race.win_condition = win_condition
+    #TODO pass_info.race.best_lap = None
+    #TODO pass_info.race.best_lap_callsign = None
+    #TODO pass_info.race.split_count = None
 
     # Current pilot
     pass_info.current.lap_list = RaceContext.race.get_lap_results()['node_index'][seat_index]
@@ -1074,6 +1087,7 @@ def get_gap_info(RaceContext, seat_index):
 
     if result['consecutives']:
         pass_info.current.consecutives = int(round(result['consecutives_raw'], 0))
+        pass_info.current.consecutives_base = int(round(result['consecutives_base'], 0))
 
     # Next faster pilot
     if next_rank_split:
