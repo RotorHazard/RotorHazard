@@ -1,4 +1,4 @@
-{% extends "layout.html" %} {% block title %}{{ __('Event') }}{% endblock %} {% block head %}
+{% extends "layout.html" %} {% block title %}{{ __('Results') }}{% endblock %} {% block head %}
 
 <script src="./static/showdown-1.9.1/showdown.min.js"></script>
 
@@ -115,7 +115,7 @@
 									class_leaderboard_content.append('<h4>' + __('Fastest Laps') + '</h4>');
 									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', current_class.leaderboard.meta, true));
 								} else if (boards[i] == 'by_consecutives') {
-									class_leaderboard_content.append('<h4>' + __('Fastest') + ' ' + current_class.leaderboard.meta.consecutives_count + ' ' + __('Consecutive Laps') + '</h4>');
+									class_leaderboard_content.append('<h4>' + __('Fastest Consecutive Laps') + '</h4>');
 									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', current_class.leaderboard.meta, true));
 								}
 							}
@@ -239,7 +239,7 @@
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true));
 				event_leaderboard.append('<h3>' + __('Fastest Laps') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta));
-				event_leaderboard.append('<h3>' + __('Fastest') + ' ' + msg.event_leaderboard.meta.consecutives_count + ' ' + __('Consecutive Laps') + '</h3>');
+				event_leaderboard.append('<h3>' + __('Fastest Consecutive Laps') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta));
 				panel_content.append(event_leaderboard);
 				panel.append(panel_content);

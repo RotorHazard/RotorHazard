@@ -1690,7 +1690,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-		header_row.append('<th class="consecutive">' +  meta.consecutives_count + ' ' + __('Consecutive') + '</th>');
+		header_row.append('<th class="consecutive">' + __('Consecutive') + '</th>');
 	}
 	header.append(header_row);
 	table.append(header);
@@ -1763,9 +1763,13 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-			var lap = leaderboard[i].consecutives;
-			if (!lap || lap == '0:00.000')
+			var data = leaderboard[i];
+			if (!data.consecutives || data.consecutives == '0:00.000') {
 				lap = '&#8212;';
+			} else {
+				lap = data.consecutives_base + '/' + data.consecutives;
+			}
+
 			if (leaderboard[i].consecutives_source) {
 				var source = leaderboard[i].consecutives_source;
 				row.append('<td class="consecutive">'+ lap +'</td>');

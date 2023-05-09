@@ -380,71 +380,87 @@ def calc_leaderboard(rhDataObj, **params):
 
         gevent.sleep()
         # find best consecutive X laps
-        if result_pilot['laps'] < consecutivesCount:
-            result_pilot['consecutives'] = None
-            result_pilot['consecutives_source'] = None
-        else:
-            all_consecutives = []
+        all_consecutives = []
 
-            if USE_CURRENT:
-                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
-                    thisrace = result_pilot['current_laps']
-                else:
-                    thisrace = result_pilot['current_laps'][1:]
+        if USE_CURRENT:
+            if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                thisrace = result_pilot['current_laps']
+            else:
+                thisrace = result_pilot['current_laps'][1:]
 
+            if len(thisrace) >= consecutivesCount:
                 for i in range(len(thisrace) - (consecutivesCount - 1)):
                     gevent.sleep()
                     all_consecutives.append({
+                        'laps': consecutivesCount,
                         'time': sum([data['lap_time'] for data in thisrace[i : i + consecutivesCount]]),
                         'race_id': None,
                         'lap_index': i+1
                     })
-
             else:
-                # build race lap store
-                race_laps = {}
-                for race in selected_races:
-                    race_laps[race.id] = []
-                    for lap in result_pilot['pilot_laps']:
-                        if lap.race_id == race.id:
-                            race_laps[race.id].append(lap)
+                all_consecutives.append({
+                    'laps': len(thisrace),
+                    'time': sum([data['lap_time'] for data in thisrace]),
+                    'race_id': None,
+                    'lap_index': None
+                })
 
-                for race in selected_races:
-                    gevent.sleep()
+        else:
+            # build race lap store
+            race_laps = {}
+            for race in selected_races:
+                race_laps[race.id] = []
+                for lap in result_pilot['pilot_laps']:
+                    if lap.race_id == race.id:
+                        race_laps[race.id].append(lap)
 
-                    if len(race_laps[race.id]) >= consecutivesCount:
-                        for i in range(len(race_laps[race.id]) - (consecutivesCount - 1)):
-                            gevent.sleep()
-                            all_consecutives.append({
-                                'time': sum([data.lap_time for data in race_laps[race.id][i : i + consecutivesCount]]), 
-                                'race_id': race.id,
-                                'lap_index': i+1
-                            })
+            for race in selected_races:
+                gevent.sleep()
 
-            # Get lowest not-none value (if any)
-            if all_consecutives:
-                # Sort consecutives
-                all_consecutives.sort(key = lambda x: (x['time'] is None, x['time']))
-
-                result_pilot['consecutives'] = all_consecutives[0]['time']
-                result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
-
-                if USE_CURRENT:
-                    result_pilot['consecutives_source'] = None
+                if len(race_laps[race.id]) >= consecutivesCount:
+                    for i in range(len(race_laps[race.id]) - (consecutivesCount - 1)):
+                        gevent.sleep()
+                        all_consecutives.append({
+                            'laps': consecutivesCount,
+                            'time': sum([data.lap_time for data in race_laps[race.id][i : i + consecutivesCount]]), 
+                            'race_id': race.id,
+                            'lap_index': i+1
+                        })
                 else:
-                    source_race = selected_races_keyed[all_consecutives[0]['race_id']]
-                    if source_race:
-                        result_pilot['consecutives_source'] = {
-                            'round': source_race.round_id,
-                            'heat': source_race.heat_id,
-                            'displayname': heats_keyed[source_race.heat_id].displayname()
-                            }
-                    else:
-                        result_pilot['consecutives_source'] = None
+                    all_consecutives.append({
+                        'laps': len(race_laps[race.id]),
+                        'time': sum([data.lap_time for data in race_laps[race.id]]),
+                        'race_id': race.id,
+                        'lap_index': None
+                    })
 
-            else:
-                result_pilot['consecutives'] = None
+        # Get lowest not-none value (if any)
+        if all_consecutives:
+            # Sort consecutives
+            all_consecutives.sort(key = lambda x: (-x['laps'], not bool(x['time']), x['time']))
+
+            result_pilot['consecutives'] = all_consecutives[0]['time']
+            result_pilot['consecutives_base'] = all_consecutives[0]['laps']
+            result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
+
+            if USE_CURRENT:
                 result_pilot['consecutives_source'] = None
+            else:
+                source_race = selected_races_keyed[all_consecutives[0]['race_id']]
+                if source_race:
+                    result_pilot['consecutives_source'] = {
+                        'round': source_race.round_id,
+                        'heat': source_race.heat_id,
+                        'displayname': heats_keyed[source_race.heat_id].displayname()
+                        }
+                else:
+                    result_pilot['consecutives_source'] = None
+
+        else:
+            result_pilot['consecutives'] = None
+            result_pilot['consecutives_source'] = None
+            result_pilot['consecutives_base'] = None
+            result_pilot['consecutive_lap_start'] = None
 
 
     gevent.sleep()
@@ -545,9 +561,8 @@ def calc_leaderboard(rhDataObj, **params):
     gevent.sleep()
     # Sort by consecutive laps
     leaderboard_by_consecutives = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+        -x['consecutives_base'] if x['consecutives_base'] else 0, 
         x['consecutives_raw'] if x['consecutives_raw'] and x['consecutives_raw'] > 0 else float('inf'), # fastest consecutives
-        -x['laps'], # lap count
-        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time
     )))
 
     # determine ranking
@@ -637,7 +652,7 @@ def calc_team_leaderboard(raceObj, rhDataObj):
                     teams[line['team_name']]['combined_average_lap_raw'] += line['average_lap_raw']
                 if line['fastest_lap_raw']:
                     teams[line['team_name']]['combined_fastest_lap_raw'] += line['fastest_lap_raw']
-                if line['consecutives_raw']:
+                if line['consecutives_raw'] and line['consecutives_base'] >= consecutivesCount:
                     teams[line['team_name']]['combined_consecutives_raw'] += line['consecutives_raw']
 
             else:
