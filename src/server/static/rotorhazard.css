@@ -2002,9 +2002,15 @@ td.speak {
 	width: 2.2em;
 }
 
-.phonetic {
+.pilot-info-inline {
 	display: flex;
 	justify-content: space-between;
+	margin-top: 0.25em;
+	margin-bottom: 0.25em;
+}
+
+.pilot-info-inline button, .delete_pilot{
+	margin-left: 0.25em;
 }
 
 .pilot-team {
