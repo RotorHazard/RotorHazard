@@ -96,6 +96,7 @@ from VRxControl import VRxControlManager
 from HeatGenerator import HeatGeneratorManager
 
 APP = Flask(__name__, static_url_path='/static')
+APP.app_context().push()
 
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
@@ -599,7 +600,7 @@ def stop_background_threads():
 
 @SOCKET_IO.on('connect')
 @catchLogExceptionsWrapper
-def connect_handler():
+def connect_handler(auth):
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
