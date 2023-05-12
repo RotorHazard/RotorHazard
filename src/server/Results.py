@@ -1103,9 +1103,9 @@ def get_gap_info(RaceContext, seat_index):
         if next_rank_split_result['position']:
             pass_info.next_rank.position = int(next_rank_split_result['position'])
 
-            if next_rank_split_result['laps'] == 1:
+            if next_rank_split_result['laps'] < 1:
                 pass_info.next_rank.last_lap_time = int(round(next_rank_split_result['total_time_raw'], 0))
-            elif next_rank_split_result['laps'] > 1:
+            else:
                 pass_info.next_rank.last_lap_time = int(round(next_rank_split_result['last_lap_raw'], 0))
 
     # Race Leader
@@ -1122,9 +1122,9 @@ def get_gap_info(RaceContext, seat_index):
         if first_rank_split_result['position']:
             pass_info.first_rank.position = int(first_rank_split_result['position'])
 
-            if first_rank_split_result['laps'] == 1:
+            if first_rank_split_result['laps'] < 1:
                 pass_info.first_rank.last_lap_time = int(round(first_rank_split_result['total_time_raw'], 0))
-            elif first_rank_split_result['laps'] > 1:
+            else:
                 pass_info.first_rank.last_lap_time = int(round(first_rank_split_result['last_lap_raw'], 0))
 
     return pass_info
