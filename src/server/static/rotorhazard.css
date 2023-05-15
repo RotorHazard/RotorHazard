@@ -383,6 +383,12 @@ ol.form li+li {
 	}
 }
 
+::placeholder {
+	color: inherit;
+	font-style: oblique;
+	opacity: 0.6;
+}
+
 ::-moz-selection,
 ::selection {
 	background: hsl(25, 85%, 55%);
