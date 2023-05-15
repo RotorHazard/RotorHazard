@@ -688,10 +688,20 @@
 		}
 
 		$(document).on("change", '.set_heat_note', function (event) {
+			var heat_id = parseInt($(this).data('heat'));
+			var note = $(this).val();
+
 			var data = {
-				heat: parseInt($(this).data('heat')),
-				note: $(this).val(),
+				heat: heat_id,
+				note: note,
 			};
+
+			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
+			if (heat) {
+				heat.note = note;
+				heat.displayname = note;
+			}
+
 			socket.emit('alter_heat', data);
 		});
 
@@ -709,8 +719,11 @@
 			// switch none to pilot if needed
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			var slot = heat.slots.find(obj => {return obj.id == slot_id});
-			if (heat && slot && slot.method == -1) {
-				data.method = 0;
+			if (heat && slot) {
+				slot.pilot_id = pilot_id;
+				if (slot.method == -1) {
+					data.method = 0;
+				}
 			}
 
 			socket.emit('alter_heat', data);
