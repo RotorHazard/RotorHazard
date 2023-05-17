@@ -1861,7 +1861,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Class {} ranking'.format(race_class.id))
-        build = Results.calc_class_ranking_leaderboard(self, class_id=race_class.id)
+        build = Results.calc_class_ranking_leaderboard(self._racecontext, class_id=race_class.id)
         self.set_ranking_raceClass(race_class, token, build)
         return build
 

@@ -119,7 +119,7 @@ class RaceClass(DB.Model):
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
-    win_condition = DB.Column(DB.Integer, nullable=False)
+    win_condition = DB.Column(DB.String, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     cacheStatus = DB.Column(DB.String(16), nullable=False)
     ranking = DB.Column(DB.PickleType, nullable=True)

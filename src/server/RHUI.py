@@ -962,6 +962,21 @@ class RHUI():
 
         emit('heatgenerator_list', emit_payload)
 
+    def emit_raceclass_rank_method_list(self):
+        '''List Race Class Rank Methods'''
+
+        emit_payload = {
+            'methods': []
+        }
+
+        for name, method in self._racecontext.raceclass_rank_manager.methods.items():
+            emit_payload['methods'].append({
+                'name': name,
+                'label': method.label
+            })
+
+        emit('raceclass_rank_method_list', emit_payload)
+
 @dataclass
 class PilotAttribute():
     name: str

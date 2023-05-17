@@ -824,6 +824,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_exporter_list()
         elif load_type == 'heatgenerator_list':
             RaceContext.rhui.emit_heatgenerator_list()
+        elif load_type == 'raceclass_rank_method_list':
+            RaceContext.rhui.emit_raceclass_rank_method_list()
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -4429,6 +4431,10 @@ RaceContext.export_manager = DataExportManager(RaceContext, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
+
+# leaderboard ranking
+RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
+Results.init_builtin_rank_methods(RaceContext.raceclass_rank_manager)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

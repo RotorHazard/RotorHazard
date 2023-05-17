@@ -18,6 +18,7 @@
 		'backups_list',
 		'exporter_list',
 		'heatgenerator_list',
+		'raceclass_rank_method_list',
 	];
 
 	var heat_to_unlock = null;
@@ -174,7 +175,8 @@
 			if (typeof rotorhazard.event.classes != "undefined" &&
 				typeof rotorhazard.event.heats != "undefined" &&
 				typeof rotorhazard.event.pilots != "undefined" &&
-				typeof rotorhazard.event.race_formats != "undefined") {
+				typeof rotorhazard.event.race_formats != "undefined" &&
+				typeof rotorhazard.raceclass_rank_methods != "undefined") {
 				$(".race_classes").empty();
 
 				var classlist = $('<ol>');
@@ -230,18 +232,20 @@
 						var field = $('<div class="field field-ranking">');
 						field.append('<label for="class_win_condition_' + race_class.id + '">' + __('Ranking') + '</label>');
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-						selectbox.append('<option value="0">' + __('From Race Format') + '</option>');
+						selectbox.append('<option value="">' + __('From Race Format') + '</option>');
+						for (var j in rotorhazard.raceclass_rank_methods) {
+							selectbox.append('<option value="' + rotorhazard.raceclass_rank_methods[j].name +'">' + rotorhazard.raceclass_rank_methods[j].label + '</option>');
+						}
 						/*
 						selectbox.append('<option value="1">Laps/Time</option>');
 						selectbox.append('<option value="2">Fastest Lap</option>');
 						selectbox.append('<option value="3">Fastest 3 Consecutive</option>');
-						*/
 						selectbox.append('<option value="4">Best Round (Laps/Time)</option>');
 						selectbox.append('<option value="5">Best 2 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="6">Best 3 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="7">Best 4 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="8">Best 5 Rounds (Laps/Time)</option>');
-						
+						*/
 						selectbox.val(race_class.win_condition);
 						selectbox.prop('disabled', locked);
 						field.append(selectbox);
@@ -360,7 +364,7 @@
 		$(document).on("change", '.set_race_class_win_condition', function (event) {
 			var data = {
 				class_id: parseInt($(this).data('class_id')),
-				win_condition: parseInt($(this).val()),
+				win_condition: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
 
@@ -1671,6 +1675,11 @@
 				$('#generate_heats_2').prop('disabled', true);
 				$('#generate_heats_2').prop('hidden', true);
 			}
+		});
+
+		socket.on('raceclass_rank_method_list', function (msg) {
+			rotorhazard.raceclass_rank_methods = msg.methods;
+			display_classes();
 		});
 
 		$('button#generate_heats_2').click(function (event) {
