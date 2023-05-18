@@ -4,6 +4,7 @@
 
 import logging
 import random
+import RHUtils
 from Database import ProgramMethod
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class HeatGeneratorManager():
             })
 
     def registerGenerator(self, generator):
-        if hasattr(generator, 'name'):
+        if isinstance(generator, HeatGenerator):
             if generator.name in self.generators:
                 logger.warning('Overwriting data generator "{0}"'.format(generator.name))
 
@@ -54,7 +55,8 @@ class HeatGeneratorManager():
 
         if output_class is None:
             new_class = self._racecontext.rhdata.add_raceClass()
-            new_class.name = self.generators[generator_id].label
+            all_class_names = [race_class.name for race_class in self._racecontext.rhdata.get_raceClasses()]
+            new_class.name = RHUtils.uniqueName(self.generators[generator_id].label, all_class_names)
             output_class = new_class.id
 
         heat_id_mapping = []

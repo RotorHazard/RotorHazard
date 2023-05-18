@@ -3,6 +3,7 @@ var rhui = {
 	buildField: function(field_options) {
 		var settings = {
 			data: {},
+			desc: null,
 			fieldClass: null,
 			fieldType: null,
 			genericOption: null,
@@ -28,35 +29,49 @@ var rhui = {
 			wrapper.addClass(settings.wrapperClass);
 		}
 
+		var labelWrap = $('<div class="label-block"></div>');
+
+		var label = $('<label>')
+			.attr('for', settings.id)
+			.text(settings.label);
+
+		labelWrap.append(label);
+
+		if (settings.desc) {
+			labelWrap.append('<p class="desc">' + settings.desc + '</p>');
+		}
+
 		if (settings.fieldType == 'text') {
-			var labelWrap = $('<div class="label-block"></div>');
-
-			var label = $('<label>')
-				.attr('for', settings.id)
-				.text(settings.label);
-
-			labelWrap.append(label);
-
 			var field = $('<input>')
-				.addClass(settings.fieldClass)
-				.attr('id', settings.id)
-				.attr('type', 'text')
-				.val(settings.value);
+				.attr('type', 'text');
 
-			if (settings.genericOption) {
-				field.addClass('set-option')
-					.data('option', settings.genericOption)
-			}
-
-			for (var idx in settings.data) {
-				field.data(idx, settings.data[idx])
-			}
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.fieldType == 'basic_int') {
+			var field = $('<input>')
+				.attr('type', 'number')
+				.attr('min', 0)
+				.attr('max', 999)
+				.attr('step', 1)
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else {
 			console.log('fieldtype not supported');
 			return false;
+		}
+
+		field.addClass(settings.fieldClass)
+			.attr('id', settings.id)
+			.val(settings.value);
+
+		if (settings.genericOption) {
+			field.addClass('set-option')
+				.data('option', settings.genericOption)
+		}
+
+		for (var idx in settings.data) {
+			field.data(idx, settings.data[idx])
 		}
 
 		return wrapper

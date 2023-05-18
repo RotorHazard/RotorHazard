@@ -1703,51 +1703,54 @@
 					var ex = msg.generators[idx];
 					$('#generator_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
 				}
+				$('#generator_list').trigger('change');
 				$('#generator_list').prop('disabled', false);
-				$('generator_input_class').prop('disabled', false);
-				$('generator_output_class').prop('disabled', false);
+				$('#generator_input_class').prop('disabled', false);
+				$('#generator_output_class').prop('disabled', false);
 				$('#generate_heats_2').prop('disabled', false);
 			} else {
 				$('#generator_list').append('<option value="-">' + __('No generators') + '</option>');
 				$('#generator_list').prop('disabled', true);
-				$('generator_input_class').prop('disabled', true);
-				$('generator_output_class').prop('disabled', true);
+				$('#generator_input_class').prop('disabled', true);
+				$('#generator_output_class').prop('disabled', true);
 				$('#generate_parameters').prop('disabled', true);
 				$('#generate_heats_2').prop('disabled', true);
 			}
 		});
 
+		var selected_generator = null;
+
 		$('#generator_list').change(function (event) {
 			var gen_id = $(this).val();
-			var generator = rotorhazard.generators.find(obj => {return obj.name == gen_id});
+			selected_generator = rotorhazard.generators.find(obj => {return obj.name == gen_id});
 
-			if (generator && generator.settings) {
+			if (selected_generator && selected_generator.settings) {
 				$('#generate_parameters').prop('disabled', false);
-
-				var param_panel = $('#parameters > .popup-content');
-				param_panel.empty();
-				var param_form = $('<ol class="form">');
-
-				for (var f_idx in generator.settings) {
-					settings = generator.settings[f_idx];
-
-					settings.wrapperEl = 'li';
-					settings.data = {
-						idx: generator.name,
-						field: settings.name,
-					}
-					var field = rhui.buildField(settings);
-
-					param_form.append(field);
-				}
-
-				param_panel.append(param_form);
 			} else {
 				$('#generate_parameters').prop('disabled', true);
 			}
 		});
 
 		$('#generate_parameters').click(function (event) {
+			var param_panel = $('#parameters > .popup-content');
+			param_panel.empty();
+			var param_form = $('<ol class="form">');
+
+			for (var f_idx in selected_generator.settings) {
+				settings = selected_generator.settings[f_idx];
+
+				settings.wrapperEl = 'li';
+				settings.data = {
+					type: 'heatgenerator', // ***
+					field: settings.id,
+				}
+				var field = rhui.buildField(settings);
+
+				param_form.append(field);
+			}
+
+			param_panel.append(param_form);
+
 			$.magnificPopup.open({
 				items: {
     				src: '#parameters'
@@ -1756,13 +1759,27 @@
   			});
 		});
 
+		$(document).on('change', '#parameters input', function (event) {
+			var field = $(this).data('field');
+			var value = $(this).val();
+			var field_data = selected_generator.settings.find(obj => {return obj.id == field});
+
+			if (field_data) {
+				field_data.value = value;
+			}
+		});
+
 		$('button#generate_heats_2').click(function (event) {
+			var params = {}
+			for (var f in selected_generator.settings) {
+				params[selected_generator.settings[f].id] = selected_generator.settings[f].value;
+			}
+
 			var data = {
 				input_class: parseInt($('#generator_input_class').val()),
 				output_class: parseInt($('#generator_output_class').val()),
-				suffix: $('#generator_suffix').val(),
-				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
-				generator: $('#generator_list').val()
+				params: params,
+				generator: selected_generator.name,
 			};
 			socket.emit('generate_heats_v2', data);
 			$('#generate_heats_2').prop('disabled', true);
@@ -1963,7 +1980,7 @@
 </div>
 
 <!--Generators-->
-<div class="panel collapsing">
+<div id="heat_generator" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __(' Generators') }}</h2>
 	</div>
@@ -2004,7 +2021,7 @@
 </div>
 
 <!--Race Format-->
-<div class="panel collapsing">
+<div id="race_format" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Race Formats') }}</h2>
 	</div>
