@@ -2499,6 +2499,10 @@ button.color-picker {
 	margin-left: auto;
 }
 
+.mfp-content #parameters {
+	max-width: 43em;
+}
+
 /* ************* */
 /* Print Styling */
 /* ************* */

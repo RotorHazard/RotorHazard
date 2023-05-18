@@ -954,10 +954,11 @@ class RHUI():
             'generators': []
         }
 
-        for name, exp in self._racecontext.heat_generate_manager.getGenerators().items():
+        for name, gen in self._racecontext.heat_generate_manager.getGenerators().items():
             emit_payload['generators'].append({
                 'name': name,
-                'label': exp.label
+                'label': gen.label,
+                'settings': gen.settings
             })
 
         emit('heatgenerator_list', emit_payload)

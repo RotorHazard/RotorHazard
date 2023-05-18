@@ -202,5 +202,36 @@ def discover(*_args, **_kwargs):
             'Balanced random fill',
             generateBalancedHeats
         ),
+        HeatGenerator(
+            'ladder_params',
+            'Ladder (parameterized)',
+            generateLadder,
+            None,
+            [
+                {
+                    'id': 'qualifiers_per_heat',
+                    'label': "Number of seeded slots",
+                    'fieldType': 'text',
+                },
+                {
+                    'id': 'advances_per_heat',
+                    'label': "Number of advances (bumps)",
+                    'fieldType': 'text',
+                },
+                {
+                    'id': 'total_pilots',
+                    'label': "Total number of pilots to seed",
+                    'fieldType': 'text',
+                },
+                {
+                    'id': 'suffix',
+                    'label': "Suffix",
+                    'fieldType': 'text',
+                    'value': 'Main',
+                },
+            ]
+                
+            
+        ),
 
     ]

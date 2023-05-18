@@ -29,9 +29,13 @@ var rhui = {
 		}
 
 		if (settings.fieldType == 'text') {
-			var label = $('<div class="label-block"><label>')
+			var labelWrap = $('<div class="label-block"></div>');
+
+			var label = $('<label>')
 				.attr('for', settings.id)
 				.text(settings.label);
+
+			labelWrap.append(label);
 
 			var field = $('<input>')
 				.addClass(settings.fieldClass)
@@ -48,7 +52,7 @@ var rhui = {
 				field.data(idx, settings.data[idx])
 			}
 
-			wrapper.append(label);
+			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else {
 			console.log('fieldtype not supported');
@@ -56,9 +60,5 @@ var rhui = {
 		}
 
 		return wrapper
-	}
-
-	showParameters:function() {
-
 	}
 }

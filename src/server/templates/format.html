@@ -8,6 +8,10 @@
 
 	var data_dependencies = [
 		'language',
+		{
+			'type': 'ui',
+			'value': 'format'
+		},
 		'frequency_data',
 		'pilot_data',
 		'heat_data',
@@ -24,6 +28,8 @@
 	var class_to_unlock = null;
 
 	$(document).ready(function () {
+		$('#generate_parameters').html(svg_asset.gear);
+
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
@@ -66,6 +72,40 @@
 		for (var i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 		}
+
+		socket.on('ui', function (msg) {
+			$('#custom-ui').empty();
+
+			for (var i in msg) {
+				var panel = msg[i];
+
+				var panel_el = $('<div class="panel collapsing active">');
+				var panel_header_el = $('<div class="panel-header">');
+				panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+				var panel_content_el = $('<div class="panel-content">');
+				panel_content_el.hide();
+
+				var form_el = $('<ol>');
+
+				for (var f_idx in panel.settings) {
+					settings = panel.settings[f_idx];
+
+					settings.wrapperEl = 'li';
+
+					// TODO: adjust incoming data
+					settings.fieldType = settings.fieldtype;
+					settings.id = settings.name;
+					settings.genericOption = settings.name;
+
+					var field = rhui.buildField(settings);
+
+					panel_content_el.append(field);
+				}
+				panel_el.append(panel_header_el);
+				panel_el.append(panel_content_el);
+				$('#custom-ui').append(panel_el);
+			}
+		});
 
 		socket.on('frequency_data', function (msg) {
 			if (msg.fdata.length) {
@@ -1664,13 +1704,56 @@
 					$('#generator_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
 				}
 				$('#generator_list').prop('disabled', false);
+				$('generator_input_class').prop('disabled', false);
+				$('generator_output_class').prop('disabled', false);
 				$('#generate_heats_2').prop('disabled', false);
 			} else {
 				$('#generator_list').append('<option value="-">' + __('No generators') + '</option>');
 				$('#generator_list').prop('disabled', true);
+				$('generator_input_class').prop('disabled', true);
+				$('generator_output_class').prop('disabled', true);
+				$('#generate_parameters').prop('disabled', true);
 				$('#generate_heats_2').prop('disabled', true);
-				$('#generate_heats_2').prop('hidden', true);
 			}
+		});
+
+		$('#generator_list').change(function (event) {
+			var gen_id = $(this).val();
+			var generator = rotorhazard.generators.find(obj => {return obj.name == gen_id});
+
+			if (generator && generator.settings) {
+				$('#generate_parameters').prop('disabled', false);
+
+				var param_panel = $('#parameters > .popup-content');
+				param_panel.empty();
+				var param_form = $('<ol class="form">');
+
+				for (var f_idx in generator.settings) {
+					settings = generator.settings[f_idx];
+
+					settings.wrapperEl = 'li';
+					settings.data = {
+						idx: generator.name,
+						field: settings.name,
+					}
+					var field = rhui.buildField(settings);
+
+					param_form.append(field);
+				}
+
+				param_panel.append(param_form);
+			} else {
+				$('#generate_parameters').prop('disabled', true);
+			}
+		});
+
+		$('#generate_parameters').click(function (event) {
+			$.magnificPopup.open({
+				items: {
+    				src: '#parameters'
+  				},
+  				type: 'inline'
+  			});
 		});
 
 		$('button#generate_heats_2').click(function (event) {
@@ -1888,17 +1971,18 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="generator_input_class">{{ __('Generator') }}</label>
+					<label for="generator_list">{{ __('Generator') }}</label>
 				</div>
 				<select id="generator_list" disabled="disabled">
 					<option value="-">{{ __('No Generators') }}</option>
 				</select>
+
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="generator_input_class">{{ __('Input') }}</label>
 				</div>
-				<select id="generator_input_class">
+				<select id="generator_input_class" disabled="disabled">
 					<option>{{ __('Loading...') }}</option>
 				</select>
 			</li>
@@ -1906,12 +1990,13 @@
 				<div class="label-block">
 					<label for="generator_output_class">{{ __('Output') }}</label>
 				</div>
-				<select id="generator_output_class">
+				<select id="generator_output_class" disabled="disabled">
 					<option>{{ __('Loading...') }}</option>
 				</select>
 			</li>
 		</ol>
 		<div class="control-set">
+			<button id="generate_parameters" disabled="disabled"></button>
 			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
 		</div>
 		<div id="generating-message" hidden="" class="control-set">{{ __('Generating Heats...') }}</div>
@@ -2079,6 +2164,16 @@
 			</li>
 
 		</ol>
+	</div>
+</div>
+
+<!-- Custom UI -->
+<div id="custom-ui"></div>
+
+<div id="parameters" class="mfp-hide popup">
+	<h2>{{ __("Settings") }}</h2>
+	<div class="popup-content">
+		<p>{{ __("Loading...") }}</p>
 	</div>
 </div>
 

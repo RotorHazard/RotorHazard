@@ -117,13 +117,14 @@ class HeatGeneratorManager():
             logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
 
 class HeatGenerator():
-    def __init__(self, name, label, generatorFn, defaultArgs=None):
+    def __init__(self, name, label, generatorFn, defaultArgs=None, settings=None):
         self.name = name
         self.label = label
-        self.generator = generatorFn
+        self._generator = generatorFn
         self.defaultArgs = defaultArgs
+        self.settings = settings
 
     def generate(self, RaceContext, generate_args=None):
         generate_args = {**(self.defaultArgs if self.defaultArgs else {}), **(generate_args if generate_args else {})}
 
-        return self.generator(RaceContext, generate_args)
+        return self._generator(RaceContext, generate_args)
