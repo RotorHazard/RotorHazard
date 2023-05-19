@@ -9,7 +9,8 @@ var rhui = {
 			genericOption: null,
 			id: null,
 			label: null,
-			// TODO: labelNote: null,
+			options: null,
+			placeholder: null,
 			value: null,
 			wrapperEl: null,
 			wrapperClass: null
@@ -43,7 +44,8 @@ var rhui = {
 
 		if (settings.fieldType == 'text') {
 			var field = $('<input>')
-				.attr('type', 'text');
+				.attr('type', 'text')
+				.attr('placeholder', settings.placeholder);
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
@@ -53,6 +55,22 @@ var rhui = {
 				.attr('min', 0)
 				.attr('max', 999)
 				.attr('step', 1)
+				.attr('placeholder', settings.placeholder);
+
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.fieldType == 'select') {
+			var field = $('<select>')
+
+			for (var opt_id in settings.options) {
+				var opt = settings.options[opt_id];
+
+				var opt_el = $('<option>')
+					.attr('value', opt.name)
+					.text(opt.value);
+				field.append(opt_el);
+			}
+			settings.value = settings.options[0].name;
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);

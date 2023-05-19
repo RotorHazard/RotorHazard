@@ -28,8 +28,6 @@
 	var class_to_unlock = null;
 
 	$(document).ready(function () {
-		$('#generate_parameters').html(svg_asset.gear);
-
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
@@ -1707,14 +1705,13 @@
 				$('#generator_list').prop('disabled', false);
 				$('#generator_input_class').prop('disabled', false);
 				$('#generator_output_class').prop('disabled', false);
-				$('#generate_heats_2').prop('disabled', false);
+				$('#generate_parameters').prop('disabled', false);
 			} else {
 				$('#generator_list').append('<option value="-">' + __('No generators') + '</option>');
 				$('#generator_list').prop('disabled', true);
 				$('#generator_input_class').prop('disabled', true);
 				$('#generator_output_class').prop('disabled', true);
 				$('#generate_parameters').prop('disabled', true);
-				$('#generate_heats_2').prop('disabled', true);
 			}
 		});
 
@@ -1723,15 +1720,26 @@
 		$('#generator_list').change(function (event) {
 			var gen_id = $(this).val();
 			selected_generator = rotorhazard.generators.find(obj => {return obj.name == gen_id});
-
-			if (selected_generator && selected_generator.settings) {
-				$('#generate_parameters').prop('disabled', false);
-			} else {
-				$('#generate_parameters').prop('disabled', true);
-			}
 		});
 
-		$('#generate_parameters').click(function (event) {
+		function emit_generate_cmd() {
+			var params = {}
+			for (var f in selected_generator.settings) {
+				params[selected_generator.settings[f].id] = selected_generator.settings[f].value;
+			}
+
+			var data = {
+				input_class: parseInt($('#generator_input_class').val()),
+				output_class: parseInt($('#generator_output_class').val()),
+				params: params,
+				generator: selected_generator.name,
+			};
+			socket.emit('generate_heats_v2', data);
+			$('#generate_heats_2').prop('disabled', true);
+			$('#generating-message').prop('hidden', false);
+		}
+
+		function open_generate_params() {
 			var param_panel = $('#parameters > .popup-content');
 			param_panel.empty();
 			var param_form = $('<ol class="form">');
@@ -1751,15 +1759,17 @@
 
 			param_panel.append(param_form);
 
+			param_panel.append($('<div class="control-set"><button id="generate_heats">' + __('Generate Heats') + '</button></div>'));
+
 			$.magnificPopup.open({
 				items: {
     				src: '#parameters'
   				},
   				type: 'inline'
   			});
-		});
+		}
 
-		$(document).on('change', '#parameters input', function (event) {
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
 			var field = $(this).data('field');
 			var value = $(this).val();
 			var field_data = selected_generator.settings.find(obj => {return obj.id == field});
@@ -1769,22 +1779,17 @@
 			}
 		});
 
-		$('button#generate_heats_2').click(function (event) {
-			var params = {}
-			for (var f in selected_generator.settings) {
-				params[selected_generator.settings[f].id] = selected_generator.settings[f].value;
+		$('button#generate_parameters').click(function (event) {
+			if (selected_generator && selected_generator.settings) {
+				open_generate_params()
+			} else {
+				emit_generate_cmd();
 			}
+		});
 
-			var data = {
-				input_class: parseInt($('#generator_input_class').val()),
-				output_class: parseInt($('#generator_output_class').val()),
-				params: params,
-				generator: selected_generator.name,
-			};
-			socket.emit('generate_heats_v2', data);
-			$('#generate_heats_2').prop('disabled', true);
-			$('#generating-message').prop('hidden', false);
-			return false;
+		$(document).on('click', '#generate_heats', function (event) {
+			$.magnificPopup.close();
+			emit_generate_cmd();
 		});
 
 		socket.on('set_option', function (msg) {
@@ -1993,7 +1998,6 @@
 				<select id="generator_list" disabled="disabled">
 					<option value="-">{{ __('No Generators') }}</option>
 				</select>
-
 			</li>
 			<li>
 				<div class="label-block">
@@ -2013,8 +2017,7 @@
 			</li>
 		</ol>
 		<div class="control-set">
-			<button id="generate_parameters" disabled="disabled"></button>
-			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
+			<button id="generate_parameters" disabled="disabled">{{ __('Generate Heats') }}</button>
 		</div>
 		<div id="generating-message" hidden="" class="control-set">{{ __('Generating Heats...') }}</div>
 	</div>

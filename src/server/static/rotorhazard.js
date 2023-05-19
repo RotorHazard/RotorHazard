@@ -1544,10 +1544,6 @@ jQuery(document).ready(function($){
 		}
 	}
 
-	$(document).on('click', 'button', function(el){
-		this.blur();
-	});
-
 	// Popup generics
 	init_popup_generics();
 

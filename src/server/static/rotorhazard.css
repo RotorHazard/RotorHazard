@@ -369,17 +369,23 @@ ol.form li+li {
 	ol.form .label-block {
 		width: calc(100% - 21em);
 		text-align: right;
+		margin-right: 0.5em;
 	}
 
 	ol.form input,
 	ol.form textarea,
 	ol.form select {
-		width: 20em;
+		flex: 1 1 0;
+		margin-left: 0.5em;
 	}
 
 	ol.form input[type="checkbox"],
 	ol.form input[type="radio"] {
 		width: auto;
+	}
+
+	ol.form > li > * + button {
+		margin-left: 0.5em;
 	}
 }
 

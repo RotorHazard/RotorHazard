@@ -54,7 +54,7 @@ def getTotalPilots(RHData, generate_args):
 
 def generateLadder(RaceContext, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
-    suffix = generate_args.get('suffix', __('Main'))
+    suffix = __(generate_args.get('suffix', 'Main'))
 
     if 'qualifiers_per_heat' in generate_args and 'advances_per_heat' in generate_args:
         qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
@@ -136,7 +136,7 @@ def generateLadder(RaceContext, generate_args=None):
 
 def generateBalancedHeats(RaceContext, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
-    suffix = generate_args.get('suffix', __('Qualifier'))
+    suffix = __(generate_args.get('suffix', 'Qualifier'))
 
     if 'qualifiers_per_heat' in generate_args:
         qualifiers_per_heat = generate_args['qualifiers_per_heat']
@@ -166,7 +166,12 @@ def generateBalancedHeats(RaceContext, generate_args=None):
             'slots': []
             })
 
-    unseeded_pilots = list(range(total_pilots))
+    if 'seed_offset' in generate_args:
+        seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
+    else:
+        seed_offset = 0
+
+    unseeded_pilots = list(range(seed_offset, total_pilots+seed_offset))
     random.shuffle(unseeded_pilots)
 
     heatNum = 0
@@ -186,71 +191,113 @@ def discover(*_args, **_kwargs):
     # returns array of exporters with default arguments
     return [
         HeatGenerator(
-            'ladder_1a',
-            'Ladder, single advance',
-            generateLadder,
-        ),
-        HeatGenerator(
-            'ladder_2a',
-            'Ladder, double advance',
-            generateLadder,
-            {
-                'advances_per_heat': 2,
-            }
-        ),
-        HeatGenerator(
             'ladder_0a',
             'Ranked fill',
             generateLadder,
             {
                 'advances_per_heat': 0,
-            }
-        ),
-        HeatGenerator(
-            'balanced_fill',
-            'Balanced random fill',
-            generateBalancedHeats
-        ),
-        HeatGenerator(
-            'ladder_params',
-            'Ladder (parametric)',
-            generateLadder,
-            None,
+            },
             [
                 {
                     'id': 'qualifiers_per_heat',
-                    'label': "Number of seeded slots",
-                    'desc': "Blank for auto",
+                    'label': "Maximum pilots per heat",
                     'fieldType': 'basic_int',
-                },
-                {
-                    'id': 'advances_per_heat',
-                    'label': "Advances (bumps) per heat",
-                    'desc': "Blank for auto",
-                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
                 },
                 {
                     'id': 'total_pilots',
                     'label': "Maxiumum pilots in class",
-                    'desc': "Used only if input class selected",
+                    'desc': "Used only with input class",
                     'fieldType': 'basic_int',
+                    'placeholder': "Auto",
                 },
                 {
                     'id': 'seed_offset',
-                    'label': "Seed Offset",
-                    'desc': "Start seeding from this rank",
+                    'label': "Seed from rank",
                     'fieldType': 'basic_int',
                     'value': 1,
                 },
                 {
                     'id': 'suffix',
-                    'label': "Heat Title Suffix",
+                    'label': "Heat title suffix",
+                    'fieldType': 'text',
+                    'value': 'Main',
+                },
+            ],
+        ),
+        HeatGenerator(
+            'balanced_fill',
+            'Balanced random fill',
+            generateBalancedHeats,
+            None,
+            [
+                {
+                    'id': 'qualifiers_per_heat',
+                    'label': "Maximum pilots per heat",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'total_pilots',
+                    'label': "Maxiumum pilots in class",
+                    'desc': "Used only with input class",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'seed_offset',
+                    'label': "Seed from rank",
+                    'fieldType': 'basic_int',
+                    'value': 1,
+                },
+                {
+                    'id': 'suffix',
+                    'label': "Heat title suffix",
+                    'fieldType': 'text',
+                    'value': 'Qualifier',
+                },
+            ]
+        ),
+        HeatGenerator(
+            'ladder_params',
+            'Ladder',
+            generateLadder,
+            None,
+            [
+                {
+                    'id': 'advances_per_heat',
+                    'label': "Advances per heat",
+                    'desc': "Blank for auto",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'qualifiers_per_heat',
+                    'label': "Seeded slots per heat",
+                    'desc': "Blank for auto",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'total_pilots',
+                    'label': "Maxiumum pilots in class",
+                    'desc': "Used only with input class",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'seed_offset',
+                    'label': "Seed from rank",
+                    'fieldType': 'basic_int',
+                    'value': 1,
+                },
+                {
+                    'id': 'suffix',
+                    'label': "Heat title suffix",
                     'fieldType': 'text',
                     'value': 'Main',
                 },
             ]
-                
-            
         ),
 
     ]
