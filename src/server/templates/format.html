@@ -1014,12 +1014,12 @@
 					if (pilot.pilot_id != 0) {
 						var el = $('<li data-id="' + pilot.pilot_id + '">');
 						el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-						var pilot_name = $('<div class="pilot-info-inline">')	
-							pilot_name.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
-							if ('color' in pilot) {
-								pilot_name.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
-								pilot_name.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
-							}
+						var pilot_name = $('<div class="pilot-info-inline">');
+						pilot_name.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+						if ('color' in pilot) {
+							pilot_name.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
+							pilot_name.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
+						}
 						el.append(pilot_name);
 						el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
 						el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
@@ -1029,6 +1029,10 @@
 						phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 						el.append(phonetic);
 						el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+
+						if (!pilot.locked) {
+							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215; </button>');
+						}
 
 						for (var attr_idx in rotorhazard.event.pilot_attributes) {
 							var pilot_attr = rotorhazard.event.pilot_attributes[attr_idx];
@@ -1041,10 +1045,6 @@
 
 							el.append(attr_label);
 							el.append(attr_field);
-						}
-
-						if (!pilot.locked) {
-							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#10006; </button>');
 						}
 
 						el.appendTo($('.pilots'));

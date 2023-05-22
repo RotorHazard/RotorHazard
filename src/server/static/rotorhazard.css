@@ -2005,11 +2005,14 @@ td.speak {
 .pilot-info-inline {
 	display: flex;
 	justify-content: space-between;
-	margin-top: 0.25em;
 	margin-bottom: 0.25em;
 }
 
-.pilot-info-inline button, .delete_pilot{
+.pilot-info-inline:not(:first-of-type) {
+	margin-top: 0.25em;
+}
+
+.pilot-info-inline button, .delete_pilot {
 	margin-left: 0.25em;
 }
 
