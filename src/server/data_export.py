@@ -56,6 +56,6 @@ class DataExporter():
         self.formatter = formatterFn
         self.assembler = assemblerFn
 
-    def export(self, RHData, PageCache, Language):
-        data = self.assembler(RHData, PageCache, Language)
+    def export(self, racecontext):
+        data = self.assembler(racecontext)
         return self.formatter(data)

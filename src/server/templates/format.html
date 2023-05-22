@@ -129,6 +129,14 @@
 			display_pilots();
 		});
 
+		/* Event */
+		$('#set_consecutives_count').change(function (event) {
+			var data = {
+				count: $(this).val()
+			};
+			socket.emit('set_consecutives_count', data);
+		});
+
 		/* Classes */
 		function update_class_selectors() {
 			var class_data = rotorhazard.event;
@@ -234,7 +242,7 @@
 						/*
 						selectbox.append('<option value="1">Laps/Time</option>');
 						selectbox.append('<option value="2">Fastest Lap</option>');
-						selectbox.append('<option value="3">Fastest 3 Consecutive</option>');
+						selectbox.append('<option value="3">Fastest Consecutive</option>');
 						*/
 						selectbox.append('<option value="4">Best Round (Laps/Time)</option>');
 						selectbox.append('<option value="5">Best 2 Rounds (Laps/Time)</option>');
@@ -421,7 +429,6 @@
 
 		$('button#add_race_class').click(function (event) {
 			socket.emit('add_race_class');
-			return false;
 		});
 
 		$(document).on("click", '.delete_class', function (event) {
@@ -958,7 +965,6 @@
 
 		$('button#add_heat').click(function (event) {
 			socket.emit('add_heat');
-			return false;
 		});
 
 		$(document).on("click", '.delete_heat', function (event) {
@@ -1006,7 +1012,6 @@
 			};
 			$('button#generate_heats').prop('disabled', true);
 			socket.emit('generate_heats', data);
-			return false;
 		});
 
 		/* Pilots */
@@ -1162,7 +1167,6 @@
 				ttstext = phonetic;
 
 			doSpeak('<div class="speech">' + ttstext + '</div>');
-			return false;
 		});
 
 		$(document).on("focus", '.set_pilot_attr', function(){
@@ -1187,7 +1191,6 @@
 
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');
-			return false;
 		});
 
 		$(document).on("click", '.delete_pilot', function (event) {
@@ -1332,7 +1335,6 @@
 				format_id: format_id
 			};
 			socket.emit('delete_race_format', data);
-			return false;
 		});
 
 		$('#set_format_name').change(function (event) {
@@ -1522,7 +1524,6 @@
 		/* Database Reset */
 		$('button#backup_database').click(function (event) {
 			socket.emit('backup_database');
-			return false;
 		});
 
 		socket.on('database_bkp_done', function (msg) {
@@ -1568,8 +1569,6 @@
 					type: 'inline',
 				}
 			});
-
-			return false;
 		});
 
 		$('button#delete_database').click(function (event) {
@@ -1578,7 +1577,6 @@
 				backup_file: $('#database_list').val()
 			};
 			socket.emit('delete_database', data);
-			return false;
 		});
 
 		socket.on('reset_confirm', function () {
@@ -1594,7 +1592,6 @@
 				reset_type: $('#reset_type').val()
 			};
 			socket.emit('reset_database', data);
-			return false;
 		});
 
 		socket.on('exporter_list', function (msg) {
@@ -1634,12 +1631,10 @@
 				exporter: $('#exporter_list').val()
 			};
 			socket.emit('export_database', data);
-			return false;
 		});
 
 		$('button#download_logs').click(function (event) {
 			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
-			return false;
 		});
 
 		socket.on('settings_save_logs', function (msg) {
@@ -1684,7 +1679,6 @@
 			socket.emit('generate_heats_v2', data);
 			$('#generate_heats_2').prop('disabled', true);
 			$('#generating-message').prop('hidden', false);
-			return false;
 		});
 
 		socket.on('set_option', function (msg) {
@@ -1697,7 +1691,6 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
-			return false;
 		});
 
 		$('#set_language').change(function (event) {
@@ -1732,6 +1725,29 @@
 					<p class="desc">{{ __('Accepts Markdown') }}</p>
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_consecutives_count">{{ __('Consecutive Laps Base') }}</label>
+					<p class="desc">{{ __('Used in results calculations') }}</p>
+				</div>
+				<input type="number" id="set_consecutives_count" class="set-consecutive-count" min="2" max="999" value="{{ getOption('consecutivesCount') }}" placeholder="3">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
+					<p class="desc">{{ __('In seconds') }}</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
+				</div>
+				<select id="set_min_lap_behavior">
+					<option value="0">{{ __('Highlight Short Laps') }}</option>
+					<option value="1">{{ __('Discard New Short Laps') }}</option>
+				</select>
 			</li>
 		</ol>
 
@@ -2035,7 +2051,7 @@
 					<option value="6">{{ __('Most Laps Only with Overtime') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
 					<option value="3">{{ __('Fastest Lap') }}</option>
-					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
+					<option value="4">{{ __('Fastest Consecutive Laps') }}</option>
 					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>
@@ -2057,28 +2073,6 @@
 		</ol>
 
 		<div id="race_format_suggestions" class="form-note emphasis"></div>
-
-		<hr />
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
-					<p class="desc">{{ __('In seconds') }}</p>
-				</div>
-				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
-				</div>
-				<select id="set_min_lap_behavior">
-					<option value="0">{{ __('Highlight Short Laps') }}</option>
-					<option value="1">{{ __('Discard New Short Laps') }}</option>
-				</select>
-			</li>
-
-		</ol>
 	</div>
 </div>
 

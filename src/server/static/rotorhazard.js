@@ -1009,7 +1009,7 @@ var rotorhazard = {
 		6: 'Most Laps Only with Overtime',
 		2: 'First to X Laps',
 		3: 'Fastest Lap',
-		4: 'Fastest 3 Consecutive Laps',
+		4: 'Fastest Consecutive Laps',
 		0: 'None',
 	},
 	stagingTones: {
@@ -1651,6 +1651,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		meta = new Object;
 		meta.team_racing_mode = false;
 		meta.start_behavior = 0;
+		meta.consecutives_count = 0;
 	}
 
 	if (meta.start_behavior == 2) {
@@ -1689,7 +1690,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-		header_row.append('<th class="consecutive">' + __('3 Consecutive') + '</th>');
+		header_row.append('<th class="consecutive">' + __('Consecutive') + '</th>');
 	}
 	header.append(header_row);
 	table.append(header);
@@ -1762,9 +1763,13 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-			var lap = leaderboard[i].consecutives;
-			if (!lap || lap == '0:00.000')
+			var data = leaderboard[i];
+			if (!data.consecutives || data.consecutives == '0:00.000') {
 				lap = '&#8212;';
+			} else {
+				lap = data.consecutives_base + '/' + data.consecutives;
+			}
+
 			if (leaderboard[i].consecutives_source) {
 				var source = leaderboard[i].consecutives_source;
 				row.append('<td class="consecutive">'+ lap +'</td>');
@@ -1791,6 +1796,7 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 	if (typeof(meta) === 'undefined') {
 		meta = new Object;
 		meta.team_racing_mode = true;
+		meta.consecutives_count = 0;
 	}
 
 	var twrap = $('<div class="responsive-wrap">');
@@ -1808,7 +1814,7 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 		header_row.append('<th class="fast">' + __('Average Fastest') + '</th>');
 	}
 	if (display_type == 'by_avg_consecutives') {
-		header_row.append('<th class="consecutive">' + __('Average 3 Consecutive') + '</th>');
+		header_row.append('<th class="consecutive">' + __('Average') + ' ' + meta.consecutives_count + ' ' + __('Consecutive') + '</th>');
 	}
 	header.append(header_row);
 	table.append(header);

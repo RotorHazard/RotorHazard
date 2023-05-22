@@ -169,7 +169,8 @@ class PageCache:
                 'heats': heats,
                 'heats_by_class': heats_by_class,
                 'classes': current_classes,
-                'event_leaderboard': results
+                'event_leaderboard': results,
+                'consecutives_count': self._racecontext.rhdata.get_optionInt('consecutivesCount', 3)
             }
 
             self.set_cache(payload)
