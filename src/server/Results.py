@@ -857,7 +857,7 @@ def calc_class_ranking_leaderboard(rhDataObj, race_class=None, class_id=None, ro
                     # new_leaderboard['consecutives'] += race['consecutives']
                     # new_leaderboard['consecutives_source'] += race['']
 
-                new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps']
+                new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps'] if new_pilot_result['laps'] else None
 
                 timeFormat = rhDataObj.get_option('timeFormat')
                 new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
