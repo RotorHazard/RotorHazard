@@ -85,6 +85,7 @@ def calc_leaderboard(rhDataObj, **params):
 
     selected_race_laps = []
     timeFormat = rhDataObj.get_option('timeFormat')
+    consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)
 
     if ('current_race' in params):
         USE_CURRENT = True
@@ -378,69 +379,88 @@ def calc_leaderboard(rhDataObj, **params):
                 result_pilot['fastest_lap'] = fast_lap.lap_time
 
         gevent.sleep()
-        # find best consecutive 3 laps
-        if result_pilot['laps'] < 3:
-            result_pilot['consecutives'] = None
-            result_pilot['consecutives_source'] = None
-        else:
-            all_consecutives = []
+        # find best consecutive X laps
+        all_consecutives = []
 
-            if USE_CURRENT:
-                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
-                    thisrace = result_pilot['current_laps']
-                else:
-                    thisrace = result_pilot['current_laps'][1:]
+        if USE_CURRENT:
+            if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                thisrace = result_pilot['current_laps']
+            else:
+                thisrace = result_pilot['current_laps'][1:]
 
-                for i in range(len(thisrace) - 2):
+            if len(thisrace) >= consecutivesCount:
+                for i in range(len(thisrace) - (consecutivesCount - 1)):
                     gevent.sleep()
                     all_consecutives.append({
-                        'time': thisrace[i]['lap_time'] + thisrace[i+1]['lap_time'] + thisrace[i+2]['lap_time'],
+                        'laps': consecutivesCount,
+                        'time': sum([data['lap_time'] for data in thisrace[i : i + consecutivesCount]]),
                         'race_id': None,
+                        'lap_index': i+1
+                    })
+            else:
+                all_consecutives.append({
+                    'laps': len(thisrace),
+                    'time': sum([data['lap_time'] for data in thisrace]),
+                    'race_id': None,
+                    'lap_index': None
+                })
+
+        else:
+            # build race lap store
+            race_laps = {}
+            for race in selected_races:
+                race_laps[race.id] = []
+                for lap in result_pilot['pilot_laps']:
+                    if lap.race_id == race.id:
+                        race_laps[race.id].append(lap)
+
+            for race in selected_races:
+                gevent.sleep()
+
+                if len(race_laps[race.id]) >= consecutivesCount:
+                    for i in range(len(race_laps[race.id]) - (consecutivesCount - 1)):
+                        gevent.sleep()
+                        all_consecutives.append({
+                            'laps': consecutivesCount,
+                            'time': sum([data.lap_time for data in race_laps[race.id][i : i + consecutivesCount]]), 
+                            'race_id': race.id,
+                            'lap_index': i+1
+                        })
+                else:
+                    all_consecutives.append({
+                        'laps': len(race_laps[race.id]),
+                        'time': sum([data.lap_time for data in race_laps[race.id]]),
+                        'race_id': race.id,
+                        'lap_index': None
                     })
 
-            else:
-                # build race lap store
-                race_laps = {}
-                for race in selected_races:
-                    race_laps[race.id] = []
-                    for lap in result_pilot['pilot_laps']:
-                        if lap.race_id == race.id:
-                            race_laps[race.id].append(lap)
+        # Get lowest not-none value (if any)
+        if all_consecutives:
+            # Sort consecutives
+            all_consecutives.sort(key = lambda x: (-x['laps'], not bool(x['time']), x['time']))
 
-                for race in selected_races:
-                    gevent.sleep()
+            result_pilot['consecutives'] = all_consecutives[0]['time']
+            result_pilot['consecutives_base'] = all_consecutives[0]['laps']
+            result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
 
-                    if len(race_laps[race.id]) >= 3:
-                        for i in range(len(race_laps[race.id]) - 2):
-                            gevent.sleep()
-                            all_consecutives.append({
-                                'time': race_laps[race.id][i].lap_time + race_laps[race.id][i+1].lap_time + race_laps[race.id][i+2].lap_time,
-                                'race_id': race.id
-                            })
-
-            # Get lowest not-none value (if any)
-            if all_consecutives:
-                # Sort consecutives
-                all_consecutives.sort(key = lambda x: (x['time'] is None, x['time']))
-
-                result_pilot['consecutives'] = all_consecutives[0]['time']
-
-                if USE_CURRENT:
-                    result_pilot['consecutives_source'] = None
-                else:
-                    source_race = selected_races_keyed[all_consecutives[0]['race_id']]
-                    if source_race:
-                        result_pilot['consecutives_source'] = {
-                            'round': source_race.round_id,
-                            'heat': source_race.heat_id,
-                            'displayname': heats_keyed[source_race.heat_id].displayname()
-                            }
-                    else:
-                        result_pilot['consecutives_source'] = None
-
-            else:
-                result_pilot['consecutives'] = None
+            if USE_CURRENT:
                 result_pilot['consecutives_source'] = None
+            else:
+                source_race = selected_races_keyed[all_consecutives[0]['race_id']]
+                if source_race:
+                    result_pilot['consecutives_source'] = {
+                        'round': source_race.round_id,
+                        'heat': source_race.heat_id,
+                        'displayname': heats_keyed[source_race.heat_id].displayname()
+                        }
+                else:
+                    result_pilot['consecutives_source'] = None
+
+        else:
+            result_pilot['consecutives'] = None
+            result_pilot['consecutives_source'] = None
+            result_pilot['consecutives_base'] = None
+            result_pilot['consecutive_lap_start'] = None
 
 
     gevent.sleep()
@@ -541,9 +561,8 @@ def calc_leaderboard(rhDataObj, **params):
     gevent.sleep()
     # Sort by consecutive laps
     leaderboard_by_consecutives = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+        -x['consecutives_base'] if x['consecutives_base'] else 0, 
         x['consecutives_raw'] if x['consecutives_raw'] and x['consecutives_raw'] > 0 else float('inf'), # fastest consecutives
-        -x['laps'], # lap count
-        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time
     )))
 
     # determine ranking
@@ -554,7 +573,7 @@ def calc_leaderboard(rhDataObj, **params):
     for i, row in enumerate(leaderboard_by_consecutives, start=1):
         pos = i
         if last_rank_consecutive == row['consecutives_raw']:
-            if row['laps'] < 3:
+            if row['laps'] < consecutivesCount:
                 if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
                     pos = last_rank
             else:
@@ -573,7 +592,7 @@ def calc_leaderboard(rhDataObj, **params):
     }
 
     if race_format:
-        if race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+        if race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
             primary_leaderboard = 'by_consecutives'
         elif race_format.win_condition == WinCondition.FASTEST_LAP:
             primary_leaderboard = 'by_fastest_lap'
@@ -597,12 +616,15 @@ def calc_leaderboard(rhDataObj, **params):
             'start_behavior': StartBehavior.HOLESHOT,
         }
 
+    leaderboard_output['meta']['consecutives_count'] = consecutivesCount
+
     return leaderboard_output
 
 def calc_team_leaderboard(raceObj, rhDataObj):
     '''Calculates and returns team-racing info.'''
     # Uses current results cache / requires calc_leaderboard to have been run prior
     race_format = raceObj.format
+    consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)
 
     if raceObj.results:
         results = raceObj.results['by_race_time']
@@ -611,8 +633,8 @@ def calc_team_leaderboard(raceObj, rhDataObj):
 
         for line in results:
             contributing = 0
-            if race_format and race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                if line['laps'] >= 3:
+            if race_format and race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                if line['laps'] >= consecutivesCount:
                     contributing = 1
             else:
                 # race_format.win_condition == WinCondition.MOST_LAPS or \
@@ -630,7 +652,7 @@ def calc_team_leaderboard(raceObj, rhDataObj):
                     teams[line['team_name']]['combined_average_lap_raw'] += line['average_lap_raw']
                 if line['fastest_lap_raw']:
                     teams[line['team_name']]['combined_fastest_lap_raw'] += line['fastest_lap_raw']
-                if line['consecutives_raw']:
+                if line['consecutives_raw'] and line['consecutives_base'] >= consecutivesCount:
                     teams[line['team_name']]['combined_consecutives_raw'] += line['consecutives_raw']
 
             else:
@@ -733,7 +755,7 @@ def calc_team_leaderboard(raceObj, rhDataObj):
             pos = i
             if row['contribution_amt'] == last_rank_contribution_amt:
                 if last_rank_consecutive == row['average_consecutives_raw']:
-                    if row['laps'] < 3:
+                    if row['laps'] < consecutivesCount:
                         if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
                             pos = last_rank
                     else:
@@ -751,7 +773,7 @@ def calc_team_leaderboard(raceObj, rhDataObj):
         }
 
         if race_format:
-            if race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+            if race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
                 primary_leaderboard = 'by_avg_consecutives'
             elif race_format.win_condition == WinCondition.FASTEST_LAP:
                 primary_leaderboard = 'by_avg_fastest_lap'
@@ -895,7 +917,13 @@ def calc_class_ranking_leaderboard(rhDataObj, race_class=None, class_id=None, ro
 
 class LapInfo():
     class race:
+        total_pilots: None
+        lap_max: None
+        consecutives_base: None
         win_condition = None
+        best_lap: None
+        best_lap_callsign: None
+        split_count: None
 
     class current:
         pilot_id = None
@@ -951,8 +979,9 @@ def get_gap_info(RaceContext, seat_index):
 
     # select correct results
     win_condition = RaceContext.race.format.win_condition
+    consecutivesCount = RaceContext.rhdata.get_optionInt('consecutivesCount', 3)
 
-    if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+    if win_condition == WinCondition.FASTEST_CONSECUTIVE:
         leaderboard = RaceContext.race.results['by_consecutives']
     elif win_condition == WinCondition.FASTEST_LAP:
         leaderboard = RaceContext.race.results['by_fastest_lap']
@@ -984,8 +1013,8 @@ def get_gap_info(RaceContext, seat_index):
         next_rank_split_result = leaderboard[rank_index - 1]
 
         if next_rank_split_result['total_time_raw']:
-            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                if next_rank_split_result['consecutives_raw']:
+            if win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                if next_rank_split_result['consecutives_raw'] and next_rank_split_result['consecutives_base'] == consecutivesCount:
                     next_rank_split = result['consecutives_raw'] - next_rank_split_result['consecutives_raw']
             elif win_condition == WinCondition.FASTEST_LAP:
                 if next_rank_split_result['fastest_lap_raw']:
@@ -998,7 +1027,7 @@ def get_gap_info(RaceContext, seat_index):
         # check split to self
         next_rank_split_result = leaderboard[rank_index]
 
-        if win_condition == WinCondition.FASTEST_3_CONSECUTIVE or win_condition == WinCondition.FASTEST_LAP:
+        if win_condition == WinCondition.FASTEST_CONSECUTIVE or win_condition == WinCondition.FASTEST_LAP:
             if next_rank_split_result['fastest_lap_raw']:
                 if result['last_lap_raw'] > next_rank_split_result['fastest_lap_raw']:
                     next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
@@ -1009,8 +1038,8 @@ def get_gap_info(RaceContext, seat_index):
     if isinstance(result['position'], int) and result['position'] > 2:
         first_rank_split_result = leaderboard[0]
 
-        if next_rank_split_result['total_time_raw']:
-            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+        if first_rank_split_result['total_time_raw']:
+            if win_condition == WinCondition.FASTEST_CONSECUTIVE and result['consecutives_base'] == consecutivesCount:
                 if first_rank_split_result['consecutives_raw']:
                     first_rank_split = result['consecutives_raw'] - first_rank_split_result['consecutives_raw']
             elif win_condition == WinCondition.FASTEST_LAP:
@@ -1026,7 +1055,13 @@ def get_gap_info(RaceContext, seat_index):
     pass_info = LapInfo()
 
     # Race
+    #TODO pass_info.race.total_pilots = None
+    #TODO pass_info.race.lap_max = None
+    pass_info.race.consecutives_base = consecutivesCount
     pass_info.race.win_condition = win_condition
+    #TODO pass_info.race.best_lap = None
+    #TODO pass_info.race.best_lap_callsign = None
+    #TODO pass_info.race.split_count = None
 
     # Current pilot
     pass_info.current.lap_list = RaceContext.race.get_lap_results()['node_index'][seat_index]
@@ -1052,6 +1087,7 @@ def get_gap_info(RaceContext, seat_index):
 
     if result['consecutives']:
         pass_info.current.consecutives = int(round(result['consecutives_raw'], 0))
+        pass_info.current.consecutives_base = int(round(result['consecutives_base'], 0))
 
     # Next faster pilot
     if next_rank_split:
@@ -1067,9 +1103,9 @@ def get_gap_info(RaceContext, seat_index):
         if next_rank_split_result['position']:
             pass_info.next_rank.position = int(next_rank_split_result['position'])
 
-            if next_rank_split_result['laps'] == 1:
+            if next_rank_split_result['laps'] < 1:
                 pass_info.next_rank.last_lap_time = int(round(next_rank_split_result['total_time_raw'], 0))
-            elif next_rank_split_result['laps'] > 1:
+            else:
                 pass_info.next_rank.last_lap_time = int(round(next_rank_split_result['last_lap_raw'], 0))
 
     # Race Leader
@@ -1086,9 +1122,9 @@ def get_gap_info(RaceContext, seat_index):
         if first_rank_split_result['position']:
             pass_info.first_rank.position = int(first_rank_split_result['position'])
 
-            if first_rank_split_result['laps'] == 1:
+            if first_rank_split_result['laps'] < 1:
                 pass_info.first_rank.last_lap_time = int(round(first_rank_split_result['total_time_raw'], 0))
-            elif first_rank_split_result['laps'] > 1:
+            else:
                 pass_info.first_rank.last_lap_time = int(round(first_rank_split_result['last_lap_raw'], 0))
 
     return pass_info
@@ -1096,6 +1132,7 @@ def get_gap_info(RaceContext, seat_index):
 def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
     race_format = raceObj.format
     if race_format:
+        consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)
         if race_format.team_racing_mode:
             if race_format.win_condition == WinCondition.MOST_PROGRESS:
                 return check_win_team_laps_and_time(raceObj, rhDataObj, interfaceObj, **kwargs)
@@ -1105,8 +1142,8 @@ def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
                 return check_win_team_first_to_x(raceObj, rhDataObj, interfaceObj, **kwargs)
             elif race_format.win_condition == WinCondition.FASTEST_LAP:
                 return check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs)
-            elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                return check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                return check_win_team_fastest_consecutive(raceObj, rhDataObj, consecutivesCount, **kwargs)
             elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
                 return check_win_team_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
         else:
@@ -1118,8 +1155,8 @@ def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
                 return check_win_first_to_x(raceObj, interfaceObj, **kwargs)
             elif race_format.win_condition == WinCondition.FASTEST_LAP:
                 return check_win_fastest_lap(raceObj, **kwargs)
-            elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                return check_win_fastest_consecutive(raceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                return check_win_fastest_consecutive(raceObj, consecutivesCount, **kwargs)
             elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
                 return check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs)
     return None
@@ -1398,14 +1435,14 @@ def check_win_fastest_lap(raceObj, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_fastest_consecutive(raceObj, **kwargs):
+def check_win_fastest_consecutive(raceObj, consecutivesCount, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
                 raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         leaderboard = raceObj.results['by_consecutives']
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['consecutives_raw']
 
-            if fast_lap and fast_lap > 3: # must have at least 3 laps
+            if fast_lap and fast_lap > consecutivesCount: # must have at least [consecutivesCount] laps
                 # check for tie
                 if leaderboard[1]['consecutives_raw'] == fast_lap:
                     logger.info('Race tied at %s', leaderboard[1]['consecutives'])
@@ -1426,9 +1463,9 @@ def check_win_fastest_consecutive(raceObj, **kwargs):
                 max_node_consideration = 0
                 for node in raceObj.node_laps:
                     laps = raceObj.node_laps[node]
-                    if len(laps) >= 2:
-                        last_2_laps = laps[-1]['lap_time'] + laps[-2]['lap_time']
-                        max_node_consideration = max(max_node_consideration, (fast_consecutives - last_2_laps))
+                    if len(laps) >= (consecutivesCount - 1):
+                        last_laps = sum([data['lap_time'] for data in laps[-consecutivesCount:]])
+                        max_node_consideration = max(max_node_consideration, (fast_consecutives - last_laps))
 
                 return {
                     'status': WinStatus.NONE,
@@ -1747,14 +1784,14 @@ def check_win_team_fastest_lap(raceObj, rhDataObj, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
+def check_win_team_fastest_consecutive(raceObj, rhDataObj, consecutivesCount, **kwargs):
     if raceObj.race_status == RaceStatus.DONE or \
                 raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(raceObj, rhDataObj)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
             race_format = raceObj.format
-            if team_leaderboard[0]['laps'] > 3 or \
-                (race_format.start_behavior == StartBehavior.FIRST_LAP and team_leaderboard[0]['laps'] > 2): # must have at least 3 laps
+            if team_leaderboard[0]['laps'] > consecutivesCount or \
+                (race_format.start_behavior == StartBehavior.FIRST_LAP and team_leaderboard[0]['laps'] > (consecutivesCount - 1)): # must have at least 3 laps
                 # check for tie
                 if team_leaderboard[1]['contribution_amt'] == team_leaderboard[0]['contribution_amt'] and \
                     team_leaderboard[1]['average_consecutives_raw'] == team_leaderboard[0]['average_consecutives_raw'] and \
@@ -1787,8 +1824,8 @@ def check_win_team_fastest_consecutive(raceObj, rhDataObj, **kwargs):
                     if team is not None:
                         laps = raceObj.node_laps[node]
                         if len(laps) >= 2:
-                            last_2_laps = laps[-1]['lap_time'] + laps[-2]['lap_time']
-                            team_laps[team]['time'] += last_2_laps
+                            last_laps = sum([data['lap_time'] for data in laps[-consecutivesCount:]])
+                            team_laps[team]['time'] += last_laps
 
                 max_consideration = 0
                 for team in team_laps:

@@ -313,12 +313,10 @@
 
 		$('button#add_profile').click(function (event) {
 			socket.emit('add_profile');
-			return false;
 		});
 
 		$('button#delete_profile').click(function (event) {
 			socket.emit('delete_profile');
-			return false;
 		});
 
 		$('#set_profile_name').change(function (event) {
@@ -657,7 +655,6 @@
 			};
 			$('#set_enter_at_level_' + data.node_index).val('');
 			socket.emit('cap_enter_at_btn', data);
-			return false;
 		});
 
 		$('button.cap_exit_at_btn').click(function (event) {
@@ -666,7 +663,6 @@
 			};
 			$('#set_exit_at_level_' + data.node_index).val('');
 			socket.emit('cap_exit_at_btn', data);
-			return false;
 		});
 
 		socket.on('start_thresh_lower_amount', function (msg) {
@@ -863,7 +859,6 @@
 
 		$('#play_voice_test').click(function (event) {
 			doSpeak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
-			return false;
 		});
 
 		$("#voice_test_text").keyup(function(event) {
@@ -1051,22 +1046,18 @@
 		/* System */
 		$('button#shutdown_pi').click(function (event) {
 			socket.emit('shutdown_pi');
-			return false;
 		});
 
 		$('button#reboot_pi').click(function (event) {
 			socket.emit('reboot_pi');
-			return false;
 		});
 
 		$('button#kill_server').click(function (event) {
 			socket.emit('kill_server');
-			return false;
 		});
 
 		$('button#download_logs').click(function (event) {
 			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
-			return false;
 		});
 
 		socket.on('settings_save_logs', function (msg) {
@@ -1091,7 +1082,6 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
-			return false;
 		});
 
 		$('#set_language').change(function (event) {
@@ -1212,8 +1202,6 @@
 				value: contrasts.high
 			};
 			socket.emit('set_option', data);
-
-			return false;
 		});
 
 		$('.sat-control').on('input', function (event) {
@@ -1248,8 +1236,6 @@
 				value: contrasts.high
 			};
 			socket.emit('set_option', data);
-
-			return false;
 		});
 
 		/* LED Controls */
@@ -1296,7 +1282,6 @@
 					blue: colors.b,
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$('button.LED-off').click(function (event) {
@@ -1304,7 +1289,6 @@
 					off: true
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$(document).on("click", '#set_led_color', function (event) {
