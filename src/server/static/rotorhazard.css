@@ -369,17 +369,23 @@ ol.form li+li {
 	ol.form .label-block {
 		width: calc(100% - 21em);
 		text-align: right;
+		margin-right: 0.5em;
 	}
 
 	ol.form input,
 	ol.form textarea,
 	ol.form select {
-		width: 20em;
+		flex: 1 1 0;
+		margin-left: 0.5em;
 	}
 
 	ol.form input[type="checkbox"],
 	ol.form input[type="radio"] {
 		width: auto;
+	}
+
+	ol.form > li > * + button {
+		margin-left: 0.5em;
 	}
 }
 
@@ -2008,9 +2014,18 @@ td.speak {
 	width: 2.2em;
 }
 
-.phonetic {
+.pilot-info-inline {
 	display: flex;
 	justify-content: space-between;
+	margin-bottom: 0.25em;
+}
+
+.pilot-info-inline:not(:first-of-type) {
+	margin-top: 0.25em;
+}
+
+.pilot-info-inline button, .delete_pilot {
+	margin-left: 0.25em;
 }
 
 .pilot-team {
@@ -2497,6 +2512,10 @@ button.color-picker {
 
 #message-queue>li>button {
 	margin-left: auto;
+}
+
+.mfp-content #parameters {
+	max-width: 43em;
 }
 
 /* ************* */

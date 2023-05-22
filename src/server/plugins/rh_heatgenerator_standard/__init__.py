@@ -22,8 +22,8 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def bracket_1e_16_fai(_RaceContext, _generate_args=None):
-    heats = [
+def bracket_1e_16_fai():
+    return [
         {
             'name': __('Race') + ' 1',
             'slots': [
@@ -210,10 +210,8 @@ def bracket_1e_16_fai(_RaceContext, _generate_args=None):
         }
     ]
 
-    return heats
-
-def bracket_1e_32_fai(_RaceContext, _generate_args=None):
-    heats = [
+def bracket_1e_32_fai():
+    return [
         {
             'name': __('Race') + ' 1 (E1)',
             'slots': [
@@ -584,10 +582,8 @@ def bracket_1e_32_fai(_RaceContext, _generate_args=None):
         }
     ]
 
-    return heats
-
-def bracket_1e_64_fai(_RaceContext, _generate_args=None):
-    heats = [
+def bracket_1e_64_fai():
+    return [
         {
             'name': __('Race') + ' 1 (E1)',
             'slots': [
@@ -1326,10 +1322,8 @@ def bracket_1e_64_fai(_RaceContext, _generate_args=None):
         }
     ]
 
-    return heats
-
-def bracket_2e_16_fai(_RaceContexte, _generate_args=None):
-    heats = [
+def bracket_2e_16_fai():
+    return [
        {
             'name': __('Race') + ' 1',
             'slots': [
@@ -1666,10 +1660,8 @@ def bracket_2e_16_fai(_RaceContexte, _generate_args=None):
         }
     ]
 
-    return heats
-
-def bracket_2e_32_fai(_RaceContext, _generate_args=None):
-    heats = [
+def bracket_2e_32_fai():
+    return [
         {
             'name': __('Race') + ' 1 (E1)',
             'slots': [
@@ -2390,10 +2382,8 @@ def bracket_2e_32_fai(_RaceContext, _generate_args=None):
         }
     ]
 
-    return heats
-
-def bracket_2e_64_fai(_RaceContext, _generate_args=None):
-    heats = [
+def bracket_2e_64_fai():
+    return [
         {
             'name': __('Race') + ' 1 (E1)',
             'slots': [
@@ -3882,397 +3872,443 @@ def bracket_2e_64_fai(_RaceContext, _generate_args=None):
         }
     ]
 
+def bracket_2e_16_multigp():
+    return [
+        {
+            'name': __('Race') + ' 1',
+            'slots': [
+                {
+                    'method': 'input',
+                    'seed_rank': 3
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 6
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 11
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 14
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 2',
+            'slots': [
+                {
+                    'method': 'input',
+                    'seed_rank': 2
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 7
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 10
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 15
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 3',
+            'slots': [
+                {
+                    'method': 'input',
+                    'seed_rank': 4
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 5
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 12
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 13
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 4',
+            'slots': [
+                {
+                    'method': 'input',
+                    'seed_rank': 1
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 8
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 9
+                },
+                {
+                    'method': 'input',
+                    'seed_rank': 16
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 5',
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 0,
+                    'seed_rank': 3
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 0,
+                    'seed_rank': 4
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 1,
+                    'seed_rank': 3
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 1,
+                    'seed_rank': 4
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 6',
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 0,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 0,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 1,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 1,
+                    'seed_rank': 2
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 7',
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 2,
+                    'seed_rank': 3
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 2,
+                    'seed_rank': 4
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 3,
+                    'seed_rank': 3
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 3,
+                    'seed_rank': 4
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 8',
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 2,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 2,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 3,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 3,
+                    'seed_rank': 2
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 9',
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 4,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 4,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 5,
+                    'seed_rank': 3
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 5,
+                    'seed_rank': 4
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 10',
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 6,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 6,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 7,
+                    'seed_rank': 3
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 7,
+                    'seed_rank': 4
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 11: ' + __('Winners Bracket Semifinal'),
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 5,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 5,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 7,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 7,
+                    'seed_rank': 2
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 12: ' + __('Winners Bracket Semifinal'),
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 8,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 8,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 9,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 9,
+                    'seed_rank': 2
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 13: ' + __('Consolation Bracket Semifinal'),
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 11,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 11,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 10,
+                    'seed_rank': 3
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 10,
+                    'seed_rank': 4
+                }
+            ]
+        },
+        {
+            'name': __('Race') + ' 14: ' + __('Winners Bracket Final'),
+            'slots': [
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 10,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 10,
+                    'seed_rank': 2
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 12,
+                    'seed_rank': 1
+                },
+                {
+                    'method': ProgramMethod.HEAT_RESULT,
+                    'seed_heat_id': 12,
+                    'seed_rank': 2
+                }
+            ]
+        }
+    ]
+
+def bracket_1e_std(_RaceContext, generate_args):
+    if 'standard' not in generate_args:
+        return False
+
+    if generate_args['standard'] == 'fai16':
+        heats = bracket_1e_16_fai()
+    elif generate_args['standard'] == 'fai32':
+        heats = bracket_1e_32_fai()
+    elif generate_args['standard'] == 'fai64':
+        heats = bracket_1e_64_fai()
+    else:
+        return False
+
+    if 'seed_offset' in generate_args:
+        seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
+        if seed_offset:
+            for heat in heats:
+                for slot in heat['slots']:
+                    if slot['method'] == 'input':
+                        slot['seed_rank'] += seed_offset
+
     return heats
 
-mgp_26_16_heats = [
-    {
-        'name': __('Race') + ' 1',
-        'slots': [
-            {
-                'method': 'input',
-                'seed_rank': 3
-            },
-            {
-                'method': 'input',
-                'seed_rank': 6
-            },
-            {
-                'method': 'input',
-                'seed_rank': 11
-            },
-            {
-                'method': 'input',
-                'seed_rank': 14
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 2',
-        'slots': [
-            {
-                'method': 'input',
-                'seed_rank': 2
-            },
-            {
-                'method': 'input',
-                'seed_rank': 7
-            },
-            {
-                'method': 'input',
-                'seed_rank': 10
-            },
-            {
-                'method': 'input',
-                'seed_rank': 15
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 3',
-        'slots': [
-            {
-                'method': 'input',
-                'seed_rank': 4
-            },
-            {
-                'method': 'input',
-                'seed_rank': 5
-            },
-            {
-                'method': 'input',
-                'seed_rank': 12
-            },
-            {
-                'method': 'input',
-                'seed_rank': 13
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 4',
-        'slots': [
-            {
-                'method': 'input',
-                'seed_rank': 1
-            },
-            {
-                'method': 'input',
-                'seed_rank': 8
-            },
-            {
-                'method': 'input',
-                'seed_rank': 9
-            },
-            {
-                'method': 'input',
-                'seed_rank': 16
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 5',
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 0,
-                'seed_rank': 3
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 0,
-                'seed_rank': 4
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 1,
-                'seed_rank': 3
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 1,
-                'seed_rank': 4
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 6',
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 0,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 0,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 1,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 1,
-                'seed_rank': 2
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 7',
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 2,
-                'seed_rank': 3
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 2,
-                'seed_rank': 4
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 3,
-                'seed_rank': 3
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 3,
-                'seed_rank': 4
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 8',
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 2,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 2,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 3,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 3,
-                'seed_rank': 2
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 9',
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 4,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 4,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 5,
-                'seed_rank': 3
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 5,
-                'seed_rank': 4
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 10',
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 6,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 6,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 7,
-                'seed_rank': 3
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 7,
-                'seed_rank': 4
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 11: ' + __('Winners Bracket Semifinal'),
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 5,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 5,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 7,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 7,
-                'seed_rank': 2
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 12: ' + __('Winners Bracket Semifinal'),
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 8,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 8,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 9,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 9,
-                'seed_rank': 2
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 13: ' + __('Consolation Bracket Semifinal'),
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 11,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 11,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 10,
-                'seed_rank': 3
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 10,
-                'seed_rank': 4
-            }
-        ]
-    },
-    {
-        'name': __('Race') + ' 14: ' + __('Winners Bracket Final'),
-        'slots': [
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 10,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 10,
-                'seed_rank': 2
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 12,
-                'seed_rank': 1
-            },
-            {
-                'method': ProgramMethod.HEAT_RESULT,
-                'seed_heat_id': 12,
-                'seed_rank': 2
-            }
-        ]
-    }
-]
+def bracket_2e_std(_RaceContext, generate_args):
+    if 'standard' not in generate_args:
+        return False
 
-def bracket_2e_16_mgp(_RaceContext, _generate_args=None):
-    return mgp_26_16_heats
+    if generate_args['standard'] == 'fai16':
+        heats = bracket_2e_16_fai()
+    elif generate_args['standard'] == 'fai32':
+        heats = bracket_2e_32_fai()
+    elif generate_args['standard'] == 'fai64':
+        heats = bracket_2e_64_fai()
+    elif generate_args['standard'] == 'multigp16':
+        return bracket_2e_16_multigp()
+    else:
+        return False
 
-def bracket_2e_16_mgp_next(_RaceContext, _generate_args=None):
-    heats = mgp_26_16_heats
-    for heat in heats[:4]:
-        for slot in heat['slots']:
-            slot['seed_rank'] += 16
+    if 'seed_offset' in generate_args:
+        seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
+        if seed_offset:
+            for heat in heats[:4]:
+                for slot in heat['slots']:
+                    slot['seed_rank'] += seed_offset
 
     return heats
 
-def discover(*args, **kwargs):
+def discover(*_args, **_kwargs):
     # returns array of exporters with default arguments
     return [
         HeatGenerator(
-            'bracket_1e_16_fai',
-            'Single elimination, 4-up, FAI, top 16',
-            bracket_1e_16_fai,
+            'bracket_1e_std',
+            'Standard bracket, single elimination',
+            bracket_1e_std,
+            None,
+            [
+                {
+                    'id': 'standard',
+                    'label': "Standard",
+                    'fieldType': 'select',
+                    'options': [
+                        {'name': "fai16", 'value': "FAI, 4-up, 16-pilot"},
+                        {'name': "fai32", 'value': "FAI, 4-up, 32-pilot"},
+                        {'name': "fai64", 'value': "FAI, 4-up, 64-pilot"},
+                    ],
+                    'value': "fai16",
+                },
+                {
+                    'id': 'seed_offset',
+                    'label': "Seed from rank",
+                    'fieldType': 'basic_int',
+                    'value': 1,
+                },
+            ],
         ),
         HeatGenerator(
-            'bracket_1e_32_fai',
-            'Single elimination, 4-up, FAI, top 32',
-            bracket_1e_32_fai,
-        ),
-        HeatGenerator(
-            'bracket_1e_64_fai',
-            'Single elimination, 4-up, FAI, top 64',
-            bracket_1e_64_fai,
-        ),
-        HeatGenerator(
-            'bracket_2e_16_fai',
-            'Double elimination, 4-up, FAI, top 16',
-            bracket_2e_16_fai,
-        ),
-        HeatGenerator(
-            'bracket_2e_16_mgp',
-            'Double elimination, 4-up, MultiGP, top 16',
-            bracket_2e_16_mgp,
-        ),
-        HeatGenerator(
-            'bracket_2e_16_mgp_next',
-            'Double elimination, 4-up, MultiGP, next 16',
-            bracket_2e_16_mgp_next,
-        ),
-        HeatGenerator(
-            'bracket_2e_32_fai',
-            'Double elimination, 4-up, FAI, top 32',
-            bracket_2e_32_fai,
-        ),
-        HeatGenerator(
-            'bracket_2e_64_fai',
-            'Double elimination, 4-up, FAI, top 64',
-            bracket_2e_64_fai,
+            'bracket_2e_std',
+            'Standard bracket, double elimination',
+            bracket_2e_std,
+            None,
+            [
+                {
+                    'id': 'standard',
+                    'label': "Standard",
+                    'fieldType': 'select',
+                    'options': [
+                        {'name': "fai16", 'value': "FAI, 4-up, 16-pilot"},
+                        {'name': "fai32", 'value': "FAI, 4-up, 32-pilot"},
+                        {'name': "fai64", 'value': "FAI, 4-up, 64-pilot"},
+                        {'name': "multigp16", 'value': "MultiGP, 4-up, 16-pilot"},
+                    ],
+                    'value': "fai16",
+                },
+                {
+                    'id': 'seed_offset',
+                    'label': "Seed from rank",
+                    'fieldType': 'basic_int',
+                    'value': 1,
+                },
+            ],
         ),
     ]

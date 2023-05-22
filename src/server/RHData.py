@@ -356,7 +356,8 @@ class RHData():
                 "startThreshLowerDuration",
                 "nextHeatBehavior",
                 "voiceCallouts",
-                "actions"
+                "actions",
+                "consecutivesCount"
             ]
 
             # RSSI reduced by half for 2.0.0
@@ -2394,7 +2395,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'format_name': self.__("Fastest 3 Laps Qualifier"),
+            'format_name': self.__("Fastest Consecutive Laps Qualifier"),
             'race_mode': 0,
             'race_time_sec': 120,
             'lap_grace_sec': 30,
@@ -2403,7 +2404,7 @@ class RHData():
             'start_delay_max_ms': 3000,
             'staging_tones': 0,
             'number_laps_win': 0,
-            'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
+            'win_condition': WinCondition.FASTEST_CONSECUTIVE,
             'team_racing_mode': False,
             'start_behavior': 0
             })
@@ -2464,7 +2465,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'format_name': self.__("Team / Fastest 3 Consecutive Average"),
+            'format_name': self.__("Team / Fastest Consecutive Average"),
             'race_mode': 0,
             'race_time_sec': 120,
             'lap_grace_sec': -1,
@@ -2473,7 +2474,7 @@ class RHData():
             'start_delay_max_ms': 3500,
             'staging_tones': 2,
             'number_laps_win': 0,
-            'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
+            'win_condition': WinCondition.FASTEST_CONSECUTIVE,
             'team_racing_mode': True,
             'start_behavior': 0
             })

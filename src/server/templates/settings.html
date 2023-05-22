@@ -137,24 +137,18 @@
 				var form_el = $('<ol>');
 
 				for (var f_idx in panel.settings) {
-					field = panel.settings[f_idx];
-					field_el = $('<li>');
+					settings = panel.settings[f_idx];
 
-					if (field.fieldtype == 'text') {
-						var labelEl = $('<div class="label-block"><label>')
-							.attr('for', field.name)
-							.text(field.label);
-						field_el.append(labelEl);
-						var fieldEl = $('<input>')
-							.addClass('set-option')
-							.data('option', field.name)
-							.attr('id', field.name)
-							.attr('type', 'text')
-							.val(field.value);
-						field_el.append(fieldEl);
-					}
+					settings.wrapperEl = 'li';
 
-					panel_content_el.append(field_el);
+					// TODO: adjust incoming data
+					settings.fieldType = settings.fieldtype;
+					settings.id = settings.name;
+					settings.genericOption = settings.name;
+
+					var field = rhui.buildField(settings);
+
+					panel_content_el.append(field);
 				}
 				panel_el.append(panel_header_el);
 				panel_el.append(panel_content_el);
@@ -319,12 +313,10 @@
 
 		$('button#add_profile').click(function (event) {
 			socket.emit('add_profile');
-			return false;
 		});
 
 		$('button#delete_profile').click(function (event) {
 			socket.emit('delete_profile');
-			return false;
 		});
 
 		$('#set_profile_name').change(function (event) {
@@ -663,7 +655,6 @@
 			};
 			$('#set_enter_at_level_' + data.node_index).val('');
 			socket.emit('cap_enter_at_btn', data);
-			return false;
 		});
 
 		$('button.cap_exit_at_btn').click(function (event) {
@@ -672,7 +663,6 @@
 			};
 			$('#set_exit_at_level_' + data.node_index).val('');
 			socket.emit('cap_exit_at_btn', data);
-			return false;
 		});
 
 		socket.on('start_thresh_lower_amount', function (msg) {
@@ -869,7 +859,6 @@
 
 		$('#play_voice_test').click(function (event) {
 			doSpeak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
-			return false;
 		});
 
 		$("#voice_test_text").keyup(function(event) {
@@ -974,30 +963,27 @@
 		function buildActionFields(effect, action_idx) {
 			var fieldset = $('<fieldset>');
 			for (idx in effectList[effect].fields) {
-				var field = effectList[effect].fields[idx];
-				var id = 'action_' + action_idx + '_' + idx
-				var label = field.name;
+				settings = effectList[effect].fields[idx];
 
-				fieldGroup = $('<div>');
-				if (field.type == 'text') {
-					var labelEl = $('<label>')
-						.attr('for', id)
-						.text(label);
-					fieldGroup.append(labelEl);
-					var fieldEl = $('<input>')
-						.addClass('actionfield')
-						.data('idx', action_idx)
-						.data('field', field.id)
-						.attr('id', id)
-						.attr('type', 'text');
-
-					if (actionList[action_idx][field.id]) {
-						fieldEl.val(actionList[action_idx][field.id]);
-					}
-
-					fieldGroup.append(fieldEl);
+				settings.wrapperEl = 'div';
+				settings.data = {
+					idx: action_idx,
+					field: settings.id
 				}
-				fieldset.append(fieldGroup);
+				if (actionList[action_idx][settings.id]) {
+					settings.value = actionList[action_idx][settings.id];
+				}
+
+				settings.id = 'action_' + action_idx + '_' + idx;
+				settings.fieldClass = 'actionfield';
+
+				// TODO: adjust incoming data
+				settings.label = settings.name;
+				settings.fieldType = settings.type;
+
+				var field = rhui.buildField(settings);
+
+				fieldset.append(field);
 			}
 			return fieldset;
 		}
@@ -1060,22 +1046,18 @@
 		/* System */
 		$('button#shutdown_pi').click(function (event) {
 			socket.emit('shutdown_pi');
-			return false;
 		});
 
 		$('button#reboot_pi').click(function (event) {
 			socket.emit('reboot_pi');
-			return false;
 		});
 
 		$('button#kill_server').click(function (event) {
 			socket.emit('kill_server');
-			return false;
 		});
 
 		$('button#download_logs').click(function (event) {
 			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
-			return false;
 		});
 
 		socket.on('settings_save_logs', function (msg) {
@@ -1100,7 +1082,6 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
-			return false;
 		});
 
 		$('#set_language').change(function (event) {
@@ -1221,8 +1202,6 @@
 				value: contrasts.high
 			};
 			socket.emit('set_option', data);
-
-			return false;
 		});
 
 		$('.sat-control').on('input', function (event) {
@@ -1257,8 +1236,6 @@
 				value: contrasts.high
 			};
 			socket.emit('set_option', data);
-
-			return false;
 		});
 
 		/* LED Controls */
@@ -1305,7 +1282,6 @@
 					blue: colors.b,
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$('button.LED-off').click(function (event) {
@@ -1313,7 +1289,6 @@
 					off: true
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$(document).on("click", '#set_led_color', function (event) {
@@ -1722,7 +1697,7 @@
 			</li>
 			<li>
 				<div class="label-block">
-					{{ __('Voice Test') }} &nbsp; &nbsp;
+					{{ __('Voice Test') }}
 				</div>
 				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
 				<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>

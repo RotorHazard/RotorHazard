@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.0.0-dev.5" # Public release version code
+RELEASE_VERSION = "4.0.0-dev.6" # Public release version code
 SERVER_API = 39 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -1592,10 +1592,12 @@ def on_generate_heats_v2(data):
     generate_args = {
         'input_class': data['input_class'],
         'output_class': data['output_class'],
-        # 'suffix': data['suffix'],
-        # 'pilots_per_heat': int(data['pilots_per_heat']),
         'available_nodes': available_nodes
         }
+    if 'params' in data:
+        for param, value in data['params'].items():
+            generate_args[param] = value
+
     generator = data['generator']
 
     if RaceContext.heat_generate_manager.hasGenerator(generator):
@@ -2980,6 +2982,17 @@ def on_set_option(data):
     Events.trigger(Evt.OPTION_SET, {
         'option': data['option'],
         'value': data['value'],
+        })
+
+@SOCKET_IO.on('set_consecutives_count')
+@catchLogExceptionsWrapper
+def on_set_consecutives_count(data):
+    RaceContext.rhdata.set_option('consecutivesCount', data['count'])
+    RaceContext.rhdata.clear_results_all()
+    RaceContext.pagecache.set_valid(False)
+    Events.trigger(Evt.OPTION_SET, {
+        'option': 'consecutivesCount',
+        'value': data['count'],
         })
 
 @SOCKET_IO.on('get_race_scheduled')

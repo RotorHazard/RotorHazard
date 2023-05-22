@@ -8,6 +8,10 @@
 
 	var data_dependencies = [
 		'language',
+		{
+			'type': 'ui',
+			'value': 'format'
+		},
 		'frequency_data',
 		'pilot_data',
 		'heat_data',
@@ -67,6 +71,40 @@
 		for (var i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 		}
+
+		socket.on('ui', function (msg) {
+			$('#custom-ui').empty();
+
+			for (var i in msg) {
+				var panel = msg[i];
+
+				var panel_el = $('<div class="panel collapsing active">');
+				var panel_header_el = $('<div class="panel-header">');
+				panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+				var panel_content_el = $('<div class="panel-content">');
+				panel_content_el.hide();
+
+				var form_el = $('<ol>');
+
+				for (var f_idx in panel.settings) {
+					settings = panel.settings[f_idx];
+
+					settings.wrapperEl = 'li';
+
+					// TODO: adjust incoming data
+					settings.fieldType = settings.fieldtype;
+					settings.id = settings.name;
+					settings.genericOption = settings.name;
+
+					var field = rhui.buildField(settings);
+
+					panel_content_el.append(field);
+				}
+				panel_el.append(panel_header_el);
+				panel_el.append(panel_content_el);
+				$('#custom-ui').append(panel_el);
+			}
+		});
 
 		socket.on('frequency_data', function (msg) {
 			if (msg.fdata.length) {
@@ -128,6 +166,14 @@
 			display_classes();
 			display_unclassified_heats();
 			display_pilots();
+		});
+
+		/* Event */
+		$('#set_consecutives_count').change(function (event) {
+			var data = {
+				count: $(this).val()
+			};
+			socket.emit('set_consecutives_count', data);
 		});
 
 		/* Classes */
@@ -239,7 +285,7 @@
 						/*
 						selectbox.append('<option value="1">Laps/Time</option>');
 						selectbox.append('<option value="2">Fastest Lap</option>');
-						selectbox.append('<option value="3">Fastest 3 Consecutive</option>');
+						selectbox.append('<option value="3">Fastest Consecutive</option>');
 						selectbox.append('<option value="4">Best Round (Laps/Time)</option>');
 						selectbox.append('<option value="5">Best 2 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="6">Best 3 Rounds (Laps/Time)</option>');
@@ -425,7 +471,6 @@
 
 		$('button#add_race_class').click(function (event) {
 			socket.emit('add_race_class');
-			return false;
 		});
 
 		$(document).on("click", '.delete_class', function (event) {
@@ -447,6 +492,11 @@
 				class: parseInt($(this).data('id')),
 			};
 			socket.emit('add_heat', data);
+		});
+
+		socket.on('raceclass_rank_method_list', function (msg) {
+			rotorhazard.raceclass_rank_methods = msg.methods;
+			display_classes();
 		});
 
 		/* Heats */
@@ -962,7 +1012,6 @@
 
 		$('button#add_heat').click(function (event) {
 			socket.emit('add_heat');
-			return false;
 		});
 
 		$(document).on("click", '.delete_heat', function (event) {
@@ -1010,7 +1059,6 @@
 			};
 			$('button#generate_heats').prop('disabled', true);
 			socket.emit('generate_heats', data);
-			return false;
 		});
 
 		/* Pilots */
@@ -1031,19 +1079,25 @@
 					if (pilot.pilot_id != 0) {
 						var el = $('<li data-id="' + pilot.pilot_id + '">');
 						el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-						el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+						var pilot_name = $('<div class="pilot-info-inline">');
+						pilot_name.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
 						if ('color' in pilot) {
-							el.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
-							el.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
+							pilot_name.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
+							pilot_name.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
 						}
+						el.append(pilot_name);
 						el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
 						el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
 						el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
-						var phonetic = $('<div class="phonetic">');
+						var phonetic = $('<div class="pilot-info-inline">');
 						phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
 						phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 						el.append(phonetic);
 						el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+
+						if (!pilot.locked) {
+							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215; </button>');
+						}
 
 						for (var attr_idx in rotorhazard.event.pilot_attributes) {
 							var pilot_attr = rotorhazard.event.pilot_attributes[attr_idx];
@@ -1056,10 +1110,6 @@
 
 							el.append(attr_label);
 							el.append(attr_field);
-						}
-
-						if (!pilot.locked) {
-							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
 						}
 
 						el.appendTo($('.pilots'));
@@ -1166,7 +1216,6 @@
 				ttstext = phonetic;
 
 			doSpeak('<div class="speech">' + ttstext + '</div>');
-			return false;
 		});
 
 		$(document).on("focus", '.set_pilot_attr', function(){
@@ -1191,7 +1240,6 @@
 
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');
-			return false;
 		});
 
 		$(document).on("click", '.delete_pilot', function (event) {
@@ -1336,7 +1384,6 @@
 				format_id: format_id
 			};
 			socket.emit('delete_race_format', data);
-			return false;
 		});
 
 		$('#set_format_name').change(function (event) {
@@ -1526,7 +1573,6 @@
 		/* Database Reset */
 		$('button#backup_database').click(function (event) {
 			socket.emit('backup_database');
-			return false;
 		});
 
 		socket.on('database_bkp_done', function (msg) {
@@ -1572,8 +1618,6 @@
 					type: 'inline',
 				}
 			});
-
-			return false;
 		});
 
 		$('button#delete_database').click(function (event) {
@@ -1582,7 +1626,6 @@
 				backup_file: $('#database_list').val()
 			};
 			socket.emit('delete_database', data);
-			return false;
 		});
 
 		socket.on('reset_confirm', function () {
@@ -1598,7 +1641,6 @@
 				reset_type: $('#reset_type').val()
 			};
 			socket.emit('reset_database', data);
-			return false;
 		});
 
 		socket.on('exporter_list', function (msg) {
@@ -1638,12 +1680,10 @@
 				exporter: $('#exporter_list').val()
 			};
 			socket.emit('export_database', data);
-			return false;
 		});
 
 		$('button#download_logs').click(function (event) {
 			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
-			return false;
 		});
 
 		socket.on('settings_save_logs', function (msg) {
@@ -1667,33 +1707,94 @@
 					var ex = msg.generators[idx];
 					$('#generator_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
 				}
+				$('#generator_list').trigger('change');
 				$('#generator_list').prop('disabled', false);
-				$('#generate_heats_2').prop('disabled', false);
+				$('#generator_input_class').prop('disabled', false);
+				$('#generator_output_class').prop('disabled', false);
+				$('#generate_parameters').prop('disabled', false);
 			} else {
 				$('#generator_list').append('<option value="-">' + __('No generators') + '</option>');
 				$('#generator_list').prop('disabled', true);
-				$('#generate_heats_2').prop('disabled', true);
-				$('#generate_heats_2').prop('hidden', true);
+				$('#generator_input_class').prop('disabled', true);
+				$('#generator_output_class').prop('disabled', true);
+				$('#generate_parameters').prop('disabled', true);
 			}
 		});
 
-		socket.on('raceclass_rank_method_list', function (msg) {
-			rotorhazard.raceclass_rank_methods = msg.methods;
-			display_classes();
+		var selected_generator = null;
+
+		$('#generator_list').change(function (event) {
+			var gen_id = $(this).val();
+			selected_generator = rotorhazard.generators.find(obj => {return obj.name == gen_id});
 		});
 
-		$('button#generate_heats_2').click(function (event) {
+		function emit_generate_cmd() {
+			var params = {}
+			for (var f in selected_generator.settings) {
+				params[selected_generator.settings[f].id] = selected_generator.settings[f].value;
+			}
 			var data = {
 				input_class: parseInt($('#generator_input_class').val()),
 				output_class: parseInt($('#generator_output_class').val()),
-				suffix: $('#generator_suffix').val(),
-				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
-				generator: $('#generator_list').val()
+				params: params,
+				generator: selected_generator.name,
 			};
 			socket.emit('generate_heats_v2', data);
 			$('#generate_heats_2').prop('disabled', true);
 			$('#generating-message').prop('hidden', false);
-			return false;
+		}
+
+		function open_generate_params() {
+			var param_panel = $('#parameters > .popup-content');
+			param_panel.empty();
+			var param_form = $('<ol class="form">');
+
+			for (var f_idx in selected_generator.settings) {
+				settings = selected_generator.settings[f_idx];
+
+				settings.wrapperEl = 'li';
+				settings.data = {
+					type: 'heatgenerator', // ***
+					field: settings.id,
+				}
+				var field = rhui.buildField(settings);
+
+				param_form.append(field);
+			}
+
+			param_panel.append(param_form);
+
+			param_panel.append($('<div class="control-set"><button id="generate_heats">' + __('Generate Heats') + '</button></div>'));
+
+			$.magnificPopup.open({
+				items: {
+    				src: '#parameters'
+  				},
+  				type: 'inline'
+  			});
+		}
+
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
+			var field = $(this).data('field');
+			var value = $(this).val();
+			var field_data = selected_generator.settings.find(obj => {return obj.id == field});
+
+			if (field_data) {
+				field_data.value = value;
+			}
+		});
+
+		$('button#generate_parameters').click(function (event) {
+			if (selected_generator && selected_generator.settings) {
+				open_generate_params()
+			} else {
+				emit_generate_cmd();
+			}
+		});
+
+		$(document).on('click', '#generate_heats', function (event) {
+			$.magnificPopup.close();
+			emit_generate_cmd();
 		});
 
 		socket.on('set_option', function (msg) {
@@ -1706,7 +1807,6 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
-			return false;
 		});
 
 		$('#set_language').change(function (event) {
@@ -1741,6 +1841,29 @@
 					<p class="desc">{{ __('Accepts Markdown') }}</p>
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_consecutives_count">{{ __('Consecutive Laps Base') }}</label>
+					<p class="desc">{{ __('Used in results calculations') }}</p>
+				</div>
+				<input type="number" id="set_consecutives_count" class="set-consecutive-count" min="2" max="999" value="{{ getOption('consecutivesCount') }}" placeholder="3">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
+					<p class="desc">{{ __('In seconds') }}</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
+				</div>
+				<select id="set_min_lap_behavior">
+					<option value="0">{{ __('Highlight Short Laps') }}</option>
+					<option value="1">{{ __('Discard New Short Laps') }}</option>
+				</select>
 			</li>
 		</ol>
 
@@ -1889,7 +2012,7 @@
 </div>
 
 <!--Generators-->
-<div class="panel collapsing">
+<div id="heat_generator" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __(' Generators') }}</h2>
 	</div>
@@ -1897,7 +2020,7 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="generator_input_class">{{ __('Generator') }}</label>
+					<label for="generator_list">{{ __('Generator') }}</label>
 				</div>
 				<select id="generator_list" disabled="disabled">
 					<option value="-">{{ __('No Generators') }}</option>
@@ -1907,7 +2030,7 @@
 				<div class="label-block">
 					<label for="generator_input_class">{{ __('Input') }}</label>
 				</div>
-				<select id="generator_input_class">
+				<select id="generator_input_class" disabled="disabled">
 					<option>{{ __('Loading...') }}</option>
 				</select>
 			</li>
@@ -1915,20 +2038,20 @@
 				<div class="label-block">
 					<label for="generator_output_class">{{ __('Output') }}</label>
 				</div>
-				<select id="generator_output_class">
+				<select id="generator_output_class" disabled="disabled">
 					<option>{{ __('Loading...') }}</option>
 				</select>
 			</li>
 		</ol>
 		<div class="control-set">
-			<button id="generate_heats_2" disabled="disabled">{{ __('Generate Heats') }}</button>
+			<button id="generate_parameters" disabled="disabled">{{ __('Generate Heats') }}</button>
 		</div>
 		<div id="generating-message" hidden="" class="control-set">{{ __('Generating Heats...') }}</div>
 	</div>
 </div>
 
 <!--Race Format-->
-<div class="panel collapsing">
+<div id="race_format" class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Race Formats') }}</h2>
 	</div>
@@ -2044,7 +2167,7 @@
 					<option value="6">{{ __('Most Laps Only with Overtime') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
 					<option value="3">{{ __('Fastest Lap') }}</option>
-					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
+					<option value="4">{{ __('Fastest Consecutive Laps') }}</option>
 					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>
@@ -2066,28 +2189,16 @@
 		</ol>
 
 		<div id="race_format_suggestions" class="form-note emphasis"></div>
+	</div>
+</div>
 
-		<hr />
+<!-- Custom UI -->
+<div id="custom-ui"></div>
 
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
-					<p class="desc">{{ __('In seconds') }}</p>
-				</div>
-				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
-				</div>
-				<select id="set_min_lap_behavior">
-					<option value="0">{{ __('Highlight Short Laps') }}</option>
-					<option value="1">{{ __('Discard New Short Laps') }}</option>
-				</select>
-			</li>
-
-		</ol>
+<div id="parameters" class="mfp-hide popup">
+	<h2>{{ __("Settings") }}</h2>
+	<div class="popup-content">
+		<p>{{ __("Loading...") }}</p>
 	</div>
 </div>
 

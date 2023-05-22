@@ -34,32 +34,36 @@ def getTotalPilots(RHData, generate_args):
             # fill from available results
             # TODO: Check class finalized status
             total_pilots = len(class_results['by_race_time'])
-        else:
+            
             if 'total_pilots' in generate_args:
-                total_pilots = generate_args['total_pilots']
+                total_pilots = min(total_pilots, int(generate_args['total_pilots']))
+        else:
+            all_pilots = RHData.get_pilots()
+
+            if 'total_pilots' in generate_args:
+                total_pilots = min(all_pilots, int(generate_args['total_pilots']))
             else:
                 # fall back to number of pilots
-                pilots = RHData.get_pilots()
-                total_pilots = len(pilots)
+                total_pilots = len(all_pilots)
     else:
         # use total number of pilots
-        pilots = RHData.get_pilots()
-        total_pilots = len(pilots)
+        all_pilots = RHData.get_pilots()
+        total_pilots = len(all_pilots)
 
     return total_pilots
 
 def generateLadder(RaceContext, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
-    suffix = generate_args.get('suffix', __('Main'))
+    suffix = __(generate_args.get('suffix', 'Main'))
 
     if 'qualifiers_per_heat' in generate_args and 'advances_per_heat' in generate_args:
-        qualifiers_per_heat = generate_args['qualifiers_per_heat']
-        advances_per_heat = generate_args['advances_per_heat']
+        qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
+        advances_per_heat = int(generate_args['advances_per_heat'])
     elif 'advances_per_heat' in generate_args:
-        advances_per_heat = generate_args['advances_per_heat']
+        advances_per_heat = int(generate_args['advances_per_heat'])
         qualifiers_per_heat = available_nodes - advances_per_heat
     elif 'qualifiers_per_heat' in generate_args:
-        qualifiers_per_heat = generate_args['qualifiers_per_heat']
+        qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
         advances_per_heat = available_nodes - qualifiers_per_heat
     else:
         qualifiers_per_heat = available_nodes - 1
@@ -79,7 +83,12 @@ def generateLadder(RaceContext, generate_args=None):
     letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     heats = []
 
-    unseeded_pilots = list(range(total_pilots))
+    if 'seed_offset' in generate_args:
+        seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
+    else:
+        seed_offset = 0
+
+    unseeded_pilots = list(range(seed_offset, total_pilots+seed_offset))
     heat_pilots = 0
 
     while len(unseeded_pilots):
@@ -127,7 +136,7 @@ def generateLadder(RaceContext, generate_args=None):
 
 def generateBalancedHeats(RaceContext, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
-    suffix = generate_args.get('suffix', __('Qualifier'))
+    suffix = __(generate_args.get('suffix', 'Qualifier'))
 
     if 'qualifiers_per_heat' in generate_args:
         qualifiers_per_heat = generate_args['qualifiers_per_heat']
@@ -157,7 +166,12 @@ def generateBalancedHeats(RaceContext, generate_args=None):
             'slots': []
             })
 
-    unseeded_pilots = list(range(total_pilots))
+    if 'seed_offset' in generate_args:
+        seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
+    else:
+        seed_offset = 0
+
+    unseeded_pilots = list(range(seed_offset, total_pilots+seed_offset))
     random.shuffle(unseeded_pilots)
 
     heatNum = 0
@@ -177,30 +191,113 @@ def discover(*_args, **_kwargs):
     # returns array of exporters with default arguments
     return [
         HeatGenerator(
-            'ladder_1a',
-            'Ladder, single advance',
-            generateLadder,
-        ),
-        HeatGenerator(
-            'ladder_2a',
-            'Ladder, double advance',
-            generateLadder,
-            {
-                'advances_per_heat': 2,
-            }
-        ),
-        HeatGenerator(
             'ladder_0a',
             'Ranked fill',
             generateLadder,
             {
                 'advances_per_heat': 0,
-            }
+            },
+            [
+                {
+                    'id': 'qualifiers_per_heat',
+                    'label': "Maximum pilots per heat",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'total_pilots',
+                    'label': "Maxiumum pilots in class",
+                    'desc': "Used only with input class",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'seed_offset',
+                    'label': "Seed from rank",
+                    'fieldType': 'basic_int',
+                    'value': 1,
+                },
+                {
+                    'id': 'suffix',
+                    'label': "Heat title suffix",
+                    'fieldType': 'text',
+                    'value': 'Main',
+                },
+            ],
         ),
         HeatGenerator(
             'balanced_fill',
             'Balanced random fill',
-            generateBalancedHeats
+            generateBalancedHeats,
+            None,
+            [
+                {
+                    'id': 'qualifiers_per_heat',
+                    'label': "Maximum pilots per heat",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'total_pilots',
+                    'label': "Maxiumum pilots in class",
+                    'desc': "Used only with input class",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'seed_offset',
+                    'label': "Seed from rank",
+                    'fieldType': 'basic_int',
+                    'value': 1,
+                },
+                {
+                    'id': 'suffix',
+                    'label': "Heat title suffix",
+                    'fieldType': 'text',
+                    'value': 'Qualifier',
+                },
+            ]
+        ),
+        HeatGenerator(
+            'ladder_params',
+            'Ladder',
+            generateLadder,
+            None,
+            [
+                {
+                    'id': 'advances_per_heat',
+                    'label': "Advances per heat",
+                    'desc': "Blank for auto",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'qualifiers_per_heat',
+                    'label': "Seeded slots per heat",
+                    'desc': "Blank for auto",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'total_pilots',
+                    'label': "Maxiumum pilots in class",
+                    'desc': "Used only with input class",
+                    'fieldType': 'basic_int',
+                    'placeholder': "Auto",
+                },
+                {
+                    'id': 'seed_offset',
+                    'label': "Seed from rank",
+                    'fieldType': 'basic_int',
+                    'value': 1,
+                },
+                {
+                    'id': 'suffix',
+                    'label': "Heat title suffix",
+                    'fieldType': 'text',
+                    'value': 'Main',
+                },
+            ]
         ),
 
     ]
