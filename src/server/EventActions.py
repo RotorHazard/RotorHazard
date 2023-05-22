@@ -58,51 +58,54 @@ def initializeEventActions(Events, RaceContext, logger):
         #register built-in effects
         @catchLogExceptionsWrapper
         def speakEffect(action, args):
-            text = action['text']
-            if 'node_index' in args:
-                pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.spokenName())
-
-            if 'heat_id' in args:
-                heat = RaceContext.rhdata.get_heat(args['heat_id'])
-            else:
-                heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-
-            text = text.replace('%HEAT%', heat.displayname())
-
-            RaceContext.rhui.emit_phonetic_text(text)
+            if 'text' in action:
+                text = action['text']
+                if 'node_index' in args:
+                    pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
+                    text = text.replace('%PILOT%', pilot.spokenName())
+    
+                if 'heat_id' in args:
+                    heat = RaceContext.rhdata.get_heat(args['heat_id'])
+                else:
+                    heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
+    
+                text = text.replace('%HEAT%', heat.displayname())
+    
+                RaceContext.rhui.emit_phonetic_text(text)
 
         @catchLogExceptionsWrapper
         def messageEffect(action, args):
-            text = action['text']
-            if 'node_index' in args:
-                pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.callsign)
-
-            if 'heat_id' in args:
-                heat = RaceContext.rhdata.get_heat(args['heat_id'])
-            else:
-                heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-
-            text = text.replace('%HEAT%', heat.displayname())
-
-            RaceContext.rhui.emit_priority_message(text)
+            if 'text' in action:
+                text = action['text']
+                if 'node_index' in args:
+                    pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
+                    text = text.replace('%PILOT%', pilot.callsign)
+    
+                if 'heat_id' in args:
+                    heat = RaceContext.rhdata.get_heat(args['heat_id'])
+                else:
+                    heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
+    
+                text = text.replace('%HEAT%', heat.displayname())
+    
+                RaceContext.rhui.emit_priority_message(text)
 
         @catchLogExceptionsWrapper
         def alertEffect(action, args):
-            text = action['text']
-            if 'node_index' in args:
-                pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.callsign)
-
-            if 'heat_id' in args:
-                heat = RaceContext.rhdata.get_heat(args['heat_id'])
-            else:
-                heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-
-            text = text.replace('%HEAT%', heat.displayname())
-
-            RaceContext.rhui.emit_priority_message(text, True)
+            if 'text' in action:
+                text = action['text']
+                if 'node_index' in args:
+                    pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
+                    text = text.replace('%PILOT%', pilot.callsign)
+    
+                if 'heat_id' in args:
+                    heat = RaceContext.rhdata.get_heat(args['heat_id'])
+                else:
+                    heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
+    
+                text = text.replace('%HEAT%', heat.displayname())
+    
+                RaceContext.rhui.emit_priority_message(text, True)
 
         eventActionsObj.registerEffect(
             ActionEffect(
