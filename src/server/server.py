@@ -1590,10 +1590,12 @@ def on_generate_heats_v2(data):
     generate_args = {
         'input_class': data['input_class'],
         'output_class': data['output_class'],
-        # 'suffix': data['suffix'],
-        # 'pilots_per_heat': int(data['pilots_per_heat']),
         'available_nodes': available_nodes
         }
+    if 'params' in data:
+        for param, value in data['params'].items():
+            generate_args[param] = value
+
     generator = data['generator']
 
     if RaceContext.heat_generate_manager.hasGenerator(generator):
