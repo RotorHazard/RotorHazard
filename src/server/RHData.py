@@ -1734,6 +1734,14 @@ class RHData():
             race_class.format_id = data['class_format']
         if 'win_condition' in data:
             race_class.win_condition = data['win_condition']
+            race_class.rank_settings = None
+        if 'rank_settings' in data:
+            if data['rank_settings'] is None:
+                race_class.rank_settings = None
+            else:
+                src_settings = json.loads(race_class.rank_settings) if race_class.rank_settings else {}
+                dest_settings = data['rank_settings']
+                race_class.rank_settings = json.dumps({**src_settings, **dest_settings})
         if 'rounds' in data:
             race_class.rounds = data['rounds']
         if 'heat_advance' in data:
@@ -1747,7 +1755,9 @@ class RHData():
             if len(race_list):
                 self._racecontext.pagecache.set_valid(False)
 
-        if 'class_format' in data or 'win_condition' in data:
+        if 'class_format' in data or \
+           'win_condition' in data or \
+           'rank_settings' in data:
             if len(race_list):
                 self._racecontext.pagecache.set_valid(False)
                 self.clear_results_event()

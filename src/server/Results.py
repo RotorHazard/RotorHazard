@@ -52,132 +52,6 @@ class RaceClassRankMethod():
     def rank(self, racecontext, race_class, localArgs):
         return self.rankFn(racecontext, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
-def init_builtin_rank_methods(rankmanager):
-    rankmanager.registerMethod(RaceClassRankMethod(
-        'best_rounds',
-        'Best X Rounds',
-        rank_best_rounds,
-        None,
-        [
-            {
-                'id': 'rounds',
-                'label': "Number of rounds",
-                'fieldType': 'basic_int',
-            },
-        ]
-    ))
-
-def rank_best_rounds(racecontext, race_class, args):
-    if 'rounds' not in args or not args['rounds'] or args['rounds'] < 1:
-        return False
-
-    rounds = args['rounds']
-
-    race_format = racecontext.rhdata.get_raceFormat(race_class.format_id)
-    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
-
-    pilotresults = {}
-    for heat in heats:
-        races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
-
-        for race in races:
-            race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
-
-            if race_result:
-                for pilotresult in race_result['by_race_time']:
-                    if pilotresult['pilot_id'] not in pilotresults:
-                        pilotresults[pilotresult['pilot_id']] = []
-                    pilotresults[pilotresult['pilot_id']].append(pilotresult)
-            else:
-                logger.warning("Failed building ranking, race result not available")
-                return False
-
-    leaderboard = []
-    for pilotresultlist in pilotresults:
-        pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
-            -x['laps'], # reverse lap count
-            x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
-        ))
-        pilot_result = pilot_result[:rounds]
-
-        new_pilot_result = {}
-        new_pilot_result['pilot_id'] = pilot_result[0]['pilot_id']
-        new_pilot_result['callsign'] = pilot_result[0]['callsign']
-        new_pilot_result['team_name'] = pilot_result[0]['team_name']
-        new_pilot_result['node'] = pilot_result[0]['node']
-        new_pilot_result['laps'] = 0
-        new_pilot_result['starts'] = 0
-        new_pilot_result['total_time_raw'] = 0
-        new_pilot_result['total_time_laps_raw'] = 0
-
-        for race in pilot_result:
-            new_pilot_result['laps'] += race['laps']
-            new_pilot_result['starts'] += race['starts']
-            new_pilot_result['total_time_raw'] += race['total_time_raw']
-            new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
-
-            # new_leaderboard['fastest_lap'] += race['fastest_lap']
-            # new_leaderboard['fastest_lap_source'] += race['']
-            # new_leaderboard['consecutives'] += race['consecutives']
-            # new_leaderboard['consecutives_source'] += race['']
-
-        new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps']
-
-        timeFormat = racecontext.rhdata.get_option('timeFormat')
-        new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
-        new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
-        new_pilot_result['average_lap'] = RHUtils.time_format(new_pilot_result['average_lap_raw'], timeFormat)
-
-        # result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
-        # result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
-        # result_pilot['consecutives_raw'] = result_pilot['consecutives']
-        # result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
-
-        leaderboard.append(new_pilot_result)
-
-    if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
-        # Sort by laps time
-        leaderboard = sorted(leaderboard, key = lambda x: (
-            -x['laps'], # reverse lap count
-            x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
-        ))
-
-        # determine ranking
-        last_rank = None
-        last_rank_laps = 0
-        last_rank_time = 0
-        for i, row in enumerate(leaderboard, start=1):
-            pos = i
-            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
-                pos = last_rank
-            last_rank = pos
-            last_rank_laps = row['laps']
-            last_rank_time = row['total_time_laps_raw']
-
-            row['position'] = pos
-    else:
-        # Sort by race time
-        leaderboard = sorted(leaderboard, key = lambda x: (
-            -x['laps'], # reverse lap count
-            x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
-        ))
-
-        # determine ranking
-        last_rank = None
-        last_rank_laps = 0
-        last_rank_time = 0
-        for i, row in enumerate(leaderboard, start=1):
-            pos = i
-            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
-                pos = last_rank
-            last_rank = pos
-            last_rank_laps = row['laps']
-            last_rank_time = row['total_time_raw']
-
-            row['position'] = pos
-
-    return leaderboard
-
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
     token = monotonic()
@@ -968,7 +842,8 @@ def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
         race_class = racecontext.rhdata.get_raceClass(class_id)
 
     if race_class:
-        return racecontext.raceclass_rank_manager.rank(race_class.win_condition, race_class) #TODO: args
+        args = json.loads(race_class.rank_settings) if race_class.rank_settings else None 
+        return racecontext.raceclass_rank_manager.rank(race_class.win_condition, race_class, args)
 
     return False
 

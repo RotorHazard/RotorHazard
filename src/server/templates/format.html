@@ -296,7 +296,7 @@
 						selectbox.prop('disabled', locked);
 						field.append(selectbox);
 
-						var settingsbtn = $('<button class="open-ranking-params" data-id="' + race_class.id + '" title="' + __('Ranking Settings') + '">' + svg_asset.gear + '</button>');
+						var settingsbtn = $('<button class="open-ranking-params" data-class_id="' + race_class.id + '" title="' + __('Ranking Settings') + '">' + svg_asset.gear + '</button>');
 						settingsbtn.prop('disabled', locked);
 
 						var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
@@ -381,7 +381,7 @@
 		}
 
 		$(document).on('click', '.open-ranking-params', function(){
-			var race_class_id = $(this).data('id');
+			var race_class_id = $(this).data('class_id');
 			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
 			var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
 
@@ -401,7 +401,10 @@
 						method: rank_method,
 					}
 
-					settings.value = race_class.ranksettings[f_idx];
+					if (race_class.ranksettings && race_class.ranksettings[settings.id]) {
+						settings.value = race_class.ranksettings[settings.id];
+					}
+
 					var field = rhui.buildField(settings);
 
 					param_form.append(field);
@@ -409,7 +412,7 @@
 
 				param_panel.append(param_form);
 
-				param_panel.append($('<div class="control-set"><button id="rank_method">' + __('Close') + '</button></div>'));
+				/*param_panel.append($('<div class="control-set"><button class="mfp-close">' + __('Close') + '</button></div>'));*/
 
 				$.magnificPopup.open({
 					items: {
@@ -428,6 +431,16 @@
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
 
 				if (race_class) {
+					var data = {
+						class_id: race_class_id,
+						rank_settings: {}
+					};
+					data.rank_settings[field] = value;
+					socket.emit('alter_race_class', data);
+
+					if (!race_class.ranksettings) {
+						race_class.ranksettings = {};
+					}
 					race_class.ranksettings[field] = value;
 				}
 			}
@@ -483,6 +496,16 @@
 			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
 			if (race_class) {
 				race_class.win_condition = data.win_condition;
+
+				settingsbtn = $(this).siblings('.open-ranking-params');
+
+				var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
+
+				if (rank_method && rank_method.settings) {
+					settingsbtn.prop('hidden', false);
+				} else {
+					settingsbtn.prop('hidden', true);
+				}
 			}
 		});
 

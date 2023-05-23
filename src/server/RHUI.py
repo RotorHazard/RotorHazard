@@ -534,7 +534,7 @@ class RHUI():
             current_class['description'] = race_class.description
             current_class['format'] = race_class.format_id
             current_class['win_condition'] = race_class.win_condition
-            current_class['ranksettings'] = race_class.rank_settings
+            current_class['ranksettings'] = json.loads(race_class.rank_settings) if race_class.rank_settings else None
             current_class['rounds'] = race_class.rounds
             current_class['heat_advance'] = race_class.heatAdvanceType
             current_class['order'] = race_class.order

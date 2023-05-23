@@ -1,6 +1,4 @@
-'''Standardized heat structures'''
-# FAI: https://www.fai.org/sites/default/files/ciam/wcup_drones/sc4_vol_f9_dronesport_22_2022-03-01_0.pdf
-# MultiGP: https://docs.google.com/document/d/1jWVjCnoIGdW1j_bklrbg-0D24c3x6YG5m_vmF7faG-U/edit#heading=h.hoxlrr3v86bb
+''' Heat generator for ladders '''
 
 import logging
 import RHUtils

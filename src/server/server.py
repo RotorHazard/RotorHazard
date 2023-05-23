@@ -1208,7 +1208,10 @@ def on_alter_race_class(data):
     '''Update race class.'''
     race_class, altered_race_list = RaceContext.rhdata.alter_raceClass(data)
 
-    if ('class_format' in data or 'class_name' in data or 'win_condition' in data) and len(altered_race_list):
+    if ('class_format' in data or \
+        'class_name' in data or \
+        'win_condition' in data or \
+        'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.displayname())
         RaceContext.rhui.emit_priority_message(message, False)
@@ -4447,7 +4450,6 @@ RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
 
 # leaderboard ranking
 RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
-Results.init_builtin_rank_methods(RaceContext.raceclass_rank_manager)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
