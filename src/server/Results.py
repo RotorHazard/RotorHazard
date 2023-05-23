@@ -35,46 +35,37 @@ class RaceClassRankManager():
     def methods(self):
         return self._methods
 
-    def rank(self, method_id, race_class, args={}):
-        if method_id is "":
+    def rank(self, method_id, race_class, args=None):
+        if method_id == "":
             return False
 
         return self.methods[method_id].rank(self._racecontext, race_class, args)
 
 class RaceClassRankMethod():
-    def __init__(self, name, label, rankFn, defaultArgs={}):
+    def __init__(self, name, label, rankFn, defaultArgs=None, settings=None):
         self.name = name
         self.label = label
         self.rankFn = rankFn
         self.defaultArgs = defaultArgs
+        self.settings = settings
 
     def rank(self, racecontext, race_class, localArgs):
-        return self.rankFn(racecontext, race_class, {**self.defaultArgs, **localArgs})
+        return self.rankFn(racecontext, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
 def init_builtin_rank_methods(rankmanager):
     rankmanager.registerMethod(RaceClassRankMethod(
-        'best_round',
-        'Best Round',
+        'best_rounds',
+        'Best X Rounds',
         rank_best_rounds,
-        {
-            'rounds': 1,
-        }))
-
-    rankmanager.registerMethod(RaceClassRankMethod(
-        'best_rounds_3',
-        'Best 3 Rounds',
-        rank_best_rounds,
-        {
-            'rounds': 3,
-        }))
-
-    rankmanager.registerMethod(RaceClassRankMethod(
-        'best_rounds_5',
-        'Best 5 Rounds',
-        rank_best_rounds,
-        {
-            'rounds': 5,
-        }))
+        None,
+        [
+            {
+                'id': 'rounds',
+                'label': "Number of rounds",
+                'fieldType': 'basic_int',
+            },
+        ]
+    ))
 
 def rank_best_rounds(racecontext, race_class, args):
     if 'rounds' not in args or not args['rounds'] or args['rounds'] < 1:

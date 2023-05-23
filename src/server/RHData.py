@@ -548,7 +548,6 @@ class RHData():
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS,
                         'team_racing_mode': False,
-                        'start_behavior': 0
                     })
                 else:
                     self.reset_raceFormats()
@@ -573,6 +572,7 @@ class RHData():
                             'build_ver': None
                         }),
                         'ranking': None,
+                        'rank_settings': None,
                         'rankStatus': json.dumps({
                             'data_ver': monotonic(),
                             'build_ver': None
@@ -1658,6 +1658,7 @@ class RHData():
             cacheStatus=initStatus,
             rankStatus=initStatus,
             win_condition=0,
+            rank_settings=None,
             rounds=0,
             heatAdvanceType=1,
             order=None
