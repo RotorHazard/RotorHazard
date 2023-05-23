@@ -14,12 +14,13 @@ HIGH = 1
 LOW = 0
 UNKNOWN = -1
 
+sbc_model = ''
 gpio_lookup = {}
 gpio_model_lookup = {
     "Raspberry Pi 3 Model B Rev 1.2" : "pi3b_gpio.json",
     "Libre Computer AML-S905X-CC" : "potato_gpio.json",
     "Raspberry Pi Zero W Rev 1.1": "pizero_gpio.json",
-    "raspberry pi 4": "pi4_gpio.json"
+    "Raspberry Pi 4 Model B Rev 1.2": "pi4_gpio.json"
 }
 
 
@@ -110,7 +111,7 @@ def load_lookup_table():
         import importlib_resources as pkg_resources
 
     global gpio_lookup
-    sbc_model = ''
+    global sbc_model
     if not gpio_lookup:
         sbc_model = get_sbc_model()
         if not sbc_model:
@@ -121,9 +122,8 @@ def load_lookup_table():
         json_name = gpio_model_lookup[sbc_model]
         logger.info(f"gpio info file is: {json_name}")
     except Exception as up:
-        logger.warning(f"Failed to find gpio info file. sbc:'{sbc_model}")
-        logger.warning(f"Defaulting to pi3b")
-        json_name = 'pi3b_gpio.json'
+        logger.error(f"Failed to find gpio info file. sbc:'{sbc_model}")
+        raise up
     import util
     gpio_lookup = json.loads(pkg_resources.read_text(util, json_name))
 
@@ -131,9 +131,10 @@ def get_line_by_board_pin(board_pin):
     load_lookup_table()
     for record in gpio_lookup:
         if record["Board_Pin"] == board_pin:
-            chip = gpiod.chip(record["Chip"])
             logger.info(f"Using gpio record: {record}")
+            chip = gpiod.chip(record["Chip"])
             return chip.get_line(record["Offset"])
+    return None
 
 
 

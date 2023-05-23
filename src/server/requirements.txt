@@ -19,7 +19,6 @@ websocket-client==0.57.*
 requests==2.25.*
 cffi==1.14.*
 smbus2==0.4.*
-RPi.GPIO==0.7.*
 rpi-ws281x==4.3.*
 pi-ina219==1.4.*
 RPi.bme280==0.2.*

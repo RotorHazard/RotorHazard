@@ -733,8 +733,8 @@ DEF_SERIAL_PORT = "/dev/serial0"
 DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
 MAX_SRC_FILE_SIZE = 999999
 
-GPIO_RESET_PIN = 11 # GPIO17 # Board pin 11
-GPIO_BOOT0_PIN = 13 #GPIO27 # Board pin 13
+GPIO_RESET_PIN = 11 # GPIO17 == Board pin 11
+GPIO_BOOT0_PIN = 13 # GPIO23 == Board pin 16, GPIO27 == Board pin 13
 
 # set function to use for console/log output
 def set_console_output_fn(conOutFn):
@@ -751,16 +751,19 @@ def reset_to_boot_0():
         Console_output_fn("using gpiod to reset_to_boot_0")
         import gpiod
         import util.RHGPIO as RHGPIO
+        #Setup the reset line
         reset_line = RHGPIO.get_line_by_board_pin(GPIO_RESET_PIN)
-        boot0_line = RHGPIO.get_line_by_board_pin(GPIO_BOOT0_PIN)
         reset_request = gpiod.line_request()
         reset_request.consumer = "RotorHazard Reset Line"
         reset_request.request_type = gpiod.line_request.DIRECTION_OUTPUT
         reset_line.request(reset_request, 1)
+
+        #Setup the boot0 line
+        boot0_line = RHGPIO.get_line_by_board_pin(GPIO_BOOT0_PIN)
         boot0_request = gpiod.line_request()
         boot0_request.consumer = "RotorHazard Boot0 Line"
         boot0_request.request_type = gpiod.line_request.DIRECTION_OUTPUT
-        boot0_line.request(boot0_request, 1)
+        boot0_line.request(boot0_request, 0)
         reset_line.set_value(1) # reset pin high (inactive)
         boot0_line.set_value(1) # boot0 pin high (active)
         time.sleep(0.01)
@@ -789,13 +792,12 @@ def reset_to_run():
         reset_request.request_type = gpiod.line_request.DIRECTION_OUTPUT
         reset_line.request(reset_request, 1)
         reset_line.set_value(1) # reset pin high (inactive)
-        time.sleep(0.01)
+        time.sleep(0.05)
         reset_line.set_value(0) # reset pin low (active)
         time.sleep(0.05)
         reset_line.set_value(1) # reset pin high (inactive)
         time.sleep(0.05)
         reset_line.release()
-
     except ImportError as ex:
         Console_output_fn("ImportError in 'reset_to_run()': " + str(ex))
     except Exception as ex:

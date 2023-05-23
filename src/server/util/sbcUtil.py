@@ -1,4 +1,6 @@
+import logging
 
+logger = logging.getLogger(__name__)
 model = None
 def get_sbc_model() -> str:
     global model
@@ -7,6 +9,7 @@ def get_sbc_model() -> str:
             with open('/proc/device-tree/model') as f:
                 model = f.read()
         except FileNotFoundError:
+            logger.error("Failed to find sbc model")
             model = ""
     return model.strip('\x00')
 
