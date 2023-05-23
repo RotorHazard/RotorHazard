@@ -1673,6 +1673,11 @@
 			socket.emit('export_database', data);
 		});
 
+		$('button#import_to_database').click(function (event) {
+			var file = $('#import_file').prop('files')[0]
+			socket.emit('import_file', file);
+		});
+
 		$('button#download_logs').click(function (event) {
 			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
 		});
@@ -1887,6 +1892,8 @@
 			</select>
 			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
 		</div>
+
+		<input type="file" id="import_file" /><button id="import_to_database">{{ __('Import Data') }}</button>
 
 		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>

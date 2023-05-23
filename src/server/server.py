@@ -92,6 +92,7 @@ from Sensors import Sensors  #pylint: disable=import-error
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus, StagingTones
 from data_export import DataExportManager
+from data_import import DataImportManager
 from VRxControl import VRxControlManager
 from HeatGenerator import HeatGeneratorManager
 
@@ -157,7 +158,7 @@ Database.DB.init_app(APP)
 Database.DB.app = APP
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], maxHttpBufferSize=5e7)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
@@ -1576,6 +1577,11 @@ def on_export_database_file(data):
 
     logger.error('Data exporter "{0}" not found'.format(exporter))
     RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
+
+@SOCKET_IO.on('import_file')
+@catchLogExceptionsWrapper
+def on_import_file(data):
+    RaceContext.import_manager.runImport('json', data)
 
 @SOCKET_IO.on('generate_heats_v2')
 @catchLogExceptionsWrapper
@@ -4439,6 +4445,7 @@ Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters
 RaceContext.export_manager = DataExportManager(RaceContext, Events)
+RaceContext.import_manager = DataImportManager(RaceContext, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)

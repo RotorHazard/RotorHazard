@@ -702,6 +702,12 @@ class RHData():
             color=color,
             used_frequencies=None)
 
+        self._Database.DB.session.add(new_pilot)
+        self._Database.DB.session.flush()
+
+        new_pilot.name=self.__('~Pilot %d Name') % (new_pilot.id)
+        new_pilot.callsign=self.__('~Callsign %d') % (new_pilot.id)
+
         if init:
             if 'name' in init:
                 new_pilot.name = init['name']
@@ -713,12 +719,6 @@ class RHData():
                 new_pilot.phonetic = init['phonetic']
             if 'color' in init:
                 new_pilot.color = init['color']
-
-        self._Database.DB.session.add(new_pilot)
-        self._Database.DB.session.flush()
-
-        new_pilot.name=self.__('~Pilot %d Name') % (new_pilot.id)
-        new_pilot.callsign=self.__('~Callsign %d') % (new_pilot.id)
 
         self.commit()
 

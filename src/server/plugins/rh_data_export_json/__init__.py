@@ -15,7 +15,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('Export_Initialize', 'Export_register_JSON', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('Export_Initialize', 'Export_register_JSON', registerHandlers, {}, 75)
 
 def write_json(data):
     payload = json.dumps(data, indent='\t', cls=AlchemyEncoder)

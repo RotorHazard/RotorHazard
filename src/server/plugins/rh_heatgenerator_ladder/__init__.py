@@ -20,7 +20,7 @@ def __(arg): # Replaced with outer language.__ during initialize()
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('HeatGenerator_Initialize', 'HeatGenerator_register_ladder', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('HeatGenerator_Initialize', 'HeatGenerator_register_ladder', registerHandlers, {}, 75)
     if '__' in kwargs:
         __ = kwargs['__']
 

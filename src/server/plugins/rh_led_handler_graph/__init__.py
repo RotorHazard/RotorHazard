@@ -16,7 +16,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('LED_Initialize', 'LED_register_graph', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('LED_Initialize', 'LED_register_graph', registerHandlers, {}, 75)
 
 def rssiGraph(args):
     if 'strip' in args:

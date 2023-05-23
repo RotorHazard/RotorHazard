@@ -19,7 +19,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('LED_Initialize', 'LED_register_character', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('LED_Initialize', 'LED_register_character', registerHandlers, {}, 75)
 
 def dataHandler(args):
     if 'data' in args:
