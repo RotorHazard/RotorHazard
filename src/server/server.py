@@ -2910,57 +2910,6 @@ def on_LED_solid(data):
             }
         })
 
-@SOCKET_IO.on('LED_chase')
-@catchLogExceptionsWrapper
-def on_LED_chase(data):
-    '''LED Solid Color Chase'''
-    led_red = data['red']
-    led_green = data['green']
-    led_blue = data['blue']
-
-    on_use_led_effect({
-        'effect': "stripColor",
-        'args': {
-            'color': Color(led_red,led_green,led_blue),
-#            'pattern': ColorPattern.CHASE,  # TODO implement chase animation pattern
-            'pattern': ColorPattern.ALTERNATING,
-            'time': 5
-        }
-    })
-
-@SOCKET_IO.on('LED_RB')
-@catchLogExceptionsWrapper
-def on_LED_RB():
-    '''LED rainbow'''
-    on_use_led_effect({
-        'effect': "rainbow",
-        'args': {
-            'time': 5
-        }
-    })
-
-@SOCKET_IO.on('LED_RBCYCLE')
-@catchLogExceptionsWrapper
-def on_LED_RBCYCLE():
-    '''LED rainbow Cycle'''
-    on_use_led_effect({
-        'effect': "rainbowCycle",
-        'args': {
-            'time': 5
-        }
-    })
-
-@SOCKET_IO.on('LED_RBCHASE')
-@catchLogExceptionsWrapper
-def on_LED_RBCHASE():
-    '''LED Rainbow Cycle Chase'''
-    on_use_led_effect({
-        'effect': "rainbowCycleChase",
-        'args': {
-            'time': 5
-        }
-    })
-
 @SOCKET_IO.on('LED_brightness')
 @catchLogExceptionsWrapper
 def on_LED_brightness(data):
