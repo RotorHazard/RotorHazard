@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.0.0-dev.6" # Public release version code
-SERVER_API = 39 # Server API version
+SERVER_API = 40 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -2124,7 +2124,8 @@ def findBestValues(node, node_index):
         if race.heat_id == heat.id:
             for pilotRace in pilotRaces:
                 if pilotRace.race_id == race.id and \
-                    pilotRace.node_index == node_index:
+                    pilotRace.node_index == node_index and \
+                    pilotRace.frequency == node.frequency:
                     logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
                     return {
                         'enter_at_level': pilotRace.enter_at,
@@ -2138,7 +2139,8 @@ def findBestValues(node, node_index):
             for pilotRace in pilotRaces:
                 if pilotRace.race_id == race.id and \
                     pilotRace.node_index == node_index and \
-                    pilotRace.pilot_id == pilot:
+                    pilotRace.pilot_id == pilot and \
+                    pilotRace.frequency == node.frequency:
                     logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
                     return {
                         'enter_at_level': pilotRace.enter_at,
@@ -2149,7 +2151,8 @@ def findBestValues(node, node_index):
     # test for same pilot, same node
     for pilotRace in pilotRaces:
         if pilotRace.node_index == node_index and \
-            pilotRace.pilot_id == pilot:
+            pilotRace.pilot_id == pilot and \
+            pilotRace.frequency == node.frequency:
             logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
             return {
                 'enter_at_level': pilotRace.enter_at,
@@ -2158,7 +2161,8 @@ def findBestValues(node, node_index):
 
     # test for same node
     for pilotRace in pilotRaces:
-        if pilotRace.node_index == node_index:
+        if pilotRace.node_index == node_index and \
+            pilotRace.frequency == node.frequency:
             logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
             return {
                 'enter_at_level': pilotRace.enter_at,
