@@ -1007,7 +1007,7 @@ def on_set_enter_at_level(data):
 
     enter_ats["v"][node_index] = enter_at_level
 
-    RaceContext.rhdata.alter_profile({
+    profile = RaceContext.rhdata.alter_profile({
         'profile_id': profile.id,
         'enter_ats': enter_ats
         })
@@ -1046,7 +1046,7 @@ def on_set_exit_at_level(data):
 
     exit_ats["v"][node_index] = exit_at_level
 
-    RaceContext.rhdata.alter_profile({
+    profile = RaceContext.rhdata.alter_profile({
         'profile_id': profile.id,
         'exit_ats': exit_ats
         })
