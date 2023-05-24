@@ -994,7 +994,7 @@ def get_gap_info(RaceContext, seat_index):
     # get this seat's results
     result = None
     for index, result in enumerate(leaderboard):
-        if result['node'] == seat_index: #TODO issue408
+        if result['node'] == seat_index:
             rank_index = index
             break
     else: # no break
