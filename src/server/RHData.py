@@ -1644,7 +1644,7 @@ class RHData():
     def get_raceClasses(self):
         return self._Database.RaceClass.query.all()
 
-    def add_raceClass(self):
+    def add_raceClass(self, init=None):
         # Add new race class
         initStatus = json.dumps({
             'data_ver': monotonic(),
@@ -1663,6 +1663,24 @@ class RHData():
             order=None
             )
         self._Database.DB.session.add(new_race_class)
+        self._Database.DB.session.flush()
+
+        if init:
+            if 'name' in init:
+                new_race_class.name = init['name']
+            if 'description' in init:
+                new_race_class.description = init['description']
+            if 'format_id' in init:
+                new_race_class.format_id = init['format_id']
+            if 'win_condition' in init:
+                new_race_class.win_condition = init['win_condition']
+            if 'rounds' in init:
+                new_race_class.rounds = init['rounds']
+            if 'heatAdvanceType' in init:
+                new_race_class.heatAdvanceType = init['heatAdvanceType']
+            if 'order' in init:
+                new_race_class.order = init['order']
+
         self.commit()
 
         self._Events.trigger(Evt.CLASS_ADD, {
@@ -2169,6 +2187,8 @@ class RHData():
 
         self._Database.DB.session.add(race_format)
         self.commit()
+
+        return race_format
 
     def duplicate_raceFormat(self, source_format_or_id):
         source_format = self.resolve_raceFormat_from_raceFormat_or_id(source_format_or_id)
