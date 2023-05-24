@@ -823,6 +823,8 @@ def on_load_data(data):
             on_list_backups()
         elif load_type == 'exporter_list':
             RaceContext.rhui.emit_exporter_list()
+        elif load_type == 'importer_list':
+            RaceContext.rhui.emit_importer_list()
         elif load_type == 'heatgenerator_list':
             RaceContext.rhui.emit_heatgenerator_list()
         elif load_type == 'cluster_status':
@@ -1565,7 +1567,7 @@ def on_export_database_file(data):
                 }
                 emit('exported_data', emit_payload)
 
-                Events.trigger(Evt.DATABASE_EXPORT, export_result)
+                Events.trigger(Evt.DATABASE_EXPORT)
             except Exception:
                 logger.exception("Error downloading export file")
                 RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
@@ -1578,10 +1580,31 @@ def on_export_database_file(data):
     logger.error('Data exporter "{0}" not found'.format(exporter))
     RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
-@SOCKET_IO.on('import_file')
+@SOCKET_IO.on('import_data')
 @catchLogExceptionsWrapper
 def on_import_file(data):
-    RaceContext.import_manager.runImport('json', data)
+    '''Run the selected Importer'''
+    importer = data['importer']
+
+    if RaceContext.import_manager.hasImporter(importer):
+        if 'source_data' in data and data['source_data']:
+            # do import
+            logger.info('Importing data via {0}'.format(importer))
+            import_result = RaceContext.import_manager.runImport(importer, data['source_data']) 
+
+            if import_result != False:
+                clean_results_cache()
+                Events.trigger(Evt.DATABASE_IMPORT)
+                SOCKET_IO.emit('database_restore_done')
+            else:
+                RaceContext.rhui.emit_priority_message(__('Data import failed. (See log)'), True, nobroadcast=True)
+
+            return
+        else:
+            RaceContext.rhui.emit_priority_message(__('Data import failed. No source data.'), True, nobroadcast=True)
+
+    logger.error('Data importer "{0}" not found'.format(importer))
+    RaceContext.rhui.emit_priority_message(__('Data import failed. (See log)'), True, nobroadcast=True)
 
 @SOCKET_IO.on('generate_heats_v2')
 @catchLogExceptionsWrapper
@@ -1607,7 +1630,7 @@ def on_generate_heats_v2(data):
     if RaceContext.heat_generate_manager.hasGenerator(generator):
         generatorObj = RaceContext.heat_generate_manager.getGenerator(generator)
 
-        # do export
+        # do generation
         logger.info('Generating heats via {0}'.format(generatorObj.label))
         generate_result = RaceContext.heat_generate_manager.generate(generator, generate_args)
 

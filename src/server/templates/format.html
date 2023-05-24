@@ -21,6 +21,7 @@
 		'race_status',
 		'backups_list',
 		'exporter_list',
+		'importer_list',
 		'heatgenerator_list',
 	];
 
@@ -1605,7 +1606,7 @@
 
 			$.magnificPopup.open({
 				items: {
-					src: '#database_restore_progress',
+					src: '#data_restore_progress',
 					type: 'inline',
 				}
 			});
@@ -1673,9 +1674,43 @@
 			socket.emit('export_database', data);
 		});
 
-		$('button#import_to_database').click(function (event) {
-			var file = $('#import_file').prop('files')[0]
-			socket.emit('import_file', file);
+		socket.on('importer_list', function (msg) {
+			$('#importer_list').empty();
+			if ('importers' in msg && msg.importers.length) {
+				msg.importers.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
+				for (idx in msg.importers) {
+					var im = msg.importers[idx];
+					$('#importer_list').append('<option value="' + im.name + '">' + __(im.label) + '</option>');
+				}
+				$('#importer_list').prop('disabled', false);
+			} else {
+				$('#importer_list').append('<option value="-">' + __('No importers') + '</option>');
+				$('#importer_list').prop('disabled', true);
+			}
+		});
+
+		$('#import_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#import_data').prop('disabled', false);
+			}
+		});
+
+		$('button#import_data').click(function (event) {
+			var data = {
+				importer: $('#importer_list').val(),
+				source_data: $('#import_file').prop('files')[0]
+			}
+
+			if (data.source_data) {
+				socket.emit('import_data', data);
+
+				$.magnificPopup.open({
+					items: {
+						src: '#data_restore_progress',
+						type: 'inline',
+					}
+				});
+			}
 		});
 
 		$('button#download_logs').click(function (event) {
@@ -1893,7 +1928,14 @@
 			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
 		</div>
 
-		<input type="file" id="import_file" /><button id="import_to_database">{{ __('Import Data') }}</button>
+		<div class="control-set">
+			<select id="importer_list" disabled="disabled">
+				<option value="-">{{ __('No Importers') }}</option>
+			</select>
+			<input type="file" id="import_file" />
+			<p class="desc">Max 50MB</p>
+			<button id="import_data" class="btn-warning" disabled="disabled">{{ __('Import Data') }}</button>
+		</div>
 
 		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
@@ -1913,10 +1955,10 @@
 			</div>
 		</div>
 
-		<div id="database_restore_progress" class="priority-message-interrupt mfp-hide popup">
+		<div id="data_restore_progress" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Database restore in progress. Please wait...') }}</p>
+				<p>{{ __('Data restore in progress. Please wait...') }}</p>
 			</div>
 		</div>
 

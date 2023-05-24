@@ -35,7 +35,7 @@ class DataImportManager():
 
     @property
     def importers(self):
-        return self._generators
+        return self._importers
 
     def runImport(self, importer_id, data, import_args=None):
         return self._importers[importer_id].runImport(self._racecontext, data, import_args)

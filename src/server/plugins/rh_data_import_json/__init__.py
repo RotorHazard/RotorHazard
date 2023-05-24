@@ -33,7 +33,6 @@ def import_json(racecontext, source, args):
         data = json.loads(source)
     except Exception as ex:
         logger.error("Unable to import file: {}".format(str(ex)))
-        racecontext.rhui.emit_priority_message(__("Unable to import file (see log for details)"), interrupt=True, nobroadcast=True)
         return False
 
     if "Pilot" in data:
@@ -205,6 +204,8 @@ def import_json(racecontext, source, args):
                     break
 
         rd.alter_heatNodes_fast(batch)
+
+    return True
 
 def discover(*_args, **_kwargs):
     # returns array of exporters with default arguments, fields
