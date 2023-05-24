@@ -2434,6 +2434,7 @@ def do_save_actions():
                     'history_times': json.dumps(RaceContext.interface.nodes[node_index].history_times),
                     'enter_at': RaceContext.interface.nodes[node_index].enter_at_level,
                     'exit_at': RaceContext.interface.nodes[node_index].exit_at_level,
+                    'frequency': RaceContext.interface.nodes[node_index].frequency,
                     'laps': RaceContext.race.node_laps[node_index]
                     }
 
