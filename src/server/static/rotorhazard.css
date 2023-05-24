@@ -473,6 +473,10 @@ ol.form li+li {
 	margin: 0 calc(50% - 50vw);
 }
 
+.panel-content > h3 {
+	margin: 1rem 0;
+}
+
 .control-set {
 	text-align: center;
 }
