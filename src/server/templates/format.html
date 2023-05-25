@@ -417,10 +417,10 @@
 
 				$.magnificPopup.open({
 					items: {
-	    				src: '#parameters'
-	  				},
-	  				type: 'inline'
-	  			});
+						src: '#parameters'
+					},
+					type: 'inline'
+				});
 			}
 		});
 
@@ -1352,7 +1352,7 @@
 				var format_id = parseInt($('#set_race_format').val());
 				var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 				var locked = rf.locked;
-	
+
 				if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
 					locked = true;
 					$('#unlock_race_format_button').prop('disabled', true);
@@ -1363,7 +1363,7 @@
 					$('#delete_race_format_button').prop('disabled', false);
 					$('#current_race_format_lock').hide();
 				}
-	
+
 				$('#unlock_race_format_button').toggle(locked);
 				$('#delete_race_format_button').prop('disabled', locked);
 				$('#set_format_name').val(rf.name);
@@ -1389,7 +1389,7 @@
 				$('#set_number_laps_win').prop('disabled', locked);
 				$('#set_team_racing_mode').val(rf.team_racing_mode);
 				$('#set_team_racing_mode').prop('disabled', locked);
-	
+
 				update_race_format_ui();
 			}
 		}
@@ -1762,6 +1762,8 @@
 		});
 
 		socket.on('importer_list', function (msg) {
+			rotorhazard.importers = msg.importers;
+
 			$('#importer_list').empty();
 			if ('importers' in msg && msg.importers.length) {
 				msg.importers.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
@@ -1782,9 +1784,76 @@
 			}
 		});
 
+		var selected_importer = null;
+
 		$('button#import_data').click(function (event) {
+			var importer = $('#importer_list').val();
+			selected_importer = rotorhazard.importers.find(obj => {return obj.name == importer});
+
+			if (selected_importer && selected_importer.settings) {
+				open_import_params()
+			} else {
+				emit_import_cmd();
+			}
+		});
+
+		function open_import_params() {
+			if (selected_importer) {
+				var param_panel = $('#parameters > .popup-content');
+				param_panel.empty();
+				var param_form = $('<ol class="form">');
+
+				for (var f_idx in selected_importer.settings) {
+					settings = selected_importer.settings[f_idx];
+
+					settings.wrapperEl = 'li';
+					settings.data = {
+						type: 'importer',
+						field: settings.id,
+					}
+					var field = rhui.buildField(settings);
+
+					param_form.append(field);
+				}
+
+				param_panel.append(param_form);
+
+				param_panel.append($('<div class="control-set"><button id="do_import" class="btn-danger">' + __('Import Data') + '</button></div>'));
+
+				$.magnificPopup.open({
+					items: {
+						src: '#parameters'
+					},
+					type: 'inline'
+				});
+			}
+		}
+
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
+			var field = $(this).data('field');
+			var value = $(this).val();
+			if ($(this).data('type') == 'importer') {
+				var field_data = selected_importer.settings.find(obj => {return obj.id == field});
+
+				if (field_data) {
+					if (field_data.fieldType == "checkbox") {
+						field_data.value = $(this).prop('checked');
+					} else {
+						field_data.value = value;
+					}
+				}
+			}
+		});
+
+		function emit_import_cmd() {
+			var params = {}
+			for (var f in selected_importer.settings) {
+				params[selected_importer.settings[f].id] = selected_importer.settings[f].value;
+			}
+
 			var data = {
-				importer: $('#importer_list').val(),
+				importer: selected_importer.name,
+				params: params,
 				source_data: $('#import_file').prop('files')[0]
 			}
 
@@ -1798,6 +1867,11 @@
 					}
 				});
 			}
+		}
+
+		$(document).on('click', '#do_import', function (event) {
+			$.magnificPopup.close();
+			emit_import_cmd();
 		});
 
 		$('button#download_logs').click(function (event) {
@@ -1886,10 +1960,10 @@
 
 			$.magnificPopup.open({
 				items: {
-    				src: '#parameters'
-  				},
-  				type: 'inline'
-  			});
+					src: '#parameters'
+				},
+				type: 'inline'
+			});
 		}
 
 		$(document).on('change', '#parameters input,#parameters select', function (event) {
@@ -1899,7 +1973,11 @@
 				var field_data = selected_generator.settings.find(obj => {return obj.id == field});
 
 				if (field_data) {
-					field_data.value = value;
+					if (field_data.fieldType == "checkbox") {
+						field_data.value = $(this).prop('checked');
+					} else {
+						field_data.value = value;
+					}
 				}
 			}
 		});
@@ -2333,7 +2411,7 @@
 			</li>
 		</ol>
 		<div class="control-set">
-			<button id="import_data" class="btn-warning" disabled="disabled">{{ __('Import Data') }}</button>
+			<button id="import_data" class="btn-danger" disabled="disabled">{{ __('Import Data') }}</button>
 		</div>
 
 

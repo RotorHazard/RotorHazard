@@ -958,7 +958,8 @@ class RHUI():
         for name, imp in self._racecontext.import_manager.importers.items():
             emit_payload['importers'].append({
                 'name': name,
-                'label': imp.label
+                'label': imp.label,
+                'settings': imp.settings
             })
 
         emit('importer_list', emit_payload)

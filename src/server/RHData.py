@@ -1759,6 +1759,8 @@ class RHData():
             else:
                 src_settings = json.loads(race_class.rank_settings) if race_class.rank_settings else {}
                 dest_settings = data['rank_settings']
+                if isinstance(dest_settings, str):
+                    dest_settings = json.loads(dest_settings)
                 race_class.rank_settings = json.dumps({**src_settings, **dest_settings})
         if 'rounds' in data:
             race_class.rounds = data['rounds']

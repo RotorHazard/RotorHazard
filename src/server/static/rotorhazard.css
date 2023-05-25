@@ -384,6 +384,11 @@ ol.form li+li {
 		width: auto;
 	}
 
+	ol.form > li > input[type="checkbox"] {
+		flex: 0 0 auto;
+		margin-right: auto;
+	}
+
 	ol.form > li > * + button {
 		margin-left: 0.5em;
 	}

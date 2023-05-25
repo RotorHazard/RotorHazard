@@ -129,7 +129,12 @@ def import_json(racecontext, source, args):
                 rd.set_option(setting["option_name"], setting["option_value"])
 
     if "RaceClass" in data:
-        logger.debug("Importing Classes/Heats")
+        logger.debug("Importing Classes/Heats...")
+
+        if 'reset_classes' in args and args['reset_classes']:
+            rd.reset_heats()
+            rd.reset_raceClasses()
+            rd.clear_race_data()
 
         db_race_classes = rd.get_raceClasses()
 
@@ -215,6 +220,32 @@ def discover(*_args, **_kwargs):
             'RotorHazard 4.0 JSON',
             import_json,
             None,
-            None
+            [
+                {
+                    'id': 'reset_pilots',
+                    'label': "Reset Pilots",
+                    'fieldType': 'checkbox',
+                    'value': False
+                },
+                {
+                    'id': 'reset_formats',
+                    'label': "Reset Formats",
+                    'fieldType': 'checkbox',
+                    'value': False
+                },
+                {
+                    'id': 'reset_profiles',
+                    'label': "Reset Profiles",
+                    'fieldType': 'checkbox',
+                    'value': False
+                },
+                {
+                    'id': 'reset_classes',
+                    'label': "Reset Classes and Race Data",
+                    'fieldType': 'checkbox',
+                    'value': False
+                },
+
+            ]
         ),
     ]

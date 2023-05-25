@@ -1593,9 +1593,14 @@ def on_import_file(data):
 
     if RaceContext.import_manager.hasImporter(importer):
         if 'source_data' in data and data['source_data']:
+            import_args = {}
+            if 'params' in data:
+                for param, value in data['params'].items():
+                    import_args[param] = value
+
             # do import
             logger.info('Importing data via {0}'.format(importer))
-            import_result = RaceContext.import_manager.runImport(importer, data['source_data']) 
+            import_result = RaceContext.import_manager.runImport(importer, data['source_data'], import_args) 
 
             if import_result != False:
                 clean_results_cache()
