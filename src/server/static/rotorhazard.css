@@ -1582,11 +1582,15 @@ main.page-home {
 	}
 
 	.race_classes .field label {
-		flex: 1;
+		flex: 0 0 33%;
 	}
 
 	.race_classes .field :nth-child(2) {
-		flex: 2;
+		flex: 1;
+	}
+
+	.race_classes .field :not(:first-child) {
+		margin-left: 0.5em;
 	}
 
 	.race_classes .field-rounds {

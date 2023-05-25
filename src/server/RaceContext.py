@@ -27,6 +27,7 @@ class RaceContext():
         self.export_manager = None
         self.import_manager = None
         self.heat_generate_manager = None
+        self.race_class_rank_manager = None
 
     def branch_race_obj(self):
         self.last_race = RHRace.RHRace(self)

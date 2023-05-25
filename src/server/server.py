@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.0.0-dev.6" # Public release version code
-SERVER_API = 39 # Server API version
+SERVER_API = 40 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -827,6 +827,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_importer_list()
         elif load_type == 'heatgenerator_list':
             RaceContext.rhui.emit_heatgenerator_list()
+        elif load_type == 'raceclass_rank_method_list':
+            RaceContext.rhui.emit_raceclass_rank_method_list()
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -1010,7 +1012,7 @@ def on_set_enter_at_level(data):
 
     enter_ats["v"][node_index] = enter_at_level
 
-    RaceContext.rhdata.alter_profile({
+    profile = RaceContext.rhdata.alter_profile({
         'profile_id': profile.id,
         'enter_ats': enter_ats
         })
@@ -1049,7 +1051,7 @@ def on_set_exit_at_level(data):
 
     exit_ats["v"][node_index] = exit_at_level
 
-    RaceContext.rhdata.alter_profile({
+    profile = RaceContext.rhdata.alter_profile({
         'profile_id': profile.id,
         'exit_ats': exit_ats
         })
@@ -1209,7 +1211,10 @@ def on_alter_race_class(data):
     '''Update race class.'''
     race_class, altered_race_list = RaceContext.rhdata.alter_raceClass(data)
 
-    if ('class_format' in data or 'class_name' in data or 'win_condition' in data) and len(altered_race_list):
+    if ('class_format' in data or \
+        'class_name' in data or \
+        'win_condition' in data or \
+        'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.displayname())
         RaceContext.rhui.emit_priority_message(message, False)
@@ -2939,57 +2944,6 @@ def on_LED_solid(data):
             }
         })
 
-@SOCKET_IO.on('LED_chase')
-@catchLogExceptionsWrapper
-def on_LED_chase(data):
-    '''LED Solid Color Chase'''
-    led_red = data['red']
-    led_green = data['green']
-    led_blue = data['blue']
-
-    on_use_led_effect({
-        'effect': "stripColor",
-        'args': {
-            'color': Color(led_red,led_green,led_blue),
-#            'pattern': ColorPattern.CHASE,  # TODO implement chase animation pattern
-            'pattern': ColorPattern.ALTERNATING,
-            'time': 5
-        }
-    })
-
-@SOCKET_IO.on('LED_RB')
-@catchLogExceptionsWrapper
-def on_LED_RB():
-    '''LED rainbow'''
-    on_use_led_effect({
-        'effect': "rainbow",
-        'args': {
-            'time': 5
-        }
-    })
-
-@SOCKET_IO.on('LED_RBCYCLE')
-@catchLogExceptionsWrapper
-def on_LED_RBCYCLE():
-    '''LED rainbow Cycle'''
-    on_use_led_effect({
-        'effect': "rainbowCycle",
-        'args': {
-            'time': 5
-        }
-    })
-
-@SOCKET_IO.on('LED_RBCHASE')
-@catchLogExceptionsWrapper
-def on_LED_RBCHASE():
-    '''LED Rainbow Cycle Chase'''
-    on_use_led_effect({
-        'effect': "rainbowCycleChase",
-        'args': {
-            'time': 5
-        }
-    })
-
 @SOCKET_IO.on('LED_brightness')
 @catchLogExceptionsWrapper
 def on_LED_brightness(data):
@@ -4472,6 +4426,9 @@ RaceContext.import_manager = DataImportManager(RaceContext, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
+
+# leaderboard ranking
+RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
