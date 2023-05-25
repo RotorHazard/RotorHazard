@@ -34,6 +34,10 @@ class RHAPI():
     def get_setting(self, name, default=None):
         return self._racecontext.rhdata.get_option(name, default)
 
+    # Blueprints
+    def add_blueprint(self, blueprint):
+        return self._racecontext.rhui.add_blueprint(blueprint)
+
     # emit frontend messages
     def emit_priority_message(self, message, interrupt=False):
         self._racecontext.rhui.emit_priority_message(message, interrupt)

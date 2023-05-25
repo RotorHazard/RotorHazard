@@ -68,6 +68,10 @@ class RHUI():
                 payload.append(setting)
         return payload
 
+    # Blueprints
+    def add_blueprint(self, blueprint):
+        self._app.register_blueprint(blueprint)
+
     # General Emits
     def emit_frontend_load(self, **params):
         '''Emits reload command.'''

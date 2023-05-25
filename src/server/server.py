@@ -567,6 +567,10 @@ def redirect_race():
 def redirect_heats():
     return redirect("/event", code=301)
 
+#
+# Background threads
+#
+
 def start_background_threads(forceFlag=False):
     global BACKGROUND_THREADS_ENABLED
     if BACKGROUND_THREADS_ENABLED or forceFlag:
