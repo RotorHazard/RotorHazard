@@ -10,36 +10,36 @@ from Database import ProgramMethod
 logger = logging.getLogger(__name__)
 
 class HeatGeneratorManager():
-    generators = {}
-
     def __init__(self, RaceContext, Events):
-        self._racecontext = RaceContext
-        self.Events = Events
+        self._generators = {}
 
-        self.Events.trigger('HeatGenerator_Initialize', {
+        self._racecontext = RaceContext
+
+        Events.trigger('HeatGenerator_Initialize', {
             'registerFn': self.registerGenerator
             })
 
     def registerGenerator(self, generator):
         if isinstance(generator, HeatGenerator):
-            if generator.name in self.generators:
+            if generator.name in self._generators:
                 logger.warning('Overwriting data generator "{0}"'.format(generator.name))
 
-            self.generators[generator.name] = generator
+            self._generators[generator.name] = generator
         else:
             logger.warning('Invalid generator')
 
     def hasGenerator(self, generator_id):
-        return generator_id in self.generators
+        return generator_id in self._generators
 
     def getGenerator(self, generator_id):
-        return self.generators[generator_id]
+        return self._generators[generator_id]
 
-    def getGenerators(self):
-        return self.generators
+    @property
+    def generators(self):
+        return self._generators
 
     def generate(self, generator_id, generate_args=None):
-        generated_heats = self.generators[generator_id].generate(self._racecontext, generate_args)
+        generated_heats = self._generators[generator_id].generate(self._racecontext, generate_args)
         if generated_heats:
             self.apply(generator_id, generated_heats, generate_args)
             return True
@@ -56,7 +56,7 @@ class HeatGeneratorManager():
         if output_class is None:
             new_class = self._racecontext.rhdata.add_raceClass()
             all_class_names = [race_class.name for race_class in self._racecontext.rhdata.get_raceClasses()]
-            new_class.name = RHUtils.uniqueName(self.generators[generator_id].label, all_class_names)
+            new_class.name = RHUtils.uniqueName(self._generators[generator_id].label, all_class_names)
             output_class = new_class.id
 
         heat_id_mapping = []

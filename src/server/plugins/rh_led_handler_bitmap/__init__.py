@@ -17,7 +17,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('LED_Initialize', 'LED_register_bitmap', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('LED_Initialize', 'LED_register_bitmap', registerHandlers, {}, 75)
 
 def showBitmap(args):
     if 'strip' in args:

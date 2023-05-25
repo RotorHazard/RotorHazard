@@ -21,6 +21,7 @@
 		'race_status',
 		'backups_list',
 		'exporter_list',
+		'importer_list',
 		'heatgenerator_list',
 		'raceclass_rank_method_list',
 	];
@@ -416,10 +417,10 @@
 
 				$.magnificPopup.open({
 					items: {
-	    				src: '#parameters'
-	  				},
-	  				type: 'inline'
-	  			});
+						src: '#parameters'
+					},
+					type: 'inline'
+				});
 			}
 		});
 
@@ -1351,7 +1352,7 @@
 				var format_id = parseInt($('#set_race_format').val());
 				var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 				var locked = rf.locked;
-	
+
 				if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
 					locked = true;
 					$('#unlock_race_format_button').prop('disabled', true);
@@ -1362,7 +1363,7 @@
 					$('#delete_race_format_button').prop('disabled', false);
 					$('#current_race_format_lock').hide();
 				}
-	
+
 				$('#unlock_race_format_button').toggle(locked);
 				$('#delete_race_format_button').prop('disabled', locked);
 				$('#set_format_name').val(rf.name);
@@ -1388,7 +1389,7 @@
 				$('#set_number_laps_win').prop('disabled', locked);
 				$('#set_team_racing_mode').val(rf.team_racing_mode);
 				$('#set_team_racing_mode').prop('disabled', locked);
-	
+
 				update_race_format_ui();
 			}
 		}
@@ -1692,7 +1693,7 @@
 
 			$.magnificPopup.open({
 				items: {
-					src: '#database_restore_progress',
+					src: '#data_restore_progress',
 					type: 'inline',
 				}
 			});
@@ -1758,6 +1759,119 @@
 				exporter: $('#exporter_list').val()
 			};
 			socket.emit('export_database', data);
+		});
+
+		socket.on('importer_list', function (msg) {
+			rotorhazard.importers = msg.importers;
+
+			$('#importer_list').empty();
+			if ('importers' in msg && msg.importers.length) {
+				msg.importers.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
+				for (idx in msg.importers) {
+					var im = msg.importers[idx];
+					$('#importer_list').append('<option value="' + im.name + '">' + __(im.label) + '</option>');
+				}
+				$('#importer_list').prop('disabled', false);
+			} else {
+				$('#importer_list').append('<option value="-">' + __('No importers') + '</option>');
+				$('#importer_list').prop('disabled', true);
+			}
+		});
+
+		$('#import_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#import_data').prop('disabled', false);
+			}
+		});
+
+		var selected_importer = null;
+
+		$('button#import_data').click(function (event) {
+			var importer = $('#importer_list').val();
+			selected_importer = rotorhazard.importers.find(obj => {return obj.name == importer});
+
+			if (selected_importer && selected_importer.settings) {
+				open_import_params()
+			} else {
+				emit_import_cmd();
+			}
+		});
+
+		function open_import_params() {
+			if (selected_importer) {
+				var param_panel = $('#parameters > .popup-content');
+				param_panel.empty();
+				var param_form = $('<ol class="form">');
+
+				for (var f_idx in selected_importer.settings) {
+					settings = selected_importer.settings[f_idx];
+
+					settings.wrapperEl = 'li';
+					settings.data = {
+						type: 'importer',
+						field: settings.id,
+					}
+					var field = rhui.buildField(settings);
+
+					param_form.append(field);
+				}
+
+				param_panel.append(param_form);
+
+				param_panel.append($('<div class="control-set"><button id="do_import" class="btn-danger">' + __('Import Data') + '</button></div>'));
+
+				$.magnificPopup.open({
+					items: {
+						src: '#parameters'
+					},
+					type: 'inline'
+				});
+			}
+		}
+
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
+			var field = $(this).data('field');
+			var value = $(this).val();
+			if ($(this).data('type') == 'importer') {
+				var field_data = selected_importer.settings.find(obj => {return obj.id == field});
+
+				if (field_data) {
+					if (field_data.fieldType == "checkbox") {
+						field_data.value = $(this).prop('checked');
+					} else {
+						field_data.value = value;
+					}
+				}
+			}
+		});
+
+		function emit_import_cmd() {
+			var params = {}
+			for (var f in selected_importer.settings) {
+				params[selected_importer.settings[f].id] = selected_importer.settings[f].value;
+			}
+
+			var data = {
+				importer: selected_importer.name,
+				params: params,
+				source_data: $('#import_file').prop('files')[0]
+			}
+
+			if (data.source_data) {
+				socket.emit('import_data', data);
+
+				$.magnificPopup.open({
+					items: {
+						src: '#data_restore_progress',
+						type: 'inline',
+					}
+				});
+			}
+		}
+
+		$(document).on('click', '#do_import', function (event) {
+			$.magnificPopup.close();
+			emit_import_cmd();
 		});
 
 		$('button#download_logs').click(function (event) {
@@ -1846,10 +1960,10 @@
 
 			$.magnificPopup.open({
 				items: {
-    				src: '#parameters'
-  				},
-  				type: 'inline'
-  			});
+					src: '#parameters'
+				},
+				type: 'inline'
+			});
 		}
 
 		$(document).on('change', '#parameters input,#parameters select', function (event) {
@@ -1859,7 +1973,11 @@
 				var field_data = selected_generator.settings.find(obj => {return obj.id == field});
 
 				if (field_data) {
-					field_data.value = value;
+					if (field_data.fieldType == "checkbox") {
+						field_data.value = $(this).prop('checked');
+					} else {
+						field_data.value = value;
+					}
 				}
 			}
 		});
@@ -1905,7 +2023,7 @@
 <!--Event Overview-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Event and Database') }}</h2>
+		<h2>{{ __('Event') }}</h2>
 	</div>
 	<div class="panel-content">
 		<ol class="form">
@@ -1946,70 +2064,6 @@
 				</select>
 			</li>
 		</ol>
-
-		<div class="control-set">
-			<button id="backup_database">{{ __('Backup Database') }}</button>
-			{% if Debug %}<a href="/database" class="debug button-like">{{ __('View Database') }}</a>{% endif %}
-		</div>
-		<div class="control-set">
-			<select id="reset_type">
-				<option value="races">{{ __('Races') }}</option>
-				<option value="heats">{{ __('Races and Heats') }}</option>
-				<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
-				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
-				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
-				<option value="formats">{{ __('Races and Race Formats') }}</option>
-			</select>
-			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
-		</div>
-		<div class="control-set">
-			<select id="database_list" disabled="disabled">
-				<option value="-">{{ __('No Saved Databases') }}</option>
-			</select>
-			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
-			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
-		</div>
-		<div class="control-set">
-			<select id="exporter_list" disabled="disabled">
-				<option value="-">{{ __('No Exporters') }}</option>
-			</select>
-			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
-		</div>
-
-		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<div id="database_restore_progress" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Database restore in progress. Please wait...') }}</p>
-			</div>
-		</div>
-
-		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-	</div>
 </div>
 
 <!--Pilots list for editing-->
@@ -2269,6 +2323,131 @@
 		</ol>
 
 		<div id="race_format_suggestions" class="form-note emphasis"></div>
+	</div>
+</div>
+
+<!--Event Overview-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Data Management') }}</h2>
+	</div>
+	<div class="panel-content">
+		{% if Debug %}
+		<div class="control-set">
+			<a href="/database" class="debug button-like">{{ __('View Database') }}</a>
+		</div>
+		{% endif %}
+
+		<h3>{{ __('Stored Data') }}</h3>
+		<div class="control-set">
+			<button id="backup_database">{{ __('Backup Database') }}</button>
+		</div>
+		<ol class="form" id="race_formats">
+			<li>
+				<div class="label-block">
+					<label for="database_list">{{ __('Stored Databases') }}</label>
+				</div>
+				<select id="database_list" disabled="disabled">
+					<option value="-">{{ __('No Saved Databases') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
+			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
+		</div>
+
+		<h3>{{ __('Export') }}</h3>
+		<ol class="form" id="race_formats">
+			<li>
+				<div class="label-block">
+					<label for="exporter_list">{{ __('Exporter') }}</label>
+				</div>
+				<select id="exporter_list" disabled="disabled">
+					<option value="-">{{ __('No Exporters') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+		</div>
+
+		<h3>{{ __('Reset') }}</h3>
+		<ol class="form" id="race_formats">
+			<li>
+				<div class="label-block">
+					<label for="reset_type">{{ __('Items to Clear') }}</label>
+				</div>
+				<select id="reset_type">
+					<option value="races">{{ __('Races') }}</option>
+					<option value="heats">{{ __('Races and Heats') }}</option>
+					<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
+					<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
+					<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+					<option value="formats">{{ __('Races and Race Formats') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
+		</div>
+
+		<h3>{{ __('Import') }}</h3>
+		<ol class="form" id="race_formats">
+			<li>
+				<div class="label-block">
+					<label for="importer_list">{{ __('Importer') }}</label>
+				</div>
+				<select id="importer_list" disabled="disabled">
+					<option value="-">{{ __('No Importers') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="import_file">{{ __('Data Source') }}</label>
+					<p class="desc">Max 50MB</p>
+				</div>
+				<input type="file" id="import_file" />
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="import_data" class="btn-danger" disabled="disabled">{{ __('Import Data') }}</button>
+		</div>
+
+
+		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="data_restore_progress" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Data restore in progress. Please wait...') }}</p>
+			</div>
+		</div>
+
+		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
 	</div>
 </div>
 

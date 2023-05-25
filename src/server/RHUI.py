@@ -33,9 +33,9 @@ class RHUI():
 
     # Pilot Attributes
     def register_pilot_attribute(self, name, label, fieldtype="text"):
-        # TODO: prevent duplicate attributes
-        self._pilot_attributes.append(PilotAttribute(name, label, fieldtype))
-        return self._pilot_attributes
+        if any(x.name == name for x in self._pilot_attributes):
+            self._pilot_attributes.append(PilotAttribute(name, label, fieldtype))
+            return self._pilot_attributes
 
     @property
     def pilot_attributes(self):
@@ -43,9 +43,9 @@ class RHUI():
 
     # UI Panels
     def register_ui_panel(self, name, label, page, order=0):
-        # TODO: prevent duplicate panels
-        self.ui_panels.append(UIPanel(name, label, page, order))
-        return self.ui_panels
+        if any(x.name == name for x in self._ui_panels):
+            self._ui_panels.append(UIPanel(name, label, page, order))
+            return self.ui_panels
 
     @property
     def ui_panels(self):
@@ -53,9 +53,9 @@ class RHUI():
 
     # General Settings
     def register_general_setting(self, name, label, panel=None, fieldtype="text", order=0):
-        # TODO: prevent duplicate settings
-        self._general_settings.append(GeneralSetting(name, label, panel, fieldtype, order))
-        return self._general_settings
+        if any(x.name == name for x in self._general_settings):
+            self._general_settings.append(GeneralSetting(name, label, panel, fieldtype, order))
+            return self._general_settings
 
     @property
     def general_settings(self):
@@ -940,13 +940,29 @@ class RHUI():
             'exporters': []
         }
 
-        for name, exp in self._racecontext.export_manager.getExporters().items():
+        for name, exp in self._racecontext.export_manager.exporters.items():
             emit_payload['exporters'].append({
                 'name': name,
                 'label': exp.label
             })
 
         emit('exporter_list', emit_payload)
+
+    def emit_importer_list(self):
+        '''List Database Importers'''
+
+        emit_payload = {
+            'importers': []
+        }
+
+        for name, imp in self._racecontext.import_manager.importers.items():
+            emit_payload['importers'].append({
+                'name': name,
+                'label': imp.label,
+                'settings': imp.settings
+            })
+
+        emit('importer_list', emit_payload)
 
     def emit_heatgenerator_list(self):
         '''List Heat Generators'''
@@ -955,7 +971,7 @@ class RHUI():
             'generators': []
         }
 
-        for name, gen in self._racecontext.heat_generate_manager.getGenerators().items():
+        for name, gen in self._racecontext.heat_generate_manager.generators.items():
             emit_payload['generators'].append({
                 'name': name,
                 'label': gen.label,

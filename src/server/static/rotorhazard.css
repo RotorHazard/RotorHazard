@@ -384,6 +384,11 @@ ol.form li+li {
 		width: auto;
 	}
 
+	ol.form > li > input[type="checkbox"] {
+		flex: 0 0 auto;
+		margin-right: auto;
+	}
+
 	ol.form > li > * + button {
 		margin-left: 0.5em;
 	}
@@ -471,6 +476,10 @@ ol.form li+li {
 .panel-content.full-width {
 	padding: 0 1em 1em;
 	margin: 0 calc(50% - 50vw);
+}
+
+.panel-content > h3 {
+	margin: 1rem 0;
 }
 
 .control-set {

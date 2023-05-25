@@ -25,6 +25,7 @@ class RaceContext():
         self.led_manager = None
         self.vrx_manager = None
         self.export_manager = None
+        self.import_manager = None
         self.heat_generate_manager = None
         self.race_class_rank_manager = None
 

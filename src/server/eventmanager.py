@@ -134,6 +134,7 @@ class Evt:
     DATABASE_RESTORE = 'databaseRestore'
     DATABASE_DELETE_BACKUP = 'databaseDeleteBackup'
     DATABASE_EXPORT = 'databaseExport'
+    DATABASE_IMPORT = 'databaseImport'
     # Race setup
     MIN_LAP_TIME_SET = 'minLapTimeSet'
     MIN_LAP_BEHAVIOR_SET = 'minLapBehaviorSet'

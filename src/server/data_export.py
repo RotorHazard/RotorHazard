@@ -19,42 +19,40 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DataExportManager():
-    exporters = {}
-
     def __init__(self, RaceContext, Events):
-        self._racecontext = RaceContext
-        self.Events = Events
+        self._exporters = {}
 
-        self.Events.trigger('Export_Initialize', {
+        self._racecontext = RaceContext
+
+        Events.trigger('Export_Initialize', {
             'registerFn': self.registerExporter
             })
 
     def registerExporter(self, exporter):
-        if hasattr(exporter, 'name'):
-            if exporter.name in self.exporters:
+        if isinstance(exporter, DataExporter):
+            if exporter.name in self._exporters:
                 logger.warning('Overwriting data exporter "{0}"'.format(exporter['name']))
 
-            self.exporters[exporter.name] = exporter
+            self._exporters[exporter.name] = exporter
         else:
             logger.warning('Invalid exporter')
 
     def hasExporter(self, exporter_id):
-        if exporter_id in self.exporters:
-            return True
-        return False
+        return exporter_id in self._exporters
 
-    def getExporters(self):
-        return self.exporters
+    @property
+    def exporters(self):
+        return self._exporters
 
     def export(self, exporter_id):
-        return self.exporters[exporter_id].export(self._racecontext)
+        return self._exporters[exporter_id].export(self._racecontext)
 
 class DataExporter():
-    def __init__(self, name, label, formatterFn, assemblerFn):
+    def __init__(self, name, label, formatter_fn, assembler_fn):
         self.name = name
         self.label = label
-        self.formatter = formatterFn
-        self.assembler = assemblerFn
+        self.formatter = formatter_fn
+        self.assembler = assembler_fn
 
     def export(self, racecontext):
         data = self.assembler(racecontext)

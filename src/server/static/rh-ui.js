@@ -74,6 +74,13 @@ var rhui = {
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
+		} else if (settings.fieldType == 'checkbox') {
+			var field = $('<input>')
+				.attr('type', 'checkbox')
+				.prop('checked', settings.value);
+
+			wrapper.append(labelWrap);
+			wrapper.append(field);
 		} else {
 			console.log('fieldtype not supported');
 			return false;

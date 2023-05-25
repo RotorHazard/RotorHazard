@@ -15,7 +15,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('Export_Initialize', 'Export_register_CSV', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('Export_Initialize', 'Export_register_CSV', registerHandlers, {}, 75)
 
 def write_csv(data):
     output = io.StringIO()
