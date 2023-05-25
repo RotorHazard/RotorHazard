@@ -548,7 +548,6 @@ class RHData():
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS,
                         'team_racing_mode': False,
-                        'start_behavior': 0
                     })
                 else:
                     self.reset_raceFormats()
@@ -573,6 +572,7 @@ class RHData():
                             'build_ver': None
                         }),
                         'ranking': None,
+                        'rank_settings': None,
                         'rankStatus': json.dumps({
                             'data_ver': monotonic(),
                             'build_ver': None
@@ -1658,6 +1658,7 @@ class RHData():
             cacheStatus=initStatus,
             rankStatus=initStatus,
             win_condition=0,
+            rank_settings=None,
             rounds=0,
             heatAdvanceType=1,
             order=None
@@ -1733,6 +1734,14 @@ class RHData():
             race_class.format_id = data['class_format']
         if 'win_condition' in data:
             race_class.win_condition = data['win_condition']
+            race_class.rank_settings = None
+        if 'rank_settings' in data:
+            if data['rank_settings'] is None:
+                race_class.rank_settings = None
+            else:
+                src_settings = json.loads(race_class.rank_settings) if race_class.rank_settings else {}
+                dest_settings = data['rank_settings']
+                race_class.rank_settings = json.dumps({**src_settings, **dest_settings})
         if 'rounds' in data:
             race_class.rounds = data['rounds']
         if 'heat_advance' in data:
@@ -1746,7 +1755,9 @@ class RHData():
             if len(race_list):
                 self._racecontext.pagecache.set_valid(False)
 
-        if 'class_format' in data or 'win_condition' in data:
+        if 'class_format' in data or \
+           'win_condition' in data or \
+           'rank_settings' in data:
             if len(race_list):
                 self._racecontext.pagecache.set_valid(False)
                 self.clear_results_event()
@@ -1862,7 +1873,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Class {} ranking'.format(race_class.id))
-        build = Results.calc_class_ranking_leaderboard(self, class_id=race_class.id)
+        build = Results.calc_class_ranking_leaderboard(self._racecontext, class_id=race_class.id)
         self.set_ranking_raceClass(race_class, token, build)
         return build
 

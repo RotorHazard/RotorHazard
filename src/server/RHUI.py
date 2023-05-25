@@ -534,6 +534,7 @@ class RHUI():
             current_class['description'] = race_class.description
             current_class['format'] = race_class.format_id
             current_class['win_condition'] = race_class.win_condition
+            current_class['ranksettings'] = json.loads(race_class.rank_settings) if race_class.rank_settings else None
             current_class['rounds'] = race_class.rounds
             current_class['heat_advance'] = race_class.heatAdvanceType
             current_class['order'] = race_class.order
@@ -962,6 +963,22 @@ class RHUI():
             })
 
         emit('heatgenerator_list', emit_payload)
+
+    def emit_raceclass_rank_method_list(self):
+        '''List Race Class Rank Methods'''
+
+        emit_payload = {
+            'methods': []
+        }
+
+        for name, method in self._racecontext.raceclass_rank_manager.methods.items():
+            emit_payload['methods'].append({
+                'name': name,
+                'label': method.label,
+                'settings': method.settings
+            })
+
+        emit('raceclass_rank_method_list', emit_payload)
 
 @dataclass
 class PilotAttribute():

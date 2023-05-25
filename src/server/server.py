@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.0.0-dev.6" # Public release version code
-SERVER_API = 39 # Server API version
+SERVER_API = 40 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -824,6 +824,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_exporter_list()
         elif load_type == 'heatgenerator_list':
             RaceContext.rhui.emit_heatgenerator_list()
+        elif load_type == 'raceclass_rank_method_list':
+            RaceContext.rhui.emit_raceclass_rank_method_list()
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -1206,7 +1208,10 @@ def on_alter_race_class(data):
     '''Update race class.'''
     race_class, altered_race_list = RaceContext.rhdata.alter_raceClass(data)
 
-    if ('class_format' in data or 'class_name' in data or 'win_condition' in data) and len(altered_race_list):
+    if ('class_format' in data or \
+        'class_name' in data or \
+        'win_condition' in data or \
+        'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.displayname())
         RaceContext.rhui.emit_priority_message(message, False)
@@ -4391,6 +4396,9 @@ RaceContext.export_manager = DataExportManager(RaceContext, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
+
+# leaderboard ranking
+RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

@@ -22,6 +22,7 @@
 		'backups_list',
 		'exporter_list',
 		'heatgenerator_list',
+		'raceclass_rank_method_list',
 	];
 
 	var heat_to_unlock = null;
@@ -220,7 +221,8 @@
 			if (typeof rotorhazard.event.classes != "undefined" &&
 				typeof rotorhazard.event.heats != "undefined" &&
 				typeof rotorhazard.event.pilots != "undefined" &&
-				typeof rotorhazard.event.race_formats != "undefined") {
+				typeof rotorhazard.event.race_formats != "undefined" &&
+				typeof rotorhazard.raceclass_rank_methods != "undefined") {
 				$(".race_classes").empty();
 
 				var classlist = $('<ol>');
@@ -276,21 +278,36 @@
 						var field = $('<div class="field field-ranking">');
 						field.append('<label for="class_win_condition_' + race_class.id + '">' + __('Ranking') + '</label>');
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-						selectbox.append('<option value="0">' + __('From Race Format') + '</option>');
+						selectbox.append('<option value="">' + __('From Race Format') + '</option>');
+						for (var j in rotorhazard.raceclass_rank_methods) {
+							selectbox.append('<option value="' + rotorhazard.raceclass_rank_methods[j].name +'">' + rotorhazard.raceclass_rank_methods[j].label + '</option>');
+						}
 						/*
 						selectbox.append('<option value="1">Laps/Time</option>');
 						selectbox.append('<option value="2">Fastest Lap</option>');
 						selectbox.append('<option value="3">Fastest Consecutive</option>');
-						*/
 						selectbox.append('<option value="4">Best Round (Laps/Time)</option>');
 						selectbox.append('<option value="5">Best 2 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="6">Best 3 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="7">Best 4 Rounds (Laps/Time)</option>');
 						selectbox.append('<option value="8">Best 5 Rounds (Laps/Time)</option>');
-						
+						*/
 						selectbox.val(race_class.win_condition);
 						selectbox.prop('disabled', locked);
 						field.append(selectbox);
+
+						var settingsbtn = $('<button class="open-ranking-params" data-class_id="' + race_class.id + '" title="' + __('Ranking Settings') + '">' + svg_asset.gear + '</button>');
+						settingsbtn.prop('disabled', locked);
+
+						var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
+
+						if (rank_method && rank_method.settings) {
+							settingsbtn.prop('hidden', false);
+						} else {
+							settingsbtn.prop('hidden', true);
+						}
+
+						field.append(settingsbtn)
 						el.append(field);
 
 						var field = $('<div class="field field-rounds">');
@@ -363,6 +380,72 @@
 			freq.updateBlocks();
 		}
 
+		$(document).on('click', '.open-ranking-params', function(){
+			var race_class_id = $(this).data('class_id');
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
+			var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
+
+			if (race_class && rank_method) {
+				var param_panel = $('#parameters > .popup-content');
+				param_panel.empty();
+				var param_form = $('<ol class="form">');
+
+				for (var f_idx in rank_method.settings) {
+					settings = rank_method.settings[f_idx];
+
+					settings.wrapperEl = 'li';
+					settings.data = {
+						type: 'rankmethod',
+						field: settings.id,
+						class_id: race_class_id,
+						method: rank_method,
+					}
+
+					if (race_class.ranksettings && race_class.ranksettings[settings.id]) {
+						settings.value = race_class.ranksettings[settings.id];
+					}
+
+					var field = rhui.buildField(settings);
+
+					param_form.append(field);
+				}
+
+				param_panel.append(param_form);
+
+				/*param_panel.append($('<div class="control-set"><button class="mfp-close">' + __('Close') + '</button></div>'));*/
+
+				$.magnificPopup.open({
+					items: {
+	    				src: '#parameters'
+	  				},
+	  				type: 'inline'
+	  			});
+			}
+		});
+
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
+			var field = $(this).data('field');
+			var value = $(this).val();
+			if ($(this).data('type') == 'rankmethod') {
+				var race_class_id = $(this).data('class_id');
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
+
+				if (race_class) {
+					var data = {
+						class_id: race_class_id,
+						rank_settings: {}
+					};
+					data.rank_settings[field] = value;
+					socket.emit('alter_race_class', data);
+
+					if (!race_class.ranksettings) {
+						race_class.ranksettings = {};
+					}
+					race_class.ranksettings[field] = value;
+				}
+			}
+		});
+
 		$(document).on("change", '.set_race_class_name', function (event) {
 			var data = {
 				class_id: parseInt($(this).data('class_id')),
@@ -406,13 +489,23 @@
 		$(document).on("change", '.set_race_class_win_condition', function (event) {
 			var data = {
 				class_id: parseInt($(this).data('class_id')),
-				win_condition: parseInt($(this).val()),
+				win_condition: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
 
 			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
 			if (race_class) {
 				race_class.win_condition = data.win_condition;
+
+				settingsbtn = $(this).siblings('.open-ranking-params');
+
+				var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
+
+				if (rank_method && rank_method.settings) {
+					settingsbtn.prop('hidden', false);
+				} else {
+					settingsbtn.prop('hidden', true);
+				}
 			}
 		});
 
@@ -488,6 +581,11 @@
 				class: parseInt($(this).data('id')),
 			};
 			socket.emit('add_heat', data);
+		});
+
+		socket.on('raceclass_rank_method_list', function (msg) {
+			rotorhazard.raceclass_rank_methods = msg.methods;
+			display_classes();
 		});
 
 		/* Heats */
@@ -1039,17 +1137,6 @@
 				heat: parseInt($(this).data('id')),
 			};
 			socket.emit('duplicate_heat', data);
-		});
-
-		$('button#generate_heats').click(function (event) {
-			var data = {
-				input_class: parseInt($('#generator_input_class').val()),
-				output_class: parseInt($('#generator_output_class').val()),
-				suffix: $('#generator_suffix').val(),
-				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
-			};
-			$('button#generate_heats').prop('disabled', true);
-			socket.emit('generate_heats', data);
 		});
 
 		/* Pilots */
@@ -1724,7 +1811,6 @@
 			for (var f in selected_generator.settings) {
 				params[selected_generator.settings[f].id] = selected_generator.settings[f].value;
 			}
-
 			var data = {
 				input_class: parseInt($('#generator_input_class').val()),
 				output_class: parseInt($('#generator_output_class').val()),
@@ -1746,7 +1832,7 @@
 
 				settings.wrapperEl = 'li';
 				settings.data = {
-					type: 'heatgenerator', // ***
+					type: 'heatgenerator',
 					field: settings.id,
 				}
 				var field = rhui.buildField(settings);
@@ -1769,10 +1855,12 @@
 		$(document).on('change', '#parameters input,#parameters select', function (event) {
 			var field = $(this).data('field');
 			var value = $(this).val();
-			var field_data = selected_generator.settings.find(obj => {return obj.id == field});
+			if ($(this).data('type') == 'heatgenerator') {
+				var field_data = selected_generator.settings.find(obj => {return obj.id == field});
 
-			if (field_data) {
-				field_data.value = value;
+				if (field_data) {
+					field_data.value = value;
+				}
 			}
 		});
 
