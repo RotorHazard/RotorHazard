@@ -39,6 +39,30 @@
 	<script type="text/javascript" src="/static/rh-ui.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 	<script type="text/javascript" src="/static/svgasset.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
+	<script type="text/javascript" charset="utf-8">
+		$(document).ready(function () {
+			socket.on('environmental_data', function (msg) {
+				env_footer_html = '';
+				for (i=0; i<msg.length; i++) {
+					var sensor = msg[i];
+					var name = Object.keys(sensor)[0];
+					var data = sensor[name];
+					for (var reading in data) {
+						var value = data[reading].value;
+						var units = data[reading].units;
+						if (reading == 'voltage' && name == 'Battery') {
+							env_footer_html += __('Voltage: ') + Number(value).toFixed(2) + units + '<br/>';
+						} else if(reading == 'temperature' && name == 'Core') {
+							env_footer_html += __('Temperature: ') + Number(value).toFixed(1) + units + '<br/>';
+						}
+					}
+				}
+				if (env_footer_html) {
+					$('#env-data-footer').html(env_footer_html);
+				}
+			});
+		});
+	</script>
 
 	<!-- CSS -->
 	<link rel="stylesheet" href="/static/magnific-1.1.0/magnific-popup.css"></link>
@@ -107,6 +131,7 @@
 	{% block content %}{% endblock %}
 
 	<footer>
+		<div id="env-data-footer"></div>
 		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
 	</footer>
 
