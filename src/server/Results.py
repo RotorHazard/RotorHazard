@@ -843,7 +843,10 @@ def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
 
     if race_class:
         args = json.loads(race_class.rank_settings) if race_class.rank_settings else None 
-        return racecontext.raceclass_rank_manager.rank(race_class.win_condition, race_class, args)
+        if race_class.win_condition in racecontext.raceclass_rank_manager.methods:
+            return racecontext.raceclass_rank_manager.rank(race_class.win_condition, race_class, args)
+        else:
+            logger.warning("{} uses unsupported ranking method: {}".format(race_class.displayname(), race_class.win_condition))
 
     return False
 
