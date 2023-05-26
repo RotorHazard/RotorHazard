@@ -3381,6 +3381,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
 
                     lap_ok_flag = True
                     lap_late_flag = False
+                    pilot_done_flag = False
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
@@ -3408,10 +3409,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             RaceContext.race.set_node_finished_flag(node.index)
                             if not node_finished_flag:
                                 logger.info('Pilot {} done'.format(pilot_obj.callsign if pilot_obj else node.index))
-                                Events.trigger(Evt.RACE_PILOT_DONE, {
-                                    'node_index': node.index,
-                                    'color': RaceContext.race.seat_colors[node.index],
-                                    })
+                                pilot_done_flag = True
 
                         if node_finished_flag:
                             lap_late_flag = True  # "late" lap pass (after grace lap)
@@ -3470,6 +3468,13 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             'results': RaceContext.race.get_results(),
                             'gap_info': Results.get_gap_info(RaceContext, node.index)
                             })
+
+                        if pilot_done_flag:
+                            Events.trigger(Evt.RACE_PILOT_DONE, {
+                                'node_index': node.index,
+                                'color': RaceContext.race.seat_colors[node.index],
+                                'results': RaceContext.race.get_results(),
+                                })
 
                         RaceContext.rhui.emit_current_laps() # update all laps on the race page
                         RaceContext.rhui.emit_current_leaderboard() # generate and update leaderboard
