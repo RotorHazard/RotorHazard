@@ -43,5 +43,30 @@ class RHAPI():
         return self._racecontext.rhui.add_blueprint(blueprint)
 
     # emit frontend messages
+    def emit_phonetic_text(self, text):
+        self._racecontext.rhui.emit_phonetic_text(text)
+
     def emit_priority_message(self, message, interrupt=False):
         self._racecontext.rhui.emit_priority_message(message, interrupt)
+
+    #
+    # RHData
+    #
+
+    def get_pilot(self, pilot_id):
+        return self._racecontext.rhdata.get_pilot(pilot_id)
+
+    def get_heat(self, heat_id):
+        return self._racecontext.rhdata.get_heat(heat_id)
+
+    #
+    # Race
+    #
+
+    @property
+    def race_pilots(self):
+        return self._racecontext.race.node_pilots
+
+    @property
+    def race_heat(self):
+        return self._racecontext.race.current_heat

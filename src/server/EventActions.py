@@ -40,7 +40,7 @@ class EventActions:
     def doActions(self, args):
         for action in self.eventActionsList:
             if action['event'] == args['_eventName']:
-                self.effects[action['effect']].effectFn(action, args)
+                self.effects[action['effect']].runAction(action, args)
                 self.logger.debug("Calling effect '{}' with {}".format(action, args))
 
 class ActionEffect():
@@ -50,107 +50,7 @@ class ActionEffect():
         self.effectFn = effectFn
         self.fields = fields
 
-def initializeEventActions(Events, RaceContext, logger):
-    eventActionsObj = None
-    try:
-        eventActionsObj = EventActions(Events, RaceContext)
+    @catchLogExceptionsWrapper
+    def runAction(self, action, args):
+        self.effectFn(action, args)
 
-        #register built-in effects
-        @catchLogExceptionsWrapper
-        def speakEffect(action, args):
-            if 'text' in action:
-                text = action['text']
-                if 'node_index' in args:
-                    pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
-                    text = text.replace('%PILOT%', pilot.spokenName())
-    
-                if 'heat_id' in args:
-                    heat = RaceContext.rhdata.get_heat(args['heat_id'])
-                else:
-                    heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-    
-                text = text.replace('%HEAT%', heat.displayname())
-    
-                RaceContext.rhui.emit_phonetic_text(text)
-
-        @catchLogExceptionsWrapper
-        def messageEffect(action, args):
-            if 'text' in action:
-                text = action['text']
-                if 'node_index' in args:
-                    pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
-                    text = text.replace('%PILOT%', pilot.callsign)
-    
-                if 'heat_id' in args:
-                    heat = RaceContext.rhdata.get_heat(args['heat_id'])
-                else:
-                    heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-    
-                text = text.replace('%HEAT%', heat.displayname())
-    
-                RaceContext.rhui.emit_priority_message(text)
-
-        @catchLogExceptionsWrapper
-        def alertEffect(action, args):
-            if 'text' in action:
-                text = action['text']
-                if 'node_index' in args:
-                    pilot = RaceContext.rhdata.get_pilot(RaceContext.race.node_pilots[args['node_index']])
-                    text = text.replace('%PILOT%', pilot.callsign)
-    
-                if 'heat_id' in args:
-                    heat = RaceContext.rhdata.get_heat(args['heat_id'])
-                else:
-                    heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-    
-                text = text.replace('%HEAT%', heat.displayname())
-    
-                RaceContext.rhui.emit_priority_message(text, True)
-
-        eventActionsObj.registerEffect(
-            ActionEffect(
-                'speak', 
-                'Speak',
-                speakEffect, 
-                [
-                    {
-                        'id': 'text',
-                        'name': 'Callout Text',
-                        'type': 'text',
-                    }
-                ]
-            )
-        )
-        eventActionsObj.registerEffect(
-            ActionEffect(
-                'message',
-                'Message',
-                messageEffect,
-                [
-                    {
-                        'id': 'text',
-                        'name': 'Message Text',
-                        'type': 'text',
-                    }
-                ]
-            )
-        )
-        eventActionsObj.registerEffect(
-            ActionEffect(
-                'alert',
-                'Alert',
-                 alertEffect,
-                [
-                    {
-                        'id': 'text',
-                        'name': 'Alert Text',
-                        'type': 'text',
-                    }
-                ]
-            )
-        )
-
-    except Exception:
-        logger.exception("Error loading EventActions")
-
-    return eventActionsObj

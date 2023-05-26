@@ -4451,7 +4451,7 @@ gevent.spawn(clock_check_thread_function)  # start thread to monitor system cloc
 APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, serverInfo))
 
 #register event actions
-EventActionsObj = EventActions.initializeEventActions(Events, RaceContext, logger)
+EventActionsObj = EventActions.EventActions(Events, RaceContext)
 
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
