@@ -760,9 +760,9 @@ def on_cluster_message_ack(data):
 @SOCKET_IO.on('dispatch_event')
 def dispatch_event(evtArgs):
     '''Dispatch generic event.'''
-    Events.trigger(Evt.USER_DISPATCH, evtArgs)
+    Events.trigger(Evt.UI_DISPATCH, evtArgs)
 
-Events.on(Evt.USER_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
+Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
 @SOCKET_IO.on('load_data')
 @catchLogExceptionsWrapper
