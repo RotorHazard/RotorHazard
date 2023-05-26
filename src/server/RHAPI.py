@@ -27,6 +27,10 @@ class RHAPI():
     def register_general_setting(self, name, label, panel=None, fieldtype="text", order=0):
         return self._racecontext.rhui.register_general_setting(name, label, panel, fieldtype, order)
 
+    # Quick button
+    def register_quickbutton(self, panel, name, label, function):
+        return self._racecontext.rhui.register_quickbutton(panel, name, label, function)
+
     @property
     def general_settings(self):
         return self._racecontext.rhui.general_settings

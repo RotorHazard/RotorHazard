@@ -100,5 +100,27 @@ var rhui = {
 		}
 
 		return wrapper
+	},
+	buildQuickbuttons: function(btn_list) {
+		var btn_list_el = $('<div class="control-set">');
+		for (var idx in btn_list) {
+			btn_el = $('<button>')
+				.addClass('quickbutton')
+				.text(btn_list[idx].label)
+				.data('btn_id', btn_list[idx].name)
+
+			btn_list_el.append(btn_el)
+		}
+		return btn_list_el
 	}
 }
+
+$(document).ready(function () {
+	$(document).on('click', '.quickbutton', function (event) {
+		var data = {
+			id: $(this).data('btn_id'),
+			namespace: 'quickbutton'
+		};
+		socket.emit('dispatch_event', data);
+	});
+});

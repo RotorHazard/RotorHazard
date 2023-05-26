@@ -134,7 +134,7 @@
 				var panel_content_el = $('<div class="panel-content">');
 				panel_content_el.hide();
 
-				var form_el = $('<ol>');
+				var form_el = $('<ol class="form">');
 
 				for (var f_idx in panel.settings) {
 					settings = panel.settings[f_idx];
@@ -148,10 +148,14 @@
 
 					var field = rhui.buildField(settings);
 
-					panel_content_el.append(field);
+					form_el.append(field);
 				}
+				panel_content_el.append(form_el);
+				panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
+
 				panel_el.append(panel_header_el);
 				panel_el.append(panel_content_el);
+
 				$('#custom-ui').append(panel_el);
 			}
 		});

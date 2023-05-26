@@ -30,10 +30,11 @@ class RHUI():
         self._pilot_attributes = []
         self._ui_panels = []
         self._general_settings = []
+        self._quickbuttons = []
 
     # Pilot Attributes
     def register_pilot_attribute(self, name, label, fieldtype="text"):
-        if any(x.name == name for x in self._pilot_attributes):
+        if not any(x.name == name for x in self._pilot_attributes):
             self._pilot_attributes.append(PilotAttribute(name, label, fieldtype))
             return self._pilot_attributes
 
@@ -43,7 +44,7 @@ class RHUI():
 
     # UI Panels
     def register_ui_panel(self, name, label, page, order=0):
-        if any(x.name == name for x in self._ui_panels):
+        if not any(x.name == name for x in self._ui_panels):
             self._ui_panels.append(UIPanel(name, label, page, order))
             return self.ui_panels
 
@@ -53,7 +54,7 @@ class RHUI():
 
     # General Settings
     def register_general_setting(self, name, label, panel=None, fieldtype="text", order=0):
-        if any(x.name == name for x in self._general_settings):
+        if not any(x.name == name for x in self._general_settings):
             self._general_settings.append(GeneralSetting(name, label, panel, fieldtype, order))
             return self._general_settings
 
@@ -61,12 +62,33 @@ class RHUI():
     def general_settings(self):
         return self._general_settings
 
+    # button
+    def register_quickbutton(self, panel, name, label, fn):
+        self._quickbuttons.append(QuickButton(panel, name, label, fn))
+        return self._quickbuttons
+
     def get_panel_settings(self, name):
         payload = []
         for setting in self.general_settings:
             if setting.panel == name:
                 payload.append(setting)
+
         return payload
+
+    def get_panel_quickbuttons(self, name):
+        payload = []
+        for btn in self._quickbuttons:
+            if btn.panel == name:
+                payload.append(btn)
+
+        return payload
+
+    def dispatch_quickbuttons(self, args):
+        if 'namespace' in args and args['namespace'] == 'quickbutton':
+            for btn in self._quickbuttons:
+                if btn.name == args['id']:
+                    btn.fn()
+                    return
 
     # Blueprints
     def add_blueprint(self, blueprint):
@@ -97,13 +119,21 @@ class RHUI():
                         'value': self._racecontext.rhdata.get_option(setting.name, None)
                     })
 
+                buttons = []
+                for button in self.get_panel_quickbuttons(panel.name):
+                    buttons.append({
+                        'name': button.name,
+                        'label': button.label,
+                    })
+
                 emit_payload.append({
                     'panel': {
                         'name': panel.name,
                         'label': panel.label,
                         'order': panel.order,
                     },
-                    'settings': settings
+                    'settings': settings,
+                    'quickbuttons': buttons
                 })
 
         if ('nobroadcast' in params):
@@ -1020,3 +1050,10 @@ class GeneralSetting():
     panel: str = None
     fieldtype: str = "text"
     order: int = 0
+
+@dataclass
+class QuickButton():
+    panel: str
+    name: str
+    label: str
+    fn: callable

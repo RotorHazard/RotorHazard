@@ -744,7 +744,6 @@ def on_cluster_event_trigger(data):
     elif 'effect' in evtArgs and RaceContext.led_manager.isEnabled():
         RaceContext.led_manager.setEventEffect(Evt.LED_MANUAL, evtArgs['effect'])
 
-
 @SOCKET_IO.on('cluster_message_ack')
 @catchLogExceptionsWrapper
 def on_cluster_message_ack(data):
@@ -757,6 +756,13 @@ def on_cluster_message_ack(data):
         logger.warning("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
 
 # RotorHazard events
+
+@SOCKET_IO.on('dispatch_event')
+def dispatch_event(evtArgs):
+    '''Dispatch generic event.'''
+    Events.trigger(Evt.USER_DISPATCH, evtArgs)
+
+Events.on(Evt.USER_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
 @SOCKET_IO.on('load_data')
 @catchLogExceptionsWrapper

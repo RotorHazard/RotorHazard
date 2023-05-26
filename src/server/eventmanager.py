@@ -99,6 +99,7 @@ class EventManager:
 class Evt:
     # Special
     ALL = 'all'
+    USER_DISPATCH = 'dispatch'
     # Program
     STARTUP = 'startup'
     SHUTDOWN = 'shutdown'
