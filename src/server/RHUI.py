@@ -695,7 +695,7 @@ class RHUI():
             heat_class = heat_data.class_id
 
             for heatNode in self._racecontext.rhdata.get_heatNodes_by_heat(self._racecontext.race.current_heat):
-                if heatNode.node_index is not None:
+                if heatNode.node_index is not None and heatNode.node_index < len(heatNode_data):
                     heatNode_data[heatNode.node_index]['pilot_id'] = heatNode.pilot_id
                     heatNode_data[heatNode.node_index]['heatNodeColor'] = heatNode.color
 
