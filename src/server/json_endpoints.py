@@ -153,7 +153,7 @@ def createBlueprint(RaceContext, serverInfo):
 
         payload = {
             "raw_laps": RaceContext.race.node_laps,
-            "leaderboard": results['data']
+            "leaderboard": results
         }
 
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
