@@ -6,10 +6,10 @@ Werkzeug==1.0.*
 MarkupSafe==1.1.*
 
 # Socket
-Flask_SocketIO==4.2.*
-python-engineio==3.11.*
-python-socketio==4.4.*
-websocket-client==0.57.*
+Flask-SocketIO==5.3.*
+python-socketio==5.8.*
+python-engineio==4.4.*
+websocket-client==1.5.*
 six==1.14.*
 
 # Database
@@ -26,7 +26,7 @@ cffi==1.14.*
 monotonic==1.5.*
 pyserial==3.4.*
 paho-mqtt==1.5.*
-requests==2.25.*
+requests==2.30.*
 
 # Pi IO
 smbus2==0.4.*

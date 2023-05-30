@@ -604,7 +604,7 @@ def stop_background_threads():
 
 @SOCKET_IO.on('connect')
 @catchLogExceptionsWrapper
-def connect_handler():
+def connect_handler(auth):
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
