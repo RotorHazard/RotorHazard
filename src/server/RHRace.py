@@ -65,6 +65,10 @@ class RHRace():
         '''
 
     def schedule(self, s, m=0):
+        if self.race_status != RaceStatus.READY:
+            logger.warning("Ignoring request to schedule race: Status not READY")
+            return
+            
         if s or m:
             self.scheduled = True
             self.scheduled_time = monotonic() + (int(m) * 60) + int(s)
@@ -74,6 +78,8 @@ class RHRace():
                 })
 
             self._racecontext.rhui.emit_priority_message(self.__("Next race begins in {0:01d}:{1:02d}".format(int(m), int(s))), True)
+
+            logger.info("Scheduling race in {0:01d}:{1:02d}".format(int(m), int(s)))
         else:
             self.scheduled = False
 
