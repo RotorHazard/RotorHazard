@@ -79,6 +79,7 @@ RaceContext = RaceContext.RaceContext()
 from eventmanager import Evt, EventManager
 
 Events = EventManager(RaceContext)
+RaceContext.events = Events
 EventActionsObj = None
 
 # LED imports
@@ -175,7 +176,6 @@ server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 
-RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 SECONDARY_RACE_FORMAT = None
 RaceContext.rhdata = RHData.RHData(Database, Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 
@@ -184,6 +184,8 @@ RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing p
 RaceContext.language = Language.Language(RaceContext.rhdata) # initialize language
 __ = RaceContext.language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
+
+RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
@@ -1960,33 +1962,12 @@ def on_use_led_effect(data):
 @SOCKET_IO.on('schedule_race')
 @catchLogExceptionsWrapper
 def on_schedule_race(data):
-    RaceContext.race.scheduled_time = monotonic() + (data['m'] * 60) + data['s']
-    RaceContext.race.scheduled = True
-
-    Events.trigger(Evt.RACE_SCHEDULE, {
-        'scheduled_at': RaceContext.race.scheduled_time
-        })
-
-    SOCKET_IO.emit('race_scheduled', {
-        'scheduled': RaceContext.race.scheduled,
-        'scheduled_at': RaceContext.race.scheduled_time
-        })
-
-    RaceContext.rhui.emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
+    RaceContext.race.schedule(data['s'], data['m'])
 
 @SOCKET_IO.on('cancel_schedule_race')
 @catchLogExceptionsWrapper
 def cancel_schedule_race():
-    RaceContext.race.scheduled = False
-
-    Events.trigger(Evt.RACE_SCHEDULE_CANCEL)
-
-    SOCKET_IO.emit('race_scheduled', {
-        'scheduled': RaceContext.race.scheduled,
-        'scheduled_at': RaceContext.race.scheduled_time
-        })
-
-    RaceContext.rhui.emit_priority_message(__("Scheduled race cancelled"), False)
+    RaceContext.race.schedule(None)
 
 @SOCKET_IO.on('get_pi_time')
 @catchLogExceptionsWrapper

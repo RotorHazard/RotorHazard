@@ -5,6 +5,7 @@ import json
 import RHUtils
 import Results
 from monotonic import monotonic
+from eventmanager import Evt
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class RHRace():
     def __init__(self, RaceContext):
         # internal references
         self._racecontext = RaceContext
+        self.__ = self._racecontext.language.__
         # setup/options
         self.num_nodes = 0
         self.current_heat = 1 # heat ID
@@ -61,6 +63,25 @@ class RHRace():
             source
             deleted
         '''
+
+    def schedule(self, s, m=0):
+        if s or m:
+            self.scheduled = True
+            self.scheduled_time = monotonic() + (int(m) * 60) + int(s)
+
+            self._racecontext.events.trigger(Evt.RACE_SCHEDULE, {
+                'scheduled_at': self.scheduled_time
+                })
+
+            self._racecontext.rhui.emit_priority_message(self.__("Next race begins in {0:01d}:{1:02d}".format(int(m), int(s))), True)
+        else:
+            self.scheduled = False
+
+            self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL)
+
+            self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
+
+        self._racecontext.rhui.emit_race_schedule()
 
     def init_node_finished_flags(self, heatNodes):
         self.node_has_finished = {}

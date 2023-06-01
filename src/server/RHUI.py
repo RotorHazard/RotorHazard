@@ -165,6 +165,12 @@ class RHUI():
 
             self._socket.emit('priority_message', emit_payload)
 
+    def emit_race_schedule(self):
+        self._socket.emit('race_scheduled', {
+            'scheduled': self._racecontext.race.scheduled,
+            'scheduled_at': self._racecontext.race.scheduled_time
+            })
+
     def emit_race_status(self, **params):
         '''Emits race status.'''
         race_format = self._racecontext.race.format

@@ -84,6 +84,12 @@ class ActionsBuiltin():
 
             self._RHAPI.emit_priority_message(text, True)
 
+    def scheduleEffect(self, action, args):
+        if 'sec' in action:
+            if 'min' in action:
+                self._RHAPI.race_schedule(action['sec'], action['min'])
+            else:
+                self._RHAPI.race_schedule(action['sec'])
 
 actions = None
 
@@ -136,6 +142,23 @@ def discover():
                     'id': 'text',
                     'name': 'Alert Text',
                     'type': 'text',
+                }
+            ]
+        ),
+        ActionEffect(
+            'schedule',
+            'Schedule Race',
+            actions.scheduleEffect,
+            [
+                {
+                    'id': 'sec',
+                    'name': 'Seconds',
+                    'type': 'basic_int',
+                },
+                {
+                    'id': 'min',
+                    'name': 'Minutes',
+                    'type': 'basic_int',
                 }
             ]
         )
