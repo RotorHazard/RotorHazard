@@ -43,8 +43,7 @@ def discover(*_args, **_kwargs):
             'position_basic',
             'Position',
             points_by_position,
-            {
-            },
+            None,
             [
                 {
                     'id': 'points_list',

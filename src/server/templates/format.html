@@ -431,7 +431,13 @@
 
 		$(document).on('change', '#parameters input,#parameters select', function (event) {
 			var field = $(this).data('field');
-			var value = $(this).val();
+
+			if ($(this).attr('type') == 'checkbox') {
+				var value = $(this).prop('checked');
+			} else {
+				var value = $(this).val();
+			}
+
 			if ($(this).data('type') == 'rankmethod') {
 				var race_class_id = $(this).data('class_id');
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});

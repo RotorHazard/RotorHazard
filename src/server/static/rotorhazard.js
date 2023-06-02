@@ -1651,7 +1651,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		meta.primary_leaderboard = null;
 	}
 
-	if (display_type == 'heat' || display_type == 'round') {
+	if (display_type == 'round') {
 		var show_points = true;
 	} else {
 		var show_points = false;
