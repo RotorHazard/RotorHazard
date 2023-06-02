@@ -1310,7 +1310,7 @@ class RHData():
 
                             ranking = self.get_ranking_raceClass(seed_class)
                             if ranking: # manual ranking
-                                positions = ranking
+                                positions = ranking['ranking']
                             else: # auto ranking
                                 results = self.get_results_raceClass(seed_class)
                                 if results:

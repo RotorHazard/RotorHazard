@@ -1865,6 +1865,47 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 	twrap.append(table);
 	return twrap;
 }
+function build_ranking(ranking) {
+	var leaderboard = ranking.ranking;
+	var meta = ranking.meta;
+
+	var twrap = $('<div class="responsive-wrap">');
+	var table = $('<table class="leaderboard">');
+	var header = $('<thead>');
+	var header_row = $('<tr>');
+	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
+	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
+	if ('team_racing_mode' in meta && meta.team_racing_mode) {
+		header_row.append('<th class="team">' + __('Team') + '</th>');
+	}
+	for (var f in meta.rank_fields) {
+		field = meta.rank_fields[f];
+		header_row.append('<th class="' + field.name + '">' + __(field.label) + '</th>');
+	}
+	header.append(header_row);
+	table.append(header);
+
+	var body = $('<tbody>');
+
+	for (var i in leaderboard) {
+		var row = $('<tr>');
+
+		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
+		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
+		if ('team_racing_mode' in meta && meta.team_racing_mode) {
+			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
+		}
+		for (var f in meta.rank_fields) {
+			field = meta.rank_fields[f];
+			row.append('<td class="' + field.name + '">' + leaderboard[i][field.name] + '</td>');
+		}
+		body.append(row);
+	}
+
+	table.append(body);
+	twrap.append(table);
+	return twrap;
+}
 /* Frequency Table */
 var freq = {
 	frequencies: {
