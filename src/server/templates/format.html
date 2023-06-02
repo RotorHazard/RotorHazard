@@ -24,6 +24,7 @@
 		'importer_list',
 		'heatgenerator_list',
 		'raceclass_rank_method_list',
+		'race_points_method_list'
 	];
 
 	var heat_to_unlock = null;
@@ -1340,61 +1341,79 @@
 			display_unclassified_heats();
 		});
 
+		socket.on('race_points_method_list', function (msg) {
+			rotorhazard.race_points_methods = msg.methods;
+			update_race_formats();
+		});
+
 		function update_race_formats() {
-			if (rotorhazard.event.race_formats) {
+			if (rotorhazard.event.race_formats && rotorhazard.race_points_methods) {
 				$('#set_race_format').empty();
 				for (var i = 0; i < rotorhazard.event.race_formats.length; i++) {
-					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>')
+					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>');
 				}
 				$('#set_race_format').val($('#set_race_format option:last').val());
+
+				$('#set_points_method').empty();
+				$('#set_points_method').append('<option value="">' + __("None") + '</option>');
+				for (var i = 0; i < rotorhazard.race_points_methods.length; i++) {
+					$('#set_points_method').append('<option value="' + rotorhazard.race_points_methods[i].name +'">' + rotorhazard.race_points_methods[i].label + '</option>');
+				}
+				$('#set_points_params').html(svg_asset.gear);
+
 				display_format();
 			}
 		}
 
 		function display_format() {
-			if (rotorhazard.event.race_formats) {
+			if (rotorhazard.event.race_formats && rotorhazard.event.race_status) {
 				var format_id = parseInt($('#set_race_format').val());
 				var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
-				var locked = rf.locked;
+				if (rf) {
+					var locked = rf.locked;
 
-				if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
-					locked = true;
-					$('#unlock_race_format_button').prop('disabled', true);
-					$('#delete_race_format_button').prop('disabled', true);
-					$('#current_race_format_lock').show();
-				} else {
-					$('#unlock_race_format_button').prop('disabled', false);
-					$('#delete_race_format_button').prop('disabled', false);
-					$('#current_race_format_lock').hide();
+					if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_format_id == format_id) {
+						locked = true;
+						$('#unlock_race_format_button').prop('disabled', true);
+						$('#delete_race_format_button').prop('disabled', true);
+						$('#current_race_format_lock').show();
+					} else {
+						$('#unlock_race_format_button').prop('disabled', false);
+						$('#delete_race_format_button').prop('disabled', false);
+						$('#current_race_format_lock').hide();
+					}
+
+					$('#unlock_race_format_button').toggle(locked);
+					$('#delete_race_format_button').prop('disabled', locked);
+					$('#set_format_name').val(rf.name);
+					$('#set_race_mode').val(rf.race_mode);
+					$('#set_race_mode').prop('disabled', locked);
+					$('#set_fix_race_time').val(rf.race_time_sec);
+					$('#set_fix_race_time').prop('disabled', locked);
+					$('#set_lap_grace_time').val(rf.lap_grace_sec);
+					$('#set_lap_grace_time').prop('disabled', locked);
+					$('#set_staging_fixed_tones').val(rf.staging_fixed_tones);
+					$('#set_staging_fixed_tones').prop('disabled', locked);
+					$('#set_staging_tones').val(rf.staging_tones);
+					$('#set_staging_tones').prop('disabled', locked);
+					$('#set_start_delay_min').val(rf.start_delay_min / 1000); // convert from ms
+					$('#set_start_delay_min').prop('disabled', locked);
+					$('#set_start_delay_max').val(rf.start_delay_max / 1000); // convert from ms
+					$('#set_start_delay_max').prop('disabled', locked);
+					$('#set_start_behavior').val(rf.start_behavior);
+					$('#set_start_behavior').prop('disabled', locked);
+					$('#set_win_condition').val(rf.win_condition);
+					$('#set_win_condition').prop('disabled', locked);
+					$('#set_number_laps_win').val(rf.number_laps_win);
+					$('#set_number_laps_win').prop('disabled', locked);
+					$('#set_points_method').val(rf.points_method);
+					$('#set_points_method').prop('disabled', locked);
+					$('#set_points_params').prop('disabled', locked);
+					$('#set_team_racing_mode').val(rf.team_racing_mode);
+					$('#set_team_racing_mode').prop('disabled', locked);
+
+					update_race_format_ui();
 				}
-
-				$('#unlock_race_format_button').toggle(locked);
-				$('#delete_race_format_button').prop('disabled', locked);
-				$('#set_format_name').val(rf.name);
-				$('#set_race_mode').val(rf.race_mode);
-				$('#set_race_mode').prop('disabled', locked);
-				$('#set_fix_race_time').val(rf.race_time_sec);
-				$('#set_fix_race_time').prop('disabled', locked);
-				$('#set_lap_grace_time').val(rf.lap_grace_sec);
-				$('#set_lap_grace_time').prop('disabled', locked);
-				$('#set_staging_fixed_tones').val(rf.staging_fixed_tones);
-				$('#set_staging_fixed_tones').prop('disabled', locked);
-				$('#set_staging_tones').val(rf.staging_tones);
-				$('#set_staging_tones').prop('disabled', locked);
-				$('#set_start_delay_min').val(rf.start_delay_min / 1000); // convert from ms
-				$('#set_start_delay_min').prop('disabled', locked);
-				$('#set_start_delay_max').val(rf.start_delay_max / 1000); // convert from ms
-				$('#set_start_delay_max').prop('disabled', locked);
-				$('#set_start_behavior').val(rf.start_behavior);
-				$('#set_start_behavior').prop('disabled', locked);
-				$('#set_win_condition').val(rf.win_condition);
-				$('#set_win_condition').prop('disabled', locked);
-				$('#set_number_laps_win').val(rf.number_laps_win);
-				$('#set_number_laps_win').prop('disabled', locked);
-				$('#set_team_racing_mode').val(rf.team_racing_mode);
-				$('#set_team_racing_mode').prop('disabled', locked);
-
-				update_race_format_ui();
 			}
 		}
 
@@ -1431,6 +1450,14 @@
 				$('#race_format_suggestions').html(output);
 			} else {
 				$('#race_format_suggestions').empty();
+			}
+
+			var points_method = rotorhazard.race_points_methods.find(obj => {return obj.name == rf.points_method});
+
+			if (points_method && points_method.settings) {
+				$('#set_points_params').prop('hidden', false);
+			} else {
+				$('#set_points_params').prop('hidden', true);
 			}
 		}
 
@@ -1630,6 +1657,95 @@
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 			rf.team_racing_mode = team_racing_mode;
 		})
+
+		$('#set_points_method').change(function (event) {
+			var format_id = parseInt($('#set_race_format').val());
+			var points_method = $(this).val();
+
+			if (!points_method) {
+				points_method = null;
+			}
+
+			var data = {
+				format_id: format_id,
+				points_method: points_method
+			};
+			socket.emit('alter_race_format', data);
+
+			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+			rf.points_method = points_method;
+			rf.points_settings = null;
+
+			update_race_format_ui();
+		});
+
+		$('#set_points_params').click(function(){
+			var format_id = parseInt($('#set_race_format').val());
+			var raceformat = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+
+			if (raceformat) {
+				var points_method = rotorhazard.race_points_methods.find(obj => {return obj.name == raceformat.points_method});
+
+				if (points_method) {
+					var param_panel = $('#parameters > .popup-content');
+					param_panel.empty();
+					var param_form = $('<ol class="form">');
+
+					for (var f_idx in points_method.settings) {
+						settings = points_method.settings[f_idx];
+
+						settings.wrapperEl = 'li';
+						settings.data = {
+							type: 'pointsmethod',
+							field: settings.id,
+						}
+
+						if (raceformat.points_settings && raceformat.points_settings[settings.id]) {
+							settings.value = raceformat.points_settings[settings.id];
+						} else if (!('value' in settings)) {
+							settings.value = null
+						}
+
+						var field = rhui.buildField(settings);
+
+						param_form.append(field);
+					}
+
+					param_panel.append(param_form);
+
+					$.magnificPopup.open({
+						items: {
+							src: '#parameters'
+						},
+						type: 'inline'
+					});
+				}
+
+			}
+		});
+
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
+			var field = $(this).data('field');
+			var value = $(this).val();
+			if ($(this).data('type') == 'pointsmethod') {
+				var format_id = parseInt($('#set_race_format').val());
+				var raceformat = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+
+				if (raceformat) {
+					var data = {
+						format_id: format_id,
+						points_settings: {}
+					};
+					data.points_settings[field] = value;
+					socket.emit('alter_race_format', data);
+
+					if (!raceformat.points_settings) {
+						raceformat.points_settings = {};
+					}
+					raceformat.points_settings[field] = value;
+				}
+			}
+		});
 
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
@@ -2314,6 +2430,15 @@
 					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
 				</div>
 				<input type="number" id="set_number_laps_win" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_points_method">{{ __('Points Assignment') }}</label>
+				</div>
+				<select id="set_points_method">
+					<option value="">{{ __('Loading...') }}</option>
+				</select>
+				<button id="set_points_params" hidden></button>
 			</li>
 			<li>
 				<div class="label-block">

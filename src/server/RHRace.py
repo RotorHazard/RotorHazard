@@ -422,7 +422,7 @@ class RHRace():
             logger.info('Preventing race format change: Race status not READY')
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
+    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior, points_method):
         self.name = name
         self.race_mode = race_mode  # 0 for count down, 1 for count up
         self.race_time_sec = race_time_sec
@@ -435,6 +435,7 @@ class RHRaceFormat():
         self.win_condition = win_condition
         self.team_racing_mode = team_racing_mode
         self.start_behavior = start_behavior
+        self.points_method = points_method
 
     @classmethod
     def copy(cls, race_format):
@@ -449,7 +450,8 @@ class RHRaceFormat():
                             number_laps_win=race_format.number_laps_win,
                             win_condition=race_format.win_condition,
                             team_racing_mode=race_format.team_racing_mode,
-                            start_behavior=race_format.start_behavior)
+                            start_behavior=race_format.start_behavior,
+                            points_method=race_format.points_method)
 
     @classmethod
     def isDbBased(cls, race_format):

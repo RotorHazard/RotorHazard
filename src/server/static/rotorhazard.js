@@ -1642,12 +1642,19 @@ jQuery(document).ready(function($){
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type, meta, display_starts=false) {
 	if (typeof(display_type) === 'undefined')
-		display_type = 'by_race_time';
+		var display_type = 'by_race_time';
 	if (typeof(meta) === 'undefined') {
-		meta = new Object;
+		var meta = new Object;
 		meta.team_racing_mode = false;
 		meta.start_behavior = 0;
 		meta.consecutives_count = 0;
+		meta.primary_leaderboard = null;
+	}
+
+	if (display_type == 'heat' || display_type == 'round') {
+		var show_points = true;
+	} else {
+		var show_points = false;
 	}
 
 	if (meta.start_behavior == 2) {
@@ -1687,6 +1694,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="consecutive">' + __('Consecutive') + '</th>');
+	}
+	if (show_points && 'primary_points' in meta) {
+		header_row.append('<th class="points">' + __('Points') + '</th>');
 	}
 	header.append(header_row);
 	table.append(header);
@@ -1778,7 +1788,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				row.append('<td class="consecutive">'+ lap +'</td>');
 			}
 		}
-
+		if (show_points && 'primary_points' in meta) {
+			row.append('<td class="points">' + leaderboard[i].points + '</td>');
+		}
 		body.append(row);
 	}
 
