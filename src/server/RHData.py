@@ -548,6 +548,7 @@ class RHData():
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS,
                         'team_racing_mode': False,
+                        'points_method': None
                     })
                 else:
                     self.reset_raceFormats()
@@ -1310,7 +1311,7 @@ class RHData():
 
                             ranking = self.get_ranking_raceClass(seed_class)
                             if ranking: # manual ranking
-                                positions = ranking
+                                positions = ranking['ranking']
                             else: # auto ranking
                                 results = self.get_results_raceClass(seed_class)
                                 if results:
@@ -1487,6 +1488,7 @@ class RHData():
         # cache rebuild
         logger.debug('Building Heat {} results'.format(heat.id))
         build = Results.calc_leaderboard(self, heat_id=heat.id)
+
         self.set_results_heat(heat, token, build)
         return build
 
@@ -1939,7 +1941,7 @@ class RHData():
                 logger.info('Ignoring ranking write; token mismatch {} / {}'.format(rankStatus['data_ver'], token))
                 return False
         else:
-            logger.error('Ignoring ranking writefor class {}: status is invalid'.format(race_class.id))
+            logger.error('Ignoring ranking write for class {}: status is invalid'.format(race_class.id))
             return False
 
     def clear_results_raceClass(self, raceClass_or_id, token=None):
@@ -2171,7 +2173,8 @@ class RHData():
             number_laps_win=0,
             win_condition=0,
             team_racing_mode=False,
-            start_behavior=0)
+            start_behavior=0,
+            points_method=None)
 
         if init:
             if 'format_name' in init:
@@ -2198,6 +2201,8 @@ class RHData():
                 race_format.number_laps_win = init['number_laps_win']
             if 'team_racing_mode' in init:
                 race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
+            if 'points_method' in init:
+                race_format.points_method = init['points_method']
 
         self._Database.DB.session.add(race_format)
         self.commit()
@@ -2226,7 +2231,8 @@ class RHData():
             number_laps_win=source_format.number_laps_win,
             win_condition=source_format.win_condition,
             team_racing_mode=source_format.team_racing_mode,
-            start_behavior=source_format.start_behavior)
+            start_behavior=source_format.start_behavior,
+            points_method=source_format.points_method)
         self._Database.DB.session.add(new_format)
         self.commit()
 
@@ -2269,6 +2275,25 @@ class RHData():
             race_format.number_laps_win = data['number_laps_win'] if isinstance(data['number_laps_win'], int) else 0
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = True if data['team_racing_mode'] else False
+        if 'points_method' in data:
+            if data['points_method']:
+                if race_format.points_method:
+                    pm = json.loads(race_format.points_method)
+                else:
+                    pm = {}
+
+                pm['t'] = data['points_method']
+                race_format.points_method = json.dumps(pm)
+            else:
+                race_format.points_method = None
+
+        if 'points_settings' in data:
+            if race_format.points_method:
+                pm = json.loads(race_format.points_method)
+                pm['s'] = data['points_settings']
+                race_format.points_method = json.dumps(pm) 
+            else:
+                logger.warning("Adding points method settings without established type")
 
         self.commit()
 
@@ -2276,7 +2301,7 @@ class RHData():
 
         race_list = []
 
-        if 'win_condition' in data or 'start_behavior' in data:
+        if 'win_condition' in data or 'start_behavior' in data or 'points_method' in data or 'points_settings' in data:
             race_list = self._Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
 
             if len(race_list):
@@ -2356,7 +2381,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("1:30 Whoop Sprint"),
@@ -2370,7 +2396,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("3:00 Extended Race"),
@@ -2384,7 +2411,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("First to 3 Laps"),
@@ -2398,7 +2426,8 @@ class RHData():
             'number_laps_win': 3,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Open Practice"),
@@ -2412,7 +2441,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.NONE,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Fastest Lap Qualifier"),
@@ -2426,7 +2456,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Fastest Consecutive Laps Qualifier"),
@@ -2440,7 +2471,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Lap Count Only"),
@@ -2454,7 +2486,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_LAPS,
             'team_racing_mode': False,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Team / Most Laps Wins"),
@@ -2468,7 +2501,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': True,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Team / First to 7 Laps"),
@@ -2482,7 +2516,8 @@ class RHData():
             'number_laps_win': 7,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': True,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Team / Fastest Lap Average"),
@@ -2496,7 +2531,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
             'team_racing_mode': True,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
         self.add_format({
             'format_name': self.__("Team / Fastest Consecutive Average"),
@@ -2510,7 +2546,8 @@ class RHData():
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
             'team_racing_mode': True,
-            'start_behavior': 0
+            'start_behavior': 0,
+            'points_method': None
             })
 
         self.commit()
@@ -2682,6 +2719,21 @@ class RHData():
         # cache rebuild
         logger.debug('Building Race {} (Heat {} Round {}) results'.format(race.id, race.heat_id, race.round_id))
         build = Results.calc_leaderboard(self, heat_id=race.heat_id, round_id=race.round_id)
+
+        # calc race points
+        if race.format_id:
+            raceformat = self.get_raceFormat(race.format_id)
+            if raceformat and raceformat.points_method:
+                pm = json.loads(raceformat.points_method)
+                method = pm['t']
+                if 's' in pm:
+                    settings = pm['s']
+                else:
+                    settings = None
+
+                build = self._racecontext.race_points_manager.assign(method, build, settings)
+                build['meta']['primary_points'] = True
+
         self.set_results_savedRaceMeta(race, token, build)
         return build
 

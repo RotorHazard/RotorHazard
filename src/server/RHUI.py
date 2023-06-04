@@ -612,6 +612,17 @@ class RHUI():
             raceformat['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceFormat(race_format.id)
             formats.append(raceformat)
 
+            if race_format.points_method:
+                points_method = json.loads(race_format.points_method)
+                raceformat['points_method'] = points_method['t']
+                if 's' in points_method:
+                    raceformat['points_settings'] = points_method['s']
+                else:
+                    raceformat['points_settings'] = None
+            else:
+                raceformat['points_method'] = None
+                raceformat['points_settings'] = None
+
         emit_payload = {
             'formats': formats,
         }
@@ -1035,6 +1046,22 @@ class RHUI():
             })
 
         emit('raceclass_rank_method_list', emit_payload)
+
+    def emit_race_points_method_list(self):
+        '''List Race Points Methods'''
+
+        emit_payload = {
+            'methods': []
+        }
+
+        for name, method in self._racecontext.race_points_manager.methods.items():
+            emit_payload['methods'].append({
+                'name': name,
+                'label': method.label,
+                'settings': method.settings
+            })
+
+        emit('race_points_method_list', emit_payload)
 
 @dataclass
 class PilotAttribute():

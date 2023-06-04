@@ -23,7 +23,7 @@ class RaceClassRankManager():
             })
 
     def registerMethod(self, method):
-        if hasattr(method, 'name'):
+        if isinstance(method, RaceClassRankMethod):
             if method.name in self.methods:
                 logger.warning('Overwriting method "{0}"'.format(method['name']))
 
@@ -51,6 +51,45 @@ class RaceClassRankMethod():
 
     def rank(self, racecontext, race_class, localArgs):
         return self.rankFn(racecontext, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
+
+class RacePointsManager():
+    def __init__(self, racecontext, Events):
+        self._methods = {}
+        self._racecontext = racecontext
+
+        Events.trigger('RacePoints_Initialize', {
+            'registerFn': self.registerMethod
+            })
+
+    def registerMethod(self, method):
+        if hasattr(method, 'name'):
+            if method.name in self.methods:
+                logger.warning('Overwriting method "{0}"'.format(method['name']))
+
+            self.methods[method.name] = method
+        else:
+            logger.warning('Invalid method')
+
+    @property
+    def methods(self):
+        return self._methods
+
+    def assign(self, method_id, leaderboard, args=None):
+        if method_id == "":
+            return False
+
+        return self.methods[method_id].assign(self._racecontext, leaderboard, args)
+
+class RacePointsMethod():
+    def __init__(self, name, label, assignFn, defaultArgs=None, settings=None):
+        self.name = name
+        self.label = label
+        self.assignFn = assignFn
+        self.defaultArgs = defaultArgs
+        self.settings = settings
+
+    def assign(self, racecontext, leaderboard, localArgs):
+        return self.assignFn(racecontext, leaderboard, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
@@ -117,6 +156,7 @@ def build_atomic_results(rhDataObj, params):
 
 def calc_leaderboard(rhDataObj, **params):
     ''' Generates leaderboards '''
+    meta_points_flag = False
     USE_CURRENT = False
     USE_ROUND = None
     USE_HEAT = None
@@ -267,6 +307,7 @@ def calc_leaderboard(rhDataObj, **params):
                 pilotnode = None
                 total_laps = 0
                 race_starts = 0
+                total_points = 0
 
                 for race in selected_races:
                     if race_format:
@@ -315,6 +356,15 @@ def calc_leaderboard(rhDataObj, **params):
                         else:
                             pilot_laps = pilot_crossings
 
+                    if not USE_ROUND:
+                        results = rhDataObj.get_results_savedRaceMeta(race)
+                        for line in results[results['meta']['primary_leaderboard']]:
+                            if line['pilot_id'] == pilot.id: 
+                                total_points += line['points']
+                                break
+                        if total_points:
+                            meta_points_flag = True 
+
                 if race_starts > 0:
                     leaderboard.append({
                         'pilot_id': pilot.id,
@@ -325,7 +375,8 @@ def calc_leaderboard(rhDataObj, **params):
                         'starts': race_starts,
                         'node': pilotnode,
                         'pilot_crossings': pilot_crossings,
-                        'pilot_laps': pilot_laps
+                        'pilot_laps': pilot_laps,
+                        'points': total_points
                     })
 
     for result_pilot in leaderboard:
@@ -656,6 +707,8 @@ def calc_leaderboard(rhDataObj, **params):
         }
 
     leaderboard_output['meta']['consecutives_count'] = consecutivesCount
+    if meta_points_flag:
+        leaderboard_output['meta']['primary_points'] = True
 
     return leaderboard_output
 
@@ -844,7 +897,11 @@ def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
     if race_class:
         args = json.loads(race_class.rank_settings) if race_class.rank_settings else None 
         if race_class.win_condition in racecontext.raceclass_rank_manager.methods:
-            return racecontext.raceclass_rank_manager.rank(race_class.win_condition, race_class, args)
+            ranking, meta = racecontext.raceclass_rank_manager.rank(race_class.win_condition, race_class, args)
+            return {
+                'ranking': ranking,
+                'meta': meta
+            }
         else:
             logger.warning("{} uses unsupported ranking method: {}".format(race_class.displayname(), race_class.win_condition))
 

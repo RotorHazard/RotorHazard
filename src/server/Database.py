@@ -246,6 +246,7 @@ class RaceFormat(DB.Model):
     win_condition = DB.Column(DB.Integer, nullable=False)
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
     start_behavior = DB.Column(DB.Integer, nullable=False)
+    points_method = DB.Column(DB.String, nullable=True)
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'

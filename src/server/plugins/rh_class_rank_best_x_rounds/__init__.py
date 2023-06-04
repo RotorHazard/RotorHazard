@@ -1,4 +1,4 @@
-''' Class ranking method: Best X rounds '''
+''' Class ranking method: Laps/Time, Best X rounds '''
 
 import logging
 import RHUtils
@@ -48,10 +48,17 @@ def rank_best_rounds(racecontext, race_class, args):
 
     leaderboard = []
     for pilotresultlist in pilotresults:
-        pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
-            -x['laps'], # reverse lap count
-            x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
-        ))
+        if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
+            pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+        else:
+            pilot_result = sorted(pilotresults[pilotresultlist], key = lambda x: (
+                -x['laps'], # reverse lap count
+                x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+            ))
+
         pilot_result = pilot_result[:rounds]
 
         new_pilot_result = {}
@@ -70,22 +77,9 @@ def rank_best_rounds(racecontext, race_class, args):
             new_pilot_result['total_time_raw'] += race['total_time_raw']
             new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
 
-            # new_leaderboard['fastest_lap'] += race['fastest_lap']
-            # new_leaderboard['fastest_lap_source'] += race['']
-            # new_leaderboard['consecutives'] += race['consecutives']
-            # new_leaderboard['consecutives_source'] += race['']
-
-        new_pilot_result['average_lap_raw'] = new_pilot_result['total_time_laps_raw'] / new_pilot_result['laps']
-
         timeFormat = racecontext.rhdata.get_option('timeFormat')
         new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
         new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
-        new_pilot_result['average_lap'] = RHUtils.time_format(new_pilot_result['average_lap_raw'], timeFormat)
-
-        # result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
-        # result_pilot['fastest_lap'] = RHUtils.time_format(new_pilot_result['fastest_lap'], timeFormat)
-        # result_pilot['consecutives_raw'] = result_pilot['consecutives']
-        # result_pilot['consecutives'] = RHUtils.time_format(new_pilot_result['consecutives'], timeFormat)
 
         leaderboard.append(new_pilot_result)
 
@@ -109,6 +103,20 @@ def rank_best_rounds(racecontext, race_class, args):
             last_rank_time = row['total_time_laps_raw']
 
             row['position'] = pos
+
+        meta = {
+            'rank_fields': [{
+                'name': 'laps',
+                'label': "Laps"
+            },{
+                'name': 'total_time_laps',
+                'label': "Total"
+            },{
+                'name': 'starts',
+                'label': "Starts"
+            }]
+        }
+
     else:
         # Sort by race time
         leaderboard = sorted(leaderboard, key = lambda x: (
@@ -130,14 +138,27 @@ def rank_best_rounds(racecontext, race_class, args):
 
             row['position'] = pos
 
-    return leaderboard
+        meta = {
+            'rank_fields': [{
+                'name': 'laps',
+                'label': "Laps"
+            },{
+                'name': 'total_time',
+                'label': "Total"
+            },{
+                'name': 'starts',
+                'label': "Starts"
+            }]
+        }
+
+    return leaderboard, meta
 
 def discover(*_args, **_kwargs):
     # returns array of methods with default arguments
     return [
         RaceClassRankMethod(
             'best_rounds',
-            'Best X Rounds',
+            'Laps/Time: Best X Rounds',
             rank_best_rounds,
             {
                 'rounds': 3

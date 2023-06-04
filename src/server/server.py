@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.0.0-dev.6" # Public release version code
-SERVER_API = 40 # Server API version
+SERVER_API = 41 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -841,6 +841,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_heatgenerator_list()
         elif load_type == 'raceclass_rank_method_list':
             RaceContext.rhui.emit_raceclass_rank_method_list()
+        elif load_type == 'race_points_method_list':
+            RaceContext.rhui.emit_race_points_method_list()
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -4414,6 +4416,10 @@ elif RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
 else:
     RaceContext.led_manager = NoLEDManager()
 
+# leaderboard ranking managers
+RaceContext.race_points_manager = Results.RacePointsManager(RaceContext, Events)
+RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
+
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors
 try:
@@ -4435,7 +4441,8 @@ SECONDARY_RACE_FORMAT = RHRace.RHRaceFormat(name=__("Secondary"),
                          number_laps_win=0,
                          win_condition=WinCondition.NONE,
                          team_racing_mode=False,
-                         start_behavior=0)
+                         start_behavior=0,
+                         points_method=None)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
@@ -4468,9 +4475,6 @@ RaceContext.import_manager = DataImportManager(RaceContext, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
-
-# leaderboard ranking
-RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
