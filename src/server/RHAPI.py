@@ -70,3 +70,6 @@ class RHAPI():
     @property
     def race_heat(self):
         return self._racecontext.race.current_heat
+
+    def race_schedule(self, sec_or_none, min=0):
+        return self._racecontext.race.schedule(sec_or_none, min)

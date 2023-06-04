@@ -20,6 +20,7 @@ class RaceContext():
         self.pagecache = None
         self.language = None
 
+        self.events = None
         self.rhui = None
 
         self.led_manager = None
