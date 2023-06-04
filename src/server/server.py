@@ -4135,6 +4135,40 @@ def reportServerInfo():
                 __("Node firmware is newer than this server version and may not function properly"),
                 header='Warning', subclass='api-high')
 
+def check_req_entry(req_line, module_name):
+    installed_ver = importlib.metadata.version(module_name)
+    required_ver = req_line[req_line.index('==')+2 : req_line.rindex('.')]
+    if not installed_ver.startswith(required_ver):
+        logger.warning(__("Package '{}' version mismatch: Required {}, but {} installed").format( \
+                                                module_name, required_ver, installed_ver))
+        return 1
+    return 0
+
+def check_requirements():
+    try:
+        import importlib.metadata
+        chk_list = [['Flask==','flask'], ['Flask-SocketIO==','flask_socketio'], \
+                    ['Flask_SocketIO==','flask_socketio'], ['six==','six'], \
+                    ['flask_sqlalchemy==','flask_sqlalchemy'], ['gevent==','gevent'], \
+                    ['gevent-websocket==','gevent-websocket'], ['monotonic==','monotonic'], \
+                    ['requests==','requests']]
+        num_mismatched = 0
+        with open('requirements.txt') as rf:
+            for line in rf.readlines():
+                for entry in chk_list:
+                    if line.startswith(entry[0]):
+                        num_mismatched += check_req_entry(line, entry[1])
+        if num_mismatched > 0:
+            if RHUtils.isSysRaspberryPi():
+                logger.warning(__('Try "sudo pip install --upgrade --no-cache-dir -r requirements.txt"'))
+            set_ui_message('check_reqs',
+                __("Package-version mismatches detected. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
+                header='Warning', subclass='none')
+    except ModuleNotFoundError as ex:
+        logger.debug("Unable to check package requirements: {}".format(ex))
+    except:
+        logger.exception("Error checking package requirements")
+
 #
 # Program Initialize
 #
@@ -4151,6 +4185,8 @@ if RHUtils.isVersionPython2():
          " <a href=\"docs?d=Software Setup.md#python\">Software Settings</a> " + \
          __("doc for upgrade instructions")),
         header='Warning', subclass='old-python')
+
+check_requirements()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
 
