@@ -164,6 +164,7 @@ class Evt:
     LAPS_RESAVE = 'lapsResave'
     LAP_DELETE = 'lapDelete'
     LAP_RESTORE_DELETED = 'lapRestoreDeleted'
+    ROUNDS_COMPLETE = 'roundsComplete'
     # Results cache
     CACHE_CLEAR = 'cacheClear'
     CACHE_READY = 'cacheReady'

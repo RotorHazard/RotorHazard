@@ -1193,6 +1193,8 @@ class RHData():
                     if current_class.rounds:
                         max_round = self.get_max_round(current_heat.id)
                         if max_round >= current_class.rounds:
+                            self._Events.trigger(Evt.ROUNDS_COMPLETE, {'class_id': current_class.id})
+
                             race_classes = self.get_raceClasses()
                             race_classes.sort(key=orderSorter)
                             if race_classes[-1].id == current_heat.class_id:
