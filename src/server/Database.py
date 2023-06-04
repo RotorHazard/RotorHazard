@@ -194,6 +194,7 @@ class SavedPilotRace(DB.Model):
     penalty_desc = DB.Column(DB.String, nullable=True)
     enter_at = DB.Column(DB.Integer, nullable=False)
     exit_at = DB.Column(DB.Integer, nullable=False)
+    frequency = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<SavedPilotRace %r>' % self.id

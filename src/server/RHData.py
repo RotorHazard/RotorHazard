@@ -625,7 +625,8 @@ class RHData():
                             'penalty_time': None,
                             'penalty_desc': None,
                             'enter_at': None,
-                            'exit_at': None
+                            'exit_at': None,
+                            'frequency': None,
                         })
 
                         for lap in raceLap_query_data:
@@ -2808,7 +2809,8 @@ class RHData():
                 history_times=node_data['history_times'],
                 penalty_time=0,
                 enter_at=node_data['enter_at'],
-                exit_at=node_data['exit_at']
+                exit_at=node_data['exit_at'],
+                frequency=node_data['frequency']
             )
 
             self._Database.DB.session.add(new_pilotrace)

@@ -2173,7 +2173,8 @@ def findBestValues(node, node_index):
         if race.heat_id == heat.id:
             for pilotRace in pilotRaces:
                 if pilotRace.race_id == race.id and \
-                    pilotRace.node_index == node_index:
+                    pilotRace.node_index == node_index and \
+                    pilotRace.frequency == node.frequency:
                     logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
                     return {
                         'enter_at_level': pilotRace.enter_at,
@@ -2187,7 +2188,8 @@ def findBestValues(node, node_index):
             for pilotRace in pilotRaces:
                 if pilotRace.race_id == race.id and \
                     pilotRace.node_index == node_index and \
-                    pilotRace.pilot_id == pilot:
+                    pilotRace.pilot_id == pilot and \
+                    pilotRace.frequency == node.frequency:
                     logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
                     return {
                         'enter_at_level': pilotRace.enter_at,
@@ -2198,7 +2200,8 @@ def findBestValues(node, node_index):
     # test for same pilot, same node
     for pilotRace in pilotRaces:
         if pilotRace.node_index == node_index and \
-            pilotRace.pilot_id == pilot:
+            pilotRace.pilot_id == pilot and \
+            pilotRace.frequency == node.frequency:
             logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
             return {
                 'enter_at_level': pilotRace.enter_at,
@@ -2207,7 +2210,8 @@ def findBestValues(node, node_index):
 
     # test for same node
     for pilotRace in pilotRaces:
-        if pilotRace.node_index == node_index:
+        if pilotRace.node_index == node_index and \
+            pilotRace.frequency == node.frequency:
             logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
             return {
                 'enter_at_level': pilotRace.enter_at,
@@ -2483,6 +2487,7 @@ def do_save_actions():
                     'history_times': json.dumps(RaceContext.interface.nodes[node_index].history_times),
                     'enter_at': RaceContext.interface.nodes[node_index].enter_at_level,
                     'exit_at': RaceContext.interface.nodes[node_index].exit_at_level,
+                    'frequency': RaceContext.interface.nodes[node_index].frequency,
                     'laps': RaceContext.race.node_laps[node_index]
                     }
 
