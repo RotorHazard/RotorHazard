@@ -2107,6 +2107,8 @@ def on_stage_race():
     else:
         logger.info("Attempted to stage race while status is not 'ready'")
 
+RHAPI.race_stage = on_stage_race
+
 def autoUpdateCalibration():
     ''' Apply best tuning values to nodes '''
     if RaceContext.race.current_heat == RHUtils.HEAT_ID_NONE:
@@ -2347,6 +2349,8 @@ def on_stop_race(doSave=False):
         do_stop_race_actions(doSave)
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to stop the timer
+
+RHAPI.race_stop = on_stop_race
 
 @catchLogExceptionsWrapper
 def do_stop_race_actions(doSave=False):

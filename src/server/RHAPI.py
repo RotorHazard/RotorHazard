@@ -71,5 +71,12 @@ class RHAPI():
     def race_heat(self):
         return self._racecontext.race.current_heat
 
-    def race_schedule(self, sec_or_none, min=0):
-        return self._racecontext.race.schedule(sec_or_none, min)
+    def race_schedule(self, sec_or_none, minutes=0):
+        return self._racecontext.race.schedule(sec_or_none, minutes)
+
+    def race_stage(self):
+        pass #replaced externally
+
+    def race_stop(self, doSave=False):
+        pass #replaced externally
+
