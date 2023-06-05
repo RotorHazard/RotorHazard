@@ -59,11 +59,12 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     else:
         return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
-def isVersionPython2():
-    return sys.version.startswith("2.")
-
 def getPythonVersionStr():
     return sys.version.split()[0]
+
+def checkVersionStr(verStr, majorVer, minorVer):
+    verList = verStr.split('.')
+    return int(verList[0]) >= int(majorVer) and int(verList[1]) >= int(minorVer)
 
 def idAndLogSystemInfo():
     global IS_SYS_RASPBERRY_PI
@@ -352,3 +353,11 @@ def find_best_slot_node_adaptive(available_nodes):
 
     return None, None, None
 
+def checkPythonVersion(majorVer, minorVer):
+    try:
+        verStr = getPythonVersionStr()
+        if not checkVersionStr(verStr, majorVer, minorVer):
+            logger.warning("WARNING: The Python version in use ({}) is lower than the minimum required ({}.{})".\
+                        format(verStr, majorVer, minorVer))
+    except Exception as ex:
+        logger.debug("Error in 'checkRepPythonVersionStr': {}".format(ex))

@@ -4,6 +4,8 @@ SERVER_API = 41 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
+MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.7)
+MIN_PYTHON_MINOR_VERSION = 7
 
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
@@ -54,6 +56,11 @@ import string
 import json
 
 import Config
+import RHUtils
+from RHUtils import catchLogExceptionsWrapper
+
+RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
+
 import Database
 import Results
 import Language
@@ -61,8 +68,6 @@ import json_endpoints
 import EventActions
 import RaceContext
 import RHData
-import RHUtils
-from RHUtils import catchLogExceptionsWrapper
 import RHUI
 import RHAPI
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
@@ -4168,15 +4173,6 @@ def check_requirements():
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
-
-if RHUtils.isVersionPython2():
-    logger.warning("Python version is obsolete: " + RHUtils.getPythonVersionStr())
-    set_ui_message('python',
-        (__("Python version") + " (" + RHUtils.getPythonVersionStr() + ") " + \
-         __("is obsolete and no longer supported; see") + \
-         " <a href=\"docs?d=Software Setup.md#python\">Software Settings</a> " + \
-         __("doc for upgrade instructions")),
-        header='Warning', subclass='old-python')
 
 check_requirements()
 
