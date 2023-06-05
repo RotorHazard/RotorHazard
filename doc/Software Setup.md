@@ -95,7 +95,7 @@ Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
 sudo apt install python3-dev libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
 ```
-The minimum version of Python supported is 3.5 Check the current default version of Python by entering the following command:
+The minimum version of Python supported is 3.7 Check the current default version of Python by entering the following command:
 ```
 python --version
 ```
@@ -315,7 +315,7 @@ cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
 
-For RotorHazard the minimum version of Python supported is 3.5. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
+For RotorHazard the minimum version of Python supported is 3.7. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
 
 The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
 ```
@@ -362,7 +362,7 @@ To install the RotorHazard server on these systems:
 1. Install the RotorHazard server dependencies using the 'reqsNonPi.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
   * On a Windows system the command to use will likely be:<br/>```python -m pip install -r reqsNonPi.txt```<br>
 
-Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the Visual C++ Build Tools may be downloaded (from [here](http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe.)) and installed.<br>
+Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the "Desktop development with C++" Tools may be downloaded (from [here](https://aka.ms/vs/17/release/vs_BuildTools.exe)) and installed to satisfy the requirement.<br>
 
   * On a Linux system the command to use will likely be:<br/>```sudo pip install -r reqsNonPi.txt```
 
@@ -385,14 +385,20 @@ If hardware nodes are connected via USB, they will need to be configured in the 
 If no hardware nodes are configured, the server will operate using simulated (mock) nodes. In this mode the web-GUI interface may be explored and tested.
 
 To view the web-GUI interface, open up a web browser and enter into the address bar: ```localhost:5000``` (If the HTTP_PORT value in the configuration has been changed then use that value instead of 5000). If the server is running then the RotorHazard main page should appear. Note that pages reserved for the race director (Admin/Settings) are password protected with the username and password specified in the configuration.
-<br/>
+
+To update an existing installation:
+
+  * On a Windows system the command to use will likely be:<br/>```python -m pip install --upgrade --no-cache-dir -r reqsNonPi.txt```<br>
+
+  * On a Linux system the command to use will likely be:<br/>```sudo pip install --upgrade --no-cache-dir -r reqsNonPi.txt```
+<br>
 
 ----------------------------------------------------------------------------
 
 <a id="viewdb"></a>
 ## Viewing Database Files
 
-A "snapshot" copy of the database file used by the RotorHazard server may be downloaded using the `Backup Database` button in the 'Database' section on the 'Settings' page in the RotorHazard web GUI. A tool like [DB Browser for SQLite](https://sqlitebrowser.org) may be used to view the raw data in the file.
+A "snapshot" copy of the database file used by the RotorHazard server may be downloaded using the `Backup Database` button in the 'Data Management' section on the 'Format' page in the RotorHazard web GUI. A tool like [DB Browser for SQLite](https://sqlitebrowser.org) may be used to view the raw data in the file.
 
 A database file may be loaded into the RotorHazard server via the "--viewdb" command-line argument:
 ```
