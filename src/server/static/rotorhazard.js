@@ -1688,12 +1688,18 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="fast">' + __('Fastest') + '</th>');
+		if (display_type == 'by_fastest_lap') {
+			header_row.append('<th class="source">' + __('Source') + '</th>');
+		}
 	}
 	if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="consecutive">' + __('Consecutive') + '</th>');
+		if (display_type == 'by_consecutives') {
+			header_row.append('<th class="source">' + __('Source') + '</th>');
+		}
 	}
 	if (show_points && 'primary_points' in meta) {
 		header_row.append('<th class="points">' + __('Points') + '</th>');
@@ -1744,26 +1750,34 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			var lap = leaderboard[i].fastest_lap;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
+
+			var el = $('<td class="fast">'+ lap +'</td>');
+
 			if (leaderboard[i].fastest_lap_source) {
 				var source = leaderboard[i].fastest_lap_source;
-				row.append('<td class="fast">'+ lap +'</td>');
-
-				source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
-
-				row.data('source', source_text);
-				row.attr('title', source_text);
+				var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
 			} else {
-				var el = $('<td class="fast">'+ lap +'</td>');
-				if ('min_lap' in rotorhazard
-					&& rotorhazard.min_lap > 0
-					&& leaderboard[i].fastest_lap_raw > 0
-					&& (rotorhazard.min_lap * 1000) > leaderboard[i].fastest_lap_raw
-					) {
-					el.addClass('min-lap-warning');
-				}
-				row.append(el);
+				var source_text = 'None';
 			}
 
+			if (display_type == 'heat') {
+				el.data('source', source_text);
+				el.attr('title', source_text);
+			}
+
+			if ('min_lap' in rotorhazard
+				&& rotorhazard.min_lap > 0
+				&& leaderboard[i].fastest_lap_raw > 0
+				&& (rotorhazard.min_lap * 1000) > leaderboard[i].fastest_lap_raw
+				) {
+				el.addClass('min-lap-warning');
+			}
+
+			row.append(el);
+
+			if (display_type == 'by_fastest_lap') {
+				row.append('<td class="source">'+ source_text +'</td>');
+			}
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
@@ -1776,18 +1790,27 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				lap = data.consecutives_base + '/' + data.consecutives;
 			}
 
+			var el = $('<td class="consecutive">'+ lap +'</td>');
+
 			if (leaderboard[i].consecutives_source) {
 				var source = leaderboard[i].consecutives_source;
-				row.append('<td class="consecutive">'+ lap +'</td>');
-
-				source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
-
-				row.data('source', source_text);
-				row.attr('title', source_text);
+				var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
 			} else {
-				row.append('<td class="consecutive">'+ lap +'</td>');
+				var source_text = 'None';
+			}
+
+			if (display_type == 'heat') {
+				el.data('source', source_text);
+				el.attr('title', source_text);
+			}
+
+			row.append(el);
+
+			if (display_type == 'by_consecutives') {
+				row.append('<td class="source">'+ source_text +'</td>');
 			}
 		}
+
 		if (show_points && 'primary_points' in meta) {
 			row.append('<td class="points">' + leaderboard[i].points + '</td>');
 		}
