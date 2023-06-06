@@ -3,6 +3,7 @@
 #
 
 import logging
+from RHUtils import catchLogExceptionsWrapper
 from monotonic import monotonic
 from eventmanager import Evt
 
@@ -160,55 +161,55 @@ class VRxControlManager():
 
     def doStartup(self, args):
         for controller in self.controllers.values():
-            controller.onStartup(args)
+            controller.do_startup(args)
 
     def doHeatSet(self, args):
         for controller in self.controllers.values():
-            controller.onHeatSet(args)
+            controller.do_heat_set(args)
 
     def doRaceStage(self, args):
         for controller in self.controllers.values():
-            controller.onRaceStage(args)
+            controller.do_race_stage(args)
 
     def doRaceStart(self, args):
         for controller in self.controllers.values():
-            controller.onRaceStart(args)
+            controller.do_race_start(args)
 
     def doRaceFinish(self, args):
         for controller in self.controllers.values():
-            controller.onRaceFinish(args)
+            controller.do_race_finish(args)
 
     def doRaceStop(self, args):
         for controller in self.controllers.values():
-            controller.onRaceStop(args)
+            controller.do_race_stop(args)
 
     def doRaceLapRecorded(self, args):
         for controller in self.controllers.values():
-            controller.onRaceLapRecorded(args)
+            controller.do_race_lap_recorded(args)
 
     def doLapsClear(self, args):
         for controller in self.controllers.values():
-            controller.onLapsClear(args)
+            controller.do_laps_clear(args)
 
     def doLapDelete(self, args):
         for controller in self.controllers.values():
-            controller.onLapDelete(args)
+            controller.do_lap_delete(args)
 
     def doFrequencySet(self, args):
         for controller in self.controllers.values():
-            controller.onFrequencySet(args)
+            controller.do_frequency_set(args)
 
     def doSendPriorityMessage(self, args):
         for controller in self.controllers.values():
-            controller.onSendMessage(args)
+            controller.do_send_message(args)
 
     def doOptionSet(self, args):
         for controller in self.controllers.values():
-            controller.onOptionSet(args)
+            controller.do_option_set(args)
 
     def doShutdown(self, args):
         for controller in self.controllers.values():
-            controller.onShutdown(args)
+            controller.do_shutdown(args)
 
 class VRxController():
     def __init__(self, name, label):
@@ -272,44 +273,97 @@ class VRxController():
         else:
             return False
 
+    @catchLogExceptionsWrapper
+    def do_startup(self, args):
+        self.onStartup(args)
+
     def onStartup(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_heat_set(self, args):
+        self.onHeatSet(args)
 
     def onHeatSet(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_race_stage(self, args):
+        self.onRaceStage(args)
 
     def onRaceStage(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_race_start(self, args):
+        self.onRaceStart(args)
 
     def onRaceStart(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_race_finish(self, args):
+        self.onRaceFinish(args)
 
     def onRaceFinish(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_race_stop(self, args):
+        self.onRaceStop(args)
 
     def onRaceStop(self, _args):
-        pass
+        pass #override this method
 
-    def onRaceLapRecorded(self, _args):
-        pass
-
-    def onLapsClear(self, _args):
-        pass
-
-    def onLapDelete(self, args):
+    @catchLogExceptionsWrapper
+    def do_race_lap_recorded(self, args):
         self.onRaceLapRecorded(args)
 
+    def onRaceLapRecorded(self, _args):
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_laps_clear(self, args):
+        self.onLapsClear(args)
+
+    def onLapsClear(self, _args):
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_lap_delete(self, args):
+        self.onLapDelete(args)
+
+    def onLapDelete(self, args):
+        self.onRaceLapRecorded(args) #override this method
+
+    @catchLogExceptionsWrapper
+    def do_frequency_set(self, args):
+        self.onFrequencySet(args)
+
     def onFrequencySet(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_send_message(self, args):
+        self.onSendMessage(args)
 
     def onSendMessage(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_option_set(self, args):
+        self.onOptionSet(args)
 
     def onOptionSet(self, _args):
-        pass
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_shutdown(self, args):
+        self.onShutdown(args)
 
     def onShutdown(self, _args):
-        pass
+        pass #override this method
+
 
 class VRxDevice():
     def __init__(self):

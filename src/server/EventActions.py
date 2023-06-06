@@ -37,6 +37,7 @@ class EventActions:
         else:
             self.logger.debug("No actions to load")
 
+    @catchLogExceptionsWrapper
     def doActions(self, args):
         for action in self.eventActionsList:
             if action['event'] == args['_eventName']:
@@ -50,7 +51,6 @@ class ActionEffect():
         self.effectFn = effectFn
         self.fields = fields
 
-    @catchLogExceptionsWrapper
     def runAction(self, action, args):
         self.effectFn(action, args)
 

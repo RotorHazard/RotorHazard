@@ -7,6 +7,7 @@
 # label becomes visible in the UI and becomes translatable
 #
 
+from RHUtils import catchLogExceptionsWrapper
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class DataImportManager():
     def importers(self):
         return self._importers
 
+    @catchLogExceptionsWrapper
     def runImport(self, importer_id, data, import_args=None):
         return self._importers[importer_id].runImport(self._racecontext, data, import_args)
 

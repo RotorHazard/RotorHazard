@@ -35,6 +35,7 @@ class RaceClassRankManager():
     def methods(self):
         return self._methods
 
+    @catchLogExceptionsWrapper
     def rank(self, method_id, race_class, args=None):
         if method_id == "":
             return False
@@ -74,6 +75,7 @@ class RacePointsManager():
     def methods(self):
         return self._methods
 
+    @catchLogExceptionsWrapper
     def assign(self, method_id, leaderboard, args=None):
         if method_id == "":
             return False

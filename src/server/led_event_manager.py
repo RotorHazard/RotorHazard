@@ -13,6 +13,7 @@ Wires events to handlers
 import copy
 import RHRace
 import RHUtils
+from RHUtils import catchLogExceptionsWrapper
 import gevent
 from eventmanager import Evt
 from six.moves import UserDict
@@ -128,6 +129,7 @@ class LEDEventManager:
 
         return RHUtils.hexToColor('#ffffff')
 
+    @catchLogExceptionsWrapper
     def activateEffect(self, args):
         if 'caller' in args and args['caller'] == 'shutdown':
             return False
@@ -146,6 +148,7 @@ class LEDEventManager:
 
             self.activateIdle()
 
+    @catchLogExceptionsWrapper
     def activateIdle(self):
         gevent.idle()
         event = None

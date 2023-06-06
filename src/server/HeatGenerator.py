@@ -5,6 +5,7 @@
 import logging
 import random
 import RHUtils
+from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ class HeatGeneratorManager():
             logger.error('Generation stage failed or refused to produce output: see log')
             return False
 
+    @catchLogExceptionsWrapper
     def apply(self, generator_id, generated_heats, generate_args):
         pilot_pool = []
         filled_pool = False
