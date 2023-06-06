@@ -1206,13 +1206,7 @@
 					}
 				}
 
-				rotorhazard.event.pilots.sort(function(a, b){
-					if (a.name < b.name)
-						return -1;
-					if (a.name > b.name)
-						return 1;
-					return 0;
-				});
+				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 
 				$('.set_pilot_position').each(function(){
 					$(this).empty();

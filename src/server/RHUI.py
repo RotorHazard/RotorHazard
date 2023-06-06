@@ -674,9 +674,9 @@ class RHUI():
             pilots_list.append(pilot_data)
 
             if self._racecontext.rhdata.get_option('pilotSort') == 'callsign':
-                pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
+                pilots_list.sort(key=lambda x: (x['callsign'].casefold(), x['name'].casefold()))
             else:
-                pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
+                pilots_list.sort(key=lambda x: (x['name'].casefold(), x['callsign'].casefold()))
 
         emit_payload = {
             'pilots': pilots_list,
