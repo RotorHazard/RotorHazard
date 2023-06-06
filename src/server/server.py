@@ -4417,7 +4417,7 @@ else:
     RaceContext.led_manager = NoLEDManager()
 
 # leaderboard ranking managers
-RaceContext.race_points_manager = Results.RacePointsManager(RaceContext, Events)
+RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
 RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
 
 # Initialize internal state with database

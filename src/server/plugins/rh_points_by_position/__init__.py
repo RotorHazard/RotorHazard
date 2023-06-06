@@ -20,7 +20,7 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def points_by_position(racecontext, leaderboard, args):
+def points_by_position(_rhapi, leaderboard, args):
     try:
         points_list = [int(x.strip()) for x in args['points_list'].split(',')]
     except:

@@ -53,9 +53,9 @@ class RaceClassRankMethod():
         return self.rankFn(racecontext, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
 class RacePointsManager():
-    def __init__(self, racecontext, Events):
+    def __init__(self, RHAPI, Events):
         self._methods = {}
-        self._racecontext = racecontext
+        self._rhapi = RHAPI
 
         Events.trigger('RacePoints_Initialize', {
             'registerFn': self.registerMethod
@@ -78,7 +78,7 @@ class RacePointsManager():
         if method_id == "":
             return False
 
-        return self.methods[method_id].assign(self._racecontext, leaderboard, args)
+        return self.methods[method_id].assign(self._rhapi, leaderboard, args)
 
 class RacePointsMethod():
     def __init__(self, name, label, assignFn, defaultArgs=None, settings=None):
@@ -88,8 +88,8 @@ class RacePointsMethod():
         self.defaultArgs = defaultArgs
         self.settings = settings
 
-    def assign(self, racecontext, leaderboard, localArgs):
-        return self.assignFn(racecontext, leaderboard, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
+    def assign(self, RHAPI, leaderboard, localArgs):
+        return self.assignFn(RHAPI, leaderboard, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
