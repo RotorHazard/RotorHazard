@@ -26,8 +26,8 @@ def getTotalPilots(RHAPI, generate_args):
     input_class_id = generate_args.get('input_class')
 
     if input_class_id:
-        race_class = RHAPI.get_raceclass(input_class_id)
-        class_results = RHAPI.get_raceclass_results(race_class)
+        race_class = RHAPI.raceclass_by_id(input_class_id)
+        class_results = RHAPI.raceclass_results(race_class)
         if class_results and type(class_results) == dict:
             # fill from available results
             # TODO: Check class finalized status

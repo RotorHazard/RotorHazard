@@ -27,15 +27,15 @@ def rank_best_rounds(RHAPI, race_class, args):
 
     rounds = int(args['rounds'])
 
-    race_format = RHAPI.get_raceformat(race_class.format_id)
-    heats = RHAPI.get_heats_by_class(race_class.id)
+    race_format = RHAPI.raceformat_by_id(race_class.format_id)
+    heats = RHAPI.heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = RHAPI.get_saved_races_by_heat(heat.id)
+        races = RHAPI.saved_races_by_heat(heat.id)
 
         for race in races:
-            race_result = RHAPI.get_saved_race_results(race)
+            race_result = RHAPI.saved_race_results(race)
 
             if race_result:
                 for pilotresult in race_result['by_race_time']:
@@ -77,7 +77,7 @@ def rank_best_rounds(RHAPI, race_class, args):
             new_pilot_result['total_time_raw'] += race['total_time_raw']
             new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
 
-        timeFormat = RHAPI.get_setting('timeFormat')
+        timeFormat = RHAPI.setting('timeFormat')
         new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
         new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
 

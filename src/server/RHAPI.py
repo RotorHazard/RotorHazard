@@ -35,7 +35,7 @@ class RHAPI():
     def general_settings(self):
         return self._racecontext.rhui.general_settings
 
-    def get_setting(self, name, default=None):
+    def setting(self, name, default=None):
         return self._racecontext.rhdata.get_option(name, default)
 
     # Blueprints
@@ -53,35 +53,43 @@ class RHAPI():
     # RHData
     #
 
-    def get_pilot(self, pilot_id):
+    def pilot_by_id(self, pilot_id):
         return self._racecontext.rhdata.get_pilot(pilot_id)
 
     @property
     def pilots(self):
         return self._racecontext.rhdata.get_pilots()
 
-    def get_heat(self, heat_id):
+    def heat_by_id(self, heat_id):
         return self._racecontext.rhdata.get_heat(heat_id)
 
-    def get_heats_by_class(self, race_class_id):
+    @property
+    def heats(self):
+        return self._racecontext.rhdata.get_heats()
+
+    def heats_by_class(self, race_class_id):
         return self.rhdata.get_heats_by_class(race_class_id)
 
-    def get_heat_results(self, heat):
+    def heat_results(self, heat):
         return self.rhdata.get_results_heat(heat)
 
-    def get_raceclass(self, raceclass_id):
+    def raceclass_by_id(self, raceclass_id):
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
 
-    def get_raceclass_results(self, raceclass):
+    @property
+    def raceclasses(self):
+        return self._racecontext.rhdata.get_raceClasses()
+
+    def raceclass_results(self, raceclass):
         return self._racecontext.rhdata.get_results_raceClass(raceclass)
 
-    def get_raceformat(self, format_id):
+    def raceformat_by_id(self, format_id):
         return self._racecontext.rhdata.get_raceFormat(format_id)
 
-    def get_saved_race_results(self, race):
+    def saved_race_results(self, race):
         return self.rhdata.get_results_savedRaceMeta(race)
     
-    def get_saved_races_by_heat(self, heat_id):
+    def saved_races_by_heat(self, heat_id):
         return self.rhdata.get_savedRaceMetas_by_heat(heat_id)
 
     #

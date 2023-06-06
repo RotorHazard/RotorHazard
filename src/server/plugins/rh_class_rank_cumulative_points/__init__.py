@@ -23,14 +23,14 @@ def initialize(**kwargs):
 
 def rank_points_total(RHAPI, race_class, args):
 
-    heats = RHAPI.get_heats_by_class(race_class.id)
+    heats = RHAPI.heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = RHAPI.get_savedRaceMetas_by_heat(heat.id)
+        races = RHAPI.savedRaceMetas_by_heat(heat.id)
 
         for race in races:
-            race_result = RHAPI.get_saved_race_results(race)
+            race_result = RHAPIsaved_race_results(race)
 
             if race_result:
                 for pilotresult in race_result[race_result['meta']['primary_leaderboard']]:
