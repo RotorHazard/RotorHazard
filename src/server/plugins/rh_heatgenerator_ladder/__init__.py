@@ -26,27 +26,20 @@ def getTotalPilots(RHData, generate_args):
     input_class_id = generate_args.get('input_class')
 
     if input_class_id:
-        race_class = RHData.get_raceClass(input_class_id)
-        class_results = RHData.get_results_raceClass(race_class)
-        if class_results and type(class_results) == dict:
-            # fill from available results
-            # TODO: Check class finalized status
-            total_pilots = len(class_results['by_race_time'])
-            
-            if 'total_pilots' in generate_args:
-                total_pilots = min(total_pilots, int(generate_args['total_pilots']))
+        if 'total_pilots' in generate_args:
+            total_pilots = int(generate_args['total_pilots'])
         else:
-            all_pilots = RHData.get_pilots()
-
-            if 'total_pilots' in generate_args:
-                total_pilots = min(all_pilots, int(generate_args['total_pilots']))
+            race_class = RHData.get_raceClass(input_class_id)
+            class_results = RHData.get_results_raceClass(race_class)
+            if class_results and type(class_results) == dict:
+                # fill from available results
+                total_pilots = len(class_results['by_race_time'])
             else:
-                # fall back to number of pilots
-                total_pilots = len(all_pilots)
+                # fall back to all pilots
+                total_pilots = len(RHData.get_pilots())
     else:
-        # use total number of pilots
-        all_pilots = RHData.get_pilots()
-        total_pilots = len(all_pilots)
+        # use all pilots
+        total_pilots = len(RHData.get_pilots())
 
     return total_pilots
 
@@ -278,7 +271,7 @@ def discover(*_args, **_kwargs):
                 },
                 {
                     'id': 'total_pilots',
-                    'label': "Maxiumum pilots in class",
+                    'label': "Pilots in class",
                     'desc': "Used only with input class",
                     'fieldType': 'basic_int',
                     'placeholder': "Auto",
