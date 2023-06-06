@@ -1794,6 +1794,7 @@
 					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
 				}
 				$('#database_list').prop('disabled', false);
+				$('#database_list').val($('#database_list option').last().val());
 				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', false);
 				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', false);
 			} else {
@@ -2471,7 +2472,7 @@
 		<div class="control-set">
 			<button id="backup_database">{{ __('Backup Database') }}</button>
 		</div>
-		<ol class="form" id="race_formats">
+		<ol class="form">
 			<li>
 				<div class="label-block">
 					<label for="database_list">{{ __('Stored Databases') }}</label>
@@ -2487,7 +2488,7 @@
 		</div>
 
 		<h3>{{ __('Export') }}</h3>
-		<ol class="form" id="race_formats">
+		<ol class="form">
 			<li>
 				<div class="label-block">
 					<label for="exporter_list">{{ __('Exporter') }}</label>
@@ -2502,7 +2503,7 @@
 		</div>
 
 		<h3>{{ __('Reset') }}</h3>
-		<ol class="form" id="race_formats">
+		<ol class="form">
 			<li>
 				<div class="label-block">
 					<label for="reset_type">{{ __('Items to Clear') }}</label>
@@ -2522,7 +2523,7 @@
 		</div>
 
 		<h3>{{ __('Import') }}</h3>
-		<ol class="form" id="race_formats">
+		<ol class="form">
 			<li>
 				<div class="label-block">
 					<label for="importer_list">{{ __('Importer') }}</label>

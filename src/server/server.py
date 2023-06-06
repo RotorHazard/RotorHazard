@@ -1447,6 +1447,8 @@ def on_list_backups():
             files.extend(filenames)
             break
 
+        files.sort(key=str.casefold)
+
         emit_payload = {
             'backup_files': files
         }
