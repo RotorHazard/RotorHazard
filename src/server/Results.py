@@ -14,9 +14,9 @@ from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 logger = logging.getLogger(__name__)
 
 class RaceClassRankManager():
-    def __init__(self, racecontext, Events):
+    def __init__(self, RHAPI, Events):
         self._methods = {}
-        self._racecontext = racecontext
+        self._rhapi = RHAPI
 
         Events.trigger('RaceClassRanking_Initialize', {
             'registerFn': self.registerMethod
@@ -39,7 +39,7 @@ class RaceClassRankManager():
         if method_id == "":
             return False
 
-        return self.methods[method_id].rank(self._racecontext, race_class, args)
+        return self.methods[method_id].rank(self._rhapi, race_class, args)
 
 class RaceClassRankMethod():
     def __init__(self, name, label, rankFn, defaultArgs=None, settings=None):
@@ -49,8 +49,8 @@ class RaceClassRankMethod():
         self.defaultArgs = defaultArgs
         self.settings = settings
 
-    def rank(self, racecontext, race_class, localArgs):
-        return self.rankFn(racecontext, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
+    def rank(self, RHAPI, race_class, localArgs):
+        return self.rankFn(RHAPI, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
 class RacePointsManager():
     def __init__(self, RHAPI, Events):

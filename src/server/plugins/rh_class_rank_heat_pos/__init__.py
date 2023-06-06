@@ -21,15 +21,15 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def rank_heat_pos(racecontext, race_class, _args):
-    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
+def rank_heat_pos(RHAPI, race_class, _args):
+    heats = RHAPI.get_heats_by_class(race_class.id)
 
     leaderboard = []
     ranked_pilots = []
     rank_pos = 1
 
     for heat in reversed(heats):
-        heat_result = racecontext.rhdata.get_results_heat(heat)
+        heat_result = RHAPI.get_results_heat(heat)
         heat_leaderboard = heat_result[heat_result['meta']['primary_leaderboard']]
 
         for line in heat_leaderboard:

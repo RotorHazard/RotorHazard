@@ -21,21 +21,21 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def rank_best_rounds(racecontext, race_class, args):
+def rank_best_rounds(RHAPI, race_class, args):
     if 'rounds' not in args or not args['rounds'] or int(args['rounds']) < 1:
         return False
 
     rounds = int(args['rounds'])
 
-    race_format = racecontext.rhdata.get_raceFormat(race_class.format_id)
-    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
+    race_format = RHAPI.get_raceformat(race_class.format_id)
+    heats = RHAPI.get_heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
+        races = RHAPI.get_saved_races_by_heat(heat.id)
 
         for race in races:
-            race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
+            race_result = RHAPI.get_saved_race_results(race)
 
             if race_result:
                 for pilotresult in race_result['by_race_time']:
@@ -77,7 +77,7 @@ def rank_best_rounds(racecontext, race_class, args):
             new_pilot_result['total_time_raw'] += race['total_time_raw']
             new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
 
-        timeFormat = racecontext.rhdata.get_option('timeFormat')
+        timeFormat = RHAPI.get_setting('timeFormat')
         new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
         new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
 

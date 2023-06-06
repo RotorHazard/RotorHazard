@@ -4418,7 +4418,7 @@ else:
 
 # leaderboard ranking managers
 RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
-RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
+RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RHAPI, Events)
 
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors

@@ -66,11 +66,17 @@ class RHAPI():
     def get_heats_by_class(self, race_class_id):
         return self.rhdata.get_heats_by_class(race_class_id)
 
+    def get_heat_results(self, heat):
+        return self.rhdata.get_results_heat(heat)
+
     def get_raceclass(self, raceclass_id):
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
 
     def get_raceclass_results(self, raceclass):
         return self._racecontext.rhdata.get_results_raceClass(raceclass)
+
+    def get_raceformat(self, format_id):
+        return self._racecontext.rhdata.get_raceFormat(format_id)
 
     def get_saved_race_results(self, race):
         return self.rhdata.get_results_savedRaceMeta(race)
