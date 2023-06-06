@@ -10,10 +10,11 @@ from Database import ProgramMethod
 logger = logging.getLogger(__name__)
 
 class HeatGeneratorManager():
-    def __init__(self, RaceContext, Events):
+    def __init__(self, RaceContext, RHAPI, Events):
         self._generators = {}
 
         self._racecontext = RaceContext
+        self._rhapi = RHAPI
 
         Events.trigger('HeatGenerator_Initialize', {
             'registerFn': self.registerGenerator
@@ -39,7 +40,7 @@ class HeatGeneratorManager():
         return self._generators
 
     def generate(self, generator_id, generate_args=None):
-        generated_heats = self._generators[generator_id].generate(self._racecontext, generate_args)
+        generated_heats = self._generators[generator_id].generate(self._rhapi, generate_args)
         if generated_heats:
             self.apply(generator_id, generated_heats, generate_args)
             return True
@@ -126,7 +127,7 @@ class HeatGenerator():
         self.defaultArgs = defaultArgs
         self.settings = settings
 
-    def generate(self, RaceContext, generate_args=None):
+    def generate(self, RHAPI, generate_args=None):
         generate_args = {**(self.defaultArgs if self.defaultArgs else {}), **(generate_args if generate_args else {})}
 
-        return self._generator(RaceContext, generate_args)
+        return self._generator(RHAPI, generate_args)

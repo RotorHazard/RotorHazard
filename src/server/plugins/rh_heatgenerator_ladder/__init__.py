@@ -22,12 +22,12 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def getTotalPilots(RHData, generate_args):
+def getTotalPilots(RHAPI, generate_args):
     input_class_id = generate_args.get('input_class')
 
     if input_class_id:
-        race_class = RHData.get_raceClass(input_class_id)
-        class_results = RHData.get_results_raceClass(race_class)
+        race_class = RHAPI.get_raceclass(input_class_id)
+        class_results = RHAPI.get_raceclass_results(race_class)
         if class_results and type(class_results) == dict:
             # fill from available results
             # TODO: Check class finalized status
@@ -36,7 +36,7 @@ def getTotalPilots(RHData, generate_args):
             if 'total_pilots' in generate_args:
                 total_pilots = min(total_pilots, int(generate_args['total_pilots']))
         else:
-            all_pilots = RHData.get_pilots()
+            all_pilots = RHAPI.pilots
 
             if 'total_pilots' in generate_args:
                 total_pilots = min(all_pilots, int(generate_args['total_pilots']))
@@ -45,12 +45,11 @@ def getTotalPilots(RHData, generate_args):
                 total_pilots = len(all_pilots)
     else:
         # use total number of pilots
-        all_pilots = RHData.get_pilots()
-        total_pilots = len(all_pilots)
+        total_pilots = len(RHAPI.pilots)
 
     return total_pilots
 
-def generateLadder(RaceContext, generate_args=None):
+def generateLadder(RHAPI, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
     suffix = __(generate_args.get('suffix', 'Main'))
 
@@ -72,7 +71,7 @@ def generateLadder(RaceContext, generate_args=None):
             logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 0')
             return False
 
-    total_pilots = getTotalPilots(RaceContext.rhdata, generate_args)
+    total_pilots = getTotalPilots(RHAPI, generate_args)
 
     if total_pilots == 0:
         logger.warning('Unable to seed ladder: no pilots available')
@@ -132,7 +131,7 @@ def generateLadder(RaceContext, generate_args=None):
 
     return heats
 
-def generateBalancedHeats(RaceContext, generate_args=None):
+def generateBalancedHeats(RHAPI, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
     suffix = __(generate_args.get('suffix', 'Qualifier'))
 
@@ -145,7 +144,7 @@ def generateBalancedHeats(RaceContext, generate_args=None):
         logger.warning('Unable to seed ladder: provided qualifiers must be > 1')
         return False
 
-    total_pilots = getTotalPilots(RaceContext.rhdata, generate_args)
+    total_pilots = getTotalPilots(RHAPI, generate_args)
 
     if total_pilots == 0:
         logger.warning('Unable to seed heats: no pilots available')

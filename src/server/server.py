@@ -4474,7 +4474,7 @@ RaceContext.export_manager = DataExportManager(RaceContext, Events)
 RaceContext.import_manager = DataImportManager(RaceContext, Events)
 
 # heat generators
-RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
+RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

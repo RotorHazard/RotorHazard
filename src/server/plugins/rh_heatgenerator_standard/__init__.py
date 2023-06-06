@@ -4210,7 +4210,7 @@ def bracket_2e_16_multigp():
         }
     ]
 
-def bracket_1e_std(_RaceContext, generate_args):
+def bracket_1e_std(_RHAPI, generate_args):
     if 'standard' not in generate_args:
         return False
 
@@ -4233,7 +4233,7 @@ def bracket_1e_std(_RaceContext, generate_args):
 
     return heats
 
-def bracket_2e_std(_RaceContext, generate_args):
+def bracket_2e_std(_RHAPI, generate_args):
     if 'standard' not in generate_args:
         return False
 
