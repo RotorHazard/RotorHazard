@@ -9,9 +9,9 @@ class ActionsBuiltin():
     def doReplace(self, text, args):
         # %HEAT%
         if 'heat_id' in args:
-            heat = self._RHAPI.heat_by_id(args['heat_id'])
+            heat = self._RHAPI.db.heat_by_id(args['heat_id'])
         else:
-            heat = self._RHAPI.heat_by_id(self._RHAPI.race_heat)
+            heat = self._RHAPI.db.heat_by_id(self._RHAPI.race_heat)
 
         text = text.replace('%HEAT%', heat.displayname())
 
@@ -39,7 +39,7 @@ class ActionsBuiltin():
                     text = text.replace('%FASTEST_LAP%', result['fastest_lap'])
 
                     # %CONSECUTIVE%
-                    if result['consecutives_base'] == int(self._RHAPI.setting('consecutivesCount', 3)):
+                    if result['consecutives_base'] == int(self._RHAPI.db.setting('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', result['consecutives'])
                     else:
                         text = text.replace('%CONSECUTIVE%', __('None'))
@@ -57,10 +57,10 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.pilot_by_id(self._RHAPI.race_pilots[args['node_index']])
+                pilot = self._RHAPI.db.pilot_by_id(self._RHAPI.race.pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.spokenName())
 
-            self._RHAPI.emit_phonetic_text(text)
+            self._RHAPI.ui.message_speak(text)
 
     def messageEffect(self, action, args):
         if 'text' in action:
@@ -68,10 +68,10 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.pilot_by_id(self._RHAPI.race_pilots[args['node_index']])
+                pilot = self._RHAPI.db.pilot_by_id(self._RHAPI.race.pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.displayCallsign())
 
-            self._RHAPI.emit_priority_message(text)
+            self._RHAPI.ui.message_notify(text)
 
     def alertEffect(self, action, args):
         if 'text' in action:
@@ -79,17 +79,17 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.pilot_by_id(self._RHAPI.race_pilots[args['node_index']])
+                pilot = self._RHAPI.db.pilot_by_id(self._RHAPI.race.pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.displayCallsign())
 
-            self._RHAPI.emit_priority_message(text, True)
+            self._RHAPI.ui.message_alert(text)
 
     def scheduleEffect(self, action, args):
         if 'sec' in action:
             if 'min' in action:
-                self._RHAPI.race_schedule(action['sec'], action['min'])
+                self._RHAPI.race.schedule(action['sec'], action['min'])
             else:
-                self._RHAPI.race_schedule(action['sec'])
+                self._RHAPI.race.schedule(action['sec'])
 
 actions = None
 

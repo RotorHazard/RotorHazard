@@ -7,7 +7,52 @@ class RHAPI():
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 
-    # Pilot Attributes
+        self.ui = rhapi_ui(self._racecontext)
+        self.fields = rhapi_fields(self._racecontext)
+        self.db = rhapi_db(self._racecontext)
+        self.race = rhapi_race(self._racecontext)
+
+#
+# UI helpers
+#
+class rhapi_ui():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    # UI Panel
+    def register_panel(self, name, label, page, order=0):
+        return self._racecontext.rhui.register_ui_panel(name, label, page, order)
+
+    @property
+    def panels(self):
+        return self._racecontext.rhui.ui_panels
+
+    # Quick button
+    def register_quickbutton(self, panel, name, label, function):
+        return self._racecontext.rhui.register_quickbutton(panel, name, label, function)
+
+    # Blueprint
+    def blueprint_add(self, blueprint):
+        return self._racecontext.rhui.add_blueprint(blueprint)
+
+    # Messaging
+    def message_speak(self, text):
+        self._racecontext.rhui.emit_phonetic_text(text)
+
+    def message_notify(self, message):
+        self._racecontext.rhui.emit_priority_message(message, False)
+
+    def message_alert(self, message):
+        self._racecontext.rhui.emit_priority_message(message, True)
+
+#
+# Data structures
+#
+class rhapi_fields():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    # Pilot Attribute
     def register_pilot_attribute(self, name, label, fieldtype="text"):
         return self._racecontext.rhui.register_pilot_attribute(name, label, fieldtype)
 
@@ -15,43 +60,22 @@ class RHAPI():
     def pilot_attributes(self):
         return self._racecontext.rhui.pilot_attributes
 
-    # UI Panels
-    def register_ui_panel(self, name, label, page, order=0):
-        return self._racecontext.rhui.register_ui_panel(name, label, page, order)
-
-    @property
-    def ui_panels(self):
-        return self._racecontext.rhui.ui_panels
-
-    # General Settings
-    def register_general_setting(self, name, label, panel=None, fieldtype="text", order=0):
+    # General Setting
+    def register_setting(self, name, label, panel=None, fieldtype="text", order=0):
         return self._racecontext.rhui.register_general_setting(name, label, panel, fieldtype, order)
 
-    # Quick button
-    def register_quickbutton(self, panel, name, label, function):
-        return self._racecontext.rhui.register_quickbutton(panel, name, label, function)
-
     @property
-    def general_settings(self):
+    def settings(self):
         return self._racecontext.rhui.general_settings
 
-    def setting(self, name, default=None):
-        return self._racecontext.rhdata.get_option(name, default)
+#
+# Database Access
+#
+class rhapi_db():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
 
-    # Blueprints
-    def add_blueprint(self, blueprint):
-        return self._racecontext.rhui.add_blueprint(blueprint)
-
-    # emit frontend messages
-    def emit_phonetic_text(self, text):
-        self._racecontext.rhui.emit_phonetic_text(text)
-
-    def emit_priority_message(self, message, interrupt=False):
-        self._racecontext.rhui.emit_priority_message(message, interrupt)
-
-    #
-    # RHData
-    #
+    # Pilot
 
     def pilot_by_id(self, pilot_id):
         return self._racecontext.rhdata.get_pilot(pilot_id)
@@ -60,6 +84,20 @@ class RHAPI():
     def pilots(self):
         return self._racecontext.rhdata.get_pilots()
 
+    def pilot_add(self, pattern=None):
+        return self._racecontext.rhdata.add_pilot(pattern)
+
+    def pilot_alter(self, pattern):
+        return self._racecontext.rhdata.alter_pilot(pattern)
+
+    def pilot_delete(self, pilot_or_id):
+        return self._racecontext.rhdata.delete_pilot(pilot_or_id)
+
+    def pilots_clear(self):
+        return self._racecontext.rhdata.clear_pilots()
+
+    # Heat
+
     def heat_by_id(self, heat_id):
         return self._racecontext.rhdata.get_heat(heat_id)
 
@@ -67,11 +105,25 @@ class RHAPI():
     def heats(self):
         return self._racecontext.rhdata.get_heats()
 
-    def heats_by_class(self, race_class_id):
-        return self.rhdata.get_heats_by_class(race_class_id)
+    def heats_by_class(self, raceclass_id):
+        return self.rhdata.get_heats_by_class(raceclass_id)
 
-    def heat_results(self, heat):
-        return self.rhdata.get_results_heat(heat)
+    def heat_results(self, heat_or_id):
+        return self.rhdata.get_results_heat(heat_or_id)
+
+    def heats_clear(self):
+        return self._racecontext.rhdata.reset_heats()
+
+    # Slots
+
+    @property
+    def slots(self):
+        return self._racecontext.rhdata.get_heatNodes()
+
+    def slot_alter_fast(self, pattern):
+        return self._racecontext.rhdata.alter_heatNodes_fast()
+
+    # Race Class
 
     def raceclass_by_id(self, raceclass_id):
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
@@ -80,36 +132,89 @@ class RHAPI():
     def raceclasses(self):
         return self._racecontext.rhdata.get_raceClasses()
 
-    def raceclass_results(self, raceclass):
-        return self._racecontext.rhdata.get_results_raceClass(raceclass)
+    def raceclass_add(self, pattern=None):
+        return self._racecontext.rhdata.add_raceClass(pattern)
+
+    def raceclass_alter(self, pattern):
+        return self._racecontext.rhdata.alter_raceClass(pattern)
+
+    def raceclass_results(self, raceclass_or_id):
+        return self._racecontext.rhdata.get_results_raceClass(raceclass_or_id)
+
+    def raceclass_clear(self):
+        return self._racecontext.rhdata.reset_raceClasses()
+
+    # Race Format
 
     def raceformat_by_id(self, format_id):
         return self._racecontext.rhdata.get_raceFormat(format_id)
 
-    def saved_race_results(self, race):
-        return self.rhdata.get_results_savedRaceMeta(race)
-    
-    def saved_races_by_heat(self, heat_id):
-        return self.rhdata.get_savedRaceMetas_by_heat(heat_id)
+    @property
+    def raceformats(self):
+        return self._racecontext.rhdata.get_raceFormats()
 
-    #
-    # Race
-    #
+    def raceformat_add(self, pattern=None):
+        return self._racecontext.rhdata.add_format(pattern)
+
+    def raceformat_alter(self, pattern):
+        return self._racecontext.rhdata.alter_raceFormat(pattern)
+
+    def raceformats_clear(self):
+        return self._racecontext.rhdata.clear_raceFormats()
+
+    # Frequency Sets (Profiles)
+
+    
+    @property
+    def frequencysets(self):
+        return self._racecontext.rhdata.get_profiles()
+
+    def frequencyset_add(self, pattern=None):
+        return self._racecontext.rhdata.add_profile(pattern)
+
+    def frequencyset_alter(self, pattern):
+        return self._racecontext.rhdata.alter_profile(pattern)
+
+    def frequencysets_clear(self):
+        return self._racecontext.rhdata.clear_profiles()
+
+    # Saved Race
+
+    def race_results(self, race_or_id):
+        return self._racecontext.rhdata.get_results_savedRaceMeta(race_or_id)
+    
+    def races_by_heat(self, heat_id):
+        return self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat_id)
+
+    def races_clear(self):
+        return self._racecontext.rhdata.clear_race_data()
+
+    # Setting
+
+    def setting(self, name, default=None):
+        return self._racecontext.rhdata.get_option(name, default)
+
+#
+# Active Race
+#
+class rhapi_race():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
 
     @property
-    def race_pilots(self):
+    def pilots(self):
         return self._racecontext.race.node_pilots
 
     @property
-    def race_heat(self):
+    def heat(self):
         return self._racecontext.race.current_heat
 
-    def race_schedule(self, sec_or_none, minutes=0):
+    def schedule(self, sec_or_none, minutes=0):
         return self._racecontext.race.schedule(sec_or_none, minutes)
 
-    def race_stage(self):
-        pass #replaced externally
+    def stage(self):
+        pass # replaced externally until refactored
 
-    def race_stop(self, doSave=False):
-        pass #replaced externally
+    def stop(self, doSave=False):
+        pass # replaced externally until refactored
 

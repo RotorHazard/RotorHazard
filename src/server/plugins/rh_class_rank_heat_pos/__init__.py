@@ -22,14 +22,14 @@ def initialize(**kwargs):
         __ = kwargs['__']
 
 def rank_heat_pos(RHAPI, race_class, _args):
-    heats = RHAPI.heats_by_class(race_class.id)
+    heats = RHAPI.db.heats_by_class(race_class.id)
 
     leaderboard = []
     ranked_pilots = []
     rank_pos = 1
 
     for heat in reversed(heats):
-        heat_result = RHAPI.heat_results(heat)
+        heat_result = RHAPI.db.heat_results(heat)
         heat_leaderboard = heat_result[heat_result['meta']['primary_leaderboard']]
 
         for line in heat_leaderboard:
@@ -42,7 +42,7 @@ def rank_heat_pos(RHAPI, race_class, _args):
                     'heat_rank': line['position'],
                     'position': rank_pos
                 })
-                
+
                 ranked_pilots.append(line['pilot_id'])
                 rank_pos += 1
 
