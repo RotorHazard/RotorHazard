@@ -23,9 +23,7 @@ def initialize(**kwargs):
     if '__' in kwargs:
         __ = kwargs['__']
 
-def import_json(racecontext, source, args):
-    rd = racecontext.rhdata
-
+def import_json(RHAPI, source, args):
     if not source:
         return False
 
@@ -39,9 +37,9 @@ def import_json(racecontext, source, args):
         logger.debug("Importing Pilots...")
 
         if 'reset_pilots' in args and args['reset_pilots']:
-            rd.clear_pilots()
+            RHAPI.db_pilots_clear()
 
-        db_pilots = rd.get_pilots()
+        db_pilots = RHAPI.db.pilots
 
         for input_pilot in data["Pilot"]:
 
@@ -55,9 +53,9 @@ def import_json(racecontext, source, args):
 
             if db_match:
                 input_pilot["pilot_id"] = db_match.id
-                db_pilot, _ = rd.alter_pilot(input_pilot)
+                db_pilot, _ = RHAPI.db.pilot_alter(input_pilot)
             else:
-                db_pilot = rd.add_pilot(input_pilot)
+                db_pilot = RHAPI.db.pilot_add(input_pilot)
 
             input_pilot['db_id'] = db_pilot.id
 
@@ -65,9 +63,9 @@ def import_json(racecontext, source, args):
         logger.debug("Importing Formats...")
 
         if 'reset_formats' in args and args['reset_formats']:
-            rd.clear_pilots()
+            RHAPI.db.raceformats_clear()
 
-        db_formats = rd.get_raceFormats()
+        db_formats = RHAPI.db.raceformats
 
         for input_format in data["RaceFormat"]:
             db_match = None
@@ -80,9 +78,9 @@ def import_json(racecontext, source, args):
 
             if db_match:
                 input_format["format_id"] = db_match.id
-                db_format, _ = rd.alter_raceFormat(input_format)
+                db_format, _ = RHAPI.db.raceformat_alter(input_format)
             else:
-                db_format = rd.add_format(input_format)
+                db_format = RHAPI.db.raceformat_add(input_format)
 
             input_format['db_id'] = db_format.id
 
@@ -90,9 +88,9 @@ def import_json(racecontext, source, args):
         logger.debug("Importing Profiles...")
 
         if 'reset_profiles' in args and args['reset_profiles']:
-            rd.clear_pilots()
+            RHAPI.db.frequencysets_clear()
 
-        db_profiles = rd.get_profiles()
+        db_profiles = RHAPI.db.frequencysets
 
         for input_profile in data["Profiles"]:
             db_match = None
@@ -106,9 +104,9 @@ def import_json(racecontext, source, args):
 
             if db_match:
                 input_profile["profile_id"] = db_match.id
-                db_profile = rd.alter_profile(input_profile)
+                db_profile = RHAPI.db.frequencyset_alter(input_profile)
             else:
-                db_profile = rd.add_profile(input_profile)
+                db_profile = RHAPI.db.frequencyset_add(input_profile)
 
             input_profile['db_id'] = db_profile.id
 
@@ -126,17 +124,17 @@ def import_json(racecontext, source, args):
 
         for setting in data["GlobalSettings"]:
             if setting["option_name"] not in invalid_settings:
-                rd.set_option(setting["option_name"], setting["option_value"])
+                RHAPI.db.set_option(setting["option_name"], setting["option_value"])
 
     if "RaceClass" in data:
         logger.debug("Importing Classes/Heats...")
 
         if 'reset_classes' in args and args['reset_classes']:
-            rd.reset_heats()
-            rd.reset_raceClasses()
-            rd.clear_race_data()
+            RHAPI.db.heats_clear()
+            RHAPI.db.raceclasses_clear()
+            RHAPI.db.races_clear()
 
-        db_race_classes = rd.get_raceClasses()
+        db_race_classes = RHAPI.db.raceclasses()
 
         for input_race_class in data["RaceClass"]:
             db_match = None
@@ -154,9 +152,9 @@ def import_json(racecontext, source, args):
 
             if db_match:
                 input_race_class["class_id"] = db_match.id
-                db_race_class, _ = rd.alter_raceClass(input_race_class)
+                db_race_class, _ = RHAPI.db.raceclass_alter(input_race_class)
             else:
-                db_race_class = rd.add_raceClass(input_race_class)
+                db_race_class = RHAPI.db.raceclass_add(input_race_class)
 
             input_race_class['db_id'] = db_race_class.id
 
@@ -167,7 +165,7 @@ def import_json(racecontext, source, args):
 
                         input_heat['class_id'] = input_race_class['db_id']
 
-                        db_heat = rd.add_heat(input_heat)
+                        db_heat = RHAPI.db.add_heat(input_heat)
 
                         input_heat['db_id'] = db_heat.id
 
@@ -177,7 +175,7 @@ def import_json(racecontext, source, args):
         batch = []
 
         for input_heatnode in data["HeatNode"]:
-            db_heatnodes = rd.get_heatNodes()
+            db_heatnodes = RHAPI.db.slots
 
             for heat in data['Heat']:
                 if 'source_id' in heat and heat['source_id'] == input_heatnode['heat_id']:
@@ -208,7 +206,7 @@ def import_json(racecontext, source, args):
                             break
                     break
 
-        rd.alter_heatNodes_fast(batch)
+        RHAPI.db.slot_alter_fast(batch)
 
     return True
 
