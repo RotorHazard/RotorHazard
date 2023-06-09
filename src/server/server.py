@@ -77,15 +77,8 @@ import RHGPIO
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 
-# Create shared context
-RaceContext = RaceContext.RaceContext()
-
 # Events manager
 from eventmanager import Evt, EventManager
-
-Events = EventManager(RaceContext)
-RaceContext.events = Events
-EventActionsObj = None
 
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern
@@ -101,6 +94,13 @@ from data_export import DataExportManager
 from data_import import DataImportManager
 from VRxControl import VRxControlManager
 from HeatGenerator import HeatGeneratorManager
+
+# Create shared context
+RaceContext = RaceContext.RaceContext()
+
+Events = EventManager(RaceContext)
+RaceContext.events = Events
+EventActionsObj = None
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -4145,7 +4145,7 @@ def check_req_entry(req_line, module_name):
 
 def check_requirements():
     try:
-        import importlib.metadata
+        import importlib.metadata  # @UnusedImport pylint: disable=redefined-outer-name
         chk_list = [['Flask==','flask'], ['Flask-SocketIO==','flask_socketio'], \
                     ['Flask_SocketIO==','flask_socketio'], ['six==','six'], \
                     ['flask_sqlalchemy==','flask_sqlalchemy'], ['gevent==','gevent'], \
