@@ -1593,7 +1593,7 @@ def on_export_database_file(data):
                 }
                 emit('exported_data', emit_payload)
 
-                Events.trigger(Evt.DATABASE_EXPORT)
+                Events.trigger(Evt.DATABASE_EXPORT, emit_payload)
             except Exception:
                 logger.exception("Error downloading export file")
                 RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
