@@ -13,6 +13,8 @@ class RHAPI():
         self.db = DatabaseAPI(self._racecontext)
         self.io = IOAPI(self._racecontext)
         self.heatgen = HeatGenerateAPI(self._racecontext)
+        self.classrank = ClassRankAPI(self._racecontext)
+        self.points = PointsAPI(self._racecontext)
         self.led = LEDAPI(self._racecontext)
         self.race = RaceAPI(self._racecontext)
 
@@ -247,6 +249,30 @@ class HeatGenerateAPI():
 
     def run_export(self, generator_id, generate_args):
         return self._racecontext.heat_generate_manager.generate(generator_id, generate_args)
+
+
+#
+# Class Ranking
+#
+class ClassRankAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def methods(self):
+        return self._racecontext.raceclass_rank_manager.methods
+
+
+#
+# Points
+#
+class PointsAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def methods(self):
+        return self._racecontext.race_points_manager.methods
 
 
 #
