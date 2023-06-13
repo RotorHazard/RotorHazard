@@ -12,10 +12,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DataImportManager():
-    def __init__(self, RaceContext, Events):
+    def __init__(self, RHAPI, Events):
         self._importers = {}
 
-        self._racecontext = RaceContext
+        self._rhapi = RHAPI
 
         Events.trigger('Import_Initialize', {
             'registerFn': self.registerImporter
@@ -38,7 +38,7 @@ class DataImportManager():
         return self._importers
 
     def runImport(self, importer_id, data, import_args=None):
-        return self._importers[importer_id].runImport(self._racecontext, data, import_args)
+        return self._importers[importer_id].runImport(self._rhapi, data, import_args)
 
 class DataImporter():
     def __init__(self, name, label, import_fn, default_args=None, settings=None):
@@ -48,7 +48,7 @@ class DataImporter():
         self.default_args = default_args
         self.settings = settings
 
-    def runImport(self, racecontext, data, import_args=None):
+    def runImport(self, RHAPI, data, import_args=None):
         args = {**(self.default_args if self.default_args else {}), **(import_args if import_args else {})}
 
-        return self.import_fn(racecontext, data, args)
+        return self.import_fn(RHAPI, data, args)

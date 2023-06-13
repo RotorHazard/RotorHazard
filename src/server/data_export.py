@@ -19,10 +19,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DataExportManager():
-    def __init__(self, RaceContext, Events):
+    def __init__(self, RHAPI, Events):
         self._exporters = {}
 
-        self._racecontext = RaceContext
+        self._rhapi = RHAPI
 
         Events.trigger('Export_Initialize', {
             'registerFn': self.registerExporter
@@ -45,7 +45,7 @@ class DataExportManager():
         return self._exporters
 
     def export(self, exporter_id):
-        return self._exporters[exporter_id].export(self._racecontext)
+        return self._exporters[exporter_id].export(self._rhapi)
 
 class DataExporter():
     def __init__(self, name, label, formatter_fn, assembler_fn):
@@ -54,6 +54,6 @@ class DataExporter():
         self.formatter = formatter_fn
         self.assembler = assembler_fn
 
-    def export(self, racecontext):
-        data = self.assembler(racecontext)
+    def export(self, RHAPI):
+        data = self.assembler(RHAPI)
         return self.formatter(data)

@@ -22,6 +22,9 @@ class RHAPI():
         self.race = RaceAPI(self._racecontext)
         self.language = LanguageAPI(self._racecontext)
         self.interface = HardwareInterfaceAPI(self._racecontext)
+        self.eventresults = EventResultsAPI(self._racecontext)
+
+        self.__ = self.language.__
 
 
 #
@@ -291,6 +294,10 @@ class DatabaseAPI():
 
     # Options
 
+    @property
+    def options(self):
+        return self._racecontext.rhdata.get_options()
+
     def option(self, name, default=False, **kwargs):
         # keyword parameters
         # as_int: return as integer if truthy
@@ -317,7 +324,17 @@ class DatabaseAPI():
     def event_results(self):
         return self._racecontext.rhdata.get_results_event()
 
-    # Results
+
+#
+# Data input/output
+#
+class EventResultsAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def results(self):
+        return self._racecontext.pagecache.get_cache()
 
     def results_clear(self):
         return self._racecontext.rhdata.clear_results_all()

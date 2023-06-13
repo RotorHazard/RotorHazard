@@ -4470,8 +4470,8 @@ RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, legacy_config=C
 Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters
-RaceContext.export_manager = DataExportManager(RaceContext, Events)
-RaceContext.import_manager = DataImportManager(RaceContext, Events)
+RaceContext.export_manager = DataExportManager(RHAPI, Events)
+RaceContext.import_manager = DataImportManager(RHAPI, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
