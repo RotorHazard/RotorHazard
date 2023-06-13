@@ -352,11 +352,86 @@ class RaceAPI():
         return self._racecontext.race.node_pilots
 
     @property
+    def teams(self):
+        return self._racecontext.race.node_teams
+
+    @property
+    def slots(self):
+        return self._racecontext.race.num_nodes
+
+    @property
+    def seat_colors(self):
+        return self._racecontext.race.seat_colors
+
+    @property
     def heat(self):
         return self._racecontext.race.current_heat
 
+    @property
+    def frequencyset(self):
+        return self._racecontext.race.profile
+
+    @property
+    def raceformat(self):
+        return self._racecontext.race.format
+
+    @property
+    def status(self):
+        return self._racecontext.race.race_status
+
+    @property
+    def stage_time_internal(self):
+        return self._racecontext.race.stage_time_monotonic
+
+    @property
+    def start_time(self):
+        return self._racecontext.race.start_time
+
+    @property
+    def start_time_internal(self):
+        return self._racecontext.race.start_time_monotonic
+
+    @property
+    def end_time_internal(self):
+        return self._racecontext.race.end_time
+
+    @property
+    def seats_finished(self):
+        return self._racecontext.race.node_has_finished
+
+    @property
+    def laps(self):
+        return self._racecontext.race.get_lap_results()
+
+    @property
+    def any_laps_recorded(self):
+        return self._racecontext.race.any_laps_recorded()
+
+    @property
+    def laps_raw(self):
+        return self._racecontext.race.node_laps
+
+    @property
+    def laps_active_raw(self, filter_late_laps=False):
+        return self._racecontext.race.get_active_laps(filter_late_laps)
+
+    @property
+    def results(self):
+        return self._racecontext.race.get_results()
+
+    @property
+    def team_results(self):
+        return self._racecontext.race.get_team_results()
+
     def schedule(self, sec_or_none, minutes=0):
         return self._racecontext.race.schedule(sec_or_none, minutes)
+
+    @property
+    def scheduled(self):
+        if self._racecontext.race.scheduled:
+            return self._racecontext.race.scheduled_time
+        else:
+            return False
 
     def stage(self):
         pass # replaced externally until refactored
