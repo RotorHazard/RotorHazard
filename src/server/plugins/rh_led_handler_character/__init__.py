@@ -165,13 +165,9 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'raceContext' in args:
-        ctx = args['raceContext']
-
-        RACE = ctx.race
-        result = ctx.race.get_results()
+    if 'rhapi' in args:
+        result = rhapi.race.results
     else:
-        RACE = None
         return False
 
     if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 
@@ -209,7 +205,7 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                if not RACE or RACE.race_status == RaceStatus.DONE:
+                if rhapi.race.status == RaceStatus.DONE:
                     text = str(line['laps'])
                 else:
                     # first callsign character

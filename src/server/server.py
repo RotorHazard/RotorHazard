@@ -4405,7 +4405,7 @@ if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
-        RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext)
+        RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext, RHAPI)
         init_LED_effects()
     except:
         logger.exception("Error initializing LED support")

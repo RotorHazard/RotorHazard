@@ -24,8 +24,8 @@ def rssiGraph(args):
     else:
         return False
 
-    if 'raceContext' in args:
-        INTERFACE = args['raceContext'].interface
+    if 'rhapi' in args:
+        INTERFACE = args['rhapi'].interface
     else:
         return False
 

@@ -27,10 +27,11 @@ class LEDEventManager:
     eventThread = None
     displayColorCache = []
 
-    def __init__(self, eventmanager, strip, RaceContext):
+    def __init__(self, eventmanager, strip, RaceContext, RHAPI):
         self.Events = eventmanager
         self.strip = strip
         self._racecontext = RaceContext
+        self._rhapi = RHAPI
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *_args: None, {
@@ -86,7 +87,7 @@ class LEDEventManager:
             'handlerFn': self.eventEffects[name]['handlerFn'],
             'strip': self.strip,
             'manager': self,
-            'raceContext': self._racecontext
+            'RHAPI': self._rhapi
             })
 
         if event in [LEDEvent.IDLE_READY, LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING]:

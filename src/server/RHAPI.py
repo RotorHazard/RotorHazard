@@ -21,6 +21,7 @@ class RHAPI():
         self.vrxcontrol = VRxControlAPI(self._racecontext)
         self.race = RaceAPI(self._racecontext)
         self.language = LanguageAPI(self._racecontext)
+        self.interface = HardwareInterfaceAPI(self._racecontext)
 
 
 #
@@ -457,4 +458,16 @@ class LanguageAPI():
 
     def __(self, text, domain=''):
         return self._racecontext.language.__(text, domain)
+
+
+#
+# Hardware Interface
+#
+class HardwareInterfaceAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def nodes(self):
+        return self._racecontext.interface.nodes
 
