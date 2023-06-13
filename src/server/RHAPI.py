@@ -16,6 +16,7 @@ class RHAPI():
         self.classrank = ClassRankAPI(self._racecontext)
         self.points = PointsAPI(self._racecontext)
         self.led = LEDAPI(self._racecontext)
+        self.vrxcontrol = VRxControlAPI(self._racecontext)
         self.race = RaceAPI(self._racecontext)
 
 #
@@ -304,6 +305,32 @@ class LEDAPI():
 
     def activate_effect(self, args):
         return self._racecontext.led_manager.activateEffect(args)
+
+
+#
+# VRx Control
+#
+class VRxControlAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def enabled(self):
+        return self._racecontext.vrx_manager.isEnabled()
+
+    def kill(self):
+        return self._racecontext.vrx_manager.kill()
+
+    @property
+    def status(self):
+        return self._racecontext.vrx_manager.getControllerStatus()
+
+    @property
+    def devices(self):
+        return self._racecontext.vrx_manager.getDevices()
+
+    def devices_by_pilot(self, seat, pilot_id):
+        return self._racecontext.vrx_manager.getActiveDevices(seat, pilot_id)
 
 
 #
