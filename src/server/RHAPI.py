@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 class RHAPI():
     def __init__(self, RaceContext):
+        self.api_version = 1
+
         self._racecontext = RaceContext
 
         self.ui = UserInterfaceAPI(self._racecontext)
@@ -18,6 +20,8 @@ class RHAPI():
         self.led = LEDAPI(self._racecontext)
         self.vrxcontrol = VRxControlAPI(self._racecontext)
         self.race = RaceAPI(self._racecontext)
+        self.language = LanguageAPI(self._racecontext)
+
 
 #
 # UI helpers
@@ -52,6 +56,7 @@ class UserInterfaceAPI():
     def message_alert(self, message):
         self._racecontext.rhui.emit_priority_message(message, True)
 
+
 #
 # Data structures
 #
@@ -74,6 +79,7 @@ class FieldsAPI():
     @property
     def options(self):
         return self._racecontext.rhui.general_settings
+
 
 #
 # Database Access
@@ -214,6 +220,7 @@ class DatabaseAPI():
 
     def option_set(self, name, value):
         return self._racecontext.rhdata.set_option(name, value)
+
 
 #
 # Data input/output
@@ -356,4 +363,23 @@ class RaceAPI():
 
     def stop(self, doSave=False):
         pass # replaced externally until refactored
+
+
+#
+# Language
+#
+class LanguageAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def languages(self):
+        return self._racecontext.language.getLanguages()
+
+    @property
+    def dictionary(self):
+        return self._racecontext.language.getAllLanguages()
+
+    def __(self, text, domain=''):
+        return self._racecontext.language.__(text, domain)
 
