@@ -2798,8 +2798,8 @@ class RHData():
             )).filter_by(heat_id=heat_id).scalar()
 
     # Pilot-Races
-    def get_savedPilotRace(self, race_id):
-        return self._Database.SavedPilotRace.query.get(race_id)
+    def get_savedPilotRace(self, pilotrace_id):
+        return self._Database.SavedPilotRace.query.get(pilotrace_id)
 
     def get_savedPilotRaces(self):
         return self._Database.SavedPilotRace.query.all()

@@ -32,12 +32,12 @@ class UserInterfaceAPI():
         self._racecontext = RaceContext
 
     # UI Panel
-    def register_panel(self, name, label, page, order=0):
-        return self._racecontext.rhui.register_ui_panel(name, label, page, order)
-
     @property
     def panels(self):
         return self._racecontext.rhui.ui_panels
+
+    def register_panel(self, name, label, page, order=0):
+        return self._racecontext.rhui.register_ui_panel(name, label, page, order)
 
     # Quick button
     def register_quickbutton(self, panel, name, label, function):
@@ -66,20 +66,20 @@ class FieldsAPI():
         self._racecontext = RaceContext
 
     # Pilot Attribute
-    def register_pilot_attribute(self, name, label, fieldtype="text"):
-        return self._racecontext.rhui.register_pilot_attribute(name, label, fieldtype)
-
     @property
     def pilot_attributes(self):
         return self._racecontext.rhui.pilot_attributes
 
-    # General Setting
-    def register_option(self, name, label, panel=None, fieldtype="text", order=0):
-        return self._racecontext.rhui.register_general_setting(name, label, panel, fieldtype, order)
+    def register_pilot_attribute(self, name, label, fieldtype="text"):
+        return self._racecontext.rhui.register_pilot_attribute(name, label, fieldtype)
 
+    # General Setting
     @property
     def options(self):
         return self._racecontext.rhui.general_settings
+
+    def register_option(self, name, label, panel=None, fieldtype="text", order=0):
+        return self._racecontext.rhui.register_general_setting(name, label, panel, fieldtype, order)
 
 
 #
@@ -89,14 +89,25 @@ class DatabaseAPI():
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 
-    # Pilot
+    # Global
 
-    def pilot_by_id(self, pilot_id):
-        return self._racecontext.rhdata.get_pilot(pilot_id)
+    def clear_all(self):
+        return self._racecontext.rhdata.reset_all()
+
+    # Pilot
 
     @property
     def pilots(self):
         return self._racecontext.rhdata.get_pilots()
+
+    def pilot_by_id(self, pilot_id):
+        return self._racecontext.rhdata.get_pilot(pilot_id)
+
+    def pilot_attributes(self, pilot_or_id):
+        return self._racecontext.rhdata.get_pilot_attributes(pilot_or_id)
+
+    def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
+        return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
 
     def pilot_add(self, pattern=None):
         return self._racecontext.rhdata.add_pilot(pattern)
@@ -112,18 +123,33 @@ class DatabaseAPI():
 
     # Heat
 
-    def heat_by_id(self, heat_id):
-        return self._racecontext.rhdata.get_heat(heat_id)
-
     @property
     def heats(self):
         return self._racecontext.rhdata.get_heats()
+
+    def heat_by_id(self, heat_id):
+        return self._racecontext.rhdata.get_heat(heat_id)
 
     def heats_by_class(self, raceclass_id):
         return self._racecontext.rhdata.get_heats_by_class(raceclass_id)
 
     def heat_results(self, heat_or_id):
         return self._racecontext.rhdata.get_results_heat(heat_or_id)
+
+    def heat_max_round(self, heat_id):
+        return self._racecontext.rhdata.get_max_round(heat_id)
+
+    def heat_add(self, pattern=None):
+        return self._racecontext.rhdata.add_heat(pattern)
+
+    def heat_duplicate(self, source_heat_or_id):
+        return self._racecontext.rhdata.duplicate_heat(source_heat_or_id)
+
+    def heat_alter(self, pattern):
+        return self._racecontext.rhdata.alter_heat(pattern)
+
+    def heat_delete(self, heat_or_id):
+        return self._racecontext.rhdata.delete_heat(heat_or_id)
 
     def heats_clear(self):
         return self._racecontext.rhdata.reset_heats()
@@ -134,20 +160,26 @@ class DatabaseAPI():
     def slots(self):
         return self._racecontext.rhdata.get_heatNodes()
 
+    def slots_by_heat(self, heat_id):
+        return self._racecontext.rhdata.get_heatNodes_by_heat(heat_id)
+
     def slot_alter_fast(self, pattern):
         return self._racecontext.rhdata.alter_heatNodes_fast(pattern)
 
     # Race Class
 
-    def raceclass_by_id(self, raceclass_id):
-        return self._racecontext.rhdata.get_raceClass(raceclass_id)
-
     @property
     def raceclasses(self):
         return self._racecontext.rhdata.get_raceClasses()
 
+    def raceclass_by_id(self, raceclass_id):
+        return self._racecontext.rhdata.get_raceClass(raceclass_id)
+
     def raceclass_add(self, pattern=None):
         return self._racecontext.rhdata.add_raceClass(pattern)
+
+    def raceclass_duplicate(self, source_class_or_id):
+        return self._racecontext.rhdata.duplicate_raceClass(source_class_or_id)
 
     def raceclass_alter(self, pattern):
         return self._racecontext.rhdata.alter_raceClass(pattern)
@@ -155,23 +187,35 @@ class DatabaseAPI():
     def raceclass_results(self, raceclass_or_id):
         return self._racecontext.rhdata.get_results_raceClass(raceclass_or_id)
 
+    def raceclass_ranking(self, raceclass_or_id):
+        return self._racecontext.rhdata.get_ranking_raceClass(raceclass_or_id)
+
+    def raceclass_delete(self, raceclass_or_id):
+        return self._racecontext.rhdata.delete_raceClass(raceclass_or_id)
+
     def raceclass_clear(self):
         return self._racecontext.rhdata.reset_raceClasses()
 
     # Race Format
 
-    def raceformat_by_id(self, format_id):
-        return self._racecontext.rhdata.get_raceFormat(format_id)
-
     @property
     def raceformats(self):
         return self._racecontext.rhdata.get_raceFormats()
 
+    def raceformat_by_id(self, format_id):
+        return self._racecontext.rhdata.get_raceFormat(format_id)
+
     def raceformat_add(self, pattern=None):
         return self._racecontext.rhdata.add_format(pattern)
 
+    def raceformat_duplicate(self, source_format_or_id):
+        return self._racecontext.rhdata.duplicate_raceFormat(source_format_or_id)
+
     def raceformat_alter(self, pattern):
         return self._racecontext.rhdata.alter_raceFormat(pattern)
+
+    def raceformat_delete(self, raceformat_id):
+        return self._racecontext.rhdata.delete_raceFormat(raceformat_id)
 
     def raceformats_clear(self):
         return self._racecontext.rhdata.clear_raceFormats()
@@ -182,25 +226,68 @@ class DatabaseAPI():
     def frequencysets(self):
         return self._racecontext.rhdata.get_profiles()
 
+    def frequencyset_by_id(self, set_id):
+        return self._racecontext.rhdata.get_profile(set_id)
+
     def frequencyset_add(self, pattern=None):
         return self._racecontext.rhdata.add_profile(pattern)
+
+    def frequencyset_duplicate(self, source_set_or_id):
+        return self._racecontext.rhdata.duplicate_profile(source_set_or_id)
 
     def frequencyset_alter(self, pattern):
         return self._racecontext.rhdata.alter_profile(pattern)
 
+    def frequencyset_delete(self, set_or_id):
+        return self._racecontext.rhdata.delete_profile(set_or_id)
+
     def frequencysets_clear(self):
-        return self._racecontext.rhdata.clear_profiles()
+        return self._racecontext.rhdata.reset_profiles()
 
     # Saved Race
 
-    def race_results(self, race_or_id):
-        return self._racecontext.rhdata.get_results_savedRaceMeta(race_or_id)
+    @property
+    def races(self):
+        return self._racecontext.rhdata.get_savedRaceMetas()
+
+    def race_by_id(self, race_id):
+        return self._racecontext.rhdata.get_savedRaceMeta(race_id)
+
+    def race_by_heat_round(self, heat_id, round_number):
+        return self._racecontext.rhdata.get_savedRaceMeta_by_heat_round(heat_id, round_number)
 
     def races_by_heat(self, heat_id):
         return self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat_id)
 
+    def races_by_raceclass(self, raceclass_id):
+        return self._racecontext.rhdata.get_savedRaceMetas_by_raceClass(raceclass_id)
+
+    def race_results(self, race_or_id):
+        return self._racecontext.rhdata.get_results_savedRaceMeta(race_or_id)
+
     def races_clear(self):
         return self._racecontext.rhdata.clear_race_data()
+
+    # Race -> Pilot Run
+
+    @property
+    def pilotruns(self):
+        return self._racecontext.rhdata.get_savedPilotRaces()
+
+    def pilotrun_by_id(self, run_id):
+        return self._racecontext.rhdata.get_savedPilotRace(run_id)
+
+    def pilotrun_by_race(self, race_id):
+        return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
+
+    # Race -> Pilot Run -> Laps
+
+    @property
+    def laps(self):
+        return self._racecontext.rhdata.get_savedRaceLaps()
+
+    def laps_by_pilotrun(self, run_id):
+        return self._racecontext.get_savedRaceLaps_by_savedPilotRace(run_id)
 
     # Options
 
@@ -221,6 +308,19 @@ class DatabaseAPI():
 
     def option_set(self, name, value):
         return self._racecontext.rhdata.set_option(name, value)
+
+    def options_clear(self):
+        return self._racecontext.rhdata.reset_options()
+
+    # Event
+
+    def event_results(self):
+        return self._racecontext.rhdata.get_results_event()
+
+    # Results
+
+    def results_clear(self):
+        return self._racecontext.rhdata.clear_results_all()
 
 
 #
