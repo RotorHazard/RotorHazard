@@ -76,7 +76,7 @@ class RacePointsManager():
 
     def assign(self, method_id, leaderboard, args=None):
         if method_id == "":
-            return False
+            return leaderboard
 
         return self.methods[method_id].assign(self._rhapi, leaderboard, args)
 

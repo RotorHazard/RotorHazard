@@ -35,7 +35,7 @@ def rank_best_rounds(RHAPI, race_class, args):
         races = RHAPI.db.races_by_heat(heat.id)
 
         for race in races:
-            race_result = RHAPI.db.saved_race_results(race)
+            race_result = RHAPI.db.race_results(race)
 
             if race_result:
                 for pilotresult in race_result['by_race_time']:

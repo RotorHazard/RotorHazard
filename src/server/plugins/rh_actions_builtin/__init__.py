@@ -11,7 +11,7 @@ class ActionsBuiltin():
         if 'heat_id' in args:
             heat = self._RHAPI.db.heat_by_id(args['heat_id'])
         else:
-            heat = self._RHAPI.db.heat_by_id(self._RHAPI.race_heat)
+            heat = self._RHAPI.db.heat_by_id(self._RHAPI.race.heat)
 
         text = text.replace('%HEAT%', heat.displayname())
 

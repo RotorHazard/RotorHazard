@@ -25,7 +25,7 @@ def points_by_position(_rhapi, leaderboard, args):
         points_list = [int(x.strip()) for x in args['points_list'].split(',')]
     except:
         logger.info("Unable to parse points list string")
-        return None
+        return leaderboard
 
     lb = leaderboard[leaderboard['meta']['primary_leaderboard']]
 

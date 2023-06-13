@@ -2726,14 +2726,14 @@ class RHData():
         if race.format_id:
             raceformat = self.get_raceFormat(race.format_id)
             if raceformat and raceformat.points_method:
-                pm = json.loads(raceformat.points_method)
-                method = pm['t']
-                if 's' in pm:
-                    settings = pm['s']
+                points_method = json.loads(raceformat.points_method)
+                method_type = points_method['t']
+                if 's' in points_method:
+                    settings = points_method['s']
                 else:
                     settings = None
 
-                build = self._racecontext.race_points_manager.assign(method, build, settings)
+                build = self._racecontext.race_points_manager.assign(method_type, build, settings)
                 build['meta']['primary_points'] = True
 
         self.set_results_savedRaceMeta(race, token, build)

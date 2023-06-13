@@ -164,7 +164,7 @@ Database.DB.init_app(APP)
 Database.DB.app = APP
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], maxHttpBufferSize=5e7)
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], max_http_buffer_size=5e7)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.

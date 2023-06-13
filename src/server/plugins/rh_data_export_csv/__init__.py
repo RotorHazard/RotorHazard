@@ -148,6 +148,9 @@ def assemble_formats(RHAPI):
     return payload
 
 def build_leaderboard(leaderboard, RHAPI, **kwargs):
+    if not leaderboard:
+        return None
+
     meta = leaderboard['meta']
     if 'primary_leaderboard' in kwargs and kwargs['primary_leaderboard'] in leaderboard:
         primary_leaderboard = leaderboard[kwargs['primary_leaderboard']]
@@ -190,99 +193,106 @@ def build_leaderboard(leaderboard, RHAPI, **kwargs):
 
 def assemble_results(RHAPI):
     results = RHAPI.eventresults.results
+
+    if not results:
+        return None
+
     payload = []
 
-    payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Race Totals')])
-    for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_race_time'):
-        payload.append(row[1:])
+    if results['event_leaderboard']:
+        payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Race Totals')])
+        for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_race_time'):
+            payload.append(row[1:])
 
-    payload.append([''])
-    payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Fastest Laps')])
-    for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_fastest_lap'):
-        payload.append(row[1:])
+        payload.append([''])
+        payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Fastest Laps')])
+        for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_fastest_lap'):
+            payload.append(row[1:])
+    
+        payload.append([''])
+        payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Fastest Consecutive Laps')])
+        for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_consecutives'):
+            payload.append(row[1:])
 
-    payload.append([''])
-    payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Fastest Consecutive Laps')])
-    for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_consecutives'):
-        payload.append(row[1:])
+        payload.append([''])
 
-    payload.append([''])
-    payload.append([RHAPI.__('Class Leaderboards')])
-
-    # move unclassified heats to end
     all_classes = sorted(list(results['heats_by_class'].keys()))
-    all_classes.append(all_classes.pop(all_classes.index(0)))
 
-    for class_id in all_classes:
+    if all_classes:
+        payload.append([RHAPI.__('Class Leaderboards')])
 
-        valid_heats = False
-        if len(results['heats_by_class'][class_id]):
-            for heat in results['heats_by_class'][class_id]:
-                if heat in results['heats']:
-                    valid_heats = True
-                    break
+        # move unclassified heats to end
+        all_classes.append(all_classes.pop(all_classes.index(0)))
 
-        if valid_heats:
-            if class_id in results['classes']:
-                race_class = results['classes'][class_id]
-            else:
-                race_class = False
+        for class_id in all_classes:
 
-            payload.append([])
-            if race_class:
-                payload.append([RHAPI.__('Class') + ': ' + race_class['name']])
-                payload.append([])
-                payload.append([RHAPI.__('Class Summary')])
-                for row in build_leaderboard(race_class['leaderboard'], RHAPI):
-                    payload.append(row[1:])
-            else:
-                if len(results['classes']):
-                    payload.append([RHAPI.__('Unclassified')])
+            valid_heats = False
+            if len(results['heats_by_class'][class_id]):
+                for heat in results['heats_by_class'][class_id]:
+                    if heat in results['heats']:
+                        valid_heats = True
+                        break
+
+            if valid_heats:
+                if class_id in results['classes']:
+                    race_class = results['classes'][class_id]
                 else:
-                    payload.append([RHAPI.__('Heats')])
+                    race_class = False
 
-            for heat_id in results['heats_by_class'][class_id]:
-                if heat_id in results['heats']:
-                    heat = results['heats'][heat_id]
-
+                payload.append([])
+                if race_class:
+                    payload.append([RHAPI.__('Class') + ': ' + race_class['name']])
                     payload.append([])
+                    payload.append([RHAPI.__('Class Summary')])
+                    for row in build_leaderboard(race_class['leaderboard'], RHAPI):
+                        payload.append(row[1:])
+                else:
+                    if len(results['classes']):
+                        payload.append([RHAPI.__('Unclassified')])
+                    else:
+                        payload.append([RHAPI.__('Heats')])
 
-                    payload.append([heat['displayname']])
-
-                    if len(heat['rounds']) > 1:
-                        payload.append([])
-                        payload.append([RHAPI.__('Heat Summary')])
-
-                        for row in build_leaderboard(heat['leaderboard'], RHAPI):
-                            payload.append(row[1:])
-
-                    for heat_round in heat['rounds']:
-                        payload.append([])
-                        payload.append([RHAPI.__('Round {0}').format(heat_round['id'])])
-
-                        laptimes = []
-
-                        for row in build_leaderboard(heat_round['leaderboard'], RHAPI):
-                            for node in heat_round['nodes']:
-                                if row[0] == node['node_index']:
-                                    laplist = []
-
-                                    laplist.append(node['callsign'])
-
-                                    for lap in node['laps']:
-                                        if not lap['deleted']:
-                                            laplist.append(lap['lap_time_formatted'])
-
-                                    laptimes.append(laplist)
-
-                            payload.append(row[1:])
-
+                for heat_id in results['heats_by_class'][class_id]:
+                    if heat_id in results['heats']:
+                        heat = results['heats'][heat_id]
 
                         payload.append([])
-                        payload.append([RHAPI.__('Round {0} Times').format(str(heat_round['id']))])
 
-                        for row in laptimes:
-                            payload.append(row)
+                        payload.append([heat['displayname']])
+
+                        if len(heat['rounds']) > 1:
+                            payload.append([])
+                            payload.append([RHAPI.__('Heat Summary')])
+
+                            for row in build_leaderboard(heat['leaderboard'], RHAPI):
+                                payload.append(row[1:])
+
+                        for heat_round in heat['rounds']:
+                            payload.append([])
+                            payload.append([RHAPI.__('Round {0}').format(heat_round['id'])])
+
+                            laptimes = []
+
+                            for row in build_leaderboard(heat_round['leaderboard'], RHAPI):
+                                for node in heat_round['nodes']:
+                                    if row[0] == node['node_index']:
+                                        laplist = []
+
+                                        laplist.append(node['callsign'])
+
+                                        for lap in node['laps']:
+                                            if not lap['deleted']:
+                                                laplist.append(lap['lap_time_formatted'])
+
+                                        laptimes.append(laplist)
+
+                                payload.append(row[1:])
+
+                            payload.append([])
+                            payload.append([RHAPI.__('Round {0} Times').format(str(heat_round['id']))])
+
+                            for row in laptimes:
+                                payload.append(row)
 
     return payload
 

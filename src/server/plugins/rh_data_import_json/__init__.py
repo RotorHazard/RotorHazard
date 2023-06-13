@@ -37,7 +37,7 @@ def import_json(RHAPI, source, args):
         logger.debug("Importing Pilots...")
 
         if 'reset_pilots' in args and args['reset_pilots']:
-            RHAPI.db_pilots_clear()
+            RHAPI.db.pilots_clear()
 
         db_pilots = RHAPI.db.pilots
 
@@ -124,7 +124,7 @@ def import_json(RHAPI, source, args):
 
         for setting in data["GlobalSettings"]:
             if setting["option_name"] not in invalid_settings:
-                RHAPI.db.set_option(setting["option_name"], setting["option_value"])
+                RHAPI.db.option_set(setting["option_name"], setting["option_value"])
 
     if "RaceClass" in data:
         logger.debug("Importing Classes/Heats...")
@@ -134,7 +134,7 @@ def import_json(RHAPI, source, args):
             RHAPI.db.raceclasses_clear()
             RHAPI.db.races_clear()
 
-        db_race_classes = RHAPI.db.raceclasses()
+        db_race_classes = RHAPI.db.raceclasses
 
         for input_race_class in data["RaceClass"]:
             db_match = None
@@ -165,7 +165,7 @@ def import_json(RHAPI, source, args):
 
                         input_heat['class_id'] = input_race_class['db_id']
 
-                        db_heat = RHAPI.db.add_heat(input_heat)
+                        db_heat = RHAPI.db.heat_add(input_heat)
 
                         input_heat['db_id'] = db_heat.id
 

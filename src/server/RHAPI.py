@@ -196,7 +196,7 @@ class DatabaseAPI():
     def raceclass_delete(self, raceclass_or_id):
         return self._racecontext.rhdata.delete_raceClass(raceclass_or_id)
 
-    def raceclass_clear(self):
+    def raceclasses_clear(self):
         return self._racecontext.rhdata.reset_raceClasses()
 
     # Race Format
