@@ -1,21 +1,23 @@
 ''' Class to access race functions and details '''
 
 import logging
+from attr import field
 logger = logging.getLogger(__name__)
 
 class RHAPI():
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 
-        self.ui = rhapi_ui(self._racecontext)
-        self.fields = rhapi_fields(self._racecontext)
-        self.db = rhapi_db(self._racecontext)
-        self.race = rhapi_race(self._racecontext)
+        self.ui = UserInterfaceAPI(self._racecontext)
+        self.fields = FieldsAPI(self._racecontext)
+        self.db = DatabaseAPI(self._racecontext)
+        self.io = IOAPI(self._racecontext)
+        self.race = RaceAPI(self._racecontext)
 
 #
 # UI helpers
 #
-class rhapi_ui():
+class UserInterfaceAPI():
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 
@@ -48,7 +50,7 @@ class rhapi_ui():
 #
 # Data structures
 #
-class rhapi_fields():
+class FieldsAPI():
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 
@@ -61,17 +63,17 @@ class rhapi_fields():
         return self._racecontext.rhui.pilot_attributes
 
     # General Setting
-    def register_setting(self, name, label, panel=None, fieldtype="text", order=0):
+    def register_option(self, name, label, panel=None, fieldtype="text", order=0):
         return self._racecontext.rhui.register_general_setting(name, label, panel, fieldtype, order)
 
     @property
-    def settings(self):
+    def options(self):
         return self._racecontext.rhui.general_settings
 
 #
 # Database Access
 #
-class rhapi_db():
+class DatabaseAPI():
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 
@@ -164,7 +166,6 @@ class rhapi_db():
 
     # Frequency Sets (Profiles)
 
-    
     @property
     def frequencysets(self):
         return self._racecontext.rhdata.get_profiles()
@@ -189,15 +190,52 @@ class rhapi_db():
     def races_clear(self):
         return self._racecontext.rhdata.clear_race_data()
 
-    # Setting
+    # Options
 
-    def setting(self, name, default=None):
-        return self._racecontext.rhdata.get_option(name, default)
+    def option(self, name, default=False, **kwargs):
+        # keyword parameters
+        # as_int: return as integer if truthy
+
+        if kwargs.get('as_int'):
+            if default is not False:
+                return self._racecontext.rhdata.get_optionInt(name, default)
+            else:
+                return self._racecontext.rhdata.get_optionInt(name)
+
+        if default is not False:
+            return self._racecontext.rhdata.get_option(name, default)
+        else:
+            return self._racecontext.rhdata.get_option(name)
+
+    def option_set(self, name, value):
+        return self._racecontext.rhdata.set_option(name, value)
+
+#
+# Data input/output
+#
+class IOAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def exporters(self):
+        return self._racecontext.export_manager.exporters
+
+    def run_export(self):
+        return self._racecontext.export_manager.export()
+
+    @property
+    def importers(self):
+        return self._racecontext.import_manager.importers
+
+    def run_import(self):
+        return self._racecontext.import_manager.runImport()
+
 
 #
 # Active Race
 #
-class rhapi_race():
+class RaceAPI():
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 

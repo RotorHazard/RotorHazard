@@ -39,7 +39,7 @@ class ActionsBuiltin():
                     text = text.replace('%FASTEST_LAP%', result['fastest_lap'])
 
                     # %CONSECUTIVE%
-                    if result['consecutives_base'] == int(self._RHAPI.db.setting('consecutivesCount', 3)):
+                    if result['consecutives_base'] == int(self._RHAPI.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', result['consecutives'])
                     else:
                         text = text.replace('%CONSECUTIVE%', __('None'))
