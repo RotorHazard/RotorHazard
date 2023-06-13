@@ -12,6 +12,8 @@ class RHAPI():
         self.fields = FieldsAPI(self._racecontext)
         self.db = DatabaseAPI(self._racecontext)
         self.io = IOAPI(self._racecontext)
+        self.heatgen = HeatGenerateAPI(self._racecontext)
+        self.led = LEDAPI(self._racecontext)
         self.race = RaceAPI(self._racecontext)
 
 #
@@ -108,10 +110,10 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_heats()
 
     def heats_by_class(self, raceclass_id):
-        return self.rhdata.get_heats_by_class(raceclass_id)
+        return self._racecontext.rhdata.get_heats_by_class(raceclass_id)
 
     def heat_results(self, heat_or_id):
-        return self.rhdata.get_results_heat(heat_or_id)
+        return self._racecontext.rhdata.get_results_heat(heat_or_id)
 
     def heats_clear(self):
         return self._racecontext.rhdata.reset_heats()
@@ -123,7 +125,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_heatNodes()
 
     def slot_alter_fast(self, pattern):
-        return self._racecontext.rhdata.alter_heatNodes_fast()
+        return self._racecontext.rhdata.alter_heatNodes_fast(pattern)
 
     # Race Class
 
@@ -183,7 +185,7 @@ class DatabaseAPI():
 
     def race_results(self, race_or_id):
         return self._racecontext.rhdata.get_results_savedRaceMeta(race_or_id)
-    
+
     def races_by_heat(self, heat_id):
         return self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat_id)
 
@@ -230,6 +232,52 @@ class IOAPI():
 
     def run_import(self):
         return self._racecontext.import_manager.runImport()
+
+
+#
+# Heat Generation
+#
+class HeatGenerateAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def generators(self):
+        return self._racecontext.heat_generate_manager.generators
+
+    def run_export(self, generator_id, generate_args):
+        return self._racecontext.heat_generate_manager.generate(generator_id, generate_args)
+
+
+#
+# LED
+#
+class LEDAPI():
+    def __init__(self, RaceContext):
+        self._racecontext = RaceContext
+
+    @property
+    def enabled(self):
+        return self._racecontext.led_manager.isEnabled()
+
+    @property
+    def effects(self):
+        return self._racecontext.led_manager.getRegisteredEffects()
+
+    def effect_by_event(self, event):
+        return self._racecontext.led_manager.getEventEffect(event)
+
+    def effect_set(self, event, name):
+        return self._racecontext.led_manager.setEventEffect(event, name)
+
+    def clear(self):
+        return self._racecontext.led_manager.clear()
+
+    def display_color(self, seat_index, from_result=False):
+        return self._racecontext.led_manager.getDisplayColor(seat_index, from_result)
+
+    def activate_effect(self, args):
+        return self._racecontext.led_manager.activateEffect(args)
 
 
 #
