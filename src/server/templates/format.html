@@ -2120,7 +2120,7 @@
 			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
 		});
 
-		$('.set-option').change(function (event) {
+		$(document).on('change', '.set-option', function (event) {
 			var data = {
 				option: $(this).data('option'),
 				value: $(this).val()
