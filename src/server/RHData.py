@@ -1573,7 +1573,10 @@ class RHData():
     #        return heatNode_or_id.id
     #    else:
     #        return heatNode_or_id
-    
+
+    def get_heatNode(self, heatNode_id):
+        return self._Database.HeatNode.query.get(heatNode_id)
+
     def get_heatNodes(self):
         return self._Database.HeatNode.query.all()
 
@@ -1759,7 +1762,7 @@ class RHData():
             race_class.win_condition = data['win_condition']
             race_class.rank_settings = None
         if 'rank_settings' in data:
-            if data['rank_settings'] is None:
+            if not data['rank_settings']:
                 race_class.rank_settings = None
             else:
                 src_settings = json.loads(race_class.rank_settings) if race_class.rank_settings else {}
@@ -2042,12 +2045,14 @@ class RHData():
         if init:
             if 'name' in init:
                 new_profile.name = init['name']
+            if 'description' in init:
+                profile.description = init['description']
             if 'frequencies' in init:
-                new_profile.frequencies = init['frequencies']
+                new_profile.frequencies = init['frequencies'] if isinstance(init['frequencies'], str) else json.dumps(init['frequencies'])
             if 'enter_ats' in init:
-                new_profile.enter_ats = init['enter_ats']
+                new_profile.enter_ats = init['enter_ats'] if isinstance(init['enter_ats'], str) else json.dumps(init['enter_ats'])
             if 'exit_ats' in init:
-                new_profile.exit_ats = init['exit_ats']
+                new_profile.exit_ats = init['exit_ats'] if isinstance(init['exit_ats'], str) else json.dumps(init['exit_ats'])
 
         self._Database.DB.session.add(new_profile)
         self.commit()
@@ -2086,11 +2091,11 @@ class RHData():
         if 'profile_description' in data:
             profile.description = data['profile_description']
         if 'frequencies' in data:
-            profile.frequencies = json.dumps(data['frequencies'])
+            profile.frequencies = data['frequencies'] if isinstance(data['frequencies'], str) else json.dumps(data['frequencies'])
         if 'enter_ats' in data:
-            profile.enter_ats = json.dumps(data['enter_ats'])
+            profile.enter_ats = data['enter_ats'] if isinstance(data['enter_ats'], str) else json.dumps(data['enter_ats'])
         if 'exit_ats' in data:
-            profile.exit_ats = json.dumps(data['exit_ats'])
+            profile.exit_ats = data['exit_ats'] if isinstance(data['exit_ats'], str) else json.dumps(data['exit_ats'])
 
         self.commit()
 
@@ -2181,8 +2186,8 @@ class RHData():
         if init:
             if 'format_name' in init:
                 race_format.name = init['format_name']
-            if 'race_mode' in init:
-                race_format.race_mode = init['race_mode']
+            if 'race_mode' in init: # unlimited time
+                race_format.race_mode = (1 if init['race_mode'] else 0)
             if 'race_time_sec' in init:
                 race_format.race_time_sec = init['race_time_sec']
             if 'lap_grace_sec' in init:
@@ -2190,7 +2195,7 @@ class RHData():
             if 'staging_fixed_tones' in init:
                 race_format.staging_fixed_tones = init['staging_fixed_tones']
             if 'staging_tones' in init:
-                race_format.staging_tones = init['staging_tones']
+                race_format.staging_tones = (2 if init['staging_tones'] else 0)
             if 'start_delay_min_ms' in init:
                 race_format.start_delay_min_ms = init['start_delay_min_ms']
             if 'start_delay_max_ms' in init:
@@ -2256,7 +2261,7 @@ class RHData():
         if 'format_name' in data:
             race_format.name = data['format_name']
         if 'race_mode' in data:
-            race_format.race_mode = data['race_mode'] if isinstance(data['race_mode'], int) else 0
+            race_format.race_mode = (1 if data['race_mode'] else 0)
         if 'race_time_sec' in data:
             race_format.race_time_sec = data['race_time_sec'] if isinstance(data['race_time_sec'], int) else 0
         if 'lap_grace_sec' in data:
@@ -2264,7 +2269,7 @@ class RHData():
         if 'staging_fixed_tones' in data:
             race_format.staging_fixed_tones = data['staging_fixed_tones'] if isinstance(data['staging_fixed_tones'], int) else 0
         if 'staging_tones' in data:
-            race_format.staging_tones = data['staging_tones'] if isinstance(data['staging_tones'], int) else 0
+            race_format.staging_tones = (2 if data['staging_tones'] else 0)
         if 'start_delay_min_ms' in data:
             race_format.start_delay_min_ms = data['start_delay_min_ms'] if isinstance(data['start_delay_min_ms'], int) else 0
         if 'start_delay_max_ms' in data:

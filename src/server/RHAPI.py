@@ -112,11 +112,46 @@ class DatabaseAPI():
     def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
         return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
 
-    def pilot_add(self, pattern=None):
-        return self._racecontext.rhdata.add_pilot(pattern)
+    def pilot_add(self, name=None, callsign=None, phonetic=None, team=None, color=None):
+        data = {}
 
-    def pilot_alter(self, pattern):
-        return self._racecontext.rhdata.alter_pilot(pattern)
+        for name, value in [
+            ('callsign', callsign), 
+            ('phonetic', phonetic),
+            ('name', name),
+            ('team_name', team),
+            ('color', color),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        return self._racecontext.rhdata.add_pilot(data)
+
+    def pilot_alter(self, pilot_id, name=None, callsign=None, phonetic=None, team=None, color=None, attributes=None):
+        data = {}
+
+        if isinstance(attributes, dict):
+            data['pilot_id'] = pilot_id
+            for key, value in attributes.items():
+                data['pilot_attr'] = key
+                data['value'] = value
+                self._racecontext.rhdata.alter_pilot(data)
+
+            data = {}
+
+        for name, value in [
+            ('callsign', callsign), 
+            ('phonetic', phonetic),
+            ('name', name),
+            ('team_name', team),
+            ('color', color),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            data['pilot_id'] = pilot_id
+            return self._racecontext.rhdata.alter_pilot(data)
 
     def pilot_delete(self, pilot_or_id):
         return self._racecontext.rhdata.delete_pilot(pilot_or_id)
@@ -142,14 +177,40 @@ class DatabaseAPI():
     def heat_max_round(self, heat_id):
         return self._racecontext.rhdata.get_max_round(heat_id)
 
-    def heat_add(self, pattern=None):
-        return self._racecontext.rhdata.add_heat(pattern)
+    def heat_add(self, name=None, raceclass=None, auto_frequency=None):
+        data = {}
 
-    def heat_duplicate(self, source_heat_or_id):
-        return self._racecontext.rhdata.duplicate_heat(source_heat_or_id)
+        for name, value in [
+            ('name', name),
+            ('raceclass_id', raceclass),
+            ('auto_frequency', auto_frequency),
+            ]:
+            if value is not None:
+                data[name] = value
 
-    def heat_alter(self, pattern):
-        return self._racecontext.rhdata.alter_heat(pattern)
+        return self._racecontext.rhdata.add_heat(data)
+
+    def heat_duplicate(self, source_heat_or_id, dest_class=None):
+        if dest_class:
+            return self._racecontext.rhdata.duplicate_heat(source_heat_or_id, dest_class=dest_class)
+        else:
+            return self._racecontext.rhdata.duplicate_heat(source_heat_or_id)
+
+    def heat_alter(self, heat_id, name=None, raceclass=None, auto_frequency=None, status=None):
+        data = {}
+
+        for name, value in [
+            ('name', name),
+            ('raceclass_id', raceclass),
+            ('auto_frequency', auto_frequency),
+            ('status', status),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            data['heat'] = heat_id
+            return self._racecontext.rhdata.alter_heat(data)
 
     def heat_delete(self, heat_or_id):
         return self._racecontext.rhdata.delete_heat(heat_or_id)
@@ -157,7 +218,7 @@ class DatabaseAPI():
     def heats_clear(self):
         return self._racecontext.rhdata.reset_heats()
 
-    # Slots
+    # Heat -> Slots
 
     @property
     def slots(self):
@@ -166,8 +227,47 @@ class DatabaseAPI():
     def slots_by_heat(self, heat_id):
         return self._racecontext.rhdata.get_heatNodes_by_heat(heat_id)
 
-    def slot_alter_fast(self, pattern):
-        return self._racecontext.rhdata.alter_heatNodes_fast(pattern)
+    def slot_alter(self, slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
+        data = {}
+
+        for name, value in [
+            ('pilot', pilot),
+            ('method', method),
+            ('seed_heat_id', seed_heat_id),
+            ('seed_class_id', seed_raceclass_id),
+            ('seed_rank', seed_rank),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            # resolve heat id so alteration can pass through alter_heat 
+            slot = self._racecontext.rhdata.get_heatNode(slot_id)
+            heat_id = slot.heat_id
+
+            data['heat'] = heat_id
+            data['slot_id'] = slot_id
+            self._racecontext.rhdata.alter_heat(data)
+
+    def slot_alter_fast(self, slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
+        # !! Unsafe for general use. Intentionally light type checking.    !!
+        # !! Does not trigger events, clear results, or update cached data !!
+
+        data = {}
+
+        for name, value in [
+            ('pilot', pilot),
+            ('method', method),
+            ('seed_heat_id', seed_heat_id),
+            ('seed_class_id', seed_raceclass_id),
+            ('seed_rank', seed_rank),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            data['slot_id'] = slot_id
+            return self._racecontext.rhdata.alter_heatNodes_fast(data)
 
     # Race Class
 
@@ -178,14 +278,44 @@ class DatabaseAPI():
     def raceclass_by_id(self, raceclass_id):
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
 
-    def raceclass_add(self, pattern=None):
-        return self._racecontext.rhdata.add_raceClass(pattern)
+    def raceclass_add(self, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None):
+        data = {}
+
+        for name, value in [
+            ('name', name),
+            ('description', description),
+            ('format_id', raceformat),
+            ('win_condition', win_condition),
+            ('rounds', rounds),
+            ('heatAdvanceType', heat_advance_type),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            return self._racecontext.rhdata.add_raceClass(data)
 
     def raceclass_duplicate(self, source_class_or_id):
         return self._racecontext.rhdata.duplicate_raceClass(source_class_or_id)
 
-    def raceclass_alter(self, pattern):
-        return self._racecontext.rhdata.alter_raceClass(pattern)
+    def raceclass_alter(self, raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, rank_settings=None):
+        data = {}
+
+        for name, value in [
+            ('class_name', name),
+            ('class_description', description),
+            ('class_format', raceformat),
+            ('win_condition', win_condition),
+            ('rounds', rounds),
+            ('heat_advance', heat_advance_type),
+            ('rank_settings', rank_settings),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            data['class_id'] = raceclass_id
+            return self._racecontext.rhdata.alter_raceClass(data)
 
     def raceclass_results(self, raceclass_or_id):
         return self._racecontext.rhdata.get_results_raceClass(raceclass_or_id)
@@ -208,14 +338,57 @@ class DatabaseAPI():
     def raceformat_by_id(self, format_id):
         return self._racecontext.rhdata.get_raceFormat(format_id)
 
-    def raceformat_add(self, pattern=None):
-        return self._racecontext.rhdata.add_format(pattern)
+    def raceformat_add(self, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None):
+        data = {}
+
+        for name, value in [
+            ('format_name', name),
+            ('race_mode', unlimited_time),
+            ('race_time_sec', race_time_sec),
+            ('lap_grace_sec', lap_grace_sec),
+            ('staging_fixed_tones', staging_fixed_tones),
+            ('staging_tones', staging_delay_tones),
+            ('start_delay_min_ms', start_delay_min_ms),
+            ('start_delay_max_ms', start_delay_max_ms),
+            ('start_behavior', start_behavior),
+            ('win_condition', win_condition),
+            ('number_laps_win', number_laps_win),
+            ('team_racing_mode', team_racing_mode),
+            ('points_method', points_method),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        return self._racecontext.rhdata.add_format(data)
 
     def raceformat_duplicate(self, source_format_or_id):
         return self._racecontext.rhdata.duplicate_raceFormat(source_format_or_id)
 
-    def raceformat_alter(self, pattern):
-        return self._racecontext.rhdata.alter_raceFormat(pattern)
+    def raceformat_alter(self, raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None):
+        data = {}
+
+        for name, value in [
+            ('format_name', name),
+            ('race_mode', unlimited_time),
+            ('race_time_sec', race_time_sec),
+            ('lap_grace_sec', lap_grace_sec),
+            ('staging_fixed_tones', staging_fixed_tones),
+            ('staging_tones', staging_delay_tones),
+            ('start_delay_min_ms', start_delay_min_ms),
+            ('start_delay_max_ms', start_delay_max_ms),
+            ('start_behavior', start_behavior),
+            ('win_condition', win_condition),
+            ('number_laps_win', number_laps_win),
+            ('team_racing_mode', team_racing_mode),
+            ('points_method', points_method),
+            ('points_settings', points_settings),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            data['format_id'] = raceformat_id
+            return self._racecontext.rhdata.alter_raceFormat(data)
 
     def raceformat_delete(self, raceformat_id):
         return self._racecontext.rhdata.delete_raceFormat(raceformat_id)
@@ -232,14 +405,40 @@ class DatabaseAPI():
     def frequencyset_by_id(self, set_id):
         return self._racecontext.rhdata.get_profile(set_id)
 
-    def frequencyset_add(self, pattern=None):
-        return self._racecontext.rhdata.add_profile(pattern)
+    def frequencyset_add(self, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None):
+        data = {}
+
+        for name, value in [
+            ('name', name),
+            ('description', description),
+            ('frequencies', frequencies),
+            ('enter_ats', enter_ats),
+            ('exit_ats', exit_ats),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        return self._racecontext.rhdata.add_profile(data)
 
     def frequencyset_duplicate(self, source_set_or_id):
         return self._racecontext.rhdata.duplicate_profile(source_set_or_id)
 
-    def frequencyset_alter(self, pattern):
-        return self._racecontext.rhdata.alter_profile(pattern)
+    def frequencyset_alter(self, set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None):
+        data = {}
+
+        for name, value in [
+            ('profile_name', name),
+            ('profile_description', description),
+            ('frequencies', frequencies),
+            ('enter_ats', enter_ats),
+            ('exit_ats', exit_ats),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            data['profile_id'] = set_id
+            return self._racecontext.rhdata.alter_profile(data)
 
     def frequencyset_delete(self, set_or_id):
         return self._racecontext.rhdata.delete_profile(set_or_id)
@@ -298,11 +497,8 @@ class DatabaseAPI():
     def options(self):
         return self._racecontext.rhdata.get_options()
 
-    def option(self, name, default=False, **kwargs):
-        # keyword parameters
-        # as_int: return as integer if truthy
-
-        if kwargs.get('as_int'):
+    def option(self, name, default=False, as_int=False):
+        if as_int:
             if default is not False:
                 return self._racecontext.rhdata.get_optionInt(name, default)
             else:
