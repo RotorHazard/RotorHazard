@@ -1239,7 +1239,7 @@ class RHData():
 
         self.commit()
 
-    def calc_heat_pilots(self, heat_or_id, Results):
+    def calc_heat_pilots(self, heat_or_id):
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
         result = {
@@ -1538,7 +1538,7 @@ class RHData():
         })
 
         self._Database.Heat.query.update({
-            self._Database.Heat.cacheStatus: initStatus
+            self._Database.Heat._cache_status: initStatus
             })
         self.commit()
 
@@ -1997,8 +1997,8 @@ class RHData():
         jsonStatus = json.dumps(initStatus)
 
         self._Database.RaceClass.query.update({
-            self._Database.RaceClass.cacheStatus: jsonStatus,
-            self._Database.RaceClass.rankStatus: jsonStatus
+            self._Database.RaceClass._cache_status: jsonStatus,
+            self._Database.RaceClass._rank_status: jsonStatus
             })
         self.commit()
 
@@ -2046,7 +2046,7 @@ class RHData():
             if 'name' in init:
                 new_profile.name = init['name']
             if 'description' in init:
-                profile.description = init['description']
+                new_profile.description = init['description']
             if 'frequencies' in init:
                 new_profile.frequencies = init['frequencies'] if isinstance(init['frequencies'], str) else json.dumps(init['frequencies'])
             if 'enter_ats' in init:
@@ -2792,7 +2792,7 @@ class RHData():
         })
 
         self._Database.SavedRaceMeta.query.update({
-            self._Database.SavedRaceMeta.cacheStatus: initStatus
+            self._Database.SavedRaceMeta._cache_status: initStatus
             })
         self.commit()
 

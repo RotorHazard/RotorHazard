@@ -459,7 +459,7 @@ def calc_leaderboard(rhDataObj, **params):
                         result_pilot['fastest_lap_source'] = {
                             'round': race.round_id,
                             'heat': race.heat_id,
-                            'displayname': heats_keyed[race.heat_id].displayname()
+                            'displayname': heats_keyed[race.heat_id].display_name()
                             }
                         break
 
@@ -538,7 +538,7 @@ def calc_leaderboard(rhDataObj, **params):
                     result_pilot['consecutives_source'] = {
                         'round': source_race.round_id,
                         'heat': source_race.heat_id,
-                        'displayname': heats_keyed[source_race.heat_id].displayname()
+                        'displayname': heats_keyed[source_race.heat_id].display_name()
                         }
                 else:
                     result_pilot['consecutives_source'] = None
@@ -900,7 +900,7 @@ def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
                 'meta': meta
             }
         else:
-            logger.warning("{} uses unsupported ranking method: {}".format(race_class.displayname(), race_class.win_condition))
+            logger.warning("{} uses unsupported ranking method: {}".format(race_class.display_name(), race_class.win_condition))
 
     return False
 
