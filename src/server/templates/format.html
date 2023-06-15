@@ -2468,82 +2468,88 @@
 		</div>
 		{% endif %}
 
-		<h3>{{ __('Stored Data') }}</h3>
-		<div class="control-set">
-			<button id="backup_database">{{ __('Backup Database') }}</button>
-		</div>
-		<ol class="form">
+		<ul id="db-management">
 			<li>
-				<div class="label-block">
-					<label for="database_list">{{ __('Stored Databases') }}</label>
+				<h3>{{ __('Stored Data') }}</h3>
+				<div class="control-set">
+					<button id="backup_database">{{ __('Backup Database') }}</button>
 				</div>
-				<select id="database_list" disabled="disabled">
-					<option value="-">{{ __('No Saved Databases') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
-			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
-		</div>
-
-		<h3>{{ __('Export') }}</h3>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="exporter_list">{{ __('Exporter') }}</label>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="database_list">{{ __('Stored Databases') }}</label>
+						</div>
+						<select id="database_list" disabled="disabled">
+							<option value="-">{{ __('No Saved Databases') }}</option>
+						</select>
+					</li>
+				</ol>
+				<div class="control-set">
+					<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
+					<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
 				</div>
-				<select id="exporter_list" disabled="disabled">
-					<option value="-">{{ __('No Exporters') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
-		</div>
-
-		<h3>{{ __('Reset') }}</h3>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="reset_type">{{ __('Items to Clear') }}</label>
-				</div>
-				<select id="reset_type">
-					<option value="races">{{ __('Races') }}</option>
-					<option value="heats">{{ __('Races and Heats') }}</option>
-					<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
-					<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
-					<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
-					<option value="formats">{{ __('Races and Race Formats') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
-		</div>
-
-		<h3>{{ __('Import') }}</h3>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="importer_list">{{ __('Importer') }}</label>
-				</div>
-				<select id="importer_list" disabled="disabled">
-					<option value="-">{{ __('No Importers') }}</option>
-				</select>
 			</li>
 			<li>
-				<div class="label-block">
-					<label for="import_file">{{ __('Data Source') }}</label>
-					<p class="desc">Max 50MB</p>
+				<h3>{{ __('Reset') }}</h3>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="reset_type">{{ __('Items to Clear') }}</label>
+						</div>
+						<select id="reset_type">
+							<option value="races">{{ __('Races') }}</option>
+							<option value="heats">{{ __('Races and Heats') }}</option>
+							<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
+							<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
+							<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+							<option value="formats">{{ __('Races and Race Formats') }}</option>
+						</select>
+					</li>
+				</ol>
+				<div class="control-set">
+					<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
 				</div>
-				<input type="file" id="import_file" />
 			</li>
-		</ol>
-		<div class="control-set">
-			<button id="import_data" class="btn-danger" disabled="disabled">{{ __('Import Data') }}</button>
-		</div>
-
+			<li>
+				<h3>{{ __('Import') }}</h3>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="importer_list">{{ __('Importer') }}</label>
+						</div>
+						<select id="importer_list" disabled="disabled">
+							<option value="-">{{ __('No Importers') }}</option>
+						</select>
+					</li>
+					<li>
+						<div class="label-block">
+							<label for="import_file">{{ __('Data Source') }}</label>
+							<p class="desc">Max 50MB</p>
+						</div>
+						<input type="file" id="import_file" />
+					</li>
+				</ol>
+				<div class="control-set">
+					<button id="import_data" class="btn-danger" disabled="disabled">{{ __('Import Data') }}</button>
+				</div>
+			</li>
+			<li>
+				<h3>{{ __('Export') }}</h3>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="exporter_list">{{ __('Exporter') }}</label>
+						</div>
+						<select id="exporter_list" disabled="disabled">
+							<option value="-">{{ __('No Exporters') }}</option>
+						</select>
+					</li>
+				</ol>
+				<div class="control-set">
+					<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+				</div>
+			</li>
+		</ul>
 
 		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
