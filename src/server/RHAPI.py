@@ -1,14 +1,12 @@
 ''' Class to access race functions and details '''
 
-import logging
-from attr import field
-logger = logging.getLogger(__name__)
+API_VERSION = 1
 
 class RHAPI():
-    def __init__(self, RaceContext):
-        self.api_version = 1
+    def __init__(self, race_context):
+        self.API_VERSION = API_VERSION
 
-        self._racecontext = RaceContext
+        self._racecontext = race_context
 
         self.ui = UserInterfaceAPI(self._racecontext)
         self.fields = FieldsAPI(self._racecontext)
@@ -31,8 +29,8 @@ class RHAPI():
 # UI helpers
 #
 class UserInterfaceAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     # UI Panel
     @property
@@ -51,8 +49,8 @@ class UserInterfaceAPI():
         return self._racecontext.rhui.add_blueprint(blueprint)
 
     # Messaging
-    def message_speak(self, text):
-        self._racecontext.rhui.emit_phonetic_text(text)
+    def message_speak(self, message):
+        self._racecontext.rhui.emit_phonetic_text(message)
 
     def message_notify(self, message):
         self._racecontext.rhui.emit_priority_message(message, False)
@@ -65,8 +63,8 @@ class UserInterfaceAPI():
 # Data structures
 #
 class FieldsAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     # Pilot Attribute
     @property
@@ -89,8 +87,8 @@ class FieldsAPI():
 # Database Access
 #
 class DatabaseAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     # Global
 
@@ -522,11 +520,11 @@ class DatabaseAPI():
 
 
 #
-# Data input/output
+# Event Results
 #
 class EventResultsAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def results(self):
@@ -540,8 +538,8 @@ class EventResultsAPI():
 # Data input/output
 #
 class IOAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def exporters(self):
@@ -562,8 +560,8 @@ class IOAPI():
 # Heat Generation
 #
 class HeatGenerateAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def generators(self):
@@ -577,8 +575,8 @@ class HeatGenerateAPI():
 # Class Ranking
 #
 class ClassRankAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def methods(self):
@@ -589,8 +587,8 @@ class ClassRankAPI():
 # Points
 #
 class PointsAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def methods(self):
@@ -601,8 +599,8 @@ class PointsAPI():
 # LED
 #
 class LEDAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def enabled(self):
@@ -632,8 +630,8 @@ class LEDAPI():
 # VRx Control
 #
 class VRxControlAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def enabled(self):
@@ -658,8 +656,8 @@ class VRxControlAPI():
 # Active Race
 #
 class RaceAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def pilots(self):
@@ -758,8 +756,8 @@ class RaceAPI():
 # Language
 #
 class LanguageAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def languages(self):
@@ -777,8 +775,8 @@ class LanguageAPI():
 # Hardware Interface
 #
 class HardwareInterfaceAPI():
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, race_context):
+        self._racecontext = race_context
 
     @property
     def nodes(self):

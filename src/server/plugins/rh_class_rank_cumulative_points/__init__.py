@@ -17,7 +17,7 @@ def __(arg): # Replaced with outer language.__ during initialize()
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('RaceClassRanking_Initialize', 'classrank_register_cumulative_points', registerHandlers, {}, 75, True)
+        kwargs['Events'].on('RaceClassRanking_Initialize', 'classrank_register_cumulative_points', registerHandlers, {}, 75)
     if '__' in kwargs:
         __ = kwargs['__']
 

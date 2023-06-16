@@ -211,7 +211,7 @@ def import_json(RHAPI, source, args):
     return True
 
 def discover(*_args, **_kwargs):
-    # returns array of exporters with default arguments, fields
+    # returns array of importers with default arguments, fields
     return [
         DataImporter(
             'json',
