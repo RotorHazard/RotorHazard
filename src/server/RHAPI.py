@@ -117,7 +117,7 @@ class DatabaseAPI():
             ('callsign', callsign), 
             ('phonetic', phonetic),
             ('name', name),
-            ('team_name', team),
+            ('team', team),
             ('color', color),
             ]:
             if value is not None:
