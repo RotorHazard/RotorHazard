@@ -7,6 +7,8 @@ import gevent
 from datetime import datetime
 
 sys.path.append('../server')
+sys.path.append('../server/util')
+sys.path.append('../server/plugins')
 sys.path.append('../interface')
 
 os.environ['RH_INTERFACE'] = 'Mock'
@@ -29,7 +31,7 @@ class ServerTest(unittest.TestCase):
         self.fail('No response of type {0}'.format(event))
 
     def test_sensors(self):
-        self.assertTrue(any(s.name == 'TestSensor' for s in server.SENSORS))
+        self.assertTrue(any(s.name == 'TestSensor' for s in server.RaceContext.sensors))
 
     def test_add_pilot(self):
         self.client.emit('load_data', {'load_types': ['pilot_data']})
@@ -40,7 +42,7 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(resp['pilots']), num_pilots+1)
 
     def test_alter_pilot(self):
-        for i in range(1, len(server.INTERFACE.nodes)):
+        for i in range(1, len(server.RaceContext.interface.nodes)):
             data = {
                 'pilot_id': i,
                 'callsign': 'Test '+str(i),
@@ -58,6 +60,18 @@ class ServerTest(unittest.TestCase):
             self.assertEqual(pilot['callsign'], data['callsign'])
             self.assertEqual(pilot['phonetic'], data['phonetic'])
             self.assertEqual(pilot['name'], data['name'])
+
+    def test_delete_pilot(self):
+        self.client.emit('load_data', {'load_types': ['pilot_data']})
+        resp = self.get_response('pilot_data')
+        num_pilots = len(resp['pilots'])
+        pilot_id = 0
+        for pilot in resp['pilots']:
+            pilot_id = pilot['pilot_id']
+        self.client.emit('delete_pilot', {'pilot': pilot_id})
+        self.client.emit('load_data', {'load_types': ['pilot_data']})
+        resp = self.get_response('pilot_data')
+        self.assertEqual(len(resp['pilots']), num_pilots-1)
 
     def test_add_profile(self):
         self.client.emit('load_data', {'load_types': ['node_tuning']})
@@ -77,19 +91,33 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['profile_name'], data['profile_name'])
         self.assertEqual(resp['profile_description'], data['profile_description'])
 
+    def test_delete_profile(self):
+        self.client.emit('load_data', {'load_types': ['node_tuning']})
+        resp = self.get_response('node_tuning')
+        num_profiles = len(resp['profile_ids'])
+        profile_id = 0
+        for profile in resp['profile_ids']:
+            profile_id = profile
+        self.client.emit('set_profile', {'profile': profile_id})
+        self.client.emit('delete_profile')
+        self.client.emit('load_data', {'load_types': ['node_tuning']})
+        resp = self.get_response('node_tuning')
+        self.assertEqual(len(resp['profile_ids']), num_profiles-1)
+
     def test_add_race_format(self):
-        self.client.emit('load_data', {'load_types': ['race_format']})
-        resp = self.get_response('race_format')
-        num_formats = len(resp['format_ids'])
-        self.client.emit('add_race_format')
-        resp = self.get_response('race_format')
-        self.assertEqual(len(resp['format_ids']), num_formats+1)
+        self.client.emit('load_data', {'load_types': ['format_data']})
+        resp = self.get_response('format_data')
+        num_formats = len(resp['formats'])
+        self.client.emit('add_race_format', {'source_format_id': 1})
+        resp = self.get_response('format_data')
+        self.assertEqual(len(resp['formats']), num_formats+1)
 
     def test_alter_race_format(self):
         data = {
+            'format_id': 10,
             'format_name': 'Test ' + str(datetime.now()),
             'race_mode': 0,
-            'race_time': 30,
+            'race_time_sec': 30,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 4000,
             'number_laps_win': 5,
@@ -97,15 +125,31 @@ class ServerTest(unittest.TestCase):
             'team_racing_mode': True
         }
         self.client.emit('alter_race_format', data)
-        resp = self.get_response('race_format')
-        self.assertEqual(resp['format_name'], data['format_name'])
-        self.assertEqual(resp['race_mode'], data['race_mode'])
-        self.assertEqual(resp['race_time_sec'], data['race_time'])
-        self.assertEqual(resp['start_delay_min_ms'], data['start_delay_min_ms'])
-        self.assertEqual(resp['start_delay_max_ms'], data['start_delay_max_ms'])
-        self.assertEqual(resp['number_laps_win'], data['number_laps_win'])
-        self.assertEqual(resp['win_condition'], data['win_condition'])
-        self.assertEqual(resp['team_racing_mode'], data['team_racing_mode'])
+        resp = self.get_response('format_data')
+        fmts_list = resp['formats']
+        for resp in fmts_list:
+            if resp['id'] == data['format_id']:
+                self.assertEqual(resp['name'], data['format_name'])
+                self.assertEqual(resp['race_mode'], data['race_mode'])
+                self.assertEqual(resp['race_time_sec'], data['race_time_sec'])
+                self.assertEqual(resp['start_delay_min'], data['start_delay_min_ms'])
+                self.assertEqual(resp['start_delay_max'], data['start_delay_max_ms'])
+                self.assertEqual(resp['number_laps_win'], data['number_laps_win'])
+                self.assertEqual(resp['win_condition'], data['win_condition'])
+                self.assertEqual(resp['team_racing_mode'], data['team_racing_mode'])
+                return
+        self.fail('No matching format in response')
+
+    def test_delete_race_format(self):
+        self.client.emit('load_data', {'load_types': ['format_data']})
+        resp = self.get_response('format_data')
+        num_formats = len(resp['formats'])
+        format_id = 0
+        for format_obj in resp['formats']:
+            format_id = format_obj['id']
+        self.client.emit('delete_race_format', {'format_id': format_id})
+        resp = self.get_response('format_data')
+        self.assertEqual(len(resp['formats']), num_formats-1)
 
     def test_add_race_class(self):
         self.client.emit('load_data', {'load_types': ['class_data']})
@@ -129,6 +173,17 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['classes'][0]['format'], data['class_format'])
         self.assertEqual(resp['classes'][0]['description'], data['class_description'])
 
+    def test_delete_race_class(self):
+        self.client.emit('load_data', {'load_types': ['class_data']})
+        resp = self.get_response('class_data')
+        num_classes = len(resp['classes'])
+        class_id = 0
+        for class_obj in resp['classes']:
+            class_id = class_obj['id']
+        self.client.emit('delete_class', {'class': class_id})
+        resp = self.get_response('class_data')
+        self.assertEqual(len(resp['classes']), num_classes-1)
+
     def test_add_heat(self):
         self.client.emit('load_data', {'load_types': ['heat_data']})
         resp = self.get_response('heat_data')
@@ -143,14 +198,26 @@ class ServerTest(unittest.TestCase):
             'node': 0,
             'pilot': 1,
             'note': 'Test',
-            'class': 1
+            'class': 1,
+            'slot_id': 1
         }
         self.client.emit('alter_heat', data)
         self.client.emit('load_data', {'load_types': ['heat_data']})
         resp = self.get_response('heat_data')
-        self.assertEqual(resp['heats'][1]['pilots'][0], data['pilot'])
-        self.assertEqual(resp['heats'][1]['note'], data['note'])
-        self.assertEqual(resp['heats'][1]['class_id'], data['class'])
+        self.assertEqual(resp['heats'][0]['slots'][0]['pilot_id'], data['pilot'])
+        self.assertEqual(resp['heats'][0]['note'], data['note'])
+        self.assertEqual(resp['heats'][0]['class_id'], data['class'])
+
+    def test_delete_heat(self):
+        self.client.emit('load_data', {'load_types': ['heat_data']})
+        resp = self.get_response('heat_data')
+        num_heats = len(resp['heats'])
+        heat_id = 0
+        for heat in resp['heats']:
+            heat_id = heat['id']
+        self.client.emit('delete_heat', {'heat': heat_id})
+        resp = self.get_response('heat_data')
+        self.assertEqual(len(resp['heats']), num_heats-1)
 
 # scanner
 
@@ -257,18 +324,18 @@ class ServerTest(unittest.TestCase):
     def test_livetime_pass_record(self):
         # trigger livetime client mode
         self.client.emit('get_version')
-        server.RACE.race_status = 1
+        server.RaceContext.race.race_status = 1
         node = Node()
         node.index = 0
-        server.RACE.start_time_monotonic = 10
-        server.RACE.start_time_epoch_ms = server.monotonic_to_epoch_millis(server.RACE.start_time_monotonic)
-        server.pass_record_callback(node, 19.8+server.RACE.start_time_monotonic, 0)
+        server.RaceContext.race.start_time_monotonic = 10
+        server.RaceContext.race.start_time_epoch_ms = server.monotonic_to_epoch_millis(server.RaceContext.race.start_time_monotonic)
+        server.pass_record_callback(node, 19.8+server.RaceContext.race.start_time_monotonic, 0)
         gevent.sleep(0.1)
         resp = self.get_response('pass_record')
         self.assertIn('node', resp)
         self.assertIn('frequency', resp)
         self.assertIn('timestamp', resp)
-        self.assertEqual(resp['timestamp'], server.monotonic_to_epoch_millis(server.RACE.start_time_monotonic) + 19800)
+        self.assertEqual(resp['timestamp'], server.monotonic_to_epoch_millis(server.RaceContext.race.start_time_monotonic) + 19800)
 
 if __name__ == '__main__':
     unittest.main()
