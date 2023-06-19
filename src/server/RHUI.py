@@ -483,7 +483,7 @@ class RHUI():
         emit_payload['current']['leaderboard'] = self._racecontext.race.get_results()
 
         if self._racecontext.race.format.team_racing_mode:
-            emit_payload['current']['team_leaderboard'] = self._racecontext.race.get_team_results(self._racecontext.rhdata)
+            emit_payload['current']['team_leaderboard'] = self._racecontext.race.get_team_results()
 
         # cache
         if self._racecontext.last_race is not None:
@@ -503,7 +503,7 @@ class RHUI():
             emit_payload['last_race']['leaderboard'] = self._racecontext.last_race.get_results()
 
             if self._racecontext.last_race.format.team_racing_mode:
-                emit_payload['last_race']['team_leaderboard'] = self._racecontext.last_race.get_team_results(self._racecontext.rhdata)
+                emit_payload['last_race']['team_leaderboard'] = self._racecontext.last_race.get_team_results()
 
         if ('nobroadcast' in params):
             emit('leaderboard', emit_payload)
