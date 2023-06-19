@@ -2,7 +2,6 @@
 import os
 import sys
 import unittest
-import socketio
 import gevent
 from datetime import datetime
 
@@ -336,6 +335,73 @@ class ServerTest(unittest.TestCase):
         self.assertIn('frequency', resp)
         self.assertIn('timestamp', resp)
         self.assertEqual(resp['timestamp'], server.monotonic_to_epoch_millis(server.RaceContext.race.start_time_monotonic) + 19800)
+
+# RHAPI
+
+    def test_database_api(self):
+        self.client.emit('load_data', {'load_types': ['pilot_data']})
+        ld_pilots = self.get_response('pilot_data')['pilots']
+        db_pilots = server.RHAPI.db.pilots
+        num_pilots = len(server.RHAPI.db.pilots)
+        self.assertGreater(num_pilots, 7)
+        num_matched = 0
+        for ld_pilot in ld_pilots:
+            for db_pilot in db_pilots:
+                if ld_pilot['pilot_id'] == db_pilot.id and ld_pilot['callsign'] == db_pilot.callsign and \
+                            ld_pilot['phonetic'] == db_pilot.phonetic and ld_pilot['name'] == db_pilot.name and \
+                            ld_pilot['team'] == db_pilot.team and ld_pilot['color'] == db_pilot.color and \
+                            ld_pilot['active'] == db_pilot.active:
+                    num_matched += 1
+        self.assertGreater(num_matched, 7)
+        self.assertEqual(len(ld_pilots), len(db_pilots))
+        self.assertEqual(num_matched, len(db_pilots))
+        num_matched = 0
+        for ld_pilot in ld_pilots:
+            db_pilot = server.RHAPI.db.pilot_by_id(ld_pilot['pilot_id'])
+            self.assertNotEqual(db_pilot, None)
+            db_pilot_match = (ld_pilot['pilot_id'] == db_pilot.id and ld_pilot['callsign'] == db_pilot.callsign and \
+                              ld_pilot['phonetic'] == db_pilot.phonetic and ld_pilot['name'] == db_pilot.name and \
+                              ld_pilot['team'] == db_pilot.team and ld_pilot['color'] == db_pilot.color and \
+                              ld_pilot['active'] == db_pilot.active)
+            self.assertEqual(db_pilot_match, True)
+            if db_pilot_match:
+                num_matched += 1
+        self.assertGreater(num_matched, 7)
+        ld_pilot['name'] = 'Test Name'
+        ld_pilot['callsign'] = 'testcallsign'
+        ld_pilot['phonetic'] ='test phonetic'
+        ld_pilot['team'] = 'T'
+        ld_pilot['color'] = 'Red'
+        new_pilot = server.RHAPI.db.pilot_add(ld_pilot['name'], ld_pilot['callsign'], \
+                                              ld_pilot['phonetic'], ld_pilot['team'], ld_pilot['color'])
+        self.assertNotEqual(new_pilot, None)
+        self.assertEqual(len(server.RHAPI.db.pilots), num_pilots+1)
+        db_pilot = server.RHAPI.db.pilot_by_id(new_pilot.id)
+        self.assertNotEqual(db_pilot, None)
+        db_pilot_match = (ld_pilot['callsign'] == db_pilot.callsign and \
+                          ld_pilot['phonetic'] == db_pilot.phonetic and ld_pilot['name'] == db_pilot.name and \
+                          ld_pilot['team'] == db_pilot.team and ld_pilot['color'] == db_pilot.color)
+        self.assertEqual(db_pilot_match, True)
+        ld_pilot['name'] = 'Test Name 2'
+        ld_pilot['callsign'] = 'testcallsign2'
+        ld_pilot['phonetic'] ='test phonetic 2'
+        ld_pilot['team'] = 'G'
+        ld_pilot['color'] = 'Green'
+        new_pilot2, race_list = server.RHAPI.db.pilot_alter(new_pilot.id, ld_pilot['name'], ld_pilot['callsign'], \
+                                                            ld_pilot['phonetic'], ld_pilot['team'], ld_pilot['color'])
+        self.assertNotEqual(new_pilot2, None)
+        self.assertNotEqual(race_list, None)
+        db_pilot = server.RHAPI.db.pilot_by_id(new_pilot.id)
+        self.assertNotEqual(db_pilot, None)
+        self.assertEqual(db_pilot.id, new_pilot2.id)
+        db_pilot_match = (ld_pilot['callsign'] == db_pilot.callsign and \
+                          ld_pilot['phonetic'] == db_pilot.phonetic and ld_pilot['name'] == db_pilot.name and \
+                          ld_pilot['team'] == db_pilot.team and ld_pilot['color'] == db_pilot.color)
+        self.assertEqual(db_pilot_match, True)
+        result_flag = server.RHAPI.db.pilot_delete(new_pilot.id)
+        self.assertEqual(result_flag, True)
+        self.assertEqual(len(server.RHAPI.db.pilots), num_pilots)       
+
 
 if __name__ == '__main__':
     unittest.main()
