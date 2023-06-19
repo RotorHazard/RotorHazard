@@ -41,7 +41,7 @@ def discover(config, i2c_helper, *args, **kwargs):
     for addr in supported_ina219_addrs:
         url = I2CSensor.url(addr)
         sensor_config = config.get(url, {})
-        name = sensor_config.get('name', url)
+        name = sensor_config.get('name', "Battery")
         try:
             sensors.append(INA219Sensor(name, addr, i2c_helper, sensor_config))
             logger.info("INA219 found at address 0x{:02x} ('{}')".format(addr, name))
