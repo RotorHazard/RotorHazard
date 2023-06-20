@@ -20,7 +20,7 @@ class RHAPI():
         self.race = RaceAPI(self._racecontext)
         self.language = LanguageAPI(self._racecontext)
         self.interface = HardwareInterfaceAPI(self._racecontext)
-        self.sensors = SensorsInterfaceAPI(self._racecontext)
+        self.sensors = SensorsAPI(self._racecontext)
         self.eventresults = EventResultsAPI(self._racecontext)
 
         self.__ = self.language.__
@@ -785,9 +785,9 @@ class HardwareInterfaceAPI():
 
 
 #
-# Sensors Interface
+# Sensors
 #
-class SensorsInterfaceAPI():
+class SensorsAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
