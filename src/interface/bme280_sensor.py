@@ -2,7 +2,7 @@
 import logging
 
 from sensor import I2CSensor, Reading
-import bme280  #pylint: disable=import-error
+import bme280  # @UnresolvedImport pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 

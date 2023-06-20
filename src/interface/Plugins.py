@@ -27,7 +27,7 @@ class Plugins(UserList):
         self.prefix = prefix
         self.suffix = suffix
 
-    def discover(self, includeOffset=False, *args, **kwargs):
+    def discover(self, includeOffset=False, *args, **kwargs):  #pylint: disable=keyword-arg-before-vararg
         for plugin_module in search_modules(prefix = self.prefix, suffix = self.suffix):
             if includeOffset:
                 kwargs['idxOffset'] = len(self.data)
