@@ -2967,7 +2967,7 @@ class RHData():
     def get_options(self):
         return self._Database.GlobalSettings.query.all()
 
-    def get_option(self, option, default_value=False):
+    def get_option(self, option, default_value=None):
         try:
             val = self._OptionsCache[option]
             if val or val == "":
@@ -2978,7 +2978,10 @@ class RHData():
             return default_value
 
     def set_option(self, option, value):
-        self._OptionsCache[option] = value
+        if isinstance(value, bool):
+            value = '1' if value else '0'
+
+        self._OptionsCache[option] = str(value)
 
         settings = self._Database.GlobalSettings.query.filter_by(option_name=option).one_or_none()
         if settings:

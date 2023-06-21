@@ -89,14 +89,14 @@
 				var form_el = $('<ol class="form">');
 
 				for (var f_idx in panel.settings) {
-					settings = panel.settings[f_idx];
+					var settings = { ...panel.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
-
-					// TODO: adjust incoming data
-					settings.fieldType = settings.fieldtype;
-					settings.id = settings.name;
-					settings.genericOption = settings.name;
+					settings.fieldClass = 'set_ui_option';
+					settings.id = 'genericOption_' + settings.name;
+					settings.data = {
+						field: settings.name,
+					}
 
 					var field = rhui.buildField(settings);
 
@@ -110,6 +110,17 @@
 
 				$('#custom-ui').append(panel_el);
 			}
+		});
+
+		$(document).on('change', '.set_ui_option', function (event) {
+			var field = $(this).data('field');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				option: field,
+				value: value
+			};
+			socket.emit('set_option', data);
 		});
 
 		socket.on('frequency_data', function (msg) {
@@ -397,9 +408,10 @@
 				var param_form = $('<ol class="form">');
 
 				for (var f_idx in rank_method.settings) {
-					settings = rank_method.settings[f_idx];
+					var settings = { ...rank_method.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
+					settings.id = 'classRankParameter_' + settings.name;
 					settings.data = {
 						type: 'rankmethod',
 						field: settings.id,
@@ -426,35 +438,6 @@
 					},
 					type: 'inline'
 				});
-			}
-		});
-
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-
-			if ($(this).attr('type') == 'checkbox') {
-				var value = $(this).prop('checked');
-			} else {
-				var value = $(this).val();
-			}
-
-			if ($(this).data('type') == 'rankmethod') {
-				var race_class_id = $(this).data('class_id');
-				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
-
-				if (race_class) {
-					var data = {
-						class_id: race_class_id,
-						rank_settings: {}
-					};
-					data.rank_settings[field] = value;
-					socket.emit('alter_race_class', data);
-
-					if (!race_class.ranksettings) {
-						race_class.ranksettings = {};
-					}
-					race_class.ranksettings[field] = value;
-				}
 			}
 		});
 
@@ -1190,16 +1173,20 @@
 						}
 
 						for (var attr_idx in rotorhazard.event.pilot_attributes) {
-							var pilot_attr = rotorhazard.event.pilot_attributes[attr_idx];
-							var attr_label = $('<label class="pilot_attr" for="attr_' + pilot_attr.name + '_' + pilot.pilot_id + '">' + __(pilot_attr.label) + '</label>');
-							var attr_field = $('<input type="text" class="set_pilot_attr" id="attr_' + pilot_attr.name + '_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-attr="' + pilot_attr.name + '">');
-
-							if (pilot[pilot_attr.name] != undefined) {
-								attr_field.val(pilot[pilot_attr.name])
+							var pilot_attr = { ...rotorhazard.event.pilot_attributes[attr_idx]};
+							pilot_attr.fieldClass = 'set_pilot_attr';
+							pilot_attr.wrapperClass = 'pilot_attr';
+							pilot_attr.id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
+							pilot_attr.data = {
+								'pilot_id': pilot.pilot_id,
+								'attr': pilot_attr.name,
 							}
 
-							el.append(attr_label);
-							el.append(attr_field);
+							if (pilot_attr.name in pilot) {
+								pilot_attr.value = pilot[pilot_attr.name]
+							}
+
+							el.append(rhui.buildField(pilot_attr));
 						}
 
 						el.appendTo($('.pilots'));
@@ -1309,7 +1296,7 @@
 		$(document).on("change", '.set_pilot_attr', function (event) {
 			var pilot_id = parseInt($(this).data('pilot_id'));
 			var pilot_attr = $(this).data('attr');
-			var value = $(this).val();
+			var value = rhui.getFieldVal(this);
 			var data = {
 				pilot_id: pilot_id,
 				pilot_attr: pilot_attr,
@@ -1318,8 +1305,6 @@
 			socket.emit('alter_pilot', data);
 			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
 			pilot[pilot_attr] = value;
-			// display_classes();
-			// display_unclassified_heats();
 		})
 
 		$('button#add_pilot').click(function (event) {
@@ -1692,12 +1677,13 @@
 					var param_form = $('<ol class="form">');
 
 					for (var f_idx in points_method.settings) {
-						settings = points_method.settings[f_idx];
+						var settings = { ...points_method.settings[f_idx] };
 
 						settings.wrapperEl = 'li';
+						settings.id = 'racePointsParameter_' + settings.name;
 						settings.data = {
 							type: 'pointsmethod',
-							field: settings.id,
+							field: settings.name,
 						}
 
 						if (raceformat.points_settings && raceformat.points_settings[settings.id]) {
@@ -1925,12 +1911,13 @@
 				var param_form = $('<ol class="form">');
 
 				for (var f_idx in selected_importer.settings) {
-					settings = selected_importer.settings[f_idx];
+					var settings = { ...selected_importer.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
+					settings.id = 'importParameter_' + settings.name;
 					settings.data = {
 						type: 'importer',
-						field: settings.id,
+						field: settings.name,
 					}
 					var field = rhui.buildField(settings);
 
@@ -1949,22 +1936,6 @@
 				});
 			}
 		}
-
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-			var value = $(this).val();
-			if ($(this).data('type') == 'importer') {
-				var field_data = selected_importer.settings.find(obj => {return obj.id == field});
-
-				if (field_data) {
-					if (field_data.fieldType == "checkbox") {
-						field_data.value = $(this).prop('checked');
-					} else {
-						field_data.value = value;
-					}
-				}
-			}
-		});
 
 		function emit_import_cmd() {
 			var params = {}
@@ -2063,12 +2034,13 @@
 			var param_form = $('<ol class="form">');
 
 			for (var f_idx in selected_generator.settings) {
-				settings = selected_generator.settings[f_idx];
+				var settings = { ...selected_generator.settings[f_idx] };
 
 				settings.wrapperEl = 'li';
+				settings.id = 'heatGenerateParameter_' + settings.name;
 				settings.data = {
 					type: 'heatgenerator',
-					field: settings.id,
+					field: settings.name,
 				}
 				var field = rhui.buildField(settings);
 
@@ -2086,22 +2058,6 @@
 				type: 'inline'
 			});
 		}
-
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-			var value = $(this).val();
-			if ($(this).data('type') == 'heatgenerator') {
-				var field_data = selected_generator.settings.find(obj => {return obj.id == field});
-
-				if (field_data) {
-					if (field_data.fieldType == "checkbox") {
-						field_data.value = $(this).prop('checked');
-					} else {
-						field_data.value = value;
-					}
-				}
-			}
-		});
 
 		$('button#generate_parameters').click(function (event) {
 			if (selected_generator && selected_generator.settings) {
@@ -2126,6 +2082,37 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
+		});
+
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
+			var field = $(this).data('field');
+			var value = rhui.getFieldVal(this);
+
+			if ($(this).data('type') == 'rankmethod') {
+				var race_class_id = $(this).data('class_id');
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
+
+				if (race_class) {
+					var data = {
+						class_id: race_class_id,
+						rank_settings: {}
+					};
+					data.rank_settings[field] = value;
+					socket.emit('alter_race_class', data);
+
+					if (!race_class.ranksettings) {
+						race_class.ranksettings = {};
+					}
+					race_class.ranksettings[field] = value;
+				}
+			} else if ($(this).data('type') == 'heatgenerator') {
+				var field_data = selected_generator.settings.find(obj => {return obj.id == field});
+
+				field_data.value = value;
+			} else if ($(this).data('type') == 'importer') {
+				var field_data = selected_importer.settings.find(obj => {return obj.id == field});
+				field_data.value = value;
+			}
 		});
 
 		$('#set_language').change(function (event) {

@@ -5,6 +5,7 @@ import RHUtils
 import random
 from HeatGenerator import HeatGenerator
 from Database import ProgramMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def getTotalPilots(RHAPI, generate_args):
                 total_pilots = len(class_results['by_race_time'])
             else:
                 # fall back to all pilots
-                total_pilots = len(RHData.get_pilots())
+                total_pilots = len(RHAPI.db.pilots)
     else:
         # use total number of pilots
         total_pilots = len(RHAPI.db.pilots)
@@ -189,31 +190,10 @@ def discover(*_args, **_kwargs):
                 'advances_per_heat': 0,
             },
             [
-                {
-                    'id': 'qualifiers_per_heat',
-                    'label': "Maximum pilots per heat",
-                    'fieldType': 'basic_int',
-                    'placeholder': "Auto",
-                },
-                {
-                    'id': 'total_pilots',
-                    'label': "Maxiumum pilots in class",
-                    'desc': "Used only with input class",
-                    'fieldType': 'basic_int',
-                    'placeholder': "Auto",
-                },
-                {
-                    'id': 'seed_offset',
-                    'label': "Seed from rank",
-                    'fieldType': 'basic_int',
-                    'value': 1,
-                },
-                {
-                    'id': 'suffix',
-                    'label': "Heat title suffix",
-                    'fieldType': 'text',
-                    'value': 'Main',
-                },
+                UIField('qualifiers_per_heat', "Maximum pilots per heat", UIFieldType.BASIC_INT, placeholder="Auto"),
+                UIField('total_pilots', "Maxiumum pilots in class", UIFieldType.BASIC_INT, placeholder="Auto", desc="Used only with input class"),
+                UIField('seed_offset', "Seed from rank", UIFieldType.BASIC_INT, value=1),
+                UIField('suffix', "Heat title suffix", UIFieldType.TEXT, placeholder="Main", value="Main"),
             ],
         ),
         HeatGenerator(
@@ -222,31 +202,10 @@ def discover(*_args, **_kwargs):
             generateBalancedHeats,
             None,
             [
-                {
-                    'id': 'qualifiers_per_heat',
-                    'label': "Maximum pilots per heat",
-                    'fieldType': 'basic_int',
-                    'placeholder': "Auto",
-                },
-                {
-                    'id': 'total_pilots',
-                    'label': "Maxiumum pilots in class",
-                    'desc': "Used only with input class",
-                    'fieldType': 'basic_int',
-                    'placeholder': "Auto",
-                },
-                {
-                    'id': 'seed_offset',
-                    'label': "Seed from rank",
-                    'fieldType': 'basic_int',
-                    'value': 1,
-                },
-                {
-                    'id': 'suffix',
-                    'label': "Heat title suffix",
-                    'fieldType': 'text',
-                    'value': 'Qualifier',
-                },
+                UIField('qualifiers_per_heat', "Maximum pilots per heat", UIFieldType.BASIC_INT, placeholder="Auto"),
+                UIField('total_pilots', "Maxiumum pilots in class", UIFieldType.BASIC_INT, placeholder="Auto", desc="Used only with input class"),
+                UIField('seed_offset', "Seed from rank", UIFieldType.BASIC_INT, value=1),
+                UIField('suffix', "Heat title suffix", UIFieldType.TEXT, placeholder="Qualifier", value="Qualifier"),
             ]
         ),
         HeatGenerator(
@@ -255,39 +214,11 @@ def discover(*_args, **_kwargs):
             generateLadder,
             None,
             [
-                {
-                    'id': 'advances_per_heat',
-                    'label': "Advances per heat",
-                    'desc': "Blank for auto",
-                    'fieldType': 'basic_int',
-                    'placeholder': "Auto",
-                },
-                {
-                    'id': 'qualifiers_per_heat',
-                    'label': "Seeded slots per heat",
-                    'desc': "Blank for auto",
-                    'fieldType': 'basic_int',
-                    'placeholder': "Auto",
-                },
-                {
-                    'id': 'total_pilots',
-                    'label': "Pilots in class",
-                    'desc': "Used only with input class",
-                    'fieldType': 'basic_int',
-                    'placeholder': "Auto",
-                },
-                {
-                    'id': 'seed_offset',
-                    'label': "Seed from rank",
-                    'fieldType': 'basic_int',
-                    'value': 1,
-                },
-                {
-                    'id': 'suffix',
-                    'label': "Heat title suffix",
-                    'fieldType': 'text',
-                    'value': 'Main',
-                },
+                UIField('advances_per_heat', "Advances per heat", UIFieldType.BASIC_INT, placeholder="Auto"),
+                UIField('qualifiers_per_heat', "Seeded slots per heat", UIFieldType.BASIC_INT, placeholder="Auto"),
+                UIField('total_pilots', "Pilots in class", UIFieldType.BASIC_INT, placeholder="Auto", desc="Used only with input class"),
+                UIField('seed_offset', "Seed from rank", UIFieldType.BASIC_INT, value=1),
+                UIField('suffix', "Heat title suffix", UIFieldType.TEXT, placeholder="Main", value="Main"),
             ]
         ),
 

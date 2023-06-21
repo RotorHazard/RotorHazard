@@ -6,6 +6,7 @@ import RHUtils
 import Database
 from data_import import DataImporter
 from Database import ProgramMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -219,31 +220,10 @@ def discover(*_args, **_kwargs):
             import_json,
             None,
             [
-                {
-                    'id': 'reset_pilots',
-                    'label': "Reset Pilots",
-                    'fieldType': 'checkbox',
-                    'value': False
-                },
-                {
-                    'id': 'reset_formats',
-                    'label': "Reset Formats",
-                    'fieldType': 'checkbox',
-                    'value': False
-                },
-                {
-                    'id': 'reset_profiles',
-                    'label': "Reset Profiles",
-                    'fieldType': 'checkbox',
-                    'value': False
-                },
-                {
-                    'id': 'reset_classes',
-                    'label': "Reset Classes and Race Data",
-                    'fieldType': 'checkbox',
-                    'value': False
-                },
-
+                UIField('reset_pilots', "Reset Pilots", UIFieldType.CHECKBOX, value=False),
+                UIField('reset_formats', "Reset Formats", UIFieldType.CHECKBOX, value=False),
+                UIField('reset_profiles', "Reset Profiles", UIFieldType.CHECKBOX, value=False),
+                UIField('reset_classes', "Reset Classes and Race Data", UIFieldType.CHECKBOX, value=False),
             ]
         ),
     ]

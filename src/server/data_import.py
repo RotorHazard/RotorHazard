@@ -7,6 +7,8 @@
 # label becomes visible in the UI and becomes translatable
 #
 
+from typing import List
+from RHUI import UIField
 import logging
 
 logger = logging.getLogger(__name__)
@@ -41,7 +43,7 @@ class DataImportManager():
         return self._importers[importer_id].runImport(self._rhapi, data, import_args)
 
 class DataImporter():
-    def __init__(self, name, label, import_fn, default_args=None, settings=None):
+    def __init__(self, name, label, import_fn, default_args=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self.import_fn = import_fn

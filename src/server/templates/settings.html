@@ -137,14 +137,14 @@
 				var form_el = $('<ol class="form">');
 
 				for (var f_idx in panel.settings) {
-					settings = panel.settings[f_idx];
+					var settings = { ...panel.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
-
-					// TODO: adjust incoming data
-					settings.fieldType = settings.fieldtype;
-					settings.id = settings.name;
-					settings.genericOption = settings.name;
+					settings.fieldClass = 'set_ui_option';
+					settings.id = 'genericOption_' + settings.name;
+					settings.data = {
+						field: settings.name,
+					}
 
 					var field = rhui.buildField(settings);
 
@@ -158,6 +158,17 @@
 
 				$('#custom-ui').append(panel_el);
 			}
+		});
+
+		$(document).on('change', '.set_ui_option', function (event) {
+			var field = $(this).data('field');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				option: field,
+				value: value
+			};
+			socket.emit('set_option', data);
 		});
 
 		socket.on('heartbeat', function (msg) {
@@ -961,7 +972,7 @@
 					settings.wrapperEl = 'div';
 					settings.data = {
 						idx: action_idx,
-						field: settings.id
+						field: settings.name
 					}
 					if (rotorhazard.actions.list[action_idx][settings.id]) {
 						settings.value = rotorhazard.actions.list[action_idx][settings.id];
@@ -969,10 +980,6 @@
 
 					settings.id = 'action_' + action_idx + '_' + idx;
 					settings.fieldClass = 'actionfield';
-
-					// TODO: adjust incoming data
-					settings.label = settings.name;
-					settings.fieldType = settings.type;
 
 					var field = rhui.buildField(settings);
 
@@ -1035,7 +1042,7 @@
 			var target = $(evt.target);
 			var action = target.data('idx');
 			var field = target.data('field');
-			var value = target.val();
+			var value = rhui.getFieldVal(evt.target);
 
 			rotorhazard.actions.list[action][field] = value;
 

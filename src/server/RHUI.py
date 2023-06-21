@@ -2,7 +2,9 @@
 # RHUI Helper
 # Provides abstraction for user interface
 #
-from dataclasses import dataclass
+from typing import List, Any
+from dataclasses import dataclass, asdict
+from enum import Enum
 from flask import request
 from flask_socketio import emit
 from eventmanager import Evt
@@ -15,6 +17,61 @@ from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod
 import logging
 logger = logging.getLogger(__name__)
+
+class UIFieldType(Enum):
+    TEXT = "text"
+    BASIC_INT = "basic_int"
+    SELECT = "select"
+    CHECKBOX = "checkbox"
+
+@dataclass
+class UIFieldSelectOption():
+    value: str
+    label: str
+
+@dataclass
+class UIField():
+    name: str
+    label: str
+    field_type: str = UIFieldType.TEXT
+    value: Any = None
+    desc: str = None
+    placeholder: str = None
+    options: List[UIFieldSelectOption] = None
+    order: int = 0 # not implemented
+
+    def frontend_repr(self):
+        return {
+            'name': self.name,
+            'label': self.label,
+            'field_type': self.field_type.value,
+            'value': self.value,
+            'desc' : self.desc,
+            'placeholder': self.placeholder,
+            'options': [asdict(option) for option in self.options] if self.options else None,
+            'order': self.order,
+        }
+
+@dataclass
+class UIPanel():
+    name: str
+    label: str
+    page: str
+    order: int = 0
+
+@dataclass
+class GeneralSetting():
+    name: str
+    field: UIField
+    panel: str = None
+    order: int = 0
+
+@dataclass
+class QuickButton():
+    panel: str
+    name: str
+    label: str
+    fn: callable
 
 # Language placeholder (Overwritten after module init)
 def __(*args):
@@ -33,10 +90,11 @@ class RHUI():
         self._quickbuttons = []
 
     # Pilot Attributes
-    def register_pilot_attribute(self, name, label, fieldtype="text"):
-        if not any(x.name == name for x in self._pilot_attributes):
-            self._pilot_attributes.append(PilotAttribute(name, label, fieldtype))
+    def register_pilot_attribute(self, field:UIField):
+        if not any(x.name == field.name for x in self._pilot_attributes):
+            self._pilot_attributes.append(field)
             return self._pilot_attributes
+        # TODO: field redefine & warning
 
     @property
     def pilot_attributes(self):
@@ -47,15 +105,16 @@ class RHUI():
         if not any(x.name == name for x in self._ui_panels):
             self._ui_panels.append(UIPanel(name, label, page, order))
             return self.ui_panels
+        # TODO: field redefine & warning
 
     @property
     def ui_panels(self):
         return self._ui_panels
 
     # General Settings
-    def register_general_setting(self, name, label, panel=None, fieldtype="text", order=0):
-        if not any(x.name == name for x in self._general_settings):
-            self._general_settings.append(GeneralSetting(name, label, panel, fieldtype, order))
+    def register_general_setting(self, field:UIField, panel=None, order=0):
+        if not any(x.name == field.name for x in self._general_settings):
+            self._general_settings.append(GeneralSetting(field.name, field, panel, order))
             return self._general_settings
 
     @property
@@ -111,13 +170,13 @@ class RHUI():
             if panel.page == page:
                 settings = []
                 for setting in self.get_panel_settings(panel.name):
-                    settings.append({
-                        'name': setting.name,
-                        'label': setting.label,
-                        'order': setting.order,
-                        'fieldtype': setting.fieldtype,
-                        'value': self._racecontext.rhdata.get_option(setting.name, None)
-                    })
+                    field = setting.field.frontend_repr()
+
+                    db_val = self._racecontext.rhdata.get_option(setting.name)
+                    if db_val is not None:
+                        field['value'] = db_val != '0' if setting.field.field_type is UIFieldType.CHECKBOX else db_val
+
+                    settings.append(field)
 
                 buttons = []
                 for button in self.get_panel_quickbuttons(panel.name):
@@ -345,7 +404,7 @@ class RHUI():
                 for effect in effects:
                     effect_list[effect] = {
                         'name': __(effects[effect].label),
-                        'fields': effects[effect].fields
+                        'fields': [field.frontend_repr() for field in effects[effect].fields] if effects[effect].fields else None
                     }
 
                 emit_payload = {
@@ -638,12 +697,10 @@ class RHUI():
         pilots_list = []
 
         attrs = []
+        types = {}
         for attr in self.pilot_attributes:
-            attrs.append({
-                'name': attr.name,
-                'label': attr.label,
-                'fieldtype': attr.fieldtype
-            })
+            types[attr.name] = attr.field_type
+            attrs.append(attr.frontend_repr())
 
         for pilot in self._racecontext.rhdata.get_pilots():
             opts_str = '' # create team-options string for each pilot, with current team selected
@@ -668,8 +725,8 @@ class RHUI():
             }
 
             pilot_attributes = self._racecontext.rhdata.get_pilot_attributes(pilot)
-            for attr in pilot_attributes: 
-                pilot_data[attr.name] = attr.value
+            for attr in pilot_attributes:
+                pilot_data[attr.name] = attr.value != '0' if types.get(attr.name) == UIFieldType.CHECKBOX else attr.value
 
             pilots_list.append(pilot_data)
 
@@ -1010,7 +1067,7 @@ class RHUI():
             emit_payload['importers'].append({
                 'name': name,
                 'label': imp.label,
-                'settings': imp.settings
+                'settings': [field.frontend_repr() for field in imp.settings] if imp.settings else None
             })
 
         emit('importer_list', emit_payload)
@@ -1026,7 +1083,7 @@ class RHUI():
             emit_payload['generators'].append({
                 'name': name,
                 'label': gen.label,
-                'settings': gen.settings
+                'settings': [field.frontend_repr() for field in gen.settings] if gen.settings else None
             })
 
         emit('heatgenerator_list', emit_payload)
@@ -1042,7 +1099,7 @@ class RHUI():
             emit_payload['methods'].append({
                 'name': name,
                 'label': method.label,
-                'settings': method.settings
+                'settings': [field.frontend_repr() for field in method.settings] if method.settings else None
             })
 
         emit('raceclass_rank_method_list', emit_payload)
@@ -1058,35 +1115,8 @@ class RHUI():
             emit_payload['methods'].append({
                 'name': name,
                 'label': method.label,
-                'settings': method.settings
+                'settings': [field.frontend_repr() for field in method.settings] if method.settings else None
             })
 
         emit('race_points_method_list', emit_payload)
 
-@dataclass
-class PilotAttribute():
-    name: str
-    label: str
-    fieldtype: str = "text"
-
-@dataclass
-class UIPanel():
-    name: str
-    label: str
-    page: str
-    order: int = 0
-
-@dataclass
-class GeneralSetting():
-    name: str
-    label: str
-    panel: str = None
-    fieldtype: str = "text"
-    order: int = 0
-
-@dataclass
-class QuickButton():
-    panel: str
-    name: str
-    label: str
-    fn: callable

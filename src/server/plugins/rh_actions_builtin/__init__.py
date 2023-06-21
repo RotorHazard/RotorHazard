@@ -1,17 +1,18 @@
 ''' builtin Actions '''
 
 from EventActions import ActionEffect
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 class ActionsBuiltin():
     def __init__(self, RHAPI):
-        self._RHAPI = RHAPI
+        self._rhapi = RHAPI
 
     def doReplace(self, text, args):
         # %HEAT%
         if 'heat_id' in args:
-            heat = self._RHAPI.db.heat_by_id(args['heat_id'])
+            heat = self._rhapi.db.heat_by_id(args['heat_id'])
         else:
-            heat = self._RHAPI.db.heat_by_id(self._RHAPI.race.heat)
+            heat = self._rhapi.db.heat_by_id(self._rhapi.race.heat)
 
         text = text.replace('%HEAT%', heat.display_name())
 
@@ -39,10 +40,10 @@ class ActionsBuiltin():
                     text = text.replace('%FASTEST_LAP%', result['fastest_lap'])
 
                     # %CONSECUTIVE%
-                    if result['consecutives_base'] == int(self._RHAPI.db.option('consecutivesCount', 3)):
+                    if result['consecutives_base'] == int(self._rhapi.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', result['consecutives'])
                     else:
-                        text = text.replace('%CONSECUTIVE%', __('None'))
+                        text = text.replace('%CONSECUTIVE%', self._rhapi.__('None'))
 
                     # %POSITION%
                     text = text.replace('%POSITION%', str(result['position']))
@@ -57,10 +58,10 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.db.pilot_by_id(self._RHAPI.race.pilots[args['node_index']])
+                pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.spoken_callsign())
 
-            self._RHAPI.ui.message_speak(text)
+            self._rhapi.ui.message_speak(text)
 
     def messageEffect(self, action, args):
         if 'text' in action:
@@ -68,10 +69,10 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.db.pilot_by_id(self._RHAPI.race.pilots[args['node_index']])
+                pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.display_callsign())
 
-            self._RHAPI.ui.message_notify(text)
+            self._rhapi.ui.message_notify(text)
 
     def alertEffect(self, action, args):
         if 'text' in action:
@@ -79,25 +80,23 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.db.pilot_by_id(self._RHAPI.race.pilots[args['node_index']])
+                pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
                 text = text.replace('%PILOT%', pilot.display_callsign())
 
-            self._RHAPI.ui.message_alert(text)
+            self._rhapi.ui.message_alert(text)
 
     def scheduleEffect(self, action, args):
         if 'sec' in action:
             if 'min' in action:
-                self._RHAPI.race.schedule(action['sec'], action['min'])
+                self._rhapi.race.schedule(action['sec'], action['min'])
             else:
-                self._RHAPI.race.schedule(action['sec'])
+                self._rhapi.race.schedule(action['sec'])
 
 actions = None
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
         kwargs['Events'].on('actionsInitialize', 'action_builtin', registerHandlers, {}, 75)
-    if '__' in kwargs:
-        __ = kwargs['__']
 
     global actions
     actions = ActionsBuiltin(kwargs['RHAPI'])
@@ -114,11 +113,7 @@ def discover():
             'Speak',
             actions.speakEffect,
             [
-                {
-                    'id': 'text',
-                    'name': 'Callout Text',
-                    'type': 'text',
-                }
+                UIField('text', "Callout Text", UIFieldType.TEXT),
             ]
         ),
         ActionEffect(
@@ -126,11 +121,7 @@ def discover():
             'Message',
             actions.messageEffect,
             [
-                {
-                    'id': 'text',
-                    'name': 'Message Text',
-                    'type': 'text',
-                }
+                UIField('text', "Message Text", UIFieldType.TEXT),
             ]
         ),
         ActionEffect(
@@ -138,11 +129,7 @@ def discover():
             'Alert',
             actions.alertEffect,
             [
-                {
-                    'id': 'text',
-                    'name': 'Alert Text',
-                    'type': 'text',
-                }
+                UIField('text', "Alert Text", UIFieldType.TEXT),
             ]
         ),
         ActionEffect(
@@ -150,19 +137,9 @@ def discover():
             'Schedule Race',
             actions.scheduleEffect,
             [
-                {
-                    'id': 'sec',
-                    'name': 'Seconds',
-                    'type': 'basic_int',
-                },
-                {
-                    'id': 'min',
-                    'name': 'Minutes',
-                    'type': 'basic_int',
-                }
+                UIField('sec', "Seconds", UIFieldType.BASIC_INT),
+                UIField('min', "Minutes", UIFieldType.BASIC_INT),
             ]
         )
     ]
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg

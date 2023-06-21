@@ -2,6 +2,8 @@
 
 API_VERSION = 1
 
+from RHUI import UIField
+
 class RHAPI():
     def __init__(self, race_context):
         self.API_VERSION = API_VERSION
@@ -23,7 +25,7 @@ class RHAPI():
         self.sensors = SensorsAPI(self._racecontext)
         self.eventresults = EventResultsAPI(self._racecontext)
 
-        self.__ = self.language.__
+        self.__ = self.language.__ # shortcut access
 
 
 #
@@ -72,16 +74,16 @@ class FieldsAPI():
     def pilot_attributes(self):
         return self._racecontext.rhui.pilot_attributes
 
-    def register_pilot_attribute(self, name, label, fieldtype="text"):
-        return self._racecontext.rhui.register_pilot_attribute(name, label, fieldtype)
+    def register_pilot_attribute(self, field:UIField):
+        return self._racecontext.rhui.register_pilot_attribute(field)
 
     # General Setting
     @property
     def options(self):
         return self._racecontext.rhui.general_settings
 
-    def register_option(self, name, label, panel=None, fieldtype="text", order=0):
-        return self._racecontext.rhui.register_general_setting(name, label, panel, fieldtype, order)
+    def register_option(self, field:UIField, panel=None, order=0):
+        return self._racecontext.rhui.register_general_setting(field, panel, order)
 
 
 #
@@ -805,3 +807,4 @@ class SensorsAPI():
 
     def get_sensor_obj(self, name):
         return self._racecontext.sensors.sensors_dict[name]
+

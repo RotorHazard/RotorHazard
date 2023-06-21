@@ -2,6 +2,8 @@
 # Results generators and caching
 #
 
+from typing import List
+from RHUI import UIField
 import copy
 import json
 import gevent
@@ -42,7 +44,7 @@ class RaceClassRankManager():
         return self.methods[method_id].rank(self._rhapi, race_class, args)
 
 class RaceClassRankMethod():
-    def __init__(self, name, label, rankFn, defaultArgs=None, settings=None):
+    def __init__(self, name, label, rankFn, defaultArgs=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self.rankFn = rankFn
@@ -81,7 +83,7 @@ class RacePointsManager():
         return self.methods[method_id].assign(self._rhapi, leaderboard, args)
 
 class RacePointsMethod():
-    def __init__(self, name, label, assignFn, defaultArgs=None, settings=None):
+    def __init__(self, name, label, assignFn, defaultArgs=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self.assignFn = assignFn

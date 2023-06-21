@@ -5,6 +5,7 @@
 import logging
 from HeatGenerator import HeatGenerator
 from Database import ProgramMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -4266,23 +4267,12 @@ def discover(*_args, **_kwargs):
             bracket_1e_std,
             None,
             [
-                {
-                    'id': 'standard',
-                    'label': "Standard",
-                    'fieldType': 'select',
-                    'options': [
-                        {'name': "fai16", 'value': "FAI, 4-up, 16-pilot"},
-                        {'name': "fai32", 'value': "FAI, 4-up, 32-pilot"},
-                        {'name': "fai64", 'value': "FAI, 4-up, 64-pilot"},
-                    ],
-                    'value': "fai16",
-                },
-                {
-                    'id': 'seed_offset',
-                    'label': "Seed from rank",
-                    'fieldType': 'basic_int',
-                    'value': 1,
-                },
+                UIField('standard', "Standard", UIFieldType.SELECT, options=[
+                        UIFieldSelectOption('fai16', "FAI, 4-up, 16-pilot"),
+                        UIFieldSelectOption('fai32', "FAI, 4-up, 32-pilot"),
+                        UIFieldSelectOption('fai64', "FAI, 4-up, 64-pilot"),
+                    ], value="fai16"),
+                UIField('seed_offset', "Seed from rank", UIFieldType.BASIC_INT, value=1),
             ],
         ),
         HeatGenerator(
@@ -4291,24 +4281,13 @@ def discover(*_args, **_kwargs):
             bracket_2e_std,
             None,
             [
-                {
-                    'id': 'standard',
-                    'label': "Standard",
-                    'fieldType': 'select',
-                    'options': [
-                        {'name': "fai16", 'value': "FAI, 4-up, 16-pilot"},
-                        {'name': "fai32", 'value': "FAI, 4-up, 32-pilot"},
-                        {'name': "fai64", 'value': "FAI, 4-up, 64-pilot"},
-                        {'name': "multigp16", 'value': "MultiGP, 4-up, 16-pilot"},
-                    ],
-                    'value': "fai16",
-                },
-                {
-                    'id': 'seed_offset',
-                    'label': "Seed from rank",
-                    'fieldType': 'basic_int',
-                    'value': 1,
-                },
+                UIField('standard', "Standard", UIFieldType.SELECT, options=[
+                        UIFieldSelectOption('fai16', "FAI, 4-up, 16-pilot"),
+                        UIFieldSelectOption('fai32', "FAI, 4-up, 32-pilot"),
+                        UIFieldSelectOption('fai64', "FAI, 4-up, 64-pilot"),
+                        UIFieldSelectOption('multigp16', "MultiGP, 4-up, 16-pilot"),
+                    ], value="fai16"),
+                UIField('seed_offset', "Seed from rank", UIFieldType.BASIC_INT, value=1),
             ],
         ),
     ]

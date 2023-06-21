@@ -2,6 +2,8 @@
 # Heat generation handlers
 #
 
+from typing import List
+from RHUI import UIField
 import logging
 import random
 import RHUtils
@@ -120,7 +122,7 @@ class HeatGeneratorManager():
             logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
 
 class HeatGenerator():
-    def __init__(self, name, label, generatorFn, defaultArgs=None, settings=None):
+    def __init__(self, name, label, generatorFn, defaultArgs=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self._generator = generatorFn

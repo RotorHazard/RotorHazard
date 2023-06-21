@@ -4,6 +4,7 @@ import logging
 import RHUtils
 from RHRace import StartBehavior
 from Results import RaceClassRankMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -164,12 +165,7 @@ def discover(*_args, **_kwargs):
                 'rounds': 3
             },
             [
-                {
-                    'id': 'rounds',
-                    'label': "Number of rounds",
-                    'placeholder': '3',
-                    'fieldType': 'basic_int',
-                },
+                UIField('rounds', "Number of rounds", UIFieldType.BASIC_INT, placeholder="3"),
             ]
         )
     ]

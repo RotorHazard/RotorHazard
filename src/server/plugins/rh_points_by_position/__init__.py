@@ -3,6 +3,7 @@
 import logging
 import csv
 from Results import RacePointsMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +46,7 @@ def discover(*_args, **_kwargs):
             points_by_position,
             None,
             [
-                {
-                    'id': 'points_list',
-                    'label': "Points (CSV)",
-                    'placeholder': '10,6,3,1',
-                    'fieldType': 'text',
-                },
+                UIField('points_list', "Points (CSV)", UIFieldType.TEXT, placeholder="10,6,3,1"),
             ]
         )
     ]

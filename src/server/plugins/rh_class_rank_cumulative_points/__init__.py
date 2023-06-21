@@ -4,6 +4,7 @@ import logging
 import RHUtils
 from RHRace import StartBehavior
 from Results import RaceClassRankMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +100,7 @@ def discover(*_args, **_kwargs):
                 'ascending': False
             },
             [
-                {
-                    'id': 'ascending',
-                    'label': "Ascending",
-                    'value': False,
-                    'fieldType': 'checkbox',
-                },
+                UIField('ascending', "Ascending", UIFieldType.CHECKBOX, value=False),
             ]
         )
     ]
