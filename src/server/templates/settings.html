@@ -967,15 +967,15 @@
 				var fieldset = $('<fieldset>');
 
 				for (idx in rotorhazard.actions.effects[effect].fields) {
-					var settings = structuredClone(rotorhazard.actions.effects[effect].fields[idx]);
+					var settings = { ...rotorhazard.actions.effects[effect].fields[idx] };
 
 					settings.wrapperEl = 'div';
 					settings.data = {
 						idx: action_idx,
 						field: settings.name
 					}
-					if (rotorhazard.actions.list[action_idx][settings.id]) {
-						settings.value = rotorhazard.actions.list[action_idx][settings.id];
+					if (rotorhazard.actions.list[action_idx][settings.name]) {
+						settings.value = rotorhazard.actions.list[action_idx][settings.name];
 					}
 
 					settings.id = 'action_' + action_idx + '_' + idx;
