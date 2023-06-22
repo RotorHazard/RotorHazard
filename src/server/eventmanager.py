@@ -19,16 +19,16 @@ class EventManager:
     def __init__(self, RaceContext):
         self._racecontext = RaceContext
 
-    def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
-        if defaultArgs == None:
-            defaultArgs = {}
+    def on(self, event, name, handler_fn, default_args=None, priority=200, unique=False):
+        if default_args == None:
+            default_args = {}
 
         if event not in self.events:
             self.events[event] = {}
 
         self.events[event][name] = {
-            "handlerFn": handlerFn,
-            "defaultArgs": defaultArgs,
+            "handler_fn": handler_fn,
+            "default_args": default_args,
             "priority": priority,
             "unique": unique,
             "raceContext": self._racecontext
@@ -51,7 +51,7 @@ class EventManager:
 
         return True
 
-    def trigger(self, event, evtArgs=None):
+    def trigger(self, event, evt_args=None):
         # logger.debug('-Triggered event- {0}'.format(event))
         evt_list = []
         if event in self.eventOrder:
@@ -64,13 +64,13 @@ class EventManager:
         if len(evt_list):
             for ev, name in evt_list:
                 handler = self.events[ev][name]
-                args = copy.copy(handler['defaultArgs'])
+                args = copy.copy(handler['default_args'])
 
-                if evtArgs:
+                if evt_args:
                     if args:
-                        args.update(evtArgs)
+                        args.update(evt_args)
                     else:
-                        args = evtArgs
+                        args = evt_args
 
                 if ev == Evt.ALL:
                     args['_eventName'] = event
@@ -88,9 +88,9 @@ class EventManager:
                         self.eventThreads.pop(token, False)
 
                 if handler['priority'] < 100:
-                    handler['handlerFn'](args)
+                    handler['handler_fn'](args)
                 else:
-                    greenlet = gevent.spawn(handler['handlerFn'], args)
+                    greenlet = gevent.spawn(handler['handler_fn'], args)
                     self.eventThreads[greenlet.minimal_ident] = {
                         'name': threadName,
                         'thread': greenlet

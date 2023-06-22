@@ -556,7 +556,7 @@ class IOAPI():
         return self._racecontext.import_manager.importers
 
     def run_import(self):
-        return self._racecontext.import_manager.runImport()
+        return self._racecontext.import_manager.run_import()
 
 
 #

@@ -50,7 +50,7 @@ class LEDEventManager:
             }))
 
         self.Events.trigger('LED_Initialize', {
-            'registerFn': self.registerEffect
+            'register_fn': self.registerEffect
             })
 
     def isEnabled(self):
@@ -79,12 +79,12 @@ class LEDEventManager:
             self.Events.off(event, 'LED')
             return True
 
-        args = copy.deepcopy(self.eventEffects[name]['defaultArgs'])
+        args = copy.deepcopy(self.eventEffects[name]['default_args'])
         if args is None:
             args = {}
 
         args.update({
-            'handlerFn': self.eventEffects[name]['handlerFn'],
+            'handler_fn': self.eventEffects[name]['handler_fn'],
             'strip': self.strip,
             'manager': self,
             'RHAPI': self._rhapi
@@ -133,9 +133,9 @@ class LEDEventManager:
         if 'caller' in args and args['caller'] == 'shutdown':
             return False
 
-        result = args['handlerFn'](args)
+        result = args['handler_fn'](args)
         if result == False:
-            logger.debug('LED effect %s produced no output', args['handlerFn'])
+            logger.debug('LED effect %s produced no output', args['handler_fn'])
         if 'preventIdle' not in args or not args['preventIdle']:
             if 'time' in args:
                 time = args['time']
@@ -158,7 +158,7 @@ class LEDEventManager:
             event = LEDEvent.IDLE_RACING
 
         if event and event in self.events:
-            self.eventEffects[self.events[event]]['handlerFn'](self.idleArgs[event])
+            self.eventEffects[self.events[event]]['handler_fn'](self.idleArgs[event])
 
 
 class NoLEDManager():
@@ -179,7 +179,7 @@ class ClusterLEDManager():
 
     def __init__(self, Events):
         Events.trigger('LED_Initialize', {
-            'registerFn': self.registerEffect
+            'register_fn': self.registerEffect
             })
 
     def isEnabled(self):
@@ -311,11 +311,11 @@ class LEDEvent:
     ]
 
 class LEDEffect(UserDict):
-    def __init__(self, name, label, handlerFn, validEvents, defaultArgs=None):
+    def __init__(self, name, label, handler_fn, valid_events, default_args=None):
         UserDict.__init__(self, {
             "name": name,
             "label": label,
-            "handlerFn": handlerFn,
-            "validEvents": validEvents,
-            "defaultArgs": defaultArgs
+            "handler_fn": handler_fn,
+            "valid_events": valid_events,
+            "default_args": default_args
         })

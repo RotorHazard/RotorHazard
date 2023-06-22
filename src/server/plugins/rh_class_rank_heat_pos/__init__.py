@@ -8,24 +8,24 @@ from Results import RaceClassRankMethod
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for method in discover():
-            args['registerFn'](method)
+            args['register_fn'](method)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_heat_position', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_heat_position', register_handlers, {}, 75)
 
-def rank_heat_pos(RHAPI, race_class, _args):
-    heats = RHAPI.db.heats_by_class(race_class.id)
+def rank_heat_pos(rhapi, race_class, _args):
+    heats = rhapi.db.heats_by_class(race_class.id)
 
     leaderboard = []
     ranked_pilots = []
     rank_pos = 1
 
     for heat in reversed(heats):
-        heat_result = RHAPI.db.heat_results(heat)
+        heat_result = rhapi.db.heat_results(heat)
         heat_leaderboard = heat_result[heat_result['meta']['primary_leaderboard']]
 
         for line in heat_leaderboard:

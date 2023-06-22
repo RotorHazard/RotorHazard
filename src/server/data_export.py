@@ -25,7 +25,7 @@ class DataExportManager():
         self._rhapi = RHAPI
 
         Events.trigger('Export_Initialize', {
-            'registerFn': self.registerExporter
+            'register_fn': self.registerExporter
             })
 
     def registerExporter(self, exporter):
@@ -54,6 +54,6 @@ class DataExporter():
         self.formatter = formatter_fn
         self.assembler = assembler_fn
 
-    def export(self, RHAPI):
-        data = self.assembler(RHAPI)
+    def export(self, rhapi):
+        data = self.assembler(rhapi)
         return self.formatter(data)

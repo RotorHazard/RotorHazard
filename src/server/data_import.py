@@ -20,7 +20,7 @@ class DataImportManager():
         self._rhapi = RHAPI
 
         Events.trigger('Import_Initialize', {
-            'registerFn': self.registerImporter
+            'register_fn': self.registerImporter
             })
 
     def registerImporter(self, importer):
@@ -39,8 +39,8 @@ class DataImportManager():
     def importers(self):
         return self._importers
 
-    def runImport(self, importer_id, data, import_args=None):
-        return self._importers[importer_id].runImport(self._rhapi, data, import_args)
+    def run_import(self, importer_id, data, import_args=None):
+        return self._importers[importer_id].run_import(self._rhapi, data, import_args)
 
 class DataImporter():
     def __init__(self, name, label, import_fn, default_args=None, settings:List[UIField]=None):
@@ -50,7 +50,7 @@ class DataImporter():
         self.default_args = default_args
         self.settings = settings
 
-    def runImport(self, RHAPI, data, import_args=None):
+    def run_import(self, rhapi, data, import_args=None):
         args = {**(self.default_args if self.default_args else {}), **(import_args if import_args else {})}
 
-        return self.import_fn(RHAPI, data, args)
+        return self.import_fn(rhapi, data, args)

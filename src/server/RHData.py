@@ -1231,11 +1231,11 @@ class RHData():
             used_nodes.append(s.node_index)
 
         # create inverse of used_nodes
-        available_nodes = set(range(len(slots))) - set(used_nodes)
+        available_seats = set(range(len(slots))) - set(used_nodes)
 
         for s in slots:
-            if s.node_index == None and len(available_nodes):
-                s.node_index = available_nodes.pop()
+            if s.node_index == None and len(available_seats):
+                s.node_index = available_seats.pop()
 
         self.commit()
 
@@ -1355,11 +1355,11 @@ class RHData():
                 slot.node_index = None
 
             # collect node data
-            available_nodes = []
+            available_seats = []
             profile_freqs = json.loads(current_frequencies)
             for node_index in range(num_nodes):
                 if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                    available_nodes.append({
+                    available_seats.append({
                         'idx': node_index,
                         'frq': {
                             'f': profile_freqs["f"][node_index],
@@ -1375,7 +1375,7 @@ class RHData():
                     used_frequencies_json = self.get_pilot(slot.pilot_id).used_frequencies
                     if used_frequencies_json:
                         used_frequencies = json.loads(used_frequencies_json)
-                        for node in available_nodes:
+                        for node in available_seats:
                             end_idx = len(used_frequencies) - 1
                             for f_idx, pilot_freq in enumerate(used_frequencies):
                                 if node['frq']['f'] == pilot_freq['f']:
@@ -1387,24 +1387,24 @@ class RHData():
 
             eliminated_matches = []
             if callable(calc_fn):
-                while len(available_nodes):
+                while len(available_seats):
                     # request assignment from calc function
-                    m_node, m_slot, an_idx = calc_fn(available_nodes)
+                    m_node, m_slot, an_idx = calc_fn(available_seats)
                     if m_node and m_slot:
                         # calc function returned assignment
                         m_slot.node_index = m_node['idx']
                         for slot_idx, slot_match in enumerate(m_node['matches']):
                             if slot_match['slot'] != m_slot:
                                 eliminated_matches.append(slot_match)
-                        del available_nodes[an_idx]
-                        for available_node in available_nodes:
+                        del available_seats[an_idx]
+                        for available_node in available_seats:
                             for slot_idx, slot_match in enumerate(available_node['matches']):
                                 if slot_match['slot'] == m_slot:
                                     available_node['matches'][slot_idx] = None
                                 available_node['matches'] = [x for x in available_node['matches'] if x is not None]
                     else:
                         # calc function didn't make an assignment
-                        random.shuffle(available_nodes)
+                        random.shuffle(available_seats)
                         if len(eliminated_matches):
 
                             for slot_idx, slot_match in enumerate(eliminated_matches):
@@ -1413,28 +1413,28 @@ class RHData():
                                     if eliminated_matches[slot_idx] \
                                     and eliminated_matches[slot_idx]['band'] == 'D' \
                                     and eliminated_matches[slot_idx]['priority'] == True:
-                                        for n_idx, node in enumerate(available_nodes):
+                                        for n_idx, node in enumerate(available_seats):
                                             if node['frq']['b'] == 'D':
-                                                eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
-                                                available_nodes[n_idx] = None
+                                                eliminated_matches[slot_idx]['slot'].node_index = available_seats[n_idx]['idx']
+                                                available_seats[n_idx] = None
                                                 break
                                     else:
                                         # else explicity avoid D-band
-                                        for n_idx, node in enumerate(available_nodes):
+                                        for n_idx, node in enumerate(available_seats):
                                             if node['frq']['b'] != 'D':
-                                                eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
-                                                available_nodes[n_idx] = None
+                                                eliminated_matches[slot_idx]['slot'].node_index = available_seats[n_idx]['idx']
+                                                available_seats[n_idx] = None
                                                 break
 
-                                    available_nodes = [x for x in available_nodes if x is not None]
+                                    available_seats = [x for x in available_seats if x is not None]
                                 eliminated_matches[slot_idx] = None
 
-                            if len(available_nodes):
+                            if len(available_seats):
                                 # can't keep D/non-D but nodes not full
                                 for slot_idx, slot_match in enumerate(eliminated_matches):
                                     if eliminated_matches[slot_idx] and eliminated_matches[slot_idx]['slot'].node_index is None:
-                                        eliminated_matches[slot_idx]['slot'].node_index = available_nodes[0]['idx']
-                                        del(available_nodes[0])
+                                        eliminated_matches[slot_idx]['slot'].node_index = available_seats[0]['idx']
+                                        del(available_seats[0])
                                     eliminated_matches[slot_idx] = None
                                 
                             eliminated_matches = [x for x in eliminated_matches if x is not None]
@@ -1442,9 +1442,9 @@ class RHData():
                             # place pilots with no history into first available slots
                             for slot in slots:
                                 if slot.node_index is None and slot.pilot_id:
-                                    if len(available_nodes):
-                                        slot.node_index = available_nodes[0]['idx']
-                                        del(available_nodes[0])
+                                    if len(available_seats):
+                                        slot.node_index = available_seats[0]['idx']
+                                        del(available_seats[0])
                                     else:
                                         logger.warning("Dropping pilot {}; No remaining available nodes for slot {}".format(slot.pilot_id, slot))
                             break

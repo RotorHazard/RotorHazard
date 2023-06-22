@@ -9,51 +9,51 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for generator in discover():
-            args['registerFn'](generator)
+            args['register_fn'](generator)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
 
-def getTotalPilots(RHAPI, generate_args):
+def getTotalPilots(rhapi, generate_args):
     input_class_id = generate_args.get('input_class')
 
     if input_class_id:
         if 'total_pilots' in generate_args:
             total_pilots = int(generate_args['total_pilots'])
         else:
-            race_class = RHAPI.db.raceclass_by_id(input_class_id)
-            class_results = RHAPI.db.raceclass_results(race_class)
+            race_class = rhapi.db.raceclass_by_id(input_class_id)
+            class_results = rhapi.db.raceclass_results(race_class)
             if class_results and type(class_results) == dict:
                 # fill from available results
                 total_pilots = len(class_results['by_race_time'])
             else:
                 # fall back to all pilots
-                total_pilots = len(RHAPI.db.pilots)
+                total_pilots = len(rhapi.db.pilots)
     else:
         # use total number of pilots
-        total_pilots = len(RHAPI.db.pilots)
+        total_pilots = len(rhapi.db.pilots)
 
     return total_pilots
 
-def generateLadder(RHAPI, generate_args=None):
-    available_nodes = generate_args.get('available_nodes')
-    suffix = RHAPI.__(generate_args.get('suffix', 'Main'))
+def generateLadder(rhapi, generate_args=None):
+    available_seats = generate_args.get('available_seats')
+    suffix = rhapi.__(generate_args.get('suffix', 'Main'))
 
     if 'qualifiers_per_heat' in generate_args and 'advances_per_heat' in generate_args:
         qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
         advances_per_heat = int(generate_args['advances_per_heat'])
     elif 'advances_per_heat' in generate_args:
         advances_per_heat = int(generate_args['advances_per_heat'])
-        qualifiers_per_heat = available_nodes - advances_per_heat
+        qualifiers_per_heat = available_seats - advances_per_heat
     elif 'qualifiers_per_heat' in generate_args:
         qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
-        advances_per_heat = available_nodes - qualifiers_per_heat
+        advances_per_heat = available_seats - qualifiers_per_heat
     else:
-        qualifiers_per_heat = available_nodes - 1
+        qualifiers_per_heat = available_seats - 1
         advances_per_heat = 1
 
     if qualifiers_per_heat < 1 or advances_per_heat < 1:
@@ -61,13 +61,13 @@ def generateLadder(RHAPI, generate_args=None):
             logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 0')
             return False
 
-    total_pilots = getTotalPilots(RHAPI, generate_args)
+    total_pilots = getTotalPilots(rhapi, generate_args)
 
     if total_pilots == 0:
         logger.warning('Unable to seed ladder: no pilots available')
         return False
 
-    letters = RHAPI.__('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    letters = rhapi.__('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     heats = []
 
     if 'seed_offset' in generate_args:
@@ -111,20 +111,20 @@ def generateLadder(RHAPI, generate_args=None):
 
     return heats
 
-def generateBalancedHeats(RHAPI, generate_args=None):
-    available_nodes = generate_args.get('available_nodes')
-    suffix = RHAPI.__(generate_args.get('suffix', 'Qualifier'))
+def generateBalancedHeats(rhapi, generate_args=None):
+    available_seats = generate_args.get('available_seats')
+    suffix = rhapi.__(generate_args.get('suffix', 'Qualifier'))
 
     if 'qualifiers_per_heat' in generate_args:
         qualifiers_per_heat = generate_args['qualifiers_per_heat']
     else:
-        qualifiers_per_heat = available_nodes
+        qualifiers_per_heat = available_seats
 
     if qualifiers_per_heat < 1:
         logger.warning('Unable to seed ladder: provided qualifiers must be > 1')
         return False
 
-    total_pilots = getTotalPilots(RHAPI, generate_args)
+    total_pilots = getTotalPilots(rhapi, generate_args)
 
     if total_pilots == 0:
         logger.warning('Unable to seed heats: no pilots available')
@@ -134,7 +134,7 @@ def generateBalancedHeats(RHAPI, generate_args=None):
     if total_pilots % qualifiers_per_heat:
         total_heats += 1
 
-    letters = RHAPI.__('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    letters = rhapi.__('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     heats = []
 
     for idx in range(total_heats):

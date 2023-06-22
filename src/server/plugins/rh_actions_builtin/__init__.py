@@ -5,8 +5,8 @@ from EventActions import ActionEffect
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 class ActionsBuiltin():
-    def __init__(self, RHAPI):
-        self._rhapi = RHAPI
+    def __init__(self, rhapi):
+        self._rhapi = rhapi
 
     def doReplace(self, text, args):
         # %HEAT%
@@ -96,16 +96,16 @@ class ActionsBuiltin():
 actions = None
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
 
     global actions
-    actions = ActionsBuiltin(kwargs['RHAPI'])
+    actions = ActionsBuiltin(kwargs['rhapi'])
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for effect in discover():
-            args['registerFn'](effect)
+            args['register_fn'](effect)
 
 def discover():
     return [

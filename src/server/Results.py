@@ -21,7 +21,7 @@ class RaceClassRankManager():
         self._rhapi = RHAPI
 
         Events.trigger('RaceClassRanking_Initialize', {
-            'registerFn': self.registerMethod
+            'register_fn': self.registerMethod
             })
 
     def registerMethod(self, method):
@@ -44,15 +44,15 @@ class RaceClassRankManager():
         return self.methods[method_id].rank(self._rhapi, race_class, args)
 
 class RaceClassRankMethod():
-    def __init__(self, name, label, rankFn, defaultArgs=None, settings:List[UIField]=None):
+    def __init__(self, name, label, rank_fn, default_args=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
-        self.rankFn = rankFn
-        self.defaultArgs = defaultArgs
+        self.rank_fn = rank_fn
+        self.default_args = default_args
         self.settings = settings
 
-    def rank(self, RHAPI, race_class, localArgs):
-        return self.rankFn(RHAPI, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
+    def rank(self, rhapi, race_class, localArgs):
+        return self.rank_fn(rhapi, race_class, {**(self.default_args if self.default_args else {}), **(localArgs if localArgs else {})})
 
 class RacePointsManager():
     def __init__(self, RHAPI, Events):
@@ -60,7 +60,7 @@ class RacePointsManager():
         self._rhapi = RHAPI
 
         Events.trigger('RacePoints_Initialize', {
-            'registerFn': self.registerMethod
+            'register_fn': self.registerMethod
             })
 
     def registerMethod(self, method):
@@ -83,15 +83,15 @@ class RacePointsManager():
         return self.methods[method_id].assign(self._rhapi, leaderboard, args)
 
 class RacePointsMethod():
-    def __init__(self, name, label, assignFn, defaultArgs=None, settings:List[UIField]=None):
+    def __init__(self, name, label, assign_fn, default_args=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
-        self.assignFn = assignFn
-        self.defaultArgs = defaultArgs
+        self.assignFn = assign_fn
+        self.default_args = default_args
         self.settings = settings
 
-    def assign(self, RHAPI, leaderboard, localArgs):
-        return self.assignFn(RHAPI, leaderboard, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
+    def assign(self, rhapi, leaderboard, localArgs):
+        return self.assignFn(rhapi, leaderboard, {**(self.default_args if self.default_args else {}), **(localArgs if localArgs else {})})
 
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
