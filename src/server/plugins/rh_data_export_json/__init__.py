@@ -4,6 +4,7 @@ import logging
 import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from eventmanager import Evt
 from data_export import DataExporter
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('Export_Initialize', 'Export_register_JSON', registerHandlers, {}, 75)
+        kwargs['Events'].on(Evt.DATA_EXPORT_INITIALIZE, 'Export_register_JSON', registerHandlers, {}, 75)
 
 def write_json(data):
     payload = json.dumps(data, indent='\t', cls=AlchemyEncoder)

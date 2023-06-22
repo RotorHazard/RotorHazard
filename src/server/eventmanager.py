@@ -172,11 +172,19 @@ class Evt:
     # CLUSTER
     CLUSTER_JOIN = 'clusterJoin'
     # LED
+    LED_INITIALIZE = 'LED_Initialize'
     LED_EFFECT_SET = 'LedEffectSet'
     LED_BRIGHTNESS_SET = 'LedBrightnessSet'
     LED_MANUAL = 'LedManual'
     LED_SET_MANUAL = 'LedSetManual'
     # VRX Controller
+    VRX_INITIALIZE = 'VRxC_Initialize'
     VRX_DATA_RECEIVE = 'VrxDataRecieve'
-
+    # Initializations
+    POINTS_INITIALIZE = 'RacePoints_Initialize'
+    CLASS_RANK_INITIALIZE = 'RaceClassRanking_Initialize'
+    HEAT_GENERATOR_INITIALIZE = 'HeatGenerator_Initialize'
+    ACTIONS_INITIALIZE = 'actionsInitialize'
+    DATA_IMPORT_INITIALIZE = 'Import_Initialize'
+    DATA_EXPORT_INITIALIZE = 'Export_Initialize'
 

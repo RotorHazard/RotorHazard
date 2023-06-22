@@ -14,7 +14,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('LED_Initialize', 'LED_register_strip', registerHandlers, {}, 75)
+        kwargs['Events'].on(Evt.LED_INITIALIZE, 'LED_register_strip', registerHandlers, {}, 75)
 
 def leaderProxy(args):
     if 'effectFn' in args:

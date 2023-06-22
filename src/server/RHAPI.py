@@ -782,7 +782,7 @@ class HardwareInterfaceAPI():
         self._racecontext = race_context
 
     @property
-    def nodes(self):
+    def seats(self):
         return self._racecontext.interface.nodes
 
 
@@ -805,6 +805,6 @@ class SensorsAPI():
     def sensor_objs(self):
         return list(self._racecontext.sensors.sensors_dict.values())
 
-    def get_sensor_obj(self, name):
+    def sensor_obj(self, name):
         return self._racecontext.sensors.sensors_dict[name]
 

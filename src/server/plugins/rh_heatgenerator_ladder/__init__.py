@@ -3,6 +3,7 @@
 import logging
 import RHUtils
 import random
+from eventmanager import Evt
 from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
@@ -18,7 +19,7 @@ def __(arg): # Replaced with outer language.__ during initialize()
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('HeatGenerator_Initialize', 'HeatGenerator_register_ladder', registerHandlers, {}, 75)
+        kwargs['Events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', registerHandlers, {}, 75)
 
 def getTotalPilots(RHAPI, generate_args):
     input_class_id = generate_args.get('input_class')

@@ -4,6 +4,7 @@ import logging
 import json
 import RHUtils
 import Database
+from eventmanager import Evt
 from data_import import DataImporter
 from Database import ProgramMethod
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
@@ -20,9 +21,7 @@ def __(arg): # Replaced with outer language.__ during initialize()
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('Import_Initialize', 'Import_register_JSON', registerHandlers, {}, 75)
-    if '__' in kwargs:
-        __ = kwargs['__']
+        kwargs['Events'].on(Evt.DATA_IMPORT_INITIALIZE, 'Import_register_JSON', registerHandlers, {}, 75)
 
 def import_json(RHAPI, source, args):
     if not source:

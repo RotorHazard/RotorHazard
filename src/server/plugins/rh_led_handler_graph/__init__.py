@@ -5,6 +5,7 @@
 #    sudo pip install pillow
 
 import Config
+from eventmanager import Evt
 from led_event_manager import LEDEffect, Color, ColorVal
 import gevent
 from PIL import Image, ImageDraw
@@ -16,7 +17,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('LED_Initialize', 'LED_register_graph', registerHandlers, {}, 75)
+        kwargs['Events'].on(Evt.LED_INITIALIZE, 'LED_register_graph', registerHandlers, {}, 75)
 
 def rssiGraph(args):
     if 'strip' in args:

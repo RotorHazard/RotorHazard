@@ -1,5 +1,6 @@
 ''' builtin Actions '''
 
+from eventmanager import Evt
 from EventActions import ActionEffect
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
@@ -96,7 +97,7 @@ actions = None
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('actionsInitialize', 'action_builtin', registerHandlers, {}, 75)
+        kwargs['Events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', registerHandlers, {}, 75)
 
     global actions
     actions = ActionsBuiltin(kwargs['RHAPI'])

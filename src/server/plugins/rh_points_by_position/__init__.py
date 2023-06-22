@@ -2,6 +2,7 @@
 
 import logging
 import csv
+from eventmanager import Evt
 from Results import RacePointsMethod
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
@@ -17,7 +18,7 @@ def __(arg): # Replaced with outer language.__ during initialize()
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('RacePoints_Initialize', 'points_register_byrank', registerHandlers, {}, 75, True)
+        kwargs['Events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', registerHandlers, {}, 75, True)
     if '__' in kwargs:
         __ = kwargs['__']
 
