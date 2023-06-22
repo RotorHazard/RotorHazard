@@ -414,7 +414,7 @@
 					settings.id = 'classRankParameter_' + settings.name;
 					settings.data = {
 						type: 'rankmethod',
-						field: settings.id,
+						field: settings.name,
 						class_id: race_class_id,
 						method: rank_method,
 					}
@@ -1710,29 +1710,6 @@
 			}
 		});
 
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-			var value = $(this).val();
-			if ($(this).data('type') == 'pointsmethod') {
-				var format_id = parseInt($('#set_race_format').val());
-				var raceformat = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
-
-				if (raceformat) {
-					var data = {
-						format_id: format_id,
-						points_settings: {}
-					};
-					data.points_settings[field] = value;
-					socket.emit('alter_race_format', data);
-
-					if (!raceformat.points_settings) {
-						raceformat.points_settings = {};
-					}
-					raceformat.points_settings[field] = value;
-				}
-			}
-		});
-
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
@@ -1940,7 +1917,7 @@
 		function emit_import_cmd() {
 			var params = {}
 			for (var f in selected_importer.settings) {
-				params[selected_importer.settings[f].id] = selected_importer.settings[f].value;
+				params[selected_importer.settings[f].name] = selected_importer.settings[f].value;
 			}
 
 			var data = {
@@ -2015,7 +1992,7 @@
 		function emit_generate_cmd() {
 			var params = {}
 			for (var f in selected_generator.settings) {
-				params[selected_generator.settings[f].id] = selected_generator.settings[f].value;
+				params[selected_generator.settings[f].name] = selected_generator.settings[f].value;
 			}
 			var data = {
 				input_class: parseInt($('#generator_input_class').val()),
@@ -2088,7 +2065,24 @@
 			var field = $(this).data('field');
 			var value = rhui.getFieldVal(this);
 
-			if ($(this).data('type') == 'rankmethod') {
+			if ($(this).data('type') == 'pointsmethod') {
+				var format_id = parseInt($('#set_race_format').val());
+				var raceformat = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+
+				if (raceformat) {
+					var data = {
+						format_id: format_id,
+						points_settings: {}
+					};
+					data.points_settings[field] = value;
+					socket.emit('alter_race_format', data);
+
+					if (!raceformat.points_settings) {
+						raceformat.points_settings = {};
+					}
+					raceformat.points_settings[field] = value;
+				}
+			} else if ($(this).data('type') == 'rankmethod') {
 				var race_class_id = $(this).data('class_id');
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
 
@@ -2106,11 +2100,10 @@
 					race_class.ranksettings[field] = value;
 				}
 			} else if ($(this).data('type') == 'heatgenerator') {
-				var field_data = selected_generator.settings.find(obj => {return obj.id == field});
-
+				var field_data = selected_generator.settings.find(obj => {return obj.name == field});
 				field_data.value = value;
 			} else if ($(this).data('type') == 'importer') {
-				var field_data = selected_importer.settings.find(obj => {return obj.id == field});
+				var field_data = selected_importer.settings.find(obj => {return obj.name == field});
 				field_data.value = value;
 			}
 		});
