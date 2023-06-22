@@ -3,8 +3,7 @@
 import logging
 import RHUtils
 import random
-from HeatGenerator import HeatGenerator
-from Database import ProgramMethod
+from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
@@ -20,8 +19,6 @@ def __(arg): # Replaced with outer language.__ during initialize()
 def initialize(**kwargs):
     if 'Events' in kwargs:
         kwargs['Events'].on('HeatGenerator_Initialize', 'HeatGenerator_register_ladder', registerHandlers, {}, 75)
-    if '__' in kwargs:
-        __ = kwargs['__']
 
 def getTotalPilots(RHAPI, generate_args):
     input_class_id = generate_args.get('input_class')
@@ -85,38 +82,28 @@ def generateLadder(RHAPI, generate_args=None):
 
     while len(unseeded_pilots):
         if heat_pilots == 0:
-            heat = {
-                'name': letters[len(heats)] + ' ' + suffix,
-                'slots': []
-                }
+            heat = HeatPlan(
+                letters[len(heats)] + ' ' + suffix,
+                []
+            )
 
         if heat_pilots < qualifiers_per_heat:
             # slot qualifiers
-            heat['slots'].append({
-                    'method': 'input',
-                    'seed_rank': unseeded_pilots.pop(0) + 1
-                })
+            heat.slots.append(HeatPlanSlot(SeedMethod.INPUT, unseeded_pilots.pop(0) + 1))
 
             heat_pilots += 1
         else:
             if len(unseeded_pilots) <= advances_per_heat:
                 # slot remainder as qualifiers
                 for seed in unseeded_pilots:
-                    heat['slots'].append({
-                            'method': 'input',
-                            'seed_rank': seed + 1
-                        })
+                    heat.slots.append(HeatPlanSlot(SeedMethod.INPUT, seed + 1))
 
                 unseeded_pilots = [] # empty after using
 
             else:
                 # slot advances
                 for adv_idx in range(advances_per_heat):
-                    heat['slots'].append({
-                            'method': ProgramMethod.HEAT_RESULT,
-                            'seed_heat_id': -len(heats) - 2,
-                            'seed_rank': adv_idx + 1,
-                        })
+                    heat.slots.append(HeatPlanSlot(SeedMethod.HEAT_INDEX, -len(heats) - 2, adv_idx + 1))
 
             heats = [heat, *heats] # insert at front
             heat_pilots = 0
@@ -153,10 +140,7 @@ def generateBalancedHeats(RHAPI, generate_args=None):
     heats = []
 
     for idx in range(total_heats):
-        heats.append({
-            'name': letters[idx] + ' ' + suffix,
-            'slots': []
-            })
+        heats.append(HeatPlan(letters[idx] + ' ' + suffix, []))
 
     if 'seed_offset' in generate_args:
         seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
@@ -171,10 +155,7 @@ def generateBalancedHeats(RHAPI, generate_args=None):
         if heatNum >= len(heats):
             heatNum = 0
 
-        heats[heatNum]['slots'].append({
-                'method': 'input',
-                'seed_rank': unseeded_pilots.pop(0) + 1
-                })
+        heats[heatNum].slots.append(HeatPlanSlot(SeedMethod.INPUT, unseeded_pilots.pop(0) + 1))
         heatNum += 1
 
     return heats

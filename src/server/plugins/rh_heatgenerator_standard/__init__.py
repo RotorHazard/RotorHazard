@@ -3,8 +3,7 @@
 # MultiGP: https://docs.google.com/document/d/1jWVjCnoIGdW1j_bklrbg-0D24c3x6YG5m_vmF7faG-U/edit#heading=h.hoxlrr3v86bb
 
 import logging
-from HeatGenerator import HeatGenerator
-from Database import ProgramMethod
+from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
@@ -25,4190 +24,1614 @@ def initialize(**kwargs):
 
 def bracket_1e_16_fai():
     return [
-        {
-            'name': __('Race') + ' 1',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 1
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 8
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 9
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 16
-                }
+        HeatPlan(
+            __('Race') + ' 1',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 8),
+                HeatPlanSlot(SeedMethod.INPUT, 9),
+                HeatPlanSlot(SeedMethod.INPUT, 16)
             ]
-        },
-        {
-            'name': __('Race') + ' 2',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 4
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 5
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 12
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 13
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 2',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 12),
+                HeatPlanSlot(SeedMethod.INPUT, 13)
             ]
-        },
-        {
-            'name': __('Race') + ' 3',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 3
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 6
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 10
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 14
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 3',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 10),
+                HeatPlanSlot(SeedMethod.INPUT, 14)
             ]
-        },
-        {
-            'name': __('Race') + ' 4',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 2
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 7
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 11
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 15
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 4',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 7),
+                HeatPlanSlot(SeedMethod.INPUT, 11),
+                HeatPlanSlot(SeedMethod.INPUT, 15)
             ]
-        },
-        {
-            'name': __('Semifinal') + ' 1',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Semifinal') + ' 1',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
             ]
-        },
-        {
-            'name': __('Semifinal') + ' 2',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Semifinal') + ' 2',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3)
             ]
-        },
-        {
-            'name': __('Small Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Small Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 5)
             ]
-        },
-        {
-            'name': __('Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 5)
             ]
-        }
+        )
     ]
 
 def bracket_1e_32_fai():
     return [
-        {
-            'name': __('Race') + ' 1 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 1
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 16
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 24
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 32
-                }
+        HeatPlan(
+            __('Race') + ' 1 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 16),
+                HeatPlanSlot(SeedMethod.INPUT, 24),
+                HeatPlanSlot(SeedMethod.INPUT, 32)
             ]
-        },
-        {
-            'name': __('Race') + ' 2 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 8
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 9
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 17
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 25
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 2 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 8),
+                HeatPlanSlot(SeedMethod.INPUT, 9),
+                HeatPlanSlot(SeedMethod.INPUT, 17),
+                HeatPlanSlot(SeedMethod.INPUT, 25)
             ]
-        },
-        {
-            'name': __('Race') + ' 3 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 6
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 11
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 19
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 27
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 3 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 11),
+                HeatPlanSlot(SeedMethod.INPUT, 19),
+                HeatPlanSlot(SeedMethod.INPUT, 27)
             ]
-        },
-        {
-            'name': __('Race') + ' 4 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 4
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 13
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 21
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 29
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 4 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 13),
+                HeatPlanSlot(SeedMethod.INPUT, 21),
+                HeatPlanSlot(SeedMethod.INPUT, 29)
             ]
-        },
-        {
-            'name': __('Race') + ' 5 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 3
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 14
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 22
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 30
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 5 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 14),
+                HeatPlanSlot(SeedMethod.INPUT, 22),
+                HeatPlanSlot(SeedMethod.INPUT, 30)
             ]
-        },
-        {
-            'name': __('Race') + ' 6 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 5
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 12
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 20
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 28
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 6 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 12),
+                HeatPlanSlot(SeedMethod.INPUT, 20),
+                HeatPlanSlot(SeedMethod.INPUT, 28)
             ]
-        },
-        {
-            'name': __('Race') + ' 7 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 7
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 10
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 18
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 26
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 7 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 7),
+                HeatPlanSlot(SeedMethod.INPUT, 10),
+                HeatPlanSlot(SeedMethod.INPUT, 18),
+                HeatPlanSlot(SeedMethod.INPUT, 26)
             ]
-        },
-        {
-            'name': __('Race') + ' 8 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 2
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 15
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 23
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 31
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 8 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 15),
+                HeatPlanSlot(SeedMethod.INPUT, 23),
+                HeatPlanSlot(SeedMethod.INPUT, 31)
             ]
-        },
-        {
-            'name': __('Race') + ' 9 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 9 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
             ]
-        },
-        {
-            'name': __('Race') + ' 10 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 10 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 11 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 11 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 5)
             ]
-        },
-        {
-            'name': __('Race') + ' 12 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 12 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 7)
             ]
-        },
-        {
-            'name': __('Semifinal') + ' 1',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Semifinal') + ' 1',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 9)
             ]
-        },
-        {
-            'name': __('Semifinal') + ' 2',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Semifinal') + ' 2',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 11)
             ]
-        },
-        {
-            'name': __('Small Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Small Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 13)
             ]
-        },
-        {
-            'name': __('Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 13)
             ]
-        }
+        )
     ]
 
 def bracket_1e_64_fai():
     return [
-        {
-            'name': __('Race') + ' 1 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 1
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 32
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 48
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 64
-                }
+        HeatPlan(
+            __('Race') + ' 1 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 32),
+                HeatPlanSlot(SeedMethod.INPUT, 48),
+                HeatPlanSlot(SeedMethod.INPUT, 64)
             ]
-        },
-        {
-            'name': __('Race') + ' 2 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 16
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 17
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 33
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 49
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 2 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 16),
+                HeatPlanSlot(SeedMethod.INPUT, 17),
+                HeatPlanSlot(SeedMethod.INPUT, 33),
+                HeatPlanSlot(SeedMethod.INPUT, 49)
             ]
-        },
-        {
-            'name': __('Race') + ' 3 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 8
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 25
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 41
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 57
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 3 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 8),
+                HeatPlanSlot(SeedMethod.INPUT, 25),
+                HeatPlanSlot(SeedMethod.INPUT, 41),
+                HeatPlanSlot(SeedMethod.INPUT, 57)
             ]
-        },
-        {
-            'name': __('Race') + ' 4 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 14
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 19
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 35
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 51
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 4 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 14),
+                HeatPlanSlot(SeedMethod.INPUT, 19),
+                HeatPlanSlot(SeedMethod.INPUT, 35),
+                HeatPlanSlot(SeedMethod.INPUT, 51)
             ]
-        },
-        {
-            'name': __('Race') + ' 5 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 4
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 29
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 45
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 61
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 5 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 29),
+                HeatPlanSlot(SeedMethod.INPUT, 45),
+                HeatPlanSlot(SeedMethod.INPUT, 61)
             ]
-        },
-        {
-            'name': __('Race') + ' 6 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 12
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 21
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 37
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 53
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 6 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 12),
+                HeatPlanSlot(SeedMethod.INPUT, 21),
+                HeatPlanSlot(SeedMethod.INPUT, 37),
+                HeatPlanSlot(SeedMethod.INPUT, 53)
             ]
-        },
-        {
-            'name': __('Race') + ' 7 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 6
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 27
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 43
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 59
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 7 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 27),
+                HeatPlanSlot(SeedMethod.INPUT, 43),
+                HeatPlanSlot(SeedMethod.INPUT, 59)
             ]
-        },
-        {
-            'name': __('Race') + ' 8 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 10
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 23
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 39
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 55
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 8 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 10),
+                HeatPlanSlot(SeedMethod.INPUT, 23),
+                HeatPlanSlot(SeedMethod.INPUT, 39),
+                HeatPlanSlot(SeedMethod.INPUT, 55)
             ]
-        },
-        {
-            'name': __('Race') + ' 9 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 9
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 24
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 40
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 56
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 9 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 9),
+                HeatPlanSlot(SeedMethod.INPUT, 24),
+                HeatPlanSlot(SeedMethod.INPUT, 40),
+                HeatPlanSlot(SeedMethod.INPUT, 56)
             ]
-        },
-        {
-            'name': __('Race') + ' 10 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 5
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 28
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 44
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 60
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 10 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 28),
+                HeatPlanSlot(SeedMethod.INPUT, 44),
+                HeatPlanSlot(SeedMethod.INPUT, 60)
             ]
-        },
-        {
-            'name': __('Race') + ' 11 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 11
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 22
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 38
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 54
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 11 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 11),
+                HeatPlanSlot(SeedMethod.INPUT, 22),
+                HeatPlanSlot(SeedMethod.INPUT, 38),
+                HeatPlanSlot(SeedMethod.INPUT, 54)
             ]
-        },
-        {
-            'name': __('Race') + ' 12 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 3
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 30
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 46
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 62
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 12 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 30),
+                HeatPlanSlot(SeedMethod.INPUT, 46),
+                HeatPlanSlot(SeedMethod.INPUT, 62)
             ]
-        },
-        {
-            'name': __('Race') + ' 13 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 13
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 20
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 36
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 52
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 13 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 13),
+                HeatPlanSlot(SeedMethod.INPUT, 20),
+                HeatPlanSlot(SeedMethod.INPUT, 36),
+                HeatPlanSlot(SeedMethod.INPUT, 52)
             ]
-        },
-        {
-            'name': __('Race') + ' 14 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 7
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 26
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 42
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 58
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 14 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 7),
+                HeatPlanSlot(SeedMethod.INPUT, 26),
+                HeatPlanSlot(SeedMethod.INPUT, 42),
+                HeatPlanSlot(SeedMethod.INPUT, 58)
             ]
-        },
-        {
-            'name': __('Race') + ' 15 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 15
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 18
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 34
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 50
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 15 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 15),
+                HeatPlanSlot(SeedMethod.INPUT, 18),
+                HeatPlanSlot(SeedMethod.INPUT, 34),
+                HeatPlanSlot(SeedMethod.INPUT, 50)
             ]
-        },
-        {
-            'name': __('Race') + ' 16 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 2
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 31
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 47
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 63
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 16 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 31),
+                HeatPlanSlot(SeedMethod.INPUT, 47),
+                HeatPlanSlot(SeedMethod.INPUT, 63)
             ]
-        },
-        {
-            'name': __('Race') + ' 17 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 17 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
             ]
-        },
-        {
-            'name': __('Race') + ' 18 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 18 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 19 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 19 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 5)
             ]
-        },
-        {
-            'name': __('Race') + ' 20 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 20 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 21 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 21 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 9)
             ]
-        },
-        {
-            'name': __('Race') + ' 22 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 22 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 11)
             ]
-        },
-        {
-            'name': __('Race') + ' 23 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 23 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 13)
             ]
-        },
-        {
-            'name': __('Race') + ' 24 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 24 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 14),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 14),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 15),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 15)
             ]
-        },
-        {
-            'name': __('Race') + ' 25 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 25 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 16),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 16),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 17),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 17)
             ]
-        },
-        {
-            'name': __('Race') + ' 26 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 26 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 18),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 18),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 19),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 19)
             ]
-        },
-        {
-            'name': __('Race') + ' 27 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 27 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 20),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 20),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 21),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 21)
             ]
-        },
-        {
-            'name': __('Race') + ' 28 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 28 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 23),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 23)
             ]
-        },
-        {
-            'name': __('Semifinal 1'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 24,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 24,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 25,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 25,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Semifinal 1'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 24),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 24),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 25),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 25)
             ]
-        },
-        {
-            'name': __('Semifinal 2'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 26,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 26,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Semifinal 2'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 26),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 26),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 27),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 27)
             ]
-        },
-        {
-            'name': __('Small Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 29,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 29,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Small Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 28),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 28),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 29),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 29)
             ]
-        },
-        {
-            'name': __('Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 29,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 29,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 28),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 28),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 29),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 29)
             ]
-        }
+        )
     ]
 
 def bracket_2e_16_fai():
     return [
-       {
-            'name': __('Race') + ' 1',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 1
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 8
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 9
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 16
-                }
+       HeatPlan(
+            __('Race') + ' 1',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 8),
+                HeatPlanSlot(SeedMethod.INPUT, 9),
+                HeatPlanSlot(SeedMethod.INPUT, 16)
             ]
-        },
-        {
-            'name': __('Race') + ' 2',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 4
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 5
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 12
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 13
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 2',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 12),
+                HeatPlanSlot(SeedMethod.INPUT, 13)
             ]
-        },
-        {
-            'name': __('Race') + ' 3',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 3
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 6
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 10
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 14
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 3',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 10),
+                HeatPlanSlot(SeedMethod.INPUT, 14)
             ]
-        },
-        {
-            'name': __('Race') + ' 4',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 2
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 7
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 11
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 15
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 4',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 7),
+                HeatPlanSlot(SeedMethod.INPUT, 11),
+                HeatPlanSlot(SeedMethod.INPUT, 15)
             ]
-        },
-        {
-            'name': __('Race') + ' 5',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 5',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 6',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 6',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 2)
             ]
-        },
-        {
-            'name': __('Race') + ' 7',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 7',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
             ]
-        },
-        {
-            'name': __('Race') + ' 8',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 8',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 9',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 3
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 9',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 6)
             ]
-        },
-        {
-            'name': __('Race') + ' 10',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 3
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 10',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 11',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 11',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 9)
             ]
-        },
-        {
-            'name': __('Race') + ' 12',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 12',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 13',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 3
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 13',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 11)
             ]
-        },
-        {
-            'name': __('Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 1
-                }
+        ),
+        HeatPlan(
+            __('Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 12)
             ]
-        }
+        )
     ]
 
 def bracket_2e_32_fai():
     return [
-        {
-            'name': __('Race') + ' 1 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 1
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 16
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 24
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 32
-                }
+        HeatPlan(
+            __('Race') + ' 1 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 16),
+                HeatPlanSlot(SeedMethod.INPUT, 24),
+                HeatPlanSlot(SeedMethod.INPUT, 32)
             ]
-        },
-        {
-            'name': __('Race') + ' 2 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 8
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 9
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 17
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 25
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 2 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 8),
+                HeatPlanSlot(SeedMethod.INPUT, 9),
+                HeatPlanSlot(SeedMethod.INPUT, 17),
+                HeatPlanSlot(SeedMethod.INPUT, 25)
             ]
-        },
-        {
-            'name': __('Race') + ' 3 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 6
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 11
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 19
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 27
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 3 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 11),
+                HeatPlanSlot(SeedMethod.INPUT, 19),
+                HeatPlanSlot(SeedMethod.INPUT, 27)
             ]
-        },
-        {
-            'name': __('Race') + ' 4 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 4
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 13
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 21
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 29
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 4 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 13),
+                HeatPlanSlot(SeedMethod.INPUT, 21),
+                HeatPlanSlot(SeedMethod.INPUT, 29)
             ]
-        },
-        {
-            'name': __('Race') + ' 5 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 3
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 14
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 22
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 30
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 5 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 14),
+                HeatPlanSlot(SeedMethod.INPUT, 22),
+                HeatPlanSlot(SeedMethod.INPUT, 30)
             ]
-        },
-        {
-            'name': __('Race') + ' 6 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 5
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 12
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 20
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 28
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 6 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 12),
+                HeatPlanSlot(SeedMethod.INPUT, 20),
+                HeatPlanSlot(SeedMethod.INPUT, 28)
             ]
-        },
-        {
-            'name': __('Race') + ' 7 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 7
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 10
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 18
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 26
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 7 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 7),
+                HeatPlanSlot(SeedMethod.INPUT, 10),
+                HeatPlanSlot(SeedMethod.INPUT, 18),
+                HeatPlanSlot(SeedMethod.INPUT, 26)
             ]
-        },
-        {
-            'name': __('Race') + ' 8 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 2
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 15
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 23
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 31
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 8 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 15),
+                HeatPlanSlot(SeedMethod.INPUT, 23),
+                HeatPlanSlot(SeedMethod.INPUT, 31)
             ]
-        },
-        {
-            'name': __('Race') + ' 9 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 9 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
             ]
-        },
-        {
-            'name': __('Race') + ' 10 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 10 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 11 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 11 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 5)
             ]
-        },
-        {
-            'name': __('Race') + ' 12 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 12 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 13 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 13 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 14 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 14 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 15 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 15 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 2)
             ]
-        },
-        {
-            'name': __('Race') + ' 16 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 16 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 6)
             ]
-        },
-        {
-            'name': __('Race') + ' 17 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 17 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 14),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 15),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 9)
             ]
-        },
-        {
-            'name': __('Race') + ' 18 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 18 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 11)
             ]
-        },
-        {
-            'name': __('Race') + ' 19 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 19 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 15),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 14),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 8)
             ]
-        },
-        {
-            'name': __('Race') + ' 20 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 20 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 10)
             ]
-        },
-        {
-            'name': __('Race') + ' 21 (DE3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 21 (DE3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 18),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 16),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 17),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 19)
             ]
-        },
-        {
-            'name': __('Race') + ' 22 (DE3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 22 (DE3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 16),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 18),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 19),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 17)
             ]
-        },
-        {
-            'name': __('Race') + ' 23 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 23 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 9)
             ]
-        },
-        {
-            'name': __('Race') + ' 24 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 24 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 11)
             ]
-        },
-        {
-            'name': __('Race') + ' 25 (DE4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 25 (DE4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 20),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 21),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 23)
             ]
-        },
-        {
-            'name': __('Race') + ' 26 (DE4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 26 (DE4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 23),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 21),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 20),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 22)
             ]
-        },
-        {
-            'name': __('Race') + ' 27 (DE5)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 24,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 24,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 25,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 25,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 27 (DE5)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 24),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 24),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 25),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 25)
             ]
-        },
-        {
-            'name': __('Race') + ' 28 (E4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 28 (E4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 23),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 23)
             ]
-        },
-        {
-            'name': __('Race') + ' 29 (DE6)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 26,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 26,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 29 (DE6)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 27),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 26),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 26),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 27)
             ]
-        },
-        {
-            'name': __('Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 1
-                }
+        ),
+        HeatPlan(
+            __('Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 28),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 27),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 27),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 28)
             ]
-        }
+        )
     ]
 
 def bracket_2e_64_fai():
     return [
-        {
-            'name': __('Race') + ' 1 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 1
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 32
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 48
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 64
-                }
+        HeatPlan(
+            __('Race') + ' 1 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 32),
+                HeatPlanSlot(SeedMethod.INPUT, 48),
+                HeatPlanSlot(SeedMethod.INPUT, 64)
             ]
-        },
-        {
-            'name': __('Race') + ' 2 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 16
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 17
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 33
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 49
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 2 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 16),
+                HeatPlanSlot(SeedMethod.INPUT, 17),
+                HeatPlanSlot(SeedMethod.INPUT, 33),
+                HeatPlanSlot(SeedMethod.INPUT, 49)
             ]
-        },
-        {
-            'name': __('Race') + ' 3 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 8
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 25
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 41
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 57
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 3 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 8),
+                HeatPlanSlot(SeedMethod.INPUT, 25),
+                HeatPlanSlot(SeedMethod.INPUT, 41),
+                HeatPlanSlot(SeedMethod.INPUT, 57)
             ]
-        },
-        {
-            'name': __('Race') + ' 4 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 14
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 19
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 35
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 51
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 4 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 14),
+                HeatPlanSlot(SeedMethod.INPUT, 19),
+                HeatPlanSlot(SeedMethod.INPUT, 35),
+                HeatPlanSlot(SeedMethod.INPUT, 51)
             ]
-        },
-        {
-            'name': __('Race') + ' 5 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 4
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 29
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 45
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 61
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 5 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 29),
+                HeatPlanSlot(SeedMethod.INPUT, 45),
+                HeatPlanSlot(SeedMethod.INPUT, 61)
             ]
-        },
-        {
-            'name': __('Race') + ' 6 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 12
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 21
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 37
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 53
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 6 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 12),
+                HeatPlanSlot(SeedMethod.INPUT, 21),
+                HeatPlanSlot(SeedMethod.INPUT, 37),
+                HeatPlanSlot(SeedMethod.INPUT, 53)
             ]
-        },
-        {
-            'name': __('Race') + ' 7 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 6
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 27
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 43
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 59
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 7 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 27),
+                HeatPlanSlot(SeedMethod.INPUT, 43),
+                HeatPlanSlot(SeedMethod.INPUT, 59)
             ]
-        },
-        {
-            'name': __('Race') + ' 8 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 10
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 23
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 39
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 55
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 8 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 10),
+                HeatPlanSlot(SeedMethod.INPUT, 23),
+                HeatPlanSlot(SeedMethod.INPUT, 39),
+                HeatPlanSlot(SeedMethod.INPUT, 55)
             ]
-        },
-        {
-            'name': __('Race') + ' 9 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 9
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 24
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 40
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 56
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 9 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 9),
+                HeatPlanSlot(SeedMethod.INPUT, 24),
+                HeatPlanSlot(SeedMethod.INPUT, 40),
+                HeatPlanSlot(SeedMethod.INPUT, 56)
             ]
-        },
-        {
-            'name': __('Race') + ' 10 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 5
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 28
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 44
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 60
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 10 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 28),
+                HeatPlanSlot(SeedMethod.INPUT, 44),
+                HeatPlanSlot(SeedMethod.INPUT, 60)
             ]
-        },
-        {
-            'name': __('Race') + ' 11 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 11
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 22
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 38
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 54
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 11 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 11),
+                HeatPlanSlot(SeedMethod.INPUT, 22),
+                HeatPlanSlot(SeedMethod.INPUT, 38),
+                HeatPlanSlot(SeedMethod.INPUT, 54)
             ]
-        },
-        {
-            'name': __('Race') + ' 12 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 3
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 30
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 46
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 62
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 12 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 30),
+                HeatPlanSlot(SeedMethod.INPUT, 46),
+                HeatPlanSlot(SeedMethod.INPUT, 62)
             ]
-        },
-        {
-            'name': __('Race') + ' 13 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 13
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 20
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 36
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 52
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 13 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 13),
+                HeatPlanSlot(SeedMethod.INPUT, 20),
+                HeatPlanSlot(SeedMethod.INPUT, 36),
+                HeatPlanSlot(SeedMethod.INPUT, 52)
             ]
-        },
-        {
-            'name': __('Race') + ' 14 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 7
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 26
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 42
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 58
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 14 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 7),
+                HeatPlanSlot(SeedMethod.INPUT, 26),
+                HeatPlanSlot(SeedMethod.INPUT, 42),
+                HeatPlanSlot(SeedMethod.INPUT, 58)
             ]
-        },
-        {
-            'name': __('Race') + ' 15 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 15
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 18
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 34
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 50
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 15 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 15),
+                HeatPlanSlot(SeedMethod.INPUT, 18),
+                HeatPlanSlot(SeedMethod.INPUT, 34),
+                HeatPlanSlot(SeedMethod.INPUT, 50)
             ]
-        },
-        {
-            'name': __('Race') + ' 16 (E1)',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 2
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 31
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 47
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 63
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 16 (E1)',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 31),
+                HeatPlanSlot(SeedMethod.INPUT, 47),
+                HeatPlanSlot(SeedMethod.INPUT, 63)
             ]
-        },
-        {
-            'name': __('Race') + ' 17 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 17 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
             ]
-        },
-        {
-            'name': __('Race') + ' 18 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 18 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 19 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 19 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 5)
             ]
-        },
-        {
-            'name': __('Race') + ' 20 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 20 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 21 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 21 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 9)
             ]
-        },
-        {
-            'name': __('Race') + ' 22 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 22 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 11)
             ]
-        },
-        {
-            'name': __('Race') + ' 23 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 23 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 13)
             ]
-        },
-        {
-            'name': __('Race') + ' 24 (E2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 24 (E2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 14),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 14),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 15),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 15)
             ]
-        },
-        {
-            'name': __('Race') + ' 25 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 25 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 26 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 26 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 27 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 27 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 2)
             ]
-        },
-        {
-            'name': __('Race') + ' 28 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 28 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 6)
             ]
-        },
-        {
-            'name': __('Race') + ' 29 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 29 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 11)
             ]
-        },
-        {
-            'name': __('Race') + ' 30 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 30 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 14),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 15)
             ]
-        },
-        {
-            'name': __('Race') + ' 31 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 31 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 10)
             ]
-        },
-        {
-            'name': __('Race') + ' 32 (DE1)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 13,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 15,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 14,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 32 (DE1)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 13),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 15),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 14)
             ]
-        },
-        {
-            'name': __('Race') + ' 33 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 30,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 31,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 33 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 16),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 30),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 31),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 17)
             ]
-        },
-        {
-            'name': __('Race') + ' 34 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 29,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 34 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 18),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 28),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 29),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 19)
             ]
-        },
-        {
-            'name': __('Race') + ' 35 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 31,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 30,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 35 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 17),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 31),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 30),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 16)
             ]
-        },
-        {
-            'name': __('Race') + ' 36 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 29,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 28,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 36 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 19),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 29),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 28),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 18)
             ]
-        },
-        {
-            'name': __('Race') + ' 37 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 25,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 24,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 37 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 20),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 25),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 24),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 21)
             ]
-        },
-        {
-            'name': __('Race') + ' 38 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 26,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 38 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 27),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 26),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 23)
             ]
-        },
-        {
-            'name': __('Race') + ' 39 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 24,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 25,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 39 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 21),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 24),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 25),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 20)
             ]
-        },
-        {
-            'name': __('Race') + ' 40 (DE2)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 26,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 27,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 40 (DE2)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 23),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 26),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 27),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 22)
             ]
-        },
-        {
-            'name': __('Race') + ' 41 (DE3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 34,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 32,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 33,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 35,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 41 (DE3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 34),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 32),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 33),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 35)
             ]
-        },
-        {
-            'name': __('Race') + ' 42 (DE3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 32,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 34,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 35,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 33,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 42 (DE3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 32),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 34),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 35),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 33)
             ]
-        },
-        {
-            'name': __('Race') + ' 43 (DE3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 38,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 36,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 37,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 39,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 43 (DE3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 38),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 36),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 37),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 39)
             ]
-        },
-        {
-            'name': __('Race') + ' 44 (DE3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 36,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 38,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 39,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 37,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 44 (DE3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 36),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 38),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 39),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 37)
             ]
-        },
-        {
-            'name': __('Race') + ' 45 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 16,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 17,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 45 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 16),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 16),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 17),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 17)
             ]
-        },
-        {
-            'name': __('Race') + ' 46 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 18,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 19,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 46 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 18),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 18),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 19),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 19)
             ]
-        },
-        {
-            'name': __('Race') + ' 47 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 20,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 21,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 47 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 20),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 20),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 21),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 21)
             ]
-        },
-        {
-            'name': __('Race') + ' 48 (E3)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 22,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 23,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 48 (E3)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 22),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 23),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 23)
             ]
-        },
-        {
-            'name': __('Race') + ' 49 (DE4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 44,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 42,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 43,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 45,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 49 (DE4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 44),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 42),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 43),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 45)
             ]
-        },
-        {
-            'name': __('Race') + ' 50 (DE4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 46,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 40,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 41,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 47,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 50 (DE4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 46),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 40),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 41),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 47)
             ]
-        },
-        {
-            'name': __('Race') + ' 51 (DE4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 45,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 43,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 42,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 44,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 51 (DE4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 45),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 43),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 42),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 44)
             ]
-        },
-        {
-            'name': __('Race') + ' 52 (DE4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 47,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 41,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 40,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 46,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 52 (DE4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 47),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 41),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 40),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 46)
             ]
-        },
-        {
-            'name': __('Race') + ' 53 (DE5)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 50,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 48,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 49,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 51,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 53 (DE5)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 50),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 48),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 49),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 51)
             ]
-        },
-        {
-            'name': __('Race') + ' 54 (DE5)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 48,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 50,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 51,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 49,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 54 (DE5)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 48),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 50),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 51),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 49)
             ]
-        },
-        {
-            'name': __('Race') + ' 55 (E4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 44,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 44,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 45,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 45,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 55 (E4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 44),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 44),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 45),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 45)
             ]
-        },
-        {
-            'name': __('Race') + ' 56 (E4)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 46,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 46,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 47,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 47,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 56 (E4)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 46),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 46),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 47),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 47)
             ]
-        },
-        {
-            'name': __('Race') + ' 57 (DE6)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 54,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 52,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 53,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 55,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 57 (DE6)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 54),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 52),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 53),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 55)
             ]
-        },
-        {
-            'name': __('Race') + ' 58 (DE6)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 55,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 53,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 52,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 54,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 58 (DE6)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 55),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 53),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 52),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 54)
             ]
-        },
-        {
-            'name': __('Race') + ' 59 (DE7)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 56,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 56,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 57,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 57,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 59 (DE7)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 56),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 56),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 57),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 57)
             ]
-        },
-        {
-            'name': __('Race') + ' 60 (E5)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 54,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 54,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 55,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 55,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 60 (E5)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 54),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 54),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 55),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 55)
             ]
-        },
-        {
-            'name': __('Race') + ' 61 (DE7)',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 59,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 58,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 58,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 59,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 61 (DE7)',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 59),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 58),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 58),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 59)
             ]
-        },
-        {
-            'name': __('Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 60,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 59,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 59,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 60,
-                    'seed_rank': 1
-                }
+        ),
+        HeatPlan(
+            __('Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 60),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 59),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 59),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 60)
             ]
-        }
+        )
     ]
 
 def bracket_2e_16_multigp():
     return [
-        {
-            'name': __('Race') + ' 1',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 3
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 6
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 11
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 14
-                }
+        HeatPlan(
+            __('Race') + ' 1',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 11),
+                HeatPlanSlot(SeedMethod.INPUT, 14)
             ]
-        },
-        {
-            'name': __('Race') + ' 2',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 2
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 7
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 10
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 15
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 2',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 7),
+                HeatPlanSlot(SeedMethod.INPUT, 10),
+                HeatPlanSlot(SeedMethod.INPUT, 15)
             ]
-        },
-        {
-            'name': __('Race') + ' 3',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 4
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 5
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 12
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 13
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 3',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 12),
+                HeatPlanSlot(SeedMethod.INPUT, 13)
             ]
-        },
-        {
-            'name': __('Race') + ' 4',
-            'slots': [
-                {
-                    'method': 'input',
-                    'seed_rank': 1
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 8
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 9
-                },
-                {
-                    'method': 'input',
-                    'seed_rank': 16
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 4',
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 8),
+                HeatPlanSlot(SeedMethod.INPUT, 9),
+                HeatPlanSlot(SeedMethod.INPUT, 16)
             ]
-        },
-        {
-            'name': __('Race') + ' 5',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 5',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 1)
             ]
-        },
-        {
-            'name': __('Race') + ' 6',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 0,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 1,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 6',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
             ]
-        },
-        {
-            'name': __('Race') + ' 7',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 4
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 7',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 8',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 2,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 3,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 8',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3)
             ]
-        },
-        {
-            'name': __('Race') + ' 9',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 4,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 9',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 5)
             ]
-        },
-        {
-            'name': __('Race') + ' 10',
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 6,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 10',
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 6),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 11: ' + __('Winners Bracket Semifinal'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 5,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 7,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 11: ' + __('Winners Bracket Semifinal'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 5),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 7),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 7)
             ]
-        },
-        {
-            'name': __('Race') + ' 12: ' + __('Winners Bracket Semifinal'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 8,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 9,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 12: ' + __('Winners Bracket Semifinal'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 8),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 9),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 9)
             ]
-        },
-        {
-            'name': __('Race') + ' 13: ' + __('Consolation Bracket Semifinal'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 11,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 3
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 4
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 13: ' + __('Consolation Bracket Semifinal'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 11),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 10)
             ]
-        },
-        {
-            'name': __('Race') + ' 14: ' + __('Winners Bracket Final'),
-            'slots': [
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 10,
-                    'seed_rank': 2
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 1
-                },
-                {
-                    'method': ProgramMethod.HEAT_RESULT,
-                    'seed_heat_id': 12,
-                    'seed_rank': 2
-                }
+        ),
+        HeatPlan(
+            __('Race') + ' 14: ' + __('Winners Bracket Final'),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 10),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 12),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 12)
             ]
-        }
+        )
     ]
 
 def bracket_1e_std(_RHAPI, generate_args):
@@ -4228,9 +1651,9 @@ def bracket_1e_std(_RHAPI, generate_args):
         seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
         if seed_offset:
             for heat in heats:
-                for slot in heat['slots']:
-                    if slot['method'] == 'input':
-                        slot['seed_rank'] += seed_offset
+                for slot in heat.slots:
+                    if slot.method == SeedMethod.INPUT:
+                        slot.seed_rank += seed_offset
 
     return heats
 
@@ -4252,9 +1675,10 @@ def bracket_2e_std(_RHAPI, generate_args):
     if 'seed_offset' in generate_args:
         seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
         if seed_offset:
-            for heat in heats[:4]:
-                for slot in heat['slots']:
-                    slot['seed_rank'] += seed_offset
+            for heat in heats:
+                for slot in heat.slots:
+                    if slot.method == SeedMethod.INPUT:
+                        slot.seed_rank += seed_offset
 
     return heats
 
@@ -4263,11 +1687,11 @@ def discover(*_args, **_kwargs):
     return [
         HeatGenerator(
             'bracket_1e_std',
-            'Standard bracket, single elimination',
+            'Regulation bracket, single elimination',
             bracket_1e_std,
             None,
             [
-                UIField('standard', "Standard", UIFieldType.SELECT, options=[
+                UIField('standard', "Spec", UIFieldType.SELECT, options=[
                         UIFieldSelectOption('fai16', "FAI, 4-up, 16-pilot"),
                         UIFieldSelectOption('fai32', "FAI, 4-up, 32-pilot"),
                         UIFieldSelectOption('fai64', "FAI, 4-up, 64-pilot"),
@@ -4277,11 +1701,11 @@ def discover(*_args, **_kwargs):
         ),
         HeatGenerator(
             'bracket_2e_std',
-            'Standard bracket, double elimination',
+            'Regulation bracket, double elimination',
             bracket_2e_std,
             None,
             [
-                UIField('standard', "Standard", UIFieldType.SELECT, options=[
+                UIField('standard', "Spec", UIFieldType.SELECT, options=[
                         UIFieldSelectOption('fai16', "FAI, 4-up, 16-pilot"),
                         UIFieldSelectOption('fai32', "FAI, 4-up, 32-pilot"),
                         UIFieldSelectOption('fai64', "FAI, 4-up, 64-pilot"),
