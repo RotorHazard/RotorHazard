@@ -14,9 +14,6 @@ def registerHandlers(args):
         for generator in discover():
             args['registerFn'](generator)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
 def initialize(**kwargs):
     if 'Events' in kwargs:
         kwargs['Events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', registerHandlers, {}, 75)
@@ -44,7 +41,7 @@ def getTotalPilots(RHAPI, generate_args):
 
 def generateLadder(RHAPI, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
-    suffix = __(generate_args.get('suffix', 'Main'))
+    suffix = RHAPI.__(generate_args.get('suffix', 'Main'))
 
     if 'qualifiers_per_heat' in generate_args and 'advances_per_heat' in generate_args:
         qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
@@ -70,7 +67,7 @@ def generateLadder(RHAPI, generate_args=None):
         logger.warning('Unable to seed ladder: no pilots available')
         return False
 
-    letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    letters = RHAPI.__('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     heats = []
 
     if 'seed_offset' in generate_args:
@@ -116,7 +113,7 @@ def generateLadder(RHAPI, generate_args=None):
 
 def generateBalancedHeats(RHAPI, generate_args=None):
     available_nodes = generate_args.get('available_nodes')
-    suffix = __(generate_args.get('suffix', 'Qualifier'))
+    suffix = RHAPI.__(generate_args.get('suffix', 'Qualifier'))
 
     if 'qualifiers_per_heat' in generate_args:
         qualifiers_per_heat = generate_args['qualifiers_per_heat']
@@ -137,7 +134,7 @@ def generateBalancedHeats(RHAPI, generate_args=None):
     if total_pilots % qualifiers_per_heat:
         total_heats += 1
 
-    letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    letters = RHAPI.__('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     heats = []
 
     for idx in range(total_heats):

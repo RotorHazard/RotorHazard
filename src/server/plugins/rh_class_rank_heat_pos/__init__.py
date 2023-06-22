@@ -13,14 +13,9 @@ def registerHandlers(args):
         for method in discover():
             args['registerFn'](method)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
 def initialize(**kwargs):
     if 'Events' in kwargs:
         kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_heat_position', registerHandlers, {}, 75)
-    if '__' in kwargs:
-        __ = kwargs['__']
 
 def rank_heat_pos(RHAPI, race_class, _args):
     heats = RHAPI.db.heats_by_class(race_class.id)

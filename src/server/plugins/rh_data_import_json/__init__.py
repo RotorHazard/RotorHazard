@@ -16,9 +16,6 @@ def registerHandlers(args):
         for importer in discover():
             args['registerFn'](importer)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
 def initialize(**kwargs):
     if 'Events' in kwargs:
         kwargs['Events'].on(Evt.DATA_IMPORT_INITIALIZE, 'Import_register_JSON', registerHandlers, {}, 75)

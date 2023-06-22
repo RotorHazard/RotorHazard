@@ -4202,7 +4202,6 @@ for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
         plugin.initialize(
             Events=Events,
-            __=__,
             RHAPI=RHAPI,
         )
 

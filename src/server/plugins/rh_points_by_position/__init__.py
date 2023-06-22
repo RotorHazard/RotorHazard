@@ -13,14 +13,9 @@ def registerHandlers(args):
         for method in discover():
             args['registerFn'](method)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
 def initialize(**kwargs):
     if 'Events' in kwargs:
         kwargs['Events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', registerHandlers, {}, 75, True)
-    if '__' in kwargs:
-        __ = kwargs['__']
 
 def points_by_position(_rhapi, leaderboard, args):
     try:

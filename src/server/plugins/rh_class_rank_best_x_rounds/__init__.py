@@ -14,14 +14,9 @@ def registerHandlers(args):
         for method in discover():
             args['registerFn'](method)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
 def initialize(**kwargs):
     if 'Events' in kwargs:
         kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', registerHandlers, {}, 75)
-    if '__' in kwargs:
-        __ = kwargs['__']
 
 def rank_best_rounds(RHAPI, race_class, args):
     if 'rounds' not in args or not args['rounds'] or int(args['rounds']) < 1:
