@@ -10,14 +10,14 @@ from led_event_manager import LEDEffect, Color
 import gevent
 from PIL import Image
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for led_effect in discover():
-            args['registerFn'](led_effect)
+            args['register_fn'](led_effect)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
 
 def showBitmap(args):
     if 'strip' in args:

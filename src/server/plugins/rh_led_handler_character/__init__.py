@@ -12,14 +12,14 @@ import gevent
 from PIL import Image, ImageFont, ImageDraw
 from monotonic import monotonic
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for led_effect in discover():
-            args['registerFn'](led_effect)
+            args['register_fn'](led_effect)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.LED_INITIALIZE, 'LED_register_character', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_character', register_handlers, {}, 75)
 
 def dataHandler(args):
     if 'data' in args:
@@ -165,8 +165,8 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'RHAPI' in args:
-        result = args['RHAPI'].race.results
+    if 'rhapi' in args:
+        result = args['rhapi'].race.results
     else:
         return False
 
@@ -205,7 +205,7 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                if args['RHAPI'].race.status == RaceStatus.DONE:
+                if args['rhapi'].race.status == RaceStatus.DONE:
                     text = str(line['laps'])
                 else:
                     # first callsign character

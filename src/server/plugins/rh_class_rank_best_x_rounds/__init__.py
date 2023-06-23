@@ -9,30 +9,30 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for method in discover():
-            args['registerFn'](method)
+            args['register_fn'](method)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', register_handlers, {}, 75)
 
-def rank_best_rounds(RHAPI, race_class, args):
+def rank_best_rounds(rhapi, race_class, args):
     if 'rounds' not in args or not args['rounds'] or int(args['rounds']) < 1:
         return False
 
     rounds = int(args['rounds'])
 
-    race_format = RHAPI.db.raceformat_by_id(race_class.format_id)
-    heats = RHAPI.db.heats_by_class(race_class.id)
+    race_format = rhapi.db.raceformat_by_id(race_class.format_id)
+    heats = rhapi.db.heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = RHAPI.db.races_by_heat(heat.id)
+        races = rhapi.db.races_by_heat(heat.id)
 
         for race in races:
-            race_result = RHAPI.db.race_results(race)
+            race_result = rhapi.db.race_results(race)
 
             if race_result:
                 for pilotresult in race_result['by_race_time']:
@@ -74,7 +74,7 @@ def rank_best_rounds(RHAPI, race_class, args):
             new_pilot_result['total_time_raw'] += race['total_time_raw']
             new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
 
-        timeFormat = RHAPI.db.option('timeFormat')
+        timeFormat = rhapi.db.option('timeFormat')
         new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
         new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
 

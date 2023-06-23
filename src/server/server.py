@@ -1621,7 +1621,7 @@ def on_import_file(data):
 
             # do import
             logger.info('Importing data via {0}'.format(importer))
-            import_result = RaceContext.import_manager.runImport(importer, data['source_data'], import_args) 
+            import_result = RaceContext.import_manager.run_import(importer, data['source_data'], import_args)
 
             if import_result != False:
                 clean_results_cache()
@@ -1641,16 +1641,16 @@ def on_import_file(data):
 @catchLogExceptionsWrapper
 def on_generate_heats_v2(data):
     '''Run the selected Generator'''
-    available_nodes = 0
+    available_seats = 0
     profile_freqs = json.loads(RaceContext.race.profile.frequencies)
     for node_index in range(RaceContext.race.num_nodes):
         if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-            available_nodes += 1
+            available_seats += 1
 
     generate_args = {
         'input_class': data['input_class'],
         'output_class': data['output_class'],
-        'available_nodes': available_nodes
+        'available_seats': available_seats
         }
     if 'params' in data:
         for param, value in data['params'].items():
@@ -1876,13 +1876,13 @@ def emit_led_effect_setup(**_params):
 
             for effect in effects:
 
-                if event['event'] in effects[effect]['validEvents'].get('include', []) or (
+                if event['event'] in effects[effect]['valid_events'].get('include', []) or (
                     event['event'] not in [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING, LEDEvent.IDLE_READY]
-                    and event['event'] not in effects[effect]['validEvents'].get('exclude', [])
-                    and Evt.ALL not in effects[effect]['validEvents'].get('exclude', [])):
+                    and event['event'] not in effects[effect]['valid_events'].get('exclude', [])
+                    and Evt.ALL not in effects[effect]['valid_events'].get('exclude', [])):
 
-                    if event['event'] in effects[effect]['validEvents'].get('recommended', []) or \
-                        Evt.ALL in effects[effect]['validEvents'].get('recommended', []):
+                    if event['event'] in effects[effect]['valid_events'].get('recommended', []) or \
+                        Evt.ALL in effects[effect]['valid_events'].get('recommended', []):
                         effect_list_recommended.append({
                             'name': effect,
                             'label': '* ' + __(effects[effect]['label'])
@@ -1913,7 +1913,7 @@ def emit_led_effects(**_params):
         effect_list = []
         if effects:
             for effect in effects:
-                if effects[effect]['validEvents'].get('manual', True):
+                if effects[effect]['valid_events'].get('manual', True):
                     effect_list.append({
                         'name': effect,
                         'label': __(effects[effect]['label'])
@@ -4201,8 +4201,8 @@ else:
 for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
         plugin.initialize(
-            Events=Events,
-            RHAPI=RHAPI,
+            events=Events,
+            rhapi=RHAPI,
         )
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:

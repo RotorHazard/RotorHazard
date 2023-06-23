@@ -15,7 +15,7 @@ class EventActions:
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.Events.trigger(Evt.ACTIONS_INITIALIZE, {
-            'registerFn': self.registerEffect
+            'register_fn': self.registerEffect
             })
 
         self.loadActions()
@@ -46,13 +46,13 @@ class EventActions:
                 self.logger.debug("Calling effect '{}' with {}".format(action, args))
 
 class ActionEffect():
-    def __init__(self, name, label, effectFn, fields:List[UIField]):
+    def __init__(self, name, label, effect_fn, fields:List[UIField]):
         self.name = name
         self.label = label
-        self.effectFn = effectFn
+        self.effect_fn = effect_fn
         self.fields = fields
 
     @catchLogExceptionsWrapper
     def runAction(self, action, args):
-        self.effectFn(action, args)
+        self.effect_fn(action, args)
 

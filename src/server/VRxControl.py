@@ -18,7 +18,7 @@ class VRxControlManager():
         self.controllers = {} # collection of VRxControllers
 
         self.Events.trigger(Evt.VRX_INITIALIZE, {
-            'registerFn': self.registerController
+            'register_fn': self.registerController
             })
 
         if len(self.controllers):

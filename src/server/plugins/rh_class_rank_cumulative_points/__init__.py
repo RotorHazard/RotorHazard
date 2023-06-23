@@ -9,25 +9,25 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for method in discover():
-            args['registerFn'](method)
+            args['register_fn'](method)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', register_handlers, {}, 75)
 
-def rank_points_total(RHAPI, race_class, args):
+def rank_points_total(rhapi, race_class, args):
 
-    heats = RHAPI.db.heats_by_class(race_class.id)
+    heats = rhapi.db.heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = RHAPI.db.races_by_heat(heat.id)
+        races = rhapi.db.races_by_heat(heat.id)
 
         for race in races:
-            race_result = RHAPI.db.race_results(race)
+            race_result = rhapi.db.race_results(race)
 
             if race_result:
                 for pilotresult in race_result[race_result['meta']['primary_leaderboard']]:

@@ -8,14 +8,14 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for method in discover():
-            args['registerFn'](method)
+            args['register_fn'](method)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', registerHandlers, {}, 75, True)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75, True)
 
 def points_by_position(_rhapi, leaderboard, args):
     try:

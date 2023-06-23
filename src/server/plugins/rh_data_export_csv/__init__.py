@@ -8,14 +8,14 @@ from data_export import DataExporter
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
+def register_handlers(args):
+    if 'register_fn' in args:
         for exporter in discover():
-            args['registerFn'](exporter)
+            args['register_fn'](exporter)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on('Export_Initialize', 'Export_register_CSV', registerHandlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on('Export_Initialize', 'Export_register_CSV', register_handlers, {}, 75)
 
 def write_csv(data):
     output = io.StringIO()
@@ -28,13 +28,13 @@ def write_csv(data):
         'ext': 'csv'
     }
 
-def assemble_all(RHAPI):
+def assemble_all(rhapi):
     payload = {}
-    payload['Pilots'] = assemble_pilots(RHAPI)
-    payload['Heats'] = assemble_heats(RHAPI)
-    payload['Classes'] = assemble_classes(RHAPI)
-    payload['Formats'] = assemble_formats(RHAPI)
-    payload['Results'] = assemble_results(RHAPI)
+    payload['Pilots'] = assemble_pilots(rhapi)
+    payload['Heats'] = assemble_heats(rhapi)
+    payload['Classes'] = assemble_classes(rhapi)
+    payload['Formats'] = assemble_formats(rhapi)
+    payload['Results'] = assemble_results(rhapi)
 
     output = []
     for datatype in payload:
@@ -45,31 +45,31 @@ def assemble_all(RHAPI):
 
     return output
 
-def assemble_pilots(RHAPI):
-    payload = [[RHAPI.__('Callsign'), RHAPI.__('Name'), RHAPI.__('Team')]]
+def assemble_pilots(rhapi):
+    payload = [[rhapi.__('Callsign'), rhapi.__('Name'), rhapi.__('Team')]]
 
-    pilots = RHAPI.db.pilots
+    pilots = rhapi.db.pilots
     for pilot in pilots:
         payload.append([pilot.callsign, pilot.name, pilot.team])
 
     return payload
 
-def assemble_heats(RHAPI):
-    payload = [[RHAPI.__('Name'), RHAPI.__('Class'), RHAPI.__('Pilots')]]
-    for heat in RHAPI.db.heats:
+def assemble_heats(rhapi):
+    payload = [[rhapi.__('Name'), rhapi.__('Class'), rhapi.__('Pilots')]]
+    for heat in rhapi.db.heats:
         displayname = heat.display_name()
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
-            race_class_name = RHAPI.db.raceclass_by_id(heat.class_id).name
+            race_class_name = rhapi.db.raceclass_by_id(heat.class_id).name
         else:
             race_class_name = None
 
         row = [displayname, race_class_name]
 
-        heatnodes = RHAPI.db.slots_by_heat(heat.id)
+        heatnodes = rhapi.db.slots_by_heat(heat.id)
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
-                row.append(RHAPI.db.pilot_by_id(heatnode.pilot_id).callsign)
+                row.append(rhapi.db.pilot_by_id(heatnode.pilot_id).callsign)
             else:
                 row.append('-')
 
@@ -77,13 +77,13 @@ def assemble_heats(RHAPI):
 
     return payload
 
-def assemble_classes(RHAPI):
-    race_classes = RHAPI.db.raceclasses
-    payload = [[RHAPI.__('Name'), RHAPI.__('Description'), RHAPI.__('Race Format')]]
+def assemble_classes(rhapi):
+    race_classes = rhapi.db.raceclasses
+    payload = [[rhapi.__('Name'), rhapi.__('Description'), rhapi.__('Race Format')]]
 
     for race_class in race_classes:
         # expand format id to name
-        race_format = RHAPI.db.raceformat_by_id(race_class.format_id)
+        race_format = rhapi.db.raceformat_by_id(race_class.format_id)
         if race_format:
             format_string = race_format.name
         else:
@@ -93,43 +93,43 @@ def assemble_classes(RHAPI):
 
     return payload
 
-def assemble_formats(RHAPI):
+def assemble_formats(rhapi):
     timer_modes = [
-        RHAPI.__('Fixed Time'),
-        RHAPI.__('No Time Limit'),
+        rhapi.__('Fixed Time'),
+        rhapi.__('No Time Limit'),
     ]
     tones = [
-        RHAPI.__('None'),
-        RHAPI.__('One'),
-        RHAPI.__('Each Second')
+        rhapi.__('None'),
+        rhapi.__('One'),
+        rhapi.__('Each Second')
     ]
     win_conditions = [
-        RHAPI.__('None'),
-        RHAPI.__('Most Laps in Fastest Time'),
-        RHAPI.__('First to X Laps'),
-        RHAPI.__('Fastest Lap'),
-        RHAPI.__('Fastest Consecutive Laps'),
-        RHAPI.__('Most Laps Only'),
-        RHAPI.__('Most Laps Only with Overtime')
+        rhapi.__('None'),
+        rhapi.__('Most Laps in Fastest Time'),
+        rhapi.__('First to X Laps'),
+        rhapi.__('Fastest Lap'),
+        rhapi.__('Fastest Consecutive Laps'),
+        rhapi.__('Most Laps Only'),
+        rhapi.__('Most Laps Only with Overtime')
     ]
     start_behaviors = [
-        RHAPI.__('Hole Shot'),
-        RHAPI.__('First Lap'),
-        RHAPI.__('Staggered Start'),
+        rhapi.__('Hole Shot'),
+        rhapi.__('First Lap'),
+        rhapi.__('Staggered Start'),
     ]
 
-    formats = RHAPI.db.raceformats
+    formats = rhapi.db.raceformats
     payload = [[
-        RHAPI.__('Name'),
-        RHAPI.__('Race Clock Mode'),
-        RHAPI.__('Timer Duration (seconds)'),
-        RHAPI.__('Minimum Start Delay'),
-        RHAPI.__('Maximum Start Delay'),
-        RHAPI.__('Staging Tones'),
-        RHAPI.__('First Crossing'),
-        RHAPI.__('Win Condition'),
-        RHAPI.__('Number of Laps to Win'),
-        RHAPI.__('Team Racing Mode'),
+        rhapi.__('Name'),
+        rhapi.__('Race Clock Mode'),
+        rhapi.__('Timer Duration (seconds)'),
+        rhapi.__('Minimum Start Delay'),
+        rhapi.__('Maximum Start Delay'),
+        rhapi.__('Staging Tones'),
+        rhapi.__('First Crossing'),
+        rhapi.__('Win Condition'),
+        rhapi.__('Number of Laps to Win'),
+        rhapi.__('Team Racing Mode'),
     ]]
 
     for race_format in formats:
@@ -147,7 +147,7 @@ def assemble_formats(RHAPI):
 
     return payload
 
-def build_leaderboard(leaderboard, RHAPI, **kwargs):
+def build_leaderboard(leaderboard, rhapi, **kwargs):
     if not leaderboard:
         return None
 
@@ -158,22 +158,22 @@ def build_leaderboard(leaderboard, RHAPI, **kwargs):
         primary_leaderboard = leaderboard[meta['primary_leaderboard']]
 
     if meta['start_behavior'] == 2:
-        total_label = RHAPI.__('Laps Total')
+        total_label = rhapi.__('Laps Total')
         total_source = 'total_time_laps'
     else:
-        total_label = RHAPI.__('Total')
+        total_label = rhapi.__('Total')
         total_source = 'total_time'
 
     output = [[
-        RHAPI.__('Seat'),
-        RHAPI.__('Rank'),
-        RHAPI.__('Pilot'),
-        RHAPI.__('Laps'),
-        RHAPI.__(total_label),
-        RHAPI.__('Avg.'),
-        RHAPI.__('Fastest'),
-        RHAPI.__('Consecutive'),
-        RHAPI.__('Team'),
+        rhapi.__('Seat'),
+        rhapi.__('Rank'),
+        rhapi.__('Pilot'),
+        rhapi.__('Laps'),
+        rhapi.__(total_label),
+        rhapi.__('Avg.'),
+        rhapi.__('Fastest'),
+        rhapi.__('Consecutive'),
+        rhapi.__('Team'),
     ]]
 
     for entry in primary_leaderboard:
@@ -191,8 +191,8 @@ def build_leaderboard(leaderboard, RHAPI, **kwargs):
 
     return output
 
-def assemble_results(RHAPI):
-    results = RHAPI.eventresults.results
+def assemble_results(rhapi):
+    results = rhapi.eventresults.results
 
     if not results:
         return None
@@ -200,18 +200,18 @@ def assemble_results(RHAPI):
     payload = []
 
     if results['event_leaderboard']:
-        payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Race Totals')])
-        for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_race_time'):
+        payload.append([rhapi.__('Event Leaderboards') + ': ' + rhapi.__('Race Totals')])
+        for row in build_leaderboard(results['event_leaderboard'], rhapi, primary_leaderboard='by_race_time'):
             payload.append(row[1:])
 
         payload.append([''])
-        payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Fastest Laps')])
-        for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_fastest_lap'):
+        payload.append([rhapi.__('Event Leaderboards') + ': ' + rhapi.__('Fastest Laps')])
+        for row in build_leaderboard(results['event_leaderboard'], rhapi, primary_leaderboard='by_fastest_lap'):
             payload.append(row[1:])
     
         payload.append([''])
-        payload.append([RHAPI.__('Event Leaderboards') + ': ' + RHAPI.__('Fastest Consecutive Laps')])
-        for row in build_leaderboard(results['event_leaderboard'], RHAPI, primary_leaderboard='by_consecutives'):
+        payload.append([rhapi.__('Event Leaderboards') + ': ' + rhapi.__('Fastest Consecutive Laps')])
+        for row in build_leaderboard(results['event_leaderboard'], rhapi, primary_leaderboard='by_consecutives'):
             payload.append(row[1:])
 
         payload.append([''])
@@ -219,7 +219,7 @@ def assemble_results(RHAPI):
     all_classes = sorted(list(results['heats_by_class'].keys()))
 
     if all_classes:
-        payload.append([RHAPI.__('Class Leaderboards')])
+        payload.append([rhapi.__('Class Leaderboards')])
 
         # move unclassified heats to end
         all_classes.append(all_classes.pop(all_classes.index(0)))
@@ -241,16 +241,16 @@ def assemble_results(RHAPI):
 
                 payload.append([])
                 if race_class:
-                    payload.append([RHAPI.__('Class') + ': ' + race_class['name']])
+                    payload.append([rhapi.__('Class') + ': ' + race_class['name']])
                     payload.append([])
-                    payload.append([RHAPI.__('Class Summary')])
-                    for row in build_leaderboard(race_class['leaderboard'], RHAPI):
+                    payload.append([rhapi.__('Class Summary')])
+                    for row in build_leaderboard(race_class['leaderboard'], rhapi):
                         payload.append(row[1:])
                 else:
                     if len(results['classes']):
-                        payload.append([RHAPI.__('Unclassified')])
+                        payload.append([rhapi.__('Unclassified')])
                     else:
-                        payload.append([RHAPI.__('Heats')])
+                        payload.append([rhapi.__('Heats')])
 
                 for heat_id in results['heats_by_class'][class_id]:
                     if heat_id in results['heats']:
@@ -262,18 +262,18 @@ def assemble_results(RHAPI):
 
                         if len(heat['rounds']) > 1:
                             payload.append([])
-                            payload.append([RHAPI.__('Heat Summary')])
+                            payload.append([rhapi.__('Heat Summary')])
 
-                            for row in build_leaderboard(heat['leaderboard'], RHAPI):
+                            for row in build_leaderboard(heat['leaderboard'], rhapi):
                                 payload.append(row[1:])
 
                         for heat_round in heat['rounds']:
                             payload.append([])
-                            payload.append([RHAPI.__('Round {0}').format(heat_round['id'])])
+                            payload.append([rhapi.__('Round {0}').format(heat_round['id'])])
 
                             laptimes = []
 
-                            for row in build_leaderboard(heat_round['leaderboard'], RHAPI):
+                            for row in build_leaderboard(heat_round['leaderboard'], rhapi):
                                 for node in heat_round['nodes']:
                                     if row[0] == node['node_index']:
                                         laplist = []
@@ -289,7 +289,7 @@ def assemble_results(RHAPI):
                                 payload.append(row[1:])
 
                             payload.append([])
-                            payload.append([RHAPI.__('Round {0} Times').format(str(heat_round['id']))])
+                            payload.append([rhapi.__('Round {0} Times').format(str(heat_round['id']))])
 
                             for row in laptimes:
                                 payload.append(row)

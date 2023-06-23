@@ -4,6 +4,7 @@
 
 from typing import List
 from RHUI import UIField
+from eventmanager import Evt
 from dataclasses import dataclass, asdict
 from enum import Enum
 import logging
@@ -36,8 +37,8 @@ class HeatGeneratorManager():
         self._racecontext = RaceContext
         self._rhapi = RHAPI
 
-        Events.trigger('HeatGenerator_Initialize', {
-            'registerFn': self.registerGenerator
+        Events.trigger(Evt.HEAT_GENERATOR_INITIALIZE, {
+            'register_fn': self.registerGenerator
             })
 
     def registerGenerator(self, generator):
@@ -140,15 +141,15 @@ class HeatGeneratorManager():
             logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
 
 class HeatGenerator():
-    def __init__(self, name, label, generatorFn, defaultArgs=None, settings:List[UIField]=None):
+    def __init__(self, name, label, generator_fn, default_args=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
-        self._generator = generatorFn
-        self.defaultArgs = defaultArgs
+        self._generator = generator_fn
+        self.default_args = default_args
         self.settings = settings
 
-    def generate(self, RHAPI, generate_args=None):
-        generate_args = {**(self.defaultArgs if self.defaultArgs else {}), **(generate_args if generate_args else {})}
+    def generate(self, rhapi, generate_args=None):
+        generate_args = {**(self.default_args if self.default_args else {}), **(generate_args if generate_args else {})}
 
-        return self._generator(RHAPI, generate_args)
+        return self._generator(rhapi, generate_args)
 
