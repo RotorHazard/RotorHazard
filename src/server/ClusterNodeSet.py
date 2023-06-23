@@ -49,6 +49,24 @@ class SecondaryNode:
         self.sio.on('join_cluster_response', self.join_cluster_response)
         self.start_connection()
 
+        self.startConnectTime = 0
+        self.lastContactTime = -1
+        self.firstContactTime = 0
+        self.lastCheckQueryTime = 0
+        self.secsSinceDisconnect = 0
+        self.freqsSentFlag = False
+        self.numDisconnects = 0
+        self.numDisconnsDuringRace = 0
+        self.numContacts = 0
+        self.latencyAveragerObj = Averager(self.LATENCY_AVG_SIZE)
+        self.totalUpTimeSecs = 0
+        self.totalDownTimeSecs = 0
+        self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
+        self.timeDiffMedianMs = 0
+        self.timeCorrectionMs = 0
+        self.progStartEpoch = 0
+        self.runningFlag = False
+
     def start_connection(self):
         self.startConnectTime = 0
         self.lastContactTime = -1
@@ -124,7 +142,7 @@ class SecondaryNode:
                                     data = { 'node':idx, 'frequency':freq }
                                     self.emit('set_frequency', data)
                                     gevent.sleep(0.001)
-                        except (KeyboardInterrupt, SystemExit):
+                        except (KeyboardInterrupt, SystemExit): #pylint disable=try-except-raise
                             raise
                         except Exception as ex:
                             logger.error("Error sending node frequencies to secondary {0} at {1}: {2}".format(self.id+1, self.address, ex))
@@ -171,14 +189,14 @@ class SecondaryNode:
                                 logger.info("Invoking 'on_disconnect()' fn for secondary {0} at {1}".\
                                             format(self.id+1, self.address))
                                 self.on_disconnect()
-                        except (KeyboardInterrupt, SystemExit):
+                        except (KeyboardInterrupt, SystemExit): #pylint disable=try-except-raise
                             raise
                         except Exception as ex:
                             logger.error("Error sending check-query to secondary {0} at {1}: {2}".format(self.id+1, self.address, ex))
             except KeyboardInterrupt:
                 logger.info("SecondaryNode worker thread terminated by keyboard interrupt")
                 raise
-            except SystemExit:
+            except SystemExit: #pylint disable=try-except-raise
                 raise
             except Exception as ex:
                 if type(ex) is ValueError and "connected" in str(ex):  # if error was because already connected
@@ -498,7 +516,7 @@ class ClusterNodeSet:
             if self.hasRecEventsSecondaries():
                 payload = { 'evt_name': args['_eventName'] }
                 del args['_eventName']
-                payload['evt_args'] = json.dumps(args, default=lambda x: '<not serializiable>')
+                payload['evt_args'] = json.dumps(args, default=lambda _: '<not serializiable>')
                 self.emitEventTrigger(payload)
         except Exception as ex:
             logger.exception("Exception in 'Events.trigger()': " + ex)

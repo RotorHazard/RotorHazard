@@ -1,3 +1,4 @@
+#pylint: disable=no-member
 '''LED emulation via CV2 image'''
 
 # to use this emulator, run:
@@ -48,7 +49,7 @@ class cv2_LED_emulation:
 def convertColor(color):
     return [color >> 16, (color >> 8) % 256, color % 256]
 
-def get_pixel_interface(config, brightness, *args, **kwargs):
+def get_pixel_interface(config, brightness, *args, **kwargs): #pyline disable=unused-argument
     '''Returns the pixel interface.'''
     logger.info('LED: locally emulated via OpenCV')
     return cv2_LED_emulation(config['LED_COUNT'], config.get('LED_ROWS', 1))
