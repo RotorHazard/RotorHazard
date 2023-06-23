@@ -14,6 +14,7 @@
 #   before formatting.
 #
 
+from eventmanager import Evt
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class DataExportManager():
 
         self._rhapi = RHAPI
 
-        Events.trigger('Export_Initialize', {
+        Events.trigger(Evt.DATA_EXPORT_INITIALIZE, {
             'registerFn': self.registerExporter
             })
 
