@@ -406,7 +406,7 @@ class ServerTest(unittest.TestCase):
         self.assertGreaterEqual(len(server.RHAPI.sensors.sensors_dict), 0)
         self.assertEqual(server.RHAPI.sensors.sensor_names[0], 'TestSensor')
         self.assertGreaterEqual(len(server.RHAPI.sensors.sensor_objs), 0)
-        sensor = server.RHAPI.sensors.get_sensor_obj(server.RHAPI.sensors.sensor_names[0])
+        sensor = server.RHAPI.sensors.sensor_obj(server.RHAPI.sensors.sensor_names[0])
         self.assertEqual(sensor.getName(), server.RHAPI.sensors.sensor_names[0])
         self.assertEqual(sensor.getAddress(), 123)
         readings = sensor.getReadings()
