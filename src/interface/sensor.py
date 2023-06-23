@@ -9,6 +9,13 @@ def Reading(units):
 class Sensor:
     def __init__(self, name):
         self.name = name
+        self.address = 0
+
+    def getName(self):
+        return self.name
+
+    def getAddress(self):
+        return self.address
 
     def getReadings(self):
         readings = {}

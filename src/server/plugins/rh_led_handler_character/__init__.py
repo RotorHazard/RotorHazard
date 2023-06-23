@@ -19,7 +19,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('LED_Initialize', 'LED_register_character', registerHandlers, {}, 75)
+        kwargs['Events'].on(Evt.LED_INITIALIZE, 'LED_register_character', registerHandlers, {}, 75)
 
 def dataHandler(args):
     if 'data' in args:
@@ -165,13 +165,9 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'raceContext' in args:
-        ctx = args['raceContext']
-
-        RACE = ctx.race
-        result = ctx.race.get_results()
+    if 'RHAPI' in args:
+        result = args['RHAPI'].race.results
     else:
-        RACE = None
         return False
 
     if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 
@@ -209,7 +205,7 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                if not RACE or RACE.race_status == RaceStatus.DONE:
+                if args['RHAPI'].race.status == RaceStatus.DONE:
                     text = str(line['laps'])
                 else:
                     # first callsign character

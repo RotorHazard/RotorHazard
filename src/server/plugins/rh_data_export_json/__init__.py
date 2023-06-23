@@ -4,6 +4,7 @@ import logging
 import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from eventmanager import Evt
 from data_export import DataExporter
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ def registerHandlers(args):
 
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('Export_Initialize', 'Export_register_JSON', registerHandlers, {}, 75)
+        kwargs['Events'].on(Evt.DATA_EXPORT_INITIALIZE, 'Export_register_JSON', registerHandlers, {}, 75)
 
 def write_json(data):
     payload = json.dumps(data, indent='\t', cls=AlchemyEncoder)
@@ -26,17 +27,17 @@ def write_json(data):
         'ext': 'json'
     }
 
-def assemble_all(RaceContext):
+def assemble_all(RHAPI):
     payload = {}
-    payload['Pilots'] = assemble_pilots(RaceContext)
-    payload['Heats'] = assemble_heats(RaceContext)
-    payload['Classes'] = assemble_classes(RaceContext)
-    payload['Formats'] = assemble_formats(RaceContext)
-    payload['Results'] = assemble_results(RaceContext)
+    payload['Pilots'] = assemble_pilots(RHAPI)
+    payload['Heats'] = assemble_heats(RHAPI)
+    payload['Classes'] = assemble_classes(RHAPI)
+    payload['Formats'] = assemble_formats(RHAPI)
+    payload['Results'] = assemble_results(RHAPI)
     return payload
 
-def assemble_pilots(RaceContext):
-    pilots = RaceContext.rhdata.get_pilots()
+def assemble_pilots(RHAPI):
+    pilots = RHAPI.db.pilots
     payload = []
     for pilot in pilots:
         # payload.append(pilot)
@@ -48,35 +49,35 @@ def assemble_pilots(RaceContext):
 
     return payload
 
-def assemble_heats(RaceContext):
+def assemble_heats(RHAPI):
     payload = {}
-    for heat in RaceContext.rhdata.get_heats():
+    for heat in RHAPI.db.heats:
         heat_id = heat.id
-        displayname = heat.displayname()
+        displayname = heat.display_name()
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
-            race_class = RaceContext.rhdata.get_raceClass(heat.class_id).name
+            race_class_name = RHAPI.db.raceclass_by_id(heat.class_id).name
         else:
-            race_class = None
+            race_class_name = None
 
-        heatnodes = RaceContext.rhdata.get_heatNodes_by_heat(heat.id)
+        heatnodes = RHAPI.db.slots_by_heat(heat.id)
         pilots = {}
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
-                pilots[heatnode.node_index] = RaceContext.rhdata.get_pilot(heatnode.pilot_id).callsign
+                pilots[heatnode.node_index] = RHAPI.db.pilot_by_id(heatnode.pilot_id).callsign
             else:
                 pilots[heatnode.node_index] = None
 
         payload[heat_id] = {
             'Name': displayname,
-            'Class': race_class,
+            'Class': race_class_name,
             'Pilots': pilots,
         }
 
     return payload
 
-def assemble_classes(RaceContext):
-    race_classes = RaceContext.rhdata.get_raceClasses()
+def assemble_classes(RHAPI):
+    race_classes = RHAPI.db.raceclasses
     payload = []
     for race_class in race_classes:
         # payload.append(race_class)
@@ -88,38 +89,38 @@ def assemble_classes(RaceContext):
         }
 
         if race_class.format_id:
-            class_payload['Race Format'] = RaceContext.rhdata.get_raceFormat(race_class.format_id).name
+            class_payload['Race Format'] = RHAPI.db.raceformat_by_id(race_class.format_id).name
 
         payload.append(class_payload)
 
     return payload
 
-def assemble_formats(RaceContext):
+def assemble_formats(RHAPI):
     timer_modes = [
-        RaceContext.language.__('Fixed Time'),
-        RaceContext.language.__('No Time Limit'),
+        RHAPI.__('Fixed Time'),
+        RHAPI.__('No Time Limit'),
     ]
     tones = [
-        RaceContext.language.__('None'),
-        RaceContext.language.__('One'),
-        RaceContext.language.__('Each Second')
+        RHAPI.__('None'),
+        RHAPI.__('One'),
+        RHAPI.__('Each Second')
     ]
     win_conditions = [  #pylint: disable=unused-variable
-        RaceContext.language.__('None'),
-        RaceContext.language.__('Most Laps in Fastest Time'),
-        RaceContext.language.__('First to X Laps'),
-        RaceContext.language.__('Fastest Lap'),
-        RaceContext.language.__('Fastest Consecutive Laps'),
-        RaceContext.language.__('Most Laps Only'),
-        RaceContext.language.__('Most Laps Only with Overtime')
+        RHAPI.__('None'),
+        RHAPI.__('Most Laps in Fastest Time'),
+        RHAPI.__('First to X Laps'),
+        RHAPI.__('Fastest Lap'),
+        RHAPI.__('Fastest Consecutive Laps'),
+        RHAPI.__('Most Laps Only'),
+        RHAPI.__('Most Laps Only with Overtime')
     ]
     start_behaviors = [
-        RaceContext.language.__('Hole Shot'),
-        RaceContext.language.__('First Lap'),
-        RaceContext.language.__('Staggered Start'),
+        RHAPI.__('Hole Shot'),
+        RHAPI.__('First Lap'),
+        RHAPI.__('Staggered Start'),
     ]
 
-    formats = RaceContext.rhdata.get_raceFormats()
+    formats = RHAPI.db.raceformats
     payload = []
     for race_format in formats:
         # payload.append(race_format)
@@ -139,71 +140,66 @@ def assemble_formats(RaceContext):
 
     return payload
 
-def assemble_results(RaceContext):
-    payload = RaceContext.pagecache.get_cache()
+def assemble_results(RHAPI):
+    payload = RHAPI.eventresults.results
     return payload
 
-def assemble_complete(RaceContext):
+def assemble_complete(RHAPI):
     payload = {}
-    payload['Pilot'] = assemble_pilots_complete(RaceContext)
-    payload['Heat'] = assemble_heats_complete(RaceContext)
-    payload['HeatNode'] = assemble_heatnodes_complete(RaceContext)
-    payload['RaceClass'] = assemble_classes_complete(RaceContext)
-    payload['RaceFormat'] = assemble_formats_complete(RaceContext)
-    payload['SavedRaceMeta'] = assemble_racemeta_complete(RaceContext)
-    payload['SavedPilotRace'] = assemble_pilotrace_complete(RaceContext)
-    payload['SavedRaceLap'] = assemble_racelap_complete(RaceContext)
-    payload['LapSplit'] = assemble_split_complete(RaceContext)
-    payload['Profiles'] = assemble_profiles_complete(RaceContext)
-    payload['GlobalSettings'] = assemble_settings_complete(RaceContext)
+    payload['Pilot'] = assemble_pilots_complete(RHAPI)
+    payload['Heat'] = assemble_heats_complete(RHAPI)
+    payload['HeatNode'] = assemble_heatnodes_complete(RHAPI)
+    payload['RaceClass'] = assemble_classes_complete(RHAPI)
+    payload['RaceFormat'] = assemble_formats_complete(RHAPI)
+    payload['SavedRaceMeta'] = assemble_racemeta_complete(RHAPI)
+    payload['SavedPilotRace'] = assemble_pilotrace_complete(RHAPI)
+    payload['SavedRaceLap'] = assemble_racelap_complete(RHAPI)
+    payload['Profiles'] = assemble_profiles_complete(RHAPI)
+    payload['GlobalSettings'] = assemble_settings_complete(RHAPI)
     return payload
 
-def assemble_results_raw(RaceContext):
-    payload = RaceContext.pagecache.get_cache()
+def assemble_results_raw(RHAPI):
+    payload = RHAPI.eventresults.results
     return payload
 
-def assemble_pilots_complete(RaceContext):
-    payload = RaceContext.rhdata.get_pilots()
+def assemble_pilots_complete(RHAPI):
+    payload = RHAPI.db.pilots
     return payload
 
-def assemble_heats_complete(RaceContext):
-    payload = RaceContext.rhdata.get_heats()
+def assemble_heats_complete(RHAPI):
+    payload = RHAPI.db.heats
     return payload
 
-def assemble_heatnodes_complete(RaceContext):
-    payload = RaceContext.rhdata.get_heatNodes()
+def assemble_heatnodes_complete(RHAPI):
+    payload = RHAPI.db.slots
     return payload
 
-def assemble_classes_complete(RaceContext):
-    payload = RaceContext.rhdata.get_raceClasses()
+def assemble_classes_complete(RHAPI):
+    payload = RHAPI.db.raceclasses
     return payload
 
-def assemble_formats_complete(RaceContext):
-    payload = RaceContext.rhdata.get_raceFormats()
+def assemble_formats_complete(RHAPI):
+    payload = RHAPI.db.raceformats
     return payload
 
-def assemble_split_complete(RaceContext):
-    payload = RaceContext.rhdata.get_lapSplits()
+def assemble_racemeta_complete(RHAPI):
+    payload = RHAPI.db.races
     return payload
 
-def assemble_racemeta_complete(RaceContext):
-    payload = RaceContext.rhdata.get_savedRaceMetas()
+def assemble_pilotrace_complete(RHAPI):
+    payload = RHAPI.db.pilotruns
     return payload
 
-def assemble_pilotrace_complete(RaceContext):
-    payload = RaceContext.rhdata.get_savedPilotRaces()
+def assemble_racelap_complete(RHAPI):
+    payload = RHAPI.db.laps
     return payload
 
-def assemble_racelap_complete(RaceContext):
-    payload = RaceContext.rhdata.get_savedRaceLaps()
+def assemble_profiles_complete(RHAPI):
+    payload = RHAPI.db.frequencysets
     return payload
 
-def assemble_profiles_complete(RaceContext):
-    payload = RaceContext.rhdata.get_profiles()
-    return payload
-
-def assemble_settings_complete(RaceContext):
-    payload = RaceContext.rhdata.get_options()
+def assemble_settings_complete(RHAPI):
+    payload = RHAPI.db.options
     return payload
 
 class AlchemyEncoder(json.JSONEncoder):

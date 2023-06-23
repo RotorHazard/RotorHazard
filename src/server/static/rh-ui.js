@@ -5,7 +5,7 @@ var rhui = {
 			data: {},
 			desc: null,
 			fieldClass: null,
-			fieldType: null,
+			field_type: null,
 			genericOption: null,
 			id: null,
 			label: null,
@@ -26,6 +26,10 @@ var rhui = {
 			var wrapper = $('<div>');
 		}
 
+		if (!settings.id) {
+			settings.id = 'setting_' + window.performance.now()
+		}
+
 		if (settings.wrapperClass) {
 			wrapper.addClass(settings.wrapperClass);
 		}
@@ -42,14 +46,14 @@ var rhui = {
 			labelWrap.append('<p class="desc">' + settings.desc + '</p>');
 		}
 
-		if (settings.fieldType == 'text') {
+		if (settings.field_type == 'text') {
 			var field = $('<input>')
 				.attr('type', 'text')
 				.attr('placeholder', settings.placeholder);
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
-		} else if (settings.fieldType == 'basic_int') {
+		} else if (settings.field_type == 'basic_int') {
 			var field = $('<input>')
 				.attr('type', 'number')
 				.attr('min', 0)
@@ -59,22 +63,24 @@ var rhui = {
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
-		} else if (settings.fieldType == 'select') {
+		} else if (settings.field_type == 'select') {
 			var field = $('<select>')
 
 			for (var opt_id in settings.options) {
 				var opt = settings.options[opt_id];
 
 				var opt_el = $('<option>')
-					.attr('value', opt.name)
-					.text(opt.value);
+					.attr('value', opt.value)
+					.text(opt.label);
 				field.append(opt_el);
 			}
-			settings.value = settings.options[0].name;
+			if (!settings.value) {
+				settings.value = settings.options[0].name;
+			}
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
-		} else if (settings.fieldType == 'checkbox') {
+		} else if (settings.field_type == 'checkbox') {
 			var field = $('<input>')
 				.attr('type', 'checkbox')
 				.prop('checked', settings.value);
@@ -112,6 +118,18 @@ var rhui = {
 			btn_list_el.append(btn_el)
 		}
 		return btn_list_el
+	},
+	getFieldVal: function(element) {
+		var el = $(element);
+		var field = el.data('field');
+
+		if (el.attr('type') == 'checkbox') {
+			value = el.prop('checked');
+		} else {
+			value = el.val();
+		}
+
+		return value;
 	}
 }
 

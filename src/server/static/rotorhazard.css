@@ -1473,9 +1473,27 @@ main.page-home {
 	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
 }
 
-.pilot_attr,
-.set_pilot_attr {
+.pilot_attr {
+	margin:0.25rem 0;
+	display: flex;
 	flex-basis: 100%;
+	flex-wrap: wrap;
+}
+
+.pilot_attr .desc {
+	margin: 0;
+	font-size: 0.75em;
+	font-style: italic;
+}
+
+.pilot_attr input:not([type="checkbox"]) {
+	flex-basis: 100%;
+}
+
+.pilot_attr [type="checkbox"] {
+	order: -1;
+	flex: 0 1 auto;
+	margin-right: 0.5rem;
 }
 
 @media (max-width: 45em) {
@@ -2142,6 +2160,7 @@ button .wide {
 	padding: 0;
 	display: flex;
 	flex-wrap: wrap;
+	align-content: flex-start;
 }
 
 .action > select:first-of-type {

@@ -2,8 +2,10 @@
 
 import logging
 import RHUtils
+from eventmanager import Evt
 from RHRace import StartBehavior
 from Results import RaceClassRankMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -12,30 +14,25 @@ def registerHandlers(args):
         for method in discover():
             args['registerFn'](method)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('RaceClassRanking_Initialize', 'classrank_register_bestx', registerHandlers, {}, 75, True)
-    if '__' in kwargs:
-        __ = kwargs['__']
+        kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', registerHandlers, {}, 75)
 
-def rank_best_rounds(racecontext, race_class, args):
+def rank_best_rounds(RHAPI, race_class, args):
     if 'rounds' not in args or not args['rounds'] or int(args['rounds']) < 1:
         return False
 
     rounds = int(args['rounds'])
 
-    race_format = racecontext.rhdata.get_raceFormat(race_class.format_id)
-    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
+    race_format = RHAPI.db.raceformat_by_id(race_class.format_id)
+    heats = RHAPI.db.heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
+        races = RHAPI.db.races_by_heat(heat.id)
 
         for race in races:
-            race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
+            race_result = RHAPI.db.race_results(race)
 
             if race_result:
                 for pilotresult in race_result['by_race_time']:
@@ -77,7 +74,7 @@ def rank_best_rounds(racecontext, race_class, args):
             new_pilot_result['total_time_raw'] += race['total_time_raw']
             new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
 
-        timeFormat = racecontext.rhdata.get_option('timeFormat')
+        timeFormat = RHAPI.db.option('timeFormat')
         new_pilot_result['total_time'] = RHUtils.time_format(new_pilot_result['total_time_raw'], timeFormat)
         new_pilot_result['total_time_laps'] = RHUtils.time_format(new_pilot_result['total_time_laps_raw'], timeFormat)
 
@@ -164,12 +161,7 @@ def discover(*_args, **_kwargs):
                 'rounds': 3
             },
             [
-                {
-                    'id': 'rounds',
-                    'label': "Number of rounds",
-                    'placeholder': '3',
-                    'fieldType': 'basic_int',
-                },
+                UIField('rounds', "Number of rounds", UIFieldType.BASIC_INT, placeholder="3"),
             ]
         )
     ]

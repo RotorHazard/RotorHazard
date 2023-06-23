@@ -2,8 +2,10 @@
 
 import logging
 import RHUtils
+from eventmanager import Evt
 from RHRace import StartBehavior
 from Results import RaceClassRankMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
@@ -12,25 +14,20 @@ def registerHandlers(args):
         for method in discover():
             args['registerFn'](method)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
 def initialize(**kwargs):
     if 'Events' in kwargs:
-        kwargs['Events'].on('RaceClassRanking_Initialize', 'classrank_register_cumulative_points', registerHandlers, {}, 75, True)
-    if '__' in kwargs:
-        __ = kwargs['__']
+        kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', registerHandlers, {}, 75)
 
-def rank_points_total(racecontext, race_class, args):
+def rank_points_total(RHAPI, race_class, args):
 
-    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
+    heats = RHAPI.db.heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
+        races = RHAPI.db.races_by_heat(heat.id)
 
         for race in races:
-            race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
+            race_result = RHAPI.db.race_results(race)
 
             if race_result:
                 for pilotresult in race_result[race_result['meta']['primary_leaderboard']]:
@@ -99,12 +96,7 @@ def discover(*_args, **_kwargs):
                 'ascending': False
             },
             [
-                {
-                    'id': 'ascending',
-                    'label': "Ascending",
-                    'value': False,
-                    'fieldType': 'checkbox',
-                },
+                UIField('ascending', "Ascending", UIFieldType.CHECKBOX, value=False),
             ]
         )
     ]

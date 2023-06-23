@@ -2,6 +2,9 @@
 # Results generators and caching
 #
 
+from typing import List
+from RHUI import UIField
+from eventmanager import Evt
 import copy
 import json
 import gevent
@@ -14,11 +17,11 @@ from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 logger = logging.getLogger(__name__)
 
 class RaceClassRankManager():
-    def __init__(self, racecontext, Events):
+    def __init__(self, RHAPI, Events):
         self._methods = {}
-        self._racecontext = racecontext
+        self._rhapi = RHAPI
 
-        Events.trigger('RaceClassRanking_Initialize', {
+        Events.trigger(Evt.CLASS_RANK_INITIALIZE, {
             'registerFn': self.registerMethod
             })
 
@@ -39,25 +42,25 @@ class RaceClassRankManager():
         if method_id == "":
             return False
 
-        return self.methods[method_id].rank(self._racecontext, race_class, args)
+        return self.methods[method_id].rank(self._rhapi, race_class, args)
 
 class RaceClassRankMethod():
-    def __init__(self, name, label, rankFn, defaultArgs=None, settings=None):
+    def __init__(self, name, label, rankFn, defaultArgs=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self.rankFn = rankFn
         self.defaultArgs = defaultArgs
         self.settings = settings
 
-    def rank(self, racecontext, race_class, localArgs):
-        return self.rankFn(racecontext, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
+    def rank(self, RHAPI, race_class, localArgs):
+        return self.rankFn(RHAPI, race_class, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
 class RacePointsManager():
-    def __init__(self, racecontext, Events):
+    def __init__(self, RHAPI, Events):
         self._methods = {}
-        self._racecontext = racecontext
+        self._rhapi = RHAPI
 
-        Events.trigger('RacePoints_Initialize', {
+        Events.trigger(Evt.POINTS_INITIALIZE, {
             'registerFn': self.registerMethod
             })
 
@@ -76,20 +79,20 @@ class RacePointsManager():
 
     def assign(self, method_id, leaderboard, args=None):
         if method_id == "":
-            return False
+            return leaderboard
 
-        return self.methods[method_id].assign(self._racecontext, leaderboard, args)
+        return self.methods[method_id].assign(self._rhapi, leaderboard, args)
 
 class RacePointsMethod():
-    def __init__(self, name, label, assignFn, defaultArgs=None, settings=None):
+    def __init__(self, name, label, assignFn, defaultArgs=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self.assignFn = assignFn
         self.defaultArgs = defaultArgs
         self.settings = settings
 
-    def assign(self, racecontext, leaderboard, localArgs):
-        return self.assignFn(racecontext, leaderboard, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
+    def assign(self, RHAPI, leaderboard, localArgs):
+        return self.assignFn(RHAPI, leaderboard, {**(self.defaultArgs if self.defaultArgs else {}), **(localArgs if localArgs else {})})
 
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
@@ -459,7 +462,7 @@ def calc_leaderboard(rhDataObj, **params):
                         result_pilot['fastest_lap_source'] = {
                             'round': race.round_id,
                             'heat': race.heat_id,
-                            'displayname': heats_keyed[race.heat_id].displayname()
+                            'displayname': heats_keyed[race.heat_id].display_name()
                             }
                         break
 
@@ -538,7 +541,7 @@ def calc_leaderboard(rhDataObj, **params):
                     result_pilot['consecutives_source'] = {
                         'round': source_race.round_id,
                         'heat': source_race.heat_id,
-                        'displayname': heats_keyed[source_race.heat_id].displayname()
+                        'displayname': heats_keyed[source_race.heat_id].display_name()
                         }
                 else:
                     result_pilot['consecutives_source'] = None
@@ -900,7 +903,7 @@ def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
                 'meta': meta
             }
         else:
-            logger.warning("{} uses unsupported ranking method: {}".format(race_class.displayname(), race_class.win_condition))
+            logger.warning("{} uses unsupported ranking method: {}".format(race_class.display_name(), race_class.win_condition))
 
     return False
 

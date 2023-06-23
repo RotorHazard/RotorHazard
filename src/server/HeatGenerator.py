@@ -2,6 +2,10 @@
 # Heat generation handlers
 #
 
+from typing import List
+from RHUI import UIField
+from dataclasses import dataclass, asdict
+from enum import Enum
 import logging
 import random
 import RHUtils
@@ -9,11 +13,28 @@ from Database import ProgramMethod
 
 logger = logging.getLogger(__name__)
 
+class SeedMethod(Enum):
+    INPUT = 0
+    HEAT_INDEX = 1
+
+@dataclass
+class HeatPlanSlot():
+    method: SeedMethod
+    seed_rank: int
+    seed_index: int = None
+
+@dataclass
+class HeatPlan():
+    name: str
+    slots: List[HeatPlanSlot] = None
+
+
 class HeatGeneratorManager():
-    def __init__(self, RaceContext, Events):
+    def __init__(self, RaceContext, RHAPI, Events):
         self._generators = {}
 
         self._racecontext = RaceContext
+        self._rhapi = RHAPI
 
         Events.trigger('HeatGenerator_Initialize', {
             'registerFn': self.registerGenerator
@@ -39,7 +60,7 @@ class HeatGeneratorManager():
         return self._generators
 
     def generate(self, generator_id, generate_args=None):
-        generated_heats = self._generators[generator_id].generate(self._racecontext, generate_args)
+        generated_heats = self._generators[generator_id].generate(self._rhapi, generate_args)
         if generated_heats:
             self.apply(generator_id, generated_heats, generate_args)
             return True
@@ -63,7 +84,7 @@ class HeatGeneratorManager():
         for heat_plan in generated_heats:
             new_heat = self._racecontext.rhdata.add_heat(init={
                 'class_id': output_class,
-                'note': heat_plan['name'],
+                'note': heat_plan.name,
                 'auto_frequency': True,
                 'defaultMethod': ProgramMethod.NONE
                 })
@@ -73,18 +94,18 @@ class HeatGeneratorManager():
             heat_alterations = []
             heat_slots = self._racecontext.rhdata.get_heatNodes_by_heat(heat_id_mapping[h_idx])
 
-            if len(heat_slots) < len(heat_plan['slots']):
+            if len(heat_slots) < len(heat_plan.slots):
                 logger.warning('Not enough actual slots for requested heat generation')
 
             for s_idx, heat_slot in enumerate(heat_slots):
-                if s_idx < len(heat_plan['slots']):
-                    seed_slot = heat_plan['slots'][s_idx]
+                if s_idx < len(heat_plan.slots):
+                    seed_slot = heat_plan.slots[s_idx]
                     data = {
                         'heat': heat_id_mapping[h_idx],
                         'slot_id': heat_slot.id,
-                        'seed_rank': seed_slot['seed_rank'],
+                        'seed_rank': seed_slot.seed_rank,
                         }
-                    if seed_slot['method'] == 'input':
+                    if seed_slot.method == SeedMethod.INPUT:
                         if input_class:
                             data['method'] = ProgramMethod.CLASS_RESULT
                             data['seed_class_id'] = input_class
@@ -104,11 +125,11 @@ class HeatGeneratorManager():
                                 logger.info('Unable to seed pilot: no available pilots left to seed')
                                 data['method'] = ProgramMethod.NONE
 
-                    elif seed_slot['method'] == ProgramMethod.HEAT_RESULT:
+                    elif seed_slot.method == SeedMethod.HEAT_INDEX:
                         data['method'] = ProgramMethod.HEAT_RESULT
-                        data['seed_heat_id'] = heat_id_mapping[seed_slot['seed_heat_id']]
+                        data['seed_heat_id'] = heat_id_mapping[seed_slot.seed_index]
                     else:
-                        logger.error('Not a supported seed method: {}'.format(seed_slot['method']))
+                        logger.error('Not a supported seed method: {}'.format(seed_slot.method))
                         return False
 
                 heat_alterations.append(data)
@@ -119,14 +140,15 @@ class HeatGeneratorManager():
             logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
 
 class HeatGenerator():
-    def __init__(self, name, label, generatorFn, defaultArgs=None, settings=None):
+    def __init__(self, name, label, generatorFn, defaultArgs=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self._generator = generatorFn
         self.defaultArgs = defaultArgs
         self.settings = settings
 
-    def generate(self, RaceContext, generate_args=None):
+    def generate(self, RHAPI, generate_args=None):
         generate_args = {**(self.defaultArgs if self.defaultArgs else {}), **(generate_args if generate_args else {})}
 
-        return self._generator(RaceContext, generate_args)
+        return self._generator(RHAPI, generate_args)
+

@@ -164,7 +164,7 @@ Database.DB.init_app(APP)
 Database.DB.app = APP
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], maxHttpBufferSize=5e7)
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], max_http_buffer_size=5e7)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
@@ -1192,7 +1192,7 @@ def on_alter_heat(data):
     RaceContext.rhui.emit_heat_data(noself=True)
     if ('note' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to heat: {0}').format(heat.displayname())
+        message = __('Alterations made to heat: {0}').format(heat.display_name())
         RaceContext.rhui.emit_priority_message(message, False)
 
 @SOCKET_IO.on('delete_heat')
@@ -1235,7 +1235,7 @@ def on_alter_race_class(data):
         'win_condition' in data or \
         'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to race class: {0}').format(race_class.displayname())
+        message = __('Alterations made to race class: {0}').format(race_class.display_name())
         RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_class_data(noself=True)
@@ -1400,7 +1400,7 @@ def on_alter_race(data):
 
     _race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    message = __('A race has been reassigned to {0}').format(new_heat.displayname())
+    message = __('A race has been reassigned to {0}').format(new_heat.display_name())
     RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_race_list(nobroadcast=True)
@@ -2009,7 +2009,7 @@ def on_stage_race():
         max_round = RaceContext.rhdata.get_max_round(RaceContext.race.current_heat)
         if max_round is None:
             max_round = 0
-        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.displayname(), (max_round+1),
+        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name(), (max_round+1),
                                                                    ", ".join(pilot_names_list)))
     else:
         heatNodes = []
@@ -2114,7 +2114,7 @@ def on_stage_race():
     else:
         logger.info("Attempted to stage race while status is not 'ready'")
 
-RHAPI.race_stage = on_stage_race
+RHAPI.race.stage = on_stage_race
 
 def autoUpdateCalibration():
     ''' Apply best tuning values to nodes '''
@@ -2357,7 +2357,7 @@ def on_stop_race(doSave=False):
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to stop the timer
 
-RHAPI.race_stop = on_stop_race
+RHAPI.race.stop = on_stop_race
 
 @catchLogExceptionsWrapper
 def do_stop_race_actions(doSave=False):
@@ -2663,10 +2663,10 @@ def calc_heat(heat_id, silent=False):
     heat = RaceContext.rhdata.get_heat(heat_id)
 
     if (heat):
-        calc_result = RaceContext.rhdata.calc_heat_pilots(heat, Results)
+        calc_result = RaceContext.rhdata.calc_heat_pilots(heat)
 
         if calc_result['calc_success'] is False:
-            logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
+            logger.warning('{} plan cannot be fulfilled.'.format(heat.display_name()))
 
         if calc_result['calc_success'] is None:
             # Heat is confirmed or has saved races
@@ -2733,7 +2733,7 @@ def emit_heat_plan_result(new_heat_id, calc_result):
 
     emit_payload = {
         'heat': new_heat_id,
-        'displayname': heat.displayname(),
+        'displayname': heat.display_name(),
         'slots': heatNodes,
         'calc_result': calc_result
     }
@@ -4202,7 +4202,6 @@ for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
         plugin.initialize(
             Events=Events,
-            __=__,
             RHAPI=RHAPI,
         )
 
@@ -4407,7 +4406,7 @@ if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
-        RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext)
+        RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext, RHAPI)
         init_LED_effects()
     except:
         logger.exception("Error initializing LED support")
@@ -4419,8 +4418,8 @@ else:
     RaceContext.led_manager = NoLEDManager()
 
 # leaderboard ranking managers
-RaceContext.race_points_manager = Results.RacePointsManager(RaceContext, Events)
-RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
+RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
+RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RHAPI, Events)
 
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors
@@ -4472,11 +4471,11 @@ RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, legacy_config=C
 Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters
-RaceContext.export_manager = DataExportManager(RaceContext, Events)
-RaceContext.import_manager = DataImportManager(RaceContext, Events)
+RaceContext.export_manager = DataExportManager(RHAPI, Events)
+RaceContext.import_manager = DataImportManager(RHAPI, Events)
 
 # heat generators
-RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
+RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
