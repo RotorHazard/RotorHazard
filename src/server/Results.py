@@ -4,6 +4,7 @@
 
 from typing import List
 from RHUI import UIField
+from eventmanager import Evt
 import copy
 import json
 import gevent
@@ -20,7 +21,7 @@ class RaceClassRankManager():
         self._methods = {}
         self._rhapi = RHAPI
 
-        Events.trigger('RaceClassRanking_Initialize', {
+        Events.trigger(Evt.CLASS_RANK_INITIALIZE, {
             'register_fn': self.registerMethod
             })
 
@@ -59,7 +60,7 @@ class RacePointsManager():
         self._methods = {}
         self._rhapi = RHAPI
 
-        Events.trigger('RacePoints_Initialize', {
+        Events.trigger(Evt.POINTS_INITIALIZE, {
             'register_fn': self.registerMethod
             })
 

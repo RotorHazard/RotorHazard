@@ -14,7 +14,7 @@ class EventActions:
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.Events.trigger('actionsInitialize', {
+        self.Events.trigger(Evt.ACTIONS_INITIALIZE, {
             'register_fn': self.registerEffect
             })
 

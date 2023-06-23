@@ -9,6 +9,7 @@
 
 from typing import List
 from RHUI import UIField
+from eventmanager import Evt
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class DataImportManager():
 
         self._rhapi = RHAPI
 
-        Events.trigger('Import_Initialize', {
+        Events.trigger(Evt.DATA_IMPORT_INITIALIZE, {
             'register_fn': self.registerImporter
             })
 

@@ -49,7 +49,7 @@ class LEDEventManager:
                 'recommended': [Evt.ALL]
             }))
 
-        self.Events.trigger('LED_Initialize', {
+        self.Events.trigger(Evt.LED_INITIALIZE, {
             'register_fn': self.registerEffect
             })
 

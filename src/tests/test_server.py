@@ -415,6 +415,6 @@ class ServerTest(unittest.TestCase):
         readings = sensor.getReadings()
         self.assertEqual(readings['counter']['value'], count+1)
 
-
+        
 if __name__ == '__main__':
     unittest.main()
