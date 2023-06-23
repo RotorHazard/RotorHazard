@@ -29,16 +29,16 @@ At minimum, a plugin must contain an `initialize()` function within its `__init_
 
 RotorHazard calls a plugin's `initialize()` function early during server startup. This function should not be used to add behaviors, but to register handlers where behavior will be applied. RotorHazard passes various utilities which may be of use in your plugin through named arguments.
 
-- `Events` (EventManager): Allows registering *handlers* to *events* to run code at the appropriate times. See [Standard Events](#standard-events)
-- `RHAPI` (RHAPI): Allows interfacing with the timer's API for working with data and frontend UI. See [RHAPI](RHAPI.md)
+- `events` (EventManager): Allows registering *handlers* to *events* to run code at the appropriate times. See [Standard Events](#standard-events)
+- `rhapi` (RHAPI): Allows interfacing with the timer's API for working with data and frontend UI. See [RHAPI](RHAPI.md)
 
 For example, a controller for actions might register events like this:
 ```
 from eventmanager import Evt
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
 ```
 
 If you have code you would like run during startup, you may bind it to the `Evt.STARTUP` event.
@@ -56,7 +56,7 @@ See [RHAPI Documentation](RHAPI.md)
 
 Register a *handler* using the `.on()` function, usually within your `initialize()` function.
 
-#### .on(event, name, handler_fn, [default_args=None], [priority=200], [unique=False])
+#### .on(event, name, handler_fn, default_args=None, priority=200, unique=False)
 
 Registers a *handler* to an *event*. This causes the code in the *handler* to be run each time the *event* is *triggered* by any means (timer, plugin, or otherwise)
 
@@ -74,7 +74,7 @@ Removes a *handler* from an *event*. Removes only the specific `name` and `event
 - `event` (string|Evt): the triggering *event* for this *handler*.
 - `name` (string): the registered `name` of the handler to remove.
 
-#### .trigger(event, [evtArgs=None])
+#### .trigger(event, evtArgs=None)
 
 Triggers an *event*, causing all registered *handlers* to run
 
@@ -99,8 +99,8 @@ def register_handlers(args):
             args['register_fn'](method)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75)
 
 def discover():
     return [
@@ -143,8 +143,8 @@ def register_handlers(args):
             args['register_fn'](method)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', register_handlers, {}, 75)
 
 def discover():
     return [
@@ -194,8 +194,8 @@ def register_handlers(args):
             args['register_fn'](generator)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
 
 def discover():
     return [
@@ -281,8 +281,8 @@ def register_handlers(args):
             args['register_fn'](effect)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.ACTIONS_INITIALIZE, 'action_UDP_message', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_UDP_message', register_handlers, {}, 75)
 
 def discover():
     return [
@@ -343,8 +343,8 @@ def register_handlers(args):
             args['register_fn'](led_effect)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
 
 def discover(*args, **kwargs):
     return [
@@ -419,8 +419,8 @@ def register_handlers(args):
             args['register_fn'](exporter)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.DATA_EXPORT_INITIALIZE, 'export_register_myplugin', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'export_register_myplugin', register_handlers, {}, 75)
 
 def discover(*args, **kwargs):
     return [
@@ -464,8 +464,8 @@ def register_handlers(args):
             args['register_fn'](importer)
 
 def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on(Evt.DATA_IMPORT_INITIALIZE, 'import_register_myplugin', register_handlers, {}, 75)
+    if 'events' in kwargs:
+        kwargs['events'].on(Evt.DATA_IMPORT_INITIALIZE, 'import_register_myplugin', register_handlers, {}, 75)
 
 def discover(*_args, **_kwargs):
     # returns array of exporters with default arguments, fields
@@ -503,19 +503,19 @@ An `RHUI.UIField` object defines a frontend user interface for collecting data. 
 - `field_type` (UIFieldType): One of `UIFieldType.TEXT`, `UIFieldType.BASIC_INT`, `UIFieldType.SELECT`, or `UIFieldType.CHECKBOX`
 - `value` _optional_ (any): Default value for field
 
-If `field_type` is "TEXT"
+If `field_type` is `TEXT`
 
 - `placeholder` _optional_ (string): Text displayed when no value is present
 
-If `field_type` is "BASIC_INT"
+If `field_type` is `BASIC_INT`
 
 - `placeholder` _optional_ (string): Text displayed when no value is present
 
-If `field_type` is "CHECKBOX"
+If `field_type` is `CHECKBOX`
 
 - `value` is boolean and no longer optional
 
-If `field_type` is "SELECT"
+If `field_type` is `SELECT`
 
 - `options` (list\[UIFieldSelectOption\]): a list of `UIFieldSelectOption` objects with the following properties:
     - `value` (string): internal identifier used when this option is selected
