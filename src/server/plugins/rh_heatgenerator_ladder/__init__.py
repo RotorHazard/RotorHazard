@@ -115,7 +115,7 @@ def generateBalancedHeats(rhapi, generate_args=None):
     available_seats = generate_args.get('available_seats')
     suffix = rhapi.__(generate_args.get('suffix', 'Qualifier'))
 
-    if 'qualifiers_per_heat' in generate_args:
+    if generate_args.get('qualifiers_per_heat'):
         qualifiers_per_heat = generate_args['qualifiers_per_heat']
     else:
         qualifiers_per_heat = available_seats
