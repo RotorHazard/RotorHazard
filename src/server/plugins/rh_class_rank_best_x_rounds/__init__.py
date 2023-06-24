@@ -9,15 +9,6 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for method in discover():
-            args['register_fn'](method)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', register_handlers, {}, 75)
-
 def rank_best_rounds(rhapi, race_class, args):
     if 'rounds' not in args or not args['rounds'] or int(args['rounds']) < 1:
         return False
@@ -150,12 +141,11 @@ def rank_best_rounds(rhapi, race_class, args):
 
     return leaderboard, meta
 
-def discover(*_args, **_kwargs):
-    # returns array of methods with default arguments
-    return [
+def register_handlers(args):
+    args['register_fn'](
         RaceClassRankMethod(
             'best_rounds',
-            'Laps/Time: Best X Rounds',
+            "Laps/Time: Best X Rounds",
             rank_best_rounds,
             {
                 'rounds': 3
@@ -164,4 +154,8 @@ def discover(*_args, **_kwargs):
                 UIField('rounds', "Number of rounds", UIFieldType.BASIC_INT, placeholder="3"),
             ]
         )
-    ]
+    )
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', register_handlers, {}, 75)
+

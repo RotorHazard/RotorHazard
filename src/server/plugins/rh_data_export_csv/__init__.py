@@ -4,18 +4,10 @@ import logging
 import RHUtils
 import io
 import csv
+from eventmanager import Evt
 from data_export import DataExporter
 
 logger = logging.getLogger(__name__)
-
-def register_handlers(args):
-    if 'register_fn' in args:
-        for exporter in discover():
-            args['register_fn'](exporter)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on('Export_Initialize', 'Export_register_CSV', register_handlers, {}, 75)
 
 def write_csv(data):
     output = io.StringIO()
@@ -200,17 +192,17 @@ def assemble_results(rhapi):
     payload = []
 
     if results['event_leaderboard']:
-        payload.append([rhapi.__('Event Leaderboards') + ': ' + rhapi.__('Race Totals')])
+        payload.append([rhapi.__("Event Leaderboards") + ": " + rhapi.__("Race Totals")])
         for row in build_leaderboard(results['event_leaderboard'], rhapi, primary_leaderboard='by_race_time'):
             payload.append(row[1:])
 
         payload.append([''])
-        payload.append([rhapi.__('Event Leaderboards') + ': ' + rhapi.__('Fastest Laps')])
+        payload.append([rhapi.__("Event Leaderboards") + ": " + rhapi.__("Fastest Laps")])
         for row in build_leaderboard(results['event_leaderboard'], rhapi, primary_leaderboard='by_fastest_lap'):
             payload.append(row[1:])
     
         payload.append([''])
-        payload.append([rhapi.__('Event Leaderboards') + ': ' + rhapi.__('Fastest Consecutive Laps')])
+        payload.append([rhapi.__("Event Leaderboards") + ": " + rhapi.__("Fastest Consecutive Laps")])
         for row in build_leaderboard(results['event_leaderboard'], rhapi, primary_leaderboard='by_consecutives'):
             payload.append(row[1:])
 
@@ -241,16 +233,16 @@ def assemble_results(rhapi):
 
                 payload.append([])
                 if race_class:
-                    payload.append([rhapi.__('Class') + ': ' + race_class['name']])
+                    payload.append([rhapi.__("Class") + ": " + race_class['name']])
                     payload.append([])
-                    payload.append([rhapi.__('Class Summary')])
+                    payload.append([rhapi.__("Class Summary")])
                     for row in build_leaderboard(race_class['leaderboard'], rhapi):
                         payload.append(row[1:])
                 else:
                     if len(results['classes']):
-                        payload.append([rhapi.__('Unclassified')])
+                        payload.append([rhapi.__("Unclassified")])
                     else:
-                        payload.append([rhapi.__('Heats')])
+                        payload.append([rhapi.__("Heats")])
 
                 for heat_id in results['heats_by_class'][class_id]:
                     if heat_id in results['heats']:
@@ -262,14 +254,14 @@ def assemble_results(rhapi):
 
                         if len(heat['rounds']) > 1:
                             payload.append([])
-                            payload.append([rhapi.__('Heat Summary')])
+                            payload.append([rhapi.__("Heat Summary")])
 
                             for row in build_leaderboard(heat['leaderboard'], rhapi):
                                 payload.append(row[1:])
 
                         for heat_round in heat['rounds']:
                             payload.append([])
-                            payload.append([rhapi.__('Round {0}').format(heat_round['id'])])
+                            payload.append([rhapi.__("Round {0}").format(heat_round['id'])])
 
                             laptimes = []
 
@@ -289,50 +281,54 @@ def assemble_results(rhapi):
                                 payload.append(row[1:])
 
                             payload.append([])
-                            payload.append([rhapi.__('Round {0} Times').format(str(heat_round['id']))])
+                            payload.append([rhapi.__("Round {0} Times").format(str(heat_round['id']))])
 
                             for row in laptimes:
                                 payload.append(row)
 
     return payload
 
-def discover(*_args, **_kwargs):
-    # returns array of exporters with default arguments
-    return [
+def register_handlers(args):
+    for exporter in [
         DataExporter(
             'csv_pilots',
-            'CSV (Friendly) / Pilots',
+            "CSV (Friendly) / Pilots",
             write_csv,
             assemble_pilots
         ),
         DataExporter(
             'csv_heats',
-            'CSV (Friendly) / Heats',
+            "CSV (Friendly) / Heats",
             write_csv,
             assemble_heats
         ),
         DataExporter(
             'csv_classes',
-            'CSV (Friendly) / Classes',
+            "CSV (Friendly) / Classes",
             write_csv,
             assemble_classes
         ),
         DataExporter(
             'csv_formats',
-            'CSV (Friendly) / Formats',
+            "CSV (Friendly) / Formats",
             write_csv,
             assemble_formats
         ),
         DataExporter(
             'csv_results',
-            'CSV (Friendly) / Results',
+            "CSV (Friendly) / Results",
             write_csv,
             assemble_results
         ),
         DataExporter(
             'csv_all',
-            'CSV (Friendly) / All',
+            "CSV (Friendly) / All",
             write_csv,
             assemble_all
         )
-    ]
+    ]:
+        args['register_fn'](exporter)
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'Export_register_CSV', register_handlers, {}, 75)
+

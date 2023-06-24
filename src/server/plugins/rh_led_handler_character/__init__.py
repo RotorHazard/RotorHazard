@@ -12,15 +12,6 @@ import gevent
 from PIL import Image, ImageFont, ImageDraw
 from monotonic import monotonic
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for led_effect in discover():
-            args['register_fn'](led_effect)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_character', register_handlers, {}, 75)
-
 def dataHandler(args):
     if 'data' in args:
         if args['data'] == 'staging':
@@ -102,14 +93,14 @@ def printCharacter(args):
 
     use_small_flag = True
     if panel['height'] >= 16:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
+        font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
         w, h = font.getsize(text)
         if w <= panel['width'] - 1:
             use_small_flag = False
             h = 16
 
     if use_small_flag:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+        font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
         w, h = font.getsize(text)
         h = 8
 
@@ -141,11 +132,11 @@ def scrollText(args):
     panel = getPanelImg(strip)
 
     if panel['height'] >= 16:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
+        font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
         w, h = font.getsize(text)
         h = 16
     else:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+        font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
         w, h = font.getsize(text)
         h = 8
 
@@ -185,10 +176,10 @@ def multiLapGrid(args):
     half_width = panel['width']/2
 
     if panel['height'] >= 32:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
+        font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
         font_h = 16
     else:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+        font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
         font_h = 8
 
     active_nodes = []
@@ -277,10 +268,10 @@ def clearPixels(strip):
 def convertColor(color):
     return color >> 16, (color >> 8) % 256, color % 256
 
-def discover(*args, **kwargs):
+def discover():
     effects = [
     LEDEffect(
-        "textLapNumber",
+        'textLapNumber',
         "Text: Lap Count",
         dataHandler, {
             'manual': False,
@@ -293,7 +284,7 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
-        "textLapTime",
+        'textLapTime',
         "Text: Lap Time",
         dataHandler, {
             'manual': False,
@@ -306,7 +297,7 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
-        "textPosition",
+        'textPosition',
         "Text: Position",
         dataHandler, {
             'manual': False,
@@ -319,7 +310,7 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
-        "scrollLapTime",
+        'scrollLapTime',
         "Text Scroll: Lap Time",
         scrollText, {
             'manual': False,
@@ -332,7 +323,7 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
-        "textMessage",
+        'textMessage',
         "Text Scroll: Message",
         scrollText, {
             'manual': False,
@@ -345,7 +336,7 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
-        "textRaceWin",
+        'textRaceWin',
         "Text Scroll: Race Winner",
         scrollText, {
             'manual': False,
@@ -358,7 +349,7 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
-        "textStaging",
+        'textStaging',
         "Text: Countdown",
         dataHandler, {
             'manual': False,
@@ -375,7 +366,7 @@ def discover(*args, **kwargs):
     if (Config.LED['LED_ROWS'] >= 16):
         effects.append(
             LEDEffect(
-                "textLapGrid",
+                'textLapGrid',
                 "Text: 4-Node Lap Count",
                 multiLapGrid, {
                     'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING],
@@ -392,3 +383,11 @@ def discover(*args, **kwargs):
         )
 
     return effects
+
+def register_handlers(args):
+    for led_effect in discover():
+        args['register_fn'](led_effect)
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_character', register_handlers, {}, 75)
+

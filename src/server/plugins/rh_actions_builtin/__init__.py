@@ -93,25 +93,11 @@ class ActionsBuiltin():
             else:
                 self._rhapi.race.schedule(action['sec'])
 
-actions = None
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
-
-    global actions
-    actions = ActionsBuiltin(kwargs['rhapi'])
-
 def register_handlers(args):
-    if 'register_fn' in args:
-        for effect in discover():
-            args['register_fn'](effect)
-
-def discover():
-    return [
+    for effect in [
         ActionEffect(
             'speak',
-            'Speak',
+            "Speak",
             actions.speakEffect,
             [
                 UIField('text', "Callout Text", UIFieldType.TEXT),
@@ -119,7 +105,7 @@ def discover():
         ),
         ActionEffect(
             'message',
-            'Message',
+            "Message",
             actions.messageEffect,
             [
                 UIField('text', "Message Text", UIFieldType.TEXT),
@@ -127,7 +113,7 @@ def discover():
         ),
         ActionEffect(
             'alert',
-            'Alert',
+            "Alert",
             actions.alertEffect,
             [
                 UIField('text', "Alert Text", UIFieldType.TEXT),
@@ -135,12 +121,21 @@ def discover():
         ),
         ActionEffect(
             'schedule',
-            'Schedule Race',
+            "Schedule Race",
             actions.scheduleEffect,
             [
                 UIField('sec', "Seconds", UIFieldType.BASIC_INT),
                 UIField('min', "Minutes", UIFieldType.BASIC_INT),
             ]
         )
-    ]
+    ]:
+        args['register_fn'](effect)
+
+actions = None
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
+
+    global actions
+    actions = ActionsBuiltin(kwargs['rhapi'])
 

@@ -339,6 +339,8 @@ class ServerTest(unittest.TestCase):
 # RHAPI
 
     def test_database_api(self):
+        print("\n--- Testing RHAPI v{}.{} ---".format(server.RHAPI.API_VERSION_MAJOR, server.RHAPI.API_VERSION_MINOR))
+
         self.client.emit('load_data', {'load_types': ['pilot_data']})
         ld_pilots = self.get_response('pilot_data')['pilots']
         db_pilots = server.RHAPI.db.pilots

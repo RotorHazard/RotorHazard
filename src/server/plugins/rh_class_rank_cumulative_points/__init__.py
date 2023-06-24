@@ -9,15 +9,6 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for method in discover():
-            args['register_fn'](method)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', register_handlers, {}, 75)
-
 def rank_points_total(rhapi, race_class, args):
 
     heats = rhapi.db.heats_by_class(race_class.id)
@@ -85,12 +76,11 @@ def rank_points_total(rhapi, race_class, args):
 
     return leaderboard, meta
 
-def discover(*_args, **_kwargs):
-    # returns array of methods with default arguments
-    return [
+def register_handlers(args):
+    args['register_fn'](
         RaceClassRankMethod(
             'cumulative_points',
-            'Cumulative Points',
+            "Cumulative Points",
             rank_points_total,
             {
                 'ascending': False
@@ -99,4 +89,8 @@ def discover(*_args, **_kwargs):
                 UIField('ascending', "Ascending", UIFieldType.CHECKBOX, value=False),
             ]
         )
-    ]
+    )
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', register_handlers, {}, 75)
+

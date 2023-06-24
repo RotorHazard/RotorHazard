@@ -10,15 +10,6 @@ from led_event_manager import LEDEffect, Color
 import gevent
 from PIL import Image
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for led_effect in discover():
-            args['register_fn'](led_effect)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
-
 def showBitmap(args):
     if 'strip' in args:
         strip = args['strip']
@@ -77,53 +68,61 @@ def showBitmap(args):
             strip.show()
             gevent.sleep(delay/1000.0)
 
-def discover(*args, **kwargs):
-    # state bitmaps
-    return [
-    LEDEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, {
-            'include': [Evt.SHUTDOWN],
-            'recommended': [Evt.STARTUP]
-        }, {
-            'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
-                ],
-            'time': 60
+def register_handlers(args):
+    for led_effect in [
+        LEDEffect('bitmapRHLogo', "Image: RotorHazard", showBitmap, {
+                'include': [Evt.SHUTDOWN],
+                'recommended': [Evt.STARTUP]
+            }, {
+                'bitmaps': [
+                    {'image': 'static/image/LEDpanel-16x16-RotorHazard.png', 'delay': 0}
+                    ],
+                'time': 60
             },
         ),
-    LEDEffect("bitmapOrangeEllipsis", "Image: Orange Ellipsis", showBitmap, {
-            'include': [Evt.SHUTDOWN],
-            'recommended': [Evt.RACE_STAGE]
-        }, {
-            'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-ellipsis.png", "delay": 0}
-                ],
-            'time': 8
-        }),
-    LEDEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, {
-            'include': [Evt.SHUTDOWN],
-            'recommended': [Evt.RACE_START]
-        }, {
-            'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
-                ],
-            'time': 8
-        }),
-    LEDEffect("bitmapRedX", "Image: Red X", showBitmap, {
-            'include': [Evt.SHUTDOWN],
-            'recommended': [Evt.RACE_STOP]
-        }, {
-            'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
-                ],
-            'time': 8
-        }),
-    LEDEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, {
-            'include': [Evt.SHUTDOWN],
-            'recommended': [Evt.RACE_FINISH, Evt.RACE_STOP]
-        }, {
-            'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
-                ],
-        'time': 20
-        })
-    ]
+        LEDEffect('bitmapOrangeEllipsis', "Image: Orange Ellipsis", showBitmap, {
+                'include': [Evt.SHUTDOWN],
+                'recommended': [Evt.RACE_STAGE]
+            }, {
+                'bitmaps': [
+                    {'image': 'static/image/LEDpanel-16x16-ellipsis.png', 'delay': 0}
+                    ],
+                'time': 8
+            }
+        ),
+        LEDEffect('bitmapGreenArrow', "Image: Green Upward Arrow", showBitmap, {
+                'include': [Evt.SHUTDOWN],
+                'recommended': [Evt.RACE_START]
+            }, {
+                'bitmaps': [
+                    {'image': 'static/image/LEDpanel-16x16-arrow.png', 'delay': 0}
+                    ],
+                'time': 8
+            }
+        ),
+        LEDEffect('bitmapRedX', "Image: Red X", showBitmap, {
+                'include': [Evt.SHUTDOWN],
+                'recommended': [Evt.RACE_STOP]
+            }, {
+                'bitmaps': [
+                    {'image': 'static/image/LEDpanel-16x16-X.png', 'delay': 0}
+                    ],
+                'time': 8
+            }
+        ),
+        LEDEffect('bitmapCheckerboard', "Image: Checkerboard", showBitmap, {
+                'include': [Evt.SHUTDOWN],
+                'recommended': [Evt.RACE_FINISH, Evt.RACE_STOP]
+            }, {
+                'bitmaps': [
+                    {'image': 'static/image/LEDpanel-16x16-checkerboard.png', 'delay': 0}
+                    ],
+            'time': 20
+            }
+        )
+    ]:
+        args['register_fn'](led_effect)
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
+

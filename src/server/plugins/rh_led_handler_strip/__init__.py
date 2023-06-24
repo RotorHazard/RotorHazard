@@ -7,15 +7,6 @@ import random
 import math
 from monotonic import monotonic
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for led_effect in discover():
-            args['register_fn'](led_effect)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_strip', register_handlers, {}, 75)
-
 def leaderProxy(args):
     if 'effect_fn' in args:
         if 'results' in args and args['results']:
@@ -387,7 +378,7 @@ def dim(color, decay):
 
     return Color(int(r), int(g), int(b))
 
-def discover(*args, **kwargs):
+def discover():
     return [
     # color
     LEDEffect("stripColor", "Color/Pattern (Args)", showColor, {
@@ -602,3 +593,10 @@ def discover(*args, **kwargs):
             'time': 8
         })
     ]
+
+def register_handlers(args):
+    for led_effect in discover():
+        args['register_fn'](led_effect)
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_strip', register_handlers, {}, 75)

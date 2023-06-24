@@ -97,8 +97,9 @@ from HeatGenerator import HeatGeneratorManager
 
 # Create shared context
 RaceContext = RaceContext.RaceContext()
+RHAPI = RHAPI.RHAPI(RaceContext)
 
-Events = EventManager(RaceContext)
+Events = EventManager(RHAPI)
 RaceContext.events = Events
 EventActionsObj = None
 
@@ -194,8 +195,6 @@ RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
-
-RHAPI = RHAPI.RHAPI(RaceContext)
 
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):

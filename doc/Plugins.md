@@ -3,6 +3,7 @@
 - [Installing and Running](#installing-and-running)
 - [Development](#development)
     - [Initialize Function](#initialize-function)
+    - [RHAPI](#rhapi)
     - [Standard Events](#standard-events)
     - [Race Points](#race-points)
     - [Class Ranking](#class-ranking)
@@ -23,26 +24,22 @@ If you have issues with a plugin, contact its developer to ensure compatibility 
 
 ## Development
 
-At minimum, a plugin must contain an `initialize()` function within its `__init__.py` file. From there, the plugin author has a lot of freedom to work with RotorHazard's internal functions and data. Plugins can register *handlers* to various hooks within the system to run its code.
+At minimum, a plugin must contain an `initialize()` function within its `__init__.py` file. A plugin may assign functions to *standard events* or register *handlers* to various hooks within the system to run its code.
 
 ### Initialize Function
 
-RotorHazard calls a plugin's `initialize()` function early during server startup. This function should not be used to add behaviors, but to register handlers where behavior will be applied. RotorHazard passes various utilities which may be of use in your plugin through named arguments.
+RotorHazard calls a plugin's `initialize()` function early during server startup. _This function should not be used to add behaviors directly_, but to register handlers where behavior will be called. RotorHazard provides utilities here through named arguments:
 
-- `events` (EventManager): Allows registering *handlers* to *events* to run code at the appropriate times. See [Standard Events](#standard-events)
-- `rhapi` (RHAPI): Allows interfacing with the timer's API for working with data and frontend UI. See [RHAPI](RHAPI.md)
+- `events` (EventManager): Allows registering *handlers* to *events* to run code at the appropriate times; see [Standard Events](#standard-events)
+- `rhapi` (RHAPI): Allows interfacing with the timer's API for working with data and frontend UI; see [RHAPI](RHAPI.md)
 
-For example, a controller for actions might register events like this:
+For example, a plugin might register events to be run at startup like this:
 ```
 from eventmanager import Evt
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
+    kwargs['events'].on(Evt.STARTUP, 'my_plugin_event', my_startup_function, {}, 75)
 ```
-
-If you have code you would like run during startup, you may bind it to the `Evt.STARTUP` event.
-
 
 ### RHAPI
 
@@ -56,11 +53,13 @@ See [RHAPI Documentation](RHAPI.md)
 
 Register a *handler* using the `.on()` function, usually within your `initialize()` function.
 
+A list of timer-provided events is contained within the `Evt` class in `/src/server/eventmanager.py`, which you can access in your plugin with `from eventmanager import Evt`. Custom events may also be created and triggered by plugins, allowing communication between them.
+
 #### .on(event, name, handler_fn, default_args=None, priority=200, unique=False)
 
 Registers a *handler* to an *event*. This causes the code in the *handler* to be run each time the *event* is *triggered* by any means (timer, plugin, or otherwise)
 
-- `event` (string|Evt): the triggering *event* for this *handler*. A list of timer-provided events is contained within the `Evt` class in `/src/server/eventmanager.py`, which you can access in your plugin with `from eventmanager import Evt`. Custom events may also be created and triggered by plugins, allowing communication between them.
+- `event` (Evt|string): the triggering *event* for this *handler*.
 - `name` (string): a name for your handler. Only one handler with each name can be registered per *event*, so registering with the same `name` and `event` multiple times will cause handlers to be overridden. Choose something unique so as not to conflict with timer internals or other plugins.
 - `handler_fn` (function): the function to run when this event triggers.
 - `default_args` (dict): provides default arguments for the handler. These arguments will be overwritten if the `Event` provides arguments with the same keys. 
@@ -88,24 +87,18 @@ Triggers an *event*, causing all registered *handlers* to run
 
 *Points Methods* must be registered to be available in the UI. Access to registration is provided though the `register_fn` argument of the `Evt.POINTS_INITIALIZE` event. Pass a `RacePointsMethod` object to this method to register it.
 
-For example, an effect to score points corresponding to position might be registered with the following functions:
+For example, a points method might be registered with the following functions:
 ```
 from eventmanager import Evt
 from Results import RacePointsMethod
 
 def register_handlers(args):
-    if 'register_fn' in args:
-        for method in discover():
-            args['register_fn'](method)
+    args['register_fn'](
+        RacePointsMethod('position_basic', "Position", points_by_position_function)
+    )
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75)
-
-def discover():
-    return [
-        RacePointsMethod( ... )
-    ]
+    kwargs['events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75)
 ```
 
 #### RacePointsMethod(name, label, assign_fn, default_args=None, settings=None)
@@ -115,7 +108,7 @@ Provides metadata and function linkage for *points methods*.
 - `name` (string): internal identifier for this method
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `assign_fn` (function): function to run when points are calculated for a race
-- `default_args` _optional_ (dict): arguments passed to the `assignFn` when run, unless overridden by local arguments
+- `default_args` _optional_ (dict): arguments passed to the `assign_fn` when run, unless overridden by local arguments
 - `settings` _optional_ (list\[UIField\]): A list of paramters to provide to the user; see [UI Fields](#ui-fields)
 
 The `assignFn` receives as arguments:
@@ -132,24 +125,18 @@ The `assignFn` receives as arguments:
 
 *Class Ranking Methods* must be registered to be available in the UI. Access to registration is provided though the `register_fn` argument of the `Evt.CLASS_RANK_INITIALIZE` event. Pass a `RaceClassRankMethod` object to this method to register it.
 
-For example, an effect to rank based on the best X rounds might be registered with the following functions:
+For example, an class rank might be registered with the following functions:
 ```
 from eventmanager import Evt
 from Results import RaceClassRankMethod
 
 def register_handlers(args):
-    if 'register_fn' in args:
-        for method in discover():
-            args['register_fn'](method)
+    args['register_fn'](
+        RaceClassRankMethod('last_heat_position', "Last Heat Position", rank_heat_pos_function)
+    )
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_bestx', register_handlers, {}, 75)
-
-def discover():
-    return [
-        RaceClassRankMethod( ... )
-    ]
+    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_heat_position', register_handlers, {}, 75)
 ```
 
 #### RaceClassRankMethod(name, label, rank_fn, default_args=None, settings=None)
@@ -168,13 +155,23 @@ The `rank_fn` receives as arguments:
 - `race_class` (dict): current `RaceClass` object
 - `args` (dict): collated default and locally-provided arguments
 
-`rank_fn` must return a tuple of (`leaderboard`, `meta`). `leaderboard` is a list of dicts with `position` and any other keys the author deems necessary, and should be ordered by `position`. `meta` is a dict with the following format:
+`rank_fn` must return a tuple of (`leaderboard`, `meta`). 
+
+`leaderboard` is a table&#8212;functionally, a list of dicts&#8212;that should be ordered by ranking. The "row" dicts must contain:
+
+- `position` (string): The rank for this row; not required to be unique or numeric
+- `pilot_id` (int): ID value for the pilot in this row 
+- `callsign` (string): callsing for the pilot in this row
+
+The row dicts may additionally contain any other keys the author deems necessary, but all rows in the table must maintain the same structure.
+
+`meta` is a dict with the following format:
 
 - `rank_fields` (list): A list of dicts with the following format:
     - `name` (string): the key of the field in `leaderboard` with data to display
     - `label` (string): user-facing text used as column header in the ranking table
 
-When displayed on the front-end, only `position` and fields listed in `rank_fields` will be displayed in the ranking table.
+When displayed on the front-end, only `position`, `callsign` and fields listed in `rank_fields` will be displayed in the ranking table.
 
 
 ### Heat Generators
@@ -183,24 +180,18 @@ When displayed on the front-end, only `position` and fields listed in `rank_fiel
 
 *HeatGenerators* must be registered to be available in the UI. Access to registration is provided though the `register_fn` argument of the `Evt.HEAT_GENERATOR_INITIALIZE` event. Pass a `HeatGenerator` object to this method to register it.
 
-For example, a generator to create ladders might be registered with the following functions:
+For example, a heat generator might be registered with the following functions:
 ```
 from eventmanager import Evt
 from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
 
 def register_handlers(args):
-    if 'register_fn' in args:
-        for generator in discover():
-            args['register_fn'](generator)
+    args['register_fn'](
+        HeatGenerator('ladder', "Ladder", generate_ladder_function)
+    )
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
-
-def discover():
-    return [
-        HeatGenerator( ... )
-    ]
+    kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
 ```
 
 #### HeatGenerator (name, label, generator_fn, default_args=None, settings=None)
@@ -270,24 +261,18 @@ The following heat plan is a double-advance ladder. Pilots ranked 3rd through 6t
 
 *Effects* must be registered to be available in the UI. Access to registration is provided though the `register_fn` argument of the `Evt.ACTIONS_INITIALIZE` event. Pass an `ActionEffect` object to this method to register it.
 
-For example, an effect to send a UDP message might be registered with the following functions:
+For example, an effect might be registered with the following functions:
 ```
 from eventmanager import Evt
 from EventActions import ActionEffect
 
 def register_handlers(args):
-    if 'register_fn' in args:
-        for effect in discover():
-            args['register_fn'](effect)
+    args['register_fn'](
+        ActionEffect('schedule', 'Schedule Race', my_schedule_race_effect_fn)
+    )
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_UDP_message', register_handlers, {}, 75)
-
-def discover():
-    return [
-        ActionEffect( ... )
-    ]
+    kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_UDP_message', register_handlers, {}, 75)
 ```
 
 #### ActionEffect(name, label, effect_fn, fields)
@@ -306,21 +291,9 @@ ActionEffect(
     'UDP Message',
     UDP_message_effect,
     [
-        {
-            'id': 'text',
-            'name': 'UDP message',
-            'type': 'text',
-        },
-        {
-            'id': 'ipaddress',
-            'name': 'UDP IP Address',
-            'type': 'text',
-        },
-        {
-            'id': 'udpport',
-            'name': 'UDP Port',
-            'type': 'text',
-        }
+        UIField('text', "UDP message", UIFieldType.TEXT),
+        UIField('ipaddress', "UDP IP Address", UIFieldType.TEXT),
+        UIField('udpport', "UDP Port", UIFieldType.TEXT),
     ]
 )
 ```
@@ -332,29 +305,21 @@ ActionEffect(
 
 *Effects* must be registered to be available in the UI. Access to registration is provided though the `register_fn` argument of the `Evt.LED_INITIALIZE` event. Pass an `LEDEffect` object to this method to register it.
 
-For example, the bitmap display registers its effects with the following functions:
+For example, an LED effect might be registered with the following functions:
 ```
 from eventmanager import Evt
 from led_event_manager import LEDEffect
 
 def register_handlers(args):
-    if 'register_fn' in args:
-        for led_effect in discover():
-            args['register_fn'](led_effect)
+    args['register_fn'](
+        LEDEffect("bitmapRHLogo", "Image: RotorHazard", show_bitmap_function, {}),
+    )
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
-
-def discover(*args, **kwargs):
-    return [
-        LEDEffect( ... ),
-        LEDEffect( ... ),
-        ...
-    ]
+    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
 ```
 
-#### LEDEffect(name, label, handler_fn, valid_events, [default_args=None])
+#### LEDEffect(name, label, handler_fn, valid_events, default_args=None)
 
 Provides metadata and function linkage for *LED effects*.
 
@@ -407,27 +372,24 @@ LEDEffect(
 
 *Exporters* must be registered before use. Access to registration is provided though the `register_fn` argument of the `Evt.DATA_EXPORT_INITIALIZE` event. Pass a `DataExporter` object to this method to register it.
 
-For example, a plugin can register exporters with the following functions:
+For example, an exporter might be registered with the following functions:
 
 ```
 from eventmanager import Evt
 from data_export import DataExporter
 
 def register_handlers(args):
-    if 'register_fn' in args:
-        for exporter in discover():
-            args['register_fn'](exporter)
+    args['register_fn'](
+        DataExporter(
+            'csv_pilots',
+            'CSV (Friendly) / Pilots',
+            my_csv_formatter_function,
+            my_assemble_pilots_function
+        )
+    )
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'export_register_myplugin', register_handlers, {}, 75)
-
-def discover(*args, **kwargs):
-    return [
-        DataExporter( ... ),
-        DataExporter( ... )
-        ...
-    ]
+    kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'export_register_myplugin', register_handlers, {}, 75)
 ```
 
 #### DataExporter(name, label, formatter_fn, assembler_fn)
@@ -452,27 +414,23 @@ The `formatter_fn` receives the output of the `assembler_fn`.
 
 *Importers* must be registered before use. Access to registration is provided though the `register_fn` argument of the `Evt.DATA_IMPORT_INITIALIZE` event. Pass a `DataImporter` object to this method to register it.
 
-For example, a plugin can register importers with the following functions:
+For example, an importer might be registered with the following functions:
 
 ```
 from eventmanager import Evt
 from data_import import DataImporter
 
 def register_handlers(args):
-    if 'register_fn' in args:
-        for importer in discover():
-            args['register_fn'](importer)
+    args['register_fn'](
+        DataImporter(
+            'json',
+            'RotorHazard 4.0 JSON',
+            my_import_json_function,
+        ),        
+    )
 
 def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.DATA_IMPORT_INITIALIZE, 'import_register_myplugin', register_handlers, {}, 75)
-
-def discover(*_args, **_kwargs):
-    # returns array of exporters with default arguments, fields
-    return [
-        DataImporter( ... ),
-        ...
-    ]
+    kwargs['events'].on(Evt.DATA_IMPORT_INITIALIZE, 'import_register_myplugin', register_handlers, {}, 75)
 ```
 
 #### DataImporter(name, label, import_fn, default_args=None, settings=None)

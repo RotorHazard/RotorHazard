@@ -23,7 +23,7 @@ Most plugin interfaces provide access to `RHAPI`, an object providing a wide ran
 
 ### API Version
 
-The API version can be read from the `API_VERSION` property.
+The API version can be read from the `API_VERSION_MAJOR` and `API_VERSION_MINOR` properties.
 
 ### Language translation shortcut
 

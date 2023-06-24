@@ -8,15 +8,6 @@ from Results import RaceClassRankMethod
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for method in discover():
-            args['register_fn'](method)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_heat_position', register_handlers, {}, 75)
-
 def rank_heat_pos(rhapi, race_class, _args):
     heats = rhapi.db.heats_by_class(race_class.id)
 
@@ -54,14 +45,16 @@ def rank_heat_pos(rhapi, race_class, _args):
 
     return leaderboard, meta
 
-def discover(*_args, **_kwargs):
-    # returns array of methods with default arguments
-    return [
+def register_handlers(args):
+    args['register_fn'](
         RaceClassRankMethod(
             'last_heat_position',
-            'Last Heat Position',
+            "Last Heat Position",
             rank_heat_pos,
             None,
             None
         )
-    ]
+    )
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_heat_position', register_handlers, {}, 75)

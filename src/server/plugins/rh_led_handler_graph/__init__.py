@@ -10,15 +10,6 @@ from led_event_manager import LEDEffect, Color, ColorVal
 import gevent
 from PIL import Image, ImageDraw
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for led_effect in discover():
-            args['register_fn'](led_effect)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_graph', register_handlers, {}, 75)
-
 def rssiGraph(args):
     if 'strip' in args:
         strip = args['strip']
@@ -114,28 +105,31 @@ def clearPixels(strip):
 def convertColor(color):
     return color >> 16, (color >> 8) % 256, color % 256
 
-def discover(*args, **kwargs):
-    effects = [
-    LEDEffect(
-        "graphRSSI",
-        "Graph: RSSI (all)",
-        rssiGraph, {
-            'include': [],
-            'exclude': [],
-            'recommended': []
-        }, {}
+def register_handlers(args):
+    for led_effect in [
+        LEDEffect(
+            'graphRSSI',
+            "Graph: RSSI (all)",
+            rssiGraph, {
+                'include': [],
+                'exclude': [],
+                'recommended': []
+            }, {}
         ),
-    LEDEffect(
-        "graphRSSIActive",
-        "Graph: RSSI (enabled)",
-        rssiGraph, {
-            'include': [],
-            'exclude': [],
-            'recommended': []
-        }, {
-            'active_only': True
-        }
-        )
-    ]
+        LEDEffect(
+            'graphRSSIActive',
+            "Graph: RSSI (enabled)",
+            rssiGraph, {
+                'include': [],
+                'exclude': [],
+                'recommended': []
+            }, {
+                'active_only': True
+            }
+            )
+    ]:
+        args['register_fn'](led_effect)
 
-    return effects
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_graph', register_handlers, {}, 75)
+

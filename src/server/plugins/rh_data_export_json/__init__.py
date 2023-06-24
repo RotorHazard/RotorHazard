@@ -9,15 +9,6 @@ from data_export import DataExporter
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for exporter in discover():
-            args['register_fn'](exporter)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'Export_register_JSON', register_handlers, {}, 75)
-
 def write_json(data):
     payload = json.dumps(data, indent='\t', cls=AlchemyEncoder)
 
@@ -209,13 +200,13 @@ class AlchemyEncoder(json.JSONEncoder):
             fields = {}
             for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
                 data = obj.__getattribute__(field)
-                if field != "query" \
-                    and field != "query_class":
+                if field != 'query' \
+                    and field != 'query_class':
                     try:
                         json.dumps(data) # this will fail on non-encodable values, like other classes
-                        if field == "frequencies":
+                        if field == 'frequencies':
                             fields[field] = json.loads(data)
-                        elif field == "enter_ats" or field == "exit_ats":
+                        elif field == 'enter_ats' or field == 'exit_ats':
                             fields[field] = json.loads(data)
                         else:
                             fields[field] = data
@@ -226,55 +217,59 @@ class AlchemyEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self, obj)
 
-def discover(*_args, **_kwargs):
-    # returns array of exporters with default arguments
-    return [
+def register_handlers(args):
+    for exporter in [
         DataExporter(
             'json_pilots',
-            'JSON (Friendly) / Pilots',
+            "JSON (Friendly) / Pilots",
             write_json,
             assemble_pilots
         ),
         DataExporter(
             'json_heats',
-            'JSON (Friendly) / Heats',
+            "JSON (Friendly) / Heats",
             write_json,
             assemble_heats
         ),
         DataExporter(
             'json_classes',
-            'JSON (Friendly) / Classes',
+            "JSON (Friendly) / Classes",
             write_json,
             assemble_classes
         ),
         DataExporter(
             'json_formats',
-            'JSON (Friendly) / Formats',
+            "JSON (Friendly) / Formats",
             write_json,
             assemble_formats
         ),
         DataExporter(
             'json_results',
-            'JSON (Friendly) / Results',
+            "JSON (Friendly) / Results",
             write_json,
             assemble_results
         ),
         DataExporter(
             'json_all',
-            'JSON (Friendly) / All',
+            "JSON (Friendly) / All",
             write_json,
             assemble_all
         ),
         DataExporter(
             'json_complete_all',
-            'JSON (Complete) / All',
+            "JSON (Complete) / All",
             write_json,
             assemble_complete
         ),
         DataExporter(
             'json_complete_results',
-            'JSON (Complete) / Results',
+            "JSON (Complete) / Results",
             write_json,
             assemble_results_raw
         )
-    ]
+    ]:
+        args['register_fn'](exporter)
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'Export_register_JSON', register_handlers, {}, 75)
+

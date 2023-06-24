@@ -1,12 +1,14 @@
 ''' Class to access race functions and details '''
 
-API_VERSION = 1
+API_VERSION_MAJOR = 1
+API_VERSION_MINOR = 0
 
 from RHUI import UIField
 
 class RHAPI():
     def __init__(self, race_context):
-        self.API_VERSION = API_VERSION
+        self.API_VERSION_MAJOR = API_VERSION_MAJOR
+        self.API_VERSION_MINOR = API_VERSION_MINOR
 
         self._racecontext = race_context
 

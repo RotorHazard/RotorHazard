@@ -9,15 +9,6 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def register_handlers(args):
-    if 'register_fn' in args:
-        for generator in discover():
-            args['register_fn'](generator)
-
-def initialize(**kwargs):
-    if 'events' in kwargs:
-        kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
-
 def getTotalPilots(rhapi, generate_args):
     input_class_id = generate_args.get('input_class')
 
@@ -58,13 +49,13 @@ def generateLadder(rhapi, generate_args=None):
 
     if qualifiers_per_heat < 1 or advances_per_heat < 1:
         if not ('advances_per_heat' in generate_args and generate_args['advances_per_heat'] == 0):
-            logger.warning('Unable to seed ladder: provided qualifiers and advances must be > 0')
+            logger.warning("Unable to seed ladder: provided qualifiers and advances must be > 0")
             return False
 
     total_pilots = getTotalPilots(rhapi, generate_args)
 
     if total_pilots == 0:
-        logger.warning('Unable to seed ladder: no pilots available')
+        logger.warning("Unable to seed ladder: no pilots available")
         return False
 
     letters = rhapi.__('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
@@ -121,13 +112,13 @@ def generateBalancedHeats(rhapi, generate_args=None):
         qualifiers_per_heat = available_seats
 
     if qualifiers_per_heat < 1:
-        logger.warning('Unable to seed ladder: provided qualifiers must be > 1')
+        logger.warning("Unable to seed ladder: provided qualifiers must be > 1")
         return False
 
     total_pilots = getTotalPilots(rhapi, generate_args)
 
     if total_pilots == 0:
-        logger.warning('Unable to seed heats: no pilots available')
+        logger.warning("Unable to seed heats: no pilots available")
         return False
 
     total_heats = (total_pilots // qualifiers_per_heat)
@@ -158,12 +149,11 @@ def generateBalancedHeats(rhapi, generate_args=None):
 
     return heats
 
-def discover(*_args, **_kwargs):
-    # returns array of exporters with default arguments
-    return [
+def register_handlers(args):
+    for generator in [
         HeatGenerator(
             'ladder_0a',
-            'Ranked fill',
+            "Ranked fill",
             generateLadder,
             {
                 'advances_per_heat': 0,
@@ -177,7 +167,7 @@ def discover(*_args, **_kwargs):
         ),
         HeatGenerator(
             'balanced_fill',
-            'Balanced random fill',
+            "Balanced random fill",
             generateBalancedHeats,
             None,
             [
@@ -189,7 +179,7 @@ def discover(*_args, **_kwargs):
         ),
         HeatGenerator(
             'ladder_params',
-            'Ladder',
+            "Ladder",
             generateLadder,
             None,
             [
@@ -200,5 +190,9 @@ def discover(*_args, **_kwargs):
                 UIField('suffix', "Heat title suffix", UIFieldType.TEXT, placeholder="Main", value="Main"),
             ]
         ),
+    ]:
+        args['register_fn'](generator)
 
-    ]
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
+
