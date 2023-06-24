@@ -338,8 +338,47 @@ class ServerTest(unittest.TestCase):
 
 # RHAPI
 
+    def test_api_root(self):
+        self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 0)
+        self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
+
+    def test_ui_api(self):
+        panels = server.RHAPI.ui.register_panel('test_panel', "Test Panel", 'test_page', 1)
+        self.assertEqual(panels, server.RHAPI.ui.panels)
+        self.assertGreater(len(server.RHAPI.ui.panels), 0)
+        panel = server.RHAPI.ui.panels[0]
+        panel_match = (panel.name == 'test_panel' and \
+                       panel.label == "Test Panel" and \
+                       panel.page == 'test_page' and \
+                       panel.order == 1)
+        self.assertEqual(panel_match, True)
+
+        buttons = server.RHAPI.ui.register_quickbutton('test_panel', 'test_button', "Test Button", server.RHAPI.ui.register_quickbutton)
+        button = buttons[0]
+        button_match = (button.panel == 'test_panel' and \
+                        button.name == 'test_button' and \
+                        button.label == "Test Button" and \
+                        button.fn == server.RHAPI.ui.register_quickbutton)
+        self.assertEqual(button_match, True)
+
+        server.RHAPI.ui.message_speak("Test Speak")
+        resp = self.get_response('phonetic_text')
+        self.assertEqual(resp['text'], "Test Speak")
+        self.assertEqual(resp['domain'], False)
+        self.assertEqual(resp['winner_flag'], False)
+
+        server.RHAPI.ui.message_notify("Test Interrupt")
+        resp = self.get_response('priority_message')
+        self.assertEqual(resp['message'], "Test Interrupt")
+        self.assertEqual(resp['interrupt'], False)
+
+        server.RHAPI.ui.message_alert("Test Alert")
+        resp = self.get_response('priority_message')
+        self.assertEqual(resp['message'], "Test Alert")
+        self.assertEqual(resp['interrupt'], True)
+
     def test_database_api(self):
-        print("\n--- Testing RHAPI v{}.{} ---".format(server.RHAPI.API_VERSION_MAJOR, server.RHAPI.API_VERSION_MINOR))
 
         self.client.emit('load_data', {'load_types': ['pilot_data']})
         ld_pilots = self.get_response('pilot_data')['pilots']
