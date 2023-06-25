@@ -49,7 +49,7 @@ def assemble_pilots(rhapi):
 def assemble_heats(rhapi):
     payload = [[rhapi.__('Name'), rhapi.__('Class'), rhapi.__('Pilots')]]
     for heat in rhapi.db.heats:
-        displayname = heat.display_name()
+        displayname = heat.display_name
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
             race_class_name = rhapi.db.raceclass_by_id(heat.class_id).name

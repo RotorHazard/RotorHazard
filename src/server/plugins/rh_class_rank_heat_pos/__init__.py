@@ -25,7 +25,7 @@ def rank_heat_pos(rhapi, race_class, _args):
                     'pilot_id': line['pilot_id'],
                     'callsign': line['callsign'],
                     'team_name': line['team_name'],
-                    'heat': heat.display_name(),
+                    'heat': heat.display_name,
                     'heat_rank': line['position'],
                     'position': rank_pos
                 })

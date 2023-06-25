@@ -1191,7 +1191,7 @@ def on_alter_heat(data):
     RaceContext.rhui.emit_heat_data(noself=True)
     if ('note' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to heat: {0}').format(heat.display_name())
+        message = __('Alterations made to heat: {0}').format(heat.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
 @SOCKET_IO.on('delete_heat')
@@ -1234,7 +1234,7 @@ def on_alter_race_class(data):
         'win_condition' in data or \
         'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to race class: {0}').format(race_class.display_name())
+        message = __('Alterations made to race class: {0}').format(race_class.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_class_data(noself=True)
@@ -1399,7 +1399,7 @@ def on_alter_race(data):
 
     _race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    message = __('A race has been reassigned to {0}').format(new_heat.display_name())
+    message = __('A race has been reassigned to {0}').format(new_heat.display_name)
     RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_race_list(nobroadcast=True)
@@ -2008,7 +2008,7 @@ def on_stage_race():
         max_round = RaceContext.rhdata.get_max_round(RaceContext.race.current_heat)
         if max_round is None:
             max_round = 0
-        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name(), (max_round+1),
+        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, (max_round+1),
                                                                    ", ".join(pilot_names_list)))
     else:
         heatNodes = []
@@ -2665,7 +2665,7 @@ def calc_heat(heat_id, silent=False):
         calc_result = RaceContext.rhdata.calc_heat_pilots(heat)
 
         if calc_result['calc_success'] is False:
-            logger.warning('{} plan cannot be fulfilled.'.format(heat.display_name()))
+            logger.warning('{} plan cannot be fulfilled.'.format(heat.display_name))
 
         if calc_result['calc_success'] is None:
             # Heat is confirmed or has saved races
@@ -2732,7 +2732,7 @@ def emit_heat_plan_result(new_heat_id, calc_result):
 
     emit_payload = {
         'heat': new_heat_id,
-        'displayname': heat.display_name(),
+        'displayname': heat.display_name,
         'slots': heatNodes,
         'calc_result': calc_result
     }

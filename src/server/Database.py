@@ -33,6 +33,7 @@ class Pilot(DB.Model):
     used_frequencies = DB.Column(DB.String, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
+    @property
     def display_callsign(self):
         if self.callsign:
             return self.callsign
@@ -40,6 +41,7 @@ class Pilot(DB.Model):
             return self.name
         return "{} {}".format(__('Pilot'), id)
 
+    @property
     def display_name(self):
         if self.name:
             return self.name
@@ -47,6 +49,7 @@ class Pilot(DB.Model):
             return self.callsign
         return "{} {}".format(__('Pilot'), id)
 
+    @property
     def spoken_callsign(self):
         if self.phonetic:
             return self.phonetic
@@ -95,6 +98,7 @@ class Heat(DB.Model):
     def cacheStatus(self, value):
         self._cache_status = value
 
+    @property
     def display_name(self):
         if self.note:
             return self.note
@@ -175,6 +179,7 @@ class RaceClass(DB.Model):
     def heatAdvanceType(self, value):
         self.heat_advance_type = value
 
+    @property
     def display_name(self):
         if self.name:
             return self.name

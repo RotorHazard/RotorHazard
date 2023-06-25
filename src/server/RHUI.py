@@ -485,7 +485,7 @@ class RHUI():
                     }
                 heats[heat.id] = {
                     'heat_id': heat.id,
-                    'displayname': heat.display_name(),
+                    'displayname': heat.display_name,
                     'rounds': rounds,
                 }
 
@@ -528,13 +528,13 @@ class RHUI():
         if self._racecontext.race.current_heat is RHUtils.HEAT_ID_NONE:
             emit_payload['current']['displayname'] = __("Practice")
         else:
-            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name()
+            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name
 
         # current
         if self._racecontext.race.current_heat is RHUtils.HEAT_ID_NONE:
             emit_payload['current']['displayname'] = __("Practice")
         else:
-            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name()
+            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name
 
         emit_payload['current']['heat'] = self._racecontext.race.current_heat
         emit_payload['current']['status_msg'] = self._racecontext.race.status_message
@@ -554,7 +554,7 @@ class RHUI():
                 if (self._racecontext.last_race):
                     heat = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat)
                     if heat:
-                        emit_payload['last_race']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat).display_name()
+                        emit_payload['last_race']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat).display_name
 
             emit_payload['last_race']['heat'] = self._racecontext.last_race.current_heat
             emit_payload['last_race']['status_msg'] = self._racecontext.last_race.status_message
@@ -577,7 +577,7 @@ class RHUI():
             current_heat = {}
             current_heat['id'] = heat.id
             current_heat['note'] = heat.note
-            current_heat['displayname'] = heat.display_name()
+            current_heat['displayname'] = heat.display_name
             current_heat['class_id'] = heat.class_id
             current_heat['order'] = heat.order
             current_heat['status'] = heat.status
@@ -629,7 +629,7 @@ class RHUI():
             current_class = {}
             current_class['id'] = race_class.id
             current_class['name'] = race_class.name
-            current_class['displayname'] = race_class.display_name()
+            current_class['displayname'] = race_class.display_name
             current_class['description'] = race_class.description
             current_class['format'] = race_class.format_id
             current_class['win_condition'] = race_class.win_condition

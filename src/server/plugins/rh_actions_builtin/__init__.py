@@ -15,7 +15,7 @@ class ActionsBuiltin():
         else:
             heat = self._rhapi.db.heat_by_id(self._rhapi.race.heat)
 
-        text = text.replace('%HEAT%', heat.display_name())
+        text = text.replace('%HEAT%', heat.display_name)
 
         if 'results' in args:
             leaderboard = args['results'][args['results']['meta']['primary_leaderboard']]
@@ -60,7 +60,7 @@ class ActionsBuiltin():
             # %PILOT%
             if 'node_index' in args:
                 pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.spoken_callsign())
+                text = text.replace('%PILOT%', pilot.spoken_callsign)
 
             self._rhapi.ui.message_speak(text)
 
@@ -71,7 +71,7 @@ class ActionsBuiltin():
             # %PILOT%
             if 'node_index' in args:
                 pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.display_callsign())
+                text = text.replace('%PILOT%', pilot.display_callsign)
 
             self._rhapi.ui.message_notify(text)
 
@@ -82,7 +82,7 @@ class ActionsBuiltin():
             # %PILOT%
             if 'node_index' in args:
                 pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.display_callsign())
+                text = text.replace('%PILOT%', pilot.display_callsign)
 
             self._rhapi.ui.message_alert(text)
 
