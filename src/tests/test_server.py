@@ -4,6 +4,7 @@ import sys
 import unittest
 import gevent
 from datetime import datetime
+from flask.blueprints import Blueprint
 
 sys.path.append('../server')
 sys.path.append('../server/util')
@@ -361,6 +362,15 @@ class ServerTest(unittest.TestCase):
                         button.label == "Test Button" and \
                         button.fn == server.RHAPI.ui.register_quickbutton)
         self.assertEqual(button_match, True)
+
+        bp = Blueprint('test', __name__)
+        @bp.route('/bptest')
+        def bp_test_page():
+            return "test page content"
+        server.RHAPI.ui.blueprint_add(bp)
+        with server.APP.test_client() as tc:
+            resp = tc.get('/bptest')
+        self.assertEqual(resp.status_code, 200)
 
         server.RHAPI.ui.message_speak("Test Speak")
         resp = self.get_response('phonetic_text')
