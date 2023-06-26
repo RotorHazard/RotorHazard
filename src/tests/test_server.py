@@ -360,7 +360,7 @@ class ServerTest(unittest.TestCase):
         button_match = (button.panel == 'test_panel' and \
                         button.name == 'test_button' and \
                         button.label == "Test Button" and \
-                        button.fn == server.RHAPI.ui.register_quickbutton)
+                        button.fn == server.RHAPI.ui.register_quickbutton)  #pylint: disable=comparison-with-callable
         self.assertEqual(button_match, True)
 
         bp = Blueprint('test', __name__)
