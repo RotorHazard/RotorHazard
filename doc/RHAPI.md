@@ -137,60 +137,144 @@ Register an attribute to be displayed in the UI or otherwise made accessible to 
 Read and modify database values.
 These methods are accessed via `RHAPI.db` 
 
-#### clear_all()
+### Global
+Properties and methods spanning the entire stored event.
 
+#### event_results
+_Read only_
+Returns cumulative totals for all saved races.
+
+#### clear_all()
 Resets database to default state, clearing all pilots, heats, race classes, races, race formats, frequency sets, and options.
 
 ### Pilots
+A pilot is an individual participant. In order to participate in races, pilots can be assigned to multiple heats.
 
 #### pilots
 _Read only_
+Returns all pilot records as a list.
+
 #### pilot_by_id(pilot_id)
-pilot_id
+Returns a single pilot record. Does not include custom attributes.
+- `pilot_id` (int): ID of pilot record to retrieve
+
 #### pilot_attributes(pilot_or_id)
-pilot_or_id
+Returns all custom attributes assigned to pilot.
+- `pilot_or_id` (pilot|int): Either the pilot object or the ID of pilot
+
 #### pilot_attribute_value(pilot_or_id, name, default_value=None)
-pilot_or_id, name, default_value=None
+Returns a single custom attribute assign to pilot.
+- `pilot_or_id` (pilot|int): Either the pilot object or the ID of pilot
+- `name` (string): attribute to retrieve
+- `default_value` _(optional)_: value to return if attribute does not exist
+
 #### pilot_add(name=None, callsign=None, phonetic=None, team=None, color=None)
-name=None, callsign=None, phonetic=None, team=None, color=None
+Add a new pilot to the database.
+- `name` _(optional)_ (string): Name for new pilot
+- `callsign` _(optional)_ (string): Callsign for new pilot
+- `phonetic` _(optional)_ (string): Phonetic spelling for new pilot callsign
+- `team` _(optional)_ (string): Team for new pilot
+- `color` _(optional)_ (string): Color for new pilot
+
 #### pilot_alter(pilot_id, name=None, callsign=None, phonetic=None, team=None, 
-pilot_id, name=None, callsign=None, phonetic=None, team=None,color=None, attributes=None)
+Alter pilot data.
+- `pilot_id` (int): ID of pilot to alter
+- `name` _(optional)_ (string): New name for pilot
+- `callsign` _(optional)_ (string): New callsign for pilot
+- `phonetic` _(optional)_ (string): New phonetic spelling of callsign for pilot
+- `team` _(optional)_ (string): New team for pilot
+- `color` _(optional)_ (string): New color for pilot
+- `attributes` _(optional)_ (list[dict]): Attributes to alter, attribute values assigned to respective keys
+
 #### pilot_delete(pilot_or_id)
-pilot_or_id
+Delete pilot record.
+- `pilot_or_id` (int): ID of pilot to delete 
+
 #### pilots_clear
+Delete all pilot records.
 
 ### Heats
+Heats are collections of pilots upon which races are run. A heat may first be represented by a heat plan which defines methods for assigning pilots. The plan must be seeded into pilot assignments in order for a race to be run.
 
 #### heats
 _Read only_
+Returns all heat records as a list.
+
 #### heat_by_id(heat_id)
-heat_id
+Returns a single heat record.
+- `heat_id` (int): ID of heat record to retrieve
+
 #### heats_by_class(raceclass_id)
-raceclass_id
+Returns all heat records associated with a specific class.
+- `raceclass_id` (int): ID of raceclass used to retrieve heats
+
 #### heat_results(heat_or_id)
-heat_or_id
+Returns the calculated summary result set for all races associated with this heat
+- `heat_or_id` (int|heat): Either the heat object or the ID of heat
+
 #### heat_max_round(heat_id)
-heat_id
+Returns the highest-numbered race round recorded for selected heat
+- `heat_id` (int): ID of heat
+
 #### heat_add(name=None, raceclass=None, auto_frequency=None)
-name=None, raceclass=None, auto_frequency=None
+Add a new heat to the database.
+- `name` _(optional)_ (string): Name for new heat
+- `raceclass` _(optional)_ (int): Raceclass ID for new heat
+- `auto_frequency` _(optional)_ (boolean): Whether to enable auto-frequency
+
 #### heat_duplicate(source_heat_or_id, dest_class=None)
-source_heat_or_id, dest_class=None
+Duplicate a heat record.
+- `source_heat_or_id` (int|heat): Either the heat object or the ID of heat to copy from
+- `dest_class` _(optional)_ (int): Raceclass ID to copy heat into
+
 #### heat_alter(heat_id, name=None, raceclass=None, auto_frequency=None, status=None)
-heat_id, name=None, raceclass=None, auto_frequency=None, status=None
+Alter heat data.
+- `heat_id` (int): ID of heat to alter
+- `name` _(optional)_ (string): New name for heat
+- `raceclass` _(optional)_ (int): New raceclass ID for heat
+- `auto_frequency` _(optional)_ (boolean): New auto-frequency setting for heat
+- `status` _(optional)_ (HeatStatus): New status for heat
+
 #### heat_delete(heat_or_id)
-heat_or_id
+- `heat_or_id` (int|heat): ID of heat to delete
+
 #### heats_clear
+Delete all heat records.
 
 ### Heat &rarr; Slots
+Slots are data structures containing a pilot assignment or assignment method. Heats contain one or more Slots corresponding to pilots who may participate in the Heat. When a heat is calculated, the `method` is used to reserve a slot for a given pilot. Afterward, `pilot` contains the ID for which the space is reserved. A Slot assignment is only a reservation, it does not mean the pilot has raced regardless of heat `status`.
 
 #### slots
 _Read only_
+Returns all slot records as a list.
+
 #### slots_by_heat(heat_id)
-heat_id
-#### slot_alter(slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_
-slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclassid=None, seed_rank=None)
-#### slot_alter_fast(slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_
-slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclassid=None, seed_rank=None)
+Returns slot records associated with a specific heat as a list.
+- `heat_id` (int): ID of heat used to retrieve slots
+
+#### slot_alter(slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None)
+Alter slot data.
+- `slot_id` (int): ID of slot to alter
+- `pilot` _(optional)_ (int): New ID of pilot assigned to slot
+- `method` _(optional)_ (ProgramMethod): New seeding method for slot
+- `seed_heat_id` _(optional)_ (): New heat ID to use for seeding
+- `seed_raceclass_id` _(optional)_ (int): New raceclass ID to use for seeding
+- `seed_rank` _(optional)_ (int): New rank value to use for seeding
+
+`ProgramMethod` is one of `ProgramMethod.NONE`, `ProgramMethod.ASSIGN`, `ProgramMethod.HEAT_RESULT` or `ProgramMethod.CLASS_RESULT`. With `NONE`, most other fields are ignored. Only use `seed_heat_id` with `HEAT_RESULT`, and `seed_raceclass_id` with `CLASS_RESULT`, otherwise the assignment is ignored.
+
+Import `ProgramMethod` with:
+`from Database import ProgramMethod`
+
+#### slot_alter_fast(slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None
+Like `slot_alter`, but intended to be used when many alterations need done at once. Does not check for some types of invalid input. Does not trigger events, clear results, or update cached data. These operations must be done manually if required.
+- `slot_id` (int): ID of slot to alter
+- `pilot` _(optional)_ (int): New ID of pilot assigned to slot
+- `method` _(optional)_ (ProgramMethod): New seeding method for slot
+- `seed_heat_id` _(optional)_ (): New heat ID to use for seeding
+- `seed_raceclass_id` _(optional)_ (int): New raceclass ID to use for seeding
+- `seed_rank` _(optional)_ (int): New rank value to use for seeding
+
 
 ### Race Classes
 
@@ -285,10 +369,6 @@ name, default=False, as_int=False
 #### option_set(name, value)
 name, value
 #### options_clear
-
-### Cumulative Totals
-
-#### event_results
 
 
 
