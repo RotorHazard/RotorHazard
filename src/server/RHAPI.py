@@ -46,8 +46,8 @@ class UserInterfaceAPI():
         return self._racecontext.rhui.register_ui_panel(name, label, page, order)
 
     # Quick button
-    def register_quickbutton(self, panel, name, label, function):
-        return self._racecontext.rhui.register_quickbutton(panel, name, label, function)
+    def register_quickbutton(self, panel, name, label, function, args=None):
+        return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args)
 
     # Blueprint
     def blueprint_add(self, blueprint):

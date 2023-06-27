@@ -72,6 +72,7 @@ class QuickButton():
     name: str
     label: str
     fn: callable
+    args: dict
 
 # Language placeholder (Overwritten after module init)
 def __(*args):
@@ -122,8 +123,8 @@ class RHUI():
         return self._general_settings
 
     # button
-    def register_quickbutton(self, panel, name, label, fn):
-        self._quickbuttons.append(QuickButton(panel, name, label, fn))
+    def register_quickbutton(self, panel, name, label, fn, args=None):
+        self._quickbuttons.append(QuickButton(panel, name, label, fn, args))
         return self._quickbuttons
 
     def get_panel_settings(self, name):
@@ -146,7 +147,7 @@ class RHUI():
         if 'namespace' in args and args['namespace'] == 'quickbutton':
             for btn in self._quickbuttons:
                 if btn.name == args['id']:
-                    btn.fn()
+                    btn.fn(btn.args)
                     return
 
     # Blueprints
