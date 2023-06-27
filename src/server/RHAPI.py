@@ -550,15 +550,15 @@ class IOAPI():
     def exporters(self):
         return self._racecontext.export_manager.exporters
 
-    def run_export(self):
-        return self._racecontext.export_manager.export()
+    def run_export(self, exporter_id):
+        return self._racecontext.export_manager.export(exporter_id)
 
     @property
     def importers(self):
         return self._racecontext.import_manager.importers
 
-    def run_import(self):
-        return self._racecontext.import_manager.run_import()
+    def run_import(self, importer_id, data, import_args=None):
+        return self._racecontext.import_manager.run_import(importer_id, data, import_args)
 
 
 #
