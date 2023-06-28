@@ -841,7 +841,6 @@ class RHData():
     def clear_pilots(self):
         self._Database.DB.session.query(self._Database.Pilot).delete()
         self.commit()
-        return True
 
     def reset_pilots(self):
         self.clear_pilots()
@@ -1110,7 +1109,7 @@ class RHData():
 
             if has_race or (self._racecontext.race.current_heat == heat.id and self._racecontext.race.race_status != RaceStatus.READY):
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
-                return None
+                return False
             else:
                 self._Database.DB.session.delete(heat)
                 for heatnode in heatnodes:
@@ -1142,10 +1141,10 @@ class RHData():
                     except Exception as ex:
                         logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
-                return heat.id
+                return True
         else:
             logger.info('Refusing to delete only heat')
-            return None
+            return False
 
     def get_first_safe_heat_id(self):
         heats = self.get_heats()
@@ -1546,7 +1545,6 @@ class RHData():
         self._Database.DB.session.query(self._Database.Heat).delete()
         self._Database.DB.session.query(self._Database.HeatNode).delete()
         self.commit()
-        return True
 
     def reset_heats(self, nofill=False):
         self.clear_heats()
@@ -1630,8 +1628,6 @@ class RHData():
                 slot.seed_rank = slot_data['seed_rank']
 
         self.commit()
-
-        return True
 
     # Race Classes
     def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):

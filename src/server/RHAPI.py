@@ -250,7 +250,7 @@ class DatabaseAPI():
 
             data['heat'] = heat_id
             data['slot_id'] = slot_id
-            self._racecontext.rhdata.alter_heat(data)
+            return self._racecontext.rhdata.alter_heat(data)
 
     def slot_alter_fast(self, slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
         # !! Unsafe for general use. Intentionally light type checking.    !!
