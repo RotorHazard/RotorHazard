@@ -3012,6 +3012,11 @@ def save_callouts(data):
 def reload_callouts():
     RaceContext.rhui.emit_callouts()
 
+@SOCKET_IO.on('play_callout_text')
+@catchLogExceptionsWrapper
+def play_callout_text(data):
+    EventActionsObj.runEventAction({'event': 'playCalloutText', 'effect': 'speak', 'text': data['callout']}, {})
+
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
 def imdtabler_update_freqs(data):

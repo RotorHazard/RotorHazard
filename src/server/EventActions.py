@@ -42,8 +42,12 @@ class EventActions:
     def doActions(self, args):
         for action in self.eventActionsList:
             if action['event'] == args['_eventName']:
-                self.effects[action['effect']].runAction(action, args)
-                self.logger.debug("Calling effect '{}' with {}".format(action, args))
+                self.runEventAction(action, args)
+
+    def runEventAction(self, action, args):
+        self.logger.debug("Calling effect '{}' with {}".format(action, args))
+        args['results'] = self._racecontext.race.get_results()
+        self.effects[action['effect']].runAction(action, args)
 
 class ActionEffect():
     def __init__(self, name, label, effect_fn, fields:List[UIField]):
