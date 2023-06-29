@@ -321,25 +321,27 @@ All slot records. Returns `list[HeatNode]`.
 Slot records associated with a specific heat. Returns `list[HeatNode]`.
 - `heat_id` (int): ID of heat used to retrieve slots
 
-#### db.slot_alter(slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None)
+#### db.slot_alter(slot_id, method=None, pilot=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None)
 Alter slot data. Returns tuple of associated `Heat` and affected races as `list[SavedRace]`.
 - `slot_id` (int): ID of slot to alter
-- `pilot` _(optional)_ (int): New ID of pilot assigned to slot
 - `method` _(optional)_ (ProgramMethod): New seeding method for slot
-- `seed_heat_id` _(optional)_ (): New heat ID to use for seeding
-- `seed_raceclass_id` _(optional)_ (int): New raceclass ID to use for seeding
-- `seed_rank` _(optional)_ (int): New rank value to use for seeding
-
-#### db.slot_alter_fast(slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None
-Like `slot_alter`, but intended to be used when many alterations need done at once. Does not check for some types of invalid input. Does not trigger events, clear results, or update cached data. These operations must be done manually if required. No return value.
-- `slot_id` (int): ID of slot to alter
 - `pilot` _(optional)_ (int): New ID of pilot assigned to slot
-- `method` _(optional)_ (ProgramMethod): New seeding method for slot
 - `seed_heat_id` _(optional)_ (): New heat ID to use for seeding
 - `seed_raceclass_id` _(optional)_ (int): New raceclass ID to use for seeding
 - `seed_rank` _(optional)_ (int): New rank value to use for seeding
 
 With `method` set to `ProgramMethod.NONE`, most other fields are ignored. Only use `seed_heat_id` with `ProgramMethod.HEAT_RESULT`, and `seed_raceclass_id` with `ProgramMethod.CLASS_RESULT`, otherwise the assignment is ignored.
+
+#### db.slots_alter_fast(slot_list)
+Make many alterations to slots in a single database transaction as quickly as possible. Use with caution. May accept invalid input. Does not trigger events, clear associated results, or update cached data. These operations must be done manually if required. No return value.
+- `slot_list`: a `list` of `dicts` in the following format:
+	- `slot_id` (int): ID of slot to alter
+	- `method` _(optional)_ (ProgramMethod): New seeding method for slot
+	- `pilot` _(optional)_ (int): New ID of pilot assigned to slot
+	- `seed_heat_id` _(optional)_ (): New heat ID to use for seeding
+	- `seed_raceclass_id` _(optional)_ (int): New raceclass ID to use for seeding
+	- `seed_rank` _(optional)_ (int): New rank value to use for seeding
+
 
 
 ### Race Classes
@@ -415,6 +417,7 @@ Delete race class. Fails if race class has saved races associated. Returns `bool
 #### db.raceclasses_clear()
 Delete all race classes. No return value.
 
+
 ### Race Formats
 
 The sentinel value `RHUtils.FORMAT_ID_NONE` should be used when no race format is defined.
@@ -422,16 +425,17 @@ The sentinel value `RHUtils.FORMAT_ID_NONE` should be used when no race format i
 #### db.raceformats
 _Read only_
 #### db.raceformat_by_id(format_id)
-format_id
-#### db.raceformat_add(name=None, unlimited_time=None, race_time_sec=None, lap_grace_
-name=None, unlimited_time=None, race_time_sec=None, lap_gracesec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None)
+- format_id
+#### db.raceformat_add(name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None)
+- name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None
 #### db.raceformat_duplicate(source_format_or_id)
-source_format_or_id
-#### db.raceformat_alter(raceformat_id, name=None, unlimited_time=None, race_time_sec=None, 
-raceformat_id, name=None, unlimited_time=None, race_time_sec=None,lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None)
+- source_format_or_id
+#### db.raceformat_alter(raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None)
+- raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None
 #### db.raceformat_delete(raceformat_id)
-raceformat_id
+- raceformat_id
 #### db.raceformats_clear()
+
 
 ### Frequency Sets
 
@@ -440,84 +444,102 @@ The sentinel value `RHUtils.FREQUENCY_ID_NONE` should be used when no frequency 
 #### db.frequencysets
 _Read only_
 #### db.frequencyset_by_id(set_id)
-set_id
-#### db.frequencyset_add(name=None, description=None, frequencies=None, enter_ats=None, exit
-name=None, description=None, frequencies=None, enter_ats=None, exi_ats=None)
+- set_id
+#### db.frequencyset_add(name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None)
+- name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None
 #### db.frequencyset_duplicate(source_set_or_id)
-source_set_or_id
-#### db.frequencyset_alter(set_id, name=None, description=None, frequencies=None, enter_
-set_id, name=None, description=None, frequencies=None, enterats=None, exit_ats=None)
+- source_set_or_id
+#### db.frequencyset_alter(set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None)
+- set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None
 #### db.frequencyset_delete(set_or_id)
-set_or_id
+- set_or_id
 #### db.frequencysets_clear()
+
 
 ### Saved Races
 
 #### db.races
 _Read only_
 #### db.race_by_id(race_id)
-race_id
+- race_id
 #### db.race_by_heat_round(heat_id, round_number)
-heat_id, round_number
+- heat_id, round_number
 #### db.races_by_heat(heat_id)
-heat_id
+- heat_id
 #### db.races_by_raceclass(raceclass_id)
-raceclass_id
+- raceclass_id
 #### db.race_results(race_or_id)
-race_or_id
+- race_or_id
 #### db.races_clear()
+
 
 ### Saved Race &rarr; Pilot Runs
 
 #### db.pilotruns
 _Read only_
 #### db.pilotrun_by_id(run_id)
-run_id
+- run_id
 #### db.pilotrun_by_race(race_id)
-race_id
+- race_id
+
 
 ### Saved Race &rarr; Pilot Run &rarr; Laps
 
 #### db.laps
 _Read only_
 #### db.laps_by_pilotrun(run_id)
-run_id
+- run_id
+
 
 ### Options
 
 #### db.options
 _Read only_
 #### db.option(name, default=False, as_int=False)
-name, default=False, as_int=False
+- name, default=False, as_int=False
 #### db.option_set(name, value)
-name, value
+- name, value
 #### db.options_clear()
 
 
 
 ## Data input/output
 
-View and import/export data from the database via registered `DataImporters` and `DataExporters`.
+View and import/export data from the database via registered `DataImporter` and `DataExporter`. See [Data Exporters](Plugins.md#data-exporters) and [Data Importers](Plugins.md#data-importers).
 These methods are accessed via `RHAPI.io` 
 
 #### io.exporters
 _Read only_
-#### io.run_export()
+All registered exporters. Returns `list[DataExporter]`.
+
+#### io.run_export(exporter_id)
+Run selected exporter. Returns output of exporter or `False` if error.
+- `exporter_id` (string): identifier of exporter to run
+
 #### io.importers
 _Read only_
-#### io.run_import(importer_id, data, import_args=None)
+All registered importers. Returns `list[DataImporter]`.
 
+#### io.run_import(importer_id, data, import_args=None)
+Run selected importer on supplied `data`. Returns output of importer or `False` if error.
+- `importer_id` (string): identifier of importer to run
+- `data` (any): data to import
+- `import_args` _(optional)_ (): arguments passed to the importer, overrides defaults
 
 
 ## Heat Generation
 
-View and Generate heats via registered `HeatGenerators`.
+View and Generate heats via registered `HeatGenerator`. See [Heat Generators](Plugins.md#heat-generators).
 These methods are accessed via `RHAPI.heatgen` 
 
 #### heatgen.generators
 _Read only_
-#### heatgen.run_export(generator_id, generate_args)
-generator_id, generate_args
+All registered generators. Returns `list[HeatGenerator]`.
+
+#### heatgen.generate(generator_id, generate_args)
+Run selected generator, creating heats and race classes as needed. Returns output of generator or `False` if error.
+- `generator_id` (string): identifier of generator to run
+- `generate_args` (dict): arguments passed to the generator, overrides defaults
 
 
 
