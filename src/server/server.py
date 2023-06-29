@@ -1578,7 +1578,7 @@ def on_export_database_file(data):
     '''Run the selected Exporter'''
     exporter = data['exporter']
 
-    if RaceContext.export_manager.hasExporter(exporter):
+    if exporter in RaceContext.export_manager.exporters:
         # do export
         logger.info('Exporting data via {0}'.format(exporter))
         export_result = RaceContext.export_manager.export(exporter)
@@ -1592,12 +1592,10 @@ def on_export_database_file(data):
                 }
                 emit('exported_data', emit_payload)
 
-                Events.trigger(Evt.DATABASE_EXPORT, emit_payload)
             except Exception:
                 logger.exception("Error downloading export file")
                 RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
         else:
-            logger.warning('Failed exporting data: exporter returned no data')
             RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
         return
@@ -1611,7 +1609,7 @@ def on_import_file(data):
     '''Run the selected Importer'''
     importer = data['importer']
 
-    if RaceContext.import_manager.hasImporter(importer):
+    if importer in RaceContext.import_manager.importers:
         if 'source_data' in data and data['source_data']:
             import_args = {}
             if 'params' in data:
@@ -1624,7 +1622,6 @@ def on_import_file(data):
 
             if import_result != False:
                 clean_results_cache()
-                Events.trigger(Evt.DATABASE_IMPORT)
                 SOCKET_IO.emit('database_restore_done')
             else:
                 RaceContext.rhui.emit_priority_message(__('Data import failed. (See log)'), True, nobroadcast=True)
@@ -1657,8 +1654,8 @@ def on_generate_heats_v2(data):
 
     generator = data['generator']
 
-    if RaceContext.heat_generate_manager.hasGenerator(generator):
-        generatorObj = RaceContext.heat_generate_manager.getGenerator(generator)
+    if generator in RaceContext.heat_generate_manager.generators:
+        generatorObj = RaceContext.heat_generate_manager.generators[generator]
 
         # do generation
         logger.info('Generating heats via {0}'.format(generatorObj.label))
@@ -1668,9 +1665,7 @@ def on_generate_heats_v2(data):
             RaceContext.rhui.emit_priority_message(__('Generated heats via {0}'.format(generatorObj.label)), False, nobroadcast=True)
             RaceContext.rhui.emit_heat_data()
             RaceContext.rhui.emit_class_data()
-            Events.trigger(Evt.HEAT_GENERATE)
         else:
-            logger.warning('Failed generating heats: generator returned no data')
             RaceContext.rhui.emit_priority_message(__('Heat generation failed. (See log)'), False, nobroadcast=True)
 
         return
@@ -1756,9 +1751,7 @@ def on_download_logs(data):
                 'file_name': os.path.basename(zip_path_name),
                 'file_data' : file_content
             }
-            Events.trigger(Evt.DATABASE_BACKUP, {
-                'file_name': emit_payload['file_name'],
-                })
+
             SOCKET_IO.emit(data['emit_fn_name'], emit_payload)
         except Exception:
             logger.exception("Error downloading logs-zip file")

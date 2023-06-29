@@ -31,30 +31,25 @@ class HeatPlan():
 
 
 class HeatGeneratorManager():
-    def __init__(self, RaceContext, RHAPI, Events):
+    def __init__(self, racecontext, rhapi, events):
         self._generators = {}
 
-        self._racecontext = RaceContext
-        self._rhapi = RHAPI
+        self._racecontext = racecontext
+        self._rhapi = rhapi
+        self._events = events
 
-        Events.trigger(Evt.HEAT_GENERATOR_INITIALIZE, {
-            'register_fn': self.registerGenerator
+        events.trigger(Evt.HEAT_GENERATOR_INITIALIZE, {
+            'register_fn': self.register_generator
             })
 
-    def registerGenerator(self, generator):
+    def register_generator(self, generator):
         if isinstance(generator, HeatGenerator):
             if generator.name in self._generators:
                 logger.warning('Overwriting data generator "{0}"'.format(generator.name))
 
             self._generators[generator.name] = generator
         else:
-            logger.warning('Invalid generator')
-
-    def hasGenerator(self, generator_id):
-        return generator_id in self._generators
-
-    def getGenerator(self, generator_id):
-        return self._generators[generator_id]
+            logger.warning("Invalid generator")
 
     @property
     def generators(self):
@@ -63,10 +58,15 @@ class HeatGeneratorManager():
     def generate(self, generator_id, generate_args=None):
         generated_heats = self._generators[generator_id].generate(self._rhapi, generate_args)
         if generated_heats:
-            self.apply(generator_id, generated_heats, generate_args)
-            return True
+            result = self.apply(generator_id, generated_heats, generate_args)
+
+            if result:
+                self._events.trigger(Evt.HEAT_GENERATE)
+            else:
+                logger.warning("Failed generating heats: generator returned no data")
+            return result
         else:
-            logger.error('Generation stage failed or refused to produce output: see log')
+            logger.error("Generation stage failed or refused to produce output: see log")
             return False
 
     def apply(self, generator_id, generated_heats, generate_args):
@@ -85,7 +85,7 @@ class HeatGeneratorManager():
         for heat_plan in generated_heats:
             new_heat = self._racecontext.rhdata.add_heat(init={
                 'class_id': output_class,
-                'note': heat_plan.name,
+                'name': heat_plan.name,
                 'auto_frequency': True,
                 'defaultMethod': ProgramMethod.NONE
                 })
@@ -96,7 +96,7 @@ class HeatGeneratorManager():
             heat_slots = self._racecontext.rhdata.get_heatNodes_by_heat(heat_id_mapping[h_idx])
 
             if len(heat_slots) < len(heat_plan.slots):
-                logger.warning('Not enough actual slots for requested heat generation')
+                logger.warning("Not enough actual slots for requested heat generation")
 
             for s_idx, heat_slot in enumerate(heat_slots):
                 if s_idx < len(heat_plan.slots):
@@ -123,14 +123,14 @@ class HeatGeneratorManager():
                                 data['method'] = ProgramMethod.ASSIGN
                                 data['pilot'] = pilot_pool.pop()
                             else:
-                                logger.info('Unable to seed pilot: no available pilots left to seed')
+                                logger.info("Unable to seed pilot: no available pilots left to seed")
                                 data['method'] = ProgramMethod.NONE
 
                     elif seed_slot.method == SeedMethod.HEAT_INDEX:
                         data['method'] = ProgramMethod.HEAT_RESULT
                         data['seed_heat_id'] = heat_id_mapping[seed_slot.seed_index]
                     else:
-                        logger.error('Not a supported seed method: {}'.format(seed_slot.method))
+                        logger.error("Not a supported seed method: {}".format(seed_slot.method))
                         return False
 
                 heat_alterations.append(data)
@@ -139,6 +139,8 @@ class HeatGeneratorManager():
 
         if filled_pool and len(pilot_pool):
             logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
+
+        return True
 
 class HeatGenerator():
     def __init__(self, name, label, generator_fn, default_args=None, settings:List[UIField]=None):
@@ -150,6 +152,5 @@ class HeatGenerator():
 
     def generate(self, rhapi, generate_args=None):
         generate_args = {**(self.default_args if self.default_args else {}), **(generate_args if generate_args else {})}
-
         return self._generator(rhapi, generate_args)
 
