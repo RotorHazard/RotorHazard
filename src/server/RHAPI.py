@@ -116,6 +116,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
 
     def pilot_add(self, name=None, callsign=None, phonetic=None, team=None, color=None):
+        #TODO: attribute support
         data = {}
 
         for name, value in [
@@ -230,7 +231,7 @@ class DatabaseAPI():
     def slots_by_heat(self, heat_id):
         return self._racecontext.rhdata.get_heatNodes_by_heat(heat_id)
 
-    def slot_alter(self, slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
+    def slot_alter(self, slot_id, method=None, pilot=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
         data = {}
 
         for name, value in [
@@ -252,25 +253,9 @@ class DatabaseAPI():
             data['slot_id'] = slot_id
             return self._racecontext.rhdata.alter_heat(data)
 
-    def slot_alter_fast(self, slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
-        # !! Unsafe for general use. Intentionally light type checking.    !!
-        # !! Does not trigger events, clear results, or update cached data !!
-
-        data = {}
-
-        for name, value in [
-            ('pilot', pilot),
-            ('method', method),
-            ('seed_heat_id', seed_heat_id),
-            ('seed_class_id', seed_raceclass_id),
-            ('seed_rank', seed_rank),
-            ]:
-            if value is not None:
-                data[name] = value
-
-        if data:
-            data['slot_id'] = slot_id
-            return self._racecontext.rhdata.alter_heatNodes_fast(data)
+    def slots_alter_fast(self, slot_list):
+        # !! Unsafe for general use !!
+        return self._racecontext.rhdata.alter_heatNodes_fast(slot_list)
 
     # Race Class
 
@@ -282,6 +267,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
 
     def raceclass_add(self, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None):
+        #TODO add rank settings
         data = {}
 
         for name, value in [
