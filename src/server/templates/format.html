@@ -621,7 +621,7 @@
 				if (!active) {
 					actions.append('<button class="btn-warning open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heat.id + '" title="' + __('Force Modify Heat') + ': ' + heat.displayname + '">' + svg_asset.lock + '</button>');
 				}
-			} else if (Object.keys(rotorhazard.event.heats).length > 1) {
+			} else {
 				actions.append('<button class="delete_heat btn-danger" data-id="' + heat.id + '" title="Delete Heat ' + heat.id + '">&#215;</button>');
 			}
 			el.append(actions);

@@ -871,11 +871,6 @@ class RHData():
 
     def reset_pilots(self):
         self.clear_pilots()
-        for node in range(self._racecontext.race.num_nodes):
-            self.add_pilot({
-                'callsign': 'Callsign {0}'.format(node+1),
-                'name': 'Pilot {0} Name'.format(node+1)
-                })
         logger.info('Database pilots reset')
         return True
 
@@ -1575,9 +1570,7 @@ class RHData():
 
     def reset_heats(self, nofill=False):
         self.clear_heats()
-        if not nofill:
-            self.add_heat()
-            self._racecontext.race.current_heat = self.get_first_heat().id
+        self._racecontext.race.current_heat = None
         logger.info('Database heats reset')
 
     def reset_heat_plans(self):
