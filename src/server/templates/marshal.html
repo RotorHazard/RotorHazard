@@ -162,7 +162,7 @@
 				current_race_data.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == current_race_data.format_id});
 			} else {
 				current_race_data.race_format = {
-					race_mode: false,
+					unlimited_time: false,
 					race_time_sec: null
 				};
 			}
@@ -437,7 +437,7 @@
 					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
 				}
 
-				if (!current_race_data.race_format.race_mode && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
+				if (!current_race_data.race_format.unlimited_time && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
 					lapData.addClass('after-time-expired');
 				}
 

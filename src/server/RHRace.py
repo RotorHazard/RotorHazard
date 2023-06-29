@@ -448,15 +448,15 @@ class RHRace():
             logger.info('Preventing race format change: Race status not READY')
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior, points_method):
+    def __init__(self, name, unlimited_time, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_delay_tones, number_laps_win, win_condition, team_racing_mode, start_behavior, points_method):
         self.name = name
-        self.race_mode = race_mode  # 0 for count down, 1 for count up
+        self.unlimited_time = unlimited_time
         self.race_time_sec = race_time_sec
         self.lap_grace_sec = lap_grace_sec
         self.staging_fixed_tones = staging_fixed_tones
         self.start_delay_min_ms = start_delay_min_ms
         self.start_delay_max_ms = start_delay_max_ms
-        self.staging_tones = staging_tones
+        self.staging_delay_tones = staging_delay_tones
         self.number_laps_win = number_laps_win
         self.win_condition = win_condition
         self.team_racing_mode = team_racing_mode
@@ -466,13 +466,13 @@ class RHRaceFormat():
     @classmethod
     def copy(cls, race_format):
         return RHRaceFormat(name=race_format.name,
-                            race_mode=race_format.race_mode,
+                            unlimited_time=race_format.unlimited_time,
                             race_time_sec=race_format.race_time_sec,
                             lap_grace_sec=race_format.lap_grace_sec,
                             staging_fixed_tones=race_format.staging_fixed_tones,
                             start_delay_min_ms=race_format.start_delay_min_ms,
                             start_delay_max_ms=race_format.start_delay_max_ms,
-                            staging_tones=race_format.staging_tones,
+                            staging_delay_tones=race_format.staging_delay_tones,
                             number_laps_win=race_format.number_laps_win,
                             win_condition=race_format.win_condition,
                             team_racing_mode=race_format.team_racing_mode,

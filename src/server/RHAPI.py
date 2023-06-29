@@ -290,7 +290,7 @@ class DatabaseAPI():
             ('format_id', raceformat),
             ('win_condition', win_condition),
             ('rounds', rounds),
-            ('heatAdvanceType', heat_advance_type),
+            ('heat_advance_type', heat_advance_type),
             ]:
             if value is not None:
                 data[name] = value
@@ -346,11 +346,11 @@ class DatabaseAPI():
 
         for name, value in [
             ('format_name', name),
-            ('race_mode', unlimited_time),
+            ('unlimited_time', unlimited_time),
             ('race_time_sec', race_time_sec),
             ('lap_grace_sec', lap_grace_sec),
             ('staging_fixed_tones', staging_fixed_tones),
-            ('staging_tones', staging_delay_tones),
+            ('staging_delay_tones', staging_delay_tones),
             ('start_delay_min_ms', start_delay_min_ms),
             ('start_delay_max_ms', start_delay_max_ms),
             ('start_behavior', start_behavior),
@@ -372,11 +372,11 @@ class DatabaseAPI():
 
         for name, value in [
             ('format_name', name),
-            ('race_mode', unlimited_time),
+            ('unlimited_time', unlimited_time),
             ('race_time_sec', race_time_sec),
             ('lap_grace_sec', lap_grace_sec),
             ('staging_fixed_tones', staging_fixed_tones),
-            ('staging_tones', staging_delay_tones),
+            ('staging_delay_tones', staging_delay_tones),
             ('start_delay_min_ms', start_delay_min_ms),
             ('start_delay_max_ms', start_delay_max_ms),
             ('start_behavior', start_behavior),
@@ -572,7 +572,7 @@ class HeatGenerateAPI():
     def generators(self):
         return self._racecontext.heat_generate_manager.generators
 
-    def run_export(self, generator_id, generate_args):
+    def generate(self, generator_id, generate_args):
         return self._racecontext.heat_generate_manager.generate(generator_id, generate_args)
 
 

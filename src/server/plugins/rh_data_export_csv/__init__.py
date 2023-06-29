@@ -126,11 +126,11 @@ def assemble_formats(rhapi):
 
     for race_format in formats:
         payload.append([race_format.name,
-            timer_modes[race_format.race_mode],
+            timer_modes[race_format.unlimited_time],
             race_format.race_time_sec,
             race_format.start_delay_min_ms,
             race_format.start_delay_max_ms,
-            tones[race_format.staging_tones],
+            tones[race_format.staging_delay_tones],
             start_behaviors[race_format.start_behavior],
             win_conditions[race_format.win_condition],
             race_format.number_laps_win,

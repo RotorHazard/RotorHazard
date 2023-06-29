@@ -246,9 +246,9 @@ class RHUI():
                 'race_format_id': self._racecontext.race.format.id if hasattr(self._racecontext.race.format, 'id') else None,
                 'race_heat_id': heat_id,
                 'race_class_id': class_id,
-                'race_mode': race_format.race_mode,
+                'unlimited_time': race_format.unlimited_time,
                 'race_time_sec': race_format.race_time_sec,
-                'race_staging_tones': race_format.staging_tones,
+                'staging_tones': 0,
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
@@ -577,7 +577,7 @@ class RHUI():
         for heat in self._racecontext.rhdata.get_heats():
             current_heat = {}
             current_heat['id'] = heat.id
-            current_heat['note'] = heat.note
+            current_heat['name'] = heat.name
             current_heat['displayname'] = heat.display_name
             current_heat['class_id'] = heat.class_id
             current_heat['order'] = heat.order
@@ -636,7 +636,7 @@ class RHUI():
             current_class['win_condition'] = race_class.win_condition
             current_class['ranksettings'] = json.loads(race_class.rank_settings) if race_class.rank_settings else None
             current_class['rounds'] = race_class.rounds
-            current_class['heat_advance'] = race_class.heatAdvanceType
+            current_class['heat_advance_type'] = race_class.heat_advance_type
             current_class['order'] = race_class.order
             current_class['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceClass(race_class.id)
             current_classes.append(current_class)
@@ -658,11 +658,11 @@ class RHUI():
             raceformat = {}
             raceformat['id'] = race_format.id
             raceformat['name'] = race_format.name
-            raceformat['race_mode'] = race_format.race_mode
+            raceformat['unlimited_time'] = race_format.unlimited_time
             raceformat['race_time_sec'] = race_format.race_time_sec
             raceformat['lap_grace_sec'] = race_format.lap_grace_sec
             raceformat['staging_fixed_tones'] = race_format.staging_fixed_tones
-            raceformat['staging_tones'] = race_format.staging_tones
+            raceformat['staging_delay_tones'] = race_format.staging_delay_tones
             raceformat['start_delay_min'] = race_format.start_delay_min_ms
             raceformat['start_delay_max'] = race_format.start_delay_max_ms
             raceformat['number_laps_win'] = race_format.number_laps_win

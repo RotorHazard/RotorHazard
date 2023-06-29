@@ -4,6 +4,7 @@ import logging
 import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from sqlalchemy import inspect
 from eventmanager import Evt
 from data_export import DataExporter
 
@@ -118,11 +119,11 @@ def assemble_formats(rhapi):
 
         payload.append({
             'Name': race_format.name,
-            'Mode': timer_modes[race_format.race_mode],
+            'Mode': timer_modes[race_format.unlimited_time],
             'Duration (seconds)': race_format.race_time_sec,
             'Minimum Start Delay': race_format.start_delay_min_ms,
             'Maximum Start Delay': race_format.start_delay_max_ms,
-            'Staging Tones': tones[race_format.staging_tones],
+            'Staging Tones': tones[race_format.staging_delay_tones],
             'Win Condition': race_format.win_condition,
             'Laps to Win': race_format.number_laps_win,
             'Team Racing': race_format.team_racing_mode,
@@ -197,8 +198,9 @@ class AlchemyEncoder(json.JSONEncoder):
     def default(self, obj):  #pylint: disable=arguments-differ
         if isinstance(obj.__class__, DeclarativeMeta):
             # an SQLAlchemy class
+            mapped_instance = inspect(obj)
             fields = {}
-            for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
+            for field in mapped_instance.attrs.keys():
                 data = obj.__getattribute__(field)
                 if field != 'query' \
                     and field != 'query_class':

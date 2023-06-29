@@ -6,7 +6,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import create_engine, MetaData, Table
+from sqlalchemy import create_engine, MetaData, Table, inspect
 from datetime import datetime
 import os
 import traceback
@@ -207,6 +207,7 @@ class RHData():
 
     def restore_table(self, class_type, table_query_data, **kwargs):
         if table_query_data:
+            mapped_instance = inspect(class_type)
             table_name_str = "???"
             try:
                 table_name_str = getattr(class_type, '__name__', '???')
@@ -219,7 +220,7 @@ class RHData():
                                                       getattr(table_query_row, 'name', '') != '-None-':
 
                             # check if row with matching 'id' value already exists in new DB table
-                            if 'id' in class_type.__table__.columns.keys() and 'id' in table_query_row.keys():
+                            if 'id' in mapped_instance.attrs.keys() and 'id' in table_query_row.keys():
                                 table_row_id = table_query_row['id']
                                 matching_row = class_type.query.filter(getattr(class_type,'id')==table_row_id).first()
                             else:
@@ -229,7 +230,7 @@ class RHData():
                             # if row with matching 'id' value was found then update it; otherwise create new row data
                             db_row_update = matching_row if matching_row is not None else class_type()
 
-                            for col in class_type.__table__.columns.keys():  # for each column in new database table
+                            for col in mapped_instance.attrs.keys():  # for each column in new database table
                                 if col in table_query_row.keys() and table_query_row[col] is not None:  # matching column exists in previous DB table
                                     col_val = table_query_row[col]
                                     try:  # get column type in new database table
@@ -422,16 +423,15 @@ class RHData():
                                     new_row = {}
                                     new_row['id'] = row['heat_id']
                                     if 'note' in row:
-                                        new_row['note'] = row['note']
+                                        new_row['name'] = row['note']
                                     if 'class_id' in row:
                                         new_row['class_id'] = row['class_id']
-                                    heat_extracted_meta.append(new_row)
 
                         self.restore_table(self._Database.Heat, heat_extracted_meta, defaults={
-                                'note': None,
+                                'name': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': json.dumps({
+                                '_cache_status': json.dumps({
                                     'data_ver': monotonic(),
                                     'build_ver': None
                                 }),
@@ -466,10 +466,18 @@ class RHData():
                     # current heat structure; use basic migration
 
                     if heat_query_data:
+                        for row in heat_query_data:
+                            if 'note' in row:
+                                row['name'] = row['note']
+                                del row['note']
+                            if 'cacheStatus' in row:
+                                row['_cache_status'] = row['cacheStatus']
+                                del row['cacheStatus']
+
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': json.dumps({
+                                '_cache_status': json.dumps({
                                     'data_ver': monotonic(),
                                     'build_ver': None
                                 }),
@@ -493,7 +501,15 @@ class RHData():
                     # Convert old staging
                     if migrate_db_api < 33:
                         for raceFormat in raceFormat_query_data:
-                            if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ONE:
+                            if 'unlimited_time' in row:
+                                raceFormat['unlimited_time'] = raceFormat['race_mode']
+                                del raceFormat['race_mode']
+
+                            if 'staging_tones' in row:
+                                raceFormat['staging_delay_tones'] = raceFormat['staging_tones']
+                                del raceFormat['staging_tones']
+
+                            if 'staging_delay_tones' in raceFormat and raceFormat['staging_delay_tones'] == StagingTones.TONES_ONE:
                                 raceFormat['staging_fixed_tones'] = 1
 
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
@@ -507,8 +523,8 @@ class RHData():
                                             raceFormat['start_delay_max_ms'] = 0
                                     del raceFormat['start_delay_max']
 
-                            elif 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ALL:
-                                raceFormat['staging_tones'] = StagingTones.TONES_ALL
+                            elif 'staging_delay_tones' in raceFormat and raceFormat['staging_delay_tones'] == StagingTones.TONES_ALL:
+                                raceFormat['staging_delay_tones'] = StagingTones.TONES_ALL
 
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['staging_fixed_tones'] = raceFormat['start_delay_min']
@@ -524,7 +540,7 @@ class RHData():
 
                             else: # None or unsupported
                                 raceFormat['staging_fixed_tones'] = 0
-                                raceFormat['staging_tones'] = StagingTones.TONES_NONE
+                                raceFormat['staging_delay_tones'] = StagingTones.TONES_NONE
 
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
@@ -538,13 +554,13 @@ class RHData():
 
                     self.restore_table(self._Database.RaceFormat, raceFormat_query_data, defaults={
                         'name': self.__("Migrated Format"),
-                        'race_mode': 0,
+                        'unlimited_time': 0,
                         'race_time_sec': 120,
                         'lap_grace_sec': -1,
                         'staging_fixed_tones': 3,
                         'start_delay_min_ms': 1000,
                         'start_delay_max_ms': 0,
-                        'staging_tones': 0,
+                        'staging_delay_tones': 0,
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS,
                         'team_racing_mode': False,
@@ -564,23 +580,34 @@ class RHData():
                 else:
                     self.reset_profiles()
 
+                for row in raceClass_query_data:
+                    if 'cacheStatus' in row:
+                        row['_cache_status'] = row['cacheStatus']
+                        del row['cacheStatus']
+                    if 'rankStatus' in row:
+                        row['_rank_status'] = row['rankStatus']
+                        del row['rankStatus']
+                    if 'heatAdvanceType' in row:
+                        row['heat_advance_type'] = row['heatAdvanceType']
+                        del row['heatAdvanceType']
+
                 self.restore_table(self._Database.RaceClass, raceClass_query_data, defaults={
                         'name': 'New class',
                         'format_id': 0,
                         'results': None,
-                        'cacheStatus': json.dumps({
+                        '_cache_status': json.dumps({
                             'data_ver': monotonic(),
                             'build_ver': None
                         }),
                         'ranking': None,
                         'rank_settings': None,
-                        'rankStatus': json.dumps({
+                        '_rank_status': json.dumps({
                             'data_ver': monotonic(),
                             'build_ver': None
                         }),
                         'win_condition': 0,
                         'rounds': 0,
-                        'heatAdvanceType': 1,
+                        'heat_advance_type': 1,
                         'order': None,
                     })
 
@@ -615,7 +642,7 @@ class RHData():
                     else:
                         self.restore_table(self._Database.SavedRaceMeta, raceMeta_query_data, defaults={
                             'results': None,
-                            'cacheStatus': json.dumps({
+                            '_cache_status': json.dumps({
                                 'data_ver': monotonic(),
                                 'build_ver': None
                             })
@@ -898,7 +925,7 @@ class RHData():
         # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
-            cacheStatus=json.dumps({
+            _cache_status=json.dumps({
                 'data_ver': monotonic(),
                 'build_ver': None
             }),
@@ -910,8 +937,8 @@ class RHData():
         if init:
             if 'class_id' in init:
                 new_heat.class_id = init['class_id']
-            if 'note' in init:
-                new_heat.note = init['note']
+            if 'name' in init:
+                new_heat.name = init['name']
             if 'auto_frequency' in init:
                 new_heat.auto_frequency = init['auto_frequency']
 
@@ -953,11 +980,11 @@ class RHData():
         # Add new heat by duplicating an existing one
         source_heat = self.resolve_heat_from_heat_or_id(source_heat_or_id)
 
-        if source_heat.note:
-            all_heat_notes = [heat.note for heat in self.get_heats()]
-            new_heat_note = RHUtils.uniqueName(source_heat.note, all_heat_notes)
+        if source_heat.name:
+            all_heat_names = [heat.name for heat in self.get_heats()]
+            new_heat_name = RHUtils.uniqueName(source_heat.name, all_heat_names)
         else:
-            new_heat_note = ''
+            new_heat_name = ''
 
         if 'dest_class' in kwargs:
             new_class = kwargs['dest_class']
@@ -965,10 +992,10 @@ class RHData():
             new_class = source_heat.class_id
 
         new_heat = self._Database.Heat(
-            note=new_heat_note,
+            name=new_heat_name,
             class_id=new_class,
             results=None,
-            cacheStatus=json.dumps({
+            _cache_status=json.dumps({
                 'data_ver': monotonic(),
                 'build_ver': None
             }),
@@ -1009,9 +1036,9 @@ class RHData():
             slot_id = data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
 
-        if 'note' in data:
+        if 'name' in data:
             self._racecontext.pagecache.set_valid(False)
-            heat.note = data['note']
+            heat.name = data['name']
         if 'class' in data:
             old_class_id = heat.class_id
             heat.class_id = data['class']
@@ -1101,8 +1128,8 @@ class RHData():
     def delete_heat(self, heat_or_id):
         # Deletes heat. Returns heat-ID if successful, None if not
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
-        heat_count = self._Database.Heat.query.count()
-        if heat and heat_count > 1: # keep at least one heat
+        if heat:
+            heat_count = self._Database.Heat.query.count()
             heatnodes = self._Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(self._Database.HeatNode.node_index).all()
 
             has_race = self.savedRaceMetas_has_heat(heat.id)
@@ -1143,7 +1170,7 @@ class RHData():
 
                 return True
         else:
-            logger.info('Refusing to delete only heat')
+            logger.info("No heat to delete")
             return False
 
     def get_first_safe_heat_id(self):
@@ -1171,10 +1198,10 @@ class RHData():
             current_class = self.get_raceClass(current_heat.class_id)
             heats = self.get_heats_by_class(current_heat.class_id)
 
-            if current_class.heatAdvanceType == HeatAdvanceType.NONE:
+            if current_class.heat_advance_type == HeatAdvanceType.NONE:
                 return current_heat.id
 
-            if current_class.heatAdvanceType == HeatAdvanceType.NEXT_ROUND:
+            if current_class.heat_advance_type == HeatAdvanceType.NEXT_ROUND:
                 max_round = self.get_max_round(current_heat.id)
                 if max_round < current_class.rounds:
                     return current_heat.id
@@ -1468,9 +1495,9 @@ class RHData():
             return None
 
         cache_invalid = False
-        if heat.cacheStatus:
+        if heat._cache_status:
             try:
-                cacheStatus = json.loads(heat.cacheStatus)
+                cacheStatus = json.loads(heat._cache_status)
                 token = cacheStatus['data_ver']
                 if cacheStatus['data_ver'] == cacheStatus['build_ver']:
                     # cache hit
@@ -1499,11 +1526,11 @@ class RHData():
         if heat is False:
             return False
 
-        cacheStatus = json.loads(heat.cacheStatus)
+        cacheStatus = json.loads(heat._cache_status)
         if cacheStatus['data_ver'] == token:
             cacheStatus['build_ver'] = token
             heat.results = results
-            heat.cacheStatus = json.dumps(cacheStatus)
+            heat._cache_status = json.dumps(cacheStatus)
 
             self.commit()
             return heat
@@ -1520,7 +1547,7 @@ class RHData():
         if token is None:
             token = monotonic()
 
-        heat.cacheStatus = json.dumps({
+        heat._cache_status = json.dumps({
             'data_ver': token,
             'build_ver': None
         })
@@ -1600,12 +1627,12 @@ class RHData():
         else:
             return None
 
-    def alter_heatNodes_fast(self, data):
+    def alter_heatNodes_fast(self, list):
         # Alters heatNodes quickly, in batch
         # !! Unsafe for general use. Intentionally light type checking,    !!
         # !! DOES NOT trigger events, clear results, or update cached data !!
 
-        for slot_data in data:
+        for slot_data in list:
             slot_id = slot_data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
 
@@ -1659,12 +1686,12 @@ class RHData():
             name='',
             description='',
             format_id=RHUtils.FORMAT_ID_NONE,
-            cacheStatus=initStatus,
-            rankStatus=initStatus,
+            _cache_status=initStatus,
+            _rank_status=initStatus,
             win_condition=0,
             rank_settings=None,
             rounds=0,
-            heatAdvanceType=1,
+            heat_advance_type=1,
             order=None
             )
         self._Database.DB.session.add(new_race_class)
@@ -1681,8 +1708,8 @@ class RHData():
                 new_race_class.win_condition = init['win_condition']
             if 'rounds' in init:
                 new_race_class.rounds = init['rounds']
-            if 'heatAdvanceType' in init:
-                new_race_class.heatAdvanceType = init['heatAdvanceType']
+            if 'heat_advance_type' in init:
+                new_race_class.heat_advance_type = init['heat_advance_type']
             if 'order' in init:
                 new_race_class.order = init['order']
 
@@ -1715,11 +1742,11 @@ class RHData():
             description=source_class.description,
             format_id=source_class.format_id,
             results=None,
-            cacheStatus=initStatus,
-            rankStatus=initStatus,
+            _cache_status=initStatus,
+            _rank_status=initStatus,
             win_condition=source_class.win_condition,
             rounds=source_class.rounds,
-            heatAdvanceType=source_class.heatAdvanceType,
+            heat_advance_type=source_class.heat_advance_type,
             order=None
             )
 
@@ -1768,8 +1795,8 @@ class RHData():
                 race_class.rank_settings = json.dumps({**src_settings, **dest_settings})
         if 'rounds' in data:
             race_class.rounds = data['rounds']
-        if 'heat_advance' in data:
-            race_class.heatAdvanceType = data['heat_advance']
+        if 'heat_advance_type' in data:
+            race_class.heat_advance_type = data['heat_advance_type']
         if 'order' in data:
             race_class.order = data['order']
 
@@ -1842,9 +1869,9 @@ class RHData():
             return None
 
         cache_invalid = False
-        if race_class.cacheStatus:
+        if race_class._cache_status:
             try:
-                cacheStatus = json.loads(race_class.cacheStatus)
+                cacheStatus = json.loads(race_class._cache_status)
                 token = cacheStatus['data_ver']
                 if cacheStatus['data_ver'] == cacheStatus['build_ver']:
                     # cache hit
@@ -1877,9 +1904,9 @@ class RHData():
             return None
 
         cache_invalid = False
-        if race_class.rankStatus:
+        if race_class._rank_status:
             try:
-                rankStatus = json.loads(race_class.rankStatus)
+                rankStatus = json.loads(race_class._rank_status)
                 token = rankStatus['data_ver']
                 if rankStatus['data_ver'] == rankStatus['build_ver']:
                     # cache hit
@@ -1907,12 +1934,12 @@ class RHData():
         if race_class is False:
             return False
 
-        if race_class.cacheStatus:
-            cacheStatus = json.loads(race_class.cacheStatus)
+        if race_class._cache_status:
+            cacheStatus = json.loads(race_class._cache_status)
             if cacheStatus['data_ver'] == token:
                 cacheStatus['build_ver'] = token
                 race_class.results = results
-                race_class.cacheStatus = json.dumps(cacheStatus)
+                race_class._cache_status = json.dumps(cacheStatus)
 
                 self.commit()
                 return race_class
@@ -1929,12 +1956,12 @@ class RHData():
         if race_class is False:
             return False
 
-        if race_class.rankStatus:
-            rankStatus = json.loads(race_class.rankStatus)
+        if race_class._rank_status:
+            rankStatus = json.loads(race_class._rank_status)
             if rankStatus['data_ver'] == token:
                 rankStatus['build_ver'] = token
                 race_class.ranking = results
-                race_class.rankStatus = json.dumps(rankStatus)
+                race_class._rank_status = json.dumps(rankStatus)
 
                 self.commit()
                 return race_class
@@ -1959,8 +1986,8 @@ class RHData():
             'build_ver': None
         }
         jsonStatus = json.dumps(initStatus)
-        race_class.cacheStatus = jsonStatus
-        race_class.rankStatus = jsonStatus
+        race_class._cache_status = jsonStatus
+        race_class._rank_status = jsonStatus
 
         self.commit()
         return race_class
@@ -1978,7 +2005,7 @@ class RHData():
             'data_ver': token,
             'build_ver': None
         })
-        race_class.rankStatus = initStatus
+        race_class._rank_status = initStatus
 
         self.commit()
         return race_class
@@ -2167,7 +2194,7 @@ class RHData():
     def add_format(self, init=None):
         race_format = self._Database.RaceFormat(
             name='',
-            race_mode=0,
+            unlimited_time=0,
             race_time_sec=0,
             lap_grace_sec=-1,
             staging_fixed_tones=0,
@@ -2182,16 +2209,16 @@ class RHData():
         if init:
             if 'format_name' in init:
                 race_format.name = init['format_name']
-            if 'race_mode' in init: # unlimited time
-                race_format.race_mode = (1 if init['race_mode'] else 0)
+            if 'unlimited_time' in init: # unlimited time
+                race_format.unlimited_time = (1 if init['unlimited_time'] else 0)
             if 'race_time_sec' in init:
                 race_format.race_time_sec = init['race_time_sec']
             if 'lap_grace_sec' in init:
                 race_format.lap_grace_sec = init['lap_grace_sec']
             if 'staging_fixed_tones' in init:
                 race_format.staging_fixed_tones = init['staging_fixed_tones']
-            if 'staging_tones' in init:
-                race_format.staging_tones = (2 if init['staging_tones'] else 0)
+            if 'staging_delay_tones' in init:
+                race_format.staging_delay_tones = (2 if init['staging_delay_tones'] else 0)
             if 'start_delay_min_ms' in init:
                 race_format.start_delay_min_ms = init['start_delay_min_ms']
             if 'start_delay_max_ms' in init:
@@ -2224,13 +2251,13 @@ class RHData():
 
         new_format = self._Database.RaceFormat(
             name=new_format_name,
-            race_mode=source_format.race_mode,
+            unlimited_time=source_format.unlimited_time,
             race_time_sec=source_format.race_time_sec,
             lap_grace_sec=source_format.lap_grace_sec,
             staging_fixed_tones=source_format.staging_fixed_tones,
             start_delay_min_ms=source_format.start_delay_min_ms,
             start_delay_max_ms=source_format.start_delay_max_ms,
-            staging_tones=source_format.staging_tones,
+            staging_delay_tones=source_format.staging_delay_tones,
             number_laps_win=source_format.number_laps_win,
             win_condition=source_format.win_condition,
             team_racing_mode=source_format.team_racing_mode,
@@ -2256,16 +2283,16 @@ class RHData():
 
         if 'format_name' in data:
             race_format.name = data['format_name']
-        if 'race_mode' in data:
-            race_format.race_mode = (1 if data['race_mode'] else 0)
+        if 'unlimited_time' in data:
+            race_format.unlimited_time = (1 if data['unlimited_time'] else 0)
         if 'race_time_sec' in data:
             race_format.race_time_sec = data['race_time_sec'] if isinstance(data['race_time_sec'], int) else 0
         if 'lap_grace_sec' in data:
             race_format.lap_grace_sec = data['lap_grace_sec'] if isinstance(data['lap_grace_sec'], int) else 0
         if 'staging_fixed_tones' in data:
             race_format.staging_fixed_tones = data['staging_fixed_tones'] if isinstance(data['staging_fixed_tones'], int) else 0
-        if 'staging_tones' in data:
-            race_format.staging_tones = (2 if data['staging_tones'] else 0)
+        if 'staging_delay_tones' in data:
+            race_format.staging_delay_tones = (2 if data['staging_delay_tones'] else 0)
         if 'start_delay_min_ms' in data:
             race_format.start_delay_min_ms = data['start_delay_min_ms'] if isinstance(data['start_delay_min_ms'], int) else 0
         if 'start_delay_max_ms' in data:
@@ -2374,13 +2401,13 @@ class RHData():
         self.clear_raceFormats()
         self.add_format({
             'format_name': self.__("2:00 Standard Race"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
-            'staging_tones': 0,
+            'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
@@ -2389,13 +2416,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("1:30 Whoop Sprint"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 90,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
-            'staging_tones': 2,
+            'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
@@ -2404,13 +2431,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("3:00 Extended Race"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 210,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
-            'staging_tones': 0,
+            'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
@@ -2419,13 +2446,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("First to 3 Laps"),
-            'race_mode': 1,
+            'unlimited_time': 1,
             'race_time_sec': 0,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
-            'staging_tones': 0,
+            'staging_delay_tones': 0,
             'number_laps_win': 3,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': False,
@@ -2434,13 +2461,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Open Practice"),
-            'race_mode': 1,
+            'unlimited_time': 1,
             'race_time_sec': 0,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
-            'staging_tones': 0,
+            'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.NONE,
             'team_racing_mode': False,
@@ -2449,13 +2476,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Fastest Lap Qualifier"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': 30,
             "staging_fixed_tones": 1,
             'start_delay_min_ms': 2000,
             'start_delay_max_ms': 3000,
-            'staging_tones': 0,
+            'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
             'team_racing_mode': False,
@@ -2464,13 +2491,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Fastest Consecutive Laps Qualifier"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': 30,
             "staging_fixed_tones": 1,
             'start_delay_min_ms': 2000,
             'start_delay_max_ms': 3000,
-            'staging_tones': 0,
+            'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
             'team_racing_mode': False,
@@ -2479,13 +2506,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Lap Count Only"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
-            'staging_tones': 0,
+            'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_LAPS,
             'team_racing_mode': False,
@@ -2494,13 +2521,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Team / Most Laps Wins"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
-            'staging_tones': 2,
+            'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': True,
@@ -2509,13 +2536,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Team / First to 7 Laps"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
-            'staging_tones': 2,
+            'staging_delay_tones': 2,
             'number_laps_win': 7,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': True,
@@ -2524,13 +2551,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Team / Fastest Lap Average"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
-            'staging_tones': 2,
+            'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
             'team_racing_mode': True,
@@ -2539,13 +2566,13 @@ class RHData():
             })
         self.add_format({
             'format_name': self.__("Team / Fastest Consecutive Average"),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 120,
             'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 500,
             'start_delay_max_ms': 3500,
-            'staging_tones': 2,
+            'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
             'team_racing_mode': True,
@@ -2602,7 +2629,7 @@ class RHData():
             format_id=data['format_id'],
             start_time=data['start_time'],
             start_time_formatted=data['start_time_formatted'],
-            cacheStatus=json.dumps({
+            _cache_status=json.dumps({
                 'data_ver': monotonic(),
                 'build_ver': None
             })
@@ -2701,9 +2728,9 @@ class RHData():
             return False
 
         cache_invalid = False
-        if race.cacheStatus:
+        if race._cache_status:
             try:
-                cacheStatus = json.loads(race.cacheStatus)
+                cacheStatus = json.loads(race._cache_status)
                 token = cacheStatus['data_ver']
                 if cacheStatus['data_ver'] == cacheStatus['build_ver']:
                     # cache hit
@@ -2746,12 +2773,12 @@ class RHData():
         if race is False:
             return False
 
-        if race.cacheStatus:
-            cacheStatus = json.loads(race.cacheStatus)
+        if race._cache_status:
+            cacheStatus = json.loads(race._cache_status)
             if cacheStatus['data_ver'] == token:
                 cacheStatus['build_ver'] = token
                 race.results = results
-                race.cacheStatus = json.dumps(cacheStatus)
+                race._cache_status = json.dumps(cacheStatus)
 
                 self.commit()
                 return race
@@ -2771,7 +2798,7 @@ class RHData():
         if token is None:
             token = monotonic()
 
-        race.cacheStatus = json.dumps({
+        race._cache_status = json.dumps({
             'data_ver': token,
             'build_ver': None
         })

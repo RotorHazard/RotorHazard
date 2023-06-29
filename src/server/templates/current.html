@@ -24,7 +24,7 @@
 		var race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
 
 		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
-		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
+		rotorhazard.timer.race.count_up = Boolean(msg.unlimited_time);
 		rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
 
 		rotorhazard.timer.race.staging_tones = msg.staging_tones;
@@ -348,7 +348,7 @@
 								if (lap.lap_number && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
 									$tr.addClass('min-lap-warning');
 								}
-								if (!rotorhazard.event.race_status.race_mode && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
+								if (!rotorhazard.event.race_status.unlimited_time && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
 									$tr.addClass('after-time-expired');
 								}
 								$tr.appendTo('#current_laps_' + i);

@@ -611,8 +611,8 @@
 			var header = $('<h4>Heat ' + heat.id + '</h4>');
 			el.append(header);
 
-			var input = $('<input type="text" id="heat-note-' + heat.id + '" class="set_heat_note" data-heat="' + heat.id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heat.id + ')" maxlength="80">');
-			input.val(heat.note);
+			var input = $('<input type="text" id="heat-name-' + heat.id + '" class="set_heat_name" data-heat="' + heat.id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heat.id + ')" maxlength="80">');
+			input.val(heat.name);
 			el.append(input);
 
 			var actions = $('<div class="actions">');
@@ -825,19 +825,19 @@
 			}
 		}
 
-		$(document).on("change", '.set_heat_note', function (event) {
+		$(document).on("change", '.set_heat_name', function (event) {
 			var heat_id = parseInt($(this).data('heat'));
-			var note = $(this).val();
+			var name = $(this).val();
 
 			var data = {
 				heat: heat_id,
-				note: note,
+				name: name,
 			};
 
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			if (heat) {
-				heat.note = note;
-				heat.displayname = note;
+				heat.name = name;
+				heat.displayname = name;
 			}
 
 			socket.emit('alter_heat', data);
@@ -1371,16 +1371,16 @@
 					$('#unlock_race_format_button').toggle(locked);
 					$('#delete_race_format_button').prop('disabled', locked);
 					$('#set_format_name').val(rf.name);
-					$('#set_race_mode').val(rf.race_mode);
-					$('#set_race_mode').prop('disabled', locked);
+					$('#set_unlimited_time').val(rf.unlimited_time);
+					$('#set_unlimited_time').prop('disabled', locked);
 					$('#set_fix_race_time').val(rf.race_time_sec);
 					$('#set_fix_race_time').prop('disabled', locked);
 					$('#set_lap_grace_time').val(rf.lap_grace_sec);
 					$('#set_lap_grace_time').prop('disabled', locked);
 					$('#set_staging_fixed_tones').val(rf.staging_fixed_tones);
 					$('#set_staging_fixed_tones').prop('disabled', locked);
-					$('#set_staging_tones').val(rf.staging_tones);
-					$('#set_staging_tones').prop('disabled', locked);
+					$('#set_staging_delay_tones').val(rf.staging_delay_tones);
+					$('#set_staging_delay_tones').prop('disabled', locked);
 					$('#set_start_delay_min').val(rf.start_delay_min / 1000); // convert from ms
 					$('#set_start_delay_min').prop('disabled', locked);
 					$('#set_start_delay_max').val(rf.start_delay_max / 1000); // convert from ms
@@ -1406,24 +1406,24 @@
 			format_id = $('#set_race_format').val();
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 
-			$('#format-race-duration-field').toggle(rf.race_mode == 0);
+			$('#format-race-duration-field').toggle(rf.unlimited_time == 0);
 			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
 
 			var issues = []
 
-			if (rf.win_condition == 1 && rf.race_mode == 1) {
+			if (rf.win_condition == 1 && rf.unlimited_time == 1) {
 				issues.push('"Most Laps in Fastest Time" is typically used with "Fixed Time"');
 			}
 
-			if (rf.win_condition == 2 && rf.race_mode == 0) {
+			if (rf.win_condition == 2 && rf.unlimited_time == 0) {
 				issues.push('"First to X Laps" is typically used with "No Time Limit"');
 			}
 
-			if (rf.win_condition == 6 && rf.race_mode == 1) {
+			if (rf.win_condition == 6 && rf.unlimited_time == 1) {
 				issues.push('"Most Laps Only with Overtime" is typically used with "Fixed Time"');
 			}
 
-			if (rf.start_behavior == 2 && rf.race_mode == 0) {
+			if (rf.start_behavior == 2 && rf.unlimited_time == 0) {
 				issues.push('"Staggered Start" is typically used with "No Time Limit"');
 			}
 
@@ -1495,17 +1495,17 @@
 			update_race_formats();
 		})
 
-		$('#set_race_mode').change(function (event) {
+		$('#set_unlimited_time').change(function (event) {
 			var format_id = parseInt($('#set_race_format').val());
 			var mode = parseInt($(this).val());
 			var data = {
 				format_id: format_id,
-				race_mode: mode
+				unlimited_time: mode
 			};
 			socket.emit('alter_race_format', data);
 
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
-			rf.race_mode = mode;
+			rf.unlimited_time = mode;
 			update_race_format_ui();
 		})
 
@@ -1548,17 +1548,17 @@
 			rf.staging_fixed_tones = staging_fixed_tones;
 		})
 
-		$('#set_staging_tones').change(function (event) {
+		$('#set_staging_delay_tones').change(function (event) {
 			var format_id = parseInt($('#set_race_format').val());
-			var staging_tones = parseInt($(this).val())
+			var staging_delay_tones = parseInt($(this).val())
 			var data = {
 				format_id: format_id,
-				staging_tones: staging_tones
+				staging_delay_tones: staging_delay_tones
 			};
 			socket.emit('alter_race_format', data);
 
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
-			rf.staging_tones = staging_tones;
+			rf.staging_delay_tones = staging_delay_tones;
 		})
 
 		$('#set_start_delay_min').change(function (event) {
@@ -2332,9 +2332,9 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_race_mode">{{ __('Race Clock Mode') }}</label>
+					<label for="set_unlimited_time">{{ __('Race Clock Mode') }}</label>
 				</div>
-				<select id="set_race_mode">
+				<select id="set_unlimited_time">
 					<option value="0">{{ __('Fixed Time') }}</option>
 					<option value="1">{{ __('No Time Limit') }}</option>
 				</select>
@@ -2361,9 +2361,9 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_staging_tones">{{ __('Staging Tones') }}</label>
+					<label for="set_staging_delay_tones">{{ __('Staging Tones') }}</label>
 				</div>
-				<select id="set_staging_tones">
+				<select id="set_staging_delay_tones">
 					<option value="2">{{ __('Each Second') }}</option>
 					<option value="0">{{ __('None') }}</option>
 				</select>

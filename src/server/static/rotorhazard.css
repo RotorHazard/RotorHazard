@@ -1325,7 +1325,7 @@ main.page-home {
 	flex-basis: 100%;
 }
 
-.page-format .heats>li>.set_heat_note {
+.page-format .heats>li>.set_heat_name {
 	position: absolute;
 	top: 0;
 	left: 0;

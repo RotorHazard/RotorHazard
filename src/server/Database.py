@@ -4,6 +4,8 @@ Database module
 
 import RHUtils
 from flask_sqlalchemy import SQLAlchemy
+import logging
+logger = logging.getLogger(__name__)
 
 #pylint: disable=no-member
 
@@ -83,25 +85,29 @@ class Heat(DB.Model):
     # DEPRECATED: compatibility for 'note' property / renamed to 'name'
     @property
     def note(self):
+        logger.warning("Use of deprecated note attribute, use 'name'", stack_info=True)
         return self.name
 
     @note.setter
     def note(self, value):
+        logger.warning("Use of deprecated note attribute, use 'name'", stack_info=True)
         self.name = value
 
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
     def cacheStatus(self):
+        logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         return self._cache_status
 
     @cacheStatus.setter
     def cacheStatus(self, value):
+        logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         self._cache_status = value
 
     @property
     def display_name(self):
-        if self.note:
-            return self.note
+        if self.name:
+            return self.name
         return "{} {}".format(__('Heat'), str(self.id))
 
     def __repr__(self):
@@ -155,28 +161,34 @@ class RaceClass(DB.Model):
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
     def cacheStatus(self):
+        logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         return self._cache_status
 
     @cacheStatus.setter
     def cacheStatus(self, value):
+        logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         self._cache_status = value
 
     # DEPRECATED: compatibility for 'rankStatus' property / renamed to '_rank_status'
     @property
     def rankStatus(self):
+        logger.warning("Use of deprecated rankStatus attribute, use '_rank_status'", stack_info=True)
         return self._rank_status
 
     @rankStatus.setter
     def rankStatus(self, value):
+        logger.warning("Use of deprecated rankStatus attribute, use '_rank_status'", stack_info=True)
         self._rank_status = value
 
     # DEPRECATED: compatibility for 'heatAdvanceType' property / renamed to 'heat_advance_type'
     @property
     def heatAdvanceType(self):
+        logger.warning("Use of deprecated heatAdvanceType attribute, use 'heat_advance_type'", stack_info=True)
         return self.heat_advance_type
 
     @heatAdvanceType.setter
     def heatAdvanceType(self, value):
+        logger.warning("Use of deprecated heatAdvanceType attribute, use 'heat_advance_type'", stack_info=True)
         self.heat_advance_type = value
 
     @property
@@ -229,10 +241,12 @@ class SavedRaceMeta(DB.Model):
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
     def cacheStatus(self):
+        logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         return self._cache_status
 
     @cacheStatus.setter
     def cacheStatus(self, value):
+        logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         self._cache_status = value
 
     def __repr__(self):
@@ -300,7 +314,7 @@ class RaceFormat(DB.Model):
     staging_fixed_tones = DB.Column(DB.Integer, nullable=False)
     start_delay_min_ms = DB.Column(DB.Integer, nullable=False)
     start_delay_max_ms = DB.Column(DB.Integer, nullable=False)
-    staging_tones = DB.Column(DB.Integer, nullable=False)
+    staging_delay_tones = DB.Column('staging_tones', DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
     win_condition = DB.Column(DB.Integer, nullable=False)
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
@@ -310,11 +324,25 @@ class RaceFormat(DB.Model):
     # DEPRECATED: compatibility for 'race_mode' property / renamed to 'unlimited_time'
     @property
     def race_mode(self):
+        logger.warning("Use of deprecated race_mode attribute, use 'unlimited_time'", stack_info=True)
         return self.unlimited_time
 
     @race_mode.setter
     def race_mode(self, value):
+        logger.warning("Use of deprecated race_mode attribute, use 'unlimited_time'", stack_info=True)
         self.unlimited_time = value
+
+    # DEPRECATED: compatibility for 'staging_tones' property / renamed to 'staging_delay_tones'
+    @property
+    def staging_tones(self):
+        logger.warning("Use of deprecated staging_tones attribute, use 'staging_delay_tones'", stack_info=True)
+        return self.staging_delay_tones
+
+    @staging_tones.setter
+    def staging_tones(self, value):
+        logger.warning("Use of deprecated staging_tones attribute, use 'staging_delay_tones'", stack_info=True)
+        self.staging_delay_tones = value
+
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'

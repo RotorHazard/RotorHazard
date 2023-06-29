@@ -22,7 +22,7 @@
 		var race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
 
 		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
-		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
+		rotorhazard.timer.race.count_up = Boolean(msg.unlimited_time);
 		rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
 
 		rotorhazard.timer.race.start(race_start_pi, staging_start_pi);
