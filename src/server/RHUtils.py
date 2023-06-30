@@ -11,6 +11,7 @@ import subprocess
 import glob
 import socket
 import random
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -352,6 +353,142 @@ def find_best_slot_node_adaptive(available_seats):
             return node, node['matches'][idx]['slot'], an_idx
 
     return None, None, None
+
+# Text replacer
+def doReplace(rhapi, text, args, spoken_flag=False):
+    if '%' in text:
+        # %HEAT%
+        if 'heat_id' in args:
+            heat = rhapi.db.heat_by_id(args['heat_id'])
+        else:
+            heat = rhapi.db.heat_by_id(rhapi.race.heat)
+        text = text.replace('%HEAT%', heat.display_name if heat and heat.display_name else rhapi.__('None'))
+
+        if 'pilot_id' in args or 'node_index' in args:
+            if 'pilot_id' in args:
+                pilot = rhapi.db.pilot_by_id(args['pilot_id'])
+            else:
+                pilot = rhapi.db.pilot_by_id(rhapi.race.pilots[args['node_index']])
+            text = text.replace('%PILOT%', pilot.spoken_callsign if spoken_flag else pilot.display_callsign)
+
+        if 'results' in args:
+            race_results = args['results']
+            if 'node_index' in args and '%' in text:
+                lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
+                leaderboard = race_results.get(lboard_name, [])
+
+                for result in leaderboard:
+                    if result['node'] == args['node_index']:
+                        # %LAP_COUNT%
+                        text = text.replace('%LAP_COUNT%', str(result['laps']))
+
+                        # %TOTAL_TIME%
+                        text = text.replace('%TOTAL_TIME%', phonetictime_format( \
+                                    result['total_time_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                                    if spoken_flag else result['total_time'])
+
+                        # %TOTAL_TIME_LAPS%
+                        text = text.replace('%TOTAL_TIME_LAPS%', phonetictime_format( \
+                                    result['total_time_laps_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                                    if spoken_flag else result['total_time_laps'])
+
+                        # %LAST_LAP%
+                        text = text.replace('%LAST_LAP%', phonetictime_format( \
+                                    result['last_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                                    if spoken_flag else result['last_lap'])
+
+                        # %AVERAGE_LAP%
+                        text = text.replace('%AVERAGE_LAP%', phonetictime_format( \
+                                    result['average_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                                    if spoken_flag else result['average_lap'])
+
+                        # %FASTEST_LAP%
+                        text = text.replace('%FASTEST_LAP%', phonetictime_format( \
+                                    result['fastest_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                                    if spoken_flag else result['fastest_lap'])
+
+                        # %CONSECUTIVE%
+                        if result['consecutives_base'] == int(rhapi.db.option('consecutivesCount', 3)):
+                            text = text.replace('%CONSECUTIVE%', phonetictime_format( \
+                                    result['consecutives_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                                    if spoken_flag else result['consecutives'])
+                        else:
+                            text = text.replace('%CONSECUTIVE%', rhapi.__('None'))
+
+                        # %POSITION%
+                        text = text.replace('%POSITION%', str(result['position']))
+
+                        break
+
+            if '%FASTEST_RACE_LAP' in text:
+                fastest_race_lap_data = race_results.get('meta', {}).get('fastest_race_lap_data')
+                if fastest_race_lap_data:
+                    if spoken_flag:
+                        fastest_str = "{}, {}".format(fastest_race_lap_data['phonetic'][0],  # pilot name
+                                                      fastest_race_lap_data['phonetic'][1])  # lap time
+                    else:
+                        fastest_str = "{} {}".format(fastest_race_lap_data['text'][0],  # pilot name
+                                                     fastest_race_lap_data['text'][1])  # lap time
+                else:
+                    fastest_str = ""
+                # %FASTEST_RACE_LAP% : Pilot/time for fastest lap in race
+                text = text.replace('%FASTEST_RACE_LAP%', fastest_str)
+                # %FASTEST_RACE_LAP_CALL% : Pilot/time for fastest lap in race (with prompt)
+                if len(fastest_str) > 0:
+                    fastest_str = "{} {}".format(rhapi.__('Fastest lap'), fastest_str)
+                text = text.replace('%FASTEST_RACE_LAP_CALL%', fastest_str)
+
+            if '%PILOTS%' in text:
+                text = text.replace('%PILOTS%', getPilotsListStr(rhapi, ' . ', spoken_flag))
+            if '%LINEUP%' in text:
+                text = text.replace('%LINEUP%', getPilotsListStr(rhapi, ' , ', spoken_flag))
+            if '%FREQS%' in text:
+                text = text.replace('%FREQS%', getPilotFreqsStr(rhapi, ' . ', spoken_flag))
+
+    return text
+
+def heatNodeSorter( x):
+    if not x.node_index:
+        return -1
+    return x.node_index
+
+def getPilotsListStr(rhapi, sep_str, spoken_flag):
+    pilots_str = ''
+    first_flag = True
+    heat_nodes = rhapi.db.slots_by_heat(rhapi.race.heat)
+    heat_nodes.sort(key=heatNodeSorter)
+    for heat_node in heat_nodes:
+        pilot = rhapi.db.pilot_by_id(heat_node.pilot_id)
+        if pilot:
+            text = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
+            if text:
+                if first_flag:
+                    first_flag = False
+                else:
+                    pilots_str += sep_str
+                pilots_str += text
+    return pilots_str
+
+def getPilotFreqsStr(rhapi, sep_str, spoken_flag):
+    pilots_str = ''
+    first_flag = True
+    heat_nodes = rhapi.db.slots_by_heat(rhapi.race.heat)
+    heat_nodes.sort(key=heatNodeSorter)
+    for heat_node in heat_nodes:
+        pilot = rhapi.db.pilot_by_id(heat_node.pilot_id)
+        if pilot:
+            text = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
+            if text:
+                profile_freqs = json.loads(rhapi.race.frequencyset.frequencies)
+                if profile_freqs:
+                    freq = str(profile_freqs["b"][heat_node.node_index]) + str(profile_freqs["c"][heat_node.node_index])
+                    if freq:
+                        if first_flag:
+                            first_flag = False
+                        else:
+                            pilots_str += sep_str
+                        pilots_str += text + ': ' + freq
+    return pilots_str
 
 def checkPythonVersion(majorVer, minorVer):
     try:

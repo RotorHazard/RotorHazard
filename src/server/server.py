@@ -3015,7 +3015,11 @@ def reload_callouts():
 @SOCKET_IO.on('play_callout_text')
 @catchLogExceptionsWrapper
 def play_callout_text(data):
-    EventActionsObj.runEventAction({'event': 'playCalloutText', 'effect': 'speak', 'text': data['callout']}, {})
+    args = {
+        'results': RaceContext.race.get_results()
+    }
+    message = RHUtils.doReplace(RHAPI, data['callout'], args, True)
+    RaceContext.rhui.emit_phonetic_text(message)
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
@@ -3037,8 +3041,6 @@ def on_retry_secondary(data):
     '''Retry connection to secondary timer.'''
     RaceContext.cluster.retrySecondary(data['secondary_id'])
     RaceContext.rhui.emit_cluster_status()
-
-# Socket io emit functions
 
 @SOCKET_IO.on('get_pilotrace')
 @catchLogExceptionsWrapper
