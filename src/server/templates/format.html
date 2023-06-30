@@ -341,7 +341,7 @@
 						selectbox.append('<option value="2">' + __('After All Rounds') + '</option>');
 						selectbox.append('<option value="0">' + __('Never') + '</option>');
 
-						selectbox.val(race_class.heat_advance);
+						selectbox.val(race_class.heat_advance_type);
 						field.append(selectbox);
 						el.append(field);
 						
@@ -520,13 +520,13 @@
 		$(document).on("change", '.set_race_class_heat_advance', function (event) {
 			var data = {
 				class_id: parseInt($(this).data('class_id')),
-				heat_advance: parseInt($(this).val()),
+				heat_advance_type: parseInt($(this).val()),
 			};
 			socket.emit('alter_race_class', data);
 
 			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
 			if (race_class) {
-				race_class.heat_advance = data.heat_advance;
+				race_class.heat_advance_type = data.heat_advance_type;
 			}
 		});
 
