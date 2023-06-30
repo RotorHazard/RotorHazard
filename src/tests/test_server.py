@@ -15,6 +15,7 @@ os.environ['RH_INTERFACE'] = 'Mock'
 
 import server
 from Node import Node
+from RHUI import UIField, UIFieldType
 
 class ServerTest(unittest.TestCase):
     def setUp(self):
@@ -387,6 +388,23 @@ class ServerTest(unittest.TestCase):
         resp = self.get_response('priority_message')
         self.assertEqual(resp['message'], "Test Alert")
         self.assertEqual(resp['interrupt'], True)
+
+    def test_fields_api(self):
+        server.RHAPI.fields.register_option(UIField('test_option', 'Test Option', UIFieldType.TEXT), 'test_panel', 1)
+        option = server.RHAPI.fields.options[0]
+        opt_match = (option.name == 'test_option' and \
+                     option.field.label == "Test Option" and \
+                     option.field.field_type == UIFieldType.TEXT and \
+                     option.panel == 'test_panel' and \
+                     option.order == 1)
+        self.assertEqual(opt_match, True)
+
+        server.RHAPI.fields.register_pilot_attribute(UIField('test_attribute', 'Test Attribute', UIFieldType.TEXT))
+        attr = server.RHAPI.fields.pilot_attributes[0]
+        attr_match = (attr.name == 'test_attribute'  and \
+                      attr.label == "Test Attribute" and \
+                      attr.field_type == UIFieldType.TEXT)
+        self.assertEqual(attr_match, True)
 
     def test_database_api(self):
 
