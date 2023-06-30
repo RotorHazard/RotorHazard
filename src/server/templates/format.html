@@ -1193,6 +1193,8 @@
 					}
 				}
 
+				$('.pilots').append('<li class="new-pilot-container"><button id="add_pilot">' + __('Add Pilot') + '</button></li>');
+
 				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 
 				$('.set_pilot_position').each(function(){
@@ -1307,7 +1309,7 @@
 			pilot[pilot_attr] = value;
 		})
 
-		$('button#add_pilot').click(function (event) {
+		$(document).on('click', 'button#add_pilot', function (event) {
 			socket.emit('add_pilot');
 		});
 
@@ -2198,10 +2200,6 @@
 		<ul class="pilots">
 			<li>{{ __('Loading...') }}</li>
 		</ul>
-
-		<div class="control-set">
-			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
-		</div>
 	</div>
 </div>
 
