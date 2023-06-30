@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def rank_best_rounds(rhapi, race_class, args):
     if 'rounds' not in args or not args['rounds'] or int(args['rounds']) < 1:
-        return False
+        return False, {}
 
     rounds = int(args['rounds'])
 
@@ -32,7 +32,7 @@ def rank_best_rounds(rhapi, race_class, args):
                     pilotresults[pilotresult['pilot_id']].append(pilotresult)
             else:
                 logger.warning("Failed building ranking, race result not available")
-                return False
+                return False, {}
 
     leaderboard = []
     for pilotresultlist in pilotresults:

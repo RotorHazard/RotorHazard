@@ -1691,10 +1691,10 @@ class RHData():
             format_id=RHUtils.FORMAT_ID_NONE,
             _cache_status=initStatus,
             _rank_status=initStatus,
-            win_condition=0,
+            win_condition="",
             rank_settings=None,
             rounds=0,
-            heat_advance_type=1,
+            heat_advance_type=HeatAdvanceType.NEXT_HEAT,
             order=None
             )
         self._Database.DB.session.add(new_race_class)
