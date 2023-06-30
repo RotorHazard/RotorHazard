@@ -8,18 +8,21 @@
 #
 
 from RHUtils import catchLogExceptionsWrapper
+from typing import List
+from RHUI import UIField
+from eventmanager import Evt
 import logging
 
 logger = logging.getLogger(__name__)
 
 class DataImportManager():
-    def __init__(self, RaceContext, Events):
+    def __init__(self, RHAPI, Events):
         self._importers = {}
 
-        self._racecontext = RaceContext
+        self._rhapi = RHAPI
 
-        Events.trigger('Import_Initialize', {
-            'registerFn': self.registerImporter
+        Events.trigger(Evt.DATA_IMPORT_INITIALIZE, {
+            'register_fn': self.registerImporter
             })
 
     def registerImporter(self, importer):
@@ -39,18 +42,17 @@ class DataImportManager():
         return self._importers
 
     @catchLogExceptionsWrapper
-    def runImport(self, importer_id, data, import_args=None):
-        return self._importers[importer_id].runImport(self._racecontext, data, import_args)
+        return self._importers[importer_id].run_import(self._rhapi, data, import_args)
 
 class DataImporter():
-    def __init__(self, name, label, import_fn, default_args=None, settings=None):
+    def __init__(self, name, label, import_fn, default_args=None, settings:List[UIField]=None):
         self.name = name
         self.label = label
         self.import_fn = import_fn
         self.default_args = default_args
         self.settings = settings
 
-    def runImport(self, racecontext, data, import_args=None):
+    def run_import(self, rhapi, data, import_args=None):
         args = {**(self.default_args if self.default_args else {}), **(import_args if import_args else {})}
 
-        return self.import_fn(racecontext, data, args)
+        return self.import_fn(rhapi, data, args)

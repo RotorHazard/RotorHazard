@@ -4,18 +4,10 @@ import logging
 import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from eventmanager import Evt
 from data_export import DataExporter
 
 logger = logging.getLogger(__name__)
-
-def registerHandlers(args):
-    if 'registerFn' in args:
-        for exporter in discover():
-            args['registerFn'](exporter)
-
-def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on('Export_Initialize', 'Export_register_JSON', registerHandlers, {}, 75)
 
 def write_json(data):
     payload = json.dumps(data, indent='\t', cls=AlchemyEncoder)
@@ -26,17 +18,17 @@ def write_json(data):
         'ext': 'json'
     }
 
-def assemble_all(RaceContext):
+def assemble_all(rhapi):
     payload = {}
-    payload['Pilots'] = assemble_pilots(RaceContext)
-    payload['Heats'] = assemble_heats(RaceContext)
-    payload['Classes'] = assemble_classes(RaceContext)
-    payload['Formats'] = assemble_formats(RaceContext)
-    payload['Results'] = assemble_results(RaceContext)
+    payload['Pilots'] = assemble_pilots(rhapi)
+    payload['Heats'] = assemble_heats(rhapi)
+    payload['Classes'] = assemble_classes(rhapi)
+    payload['Formats'] = assemble_formats(rhapi)
+    payload['Results'] = assemble_results(rhapi)
     return payload
 
-def assemble_pilots(RaceContext):
-    pilots = RaceContext.rhdata.get_pilots()
+def assemble_pilots(rhapi):
+    pilots = rhapi.db.pilots
     payload = []
     for pilot in pilots:
         # payload.append(pilot)
@@ -48,35 +40,35 @@ def assemble_pilots(RaceContext):
 
     return payload
 
-def assemble_heats(RaceContext):
+def assemble_heats(rhapi):
     payload = {}
-    for heat in RaceContext.rhdata.get_heats():
+    for heat in rhapi.db.heats:
         heat_id = heat.id
-        displayname = heat.displayname()
+        displayname = heat.display_name
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
-            race_class = RaceContext.rhdata.get_raceClass(heat.class_id).name
+            race_class_name = rhapi.db.raceclass_by_id(heat.class_id).name
         else:
-            race_class = None
+            race_class_name = None
 
-        heatnodes = RaceContext.rhdata.get_heatNodes_by_heat(heat.id)
+        heatnodes = rhapi.db.slots_by_heat(heat.id)
         pilots = {}
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
-                pilots[heatnode.node_index] = RaceContext.rhdata.get_pilot(heatnode.pilot_id).callsign
+                pilots[heatnode.node_index] = rhapi.db.pilot_by_id(heatnode.pilot_id).callsign
             else:
                 pilots[heatnode.node_index] = None
 
         payload[heat_id] = {
             'Name': displayname,
-            'Class': race_class,
+            'Class': race_class_name,
             'Pilots': pilots,
         }
 
     return payload
 
-def assemble_classes(RaceContext):
-    race_classes = RaceContext.rhdata.get_raceClasses()
+def assemble_classes(rhapi):
+    race_classes = rhapi.db.raceclasses
     payload = []
     for race_class in race_classes:
         # payload.append(race_class)
@@ -88,38 +80,38 @@ def assemble_classes(RaceContext):
         }
 
         if race_class.format_id:
-            class_payload['Race Format'] = RaceContext.rhdata.get_raceFormat(race_class.format_id).name
+            class_payload['Race Format'] = rhapi.db.raceformat_by_id(race_class.format_id).name
 
         payload.append(class_payload)
 
     return payload
 
-def assemble_formats(RaceContext):
+def assemble_formats(rhapi):
     timer_modes = [
-        RaceContext.language.__('Fixed Time'),
-        RaceContext.language.__('No Time Limit'),
+        rhapi.__('Fixed Time'),
+        rhapi.__('No Time Limit'),
     ]
     tones = [
-        RaceContext.language.__('None'),
-        RaceContext.language.__('One'),
-        RaceContext.language.__('Each Second')
+        rhapi.__('None'),
+        rhapi.__('One'),
+        rhapi.__('Each Second')
     ]
     win_conditions = [  #pylint: disable=unused-variable
-        RaceContext.language.__('None'),
-        RaceContext.language.__('Most Laps in Fastest Time'),
-        RaceContext.language.__('First to X Laps'),
-        RaceContext.language.__('Fastest Lap'),
-        RaceContext.language.__('Fastest Consecutive Laps'),
-        RaceContext.language.__('Most Laps Only'),
-        RaceContext.language.__('Most Laps Only with Overtime')
+        rhapi.__('None'),
+        rhapi.__('Most Laps in Fastest Time'),
+        rhapi.__('First to X Laps'),
+        rhapi.__('Fastest Lap'),
+        rhapi.__('Fastest Consecutive Laps'),
+        rhapi.__('Most Laps Only'),
+        rhapi.__('Most Laps Only with Overtime')
     ]
     start_behaviors = [
-        RaceContext.language.__('Hole Shot'),
-        RaceContext.language.__('First Lap'),
-        RaceContext.language.__('Staggered Start'),
+        rhapi.__('Hole Shot'),
+        rhapi.__('First Lap'),
+        rhapi.__('Staggered Start'),
     ]
 
-    formats = RaceContext.rhdata.get_raceFormats()
+    formats = rhapi.db.raceformats
     payload = []
     for race_format in formats:
         # payload.append(race_format)
@@ -139,71 +131,66 @@ def assemble_formats(RaceContext):
 
     return payload
 
-def assemble_results(RaceContext):
-    payload = RaceContext.pagecache.get_cache()
+def assemble_results(rhapi):
+    payload = rhapi.eventresults.results
     return payload
 
-def assemble_complete(RaceContext):
+def assemble_complete(rhapi):
     payload = {}
-    payload['Pilot'] = assemble_pilots_complete(RaceContext)
-    payload['Heat'] = assemble_heats_complete(RaceContext)
-    payload['HeatNode'] = assemble_heatnodes_complete(RaceContext)
-    payload['RaceClass'] = assemble_classes_complete(RaceContext)
-    payload['RaceFormat'] = assemble_formats_complete(RaceContext)
-    payload['SavedRaceMeta'] = assemble_racemeta_complete(RaceContext)
-    payload['SavedPilotRace'] = assemble_pilotrace_complete(RaceContext)
-    payload['SavedRaceLap'] = assemble_racelap_complete(RaceContext)
-    payload['LapSplit'] = assemble_split_complete(RaceContext)
-    payload['Profiles'] = assemble_profiles_complete(RaceContext)
-    payload['GlobalSettings'] = assemble_settings_complete(RaceContext)
+    payload['Pilot'] = assemble_pilots_complete(rhapi)
+    payload['Heat'] = assemble_heats_complete(rhapi)
+    payload['HeatNode'] = assemble_heatnodes_complete(rhapi)
+    payload['RaceClass'] = assemble_classes_complete(rhapi)
+    payload['RaceFormat'] = assemble_formats_complete(rhapi)
+    payload['SavedRaceMeta'] = assemble_racemeta_complete(rhapi)
+    payload['SavedPilotRace'] = assemble_pilotrace_complete(rhapi)
+    payload['SavedRaceLap'] = assemble_racelap_complete(rhapi)
+    payload['Profiles'] = assemble_profiles_complete(rhapi)
+    payload['GlobalSettings'] = assemble_settings_complete(rhapi)
     return payload
 
-def assemble_results_raw(RaceContext):
-    payload = RaceContext.pagecache.get_cache()
+def assemble_results_raw(rhapi):
+    payload = rhapi.eventresults.results
     return payload
 
-def assemble_pilots_complete(RaceContext):
-    payload = RaceContext.rhdata.get_pilots()
+def assemble_pilots_complete(rhapi):
+    payload = rhapi.db.pilots
     return payload
 
-def assemble_heats_complete(RaceContext):
-    payload = RaceContext.rhdata.get_heats()
+def assemble_heats_complete(rhapi):
+    payload = rhapi.db.heats
     return payload
 
-def assemble_heatnodes_complete(RaceContext):
-    payload = RaceContext.rhdata.get_heatNodes()
+def assemble_heatnodes_complete(rhapi):
+    payload = rhapi.db.slots
     return payload
 
-def assemble_classes_complete(RaceContext):
-    payload = RaceContext.rhdata.get_raceClasses()
+def assemble_classes_complete(rhapi):
+    payload = rhapi.db.raceclasses
     return payload
 
-def assemble_formats_complete(RaceContext):
-    payload = RaceContext.rhdata.get_raceFormats()
+def assemble_formats_complete(rhapi):
+    payload = rhapi.db.raceformats
     return payload
 
-def assemble_split_complete(RaceContext):
-    payload = RaceContext.rhdata.get_lapSplits()
+def assemble_racemeta_complete(rhapi):
+    payload = rhapi.db.races
     return payload
 
-def assemble_racemeta_complete(RaceContext):
-    payload = RaceContext.rhdata.get_savedRaceMetas()
+def assemble_pilotrace_complete(rhapi):
+    payload = rhapi.db.pilotruns
     return payload
 
-def assemble_pilotrace_complete(RaceContext):
-    payload = RaceContext.rhdata.get_savedPilotRaces()
+def assemble_racelap_complete(rhapi):
+    payload = rhapi.db.laps
     return payload
 
-def assemble_racelap_complete(RaceContext):
-    payload = RaceContext.rhdata.get_savedRaceLaps()
+def assemble_profiles_complete(rhapi):
+    payload = rhapi.db.frequencysets
     return payload
 
-def assemble_profiles_complete(RaceContext):
-    payload = RaceContext.rhdata.get_profiles()
-    return payload
-
-def assemble_settings_complete(RaceContext):
-    payload = RaceContext.rhdata.get_options()
+def assemble_settings_complete(rhapi):
+    payload = rhapi.db.options
     return payload
 
 class AlchemyEncoder(json.JSONEncoder):
@@ -213,13 +200,13 @@ class AlchemyEncoder(json.JSONEncoder):
             fields = {}
             for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
                 data = obj.__getattribute__(field)
-                if field != "query" \
-                    and field != "query_class":
+                if field != 'query' \
+                    and field != 'query_class':
                     try:
                         json.dumps(data) # this will fail on non-encodable values, like other classes
-                        if field == "frequencies":
+                        if field == 'frequencies':
                             fields[field] = json.loads(data)
-                        elif field == "enter_ats" or field == "exit_ats":
+                        elif field == 'enter_ats' or field == 'exit_ats':
                             fields[field] = json.loads(data)
                         else:
                             fields[field] = data
@@ -230,55 +217,59 @@ class AlchemyEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self, obj)
 
-def discover(*_args, **_kwargs):
-    # returns array of exporters with default arguments
-    return [
+def register_handlers(args):
+    for exporter in [
         DataExporter(
             'json_pilots',
-            'JSON (Friendly) / Pilots',
+            "JSON (Friendly) / Pilots",
             write_json,
             assemble_pilots
         ),
         DataExporter(
             'json_heats',
-            'JSON (Friendly) / Heats',
+            "JSON (Friendly) / Heats",
             write_json,
             assemble_heats
         ),
         DataExporter(
             'json_classes',
-            'JSON (Friendly) / Classes',
+            "JSON (Friendly) / Classes",
             write_json,
             assemble_classes
         ),
         DataExporter(
             'json_formats',
-            'JSON (Friendly) / Formats',
+            "JSON (Friendly) / Formats",
             write_json,
             assemble_formats
         ),
         DataExporter(
             'json_results',
-            'JSON (Friendly) / Results',
+            "JSON (Friendly) / Results",
             write_json,
             assemble_results
         ),
         DataExporter(
             'json_all',
-            'JSON (Friendly) / All',
+            "JSON (Friendly) / All",
             write_json,
             assemble_all
         ),
         DataExporter(
             'json_complete_all',
-            'JSON (Complete) / All',
+            "JSON (Complete) / All",
             write_json,
             assemble_complete
         ),
         DataExporter(
             'json_complete_results',
-            'JSON (Complete) / Results',
+            "JSON (Complete) / Results",
             write_json,
             assemble_results_raw
         )
-    ]
+    ]:
+        args['register_fn'](exporter)
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'Export_register_JSON', register_handlers, {}, 75)
+

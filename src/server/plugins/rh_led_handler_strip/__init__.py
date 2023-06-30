@@ -7,17 +7,8 @@ import random
 import math
 from monotonic import monotonic
 
-def registerHandlers(args):
-    if 'registerFn' in args:
-        for led_effect in discover():
-            args['registerFn'](led_effect)
-
-def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on('LED_Initialize', 'LED_register_strip', registerHandlers, {}, 75)
-
 def leaderProxy(args):
-    if 'effectFn' in args:
+    if 'effect_fn' in args:
         if 'results' in args and args['results']:
             result = args['results']
         elif 'RACE' in args and hasattr(args['RACE'], 'results'):
@@ -35,7 +26,7 @@ def leaderProxy(args):
             if leader['starts']:
                 if 'node_index' not in args or args['node_index'] != leader['node']:
                     args['color'] = args['manager'].getDisplayColor(leader['node'], from_result=True)
-                args['effectFn'](args)
+                args['effect_fn'](args)
                 return True
     return False
 
@@ -387,7 +378,7 @@ def dim(color, decay):
 
     return Color(int(r), int(g), int(b))
 
-def discover(*args, **kwargs):
+def discover():
     return [
     # color
     LEDEffect("stripColor", "Color/Pattern (Args)", showColor, {
@@ -552,7 +543,7 @@ def discover(*args, **kwargs):
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'effectFn': showColor,
+        'effect_fn': showColor,
         'pattern': ColorPattern.SOLID,
         'time': 4
         }),
@@ -561,7 +552,7 @@ def discover(*args, **kwargs):
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'effectFn': showColor,
+        'effect_fn': showColor,
         'pattern': ColorPattern.ALTERNATING,
         'time': 4
         }),
@@ -570,7 +561,7 @@ def discover(*args, **kwargs):
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'effectFn': showColor,
+        'effect_fn': showColor,
         'pattern': ColorPattern.ONE_OF_THREE,
         'time': 4
         }),
@@ -579,7 +570,7 @@ def discover(*args, **kwargs):
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'effectFn': showColor,
+        'effect_fn': showColor,
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
         'time': 4
         }),
@@ -588,7 +579,7 @@ def discover(*args, **kwargs):
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'effectFn': showColor,
+        'effect_fn': showColor,
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
         'time': 4
         }),
@@ -602,3 +593,10 @@ def discover(*args, **kwargs):
             'time': 8
         })
     ]
+
+def register_handlers(args):
+    for led_effect in discover():
+        args['register_fn'](led_effect)
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_strip', register_handlers, {}, 75)

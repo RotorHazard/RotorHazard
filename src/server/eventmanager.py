@@ -17,22 +17,22 @@ class EventManager:
     eventOrder = {}
     eventThreads = {}
 
-    def __init__(self, RaceContext):
-        self._racecontext = RaceContext
+    def __init__(self, rhapi):
+        self._rhapi = rhapi
 
-    def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
-        if defaultArgs == None:
-            defaultArgs = {}
+    def on(self, event, name, handler_fn, default_args=None, priority=200, unique=False):
+        if default_args == None:
+            default_args = {}
 
         if event not in self.events:
             self.events[event] = {}
 
         self.events[event][name] = {
-            "handlerFn": handlerFn,
-            "defaultArgs": defaultArgs,
+            "handler_fn": handler_fn,
+            "default_args": default_args,
             "priority": priority,
             "unique": unique,
-            "raceContext": self._racecontext
+            "rhapi": self._rhapi
         }
 
         self.eventOrder[event] = [key for key, _value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
@@ -52,7 +52,7 @@ class EventManager:
 
         return True
 
-    def trigger(self, event, evtArgs=None):
+    def trigger(self, event, evt_args=None):
         # logger.debug('-Triggered event- {0}'.format(event))
         evt_list = []
         if event in self.eventOrder:
@@ -65,13 +65,13 @@ class EventManager:
         if len(evt_list):
             for ev, name in evt_list:
                 handler = self.events[ev][name]
-                args = copy.copy(handler['defaultArgs'])
+                args = copy.copy(handler['default_args'])
 
-                if evtArgs:
+                if evt_args:
                     if args:
-                        args.update(evtArgs)
+                        args.update(evt_args)
                     else:
-                        args = evtArgs
+                        args = evt_args
 
                 if ev == Evt.ALL:
                     args['_eventName'] = event
@@ -89,9 +89,9 @@ class EventManager:
                         self.eventThreads.pop(token, False)
 
                 if handler['priority'] < 100:
-                    self.run_handler(handler['handlerFn'], args)
+                    self.run_handler(handler['handler_fn'], args)
                 else:
-                    greenlet = gevent.spawn(self.run_handler, handler['handlerFn'], args)
+                    greenlet = gevent.spawn(self.run_handler, handler['handler_fn'], args)
                     self.eventThreads[greenlet.minimal_ident] = {
                         'name': threadName,
                         'thread': greenlet
@@ -178,11 +178,19 @@ class Evt:
     # CLUSTER
     CLUSTER_JOIN = 'clusterJoin'
     # LED
+    LED_INITIALIZE = 'LED_Initialize'
     LED_EFFECT_SET = 'LedEffectSet'
     LED_BRIGHTNESS_SET = 'LedBrightnessSet'
     LED_MANUAL = 'LedManual'
     LED_SET_MANUAL = 'LedSetManual'
     # VRX Controller
+    VRX_INITIALIZE = 'VRxC_Initialize'
     VRX_DATA_RECEIVE = 'VrxDataRecieve'
-
+    # Initializations
+    POINTS_INITIALIZE = 'RacePoints_Initialize'
+    CLASS_RANK_INITIALIZE = 'RaceClassRanking_Initialize'
+    HEAT_GENERATOR_INITIALIZE = 'HeatGenerator_Initialize'
+    ACTIONS_INITIALIZE = 'actionsInitialize'
+    DATA_IMPORT_INITIALIZE = 'Import_Initialize'
+    DATA_EXPORT_INITIALIZE = 'Export_Initialize'
 

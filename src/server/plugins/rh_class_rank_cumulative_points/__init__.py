@@ -2,35 +2,23 @@
 
 import logging
 import RHUtils
+from eventmanager import Evt
 from RHRace import StartBehavior
 from Results import RaceClassRankMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
-        for method in discover():
-            args['registerFn'](method)
+def rank_points_total(rhapi, race_class, args):
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
-def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on('RaceClassRanking_Initialize', 'classrank_register_cumulative_points', registerHandlers, {}, 75, True)
-    if '__' in kwargs:
-        __ = kwargs['__']
-
-def rank_points_total(racecontext, race_class, args):
-
-    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
+    heats = rhapi.db.heats_by_class(race_class.id)
 
     pilotresults = {}
     for heat in heats:
-        races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
+        races = rhapi.db.races_by_heat(heat.id)
 
         for race in races:
-            race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
+            race_result = rhapi.db.race_results(race)
 
             if race_result:
                 for pilotresult in race_result[race_result['meta']['primary_leaderboard']]:
@@ -88,23 +76,21 @@ def rank_points_total(racecontext, race_class, args):
 
     return leaderboard, meta
 
-def discover(*_args, **_kwargs):
-    # returns array of methods with default arguments
-    return [
+def register_handlers(args):
+    args['register_fn'](
         RaceClassRankMethod(
             'cumulative_points',
-            'Cumulative Points',
+            "Cumulative Points",
             rank_points_total,
             {
                 'ascending': False
             },
             [
-                {
-                    'id': 'ascending',
-                    'label': "Ascending",
-                    'value': False,
-                    'fieldType': 'checkbox',
-                },
+                UIField('ascending', "Ascending", UIFieldType.CHECKBOX, value=False),
             ]
         )
-    ]
+    )
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', register_handlers, {}, 75)
+

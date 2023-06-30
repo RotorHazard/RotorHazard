@@ -77,15 +77,8 @@ import RHGPIO
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 
-# Create shared context
-RaceContext = RaceContext.RaceContext()
-
 # Events manager
 from eventmanager import Evt, EventManager
-
-Events = EventManager(RaceContext)
-RaceContext.events = Events
-EventActionsObj = None
 
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern
@@ -101,6 +94,14 @@ from data_export import DataExportManager
 from data_import import DataImportManager
 from VRxControl import VRxControlManager
 from HeatGenerator import HeatGeneratorManager
+
+# Create shared context
+RaceContext = RaceContext.RaceContext()
+RHAPI = RHAPI.RHAPI(RaceContext)
+
+Events = EventManager(RHAPI)
+RaceContext.events = Events
+EventActionsObj = None
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -164,7 +165,7 @@ Database.DB.init_app(APP)
 Database.DB.app = APP
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], maxHttpBufferSize=5e7)
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], max_http_buffer_size=5e7)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
@@ -194,8 +195,6 @@ RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
-
-RHAPI = RHAPI.RHAPI(RaceContext)
 
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
@@ -1192,7 +1191,7 @@ def on_alter_heat(data):
     RaceContext.rhui.emit_heat_data(noself=True)
     if ('note' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to heat: {0}').format(heat.displayname())
+        message = __('Alterations made to heat: {0}').format(heat.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
 @SOCKET_IO.on('delete_heat')
@@ -1235,7 +1234,7 @@ def on_alter_race_class(data):
         'win_condition' in data or \
         'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to race class: {0}').format(race_class.displayname())
+        message = __('Alterations made to race class: {0}').format(race_class.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_class_data(noself=True)
@@ -1400,7 +1399,7 @@ def on_alter_race(data):
 
     _race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    message = __('A race has been reassigned to {0}').format(new_heat.displayname())
+    message = __('A race has been reassigned to {0}').format(new_heat.display_name)
     RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_race_list(nobroadcast=True)
@@ -1446,6 +1445,8 @@ def on_list_backups():
         for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
             files.extend(filenames)
             break
+
+        files.sort(key=str.casefold)
 
         emit_payload = {
             'backup_files': files
@@ -1591,7 +1592,7 @@ def on_export_database_file(data):
                 }
                 emit('exported_data', emit_payload)
 
-                Events.trigger(Evt.DATABASE_EXPORT)
+                Events.trigger(Evt.DATABASE_EXPORT, emit_payload)
             except Exception:
                 logger.exception("Error downloading export file")
                 RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
@@ -1619,7 +1620,7 @@ def on_import_file(data):
 
             # do import
             logger.info('Importing data via {0}'.format(importer))
-            import_result = RaceContext.import_manager.runImport(importer, data['source_data'], import_args) 
+            import_result = RaceContext.import_manager.run_import(importer, data['source_data'], import_args)
 
             if import_result != False:
                 clean_results_cache()
@@ -1639,16 +1640,16 @@ def on_import_file(data):
 @catchLogExceptionsWrapper
 def on_generate_heats_v2(data):
     '''Run the selected Generator'''
-    available_nodes = 0
+    available_seats = 0
     profile_freqs = json.loads(RaceContext.race.profile.frequencies)
     for node_index in range(RaceContext.race.num_nodes):
         if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-            available_nodes += 1
+            available_seats += 1
 
     generate_args = {
         'input_class': data['input_class'],
         'output_class': data['output_class'],
-        'available_nodes': available_nodes
+        'available_seats': available_seats
         }
     if 'params' in data:
         for param, value in data['params'].items():
@@ -1874,13 +1875,13 @@ def emit_led_effect_setup(**_params):
 
             for effect in effects:
 
-                if event['event'] in effects[effect]['validEvents'].get('include', []) or (
+                if event['event'] in effects[effect]['valid_events'].get('include', []) or (
                     event['event'] not in [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING, LEDEvent.IDLE_READY]
-                    and event['event'] not in effects[effect]['validEvents'].get('exclude', [])
-                    and Evt.ALL not in effects[effect]['validEvents'].get('exclude', [])):
+                    and event['event'] not in effects[effect]['valid_events'].get('exclude', [])
+                    and Evt.ALL not in effects[effect]['valid_events'].get('exclude', [])):
 
-                    if event['event'] in effects[effect]['validEvents'].get('recommended', []) or \
-                        Evt.ALL in effects[effect]['validEvents'].get('recommended', []):
+                    if event['event'] in effects[effect]['valid_events'].get('recommended', []) or \
+                        Evt.ALL in effects[effect]['valid_events'].get('recommended', []):
                         effect_list_recommended.append({
                             'name': effect,
                             'label': '* ' + __(effects[effect]['label'])
@@ -1911,7 +1912,7 @@ def emit_led_effects(**_params):
         effect_list = []
         if effects:
             for effect in effects:
-                if effects[effect]['validEvents'].get('manual', True):
+                if effects[effect]['valid_events'].get('manual', True):
                     effect_list.append({
                         'name': effect,
                         'label': __(effects[effect]['label'])
@@ -2007,7 +2008,7 @@ def on_stage_race():
         max_round = RaceContext.rhdata.get_max_round(RaceContext.race.current_heat)
         if max_round is None:
             max_round = 0
-        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.displayname(), (max_round+1),
+        logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, (max_round+1),
                                                                    ", ".join(pilot_names_list)))
     else:
         heatNodes = []
@@ -2112,7 +2113,7 @@ def on_stage_race():
     else:
         logger.info("Attempted to stage race while status is not 'ready'")
 
-RHAPI.race_stage = on_stage_race
+RHAPI.race.stage = on_stage_race
 
 def autoUpdateCalibration():
     ''' Apply best tuning values to nodes '''
@@ -2355,7 +2356,7 @@ def on_stop_race(doSave=False):
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to stop the timer
 
-RHAPI.race_stop = on_stop_race
+RHAPI.race.stop = on_stop_race
 
 @catchLogExceptionsWrapper
 def do_stop_race_actions(doSave=False):
@@ -2661,10 +2662,10 @@ def calc_heat(heat_id, silent=False):
     heat = RaceContext.rhdata.get_heat(heat_id)
 
     if (heat):
-        calc_result = RaceContext.rhdata.calc_heat_pilots(heat, Results)
+        calc_result = RaceContext.rhdata.calc_heat_pilots(heat)
 
         if calc_result['calc_success'] is False:
-            logger.warning('{} plan cannot be fulfilled.'.format(heat.displayname()))
+            logger.warning('{} plan cannot be fulfilled.'.format(heat.display_name))
 
         if calc_result['calc_success'] is None:
             # Heat is confirmed or has saved races
@@ -2731,7 +2732,7 @@ def emit_heat_plan_result(new_heat_id, calc_result):
 
     emit_payload = {
         'heat': new_heat_id,
-        'displayname': heat.displayname(),
+        'displayname': heat.display_name,
         'slots': heatNodes,
         'calc_result': calc_result
     }
@@ -4143,7 +4144,7 @@ def check_req_entry(req_line, module_name):
 
 def check_requirements():
     try:
-        import importlib.metadata
+        import importlib.metadata  # @UnusedImport pylint: disable=redefined-outer-name
         chk_list = [['Flask==','flask'], ['Flask-SocketIO==','flask_socketio'], \
                     ['Flask_SocketIO==','flask_socketio'], ['six==','six'], \
                     ['flask_sqlalchemy==','flask_sqlalchemy'], ['gevent==','gevent'], \
@@ -4199,9 +4200,8 @@ else:
 for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
         plugin.initialize(
-            Events=Events,
-            __=__,
-            RHAPI=RHAPI,
+            events=Events,
+            rhapi=RHAPI,
         )
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
@@ -4405,7 +4405,7 @@ if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
-        RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext)
+        RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext, RHAPI)
         init_LED_effects()
     except:
         logger.exception("Error initializing LED support")
@@ -4417,8 +4417,8 @@ else:
     RaceContext.led_manager = NoLEDManager()
 
 # leaderboard ranking managers
-RaceContext.race_points_manager = Results.RacePointsManager(RaceContext, Events)
-RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RaceContext, Events)
+RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
+RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RHAPI, Events)
 
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors
@@ -4470,11 +4470,11 @@ RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, legacy_config=C
 Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters
-RaceContext.export_manager = DataExportManager(RaceContext, Events)
-RaceContext.import_manager = DataImportManager(RaceContext, Events)
+RaceContext.export_manager = DataExportManager(RHAPI, Events)
+RaceContext.import_manager = DataImportManager(RHAPI, Events)
 
 # heat generators
-RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, Events)
+RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

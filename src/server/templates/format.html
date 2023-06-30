@@ -89,14 +89,14 @@
 				var form_el = $('<ol class="form">');
 
 				for (var f_idx in panel.settings) {
-					settings = panel.settings[f_idx];
+					var settings = { ...panel.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
-
-					// TODO: adjust incoming data
-					settings.fieldType = settings.fieldtype;
-					settings.id = settings.name;
-					settings.genericOption = settings.name;
+					settings.fieldClass = 'set_ui_option';
+					settings.id = 'genericOption_' + settings.name;
+					settings.data = {
+						field: settings.name,
+					}
 
 					var field = rhui.buildField(settings);
 
@@ -110,6 +110,17 @@
 
 				$('#custom-ui').append(panel_el);
 			}
+		});
+
+		$(document).on('change', '.set_ui_option', function (event) {
+			var field = $(this).data('field');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				option: field,
+				value: value
+			};
+			socket.emit('set_option', data);
 		});
 
 		socket.on('frequency_data', function (msg) {
@@ -397,12 +408,13 @@
 				var param_form = $('<ol class="form">');
 
 				for (var f_idx in rank_method.settings) {
-					settings = rank_method.settings[f_idx];
+					var settings = { ...rank_method.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
+					settings.id = 'classRankParameter_' + settings.name;
 					settings.data = {
 						type: 'rankmethod',
-						field: settings.id,
+						field: settings.name,
 						class_id: race_class_id,
 						method: rank_method,
 					}
@@ -426,35 +438,6 @@
 					},
 					type: 'inline'
 				});
-			}
-		});
-
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-
-			if ($(this).attr('type') == 'checkbox') {
-				var value = $(this).prop('checked');
-			} else {
-				var value = $(this).val();
-			}
-
-			if ($(this).data('type') == 'rankmethod') {
-				var race_class_id = $(this).data('class_id');
-				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
-
-				if (race_class) {
-					var data = {
-						class_id: race_class_id,
-						rank_settings: {}
-					};
-					data.rank_settings[field] = value;
-					socket.emit('alter_race_class', data);
-
-					if (!race_class.ranksettings) {
-						race_class.ranksettings = {};
-					}
-					race_class.ranksettings[field] = value;
-				}
 			}
 		});
 
@@ -1190,29 +1173,27 @@
 						}
 
 						for (var attr_idx in rotorhazard.event.pilot_attributes) {
-							var pilot_attr = rotorhazard.event.pilot_attributes[attr_idx];
-							var attr_label = $('<label class="pilot_attr" for="attr_' + pilot_attr.name + '_' + pilot.pilot_id + '">' + __(pilot_attr.label) + '</label>');
-							var attr_field = $('<input type="text" class="set_pilot_attr" id="attr_' + pilot_attr.name + '_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-attr="' + pilot_attr.name + '">');
-
-							if (pilot[pilot_attr.name] != undefined) {
-								attr_field.val(pilot[pilot_attr.name])
+							var pilot_attr = { ...rotorhazard.event.pilot_attributes[attr_idx]};
+							pilot_attr.fieldClass = 'set_pilot_attr';
+							pilot_attr.wrapperClass = 'pilot_attr';
+							pilot_attr.id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
+							pilot_attr.data = {
+								'pilot_id': pilot.pilot_id,
+								'attr': pilot_attr.name,
 							}
 
-							el.append(attr_label);
-							el.append(attr_field);
+							if (pilot_attr.name in pilot) {
+								pilot_attr.value = pilot[pilot_attr.name]
+							}
+
+							el.append(rhui.buildField(pilot_attr));
 						}
 
 						el.appendTo($('.pilots'));
 					}
 				}
 
-				rotorhazard.event.pilots.sort(function(a, b){
-					if (a.name < b.name)
-						return -1;
-					if (a.name > b.name)
-						return 1;
-					return 0;
-				});
+				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 
 				$('.set_pilot_position').each(function(){
 					$(this).empty();
@@ -1315,7 +1296,7 @@
 		$(document).on("change", '.set_pilot_attr', function (event) {
 			var pilot_id = parseInt($(this).data('pilot_id'));
 			var pilot_attr = $(this).data('attr');
-			var value = $(this).val();
+			var value = rhui.getFieldVal(this);
 			var data = {
 				pilot_id: pilot_id,
 				pilot_attr: pilot_attr,
@@ -1324,8 +1305,6 @@
 			socket.emit('alter_pilot', data);
 			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
 			pilot[pilot_attr] = value;
-			// display_classes();
-			// display_unclassified_heats();
 		})
 
 		$('button#add_pilot').click(function (event) {
@@ -1698,12 +1677,13 @@
 					var param_form = $('<ol class="form">');
 
 					for (var f_idx in points_method.settings) {
-						settings = points_method.settings[f_idx];
+						var settings = { ...points_method.settings[f_idx] };
 
 						settings.wrapperEl = 'li';
+						settings.id = 'racePointsParameter_' + settings.name;
 						settings.data = {
 							type: 'pointsmethod',
-							field: settings.id,
+							field: settings.name,
 						}
 
 						if (raceformat.points_settings && raceformat.points_settings[settings.id]) {
@@ -1727,29 +1707,6 @@
 					});
 				}
 
-			}
-		});
-
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-			var value = $(this).val();
-			if ($(this).data('type') == 'pointsmethod') {
-				var format_id = parseInt($('#set_race_format').val());
-				var raceformat = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
-
-				if (raceformat) {
-					var data = {
-						format_id: format_id,
-						points_settings: {}
-					};
-					data.points_settings[field] = value;
-					socket.emit('alter_race_format', data);
-
-					if (!raceformat.points_settings) {
-						raceformat.points_settings = {};
-					}
-					raceformat.points_settings[field] = value;
-				}
 			}
 		});
 
@@ -1800,6 +1757,7 @@
 					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
 				}
 				$('#database_list').prop('disabled', false);
+				$('#database_list').val($('#database_list option').last().val());
 				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', false);
 				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', false);
 			} else {
@@ -1930,12 +1888,13 @@
 				var param_form = $('<ol class="form">');
 
 				for (var f_idx in selected_importer.settings) {
-					settings = selected_importer.settings[f_idx];
+					var settings = { ...selected_importer.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
+					settings.id = 'importParameter_' + settings.name;
 					settings.data = {
 						type: 'importer',
-						field: settings.id,
+						field: settings.name,
 					}
 					var field = rhui.buildField(settings);
 
@@ -1955,26 +1914,10 @@
 			}
 		}
 
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-			var value = $(this).val();
-			if ($(this).data('type') == 'importer') {
-				var field_data = selected_importer.settings.find(obj => {return obj.id == field});
-
-				if (field_data) {
-					if (field_data.fieldType == "checkbox") {
-						field_data.value = $(this).prop('checked');
-					} else {
-						field_data.value = value;
-					}
-				}
-			}
-		});
-
 		function emit_import_cmd() {
 			var params = {}
 			for (var f in selected_importer.settings) {
-				params[selected_importer.settings[f].id] = selected_importer.settings[f].value;
+				params[selected_importer.settings[f].name] = selected_importer.settings[f].value;
 			}
 
 			var data = {
@@ -2049,7 +1992,7 @@
 		function emit_generate_cmd() {
 			var params = {}
 			for (var f in selected_generator.settings) {
-				params[selected_generator.settings[f].id] = selected_generator.settings[f].value;
+				params[selected_generator.settings[f].name] = selected_generator.settings[f].value;
 			}
 			var data = {
 				input_class: parseInt($('#generator_input_class').val()),
@@ -2068,12 +2011,13 @@
 			var param_form = $('<ol class="form">');
 
 			for (var f_idx in selected_generator.settings) {
-				settings = selected_generator.settings[f_idx];
+				var settings = { ...selected_generator.settings[f_idx] };
 
 				settings.wrapperEl = 'li';
+				settings.id = 'heatGenerateParameter_' + settings.name;
 				settings.data = {
 					type: 'heatgenerator',
-					field: settings.id,
+					field: settings.name,
 				}
 				var field = rhui.buildField(settings);
 
@@ -2092,22 +2036,6 @@
 			});
 		}
 
-		$(document).on('change', '#parameters input,#parameters select', function (event) {
-			var field = $(this).data('field');
-			var value = $(this).val();
-			if ($(this).data('type') == 'heatgenerator') {
-				var field_data = selected_generator.settings.find(obj => {return obj.id == field});
-
-				if (field_data) {
-					if (field_data.fieldType == "checkbox") {
-						field_data.value = $(this).prop('checked');
-					} else {
-						field_data.value = value;
-					}
-				}
-			}
-		});
-
 		$('button#generate_parameters').click(function (event) {
 			if (selected_generator && selected_generator.settings) {
 				open_generate_params()
@@ -2125,12 +2053,59 @@
 			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
 		});
 
-		$('.set-option').change(function (event) {
+		$(document).on('change', '.set-option', function (event) {
 			var data = {
 				option: $(this).data('option'),
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
+		});
+
+		$(document).on('change', '#parameters input,#parameters select', function (event) {
+			var field = $(this).data('field');
+			var value = rhui.getFieldVal(this);
+
+			if ($(this).data('type') == 'pointsmethod') {
+				var format_id = parseInt($('#set_race_format').val());
+				var raceformat = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+
+				if (raceformat) {
+					var data = {
+						format_id: format_id,
+						points_settings: {}
+					};
+					data.points_settings[field] = value;
+					socket.emit('alter_race_format', data);
+
+					if (!raceformat.points_settings) {
+						raceformat.points_settings = {};
+					}
+					raceformat.points_settings[field] = value;
+				}
+			} else if ($(this).data('type') == 'rankmethod') {
+				var race_class_id = $(this).data('class_id');
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == race_class_id});
+
+				if (race_class) {
+					var data = {
+						class_id: race_class_id,
+						rank_settings: {}
+					};
+					data.rank_settings[field] = value;
+					socket.emit('alter_race_class', data);
+
+					if (!race_class.ranksettings) {
+						race_class.ranksettings = {};
+					}
+					race_class.ranksettings[field] = value;
+				}
+			} else if ($(this).data('type') == 'heatgenerator') {
+				var field_data = selected_generator.settings.find(obj => {return obj.name == field});
+				field_data.value = value;
+			} else if ($(this).data('type') == 'importer') {
+				var field_data = selected_importer.settings.find(obj => {return obj.name == field});
+				field_data.value = value;
+			}
 		});
 
 		$('#set_language').change(function (event) {
@@ -2360,9 +2335,8 @@
 					<label for="set_race_mode">{{ __('Race Clock Mode') }}</label>
 				</div>
 				<select id="set_race_mode">
+					<option value="0">{{ __('Fixed Time') }}</option>
 					<option value="1">{{ __('No Time Limit') }}</option>
-					<option value="0">{{ __('Fixed Time') }}</option><!--  / Finish Lap -->
-					<!-- <option value="2">{{ __('Fixed Time / End Immediately') }}</option> -->
 				</select>
 			</li>
 			<li id="format-race-duration-field">
@@ -2473,82 +2447,88 @@
 		</div>
 		{% endif %}
 
-		<h3>{{ __('Stored Data') }}</h3>
-		<div class="control-set">
-			<button id="backup_database">{{ __('Backup Database') }}</button>
-		</div>
-		<ol class="form" id="race_formats">
+		<ul id="db-management">
 			<li>
-				<div class="label-block">
-					<label for="database_list">{{ __('Stored Databases') }}</label>
+				<h3>{{ __('Stored Data') }}</h3>
+				<div class="control-set">
+					<button id="backup_database">{{ __('Backup Database') }}</button>
 				</div>
-				<select id="database_list" disabled="disabled">
-					<option value="-">{{ __('No Saved Databases') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
-			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
-		</div>
-
-		<h3>{{ __('Export') }}</h3>
-		<ol class="form" id="race_formats">
-			<li>
-				<div class="label-block">
-					<label for="exporter_list">{{ __('Exporter') }}</label>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="database_list">{{ __('Stored Databases') }}</label>
+						</div>
+						<select id="database_list" disabled="disabled">
+							<option value="-">{{ __('No Saved Databases') }}</option>
+						</select>
+					</li>
+				</ol>
+				<div class="control-set">
+					<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
+					<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
 				</div>
-				<select id="exporter_list" disabled="disabled">
-					<option value="-">{{ __('No Exporters') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
-		</div>
-
-		<h3>{{ __('Reset') }}</h3>
-		<ol class="form" id="race_formats">
-			<li>
-				<div class="label-block">
-					<label for="reset_type">{{ __('Items to Clear') }}</label>
-				</div>
-				<select id="reset_type">
-					<option value="races">{{ __('Races') }}</option>
-					<option value="heats">{{ __('Races and Heats') }}</option>
-					<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
-					<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
-					<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
-					<option value="formats">{{ __('Races and Race Formats') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
-		</div>
-
-		<h3>{{ __('Import') }}</h3>
-		<ol class="form" id="race_formats">
-			<li>
-				<div class="label-block">
-					<label for="importer_list">{{ __('Importer') }}</label>
-				</div>
-				<select id="importer_list" disabled="disabled">
-					<option value="-">{{ __('No Importers') }}</option>
-				</select>
 			</li>
 			<li>
-				<div class="label-block">
-					<label for="import_file">{{ __('Data Source') }}</label>
-					<p class="desc">Max 50MB</p>
+				<h3>{{ __('Reset') }}</h3>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="reset_type">{{ __('Items to Clear') }}</label>
+						</div>
+						<select id="reset_type">
+							<option value="races">{{ __('Races') }}</option>
+							<option value="heats">{{ __('Races and Heats') }}</option>
+							<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
+							<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
+							<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+							<option value="formats">{{ __('Races and Race Formats') }}</option>
+						</select>
+					</li>
+				</ol>
+				<div class="control-set">
+					<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
 				</div>
-				<input type="file" id="import_file" />
 			</li>
-		</ol>
-		<div class="control-set">
-			<button id="import_data" class="btn-danger" disabled="disabled">{{ __('Import Data') }}</button>
-		</div>
-
+			<li>
+				<h3>{{ __('Import') }}</h3>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="importer_list">{{ __('Importer') }}</label>
+						</div>
+						<select id="importer_list" disabled="disabled">
+							<option value="-">{{ __('No Importers') }}</option>
+						</select>
+					</li>
+					<li>
+						<div class="label-block">
+							<label for="import_file">{{ __('Data Source') }}</label>
+							<p class="desc">Max 50MB</p>
+						</div>
+						<input type="file" id="import_file" />
+					</li>
+				</ol>
+				<div class="control-set">
+					<button id="import_data" class="btn-danger" disabled="disabled">{{ __('Import Data') }}</button>
+				</div>
+			</li>
+			<li>
+				<h3>{{ __('Export') }}</h3>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="exporter_list">{{ __('Exporter') }}</label>
+						</div>
+						<select id="exporter_list" disabled="disabled">
+							<option value="-">{{ __('No Exporters') }}</option>
+						</select>
+					</li>
+				</ol>
+				<div class="control-set">
+					<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+				</div>
+			</li>
+		</ul>
 
 		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>

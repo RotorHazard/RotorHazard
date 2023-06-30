@@ -137,14 +137,14 @@
 				var form_el = $('<ol class="form">');
 
 				for (var f_idx in panel.settings) {
-					settings = panel.settings[f_idx];
+					var settings = { ...panel.settings[f_idx] };
 
 					settings.wrapperEl = 'li';
-
-					// TODO: adjust incoming data
-					settings.fieldType = settings.fieldtype;
-					settings.id = settings.name;
-					settings.genericOption = settings.name;
+					settings.fieldClass = 'set_ui_option';
+					settings.id = 'genericOption_' + settings.name;
+					settings.data = {
+						field: settings.name,
+					}
 
 					var field = rhui.buildField(settings);
 
@@ -158,6 +158,17 @@
 
 				$('#custom-ui').append(panel_el);
 			}
+		});
+
+		$(document).on('change', '.set_ui_option', function (event) {
+			var field = $(this).data('field');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				option: field,
+				value: value
+			};
+			socket.emit('set_option', data);
 		});
 
 		socket.on('heartbeat', function (msg) {
@@ -872,161 +883,158 @@
 		});
 
 		/* Event Actions */
-		var eventList = { // TODO: load from server
-			raceStage: 'Race Stage',
-			raceStart: 'Race Start',
-			raceFinish: 'Race Finish',
-			raceStop: 'Race Stop',
-			raceWin: 'Race Win',
-			racePilotDone: 'Pilot Done',
-			heatSet: 'Heat Change',
-			raceSchedule: 'Race Schedule',
-			raceScheduleCancel: 'Cancel Scheduled Race',
-			lapsSave: 'Save Laps',
-			lapsDiscard: 'Discard Laps',
-			roundsComplete: 'Rounds Complete'
-		}
-		var eventListLoaded = true;
 
-		var effectListLoaded = false;
-
-		var actionList = []
-
-		function buildActionList() {
-			var actionListObj = $('<ul>');
-			for (var idx in actionList) {
-				var action = actionList[idx]
-				actionListObj.append(buildActionItem(action['event'], action['effect'], idx));
+		function updateActionList() {
+			if (rotorhazard.actions?.effects && rotorhazard.actions?.events && rotorhazard.actions?.list) {
+				$('button#add_action').prop('disabled', false);
+				var actionListObj = $('<ul>');
+				for (var idx in rotorhazard.actions.list) {
+					var action = rotorhazard.actions.list[idx]
+					actionListObj.append(buildActionItem(action['event'], action['effect'], idx));
+				}
+				$('#actions').html(actionListObj);
 			}
-			return actionListObj;
 		}
 
 		function buildActionItem(event, effect, action_idx) {
-			var item = $('<li class="action">')
-			var eventLabel = $('<label>')
-				.text(__('Event'))
-				.addClass('screen-reader-text')
-				.attr('for', 'action_event_' + action_idx);
-			var eventSelect = $('<select class="actionfield">')
-				.addClass('actionfield')
-				.data('idx', action_idx)
-				.data('field', 'event')
-				.attr('id', 'action_event_' + action_idx);
-			for (const [key, value] of Object.entries(eventList)) {
-				var opt = $('<option>')
-					.attr('value', key)
-					.text(value);
-				eventSelect.append(opt);
+			if (rotorhazard.actions?.events && rotorhazard.actions?.effects && rotorhazard.actions?.list) {
+				var item = $('<li class="action">')
+				var eventLabel = $('<label>')
+					.text(__('Event'))
+					.addClass('screen-reader-text')
+					.attr('for', 'action_event_' + action_idx);
+				var eventSelect = $('<select class="actionfield">')
+					.addClass('actionfield')
+					.data('idx', action_idx)
+					.data('field', 'event')
+					.attr('id', 'action_event_' + action_idx);
+				for (const [key, value] of Object.entries(rotorhazard.actions.events)) {
+					var opt = $('<option>')
+						.attr('value', key)
+						.text(value);
+					eventSelect.append(opt);
+				}
+				if (event) {
+					eventSelect.val(event);
+				} else {
+					event = eventSelect.val();
+					rotorhazard.actions.list[action_idx].event = event;
+				}
+				item.append(eventLabel);
+				item.append(eventSelect);
+
+				var effectLabel = $('<label>')
+					.text(__('Effect'))
+					.addClass('screen-reader-text')
+					.attr('for', 'action_effect_' + action_idx);
+				var effectSelect = $('<select>')
+					.addClass('actionfield')
+					.data('idx', action_idx)
+					.data('field', 'effect')
+					.attr('id', 'action_effect_' + action_idx);
+				for (const [key, value] of Object.entries(rotorhazard.actions.effects)) {
+					var opt = $('<option>')
+						.attr('value', key)
+						.text(value.name);
+					effectSelect.append(opt);
+				}
+				if (effect) {
+					effectSelect.val(effect);
+				} else {
+					effect = effectSelect.val()
+					rotorhazard.actions.list[action_idx].effect = effect;
+				}
+
+				item.append(effectLabel);
+				item.append(effectSelect);
+
+				var deleteBtn = $('<button>')
+					.text('\u00D7')
+					.addClass('delete-action')
+					.addClass('btn-danger')
+					.data('id', action_idx)
+					.attr('title', __("Delete Action"));
+
+				item.append(deleteBtn);
+				item.append(buildActionFields(effect, action_idx));
+
+				return item;
 			}
-			if (event) {
-				eventSelect.val(event);
-			} else {
-				event = eventSelect.val();
-				actionList[action_idx].event = event;
-			}
-			item.append(eventLabel);
-			item.append(eventSelect);
-
-			var effectLabel = $('<label>')
-				.text(__('Effect'))
-				.addClass('screen-reader-text')
-				.attr('for', 'action_effect_' + action_idx);
-			var effectSelect = $('<select>')
-				.addClass('actionfield')
-				.data('idx', action_idx)
-				.data('field', 'effect')
-				.attr('id', 'action_effect_' + action_idx);
-			for (const [key, value] of Object.entries(effectList)) {
-				var opt = $('<option>')
-					.attr('value', key)
-					.text(value.name);
-				effectSelect.append(opt);
-			}
-			if (effect) {
-				effectSelect.val(effect);
-			} else {
-				effect = effectSelect.val()
-				actionList[action_idx].effect = effect;
-			}
-
-			item.append(effectLabel);
-			item.append(effectSelect);
-
-			var deleteBtn = $('<button>')
-				.text('\u00D7')
-				.addClass('delete-action')
-				.addClass('btn-danger')
-				.data('id', action_idx)
-				.attr('title', __("Delete Action"));
-
-			item.append(deleteBtn);
-			item.append(buildActionFields(effect, action_idx));
-
-			return item;
 		}
 
 		function buildActionFields(effect, action_idx) {
-			var fieldset = $('<fieldset>');
-			for (idx in effectList[effect].fields) {
-				settings = effectList[effect].fields[idx];
+			if (rotorhazard.actions?.list && rotorhazard.actions?.effects) {
+				var fieldset = $('<fieldset>');
 
-				settings.wrapperEl = 'div';
-				settings.data = {
-					idx: action_idx,
-					field: settings.id
+				for (idx in rotorhazard.actions.effects[effect].fields) {
+					var settings = { ...rotorhazard.actions.effects[effect].fields[idx] };
+
+					settings.wrapperEl = 'div';
+					settings.data = {
+						idx: action_idx,
+						field: settings.name
+					}
+					if (rotorhazard.actions.list[action_idx][settings.name]) {
+						settings.value = rotorhazard.actions.list[action_idx][settings.name];
+					}
+
+					settings.id = 'action_' + action_idx + '_' + idx;
+					settings.fieldClass = 'actionfield';
+
+					var field = rhui.buildField(settings);
+
+					fieldset.append(field);
 				}
-				if (actionList[action_idx][settings.id]) {
-					settings.value = actionList[action_idx][settings.id];
-				}
-
-				settings.id = 'action_' + action_idx + '_' + idx;
-				settings.fieldClass = 'actionfield';
-
-				// TODO: adjust incoming data
-				settings.label = settings.name;
-				settings.fieldType = settings.type;
-
-				var field = rhui.buildField(settings);
-
-				fieldset.append(field);
+				return fieldset;
 			}
-			return fieldset;
 		}
 
 		socket.on('action_setup', function (msg) {
-			if (msg.enabled) {
-				effectList = msg.effects;
-				effectListLoaded = true;
-				if (actionList.length > 0) {
-					$('button#add_action').prop('disabled', false);
-					$('#actions').html(buildActionList());
-				}
+			rotorhazard.actions ??= {}
+
+			rotorhazard.actions.effects = msg.effects;
+
+			rotorhazard.actions.events = { // TODO: load from server
+				raceStage: 'Race Stage',
+				raceStart: 'Race Start',
+				raceFinish: 'Race Finish',
+				raceStop: 'Race Stop',
+				raceWin: 'Race Win',
+				racePilotDone: 'Pilot Done',
+				heatSet: 'Heat Change',
+				raceSchedule: 'Race Schedule',
+				raceScheduleCancel: 'Cancel Scheduled Race',
+				lapsSave: 'Save Laps',
+				lapsDiscard: 'Discard Laps',
+				roundsComplete: 'Rounds Complete'
 			}
+
+			updateActionList();
 		});
 
 		socket.on('event_actions', function (msg) {
-			actionList = JSON.parse(msg.actions);
-			if (!Array.isArray(actionList)) {
-				actionList = [];
+			rotorhazard.actions ??= {}
+			rotorhazard.actions.list = JSON.parse(msg.actions);
+			if (!Array.isArray(rotorhazard.actions.list)) {
+				rotorhazard.actions.list = [];
 			}
-			if (effectListLoaded && eventListLoaded) {
-				$('button#add_action').prop('disabled', false);
-				$('#actions').html(buildActionList());
-			}
+			updateActionList();
 		});
 
 		$('button#add_action').click(function (event) {
-			actionList.push({});
-			$('#actions').html(buildActionList());
+			if (rotorhazard.actions?.list) {
+				rotorhazard.actions.list.push({});
+				updateActionList();
+			}
 		});
 
 		$(document).on('click', 'button.delete-action', function (event) {
 			var idx = $(event.target).data('id');
-			actionList.splice(idx, 1);
-			$('#actions').html(buildActionList());
+			rotorhazard.actions.list.splice(idx, 1);
+			updateActionList();
 			socket.emit('set_option', {
 				option: 'actions',
-				value: JSON.stringify(actionList)
+				value: JSON.stringify(rotorhazard.actions.list)
 			});
 		});
 
@@ -1034,17 +1042,17 @@
 			var target = $(evt.target);
 			var action = target.data('idx');
 			var field = target.data('field');
-			var value = target.val();
+			var value = rhui.getFieldVal(evt.target);
 
-			actionList[action][field] = value;
+			rotorhazard.actions.list[action][field] = value;
 
 			if (field == "effect") {
-				$('#actions').html(buildActionList());
+				updateActionList();
 			}
 
 			socket.emit('set_option', {
 				option: 'actions',
-				value: JSON.stringify(actionList)
+				value: JSON.stringify(rotorhazard.actions.list)
 			});
 		});
 

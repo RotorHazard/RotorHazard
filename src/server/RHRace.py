@@ -39,9 +39,8 @@ class RHRace():
         # concluded
         self.end_time = 0 # Monotonic, updated when race is stopped
         # leaderboard/cache
-        self.lap_results = None # current race results
+        self.lap_results = None # current race calculated lap list
         self.lap_cacheStatus = None # whether cache is valid
-        self.lap_status_message = '' # Race status message (winner, team info)
 
         self.results = None # current race results
         self.cacheStatus = None # whether cache is valid

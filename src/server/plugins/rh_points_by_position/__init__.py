@@ -1,31 +1,18 @@
 ''' Class ranking method: Best X rounds '''
 
 import logging
-import csv
+from eventmanager import Evt
 from Results import RacePointsMethod
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def registerHandlers(args):
-    if 'registerFn' in args:
-        for method in discover():
-            args['registerFn'](method)
-
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
-
-def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on('RacePoints_Initialize', 'points_register_byrank', registerHandlers, {}, 75, True)
-    if '__' in kwargs:
-        __ = kwargs['__']
-
-def points_by_position(racecontext, leaderboard, args):
+def points_by_position(_rhapi, leaderboard, args):
     try:
         points_list = [int(x.strip()) for x in args['points_list'].split(',')]
     except:
         logger.info("Unable to parse points list string")
-        return None
+        return leaderboard
 
     lb = leaderboard[leaderboard['meta']['primary_leaderboard']]
 
@@ -35,22 +22,19 @@ def points_by_position(racecontext, leaderboard, args):
 
     return leaderboard
 
-
-def discover(*_args, **_kwargs):
-    # returns array of methods with default arguments
-    return [
+def register_handlers(args):
+    args['register_fn'](
         RacePointsMethod(
             'position_basic',
-            'Position',
+            "Position",
             points_by_position,
             None,
             [
-                {
-                    'id': 'points_list',
-                    'label': "Points (CSV)",
-                    'placeholder': '10,6,3,1',
-                    'fieldType': 'text',
-                },
+                UIField('points_list', "Points (CSV)", UIFieldType.TEXT, placeholder="10,6,3,1"),
             ]
         )
-    ]
+    )
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75)
+

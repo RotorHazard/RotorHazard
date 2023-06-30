@@ -33,21 +33,24 @@ class Pilot(DB.Model):
     used_frequencies = DB.Column(DB.String, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
-    def displayCallsign(self):
+    @property
+    def display_callsign(self):
         if self.callsign:
             return self.callsign
         if self.name:
             return self.name
         return "{} {}".format(__('Pilot'), id)
 
-    def displayName(self):
+    @property
+    def display_name(self):
         if self.name:
             return self.name
         if self.callsign:
             return self.callsign
         return "{} {}".format(__('Pilot'), id)
 
-    def spokenName(self):
+    @property
+    def spoken_callsign(self):
         if self.phonetic:
             return self.phonetic
         if self.callsign:
@@ -68,16 +71,35 @@ class PilotAttribute(DB.Model):
 class Heat(DB.Model):
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
-    note = DB.Column(DB.String(80), nullable=True)
+    name = DB.Column('note', DB.String(80), nullable=True)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
-    cacheStatus = DB.Column(DB.String(16), nullable=False)
+    _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
     status = DB.Column(DB.Integer, nullable=False)
     auto_frequency = DB.Column(DB.Boolean, nullable=False)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
-    def displayname(self):
+    # DEPRECATED: compatibility for 'note' property / renamed to 'name'
+    @property
+    def note(self):
+        return self.name
+
+    @note.setter
+    def note(self, value):
+        self.name = value
+
+    # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
+    @property
+    def cacheStatus(self):
+        return self._cache_status
+
+    @cacheStatus.setter
+    def cacheStatus(self, value):
+        self._cache_status = value
+
+    @property
+    def display_name(self):
         if self.note:
             return self.note
         return "{} {}".format(__('Heat'), str(self.id))
@@ -121,16 +143,44 @@ class RaceClass(DB.Model):
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
     win_condition = DB.Column(DB.String, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
-    cacheStatus = DB.Column(DB.String(16), nullable=False)
+    _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
     ranking = DB.Column(DB.PickleType, nullable=True)
     rank_settings = DB.Column(DB.String(), nullable=True)
-    rankStatus = DB.Column(DB.String(16), nullable=False)
+    _rank_status = DB.Column('rankStatus', DB.String(16), nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
-    heatAdvanceType = DB.Column(DB.Integer, nullable=False)
+    heat_advance_type = DB.Column('heatAdvanceType', DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
-    def displayname(self):
+    # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
+    @property
+    def cacheStatus(self):
+        return self._cache_status
+
+    @cacheStatus.setter
+    def cacheStatus(self, value):
+        self._cache_status = value
+
+    # DEPRECATED: compatibility for 'rankStatus' property / renamed to '_rank_status'
+    @property
+    def rankStatus(self):
+        return self._rank_status
+
+    @rankStatus.setter
+    def rankStatus(self, value):
+        self._rank_status = value
+
+    # DEPRECATED: compatibility for 'heatAdvanceType' property / renamed to 'heat_advance_type'
+    @property
+    def heatAdvanceType(self):
+        return self.heat_advance_type
+
+    @heatAdvanceType.setter
+    def heatAdvanceType(self, value):
+        self.heat_advance_type = value
+
+    @property
+    def display_name(self):
         if self.name:
             return self.name
         return "{} {}".format(__('Class'), str(self.id))
@@ -174,7 +224,16 @@ class SavedRaceMeta(DB.Model):
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
     results = DB.Column(DB.PickleType, nullable=True)
-    cacheStatus = DB.Column(DB.String(16), nullable=False)
+    _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
+
+    # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
+    @property
+    def cacheStatus(self):
+        return self._cache_status
+
+    @cacheStatus.setter
+    def cacheStatus(self, value):
+        self._cache_status = value
 
     def __repr__(self):
         return '<SavedRaceMeta %r>' % self.id
@@ -235,7 +294,7 @@ class RaceFormat(DB.Model):
     __tablename__ = 'race_format'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
-    race_mode = DB.Column(DB.Integer, nullable=False)
+    unlimited_time = DB.Column('race_mode', DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     lap_grace_sec = DB.Column(DB.Integer, nullable=False, default=-1)
     staging_fixed_tones = DB.Column(DB.Integer, nullable=False)
@@ -247,6 +306,15 @@ class RaceFormat(DB.Model):
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
     start_behavior = DB.Column(DB.Integer, nullable=False)
     points_method = DB.Column(DB.String, nullable=True)
+
+    # DEPRECATED: compatibility for 'race_mode' property / renamed to 'unlimited_time'
+    @property
+    def race_mode(self):
+        return self.unlimited_time
+
+    @race_mode.setter
+    def race_mode(self, value):
+        self.unlimited_time = value
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'

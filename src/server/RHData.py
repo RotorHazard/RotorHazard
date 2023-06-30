@@ -841,7 +841,6 @@ class RHData():
     def clear_pilots(self):
         self._Database.DB.session.query(self._Database.Pilot).delete()
         self.commit()
-        return True
 
     def reset_pilots(self):
         self.clear_pilots()
@@ -1110,7 +1109,7 @@ class RHData():
 
             if has_race or (self._racecontext.race.current_heat == heat.id and self._racecontext.race.race_status != RaceStatus.READY):
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
-                return None
+                return False
             else:
                 self._Database.DB.session.delete(heat)
                 for heatnode in heatnodes:
@@ -1142,10 +1141,10 @@ class RHData():
                     except Exception as ex:
                         logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
-                return heat.id
+                return True
         else:
             logger.info('Refusing to delete only heat')
-            return None
+            return False
 
     def get_first_safe_heat_id(self):
         heats = self.get_heats()
@@ -1231,15 +1230,15 @@ class RHData():
             used_nodes.append(s.node_index)
 
         # create inverse of used_nodes
-        available_nodes = set(range(len(slots))) - set(used_nodes)
+        available_seats = set(range(len(slots))) - set(used_nodes)
 
         for s in slots:
-            if s.node_index == None and len(available_nodes):
-                s.node_index = available_nodes.pop()
+            if s.node_index == None and len(available_seats):
+                s.node_index = available_seats.pop()
 
         self.commit()
 
-    def calc_heat_pilots(self, heat_or_id, Results):
+    def calc_heat_pilots(self, heat_or_id):
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
         result = {
@@ -1355,11 +1354,11 @@ class RHData():
                 slot.node_index = None
 
             # collect node data
-            available_nodes = []
+            available_seats = []
             profile_freqs = json.loads(current_frequencies)
             for node_index in range(num_nodes):
                 if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                    available_nodes.append({
+                    available_seats.append({
                         'idx': node_index,
                         'frq': {
                             'f': profile_freqs["f"][node_index],
@@ -1375,7 +1374,7 @@ class RHData():
                     used_frequencies_json = self.get_pilot(slot.pilot_id).used_frequencies
                     if used_frequencies_json:
                         used_frequencies = json.loads(used_frequencies_json)
-                        for node in available_nodes:
+                        for node in available_seats:
                             end_idx = len(used_frequencies) - 1
                             for f_idx, pilot_freq in enumerate(used_frequencies):
                                 if node['frq']['f'] == pilot_freq['f']:
@@ -1387,24 +1386,24 @@ class RHData():
 
             eliminated_matches = []
             if callable(calc_fn):
-                while len(available_nodes):
+                while len(available_seats):
                     # request assignment from calc function
-                    m_node, m_slot, an_idx = calc_fn(available_nodes)
+                    m_node, m_slot, an_idx = calc_fn(available_seats)
                     if m_node and m_slot:
                         # calc function returned assignment
                         m_slot.node_index = m_node['idx']
                         for slot_idx, slot_match in enumerate(m_node['matches']):
                             if slot_match['slot'] != m_slot:
                                 eliminated_matches.append(slot_match)
-                        del available_nodes[an_idx]
-                        for available_node in available_nodes:
+                        del available_seats[an_idx]
+                        for available_node in available_seats:
                             for slot_idx, slot_match in enumerate(available_node['matches']):
                                 if slot_match['slot'] == m_slot:
                                     available_node['matches'][slot_idx] = None
                                 available_node['matches'] = [x for x in available_node['matches'] if x is not None]
                     else:
                         # calc function didn't make an assignment
-                        random.shuffle(available_nodes)
+                        random.shuffle(available_seats)
                         if len(eliminated_matches):
 
                             for slot_idx, slot_match in enumerate(eliminated_matches):
@@ -1413,28 +1412,28 @@ class RHData():
                                     if eliminated_matches[slot_idx] \
                                     and eliminated_matches[slot_idx]['band'] == 'D' \
                                     and eliminated_matches[slot_idx]['priority'] == True:
-                                        for n_idx, node in enumerate(available_nodes):
+                                        for n_idx, node in enumerate(available_seats):
                                             if node['frq']['b'] == 'D':
-                                                eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
-                                                available_nodes[n_idx] = None
+                                                eliminated_matches[slot_idx]['slot'].node_index = available_seats[n_idx]['idx']
+                                                available_seats[n_idx] = None
                                                 break
                                     else:
                                         # else explicity avoid D-band
-                                        for n_idx, node in enumerate(available_nodes):
+                                        for n_idx, node in enumerate(available_seats):
                                             if node['frq']['b'] != 'D':
-                                                eliminated_matches[slot_idx]['slot'].node_index = available_nodes[n_idx]['idx']
-                                                available_nodes[n_idx] = None
+                                                eliminated_matches[slot_idx]['slot'].node_index = available_seats[n_idx]['idx']
+                                                available_seats[n_idx] = None
                                                 break
 
-                                    available_nodes = [x for x in available_nodes if x is not None]
+                                    available_seats = [x for x in available_seats if x is not None]
                                 eliminated_matches[slot_idx] = None
 
-                            if len(available_nodes):
+                            if len(available_seats):
                                 # can't keep D/non-D but nodes not full
                                 for slot_idx, slot_match in enumerate(eliminated_matches):
                                     if eliminated_matches[slot_idx] and eliminated_matches[slot_idx]['slot'].node_index is None:
-                                        eliminated_matches[slot_idx]['slot'].node_index = available_nodes[0]['idx']
-                                        del(available_nodes[0])
+                                        eliminated_matches[slot_idx]['slot'].node_index = available_seats[0]['idx']
+                                        del(available_seats[0])
                                     eliminated_matches[slot_idx] = None
                                 
                             eliminated_matches = [x for x in eliminated_matches if x is not None]
@@ -1442,9 +1441,9 @@ class RHData():
                             # place pilots with no history into first available slots
                             for slot in slots:
                                 if slot.node_index is None and slot.pilot_id:
-                                    if len(available_nodes):
-                                        slot.node_index = available_nodes[0]['idx']
-                                        del(available_nodes[0])
+                                    if len(available_seats):
+                                        slot.node_index = available_seats[0]['idx']
+                                        del(available_seats[0])
                                     else:
                                         logger.warning("Dropping pilot {}; No remaining available nodes for slot {}".format(slot.pilot_id, slot))
                             break
@@ -1538,7 +1537,7 @@ class RHData():
         })
 
         self._Database.Heat.query.update({
-            self._Database.Heat.cacheStatus: initStatus
+            self._Database.Heat._cache_status: initStatus
             })
         self.commit()
 
@@ -1546,7 +1545,6 @@ class RHData():
         self._Database.DB.session.query(self._Database.Heat).delete()
         self._Database.DB.session.query(self._Database.HeatNode).delete()
         self.commit()
-        return True
 
     def reset_heats(self, nofill=False):
         self.clear_heats()
@@ -1573,7 +1571,10 @@ class RHData():
     #        return heatNode_or_id.id
     #    else:
     #        return heatNode_or_id
-    
+
+    def get_heatNode(self, heatNode_id):
+        return self._Database.HeatNode.query.get(heatNode_id)
+
     def get_heatNodes(self):
         return self._Database.HeatNode.query.all()
 
@@ -1627,8 +1628,6 @@ class RHData():
                 slot.seed_rank = slot_data['seed_rank']
 
         self.commit()
-
-        return True
 
     # Race Classes
     def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):
@@ -1759,7 +1758,7 @@ class RHData():
             race_class.win_condition = data['win_condition']
             race_class.rank_settings = None
         if 'rank_settings' in data:
-            if data['rank_settings'] is None:
+            if not data['rank_settings']:
                 race_class.rank_settings = None
             else:
                 src_settings = json.loads(race_class.rank_settings) if race_class.rank_settings else {}
@@ -1994,8 +1993,8 @@ class RHData():
         jsonStatus = json.dumps(initStatus)
 
         self._Database.RaceClass.query.update({
-            self._Database.RaceClass.cacheStatus: jsonStatus,
-            self._Database.RaceClass.rankStatus: jsonStatus
+            self._Database.RaceClass._cache_status: jsonStatus,
+            self._Database.RaceClass._rank_status: jsonStatus
             })
         self.commit()
 
@@ -2042,12 +2041,14 @@ class RHData():
         if init:
             if 'name' in init:
                 new_profile.name = init['name']
+            if 'description' in init:
+                new_profile.description = init['description']
             if 'frequencies' in init:
-                new_profile.frequencies = init['frequencies']
+                new_profile.frequencies = init['frequencies'] if isinstance(init['frequencies'], str) else json.dumps(init['frequencies'])
             if 'enter_ats' in init:
-                new_profile.enter_ats = init['enter_ats']
+                new_profile.enter_ats = init['enter_ats'] if isinstance(init['enter_ats'], str) else json.dumps(init['enter_ats'])
             if 'exit_ats' in init:
-                new_profile.exit_ats = init['exit_ats']
+                new_profile.exit_ats = init['exit_ats'] if isinstance(init['exit_ats'], str) else json.dumps(init['exit_ats'])
 
         self._Database.DB.session.add(new_profile)
         self.commit()
@@ -2086,11 +2087,11 @@ class RHData():
         if 'profile_description' in data:
             profile.description = data['profile_description']
         if 'frequencies' in data:
-            profile.frequencies = json.dumps(data['frequencies'])
+            profile.frequencies = data['frequencies'] if isinstance(data['frequencies'], str) else json.dumps(data['frequencies'])
         if 'enter_ats' in data:
-            profile.enter_ats = json.dumps(data['enter_ats'])
+            profile.enter_ats = data['enter_ats'] if isinstance(data['enter_ats'], str) else json.dumps(data['enter_ats'])
         if 'exit_ats' in data:
-            profile.exit_ats = json.dumps(data['exit_ats'])
+            profile.exit_ats = data['exit_ats'] if isinstance(data['exit_ats'], str) else json.dumps(data['exit_ats'])
 
         self.commit()
 
@@ -2181,8 +2182,8 @@ class RHData():
         if init:
             if 'format_name' in init:
                 race_format.name = init['format_name']
-            if 'race_mode' in init:
-                race_format.race_mode = init['race_mode']
+            if 'race_mode' in init: # unlimited time
+                race_format.race_mode = (1 if init['race_mode'] else 0)
             if 'race_time_sec' in init:
                 race_format.race_time_sec = init['race_time_sec']
             if 'lap_grace_sec' in init:
@@ -2190,7 +2191,7 @@ class RHData():
             if 'staging_fixed_tones' in init:
                 race_format.staging_fixed_tones = init['staging_fixed_tones']
             if 'staging_tones' in init:
-                race_format.staging_tones = init['staging_tones']
+                race_format.staging_tones = (2 if init['staging_tones'] else 0)
             if 'start_delay_min_ms' in init:
                 race_format.start_delay_min_ms = init['start_delay_min_ms']
             if 'start_delay_max_ms' in init:
@@ -2256,7 +2257,7 @@ class RHData():
         if 'format_name' in data:
             race_format.name = data['format_name']
         if 'race_mode' in data:
-            race_format.race_mode = data['race_mode'] if isinstance(data['race_mode'], int) else 0
+            race_format.race_mode = (1 if data['race_mode'] else 0)
         if 'race_time_sec' in data:
             race_format.race_time_sec = data['race_time_sec'] if isinstance(data['race_time_sec'], int) else 0
         if 'lap_grace_sec' in data:
@@ -2264,7 +2265,7 @@ class RHData():
         if 'staging_fixed_tones' in data:
             race_format.staging_fixed_tones = data['staging_fixed_tones'] if isinstance(data['staging_fixed_tones'], int) else 0
         if 'staging_tones' in data:
-            race_format.staging_tones = data['staging_tones'] if isinstance(data['staging_tones'], int) else 0
+            race_format.staging_tones = (2 if data['staging_tones'] else 0)
         if 'start_delay_min_ms' in data:
             race_format.start_delay_min_ms = data['start_delay_min_ms'] if isinstance(data['start_delay_min_ms'], int) else 0
         if 'start_delay_max_ms' in data:
@@ -2726,14 +2727,14 @@ class RHData():
         if race.format_id:
             raceformat = self.get_raceFormat(race.format_id)
             if raceformat and raceformat.points_method:
-                pm = json.loads(raceformat.points_method)
-                method = pm['t']
-                if 's' in pm:
-                    settings = pm['s']
+                points_method = json.loads(raceformat.points_method)
+                method_type = points_method['t']
+                if 's' in points_method:
+                    settings = points_method['s']
                 else:
                     settings = None
 
-                build = self._racecontext.race_points_manager.assign(method, build, settings)
+                build = self._racecontext.race_points_manager.assign(method_type, build, settings)
                 build['meta']['primary_points'] = True
 
         self.set_results_savedRaceMeta(race, token, build)
@@ -2787,7 +2788,7 @@ class RHData():
         })
 
         self._Database.SavedRaceMeta.query.update({
-            self._Database.SavedRaceMeta.cacheStatus: initStatus
+            self._Database.SavedRaceMeta._cache_status: initStatus
             })
         self.commit()
 
@@ -2798,8 +2799,8 @@ class RHData():
             )).filter_by(heat_id=heat_id).scalar()
 
     # Pilot-Races
-    def get_savedPilotRace(self, race_id):
-        return self._Database.SavedPilotRace.query.get(race_id)
+    def get_savedPilotRace(self, pilotrace_id):
+        return self._Database.SavedPilotRace.query.get(pilotrace_id)
 
     def get_savedPilotRaces(self):
         return self._Database.SavedPilotRace.query.all()
@@ -2962,7 +2963,7 @@ class RHData():
     def get_options(self):
         return self._Database.GlobalSettings.query.all()
 
-    def get_option(self, option, default_value=False):
+    def get_option(self, option, default_value=None):
         try:
             val = self._OptionsCache[option]
             if val or val == "":
@@ -2973,7 +2974,10 @@ class RHData():
             return default_value
 
     def set_option(self, option, value):
-        self._OptionsCache[option] = value
+        if isinstance(value, bool):
+            value = '1' if value else '0'
+
+        self._OptionsCache[option] = str(value)
 
         settings = self._Database.GlobalSettings.query.filter_by(option_name=option).one_or_none()
         if settings:

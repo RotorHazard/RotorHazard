@@ -2,6 +2,8 @@ import logging
 import json
 from RHUtils import catchLogExceptionsWrapper
 from eventmanager import Evt
+from typing import List
+from RHUI import UIField
 
 class EventActions:
     eventActionsList = []
@@ -12,8 +14,8 @@ class EventActions:
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.Events.trigger('actionsInitialize', {
-            'registerFn': self.registerEffect
+        self.Events.trigger(Evt.ACTIONS_INITIALIZE, {
+            'register_fn': self.registerEffect
             })
 
         self.loadActions()
@@ -45,12 +47,12 @@ class EventActions:
                 self.logger.debug("Calling effect '{}' with {}".format(action, args))
 
 class ActionEffect():
-    def __init__(self, name, label, effectFn, fields):
+    def __init__(self, name, label, effect_fn, fields:List[UIField]):
         self.name = name
         self.label = label
-        self.effectFn = effectFn
+        self.effect_fn = effect_fn
         self.fields = fields
 
     def runAction(self, action, args):
-        self.effectFn(action, args)
+        self.effect_fn(action, args)
 

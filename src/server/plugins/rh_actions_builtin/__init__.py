@@ -1,19 +1,21 @@
 ''' builtin Actions '''
 
+from eventmanager import Evt
 from EventActions import ActionEffect
+from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 class ActionsBuiltin():
-    def __init__(self, RHAPI):
-        self._RHAPI = RHAPI
+    def __init__(self, rhapi):
+        self._rhapi = rhapi
 
     def doReplace(self, text, args):
         # %HEAT%
         if 'heat_id' in args:
-            heat = self._RHAPI.get_heat(args['heat_id'])
+            heat = self._rhapi.db.heat_by_id(args['heat_id'])
         else:
-            heat = self._RHAPI.get_heat(self._RHAPI.race_heat)
+            heat = self._rhapi.db.heat_by_id(self._rhapi.race.heat)
 
-        text = text.replace('%HEAT%', heat.displayname())
+        text = text.replace('%HEAT%', heat.display_name)
 
         if 'results' in args:
             leaderboard = args['results'][args['results']['meta']['primary_leaderboard']]
@@ -39,10 +41,10 @@ class ActionsBuiltin():
                     text = text.replace('%FASTEST_LAP%', result['fastest_lap'])
 
                     # %CONSECUTIVE%
-                    if result['consecutives_base'] == int(self._RHAPI.get_setting('consecutivesCount', 3)):
+                    if result['consecutives_base'] == int(self._rhapi.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', result['consecutives'])
                     else:
-                        text = text.replace('%CONSECUTIVE%', __('None'))
+                        text = text.replace('%CONSECUTIVE%', self._rhapi.__('None'))
 
                     # %POSITION%
                     text = text.replace('%POSITION%', str(result['position']))
@@ -57,10 +59,10 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.get_pilot(self._RHAPI.race_pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.spokenName())
+                pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
+                text = text.replace('%PILOT%', pilot.spoken_callsign)
 
-            self._RHAPI.emit_phonetic_text(text)
+            self._rhapi.ui.message_speak(text)
 
     def messageEffect(self, action, args):
         if 'text' in action:
@@ -68,10 +70,10 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.get_pilot(self._RHAPI.race_pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.displayCallsign())
+                pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
+                text = text.replace('%PILOT%', pilot.display_callsign)
 
-            self._RHAPI.emit_priority_message(text)
+            self._rhapi.ui.message_notify(text)
 
     def alertEffect(self, action, args):
         if 'text' in action:
@@ -79,90 +81,61 @@ class ActionsBuiltin():
 
             # %PILOT%
             if 'node_index' in args:
-                pilot = self._RHAPI.get_pilot(self._RHAPI.race_pilots[args['node_index']])
-                text = text.replace('%PILOT%', pilot.displayCallsign())
+                pilot = self._rhapi.db.pilot_by_id(self._rhapi.race.pilots[args['node_index']])
+                text = text.replace('%PILOT%', pilot.display_callsign)
 
-            self._RHAPI.emit_priority_message(text, True)
+            self._rhapi.ui.message_alert(text)
 
     def scheduleEffect(self, action, args):
         if 'sec' in action:
             if 'min' in action:
-                self._RHAPI.race_schedule(action['sec'], action['min'])
+                self._rhapi.race.schedule(action['sec'], action['min'])
             else:
-                self._RHAPI.race_schedule(action['sec'])
+                self._rhapi.race.schedule(action['sec'])
 
-actions = None
-
-def initialize(**kwargs):
-    if 'Events' in kwargs:
-        kwargs['Events'].on('actionsInitialize', 'action_builtin', registerHandlers, {}, 75)
-    if '__' in kwargs:
-        __ = kwargs['__']
-
-    global actions
-    actions = ActionsBuiltin(kwargs['RHAPI'])
-
-def registerHandlers(args):
-    if 'registerFn' in args:
-        for effect in discover():
-            args['registerFn'](effect)
-
-def discover():
-    return [
+def register_handlers(args):
+    for effect in [
         ActionEffect(
             'speak',
-            'Speak',
+            "Speak",
             actions.speakEffect,
             [
-                {
-                    'id': 'text',
-                    'name': 'Callout Text',
-                    'type': 'text',
-                }
+                UIField('text', "Callout Text", UIFieldType.TEXT),
             ]
         ),
         ActionEffect(
             'message',
-            'Message',
+            "Message",
             actions.messageEffect,
             [
-                {
-                    'id': 'text',
-                    'name': 'Message Text',
-                    'type': 'text',
-                }
+                UIField('text', "Message Text", UIFieldType.TEXT),
             ]
         ),
         ActionEffect(
             'alert',
-            'Alert',
+            "Alert",
             actions.alertEffect,
             [
-                {
-                    'id': 'text',
-                    'name': 'Alert Text',
-                    'type': 'text',
-                }
+                UIField('text', "Alert Text", UIFieldType.TEXT),
             ]
         ),
         ActionEffect(
             'schedule',
-            'Schedule Race',
+            "Schedule Race",
             actions.scheduleEffect,
             [
-                {
-                    'id': 'sec',
-                    'name': 'Seconds',
-                    'type': 'basic_int',
-                },
-                {
-                    'id': 'min',
-                    'name': 'Minutes',
-                    'type': 'basic_int',
-                }
+                UIField('sec', "Seconds", UIFieldType.BASIC_INT),
+                UIField('min', "Minutes", UIFieldType.BASIC_INT),
             ]
         )
-    ]
+    ]:
+        args['register_fn'](effect)
 
-def __(arg): # Replaced with outer language.__ during initialize()
-    return arg
+actions = None
+
+def initialize(**kwargs):
+    kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
+
+    global actions
+    actions = ActionsBuiltin(kwargs['rhapi'])
+

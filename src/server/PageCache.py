@@ -126,7 +126,7 @@ class PageCache:
                     results = self._racecontext.rhdata.get_results_heat(heat)
                     heats[heat.id] = {
                         'heat_id': heat.id,
-                        'displayname': heat.displayname(),
+                        'displayname': heat.display_name,
                         'rounds': rounds,
                         'leaderboard': results
                     }

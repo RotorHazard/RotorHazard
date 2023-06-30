@@ -51,7 +51,7 @@ def createBlueprint(RaceContext, serverInfo):
         all_heats = {}
         for heat in RaceContext.rhdata.get_heats():
             heat_id = heat.id
-            displayname = heat.displayname()
+            displayname = heat.display_name
             race_class = heat.class_id
 
             heatnodes = RaceContext.rhdata.get_heatNodes_by_heat(heat.id)
@@ -75,7 +75,7 @@ def createBlueprint(RaceContext, serverInfo):
     def api_heat(heat_id):
         heat = RaceContext.rhdata.get_heat(heat_id)
         if heat:
-            displayname = heat.displayname()
+            displayname = heat.display_name
             race_class = heat.class_id
 
             heatnodes = RaceContext.rhdata.get_heatNodes_by_heat(heat.id)

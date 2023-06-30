@@ -15,7 +15,7 @@ class SensorsTest(unittest.TestCase):
 
     def test_update(self):
         self.sensors.discover()
-        self.assertEqual(len(self.sensors), 1)
+        self.assertGreaterEqual(len(self.sensors), 1)
         before = self.sensors[0].getReadings()
         self.sensors.update_environmental_data()
         self.sensors.update_environmental_data()

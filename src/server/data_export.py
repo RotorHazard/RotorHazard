@@ -15,18 +15,19 @@
 #
 
 from RHUtils import catchLogExceptionsWrapper
+from eventmanager import Evt
 import logging
 
 logger = logging.getLogger(__name__)
 
 class DataExportManager():
-    def __init__(self, RaceContext, Events):
+    def __init__(self, RHAPI, Events):
         self._exporters = {}
 
-        self._racecontext = RaceContext
+        self._rhapi = RHAPI
 
-        Events.trigger('Export_Initialize', {
-            'registerFn': self.registerExporter
+        Events.trigger(Evt.DATA_EXPORT_INITIALIZE, {
+            'register_fn': self.registerExporter
             })
 
     def registerExporter(self, exporter):
@@ -47,7 +48,7 @@ class DataExportManager():
 
     @catchLogExceptionsWrapper
     def export(self, exporter_id):
-        return self._exporters[exporter_id].export(self._racecontext)
+        return self._exporters[exporter_id].export(self._rhapi)
 
 class DataExporter():
     def __init__(self, name, label, formatter_fn, assembler_fn):
@@ -56,6 +57,6 @@ class DataExporter():
         self.formatter = formatter_fn
         self.assembler = assembler_fn
 
-    def export(self, racecontext):
-        data = self.assembler(racecontext)
+    def export(self, rhapi):
+        data = self.assembler(rhapi)
         return self.formatter(data)

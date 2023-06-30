@@ -2,7 +2,7 @@
 import logging
 
 from sensor import I2CSensor, Reading
-import bme280  #pylint: disable=import-error
+import bme280  # @UnresolvedImport pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def discover(config, i2c_helper, *args, **kwargs):
     for addr in supported_bme280_addrs:
         url = I2CSensor.url(addr)
         sensor_config = config.get(url, {})
-        name = sensor_config.get('name', url)
+        name = sensor_config.get('name', "Climate")
         try:
             sensors.append(BME280Sensor(name, addr, i2c_helper))
             logger.info("BME280 found at address 0x{:02x} ('{}')".format(addr, name))
