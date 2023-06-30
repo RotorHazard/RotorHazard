@@ -3015,10 +3015,7 @@ def reload_callouts():
 @SOCKET_IO.on('play_callout_text')
 @catchLogExceptionsWrapper
 def play_callout_text(data):
-    args = {
-        'results': RaceContext.race.get_results()
-    }
-    message = RHUtils.doReplace(RHAPI, data['callout'], args, True)
+    message = RHUtils.doReplace(RHAPI, data['callout'], {}, True)
     RaceContext.rhui.emit_phonetic_text(message)
 
 @SOCKET_IO.on('imdtabler_update_freqs')
