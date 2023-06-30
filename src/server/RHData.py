@@ -128,10 +128,20 @@ class RHData():
             logger.error('Error closing to database: ' + str(ex))
             return False
 
+    def clean(self):
+        try:
+            with self._Database.DB.engine.begin() as conn:
+                conn.execute("VACUUM")
+            return True
+        except Exception as ex:
+            logger.error('Error cleaning database: ' + str(ex))
+            return False
+
     # File Handling
 
     def backup_db_file(self, copy_flag, prefix_str=None):
         self.close()
+        self.clean()
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
         except:  # if error then use 'now' timestamp
