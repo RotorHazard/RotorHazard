@@ -786,7 +786,6 @@
 
 		socket.on('leaderboard', function (msg) {
 			var race = msg.current;
-			rotorhazard.event.leaderboard_meta = race.leaderboard.meta;
 
 			heat = rotorhazard.event.heats.find(obj => {return obj.id == race.heat})
 			if (heat) {
