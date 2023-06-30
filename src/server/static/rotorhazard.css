@@ -2206,7 +2206,8 @@ button .wide {
 	}
 
 	#db-management > * {
-		flex: 1 0 calc(50% - 2.5rem);
+		flex: 0 0 auto;
+		width: calc(50% - 2.5rem);
 	}
 }
 
