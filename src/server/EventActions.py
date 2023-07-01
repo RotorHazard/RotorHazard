@@ -42,8 +42,11 @@ class EventActions:
     def doActions(self, args):
         for action in self.eventActionsList:
             if action['event'] == args['_eventName']:
-                self.effects[action['effect']].runAction(action, args)
-                self.logger.debug("Calling effect '{}' with {}".format(action, args))
+                self.runEffect(action, args)
+
+    def runEffect(self, action, args):
+        self.logger.debug("Calling effect '{}' with {}".format(action, args))
+        self.effects[action['effect']].runEffect(action, args)
 
 class ActionEffect():
     def __init__(self, name, label, effect_fn, fields:List[UIField]):
@@ -53,6 +56,6 @@ class ActionEffect():
         self.fields = fields
 
     @catchLogExceptionsWrapper
-    def runAction(self, action, args):
+    def runEffect(self, action, args):
         self.effect_fn(action, args)
 

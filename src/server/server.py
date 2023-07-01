@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.0.0-dev.7" # Public release version code
+RELEASE_VERSION = "4.0.0-dev.8" # Public release version code
 SERVER_API = 41 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -3005,6 +3005,12 @@ def save_callouts(data):
 def reload_callouts():
     RaceContext.rhui.emit_callouts()
 
+@SOCKET_IO.on('play_callout_text')
+@catchLogExceptionsWrapper
+def play_callout_text(data):
+    message = RHUtils.doReplace(RHAPI, data['callout'], {}, True)
+    RaceContext.rhui.emit_phonetic_text(message)
+
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
 def imdtabler_update_freqs(data):
@@ -3025,8 +3031,6 @@ def on_retry_secondary(data):
     '''Retry connection to secondary timer.'''
     RaceContext.cluster.retrySecondary(data['secondary_id'])
     RaceContext.rhui.emit_cluster_status()
-
-# Socket io emit functions
 
 @SOCKET_IO.on('get_pilotrace')
 @catchLogExceptionsWrapper
