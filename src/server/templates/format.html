@@ -140,6 +140,7 @@
 			display_format();
 			display_classes();
 			display_unclassified_heats();
+			update_race_formats();
 
 			if (rotorhazard.event.race_status.race_status) {
 				$('#active_race_lock').show();
@@ -1338,7 +1339,11 @@
 				for (var i = 0; i < rotorhazard.event.race_formats.length; i++) {
 					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>');
 				}
-				$('#set_race_format').val($('#set_race_format option:last').val());
+				if (rotorhazard.event.race_status) {
+					$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
+				} else {
+					$('#set_race_format').val($('#set_race_format option:last').val());
+				}
 
 				$('#set_points_method').empty();
 				$('#set_points_method').append('<option value="">' + __("None") + '</option>');
