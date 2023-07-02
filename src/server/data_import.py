@@ -42,6 +42,7 @@ class DataImportManager():
         return self._importers
 
     @catchLogExceptionsWrapper
+    def runImport(self, importer_id, data, import_args=None):
         return self._importers[importer_id].run_import(self._rhapi, data, import_args)
 
 class DataImporter():
