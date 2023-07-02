@@ -683,6 +683,19 @@ def calc_leaderboard(rhDataObj, **params):
         'by_consecutives': leaderboard_by_consecutives
     }
 
+    # fetch pilot/time data for fastest lap in race
+    if len(leaderboard_by_fastest_lap) > 0 and leaderboard_by_fastest_lap[0]['laps'] > 0:
+        pilot = rhDataObj.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
+        pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
+        phonetic_time = RHUtils.phonetictime_format(
+                leaderboard_by_fastest_lap[0]['fastest_lap_raw'], rhDataObj.get_option('timeFormatPhonetic'))
+        fastest_race_lap_data = {}
+        fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
+        fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
+                                         leaderboard_by_fastest_lap[0]['fastest_lap']]
+    else:
+        fastest_race_lap_data = None
+
     if race_format:
         if race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
             primary_leaderboard = 'by_consecutives'
@@ -699,6 +712,7 @@ def calc_leaderboard(rhDataObj, **params):
             'win_condition': race_format.win_condition,
             'team_racing_mode': race_format.team_racing_mode,
             'start_behavior': race_format.start_behavior,
+            'fastest_race_lap_data': fastest_race_lap_data,
         }
     else:
         leaderboard_output['meta'] = {
@@ -706,6 +720,7 @@ def calc_leaderboard(rhDataObj, **params):
             'win_condition': WinCondition.NONE,
             'team_racing_mode': False,
             'start_behavior': StartBehavior.HOLESHOT,
+            'fastest_race_lap_data': fastest_race_lap_data,
         }
 
     leaderboard_output['meta']['consecutives_count'] = consecutivesCount
