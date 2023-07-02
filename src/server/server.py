@@ -1802,6 +1802,7 @@ def on_set_race_format(data):
             'race_format': race_format_val,
             })
 
+        RaceContext.rhui.emit_current_leaderboard() # Run page, to update leaderboard if changing to/from team racing
         RaceContext.rhui.emit_race_status()
         logger.info("set race format to '%s' (%s)" % (RaceContext.race.format.name, RaceContext.race.format.id))
     else:
