@@ -32,49 +32,45 @@ class ActionsBuiltin():
             else:
                 self._rhapi.race.schedule(action['sec'])
 
-def register_handlers(args):
-    for effect in [
-        ActionEffect(
-            'speak',
-            "Speak",
-            actions.speakEffect,
-            [
-                UIField('text', "Callout Text", UIFieldType.TEXT),
-            ]
-        ),
-        ActionEffect(
-            'message',
-            "Message",
-            actions.messageEffect,
-            [
-                UIField('text', "Message Text", UIFieldType.TEXT),
-            ]
-        ),
-        ActionEffect(
-            'alert',
-            "Alert",
-            actions.alertEffect,
-            [
-                UIField('text', "Alert Text", UIFieldType.TEXT),
-            ]
-        ),
-        ActionEffect(
-            'schedule',
-            "Schedule Race",
-            actions.scheduleEffect,
-            [
-                UIField('sec', "Seconds", UIFieldType.BASIC_INT),
-                UIField('min', "Minutes", UIFieldType.BASIC_INT),
-            ]
-        )
-    ]:
-        args['register_fn'](effect)
-
-actions = None
+    def register_handlers(self, args):
+        for effect in [
+            ActionEffect(
+                'speak',
+                "Speak",
+                self.speakEffect,
+                [
+                    UIField('text', "Callout Text", UIFieldType.TEXT),
+                ]
+            ),
+            ActionEffect(
+                'message',
+                "Message",
+                self.messageEffect,
+                [
+                    UIField('text', "Message Text", UIFieldType.TEXT),
+                ]
+            ),
+            ActionEffect(
+                'alert',
+                "Alert",
+                self.alertEffect,
+                [
+                    UIField('text', "Alert Text", UIFieldType.TEXT),
+                ]
+            ),
+            ActionEffect(
+                'schedule',
+                "Schedule Race",
+                self.scheduleEffect,
+                [
+                    UIField('sec', "Seconds", UIFieldType.BASIC_INT),
+                    UIField('min', "Minutes", UIFieldType.BASIC_INT),
+                ]
+            )
+        ]:
+            args['register_fn'](effect)
 
 def initialize(**kwargs):
-    kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', register_handlers, {}, 75)
-
-    global actions
     actions = ActionsBuiltin(kwargs['rhapi'])
+    kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', actions.register_handlers, {}, 75)
 
