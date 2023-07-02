@@ -2,6 +2,7 @@
 # Data export handlers
 #
 
+from RHUtils import catchLogExceptionsWrapper
 from eventmanager import Evt
 import logging
 
@@ -31,6 +32,7 @@ class DataExportManager():
     def exporters(self):
         return self._exporters
 
+    @catchLogExceptionsWrapper
     def export(self, exporter_id):
         result = self._exporters[exporter_id].export(self._rhapi)
 

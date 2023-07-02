@@ -5,6 +5,7 @@ RotorHazard event manager
 import logging
 import gevent
 import copy
+from RHUtils import catchLogExceptionsWrapper
 from monotonic import monotonic
 
 logger = logging.getLogger(__name__)
@@ -87,13 +88,18 @@ class EventManager:
                         self.eventThreads.pop(token, False)
 
                 if handler['priority'] < 100:
-                    handler['handler_fn'](args)
+                    self.run_handler(handler['handler_fn'], args)
                 else:
-                    greenlet = gevent.spawn(handler['handler_fn'], args)
+                    greenlet = gevent.spawn(self.run_handler, handler['handler_fn'], args)
                     self.eventThreads[greenlet.minimal_ident] = {
                         'name': threadName,
                         'thread': greenlet
                         }
+
+    @catchLogExceptionsWrapper
+    def run_handler(self, handler, args):
+        return handler(args)
+
 
 class Evt:
     # Special
