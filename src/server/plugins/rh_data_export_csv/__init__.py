@@ -329,6 +329,6 @@ def register_handlers(args):
     ]:
         args['register_fn'](exporter)
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'Export_register_CSV', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.DATA_EXPORT_INITIALIZE, register_handlers)
 

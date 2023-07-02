@@ -1703,6 +1703,6 @@ def register_handlers(args):
     ]:
         args['register_fn'](generator)
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_standards', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.HEAT_GENERATOR_INITIALIZE, register_handlers)
 

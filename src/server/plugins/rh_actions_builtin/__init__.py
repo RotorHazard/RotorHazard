@@ -70,7 +70,7 @@ class ActionsBuiltin():
         ]:
             args['register_fn'](effect)
 
-def initialize(**kwargs):
-    actions = ActionsBuiltin(kwargs['rhapi'])
-    kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_builtin', actions.register_handlers, {}, 75)
+def initialize(rhapi):
+    actions = ActionsBuiltin(rhapi)
+    rhapi.events.on(Evt.ACTIONS_INITIALIZE, actions.register_handlers)
 

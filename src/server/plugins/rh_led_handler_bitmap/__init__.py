@@ -123,6 +123,6 @@ def register_handlers(args):
     ]:
         args['register_fn'](led_effect)
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.LED_INITIALIZE, register_handlers)
 

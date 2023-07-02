@@ -35,6 +35,6 @@ def register_handlers(args):
         )
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.POINTS_INITIALIZE, register_handlers)
 

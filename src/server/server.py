@@ -4197,10 +4197,7 @@ else:
 
 for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
-        plugin.initialize(
-            events=Events,
-            rhapi=RHAPI,
-        )
+        plugin.initialize(RHAPI)
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
@@ -4464,7 +4461,7 @@ else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
 # VRx Controllers
-RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, legacy_config=Config.VRX_CONTROL)
+RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=Config.VRX_CONTROL)
 Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters

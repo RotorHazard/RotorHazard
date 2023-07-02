@@ -91,6 +91,6 @@ def register_handlers(args):
         )
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.CLASS_RANK_INITIALIZE, register_handlers)
 

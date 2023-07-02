@@ -11,8 +11,9 @@ DEVICE_TIMEOUT = 30 # Consider devices if no response received within X seconds
 logger = logging.getLogger(__name__)
 
 class VRxControlManager():
-    def __init__(self, Events, RaceContext, **_kwargs):
+    def __init__(self, Events, RaceContext, rhapi, **_kwargs):
         self._racecontext = RaceContext
+        self._rhapi = rhapi
         self.Events = Events
 
         self.enabled = None
@@ -49,6 +50,7 @@ class VRxControlManager():
 
             controller.manager = self
             controller.racecontext = self._racecontext
+            controller.rhapi = self._rhapi
             controller.Events = self.Events
 
             self.controllers[controller.name] = controller
@@ -221,6 +223,7 @@ class VRxController():
         self.devices = {} # collection of VRxDevices
 
         self.racecontext = None
+        self.rhapi = None
         self.Events = None
 
         self.setup()

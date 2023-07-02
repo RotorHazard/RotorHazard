@@ -281,5 +281,5 @@ def register_handlers(args):
     ]:
         args['register_fn'](importer)
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.DATA_IMPORT_INITIALIZE, 'Import_register_JSON', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.DATA_IMPORT_INITIALIZE, register_handlers)

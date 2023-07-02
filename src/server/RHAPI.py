@@ -3,7 +3,9 @@
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 0
 
+import inspect
 from RHUI import UIField
+from eventmanager import Evt
 
 class RHAPI():
     def __init__(self, race_context):
@@ -26,6 +28,7 @@ class RHAPI():
         self.interface = HardwareInterfaceAPI(self._racecontext)
         self.sensors = SensorsAPI(self._racecontext)
         self.eventresults = EventResultsAPI(self._racecontext)
+        self.events = EventsAPI(self._racecontext)
 
         self.__ = self.language.__ # shortcut access
 
@@ -795,4 +798,39 @@ class SensorsAPI():
 
     def sensor_obj(self, name):
         return self._racecontext.sensors.sensors_dict[name]
+
+
+#
+# Events
+#
+class EventsAPI():
+    def __init__(self, race_context):
+        self._racecontext = race_context
+
+    def on(self, event, handler_fn, default_args=None, priority=None, unique=False, name=None):
+        if not priority:
+            if event in [
+                    Evt.ACTIONS_INITIALIZE,
+                    Evt.CLASS_RANK_INITIALIZE,
+                    Evt.DATA_EXPORT_INITIALIZE,
+                    Evt.DATA_IMPORT_INITIALIZE,
+                    Evt.HEAT_GENERATOR_INITIALIZE,
+                    Evt.LED_INITIALIZE,
+                    Evt.POINTS_INITIALIZE,
+                    Evt.VRX_INITIALIZE,
+                ]:
+                priority = 75
+            else:
+                priority = 200
+
+        if not name:
+            name = inspect.getmodule(handler_fn).__name__
+
+        self._racecontext.events.on(event, name, handler_fn, default_args, priority, unique)
+
+    def off(self, event, name):
+        self._racecontext.events.off(event, name)
+
+    def trigger(self, event, args):
+        self._racecontext.events.trigger(event, args)
 
