@@ -14,6 +14,7 @@
 #   before formatting.
 #
 
+from RHUtils import catchLogExceptionsWrapper
 from eventmanager import Evt
 import logging
 
@@ -45,6 +46,7 @@ class DataExportManager():
     def exporters(self):
         return self._exporters
 
+    @catchLogExceptionsWrapper
     def export(self, exporter_id):
         return self._exporters[exporter_id].export(self._rhapi)
 

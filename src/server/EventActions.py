@@ -39,6 +39,7 @@ class EventActions:
         else:
             self.logger.debug("No actions to load")
 
+    @catchLogExceptionsWrapper
     def doActions(self, args):
         for action in self.eventActionsList:
             if action['event'] == args['_eventName']:

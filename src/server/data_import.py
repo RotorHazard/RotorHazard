@@ -7,6 +7,7 @@
 # label becomes visible in the UI and becomes translatable
 #
 
+from RHUtils import catchLogExceptionsWrapper
 from typing import List
 from RHUI import UIField
 from eventmanager import Evt
@@ -40,7 +41,7 @@ class DataImportManager():
     def importers(self):
         return self._importers
 
-    def run_import(self, importer_id, data, import_args=None):
+    @catchLogExceptionsWrapper
         return self._importers[importer_id].run_import(self._rhapi, data, import_args)
 
 class DataImporter():
