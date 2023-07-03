@@ -28,17 +28,14 @@ At minimum, a plugin must contain an `initialize()` function within its `__init_
 
 ### Initialize Function
 
-RotorHazard calls a plugin's `initialize()` function early during server startup. _This function should not be used to add behaviors directly_, but to register handlers where behavior will be called. RotorHazard provides utilities here through named arguments:
-
-- `events` (EventManager): Allows registering *handlers* to *events* to run code at the appropriate times; see [Standard Events](#standard-events)
-- `rhapi` (RHAPI): Allows interfacing with the timer's API for working with data and frontend UI; see [RHAPI](RHAPI.md)
+RotorHazard calls a plugin's `initialize()` function early during server startup. _This function should not be used to add behaviors directly_, but to register handlers where behavior will be called. As the only argument to `initialize`, RotorHazard provides the timer's API for working with data and frontend UI; see [RHAPI](RHAPI.md).
 
 For example, a plugin might register events to be run at startup like this:
 ```
 from eventmanager import Evt
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.STARTUP, 'my_plugin_event', my_startup_function, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.STARTUP, my_startup_function)
 ```
 
 ### RHAPI
@@ -49,36 +46,9 @@ See [RHAPI Documentation](RHAPI.md)
 
 ### Standard Events
 
-*Events* are *triggered* by the timer as important actions take place—for example, when a frequency is set, a pilot is added, or a race begins. When an *event* is *triggered*, all registered *handlers* are run. *Events* may pass arguments containing useful data such as the node number, pilot callsign, or race object.
+*Events* are *triggered* by the timer as important actions take place—for example, when a frequency is set, a pilot is added, or a race begins. When an *event* is *triggered*, all registered *handlers* are run. *Events* may pass arguments containing useful data such as the node number, pilot callsign, or race object. 
 
-Register a *handler* using the `.on()` function, usually within your `initialize()` function.
-
-A list of timer-provided events is contained within the `Evt` class in `/src/server/eventmanager.py`, which you can access in your plugin with `from eventmanager import Evt`. Custom events may also be created and triggered by plugins, allowing communication between them.
-
-#### .on(event, name, handler_fn, default_args=None, priority=200, unique=False)
-
-Registers a *handler* to an *event*. This causes the code in the *handler* to be run each time the *event* is *triggered* by any means (timer, plugin, or otherwise)
-
-- `event` (Evt|string): the triggering *event* for this *handler*.
-- `name` (string): a name for your handler. Only one handler with each name can be registered per *event*, so registering with the same `name` and `event` multiple times will cause handlers to be overridden. Choose something unique so as not to conflict with timer internals or other plugins.
-- `handler_fn` (function): the function to run when this event triggers.
-- `default_args` (dict): provides default arguments for the handler. These arguments will be overwritten if the `Event` provides arguments with the same keys. 
-- `priority` (int): determine the order handlers are run, lower numbers first. Priorities < 100 are executed synchronously, blocking other code from executing until they finish. Priorities >= 100 are executed asynchronously, allowing the timer to continue running other code. Handlers should generally be run asynchronously, except initial registrations. As `gevents` are not true threads, be sure to `idle` or `sleep` your code at frequent intervals.
-- `unique` (boolean): If run asynchronously (priority >= 100), a handler will cancel other handlers that have the same `name` (for example, only one LED effect can be visible at a time) Set to `True` to avoid this behavior regardless of handler `name` and run handlers to completion. Has no effect if `priority` < 100.
-
-#### .off(event, name)
-
-Removes a *handler* from an *event*. Removes only the specific `name` and `event` combination, so if you have registered the same `name` to multiple `events` and want to remove them all, you will need to do so individually.
-
-- `event` (string|Evt): the triggering *event* for this *handler*.
-- `name` (string): the registered `name` of the handler to remove.
-
-#### .trigger(event, evtArgs=None)
-
-Triggers an *event*, causing all registered *handlers* to run
-
-- `event` (string|Evt): the *event* to trigger
-- `evtArgs` (dict): arguments to pass to the handler, overwriting matched keys in that handler's `default_args`
+Interfacing with *Events* is provided via [RHAPI](RHAPI.md#standard-events).
 
 
 ### Race Points

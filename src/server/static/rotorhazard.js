@@ -1892,6 +1892,10 @@ function build_ranking(ranking) {
 	var leaderboard = ranking.ranking;
 	var meta = ranking.meta;
 
+	if (!leaderboard || !meta?.rank_fields) {
+		return $('<p>' + __(meta.method_label) + " " + __('did not produce a ranking.') + '</p>');
+	}
+
 	var twrap = $('<div class="responsive-wrap">');
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');

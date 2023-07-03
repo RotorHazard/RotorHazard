@@ -29,7 +29,7 @@
     <thead>
         <tr>
             <th>{{ __('ID') }}</th>
-            <th>{{ __('Note') }}</th>
+            <th>{{ __('Name') }}</th>
             <th>{{ __('Class ID') }}</th>
         </tr>
     </thead>
@@ -37,7 +37,7 @@
         {% for heat in heats %}
         <tr>
             <td>{{ heat.id }}</td>
-            <td>{{ heat.note }}</td>
+            <td>{{ heat.name }}</td>
             <td>{{ heat.class_id }}</td>
         </tr>
         {% endfor %}
@@ -170,7 +170,7 @@
         <tr>
             <td>{{ raceformat.id }}</td>
             <td>{{ raceformat.name }}</td>
-            <td>{{ raceformat.race_mode }}</td>
+            <td>{{ raceformat.unlimited_time }}</td>
             <td>{{ raceformat.race_time_sec }}</td>
             <td>{{ raceformat.hide_stage_timer }}</td>
             <td>{{ raceformat.start_delay_min_ms }}</td>

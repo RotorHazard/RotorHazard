@@ -2,18 +2,6 @@
 # Data export handlers
 #
 
-#
-# Data exporters first collect data via their assembler function,
-# then pass that data through the formatter function before output.
-# PageCache is updated before export() is called and can be assumed accurate.
-#
-# name should be unique and acts as an identifier
-# label becomes visible in the UI and becomes translatable
-# formatter(data) should be used for final handling of file format
-# assembler(RHData, PageCache, Language) collects relevant data from timer
-#   before formatting.
-#
-
 from RHUtils import catchLogExceptionsWrapper
 from eventmanager import Evt
 import logging
@@ -21,16 +9,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DataExportManager():
-    def __init__(self, RHAPI, Events):
+    def __init__(self, rhapi, events):
         self._exporters = {}
 
-        self._rhapi = RHAPI
+        self._rhapi = rhapi
+        self._events = events
 
-        Events.trigger(Evt.DATA_EXPORT_INITIALIZE, {
-            'register_fn': self.registerExporter
+        events.trigger(Evt.DATA_EXPORT_INITIALIZE, {
+            'register_fn': self.register_exporter
             })
 
-    def registerExporter(self, exporter):
+    def register_exporter(self, exporter):
         if isinstance(exporter, DataExporter):
             if exporter.name in self._exporters:
                 logger.warning('Overwriting data exporter "{0}"'.format(exporter['name']))
@@ -39,16 +28,19 @@ class DataExportManager():
         else:
             logger.warning('Invalid exporter')
 
-    def hasExporter(self, exporter_id):
-        return exporter_id in self._exporters
-
     @property
     def exporters(self):
         return self._exporters
 
     @catchLogExceptionsWrapper
     def export(self, exporter_id):
-        return self._exporters[exporter_id].export(self._rhapi)
+        result = self._exporters[exporter_id].export(self._rhapi)
+
+        if result:
+            self._events.trigger(Evt.DATABASE_EXPORT, result)
+        else:
+            logger.warning("Failed exporting data")
+        return result
 
 class DataExporter():
     def __init__(self, name, label, formatter_fn, assembler_fn):
@@ -60,3 +52,4 @@ class DataExporter():
     def export(self, rhapi):
         data = self.assembler(rhapi)
         return self.formatter(data)
+

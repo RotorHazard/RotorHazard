@@ -107,7 +107,7 @@ def generateBalancedHeats(rhapi, generate_args=None):
     suffix = rhapi.__(generate_args.get('suffix', 'Qualifier'))
 
     if generate_args.get('qualifiers_per_heat'):
-        qualifiers_per_heat = generate_args['qualifiers_per_heat']
+        qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
     else:
         qualifiers_per_heat = available_seats
 
@@ -193,6 +193,6 @@ def register_handlers(args):
     ]:
         args['register_fn'](generator)
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.HEAT_GENERATOR_INITIALIZE, register_handlers)
 

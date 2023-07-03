@@ -31,8 +31,7 @@ class EventManager:
             "handler_fn": handler_fn,
             "default_args": default_args,
             "priority": priority,
-            "unique": unique,
-            "rhapi": self._rhapi
+            "unique": unique
         }
 
         self.eventOrder[event] = [key for key, _value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]

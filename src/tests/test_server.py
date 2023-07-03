@@ -117,7 +117,7 @@ class ServerTest(unittest.TestCase):
         data = {
             'format_id': 10,
             'format_name': 'Test ' + str(datetime.now()),
-            'race_mode': 0,
+            'unlimited_time': 0,
             'race_time_sec': 30,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 4000,
@@ -131,7 +131,7 @@ class ServerTest(unittest.TestCase):
         for resp in fmts_list:
             if resp['id'] == data['format_id']:
                 self.assertEqual(resp['name'], data['format_name'])
-                self.assertEqual(resp['race_mode'], data['race_mode'])
+                self.assertEqual(resp['unlimited_time'], data['unlimited_time'])
                 self.assertEqual(resp['race_time_sec'], data['race_time_sec'])
                 self.assertEqual(resp['start_delay_min'], data['start_delay_min_ms'])
                 self.assertEqual(resp['start_delay_max'], data['start_delay_max_ms'])
@@ -198,7 +198,7 @@ class ServerTest(unittest.TestCase):
             'heat': 1,
             'node': 0,
             'pilot': 1,
-            'note': 'Test',
+            'name': 'Test',
             'class': 1,
             'slot_id': 1
         }
@@ -206,7 +206,7 @@ class ServerTest(unittest.TestCase):
         self.client.emit('load_data', {'load_types': ['heat_data']})
         resp = self.get_response('heat_data')
         self.assertEqual(resp['heats'][0]['slots'][0]['pilot_id'], data['pilot'])
-        self.assertEqual(resp['heats'][0]['note'], data['note'])
+        self.assertEqual(resp['heats'][0]['name'], data['name'])
         self.assertEqual(resp['heats'][0]['class_id'], data['class'])
 
     def test_delete_heat(self):

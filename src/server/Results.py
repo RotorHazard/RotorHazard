@@ -41,9 +41,12 @@ class RaceClassRankManager():
     @catchLogExceptionsWrapper
     def rank(self, method_id, race_class, args=None):
         if method_id == "":
-            return False
+            return False, False
 
-        return self.methods[method_id].rank(self._rhapi, race_class, args)
+        lb, meta = self.methods[method_id].rank(self._rhapi, race_class, args)
+        meta['method_label'] = self.methods[method_id].label
+
+        return lb, meta
 
 class RaceClassRankMethod():
     def __init__(self, name, label, rank_fn, default_args=None, settings:List[UIField]=None):

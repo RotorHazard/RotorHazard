@@ -3,7 +3,9 @@
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 0
 
+import inspect
 from RHUI import UIField
+from eventmanager import Evt
 
 class RHAPI():
     def __init__(self, race_context):
@@ -26,6 +28,7 @@ class RHAPI():
         self.interface = HardwareInterfaceAPI(self._racecontext)
         self.sensors = SensorsAPI(self._racecontext)
         self.eventresults = EventResultsAPI(self._racecontext)
+        self.events = EventsAPI(self._racecontext)
 
         self.__ = self.language.__ # shortcut access
 
@@ -116,6 +119,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
 
     def pilot_add(self, name=None, callsign=None, phonetic=None, team=None, color=None):
+        #TODO: attribute support
         data = {}
 
         for name, value in [
@@ -230,7 +234,7 @@ class DatabaseAPI():
     def slots_by_heat(self, heat_id):
         return self._racecontext.rhdata.get_heatNodes_by_heat(heat_id)
 
-    def slot_alter(self, slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
+    def slot_alter(self, slot_id, method=None, pilot=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
         data = {}
 
         for name, value in [
@@ -252,25 +256,9 @@ class DatabaseAPI():
             data['slot_id'] = slot_id
             return self._racecontext.rhdata.alter_heat(data)
 
-    def slot_alter_fast(self, slot_id, pilot=None, method=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
-        # !! Unsafe for general use. Intentionally light type checking.    !!
-        # !! Does not trigger events, clear results, or update cached data !!
-
-        data = {}
-
-        for name, value in [
-            ('pilot', pilot),
-            ('method', method),
-            ('seed_heat_id', seed_heat_id),
-            ('seed_class_id', seed_raceclass_id),
-            ('seed_rank', seed_rank),
-            ]:
-            if value is not None:
-                data[name] = value
-
-        if data:
-            data['slot_id'] = slot_id
-            return self._racecontext.rhdata.alter_heatNodes_fast(data)
+    def slots_alter_fast(self, slot_list):
+        # !! Unsafe for general use !!
+        return self._racecontext.rhdata.alter_heatNodes_fast(slot_list)
 
     # Race Class
 
@@ -282,6 +270,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
 
     def raceclass_add(self, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None):
+        #TODO add rank settings
         data = {}
 
         for name, value in [
@@ -290,7 +279,7 @@ class DatabaseAPI():
             ('format_id', raceformat),
             ('win_condition', win_condition),
             ('rounds', rounds),
-            ('heatAdvanceType', heat_advance_type),
+            ('heat_advance_type', heat_advance_type),
             ]:
             if value is not None:
                 data[name] = value
@@ -346,11 +335,11 @@ class DatabaseAPI():
 
         for name, value in [
             ('format_name', name),
-            ('race_mode', unlimited_time),
+            ('unlimited_time', unlimited_time),
             ('race_time_sec', race_time_sec),
             ('lap_grace_sec', lap_grace_sec),
             ('staging_fixed_tones', staging_fixed_tones),
-            ('staging_tones', staging_delay_tones),
+            ('staging_delay_tones', staging_delay_tones),
             ('start_delay_min_ms', start_delay_min_ms),
             ('start_delay_max_ms', start_delay_max_ms),
             ('start_behavior', start_behavior),
@@ -372,11 +361,11 @@ class DatabaseAPI():
 
         for name, value in [
             ('format_name', name),
-            ('race_mode', unlimited_time),
+            ('unlimited_time', unlimited_time),
             ('race_time_sec', race_time_sec),
             ('lap_grace_sec', lap_grace_sec),
             ('staging_fixed_tones', staging_fixed_tones),
-            ('staging_tones', staging_delay_tones),
+            ('staging_delay_tones', staging_delay_tones),
             ('start_delay_min_ms', start_delay_min_ms),
             ('start_delay_max_ms', start_delay_max_ms),
             ('start_behavior', start_behavior),
@@ -572,7 +561,7 @@ class HeatGenerateAPI():
     def generators(self):
         return self._racecontext.heat_generate_manager.generators
 
-    def run_export(self, generator_id, generate_args):
+    def generate(self, generator_id, generate_args):
         return self._racecontext.heat_generate_manager.generate(generator_id, generate_args)
 
 
@@ -809,4 +798,39 @@ class SensorsAPI():
 
     def sensor_obj(self, name):
         return self._racecontext.sensors.sensors_dict[name]
+
+
+#
+# Events
+#
+class EventsAPI():
+    def __init__(self, race_context):
+        self._racecontext = race_context
+
+    def on(self, event, handler_fn, default_args=None, priority=None, unique=False, name=None):
+        if not priority:
+            if event in [
+                    Evt.ACTIONS_INITIALIZE,
+                    Evt.CLASS_RANK_INITIALIZE,
+                    Evt.DATA_EXPORT_INITIALIZE,
+                    Evt.DATA_IMPORT_INITIALIZE,
+                    Evt.HEAT_GENERATOR_INITIALIZE,
+                    Evt.LED_INITIALIZE,
+                    Evt.POINTS_INITIALIZE,
+                    Evt.VRX_INITIALIZE,
+                ]:
+                priority = 75
+            else:
+                priority = 200
+
+        if not name:
+            name = inspect.getmodule(handler_fn).__name__
+
+        self._racecontext.events.on(event, name, handler_fn, default_args, priority, unique)
+
+    def off(self, event, name):
+        self._racecontext.events.off(event, name)
+
+    def trigger(self, event, args):
+        self._racecontext.events.trigger(event, args)
 

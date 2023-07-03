@@ -27,7 +27,7 @@ def rank_points_total(rhapi, race_class, args):
                     pilotresults[pilotresult['pilot_id']].append(pilotresult)
             else:
                 logger.warning("Failed building ranking, race result not available")
-                return False
+                return False, {}
 
     leaderboard = []
     for pilotresultlist in pilotresults:
@@ -91,6 +91,6 @@ def register_handlers(args):
         )
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_cumulative_points', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.CLASS_RANK_INITIALIZE, register_handlers)
 

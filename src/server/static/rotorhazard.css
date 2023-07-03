@@ -1325,7 +1325,7 @@ main.page-home {
 	flex-basis: 100%;
 }
 
-.page-format .heats>li>.set_heat_note {
+.page-format .heats>li>.set_heat_name {
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -1353,6 +1353,7 @@ main.page-home {
 	}
 }
 
+.pilots .new-pilot-container,
 .new-class-container,
 .heats .new_heat_container {
 	display: flex;
@@ -1361,12 +1362,14 @@ main.page-home {
 	border: dotted 0.125em #d1d3d4;
 }
 
+.new-pilot-container>button,
 .new-class-container>button,
 .new_heat_container>button {
 	margin: 1rem;
 }
 
 @media (prefers-color-scheme: dark) {
+	.pilots .new-pilot-container,
 	.new-class-container,
 	.heats .new_heat_container {
 		border-color: #4c4c4c;
@@ -2206,7 +2209,8 @@ button .wide {
 	}
 
 	#db-management > * {
-		flex: 1 0 calc(50% - 2.5rem);
+		flex: 0 0 auto;
+		width: calc(50% - 2.5rem);
 	}
 }
 

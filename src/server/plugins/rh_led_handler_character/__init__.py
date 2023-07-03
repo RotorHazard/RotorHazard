@@ -388,6 +388,6 @@ def register_handlers(args):
     for led_effect in discover():
         args['register_fn'](led_effect)
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_character', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.LED_INITIALIZE, register_handlers)
 

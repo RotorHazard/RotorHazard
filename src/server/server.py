@@ -1189,7 +1189,7 @@ def on_alter_heat(data):
     if RaceContext.race.current_heat == heat.id:  # if current heat was altered then update heat data
         set_current_heat_data(heat.id, silent=True)
     RaceContext.rhui.emit_heat_data(noself=True)
-    if ('note' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
+    if ('name' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
         message = __('Alterations made to heat: {0}').format(heat.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
@@ -1586,7 +1586,7 @@ def on_export_database_file(data):
     '''Run the selected Exporter'''
     exporter = data['exporter']
 
-    if RaceContext.export_manager.hasExporter(exporter):
+    if exporter in RaceContext.export_manager.exporters:
         # do export
         logger.info('Exporting data via {0}'.format(exporter))
         export_result = RaceContext.export_manager.export(exporter)
@@ -1600,12 +1600,10 @@ def on_export_database_file(data):
                 }
                 emit('exported_data', emit_payload)
 
-                Events.trigger(Evt.DATABASE_EXPORT, emit_payload)
             except Exception:
                 logger.exception("Error downloading export file")
                 RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
         else:
-            logger.warning('Failed exporting data: exporter returned no data')
             RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
         return
@@ -1619,7 +1617,7 @@ def on_import_file(data):
     '''Run the selected Importer'''
     importer = data['importer']
 
-    if RaceContext.import_manager.hasImporter(importer):
+    if importer in RaceContext.import_manager.importers:
         if 'source_data' in data and data['source_data']:
             import_args = {}
             if 'params' in data:
@@ -1632,7 +1630,6 @@ def on_import_file(data):
 
             if import_result != False:
                 clean_results_cache()
-                Events.trigger(Evt.DATABASE_IMPORT)
                 SOCKET_IO.emit('database_restore_done')
             else:
                 RaceContext.rhui.emit_priority_message(__('Data import failed. (See log)'), True, nobroadcast=True)
@@ -1665,8 +1662,8 @@ def on_generate_heats_v2(data):
 
     generator = data['generator']
 
-    if RaceContext.heat_generate_manager.hasGenerator(generator):
-        generatorObj = RaceContext.heat_generate_manager.getGenerator(generator)
+    if generator in RaceContext.heat_generate_manager.generators:
+        generatorObj = RaceContext.heat_generate_manager.generators[generator]
 
         # do generation
         logger.info('Generating heats via {0}'.format(generatorObj.label))
@@ -1676,9 +1673,7 @@ def on_generate_heats_v2(data):
             RaceContext.rhui.emit_priority_message(__('Generated heats via {0}'.format(generatorObj.label)), False, nobroadcast=True)
             RaceContext.rhui.emit_heat_data()
             RaceContext.rhui.emit_class_data()
-            Events.trigger(Evt.HEAT_GENERATE)
         else:
-            logger.warning('Failed generating heats: generator returned no data')
             RaceContext.rhui.emit_priority_message(__('Heat generation failed. (See log)'), False, nobroadcast=True)
 
         return
@@ -1764,9 +1759,7 @@ def on_download_logs(data):
                 'file_name': os.path.basename(zip_path_name),
                 'file_data' : file_content
             }
-            Events.trigger(Evt.DATABASE_BACKUP, {
-                'file_name': emit_payload['file_name'],
-                })
+
             SOCKET_IO.emit(data['emit_fn_name'], emit_payload)
         except Exception:
             logger.exception("Error downloading logs-zip file")
@@ -2081,7 +2074,7 @@ def on_stage_race():
 
         staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
 
-        if race_format.staging_tones == StagingTones.TONES_NONE:
+        if race_format.staging_delay_tones == StagingTones.TONES_NONE:
             if staging_total_ms > 0:
                 staging_tones = race_format.staging_fixed_tones
             else:
@@ -2115,7 +2108,7 @@ def on_stage_race():
             'pi_staging_at_s': RaceContext.race.stage_time_monotonic,
             'staging_tones': staging_tones,
             'pi_starts_at_s': RaceContext.race.start_time_monotonic,
-            'race_mode': race_format.race_mode,
+            'unlimited_time': race_format.unlimited_time,
             'race_time_sec': race_format.race_time_sec,
         }) # Announce staging with final parameters
 
@@ -2310,7 +2303,7 @@ def race_start_thread(start_token):
 
         # kick off race expire processing
         race_format = RaceContext.race.format
-        if race_format and race_format.race_mode == 0: # count down
+        if race_format and race_format.unlimited_time == 0: # count down
             gevent.spawn(race_expire_thread, start_token)
 
         RaceContext.rhui.emit_race_status() # Race page, to set race button states
@@ -2319,7 +2312,7 @@ def race_start_thread(start_token):
 @catchLogExceptionsWrapper
 def race_expire_thread(start_token):
     race_format = RaceContext.race.format
-    if race_format and race_format.race_mode == 0: # count down
+    if race_format and race_format.unlimited_time == 0: # count down
         gevent.sleep(race_format.race_time_sec)
         # if race still in progress and is still same race
         if RaceContext.race.race_status == RaceStatus.RACING and RaceContext.race.start_token == start_token:
@@ -2850,7 +2843,7 @@ def on_delete_lap(data):
             lap['deleted'] = True
         else:
             lap['lap_number'] = lap_number
-            if race_format.race_mode == 0 and lap['lap_time_stamp'] > (race_format.race_time_sec * 1000) or \
+            if race_format.unlimited_time == 0 and lap['lap_time_stamp'] > (race_format.race_time_sec * 1000) or \
                 (race_format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
                 RaceContext.race.set_node_finished_flag(node_index)
             lap_number += 1
@@ -3404,7 +3397,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
-                        if race_format.race_mode == 0 and \
+                        if race_format.unlimited_time == 0 and \
                             race_format.lap_grace_sec > -1 and \
                             lap_time_stamp > (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
                             logger.info('Ignoring lap after grace period expired: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
@@ -3415,7 +3408,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                     if lap_ok_flag:
                         node_finished_flag = RaceContext.race.get_node_finished_flag(node.index)
                         # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
-                        if (race_format.race_mode == 0 and lap_time_stamp > race_format.race_time_sec * 1000) or \
+                        if (race_format.unlimited_time == 0 and lap_time_stamp > race_format.race_time_sec * 1000) or \
                             (RaceContext.race.format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
                             RaceContext.race.set_node_finished_flag(node.index)
                             if not node_finished_flag:
@@ -3429,7 +3422,7 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                                                RaceContext.interface.get_lap_source_str(source), pilot_namestr))
                             
                         if RaceContext.race.win_status == WinStatus.DECLARED and \
-                            race_format.race_mode == 1 and \
+                            race_format.unlimited_time == 1 and \
                             RaceContext.race.format.team_racing_mode and \
                             RaceContext.race.format.win_condition == WinCondition.FIRST_TO_LAP_X:
                             lap_late_flag = True  # "late" lap pass after team race winner declared (when no time limit)
@@ -4209,10 +4202,7 @@ else:
 
 for plugin in plugin_modules:
     if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
-        plugin.initialize(
-            events=Events,
-            rhapi=RHAPI,
-        )
+        plugin.initialize(RHAPI)
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
@@ -4441,13 +4431,13 @@ except Exception:
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
 SECONDARY_RACE_FORMAT = RHRace.RHRaceFormat(name=__("Secondary"),
-                         race_mode=1,
+                         unlimited_time=1,
                          race_time_sec=0,
                          lap_grace_sec=-1,
                          staging_fixed_tones=0,
                          start_delay_min_ms=1000,
                          start_delay_max_ms=1000,
-                         staging_tones=0,
+                         staging_delay_tones=0,
                          number_laps_win=0,
                          win_condition=WinCondition.NONE,
                          team_racing_mode=False,
@@ -4476,7 +4466,7 @@ else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
 # VRx Controllers
-RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, legacy_config=Config.VRX_CONTROL)
+RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=Config.VRX_CONTROL)
 Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters
