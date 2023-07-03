@@ -3760,9 +3760,6 @@ def init_race_state():
     # Send profile values to nodes
     on_set_profile({'profile': RaceContext.race.profile.id}, False)
 
-    # Set race format
-    RaceContext.race.format = RaceContext.rhdata.get_first_raceFormat()
-
     # Init laps
     reset_current_laps()
 
