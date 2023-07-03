@@ -1455,25 +1455,33 @@ def on_list_backups():
     emit('backups_list', emit_payload)
 
 def restore_database_file(db_file_name):
-    RaceContext.rhdata.close()
-    RaceContext.race = RHRace.RHRace(RaceContext) # Reset all RACE values
-    RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # restore number of nodes
-    RaceContext.last_race = None
+    stop_background_threads()
+    gevent.sleep(0.1)
     try:
-        RaceContext.rhdata.recover_database(db_file_name)
-        reset_current_laps()
-        clean_results_cache()
-        expand_heats()
-        raceformat_id = RaceContext.rhdata.get_optionInt('currentFormat')
-        RaceContext.race.format = RaceContext.rhdata.get_raceFormat(raceformat_id)
-        RaceContext.rhui.emit_current_laps()
-        success = True
-    except Exception as ex:
-        logger.warning('Clearing all data after recovery failure:  ' + str(ex))
-        db_reset()
+        RaceContext.rhdata.close()
+        RaceContext.race = RHRace.RHRace(RaceContext) # Reset all RACE values
+        RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # restore number of nodes
+        RaceContext.last_race = None
+        try:
+            RaceContext.rhdata.recover_database(db_file_name)
+            gevent.sleep(1)  # pause/yield to allow changes to be committed
+            reset_current_laps()
+            clean_results_cache()
+            expand_heats()
+            raceformat_id = RaceContext.rhdata.get_optionInt('currentFormat')
+            RaceContext.race.format = RaceContext.rhdata.get_raceFormat(raceformat_id)
+            RaceContext.rhui.emit_current_laps()
+            success = True
+        except Exception as ex:
+            logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+            db_reset()
+            success = False
+        init_race_state()
+        init_interface_state()
+    except Exception:
+        logger.exception("Unexpected error in 'restore_database_file()'")
         success = False
-    init_race_state()
-    init_interface_state()
+    start_background_threads(True)
     return success
 
 @SOCKET_IO.on('restore_database')
