@@ -372,6 +372,7 @@ def doReplace(rhapi, text, args, spoken_flag=False):
             text = text.replace('%PILOT%', pilot.spoken_callsign if spoken_flag else pilot.display_callsign)
 
         race_results = rhapi.race.results
+        leaderboard = None
         if 'node_index' in args and '%' in text:
             lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
             leaderboard = race_results.get(lboard_name, [])
@@ -443,6 +444,23 @@ def doReplace(rhapi, text, args, spoken_flag=False):
             text = text.replace('%LINEUP%', getPilotsListStr(rhapi, ' , ', spoken_flag))
         if '%FREQS%' in text:
             text = text.replace('%FREQS%', getPilotFreqsStr(rhapi, ' . ', spoken_flag))
+
+        if '%LEADER' in text:
+            if not leaderboard:
+                lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
+                leaderboard = race_results.get(lboard_name, [])
+            name_str = ""
+            if len(leaderboard) > 1:
+                result = leaderboard[0]
+                if 'pilot_id' in result and result.get('laps', 0) > 0:
+                    pilot = rhapi.db.pilot_by_id(result['pilot_id'])
+                    name_str = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
+            # %LEADER% : Callsign of pilot currently leading race
+            text = text.replace('%LEADER%', name_str)
+            if len(name_str) > 0:
+                name_str = "{} {}".format(name_str, rhapi.__('is leading'))
+            # %LEADER_CALL% : Callsign of pilot currently leading race, in the form "NAME is leading"
+            text = text.replace('%LEADER_CALL%', name_str)
 
     return text
 
