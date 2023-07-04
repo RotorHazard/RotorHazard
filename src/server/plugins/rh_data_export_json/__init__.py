@@ -222,49 +222,41 @@ class AlchemyEncoder(json.JSONEncoder):
 def register_handlers(args):
     for exporter in [
         DataExporter(
-            'json_pilots',
             "JSON (Friendly) / Pilots",
             write_json,
             assemble_pilots
         ),
         DataExporter(
-            'json_heats',
             "JSON (Friendly) / Heats",
             write_json,
             assemble_heats
         ),
         DataExporter(
-            'json_classes',
             "JSON (Friendly) / Classes",
             write_json,
             assemble_classes
         ),
         DataExporter(
-            'json_formats',
             "JSON (Friendly) / Formats",
             write_json,
             assemble_formats
         ),
         DataExporter(
-            'json_results',
             "JSON (Friendly) / Results",
             write_json,
             assemble_results
         ),
         DataExporter(
-            'json_all',
             "JSON (Friendly) / All",
             write_json,
             assemble_all
         ),
         DataExporter(
-            'json_complete_all',
             "JSON (Complete) / All",
             write_json,
             assemble_complete
         ),
         DataExporter(
-            'json_complete_results',
             "JSON (Complete) / Results",
             write_json,
             assemble_results_raw

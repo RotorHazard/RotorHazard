@@ -267,7 +267,6 @@ def import_json(rhapi, source, args):
 def register_handlers(args):
     for importer in [
         DataImporter(
-            'json',
             'RotorHazard 4.0 JSON',
             import_json,
             None,

@@ -144,7 +144,6 @@ def rank_best_rounds(rhapi, race_class, args):
 def register_handlers(args):
     args['register_fn'](
         RaceClassRankMethod(
-            'best_rounds',
             "Laps/Time: Best X Rounds",
             rank_best_rounds,
             {

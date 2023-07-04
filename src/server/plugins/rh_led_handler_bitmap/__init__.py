@@ -70,7 +70,7 @@ def showBitmap(args):
 
 def register_handlers(args):
     for led_effect in [
-        LEDEffect('bitmapRHLogo', "Image: RotorHazard", showBitmap, {
+        LEDEffect("Image: RotorHazard", showBitmap, {
                 'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.STARTUP]
             }, {
@@ -79,8 +79,9 @@ def register_handlers(args):
                     ],
                 'time': 60
             },
+            name='bitmapRHLogo',
         ),
-        LEDEffect('bitmapOrangeEllipsis', "Image: Orange Ellipsis", showBitmap, {
+        LEDEffect("Image: Orange Ellipsis", showBitmap, {
                 'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_STAGE]
             }, {
@@ -88,9 +89,10 @@ def register_handlers(args):
                     {'image': 'static/image/LEDpanel-16x16-ellipsis.png', 'delay': 0}
                     ],
                 'time': 8
-            }
+            },
+            name='bitmapOrangeEllipsis',
         ),
-        LEDEffect('bitmapGreenArrow', "Image: Green Upward Arrow", showBitmap, {
+        LEDEffect("Image: Green Upward Arrow", showBitmap, {
                 'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_START]
             }, {
@@ -98,9 +100,10 @@ def register_handlers(args):
                     {'image': 'static/image/LEDpanel-16x16-arrow.png', 'delay': 0}
                     ],
                 'time': 8
-            }
+            },
+            name='bitmapGreenArrow',
         ),
-        LEDEffect('bitmapRedX', "Image: Red X", showBitmap, {
+        LEDEffect("Image: Red X", showBitmap, {
                 'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_STOP]
             }, {
@@ -108,9 +111,10 @@ def register_handlers(args):
                     {'image': 'static/image/LEDpanel-16x16-X.png', 'delay': 0}
                     ],
                 'time': 8
-            }
+            },
+            name='bitmapRedX',
         ),
-        LEDEffect('bitmapCheckerboard', "Image: Checkerboard", showBitmap, {
+        LEDEffect("Image: Checkerboard", showBitmap, {
                 'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_FINISH, Evt.RACE_STOP]
             }, {
@@ -118,7 +122,8 @@ def register_handlers(args):
                     {'image': 'static/image/LEDpanel-16x16-checkerboard.png', 'delay': 0}
                     ],
             'time': 20
-            }
+            },
+            name='bitmapCheckerboard',
         )
     ]:
         args['register_fn'](led_effect)

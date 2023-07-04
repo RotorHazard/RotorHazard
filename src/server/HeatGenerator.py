@@ -10,7 +10,7 @@ from enum import Enum
 import logging
 import random
 import RHUtils
-from RHUtils import catchLogExceptionsWrapper
+from RHUtils import catchLogExceptionsWrapper, cleanVarName
 from Database import ProgramMethod
 
 logger = logging.getLogger(__name__)
@@ -145,8 +145,12 @@ class HeatGeneratorManager():
         return True
 
 class HeatGenerator():
-    def __init__(self, name, label, generator_fn, default_args=None, settings:List[UIField]=None):
-        self.name = name
+    def __init__(self, label, generator_fn, default_args=None, settings:List[UIField]=None, name=None):
+        if name is None:
+            self.name = cleanVarName(label)
+        else:
+            self.name = name
+
         self.label = label
         self._generator = generator_fn
         self.default_args = default_args

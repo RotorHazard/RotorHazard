@@ -291,37 +291,31 @@ def assemble_results(rhapi):
 def register_handlers(args):
     for exporter in [
         DataExporter(
-            'csv_pilots',
             "CSV (Friendly) / Pilots",
             write_csv,
             assemble_pilots
         ),
         DataExporter(
-            'csv_heats',
             "CSV (Friendly) / Heats",
             write_csv,
             assemble_heats
         ),
         DataExporter(
-            'csv_classes',
             "CSV (Friendly) / Classes",
             write_csv,
             assemble_classes
         ),
         DataExporter(
-            'csv_formats',
             "CSV (Friendly) / Formats",
             write_csv,
             assemble_formats
         ),
         DataExporter(
-            'csv_results',
             "CSV (Friendly) / Results",
             write_csv,
             assemble_results
         ),
         DataExporter(
-            'csv_all',
             "CSV (Friendly) / All",
             write_csv,
             assemble_all

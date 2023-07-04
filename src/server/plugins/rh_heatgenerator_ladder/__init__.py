@@ -152,7 +152,6 @@ def generateBalancedHeats(rhapi, generate_args=None):
 def register_handlers(args):
     for generator in [
         HeatGenerator(
-            'ladder_0a',
             "Ranked fill",
             generateLadder,
             {
@@ -166,7 +165,6 @@ def register_handlers(args):
             ],
         ),
         HeatGenerator(
-            'balanced_fill',
             "Balanced random fill",
             generateBalancedHeats,
             None,
@@ -178,7 +176,6 @@ def register_handlers(args):
             ]
         ),
         HeatGenerator(
-            'ladder_params',
             "Ladder",
             generateLadder,
             None,

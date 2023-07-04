@@ -79,7 +79,6 @@ def rank_points_total(rhapi, race_class, args):
 def register_handlers(args):
     args['register_fn'](
         RaceClassRankMethod(
-            'cumulative_points',
             "Cumulative Points",
             rank_points_total,
             {

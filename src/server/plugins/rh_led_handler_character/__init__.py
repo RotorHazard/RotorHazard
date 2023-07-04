@@ -271,7 +271,6 @@ def convertColor(color):
 def discover():
     effects = [
     LEDEffect(
-        'textLapNumber',
         "Text: Lap Count",
         dataHandler, {
             'manual': False,
@@ -281,10 +280,10 @@ def discover():
         }, {
         'data': 'lap_number',
         'time': 4
-        }
-        ),
+        },
+        name='textLapNumber',
+    ),
     LEDEffect(
-        'textLapTime',
         "Text: Lap Time",
         dataHandler, {
             'manual': False,
@@ -294,10 +293,10 @@ def discover():
         }, {
         'data': 'lap_time',
         'time': 4
-        }
-        ),
+        },
+        name='textLapTime',
+    ),
     LEDEffect(
-        'textPosition',
         "Text: Position",
         dataHandler, {
             'manual': False,
@@ -307,10 +306,10 @@ def discover():
         }, {
         'data': 'position',
         'time': 4
-        }
-        ),
+        },
+        name='textPosition',
+    ),
     LEDEffect(
-        'scrollLapTime',
         "Text Scroll: Lap Time",
         scrollText, {
             'manual': False,
@@ -320,10 +319,10 @@ def discover():
         }, {
         'data': 'lap_time',
         'time': 2
-        }
-        ),
+        },
+        name='scrollLapTime',
+    ),
     LEDEffect(
-        'textMessage',
         "Text Scroll: Message",
         scrollText, {
             'manual': False,
@@ -333,10 +332,10 @@ def discover():
         }, {
         'data': 'message',
         'time': 0
-        }
-        ),
+        },
+        name='textMessage',
+    ),
     LEDEffect(
-        'textRaceWin',
         "Text Scroll: Race Winner",
         scrollText, {
             'manual': False,
@@ -346,10 +345,10 @@ def discover():
         }, {
         'data': 'message',
         'time': 2
-        }
-        ),
+        },
+        name='textRaceWin',
+    ),
     LEDEffect(
-        'textStaging',
         "Text: Countdown",
         dataHandler, {
             'manual': False,
@@ -359,14 +358,14 @@ def discover():
         }, {
         'data': 'staging',
         'time': 5
-        }
-        ),
+        },
+        name='textStaging',
+    ),
     ]
 
     if (Config.LED['LED_ROWS'] >= 16):
         effects.append(
             LEDEffect(
-                'textLapGrid',
                 "Text: 4-Node Lap Count",
                 multiLapGrid, {
                     'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING],
@@ -378,7 +377,8 @@ def discover():
                         Evt.RACE_STOP]
                 }, {
                 'time': 4
-                }
+                },
+                name='textLapGrid',
             )
         )
 

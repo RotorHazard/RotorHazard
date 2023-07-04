@@ -9,7 +9,7 @@ import copy
 import json
 import gevent
 import RHUtils
-from RHUtils import catchLogExceptionsWrapper
+from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import logging
 from monotonic import monotonic
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
@@ -49,8 +49,12 @@ class RaceClassRankManager():
         return lb, meta
 
 class RaceClassRankMethod():
-    def __init__(self, name, label, rank_fn, default_args=None, settings:List[UIField]=None):
-        self.name = name
+    def __init__(self, label, rank_fn, default_args=None, settings:List[UIField]=None, name=None):
+        if name is None:
+            self.name = cleanVarName(label)
+        else:
+            self.name = name
+
         self.label = label
         self.rank_fn = rank_fn
         self.default_args = default_args
@@ -89,8 +93,12 @@ class RacePointsManager():
         return self.methods[method_id].assign(self._rhapi, leaderboard, args)
 
 class RacePointsMethod():
-    def __init__(self, name, label, assign_fn, default_args=None, settings:List[UIField]=None):
-        self.name = name
+    def __init__(self, label, assign_fn, default_args=None, settings:List[UIField]=None, name=None):
+        if name is None:
+            self.name = cleanVarName(label)
+        else:
+            self.name = name
+
         self.label = label
         self.assignFn = assign_fn
         self.default_args = default_args

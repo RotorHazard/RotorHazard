@@ -108,16 +108,16 @@ def convertColor(color):
 def register_handlers(args):
     for led_effect in [
         LEDEffect(
-            'graphRSSI',
             "Graph: RSSI (all)",
             rssiGraph, {
                 'include': [],
                 'exclude': [],
                 'recommended': []
-            }, {}
+            },
+            {},
+            name='graphRSSI',
         ),
         LEDEffect(
-            'graphRSSIActive',
             "Graph: RSSI (enabled)",
             rssiGraph, {
                 'include': [],
@@ -125,8 +125,9 @@ def register_handlers(args):
                 'recommended': []
             }, {
                 'active_only': True
-            }
-            )
+            },
+            name='graphRSSIActive',
+        )
     ]:
         args['register_fn'](led_effect)
 

@@ -1,6 +1,6 @@
 import logging
 import json
-from RHUtils import catchLogExceptionsWrapper
+from RHUtils import catchLogExceptionsWrapper, cleanVarName
 from eventmanager import Evt
 from typing import List
 from RHUI import UIField
@@ -50,8 +50,12 @@ class EventActions:
         self.effects[action['effect']].runEffect(action, args)
 
 class ActionEffect():
-    def __init__(self, name, label, effect_fn, fields:List[UIField]):
-        self.name = name
+    def __init__(self, label, effect_fn, fields:List[UIField], name=None):
+        if name is None:
+            self.name = cleanVarName(label)
+        else:
+            self.name = name
+
         self.label = label
         self.effect_fn = effect_fn
         self.fields = fields

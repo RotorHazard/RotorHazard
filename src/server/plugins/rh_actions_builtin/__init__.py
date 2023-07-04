@@ -35,7 +35,6 @@ class ActionsBuiltin():
     def register_handlers(self, args):
         for effect in [
             ActionEffect(
-                'speak',
                 "Speak",
                 self.speakEffect,
                 [
@@ -43,7 +42,6 @@ class ActionsBuiltin():
                 ]
             ),
             ActionEffect(
-                'message',
                 "Message",
                 self.messageEffect,
                 [
@@ -51,7 +49,6 @@ class ActionsBuiltin():
                 ]
             ),
             ActionEffect(
-                'alert',
                 "Alert",
                 self.alertEffect,
                 [
@@ -59,7 +56,6 @@ class ActionsBuiltin():
                 ]
             ),
             ActionEffect(
-                'schedule',
                 "Schedule Race",
                 self.scheduleEffect,
                 [

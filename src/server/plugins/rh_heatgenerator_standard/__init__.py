@@ -1672,7 +1672,6 @@ def bracket_2e_std(rhapi, generate_args):
 def register_handlers(args):
     for generator in [
         HeatGenerator(
-            'bracket_1e_std',
             "Regulation bracket, single elimination",
             bracket_1e_std,
             None,
@@ -1686,7 +1685,6 @@ def register_handlers(args):
             ],
         ),
         HeatGenerator(
-            'bracket_2e_std',
             "Regulation bracket, double elimination",
             bracket_2e_std,
             None,

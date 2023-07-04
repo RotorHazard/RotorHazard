@@ -2,7 +2,7 @@
 # Data import handlers
 #
 
-from RHUtils import catchLogExceptionsWrapper
+from RHUtils import catchLogExceptionsWrapper, cleanVarName
 from typing import List
 from RHUI import UIField
 from eventmanager import Evt
@@ -45,8 +45,12 @@ class DataImportManager():
         return result
 
 class DataImporter():
-    def __init__(self, name, label, import_fn, default_args=None, settings:List[UIField]=None):
-        self.name = name
+    def __init__(self, label, import_fn, default_args=None, settings:List[UIField]=None, name=None):
+        if name is None:
+            self.name = cleanVarName(label)
+        else:
+            self.name = name
+
         self.label = label
         self.import_fn = import_fn
         self.default_args = default_args

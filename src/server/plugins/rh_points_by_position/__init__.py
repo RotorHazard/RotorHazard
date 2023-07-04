@@ -25,7 +25,6 @@ def points_by_position(_rhapi, leaderboard, args):
 def register_handlers(args):
     args['register_fn'](
         RacePointsMethod(
-            'position_basic',
             "Position",
             points_by_position,
             None,

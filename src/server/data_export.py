@@ -2,7 +2,7 @@
 # Data export handlers
 #
 
-from RHUtils import catchLogExceptionsWrapper
+from RHUtils import catchLogExceptionsWrapper, cleanVarName
 from eventmanager import Evt
 import logging
 
@@ -43,8 +43,12 @@ class DataExportManager():
         return result
 
 class DataExporter():
-    def __init__(self, name, label, formatter_fn, assembler_fn):
-        self.name = name
+    def __init__(self, label, formatter_fn, assembler_fn, name=None):
+        if name is None:
+            self.name = cleanVarName(label)
+        else:
+            self.name = name
+
         self.label = label
         self.formatter = formatter_fn
         self.assembler = assembler_fn

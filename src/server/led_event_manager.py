@@ -13,7 +13,7 @@ Wires events to handlers
 import copy
 import RHRace
 import RHUtils
-from RHUtils import catchLogExceptionsWrapper
+from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import gevent
 from eventmanager import Evt
 from six.moves import UserDict
@@ -35,20 +35,24 @@ class LEDEventManager:
         self._rhapi = RHAPI
 
         # hold
-        self.registerEffect(LEDEffect("hold", "Hold", lambda *_args: None, {
+        self.registerEffect(LEDEffect("Hold", lambda *_args: None, {
                 'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
                 'exclude': [Evt.STARTUP],
                 'recommended': [Evt.ALL]
             }, {
                 'preventIdle': True
-            }))
+            },
+            name="hold",
+            ))
 
         # do nothing
-        self.registerEffect(LEDEffect("none", "No Effect", lambda *_args: None, {
+        self.registerEffect(LEDEffect("No Effect", lambda *_args: None, {
                 'manual': False,
                 'exclude': [Evt.STARTUP],
                 'recommended': [Evt.ALL]
-            }))
+            },
+            name="none",
+            ))
 
         self.Events.trigger(Evt.LED_INITIALIZE, {
             'register_fn': self.registerEffect
@@ -314,7 +318,10 @@ class LEDEvent:
     ]
 
 class LEDEffect(UserDict):
-    def __init__(self, name, label, handler_fn, valid_events, default_args=None):
+    def __init__(self, label, handler_fn, valid_events, default_args=None, name=None):
+        if name is None:
+            name = cleanVarName(label)
+
         UserDict.__init__(self, {
             "name": name,
             "label": label,

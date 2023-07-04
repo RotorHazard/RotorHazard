@@ -381,39 +381,49 @@ def dim(color, decay):
 def discover():
     return [
     # color
-    LEDEffect("stripColor", "Color/Pattern (Args)", showColor, {
+    LEDEffect("Color/Pattern (Args)", showColor, {
         'manual': False,
         'exclude': [Evt.ALL]
         }, {
         'time': 4
-        }),
-    LEDEffect("stripColorSolid", "Solid", showColor, {
+        },
+        name="stripColor",
+    ),
+    LEDEffect("Solid", showColor, {
         'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_START, Evt.RACE_STOP]
         }, {
         'pattern': ColorPattern.SOLID,
         'time': 4
-        }),
-    LEDEffect("stripColor1_1", "Pattern 1-1", showColor, {
+        },
+        name="stripColorSolid",
+    ),
+    LEDEffect("Pattern 1-1", showColor, {
         'include': [Evt.SHUTDOWN],
         }, {
         'pattern': ColorPattern.ALTERNATING,
         'time': 4
-        }),
-    LEDEffect("stripColor1_2", "Pattern 1-2", showColor, {
+        },
+        name="stripColor1_1",
+    ),
+    LEDEffect("Pattern 1-2", showColor, {
         'include': [Evt.SHUTDOWN],
         }, {
         'pattern': ColorPattern.ONE_OF_THREE,
         'time': 4
-        }),
-    LEDEffect("stripColor2_1", "Pattern 2-1", showColor, {
+        },
+        name="stripColor1_2",
+    ),
+    LEDEffect("Pattern 2-1", showColor, {
         'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_STAGE]
         }, {
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
         'time': 4
-        }),
-    LEDEffect("stripStaging", "Staging Pulse 2-1", stagingTrigger, {
+        },
+        name="stripColor2_1",
+    ),
+    LEDEffect("Staging Pulse 2-1", stagingTrigger, {
         'manual': False,
         'include': [Evt.RACE_STAGE],
         'exclude': [Evt.ALL],
@@ -425,50 +435,67 @@ def discover():
         'steps': 0,
         'outSteps': 10,
         'time': 2
-        }),
-    LEDEffect("stripColor4_4", "Pattern 4-4", showColor, {
+        },
+        name="stripStaging",
+    ),
+    LEDEffect("Pattern 4-4", showColor, {
         'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_FINISH]
         }, {
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
         'time': 4
-        }),
+        },
+        name="stripColor4_4",
+    ),
 
     # chase
-    LEDEffect("stripChase1_2", "Chase Pattern 1-2", chase, {}, {
+    LEDEffect("Chase Pattern 1-2", chase, {}, {
         'pattern': ColorPattern.ONE_OF_THREE,
         'speedDelay': 50,
         'iterations': 5
-        }),
-    LEDEffect("stripChase2_1", "Chase Pattern 2-1", chase, {}, {
+        },
+        name="stripChase1_2",
+    ),
+    LEDEffect("Chase Pattern 2-1", chase, {}, {
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
         'speedDelay': 50,
         'iterations': 5,
-        }),
-    LEDEffect("stripChase4_4", "Chase Pattern 4-4", chase, {}, {
+        },
+        name="stripChase2_1",
+    ),
+    LEDEffect("Chase Pattern 4-4", chase, {}, {
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
         'speedDelay': 50,
         'iterations': 5,
-        }),
+        },
+        name="stripChase4_4",
+    ),
 
     # rainbow
-    LEDEffect("rainbow", "Rainbow", rainbow, {
+    LEDEffect("Rainbow", rainbow, {
         'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
         }, {
         'time': 4
-        }),
-    LEDEffect("rainbowCycle", "Rainbow Cycle", rainbowCycle, {
+        },
+        name="rainbow",
+    ),
+    LEDEffect("Rainbow Cycle", rainbowCycle, {
         'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING]
-        }, {}),
+        },
+        {},
+        name="rainbowCycle",
+    ),
 
     # wipe
-    LEDEffect("stripWipe", "Wipe", colorWipe, {}, {
+    LEDEffect("Wipe", colorWipe, {}, {
         'speedDelay': 3,
         'time': 2
-        }),
+        },
+        name="stripWipe",
+    ),
 
     # fade
-    LEDEffect("stripFadeIn", "Fade In", fade, {}, {
+    LEDEffect("Fade In", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 50,
         'outSteps': 0,
@@ -477,8 +504,10 @@ def discover():
         'offTime': 0,
         'iterations': 1,
         'time': 4
-        }),
-    LEDEffect("stripPulse", "Pulse 3x", fade, {}, {
+        },
+        name="stripFadeIn",
+    ),
+    LEDEffect("Pulse 3x", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 10,
         'outSteps': 10,
@@ -487,8 +516,10 @@ def discover():
         'offTime': 10,
         'iterations': 3,
         'time': 3
-        }),
-    LEDEffect("stripFadeOut", "Fade Out", fade, {}, {
+        },
+        name="stripPulse",
+    ),
+    LEDEffect("Fade Out", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 10,
         'outSteps': 128,
@@ -497,10 +528,12 @@ def discover():
         'offTime': 0,
         'iterations': 1,
         'time': 4
-        }),
+        },
+        name="stripFadeOut",
+    ),
 
     # blink
-    LEDEffect("stripBlink", "Blink 3x", fade, {}, {
+    LEDEffect("Blink 3x", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 1,
         'speedDelay': 1,
@@ -508,37 +541,45 @@ def discover():
         'offTime': 100,
         'iterations': 3,
         'time': 3
-        }),
+        },
+        name="stripBlink",
+    ),
 
     # sparkle
-    LEDEffect("stripSparkle", "Sparkle", sparkle, {}, {
+    LEDEffect("Sparkle", sparkle, {}, {
         'chance': 1.0,
         'decay': 0.95,
         'speedDelay': 10,
         'iterations': 50,
         'time': 0
-        }),
+        },
+        name="stripSparkle",
+    ),
 
     # meteor
-    LEDEffect("stripMeteor", "Meteor Fall", meteor, {}, {
+    LEDEffect("Meteor Fall", meteor, {}, {
         'meteorSize': 10,
         'decay': 0.75,
         'randomDecay': True,
         'speedDelay': 1,
         'time': 0
-        }),
+        },
+        name="stripMeteor",
+    ),
 
     # larson scanner
-    LEDEffect("stripScanner", "Scanner", larsonScanner, {}, {
+    LEDEffect("Scanner", larsonScanner, {}, {
         'eyeSize': 4,
         'speedDelay': 256,
         'returnDelay': 50,
         'iterations': 3,
         'time': 0
-        }),
+        },
+        name="stripScanner",
+    ),
 
     # leader color proxies
-    LEDEffect("stripColorSolidLeader", "Solid / Leader", leaderProxy, {
+    LEDEffect("Solid / Leader", leaderProxy, {
         'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
@@ -546,8 +587,10 @@ def discover():
         'effect_fn': showColor,
         'pattern': ColorPattern.SOLID,
         'time': 4
-        }),
-    LEDEffect("stripColor1_1Leader", "Pattern 1-1 / Leader", leaderProxy, {
+        },
+        name="stripColorSolidLeader",
+    ),
+    LEDEffect("Pattern 1-1 / Leader", leaderProxy, {
         'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
@@ -555,8 +598,10 @@ def discover():
         'effect_fn': showColor,
         'pattern': ColorPattern.ALTERNATING,
         'time': 4
-        }),
-    LEDEffect("stripColor1_2Leader", "Pattern 1-2 / Leader", leaderProxy, {
+        },
+        name="stripColor1_1Leader",
+    ),
+    LEDEffect("Pattern 1-2 / Leader", leaderProxy, {
         'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
@@ -564,8 +609,10 @@ def discover():
         'effect_fn': showColor,
         'pattern': ColorPattern.ONE_OF_THREE,
         'time': 4
-        }),
-    LEDEffect("stripColor2_1Leader", "Pattern 2-1 / Leader", leaderProxy, {
+        },
+        name="stripColor1_2Leader",
+    ),
+    LEDEffect("Pattern 2-1 / Leader", leaderProxy, {
         'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
@@ -573,8 +620,10 @@ def discover():
         'effect_fn': showColor,
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
         'time': 4
-        }),
-    LEDEffect("stripColor4_4Leader", "Pattern 4-4 / Leader", leaderProxy, {
+        },
+        name="stripColor2_1Leader",
+    ),
+    LEDEffect("Pattern 4-4 / Leader", leaderProxy, {
         'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
@@ -582,16 +631,20 @@ def discover():
         'effect_fn': showColor,
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
         'time': 4
-        }),
+        },
+        name="stripColor4_4Leader",
+    ),
 
     # clear - permanently assigned to LEDEventManager.clear()
-    LEDEffect("clear", "Turn Off", clear, {
+    LEDEffect("Turn Off", clear, {
         'manual': False,
         'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
         'recommended': [Evt.ALL]
         }, {
             'time': 8
-        })
+        },
+        name="clear",
+    )
     ]
 
 def register_handlers(args):

@@ -48,7 +48,6 @@ def rank_heat_pos(rhapi, race_class, _args):
 def register_handlers(args):
     args['register_fn'](
         RaceClassRankMethod(
-            'last_heat_position',
             "Last Heat Position",
             rank_heat_pos,
             None,
