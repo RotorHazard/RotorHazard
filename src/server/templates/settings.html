@@ -966,7 +966,7 @@
 			if (rotorhazard.actions?.list && rotorhazard.actions?.effects) {
 				var fieldset = $('<fieldset>');
 
-				for (idx in rotorhazard.actions.effects[effect].fields) {
+				for (idx in rotorhazard.actions.effects[effect]?.fields) {
 					var settings = { ...rotorhazard.actions.effects[effect].fields[idx] };
 
 					settings.wrapperEl = 'div';

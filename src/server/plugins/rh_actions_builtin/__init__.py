@@ -39,21 +39,24 @@ class ActionsBuiltin():
                 self.speakEffect,
                 [
                     UIField('text', "Callout Text", UIFieldType.TEXT),
-                ]
+                ],
+                name='speak',
             ),
             ActionEffect(
                 "Message",
                 self.messageEffect,
                 [
                     UIField('text', "Message Text", UIFieldType.TEXT),
-                ]
+                ],
+                name='message',
             ),
             ActionEffect(
                 "Alert",
                 self.alertEffect,
                 [
                     UIField('text', "Alert Text", UIFieldType.TEXT),
-                ]
+                ],
+                name='alert',
             ),
             ActionEffect(
                 "Schedule Race",
@@ -61,7 +64,8 @@ class ActionsBuiltin():
                 [
                     UIField('sec', "Seconds", UIFieldType.BASIC_INT),
                     UIField('min', "Minutes", UIFieldType.BASIC_INT),
-                ]
+                ],
+                name='schedule',
             )
         ]:
             args['register_fn'](effect)
