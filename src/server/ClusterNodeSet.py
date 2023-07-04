@@ -41,14 +41,6 @@ class SecondaryNode:
         if self.queryInterval <= 0:
             self.queryInterval = 10
         self.firstQueryInterval = 3 if self.queryInterval >= 3 else 1
-        self.sio = socketio.Client(reconnection=False, request_timeout=1)
-        self.sio.on('connect', self.on_connect)
-        self.sio.on('disconnect', self.on_disconnect)
-        self.sio.on('pass_record', self.on_pass_record)
-        self.sio.on('check_secondary_response', self.on_check_secondary_response)
-        self.sio.on('join_cluster_response', self.join_cluster_response)
-        self.start_connection()
-
         self.startConnectTime = 0
         self.lastContactTime = -1
         self.firstContactTime = 0
@@ -66,6 +58,13 @@ class SecondaryNode:
         self.timeCorrectionMs = 0
         self.progStartEpoch = 0
         self.runningFlag = False
+        self.sio = socketio.Client(reconnection=False, request_timeout=1)
+        self.sio.on('connect', self.on_connect)
+        self.sio.on('disconnect', self.on_disconnect)
+        self.sio.on('pass_record', self.on_pass_record)
+        self.sio.on('check_secondary_response', self.on_check_secondary_response)
+        self.sio.on('join_cluster_response', self.join_cluster_response)
+        self.start_connection()
 
     def start_connection(self):
         self.startConnectTime = 0
@@ -77,10 +76,12 @@ class SecondaryNode:
         self.numDisconnects = 0
         self.numDisconnsDuringRace = 0
         self.numContacts = 0
-        self.latencyAveragerObj = Averager(self.LATENCY_AVG_SIZE)
+        if len(self.latencyAveragerObj) > 0:
+            self.latencyAveragerObj = Averager(self.LATENCY_AVG_SIZE)
         self.totalUpTimeSecs = 0
         self.totalDownTimeSecs = 0
-        self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
+        if (len(self.timeDiffMedianObj.sorted_) > 0):
+            self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
         self.timeDiffMedianMs = 0
         self.timeCorrectionMs = 0
         self.progStartEpoch = 0
