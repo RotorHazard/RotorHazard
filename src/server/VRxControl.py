@@ -68,7 +68,7 @@ class VRxControlManager():
 
         return False
 
-    def kill(self):
+    def kill(self, *args):
         if self.enabled:
             logger.info('Killing active VRx Control')
             self.enabled = False
