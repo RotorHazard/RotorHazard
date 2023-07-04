@@ -53,6 +53,8 @@ class RHRace():
         self._seat_colors = []
         self.external_flag = False # is race data controlled externally (from cluster)
 
+        self.clear_results()
+
         '''
         Lap Object (dict) for node_laps:
             lap_number
