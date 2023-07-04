@@ -62,24 +62,27 @@ For example, a points method might be registered with the following functions:
 from eventmanager import Evt
 from Results import RacePointsMethod
 
+def my_points_method_fn(rhapi, leaderboard, args):
+    ...
+
 def register_handlers(args):
     args['register_fn'](
-        RacePointsMethod('position_basic', "Position", points_by_position_function)
+        RacePointsMethod("My Points Method", my_points_method_fn)
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.POINTS_INITIALIZE, 'points_register_byrank', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.POINTS_INITIALIZE, register_handlers)
 ```
 
-#### RacePointsMethod(name, label, assign_fn, default_args=None, settings=None)
+#### RacePointsMethod(label, assign_fn, default_args=None, settings=None, name=None)
 
 Provides metadata and function linkage for *points methods*.
 
-- `name` (string): internal identifier for this method
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `assign_fn` (function): function to run when points are calculated for a race
 - `default_args` _optional_ (dict): arguments passed to the `assign_fn` when run, unless overridden by local arguments
 - `settings` _optional_ (list\[UIField\]): A list of paramters to provide to the user; see [UI Fields](#ui-fields)
+- `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
 The `assignFn` receives as arguments:
 
@@ -95,29 +98,32 @@ The `assignFn` receives as arguments:
 
 *Class Ranking Methods* must be registered to be available in the UI. Access to registration is provided though the `register_fn` argument of the `Evt.CLASS_RANK_INITIALIZE` event. Pass a `RaceClassRankMethod` object to this method to register it.
 
-For example, an class rank might be registered with the following functions:
+For example, a class rank might be registered with the following functions:
 ```
 from eventmanager import Evt
 from Results import RaceClassRankMethod
 
+def my_class_rank_fn(rhapi, race_class, args):
+    ...
+
 def register_handlers(args):
     args['register_fn'](
-        RaceClassRankMethod('last_heat_position', "Last Heat Position", rank_heat_pos_function)
+        RaceClassRankMethod("My Class Ranking", my_class_rank_fn)
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.CLASS_RANK_INITIALIZE, 'classrank_register_heat_position', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.CLASS_RANK_INITIALIZE, register_handlers)
 ```
 
-#### RaceClassRankMethod(name, label, rank_fn, default_args=None, settings=None)
+#### RaceClassRankMethod(label, rank_fn, default_args=None, settings=None, name=None)
 
 Provides metadata and function linkage for *points methods*.
 
-- `name` (string): internal identifier for this method
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `rank_fn` (function): function to run when class leaderboards are calculated
 - `default_args` _optional_ (dict): arguments passed to the `rank_fn` when run, unless overridden by local arguments
 - `settings` _optional_ (list\[UIField\]): A list of paramters to provide to the user; see [UI Fields](#ui-fields)
+- `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
 The `rank_fn` receives as arguments:
 
@@ -155,22 +161,25 @@ For example, a heat generator might be registered with the following functions:
 from eventmanager import Evt
 from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
 
+def my_heat_generator_fn(rhapi, args):
+    ...
+
 def register_handlers(args):
     args['register_fn'](
-        HeatGenerator('ladder', "Ladder", generate_ladder_function)
+        HeatGenerator("My Generator", my_heat_generator_fn)
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.HEAT_GENERATOR_INITIALIZE, 'HeatGenerator_register_ladder', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.HEAT_GENERATOR_INITIALIZE, register_handlers)
 ```
 
-#### HeatGenerator (name, label, generator_fn, default_args=None, settings=None)
+#### HeatGenerator (label, generator_fn, default_args=None, settings=None, name=None)
 
-- `name` (string): internal identifier for this generator
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `generator_fn` (function): function to run when generator is invoked
 - `default_args` _optional_ (dict): arguments passed to the `generator_fn` when run, unless overridden by local arguments
 - `settings` _optional_ (list\[UIField\]): A list of paramters to provide to the user; see [UI Fields](#ui-fields)
+- `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
 The `generator_fn` receives as arguments:
 
@@ -236,23 +245,26 @@ For example, an effect might be registered with the following functions:
 from eventmanager import Evt
 from EventActions import ActionEffect
 
+def my_actions_fn(action, args):
+    ...
+
 def register_handlers(args):
     args['register_fn'](
-        ActionEffect('schedule', 'Schedule Race', my_schedule_race_effect_fn)
+        ActionEffect("My Action", my_actions_fn)
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.ACTIONS_INITIALIZE, 'action_UDP_message', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.ACTIONS_INITIALIZE, register_handlers)
 ```
 
-#### ActionEffect(name, label, effect_fn, fields)
+#### ActionEffect(label, effect_fn, fields, name=None)
 
 Provides metadata and function linkage for *action effects*.
 
-- `name` (string): internal identifier for this effect
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `effect_fn` (function): function to run when this effect is triggered
 - `fields` _optional_ (list\[UIField\]): A list of paramters to provide to the user; see [UI Fields](#ui-fields)
+- `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
 Example:
 ```
@@ -280,26 +292,29 @@ For example, an LED effect might be registered with the following functions:
 from eventmanager import Evt
 from led_event_manager import LEDEffect
 
+def my_led_effect(args):
+    ...
+
 def register_handlers(args):
     args['register_fn'](
-        LEDEffect("bitmapRHLogo", "Image: RotorHazard", show_bitmap_function, {}),
+        LEDEffect("Image: RotorHazard", my_led_effect, {}),
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.LED_INITIALIZE, 'LED_register_bitmap', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.LED_INITIALIZE, register_handlers)
 ```
 
-#### LEDEffect(name, label, handler_fn, valid_events, default_args=None)
+#### LEDEffect(label, handler_fn, valid_events, default_args=None, name=None)
 
 Provides metadata and function linkage for *LED effects*.
 
 Often, `color` will be passed through as an argument, which is an RGB hexadecimal code that can be used to modify the effect's output as appropriate. For example, during the `RACE_LAP_RECORDED` event, color is often determined by the pilot that completed the lap.
 
-- `name` (string): internal identifier for this effect
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `handler_fn` (function): function to run when this effect is triggered
 - `valid_events` (list): controls whether events can be assigned to various events
 - `default_args` _optional_ (dict): provides default arguments for the handler. These arguments will be overwritten if the `Event` provides arguments with the same keys.
+- `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
 By default, an *LED effect* will be available to all *events* that can produce LED output except *Evt.SHUTDOWN*, *LEDEvent.IDLE_DONE*, *LEDEvent.IDLE_RACING*, and *LEDEvent.IDLE_READY*. This can be modified with `valid_events`. It should contain a dict with the following optional keys. Each value should be a list of event identifiers.
 - `exclude` (list): this *effect* will never be available for *events* specified here. As a special case, `Evt.ALL` will remove this *effect* from all *events* except those specifically included.
@@ -315,7 +330,6 @@ Be sure to `import gevent` and set `gevent.sleep` or `gevent.idle` frequently wi
 Example:
 ```
 LEDEffect(
-    "bitmapRHLogo",
     "Image: RotorHazard",
     show_bitmap,
     {
@@ -348,30 +362,35 @@ For example, an exporter might be registered with the following functions:
 from eventmanager import Evt
 from data_export import DataExporter
 
+def my_formatter_fn(data):
+    ...
+
+def my_assembler_fn(rhapi):
+    ...
+
 def register_handlers(args):
     args['register_fn'](
         DataExporter(
-            'csv_pilots',
-            'CSV (Friendly) / Pilots',
-            my_csv_formatter_function,
-            my_assemble_pilots_function
+            "My Exporter",
+            my_formatter_function,
+            my_assembler_function
         )
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.DATA_EXPORT_INITIALIZE, 'export_register_myplugin', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.DATA_EXPORT_INITIALIZE, register_handlers)
 ```
 
-#### DataExporter(name, label, formatter_fn, assembler_fn)
+#### DataExporter(label, formatter_fn, assembler_fn, name=None)
 
 Provides metadata and function linkage for *exporters*.
 
 *Exporters* are run in two stages. First, the *assembler* pulls the data needed, then passes it to the *formatter*. In this way, a variety of *assemblers* can share a *formatter*, such as assembling pilot data, heat data, or race data and then passing it to be formatted as CSV or JSON.
 
-- `name` (string): internal identifier for this effect
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `formatter_fn` (function): function to run for formatting stage
 - `assembler_fn` (function): function to run for assembly stage
+- `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
 The `assembler_fn` receives `rhapi` as an argument so that it may access and prepare timer data as needed.
 
@@ -390,30 +409,32 @@ For example, an importer might be registered with the following functions:
 from eventmanager import Evt
 from data_import import DataImporter
 
+def my_import_fn(rhapi, data, args):
+    ...
+
 def register_handlers(args):
     args['register_fn'](
         DataImporter(
-            'json',
-            'RotorHazard 4.0 JSON',
-            my_import_json_function,
+            "My Importer",
+            my_import_fn,
         ),        
     )
 
-def initialize(**kwargs):
-    kwargs['events'].on(Evt.DATA_IMPORT_INITIALIZE, 'import_register_myplugin', register_handlers, {}, 75)
+def initialize(rhapi):
+    rhapi.events.on(Evt.DATA_IMPORT_INITIALIZE, register_handlers)
 ```
 
-#### DataImporter(name, label, import_fn, default_args=None, settings=None)
+#### DataImporter(label, import_fn, default_args=None, settings=None, name=None)
 
 Provides metadata and function linkage for *importers*.
 
 When an importer is run, the `run_import` method is called, which collates default and locally-provided arguments, then calls the `import_fn`. 
 
-- `name` (string): internal identifier for this effect
 - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `import_fn` (function): function to run for formatting stage
 - `default_args` _optional_ (dict): arguments passed to the `import_fn` when run, unless overridden by local arguments
 - `settings` _optional_ (list\[UIField\]): A list of paramters to provide to the user; see [UI Fields](#ui-fields)
+- `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
 The `import_fn` receives as arguments:
 
