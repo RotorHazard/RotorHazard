@@ -3757,6 +3757,9 @@ def emit_current_heat(**params):
 
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, **params):
     '''Emits phonetic data.'''
+    if pilot_id == RHUtils.PILOT_ID_NONE:
+        return None 
+
     raw_time = lap_time
     phonetic_time = RHUtils.phonetictime_format(lap_time, RHData.get_option('timeFormatPhonetic'))
     pilot = RHData.get_pilot(pilot_id)
