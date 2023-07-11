@@ -233,21 +233,20 @@ not then you'd need to move the 2-pin header clip to the '1' position on
 Boot0 (covering the pins designated as '3v3' and 'Boot0' in the pictures
 below).
 
-A 2-pin header clip should be present at the '0' position on Boot1
-(covering the pins designated as '3v3' and 'GND' in the pictures below).
-
-The location of the wire jumper is based on whether you used a Blue Pill
-or a RobotDyn Black Pill module:
+In addition to the wire jumper on Boot0, a 2-pin header clip must be present at the '0' position on Boot1
+(covering the pins designated as 'Boot1' and 'GND' in the pictures below).
 
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image9.jpg)
 
-![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image7.jpg)
+**Boot0 Wire Jumper Installed on Blue Pill Module**
 
-**Boot0 Wire Jumper Installed on RobotDyn Black Pill Module**
-
-![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image8.jpg)
+![](pic/S32_BPill_jumpers7s.jpg)
 
 <br>
+
+Note: If you used a RobotDyn Black Pill Module, see the pics
+[here](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image7.jpg) and
+[here](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image8.jpg).
 
 #### ​12) Assembled RotorHazard S32_BPill Board
 
