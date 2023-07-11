@@ -319,7 +319,10 @@ class SecondaryNode:
                 if pilot_id != RHUtils.PILOT_ID_NONE:
 
                     # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
-                    split_ts = data['timestamp'] - self.RACE.start_time_epoch_ms
+                    if data.get('timestamp_epoch'):
+                        split_ts = data['timestamp_epoch'] - self.RACE.start_time_epoch_ms
+                    else:
+                        split_ts = data['timestamp'] - self.RACE.start_time_epoch_ms
 
                     act_laps_list = self.RACE.get_active_laps()[node_index]
                     lap_count = max(0, len(act_laps_list) - 1)

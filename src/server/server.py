@@ -690,7 +690,8 @@ def on_get_version():
 @SOCKET_IO.on('get_timestamp')
 @catchLogExceptionsWrapper
 def on_get_timestamp():
-    return {'timestamp': monotonic_to_epoch_millis(monotonic())}
+    ''' Provide a consistent zero value for LT '''
+    return {'timestamp': PROGRAM_START_EPOCH_TIME}
 
 @SOCKET_IO.on('get_settings')
 @catchLogExceptionsWrapper
@@ -4105,10 +4106,10 @@ def emit_pass_record(node, lap_time_stamp):
     payload = {
         'node': node.index,
         'frequency': node.frequency,
-        'timestamp': lap_time_stamp + RACE.start_time_epoch_ms
+        'timestamp': lap_time_stamp + PROGRAM_START_EPOCH_TIME, # Delta5 + LiveTime compatibility
+        'timestamp_epoch': lap_time_stamp + RACE.start_time_epoch_ms,
     }
     emit_cluster_msg_to_primary('pass_record', payload)
-
 
 def emit_exporter_list():
     '''List Database Exporters'''
