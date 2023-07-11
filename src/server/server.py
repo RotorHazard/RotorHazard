@@ -690,11 +690,7 @@ def on_get_version():
 @SOCKET_IO.on('get_timestamp')
 @catchLogExceptionsWrapper
 def on_get_timestamp():
-    if RACE.race_status == RaceStatus.STAGING:
-        now = RACE.start_time_monotonic
-    else:
-        now = monotonic()
-    return {'timestamp': monotonic_to_epoch_millis(now)}
+    return {'timestamp': monotonic_to_epoch_millis(monotonic())}
 
 @SOCKET_IO.on('get_settings')
 @catchLogExceptionsWrapper
@@ -712,7 +708,8 @@ def on_reset_auto_calibration(data):
     on_discard_laps()
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
     emit_race_format()
-    on_stage_race()
+    on_stage_race(quickstart=True)
+    logger.info("External connection forcing race quickstart")
 
 # Cluster events
 
@@ -1978,7 +1975,7 @@ def on_get_pi_time():
 
 @SOCKET_IO.on('stage_race')
 @catchLogExceptionsWrapper
-def on_stage_race():
+def on_stage_race(quickstart=False):
     global LAST_RACE
     valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
@@ -2034,53 +2031,87 @@ def on_stage_race():
         emit_race_status()
         emit_race_format()
 
-        staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
+        if quickstart == True:
+            now = monotonic()
+            RACE.stage_time_monotonic = now
+            RACE.start_time_monotonic = now
+            RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
+            RACE.start_token = random.random()
 
-        staging_random_ms = random.randint(0, race_format.start_delay_max_ms)
-        hide_stage_timer = (race_format.start_delay_max_ms > 0)
+            eventPayload = {
+                'hide_stage_timer': True,
+                'pi_staging_at_s': RACE.stage_time_monotonic,
+                'staging_tones': 0,
+                'pi_starts_at_s': RACE.start_time_monotonic,
+                'color': ColorVal.ORANGE,
+            }
 
-        staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
-
-        if race_format.staging_tones == StagingTones.TONES_NONE:
-            if staging_total_ms > 0:
-                staging_tones = race_format.staging_fixed_tones
+            if led_manager.isEnabled():
+                eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes)
             else:
-                staging_tones = staging_fixed_ms / 1000
+                eventPayload['race_node_colors'] = None
+
+            Events.trigger(Evt.RACE_STAGE, eventPayload)
+
+            SOCKET_IO.emit('stage_ready', {
+                'hide_stage_timer': True,
+                'pi_staging_at_s': RACE.stage_time_monotonic,
+                'staging_tones': 0,
+                'pi_starts_at_s': RACE.start_time_monotonic,
+                'race_mode': race_format.race_mode,
+                'race_time_sec': race_format.race_time_sec,
+            }) # Announce staging with final parameters
+
+            race_start_thread(RACE.start_token) # Go immediately
+
         else:
-            staging_tones = staging_total_ms // 1000
-            if staging_random_ms % 1000:
-                staging_tones += 1
-
-        RACE.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
-        RACE.start_time_monotonic = RACE.stage_time_monotonic + (staging_total_ms / 1000 )
-
-        RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
-        RACE.start_token = random.random()
-        gevent.spawn(race_start_thread, RACE.start_token)
-
-        eventPayload = {
-            'hide_stage_timer': hide_stage_timer,
-            'pi_staging_at_s': RACE.stage_time_monotonic,
-            'staging_tones': staging_tones,
-            'pi_starts_at_s': RACE.start_time_monotonic,
-            'color': ColorVal.ORANGE,
-        }
-
-        if led_manager.isEnabled():
-            eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes)
-        else:
-            eventPayload['race_node_colors'] = None
-
-        Events.trigger(Evt.RACE_STAGE, eventPayload)
-
-        SOCKET_IO.emit('stage_ready', {
-            'hide_stage_timer': hide_stage_timer,
-            'pi_staging_at_s': RACE.stage_time_monotonic,
-            'staging_tones': staging_tones,
-            'pi_starts_at_s': RACE.start_time_monotonic,
-            'race_mode': race_format.race_mode,
-            'race_time_sec': race_format.race_time_sec,
-        }) # Announce staging with final parameters
+            staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
+    
+            staging_random_ms = random.randint(0, race_format.start_delay_max_ms)
+            hide_stage_timer = (race_format.start_delay_max_ms > 0)
+    
+            staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
+    
+            if race_format.staging_tones == StagingTones.TONES_NONE:
+                if staging_total_ms > 0:
+                    staging_tones = race_format.staging_fixed_tones
+                else:
+                    staging_tones = staging_fixed_ms / 1000
+            else:
+                staging_tones = staging_total_ms // 1000
+                if staging_random_ms % 1000:
+                    staging_tones += 1
+    
+            RACE.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
+            RACE.start_time_monotonic = RACE.stage_time_monotonic + (staging_total_ms / 1000 )
+    
+            RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
+            RACE.start_token = random.random()
+            gevent.spawn(race_start_thread, RACE.start_token)
+    
+            eventPayload = {
+                'hide_stage_timer': hide_stage_timer,
+                'pi_staging_at_s': RACE.stage_time_monotonic,
+                'staging_tones': staging_tones,
+                'pi_starts_at_s': RACE.start_time_monotonic,
+                'color': ColorVal.ORANGE,
+            }
+    
+            if led_manager.isEnabled():
+                eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes)
+            else:
+                eventPayload['race_node_colors'] = None
+    
+            Events.trigger(Evt.RACE_STAGE, eventPayload)
+    
+            SOCKET_IO.emit('stage_ready', {
+                'hide_stage_timer': hide_stage_timer,
+                'pi_staging_at_s': RACE.stage_time_monotonic,
+                'staging_tones': staging_tones,
+                'pi_starts_at_s': RACE.start_time_monotonic,
+                'race_mode': race_format.race_mode,
+                'race_time_sec': race_format.race_time_sec,
+            }) # Announce staging with final parameters
 
     else:
         logger.info("Attempted to stage race while status is not 'ready'")
