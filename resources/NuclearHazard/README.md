@@ -102,6 +102,10 @@ Print the case with support for only the pi/power hole, sd card cutout, and led 
 
 Can't flash STM32: make sure you enabled UART and [changed config.txt](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#3-apply-changes-to-bootconfigtxt)
 
+## Schematic
+
+[Schematic](https://github.com/SpencerGraffunder/RotorHazard/blob/NuclearHazardHardware/resources/NuclearHazard/pcb/img/Schematic_NuclearHazard.pdf)
+
 ## Ordering the PCB
 
 Only order yourself if you're already familiar with the process or are going to put in effort to learn. To order this design straight from the factory yourself, follow these instructions.
