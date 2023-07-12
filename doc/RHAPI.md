@@ -399,11 +399,11 @@ Make many alterations to slots in a single database transaction as quickly as po
 
 
 ### Race Classes
-Race Classes are groups of related heats. Classes may be used by the race organizer in many different ways, such as splitting sport and pro pilots, practice/qualifying/mains, primary/consolation bracket, etc.
+Race classes are groups of related heats. Classes may be used by the race organizer in many different ways, such as splitting sport and pro pilots, practice/qualifying/mains, primary/consolation bracket, etc.
 
-Race Classes are represented with the `RaceClass` class, which has the following properties:
+Race classes are represented with the `RaceClass` class, which has the following properties:
 - `id` (int): Internal identifier
-- `name` (string): User-facing name.
+- `name` (string): User-facing name
 - `description` (string): User-facing long description, accepts markdown
 - `format_id` (int): ID for class-wide required race format definition
 - `win_condition` (string): ranking algorithm
@@ -413,7 +413,7 @@ Race Classes are represented with the `RaceClass` class, which has the following
 - `rank_settings` (string): JSON-serialized arguments for ranking algorithm
 - `_rank_status`: Internal use only.
 - `rounds` (int): Number of expected/planned rounds each heat will be run
-- `heat_advance_type` (atAdvanceType'
+- `heat_advance_type` (HeatAdvanceType): Method used for automatic heat advance
 - `order` (int): Not yet implemented
 - `active` (boolean): Not yet implemented
 
@@ -443,7 +443,7 @@ Add a new race class to the database. Returns the new `RaceClass`.
 
 #### db.raceclass_duplicate(source_class_or_id)
 Duplicate a race class. Returns the new `RaceClass`.
-- `source_class_or_id` (int|RaceClass): Either the race class object or the ID of race class
+- `source_class_or_id` (int|RaceClass): Either a race class object or the ID of a race class
 
 #### db.raceclass_alter(raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, rank_settings=None)
 Alter race class data. Returns tuple of this `RaceClass` and affected races as `list[SavedRace]`.
@@ -454,7 +454,7 @@ Alter race class data. Returns tuple of this `RaceClass` and affected races as `
 - `win_condition` _(optional)_ (string): Class ranking identifier to assign
 - `rounds` _(optional)_ (int): Number of rounds to assign to race class
 - `heat_advance_type` _(optional)_ (HeatAdvanceType): Advancement method to assign to race class
-- `rank_settings` _(optional)_ (string):
+- `rank_settings` _(optional)_ (dict): arguments to pass to class ranking
 
 #### db.raceclass_results(raceclass_or_id)
 The calculated summary result set for all races associated with this race class. Returns `dict`.
@@ -473,22 +473,102 @@ Delete all race classes. No return value.
 
 
 ### Race Formats
+Race formats are profiles of properties used to define parameters of individual races. Every race has an assigned format. A race formats may be assigned to a race class, which forces RotorHazard to switch to that formatwhen running races within the class.
+
+Race formats are represented with the `RaceFormat` class, which has the following properties:
+- `id` (int): Internal identifier
+- `name` (string): User-facing name
+- `unlimited_time` (int): True(1) if race clock counts up, False(0) if race clock counts down
+- `race_time_sec` (int): Race clock duration in seconds, unused if `unlimited_time` is True(1)
+- `lap_grace_sec` (int): Grace period duration in seconds, -1 for unlimited, unused if `unlimited_time` is True(1)
+- `staging_fixed_tones` (int): Number of staging tones always played regardless of random delay
+- `start_delay_min_ms` (int): Minimum period for random phase of staging delay in milliseconds
+- `start_delay_max_ms` (int): Maximum duration of random phase of staging delay in milliseconds
+- `staging_delay_tones` (int): Whether to play staging tones each second during random delay phase
+- `number_laps_win` (int): Number of laps used to declare race winner, if > 0
+- `win_condition` (int): Condition used to determine race winner and race ranking
+- `team_racing_mode` (boolean): Whether local simultaneous team racing mode will be used
+- `start_behavior` (int): Handling of first crossing
+- `points_method` (String): JSON-serialized arguments for points algorithm
 
 The sentinel value `RHUtils.FORMAT_ID_NONE` should be used when no race format is defined.
 
+The following values are valid for `staging_delay_tones`.
+- 0: None
+- 2: Each Second
+
+The following values are valid for `win_condition`.
+- 0: None
+- 1: Most Laps in Fastest Time
+- 2: First to X Laps
+- 3: Fastest Lap
+- 4: Fastest Consecutive Laps
+- 5: Most Laps Only
+- 6: Most Laps Only with Overtime
+
+The following values are valid for `start_behavior`.
+- 0: Hole Shot
+- 1: First Lap
+- 2: Staggered Start
+
+**Notice:** The race format specification is expected to be modified in future versions. Please consider this while developing plugins.
+- The type for `staging_delay_tones` may change to boolean.
+- The type for `unlimited_time` may change to boolean.
+- The type for `win_condition` may change to a members of dedicated class or become string-based for extensibility.
+- The type for `start_behavior` may change to a members of dedicated class.
+
 #### db.raceformats
 _Read only_
+All race formats. Returns `list[RaceFormat]`
+
 #### db.raceformat_by_id(format_id)
-- format_id
+A single race format record. Returns `RaceFormat`.
+- `format_id` (int): ID of race format record to retrieve
+
 #### db.raceformat_add(name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None)
-- name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None
+Add a new race format to the database. Returns the new `RaceFormat`.
+- `name` _(optional)_ (string): Name for new race format
+- `unlimited_time` _(optional)_ (int): Unlimited Time setting for new race format
+- `race_time_sec` _(optional)_ (int): Race duration for new race format
+- `lap_grace_sec` _(optional)_ (int): Grace period for new race format
+- `staging_fixed_tones` _(optional)_ (int): Fixed tones for new race format
+- `staging_delay_tones` _(optional)_ (int): Delay tones setting for new race format
+- `start_delay_min_ms` _(optional)_ (int): Delay minimum for new race format
+- `start_delay_max_ms` _(optional)_ (int): Maximum delay duration for new race format
+- `start_behavior` _(optional)_ (int): First crossing behavior for new race format
+- `win_condition` _(optional)_ (int): Win condition for new race format
+- `number_laps_win` _(optional)_ (int): Lap count setting for new race format
+- `team_racing_mode` _(optional)_ (boolean): Team racing setting for new race format
+- `points_method` _(optional)_ (string): JSON-serialized arguments for new race format
+
 #### db.raceformat_duplicate(source_format_or_id)
-- source_format_or_id
+Duplicate a race format. Returns the new `RaceFormat`.
+- `source_format_or_id` (int|RaceFormat): Either a race format object or the ID of a race format
+
 #### db.raceformat_alter(raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None)
-- raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None
+Alter race format data. Returns tuple of this `RaceFormat` and affected races as `list[SavedRace]`.
+- `raceformat_id` (int): ID of race format to alter
+- `name` _(optional)_ (string): Name for new race format
+- `unlimited_time` _(optional)_ (int): Unlimited Time setting for new race format
+- `race_time_sec` _(optional)_ (int): Race duration for new race format
+- `lap_grace_sec` _(optional)_ (int): Grace period for new race format
+- `staging_fixed_tones` _(optional)_ (int): Fixed tones for new race format
+- `staging_delay_tones` _(optional)_ (int): Delay tones setting for new race format
+- `start_delay_min_ms` _(optional)_ (int): Delay minimum for new race format
+- `start_delay_max_ms` _(optional)_ (int): Maximum delay duration for new race format
+- `start_behavior` _(optional)_ (int): First crossing behavior for new race format
+- `win_condition` _(optional)_ (int): Win condition for new race format
+- `number_laps_win` _(optional)_ (int): Lap count setting for new race format
+- `team_racing_mode` _(optional)_ (boolean): Team racing setting for new race format
+- `points_method` _(optional)_ (string): JSON-serialized arguments for new race format
+- `points_settings`  _(optional)_ (dict): arguments to pass to class ranking
+
 #### db.raceformat_delete(raceformat_id)
-- raceformat_id
+Delete race format. Fails if race class has saved races associated, is assigned to the active race, or is the last format in database. Returns `boolean` success status.
+- `raceformat_id` (int): ID of race format to delete
+
 #### db.raceformats_clear()
+Delete all race formats. No return value.
 
 
 ### Frequency Sets
