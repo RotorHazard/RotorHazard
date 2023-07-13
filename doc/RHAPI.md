@@ -7,9 +7,9 @@
 - [Database Access](#database-access)
 - [Data input/output](#data-input-output)
 - [Heat Generation](#heat-generation)
-- [Class Ranking Methods](#class-ranking-methods)
-- [Race Points Methods](#race-points-methods)
-- [LED](#led-)
+- [Class Ranking](#class-ranking)
+- [Race Points](#race-points)
+- [LED](#led)
 - [Video Receivers](#video-receivers)
 - [Active Race](#active-race)
 - [Event Results](#event-results)
@@ -724,7 +724,7 @@ Laps are represented with the `SavedRaceLap` class, which has the following prop
 - `deleted` (boolean): True if record should not be counted in results calculations
 
 `Database.LapSource` describes the method used to enter a lap into the database:
-- `LapSource.REALTIME`: Lap added by realtime (hardware) interface in real time
+- `LapSource.REALTIME`: Lap added by (hardware) interface in real time
 - `LapSource.MANUAL`: Lap added manually by user in UI
 - `LapSource.RECALC`: Lap added after recalculation (marshaling) or RSSI data
 - `LapSource.AUTOMATIC`: Lap added by other automatic process
@@ -739,21 +739,38 @@ Lap records matching the provided pilot run ID. Returns `list[SavedRaceLap]`.
 
 
 ### Options
+Options are settings that apply to a server globally.
+
+Options are stored with the `GlobalSettings` class, which has the following properties:
+- `id` (int): Internal identifier
+- `option_name` (string): name of option
+- `option_value` (string): value of option
 
 #### db.options
 _Read only_
-#### db.option(name, default=False, as_int=False)
-- name, default=False, as_int=False
-#### db.option_set(name, value)
-- name, value
-#### db.options_clear()
+All options. Returns `list[GlobalSettings]`.
 
+#### db.option(name, default=False, as_int=False)
+Value of option with the provided name. Returns the option value.
+- `name` (string): name of option to retrieve
+- `default` _(optional)_ (string): Value to return if option does not exist
+- `as_int` _(optional)_ (boolean): Return value as integer instead of string
+
+#### db.option_set(name, value)
+Set value for the option with provided name. No return value.
+- `name` (string): name of option to alter
+- `value` (string): new value for option
+
+#### db.options_clear()
+Delete all options. No return value.
 
 
 ## Data input/output
 
 View and import/export data from the database via registered `DataImporter` and `DataExporter`. See [Data Exporters](Plugins.md#data-exporters) and [Data Importers](Plugins.md#data-importers).
 These methods are accessed via `RHAPI.io` 
+
+### All Properties and Methods
 
 #### io.exporters
 _Read only_
@@ -779,6 +796,8 @@ Run selected importer on supplied `data`. Returns output of importer or `False` 
 View and Generate heats via registered `HeatGenerator`. See [Heat Generators](Plugins.md#heat-generators).
 These methods are accessed via `RHAPI.heatgen` 
 
+### All Properties and Methods
+
 #### heatgen.generators
 _Read only_
 All registered generators. Returns `list[HeatGenerator]`.
@@ -790,23 +809,31 @@ Run selected generator, creating heats and race classes as needed. Returns outpu
 
 
 
-## Class Ranking Methods
+## Class Ranking
 
 View registered `RaceClassRankMethods`.
 These methods are accessed via `RHAPI.classrank` 
 
+### All Properties and Methods
+
 #### classrank.methods
 _Read only_
+All registered class ranking methods. Returns `dict` with the following format:
+- `name`: `RaceClassRankMethod`
 
 
 
-## Race Points Methods
+## Race Points
 
 View registered `RacePointsMethods`.
 These methods are accessed via `RHAPI.points` 
 
+### All Properties and Methods
+
 #### points.methods
 _Read only_
+All registered race points methods. Returns `dict` with the following format:
+- `name`: `RacePointsMethod`
 
 
 
@@ -815,19 +842,36 @@ _Read only_
 Activate and manage connected LED displays via registered `LEDEffects`.
 These methods are accessed via `RHAPI.led` 
 
+### All Properties and Methods
+
 #### led.enabled
 _Read only_
+Returns True if LED system is enabled.
+
 #### led.effects
 _Read only_
+All registered LED effects. Returns `list[LEDEffects]`.
+
 #### led.effect_by_event(event)
-event
+LED effect assigned to event. Returns `LEDEffect` or None if event does not exist
+- `event` (string): event to retrieve effect from
+
 #### led.effect_set(event, name)
-event, name
+Assign effect to event. Returns boolean success value.
+- `event` (string): event to assign
+- `name` (string): effect to assign to event
+
 #### led.clear
+Clears LEDs. No return value.
+
 #### led.display_color(seat_index, from_result=False)
-seat_index, from_result=False
+Color of seat in active race. Returns `Color`.
+- `seat_index` (int): Seat number
+- `from_result` _(optional)_ (boolean): True to use previously active (cached) race data
+
 #### led.activate_effect(args)
-args
+Immediately activate an LED effect. **Should usually be called asynchronously with `gevent.spawn()`.**
+- `args` (dict): Must include `handler_fn` to activate; other arguments are passed to handler
 
 
 
@@ -835,6 +879,8 @@ args
 
 View and manage connected Video Receiver devices.
 These methods are accessed via `RHAPI.vrxcontrol` 
+
+### All Properties and Methods
 
 #### vrxcontrol.enabled
 _Read only_
@@ -852,6 +898,8 @@ seat, pilot_id
 
 View and manage the currently active race.
 These methods are accessed via `RHAPI.race` 
+
+### All Properties and Methods
 
 #### race.pilots
 _Read only_
@@ -907,6 +955,8 @@ doSave=False
 View or clear result data for all races, heats, classes, and event totals.
 These methods are accessed via `RHAPI.eventresults` 
 
+### All Properties and Methods
+
 #### eventresults.results
 _Read only_
 #### eventresults.results_clear
@@ -917,6 +967,8 @@ _Read only_
 
 View and retrieve loaded translation strings.
 These methods are accessed via `RHAPI.language` 
+
+### All Properties and Methods
 
 #### language.languages
 _Read only_
@@ -932,6 +984,8 @@ text, domain=''
 View information provided by the harware interface layer.
 These methods are accessed via `RHAPI.interface` 
 
+### All Properties and Methods
+
 #### interface.seats
 _Read only_
 
@@ -941,6 +995,8 @@ _Read only_
 
 View data collected by environmental sensors such as temperature, voltage, and current.
 These methods are accessed via `RHAPI.sensors` 
+
+### All Properties and Methods
 
 #### sensors.sensors_dict
 _Read only_
