@@ -408,10 +408,10 @@ Race classes are represented with the `RaceClass` class, which has the following
 - `format_id` (int): ID for class-wide required race format definition
 - `win_condition` (string): ranking algorithm
 - `results` (dict|None): Calculated cumulative race class results
-- `_cache_status`: Internal use only.
+- `_cache_status`: Internal use only
 - `ranking` (dict|None): Calculated race class ranking
 - `rank_settings` (string): JSON-serialized arguments for ranking algorithm
-- `_rank_status`: Internal use only.
+- `_rank_status`: Internal use only
 - `rounds` (int): Number of expected/planned rounds each heat will be run
 - `heat_advance_type` (HeatAdvanceType): Method used for automatic heat advance
 - `order` (int): Not yet implemented
@@ -572,23 +572,69 @@ Delete all race formats. No return value.
 
 
 ### Frequency Sets
+Frequency sets contain a mapping of band/channel/frequency values to seats. They also store enter and exit values.
+
+Frequency sets are represented with the `Profiles` class, which has the following properties:
+- `id` (int): Internal identifier
+- `name` (string): User-facing name
+- `description` (string): User-facing long description
+- `frequencies` (string): JSON-serialized frequency objects per seat
+- `enter_ats` (string): JSON-serialized enter-at points per seat
+- `exit_ats` (string): JSON-serialized exit-at points per seat 
+- `f_ratio` (int): Unused legacy value
+
+`frequencies` can be JSON-unserialized (json.loads) to a dict:
+- `b`: list of band designations, ordered by seat number; values may string be null
+- `c`: list of band-channel designations, ordered by seat number; values may int be null
+- `f`: list of frequencies, ordered by seat number; values are int
+
+`enter_ats` and `exit_ats` can be JSON-unserialized (json.loads) to a dict:
+- `v`: list of enter/exit values, ordered by seat number; values are int
+
+The length of lists stored in `frequencies`, `enter_ats`, and `exit_ats` may not match the number of seats. In these cases values are either not yet available (if too few) or no longer used (if too many) for higher-index seats.
 
 The sentinel value `RHUtils.FREQUENCY_ID_NONE` should be used when no frequency is defined.
 
+**Notice:** The frequency set specification is expected to be modified in future versions. Please consider this while developing plugins.
+- Rename class
+- Siimplify serialization for `enter_ats`, `exit_ats`
+- Remove of unused `f_ratio`
+
 #### db.frequencysets
 _Read only_
-#### db.frequencyset_by_id(set_id)
-- set_id
-#### db.frequencyset_add(name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None)
-- name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None
-#### db.frequencyset_duplicate(source_set_or_id)
-- source_set_or_id
-#### db.frequencyset_alter(set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None)
-- set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None
-#### db.frequencyset_delete(set_or_id)
-- set_or_id
-#### db.frequencysets_clear()
+All frequency set records. Returns `list[Profiles]`.
 
+#### db.frequencyset_by_id(set_id)
+A single frequency set record. Returns `Profiles`.
+- `set_id` (int): ID of frequency set record to retrieve
+
+#### db.frequencyset_add(name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None)
+Add a new frequency set to the database. Returns the new `Profiles`.
+- `name` (string): Name for new frequency set
+- `description` (string): Description for new frequency set
+- `frequencies` (string|dict): Frequency, band, and channel information for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form
+- `enter_ats` (string|dict): Enter-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form
+- `exit_ats` (string|dict): Exit-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form
+
+#### db.frequencyset_duplicate(source_set_or_id)
+Duplicate a frequency set. Returns the new `Profiles`.
+- `source_set_or_id` (int|Profiles): Either a frequency set object or the ID of a frequency set
+
+#### db.frequencyset_alter(set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None)
+Alter frequency set data. Returns the altered `Profiles` object.
+- `set_id` (int): ID of frequency set to alter
+- `name` (string): Name for new frequency set
+- `description` (string): Description for new frequency set
+- `frequencies` (string|dict): Frequency, band, and channel information for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form
+- `enter_ats` (string|dict): Enter-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form
+- `exit_ats` (string|dict): Exit-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form
+
+#### db.frequencyset_delete(set_or_id)
+Delete frequency set. Fails if frequency set is last remaining. Returns `boolean` success status.
+- `set_or_id` (int|Profiles): Either a frequency set object or the ID of a frequency set
+
+#### db.frequencysets_clear()
+Delete all frequency sets. No return value.
 
 ### Saved Races
 
