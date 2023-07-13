@@ -880,17 +880,29 @@ Immediately activate an LED effect. **Should usually be called asynchronously wi
 View and manage connected Video Receiver devices.
 These methods are accessed via `RHAPI.vrxcontrol` 
 
+**Notice:** The vrx control specification is expected to be modified in future versions. Please consider this while developing plugins.
+
 ### All Properties and Methods
 
 #### vrxcontrol.enabled
 _Read only_
+Returns True if VRx control system is enabled.
+
 #### vrxcontrol.status
 _Read only_
+Returns status of VRx control system.
+
 #### vrxcontrol.devices
 _Read only_
+Returns list of attached VRx control devices.
+
 #### vrxcontrol.kill
+Shuts down VRx control system.
+
 #### vrxcontrol.devices_by_pilot(seat, pilot_id)
-seat, pilot_id
+List VRx control deviced connected with a specific pilot.
+- `seat` (int): seat number
+- `pilot_id` (int): ID of pilot
 
 
 
