@@ -637,11 +637,27 @@ Delete frequency set. Fails if frequency set is last remaining. Returns `boolean
 Delete all frequency sets. No return value.
 
 ### Saved Races
+Saved races are sets of stored information about race history. The Saved race object stores results and metadata. For a complete picture of a saved race, it is necessary to fetch associated _Pilot Runs_ and _Laps_.
+
+Saved races are represented with the `SavedRaceMeta` class, which has the following properties:
+- `id` (int): Internal identifier
+- `round_id` (int): round number
+- `heat_id` (int): ID of associated heat
+- `class_id` (int): ID of associated race class, or `CLASS_ID_NONE`
+- `format_id` (int): ID of associated race format
+- `start_time` (int): Internal (monotonic) time value of race start
+- `start_time_formatted` (string): Human-readable time of race start
+- `results` (dict|None): Calculated race results
+- `_cache_status`: Internal use only
 
 #### db.races
 _Read only_
+All saved race records. Returns `list[SavedRaceMeta]`.
+
 #### db.race_by_id(race_id)
-- race_id
+A single saved race record. Returns `SavedRaceMeta`.
+- `race_id` (int): ID of saved race record to retrieve
+
 #### db.race_by_heat_round(heat_id, round_number)
 - heat_id, round_number
 #### db.races_by_heat(heat_id)
