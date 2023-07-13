@@ -655,36 +655,87 @@ _Read only_
 All saved race records. Returns `list[SavedRaceMeta]`.
 
 #### db.race_by_id(race_id)
-A single saved race record. Returns `SavedRaceMeta`.
+A single saved race record, retrieved by ID. Returns `SavedRaceMeta`.
 - `race_id` (int): ID of saved race record to retrieve
 
 #### db.race_by_heat_round(heat_id, round_number)
-- heat_id, round_number
+A single saved race record, retrieved by heat and round. Returns `SavedRaceMeta`.
+- `heat_id` (int): ID of heat used to retrieve saved race
+- `round_number` (int): round number used to retrieve saved race
+
 #### db.races_by_heat(heat_id)
-- heat_id
+Saved race records matching the provided heat ID. Returns `list[RaceClass]`.
+- `heat_id` (int): ID of heat used to retrieve saved race
+
 #### db.races_by_raceclass(raceclass_id)
-- raceclass_id
+Saved race records matching the provided race class ID. Returns `list[RaceClass]`.
+- `raceclass_id` (int): ID of race class used to retrieve saved race
+
 #### db.race_results(race_or_id)
-- race_or_id
+Calculated result set for saved race. Returns `dict`.
+- `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
+
 #### db.races_clear()
+Delete all saved races. No return value.
 
 
 ### Saved Race &rarr; Pilot Runs
+Pilot Runs store data related to individual pilots in each race, except lap crossings. Each saved race has one or more pilot runs associated with it.
+
+Saved races are represented with the `SavedPilotRace` class, which has the following properties:
+- `id` (int): Internal identifier
+- `race_id` (int): ID of associated saved race
+- `node_index` (int): Seat number
+- `pilot_id` (int): ID of associated pilot
+- `history_values` (string): JSON-serialized raw RSSI data
+- `history_times` (string): JSON-serialized timestamps for raw RSSI data 
+- `penalty_time` (int): Not implemented
+- `penalty_desc` (string): Not implemented
+- `enter_at` (int): Gate enter calibration point
+- `exit_at` (int): Gate exit calibration point
+- `frequency` (int): Active frequency for this seat at race time
 
 #### db.pilotruns
 _Read only_
+All pilot run records. Returns `list[SavedPilotRace]`.
+
 #### db.pilotrun_by_id(run_id)
-- run_id
+A single pilot run record, retrieved by ID. Returns `SavedPilotRace`.
+- `run_id` (int): ID of pilot run record to retrieve
+
 #### db.pilotrun_by_race(race_id)
-- race_id
+Pilot run records matching the provided saved race ID. Returns `list[SavedPilotRace]`.
+- `race_id` (int): ID of saved race used to retrieve pilot runs
 
 
 ### Saved Race &rarr; Pilot Run &rarr; Laps
+Laps store data related to start gate crossings. Each pilot run may have one or more laps associated with it. When displaying laps, be sure to reference the associated race format.
+
+Laps are represented with the `SavedRaceLap` class, which has the following properties:
+- `id` (int): Internal identifier
+- `race_id` (int): ID of associated saved race
+- `pilotrace_id` (int): ID of associated pilot run
+- `node_index` (int): Seat number
+- `pilot_id` (int): ID of associated pilot
+- `lap_time_stamp` (int): Milliseconds since race start time
+- `lap_time` (int): Milliseconds since previous counted lap
+- `lap_time_formatted` (string): Formatted user-facing text
+- `source` (LapSource): Lap source type
+- `deleted` (boolean): True if record should not be counted in results calculations
+
+`Database.LapSource` describes the method used to enter a lap into the database:
+- `LapSource.REALTIME`: Lap added by realtime (hardware) interface in real time
+- `LapSource.MANUAL`: Lap added manually by user in UI
+- `LapSource.RECALC`: Lap added after recalculation (marshaling) or RSSI data
+- `LapSource.AUTOMATIC`: Lap added by other automatic process
 
 #### db.laps
 _Read only_
+All lap records. Returns `list[SavedRaceLap]`.
+
 #### db.laps_by_pilotrun(run_id)
-- run_id
+Lap records matching the provided pilot run ID. Returns `list[SavedRaceLap]`.
+- `run_id` (int): ID of pilot run used to retrieve laps
 
 
 ### Options
