@@ -568,7 +568,7 @@ Delete race format. Fails if race class has saved races associated, is assigned 
 - `raceformat_id` (int): ID of race format to delete
 
 #### db.raceformats_reset()
-Delete all race formats. No return value.
+Resets race formats to default. No return value.
 
 
 ### Frequency Sets
@@ -634,7 +634,7 @@ Delete frequency set. Fails if frequency set is last remaining. Returns `boolean
 - `set_or_id` (int|Profiles): Either a frequency set object or the ID of a frequency set
 
 #### db.frequencysets_reset()
-Delete all frequency sets. No return value.
+Resets frequency sets to default. No return value.
 
 ### Saved Races
 Saved races are sets of stored information about race history. The Saved race object stores results and metadata. For a complete picture of a saved race, it is necessary to fetch associated _Pilot Runs_ and _Laps_.
@@ -703,7 +703,7 @@ All pilot run records. Returns `list[SavedPilotRace]`.
 A single pilot run record, retrieved by ID. Returns `SavedPilotRace`.
 - `run_id` (int): ID of pilot run record to retrieve
 
-#### db.pilotrun_by_race(race_id)
+#### db.pilotruns_by_race(race_id)
 Pilot run records matching the provided saved race ID. Returns `list[SavedPilotRace]`.
 - `race_id` (int): ID of saved race used to retrieve pilot runs
 

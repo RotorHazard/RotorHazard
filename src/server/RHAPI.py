@@ -471,7 +471,7 @@ class DatabaseAPI():
     def pilotrun_by_id(self, run_id):
         return self._racecontext.rhdata.get_savedPilotRace(run_id)
 
-    def pilotrun_by_race(self, race_id):
+    def pilotruns_by_race(self, race_id):
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
 
     # Race -> Pilot Run -> Laps
