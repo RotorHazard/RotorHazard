@@ -11,7 +11,7 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-def import_json(rhapi, source, args):
+def import_json(importer_class, rhapi, source, args):
     if not source:
         return False
 
@@ -25,7 +25,7 @@ def import_json(rhapi, source, args):
         logger.debug("Importing Pilots...")
 
         if 'reset_pilots' in args and args['reset_pilots']:
-            rhapi.db.pilots_clear()
+            rhapi.db.pilots_reset()
 
         db_pilots = rhapi.db.pilots
 
@@ -64,7 +64,7 @@ def import_json(rhapi, source, args):
         logger.debug("Importing Formats...")
 
         if 'reset_formats' in args and args['reset_formats']:
-            rhapi.db.raceformats_clear()
+            importer_class.raceformats_clear()
 
         db_formats = rhapi.db.raceformats
 
@@ -104,7 +104,7 @@ def import_json(rhapi, source, args):
         logger.debug("Importing Profiles...")
 
         if 'reset_profiles' in args and args['reset_profiles']:
-            rhapi.db.frequencysets_clear()
+            importer_class.frequencysets_clear()
 
         db_profiles = rhapi.db.frequencysets
 
@@ -152,8 +152,8 @@ def import_json(rhapi, source, args):
         logger.debug("Importing Classes/Heats...")
 
         if 'reset_classes' in args and args['reset_classes']:
-            rhapi.db.heats_clear()
-            rhapi.db.raceclasses_clear()
+            rhapi.db.heats_reset()
+            rhapi.db.raceclasses_reset()
             rhapi.db.races_clear()
 
         db_race_classes = rhapi.db.raceclasses
@@ -267,7 +267,7 @@ def import_json(rhapi, source, args):
 def register_handlers(args):
     for importer in [
         DataImporter(
-            'RotorHazard 4.0 JSON',
+            'RotorHazard 4.0 JSON (Complete)',
             import_json,
             None,
             [

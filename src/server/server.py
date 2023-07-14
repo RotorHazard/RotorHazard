@@ -4471,7 +4471,7 @@ Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
 # data exporters
 RaceContext.export_manager = DataExportManager(RHAPI, Events)
-RaceContext.import_manager = DataImportManager(RHAPI, Events)
+RaceContext.import_manager = DataImportManager(RHAPI, RaceContext, Events)
 
 # heat generators
 RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)

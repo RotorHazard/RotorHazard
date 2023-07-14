@@ -44,9 +44,6 @@ class RHData():
             if self.get_optionInt('server_api') < self._SERVER_API:
                 logger.info('Old server API version; recovering database')
                 return False
-            if not self._Database.Heat.query.count():
-                logger.info('Heats are empty; recovering database')
-                return False
             if not self._Database.Profiles.query.count():
                 logger.info('Profiles are empty; recovering database')
                 return False
@@ -2082,6 +2079,8 @@ class RHData():
 
         self._Database.DB.session.add(new_profile)
         self.commit()
+
+        return new_profile
 
     def duplicate_profile(self, source_profile_or_id):
         source_profile = self.resolve_profile_from_profile_or_id(source_profile_or_id)

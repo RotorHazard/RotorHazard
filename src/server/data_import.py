@@ -11,10 +11,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DataImportManager():
-    def __init__(self, rhapi, events):
+    def __init__(self, rhapi, racecontext, events):
         self._importers = {}
 
         self._rhapi = rhapi
+        self._racecontext = racecontext
         self._events = events
 
         events.trigger(Evt.DATA_IMPORT_INITIALIZE, {
@@ -25,6 +26,8 @@ class DataImportManager():
         if isinstance(importer, DataImporter):
             if importer.name in self._importers:
                 logger.warning('Overwriting data importer "{0}"'.format(importer['name']))
+
+            importer.add_racecontext(self._racecontext)
 
             self._importers[importer.name] = importer
         else:
@@ -56,7 +59,25 @@ class DataImporter():
         self.default_args = default_args
         self.settings = settings
 
+    def add_racecontext(self, racecontext):
+        self._racecontext = racecontext
+
     def run_import(self, rhapi, data, import_args=None):
         args = {**(self.default_args if self.default_args else {}), **(import_args if import_args else {})}
-        return self.import_fn(rhapi, data, args)
+        result = self.import_fn(self, rhapi, data, args)
+        if self.check_integrity():
+            return result
+        else:
+            logger.error("Data import did not produce a valid database.")
+            self._racecontext.rhdata.reset_all()
+            return False
+
+    def check_integrity(self):
+        return self._racecontext.rhdata.check_integrity()
+        
+    def frequencysets_clear(self):
+        self._racecontext.rhdata.clear_profiles()
+
+    def raceformats_clear(self):
+        self._racecontext.rhdata.clear_raceFormats()
 
