@@ -71,14 +71,12 @@ class LEDEventManager:
     def getEventEffect(self, event):
         if event in self.events:
             return self.events[event]
-        else:
-            return False
 
     def setEventEffect(self, event, name):
         self.events[event] = name
 
         if name not in self.eventEffects:
-            return None
+            return False
 
         if name == 'none':
             self.Events.off(event, 'LED')
