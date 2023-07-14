@@ -219,8 +219,8 @@ Properties and methods spanning the entire stored event.
 _Read only_
 Returns cumulative totals for all saved races as `dict`.
 
-#### db.clear_all()
-Resets database to default state, clearing all pilots, heats, race classes, races, race formats, frequency sets, and options.
+#### db.reset_all()
+Resets database to default state.
 
 ### Pilots
 A pilot is an individual participant. In order to participate in races, pilots can be assigned to multiple heats.
@@ -278,7 +278,7 @@ Alter pilot data. Returns the altered `Pilot`
 Delete pilot record. Fails if pilot is associated with saved race. Returns `boolean` success status.
 - `pilot_or_id` (int): ID of pilot to delete 
 
-#### db.pilots_clear()
+#### db.pilots_reset()
 Delete all pilot records. No return value.
 
 
@@ -341,7 +341,7 @@ Alter heat data. Returns tuple of this `Heat` and affected races as `list[SavedR
 Delete heat. Fails if heat has saved races associated or if there is only one heat left in the database. Returns `boolean` success status.
 - `heat_or_id` (int|heat): ID of heat to delete
 
-#### db.heats_clear()
+#### db.heats_reset()
 Delete all heat records. No return value.
 
 
@@ -468,7 +468,7 @@ The calculated ranking associated with this race class. Returns `dict`.
 Delete race class. Fails if race class has saved races associated. Returns `boolean` success status.
 - `raceclass_or_id` (int|RaceClass): Either the race class object or the ID of race class
 
-#### db.raceclasses_clear()
+#### db.raceclasses_reset()
 Delete all race classes. No return value.
 
 
@@ -567,7 +567,7 @@ Alter race format data. Returns tuple of this `RaceFormat` and affected races as
 Delete race format. Fails if race class has saved races associated, is assigned to the active race, or is the last format in database. Returns `boolean` success status.
 - `raceformat_id` (int): ID of race format to delete
 
-#### db.raceformats_clear()
+#### db.raceformats_reset()
 Delete all race formats. No return value.
 
 
@@ -633,7 +633,7 @@ Alter frequency set data. Returns the altered `Profiles` object.
 Delete frequency set. Fails if frequency set is last remaining. Returns `boolean` success status.
 - `set_or_id` (int|Profiles): Either a frequency set object or the ID of a frequency set
 
-#### db.frequencysets_clear()
+#### db.frequencysets_reset()
 Delete all frequency sets. No return value.
 
 ### Saved Races
@@ -761,7 +761,7 @@ Set value for the option with provided name. No return value.
 - `name` (string): name of option to alter
 - `value` (string): new value for option
 
-#### db.options_clear()
+#### db.options_reset()
 Delete all options. No return value.
 
 

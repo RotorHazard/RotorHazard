@@ -100,7 +100,7 @@ class DatabaseAPI():
 
     # Global
 
-    def clear_all(self):
+    def reset_all(self):
         return self._racecontext.rhdata.reset_all()
 
     # Pilot
@@ -163,8 +163,8 @@ class DatabaseAPI():
     def pilot_delete(self, pilot_or_id):
         return self._racecontext.rhdata.delete_pilot(pilot_or_id)
 
-    def pilots_clear(self):
-        return self._racecontext.rhdata.clear_pilots()
+    def pilots_reset(self):
+        return self._racecontext.rhdata.reset_pilots()
 
     # Heat
 
@@ -222,7 +222,7 @@ class DatabaseAPI():
     def heat_delete(self, heat_or_id):
         return self._racecontext.rhdata.delete_heat(heat_or_id)
 
-    def heats_clear(self):
+    def heats_reset(self):
         return self._racecontext.rhdata.reset_heats()
 
     # Heat -> Slots
@@ -318,7 +318,7 @@ class DatabaseAPI():
     def raceclass_delete(self, raceclass_or_id):
         return self._racecontext.rhdata.delete_raceClass(raceclass_or_id)
 
-    def raceclasses_clear(self):
+    def raceclasses_reset(self):
         return self._racecontext.rhdata.reset_raceClasses()
 
     # Race Format
@@ -385,8 +385,8 @@ class DatabaseAPI():
     def raceformat_delete(self, raceformat_id):
         return self._racecontext.rhdata.delete_raceFormat(raceformat_id)
 
-    def raceformats_clear(self):
-        return self._racecontext.rhdata.clear_raceFormats()
+    def raceformats_reset(self):
+        return self._racecontext.rhdata.reset_raceFormats()
 
     # Frequency Sets (Profiles)
 
@@ -435,7 +435,7 @@ class DatabaseAPI():
     def frequencyset_delete(self, set_or_id):
         return self._racecontext.rhdata.delete_profile(set_or_id)
 
-    def frequencysets_clear(self):
+    def frequencysets_reset(self):
         return self._racecontext.rhdata.reset_profiles()
 
     # Saved Race
@@ -504,7 +504,7 @@ class DatabaseAPI():
     def option_set(self, name, value):
         return self._racecontext.rhdata.set_option(name, value)
 
-    def options_clear(self):
+    def options_reset(self):
         return self._racecontext.rhdata.reset_options()
 
     # Event
