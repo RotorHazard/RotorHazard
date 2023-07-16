@@ -429,7 +429,8 @@
 					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
 				}
 
-				if (!current_race_data.race_format.race_mode && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
+				if (current_race_data.race_format &&
+					!current_race_data.race_format.race_mode && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
 					lapData.addClass('after-time-expired');
 				}
 
@@ -545,7 +546,7 @@
 
 				if (startThreshLowerFlag) {
 					// if initial pass recorded or past duration then restore EnterAt/ExitAt values
-					if (laps.length > 0 || time >= current_race_data.start_time + start_thresh_lower_duration + current_race_data.race_format.start_delay_max) {
+					if (laps.length > 0 || time >= current_race_data.start_time + start_thresh_lower_duration + current_race_data.race_format?.start_delay_max) {
 						enterat = current_race_data.enter_at;
 						exitat = current_race_data.exit_at;
 						startThreshLowerFlag = false;
