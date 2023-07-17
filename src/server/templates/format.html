@@ -1414,7 +1414,7 @@
 			format_id = $('#set_race_format').val();
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 
-			$('#format-race-duration-field').toggle(rf.unlimited_time == 0);
+			$('.format-race-duration-fields').toggle(rf.unlimited_time == 0);
 			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
 
 			var issues = []
@@ -2343,7 +2343,7 @@
 					<option value="1">{{ __('No Time Limit') }}</option>
 				</select>
 			</li>
-			<li id="format-race-duration-field">
+			<li class="format-race-duration-fields">
 				<div class="label-block">
 					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
 				</div>
