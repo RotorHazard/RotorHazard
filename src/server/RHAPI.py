@@ -673,13 +673,25 @@ class RaceAPI():
     def heat(self):
         return self._racecontext.race.current_heat
 
+    @heat.setter
+    def heat(self, heat_id):
+        self._racecontext.race.current_heat = heat_id
+
     @property
     def frequencyset(self):
         return self._racecontext.race.profile
 
+    @frequencyset.setter
+    def frequencyset(self, set_id):
+        self._racecontext.race.profile = set_id
+
     @property
     def raceformat(self):
         return self._racecontext.race.format
+
+    @raceformat.setter
+    def raceformat(self, format_id):
+        self._racecontext.race.format = format_id
 
     @property
     def status(self):

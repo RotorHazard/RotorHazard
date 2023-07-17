@@ -915,22 +915,48 @@ These methods are accessed via `RHAPI.race`
 
 #### race.pilots
 _Read only_
+Pilot IDs, indexed by seat. Returns `list[int]`.
+To change pilots, adjust the corresponding `Heat`.
+
 #### race.teams
 _Read only_
+Team of each pilot, indexed by seat. Returns `list[string]`.
+To change teams, adjust the corresponding `Pilot`.
+
 #### race.slots
 _Read only_
+Total number of seats/slots. Returns `int`.
+
 #### race.seat_colors
 _Read only_
+Active color for each seat, indexed by seat. Returns `list[Color]`.
+
 #### race.heat
-_Read only_
+_Read/write_
+ID of assigned heat (`int` or `None`).
+
 #### race.frequencyset
-_Read only_
+_Read/write_
+ID of current frequency set (`int`).
+
 #### race.raceformat
 _Read only_
+Active race format object. Returns either `RaceFormat` or `None` if time is in secondary mode
+
 #### race.status
 _Read only_
+Current status of system. Returns `RaceStatus`.
+
+`RHRace.RaceStatus` describes the current state:
+- `RaceStatus.READY`: Ready to start a new race, no race running
+- `RaceStatus.STAGING`: System is staging, race begins imminently
+- `RaceStatus.RACING`: Racing is underway
+- `RaceStatus.DONE`: System no longer listening for lap crossings, race results must be saved or discarded
+
 #### race.stage_time_internal
 _Read only_
+
+
 #### race.start_time
 _Read only_
 #### race.start_time_internal
