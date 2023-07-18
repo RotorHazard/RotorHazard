@@ -1392,6 +1392,8 @@ def on_set_profile(data, emit_vals=True):
     else:
         logger.warning('Invalid set_profile value: ' + str(profile_val))
 
+RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
+
 @SOCKET_IO.on('alter_race')
 @catchLogExceptionsWrapper
 def on_alter_race(data):

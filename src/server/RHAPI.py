@@ -400,9 +400,12 @@ class DatabaseAPI():
     def frequencyset_add(self, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None):
         data = {}
 
+        source_profile = self._racecontext.race.profile
+        new_profile = self._racecontext.rhdata.duplicate_profile(source_profile) 
+
         for name, value in [
-            ('name', name),
-            ('description', description),
+            ('profile_name', name),
+            ('profile_description', description),
             ('frequencies', frequencies),
             ('enter_ats', enter_ats),
             ('exit_ats', exit_ats),
@@ -410,7 +413,11 @@ class DatabaseAPI():
             if value is not None:
                 data[name] = value
 
-        return self._racecontext.rhdata.add_profile(data)
+        if data:
+            data['profile_id'] = new_profile.id
+            new_profile = self._racecontext.rhdata.alter_profile(data)
+
+        return new_profile
 
     def frequencyset_duplicate(self, source_set_or_id):
         return self._racecontext.rhdata.duplicate_profile(source_set_or_id)
@@ -677,7 +684,7 @@ class RaceAPI():
     def heat(self, heat_id):
         self._heat_set({'heat': heat_id})
 
-    def _heat_set(self, heat_id):
+    def _heat_set(self, data):
         pass # replaced externally. TODO: Refactor management functions
 
     @property
@@ -686,7 +693,10 @@ class RaceAPI():
 
     @frequencyset.setter
     def frequencyset(self, set_id):
-        self._racecontext.race.profile = set_id
+        self._frequencyset_set({'profile': set_id})
+
+    def _frequencyset_set(self, data):
+        pass # replaced externally. TODO: Refactor management functions
 
     @property
     def raceformat(self):

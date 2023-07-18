@@ -407,7 +407,6 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(attr_match, True)
 
     def test_database_api(self):
-
         self.client.emit('load_data', {'load_types': ['pilot_data']})
         ld_pilots = self.get_response('pilot_data')['pilots']
         db_pilots = server.RHAPI.db.pilots
@@ -477,6 +476,12 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(server.RHAPI.race.heat, 0)
         server.RHAPI.race.heat = 1
         self.assertEqual(server.RHAPI.race.heat, 1)
+
+        server.RHAPI.db.frequencyset_add()
+        server.RHAPI.race.frequencyset = 1
+        self.assertEqual(server.RHAPI.race.frequencyset.id, 1)
+        server.RHAPI.race.frequencyset = 2
+        self.assertEqual(server.RHAPI.race.frequencyset.id, 2)
 
     def test_sensors_api(self):
         self.assertGreaterEqual(len(server.RHAPI.sensors.sensors_dict), 0)
