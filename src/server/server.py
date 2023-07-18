@@ -2435,6 +2435,8 @@ def on_save_laps(_data=None):
     else:
         do_save_actions()
 
+RHAPI.race.save = on_save_laps
+
 @catchLogExceptionsWrapper
 def do_save_actions():
     '''Save current laps data to the database.'''
@@ -2626,6 +2628,8 @@ def on_discard_laps(**kwargs):
             RaceContext.cluster.emitToSplits('discard_laps')
 
     Events.trigger(Evt.LAPS_CLEAR)
+
+RHAPI.race.clear = on_discard_laps
 
 def clear_laps():
     '''Clear the current laps table.'''

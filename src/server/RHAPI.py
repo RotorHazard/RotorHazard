@@ -765,7 +765,7 @@ class RaceAPI():
         if self._racecontext.race.scheduled:
             return self._racecontext.race.scheduled_time
         else:
-            return False
+            return None
 
     def stage(self):
         pass # replaced externally until refactored
@@ -773,6 +773,11 @@ class RaceAPI():
     def stop(self, doSave=False):
         pass # replaced externally until refactored
 
+    def save(self):
+        pass # replaced externally until refactored
+
+    def clear(self):
+        pass # replaced externally until refactored
 
 #
 # Language
