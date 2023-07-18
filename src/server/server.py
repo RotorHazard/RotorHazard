@@ -2811,6 +2811,8 @@ def on_set_current_heat(data):
     logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
     set_current_heat_data(new_heat_id)
 
+RHAPI.race._heat_set = on_set_current_heat # TODO: Refactor management functions
+
 @SOCKET_IO.on('delete_lap')
 @catchLogExceptionsWrapper
 def on_delete_lap(data):

@@ -675,7 +675,10 @@ class RaceAPI():
 
     @heat.setter
     def heat(self, heat_id):
-        self._racecontext.race.current_heat = heat_id
+        self._heat_set({'heat': heat_id})
+
+    def _heat_set(self, heat_id):
+        pass # replaced externally. TODO: Refactor management functions
 
     @property
     def frequencyset(self):
