@@ -1093,4 +1093,4 @@ List of sensor data. Returns `list[Sensor]`.
 
 #### sensors.sensor_obj(name)
 Individual sensor data. Returns `Sensor`.
-- `name` (): Name of sensor to retrieve
+- `name` (string): Name of sensor to retrieve
