@@ -2200,6 +2200,7 @@ class RHData():
             race_time_sec=0,
             lap_grace_sec=-1,
             staging_fixed_tones=0,
+            staging_delay_tones=0,
             start_delay_min_ms=1000,
             start_delay_max_ms=1000,
             number_laps_win=0,

@@ -483,6 +483,15 @@ class ServerTest(unittest.TestCase):
         server.RHAPI.race.frequencyset = 2
         self.assertEqual(server.RHAPI.race.frequencyset.id, 2)
 
+        num_formats = len(server.RHAPI.db.raceformats)
+        server.RHAPI.db.raceformat_add(name="RaceFormat Test {}".format(num_formats))
+        server.RHAPI.db.raceformat_add(name="RaceFormat Test {}".format(num_formats + 1))
+
+        server.RHAPI.race.raceformat = num_formats + 1
+        self.assertEqual(server.RHAPI.db.raceformat_by_id(num_formats + 1).name, server.RHAPI.race.raceformat.name)
+        server.RHAPI.race.raceformat = num_formats + 2
+        self.assertEqual(server.RHAPI.db.raceformat_by_id(num_formats + 2).name, server.RHAPI.race.raceformat.name)
+
     def test_sensors_api(self):
         self.assertGreaterEqual(len(server.RHAPI.sensors.sensors_dict), 0)
         self.assertEqual(server.RHAPI.sensors.sensor_names[0], 'TestSensor')

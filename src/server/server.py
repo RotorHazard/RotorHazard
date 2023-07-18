@@ -1813,6 +1813,8 @@ def on_set_race_format(data):
         logger.info("Format change prevented by active race")
         RaceContext.rhui.emit_race_status()
 
+RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions
+
 @SOCKET_IO.on('add_race_format')
 @catchLogExceptionsWrapper
 def on_add_race_format(data):

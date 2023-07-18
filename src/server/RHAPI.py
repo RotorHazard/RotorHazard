@@ -704,7 +704,10 @@ class RaceAPI():
 
     @raceformat.setter
     def raceformat(self, format_id):
-        self._racecontext.race.format = format_id
+        self._raceformat_set({'race_format': format_id})
+
+    def _raceformat_set(self, data):
+        pass # replaced externally. TODO: Refactor management functions
 
     @property
     def status(self):
