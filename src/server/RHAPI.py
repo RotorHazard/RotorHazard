@@ -531,9 +531,6 @@ class EventResultsAPI():
     def results(self):
         return self._racecontext.pagecache.get_cache()
 
-    def results_clear(self):
-        return self._racecontext.rhdata.clear_results_all()
-
 
 #
 # Data input/output

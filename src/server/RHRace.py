@@ -68,7 +68,7 @@ class RHRace():
     def schedule(self, s, m=0):
         if self.race_status != RaceStatus.READY:
             logger.warning("Ignoring request to schedule race: Status not READY")
-            return
+            return False
             
         if s or m:
             self.scheduled = True
@@ -83,12 +83,11 @@ class RHRace():
             logger.info("Scheduling race in {0:01d}:{1:02d}".format(int(m), int(s)))
         else:
             self.scheduled = False
-
             self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL)
-
             self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
 
         self._racecontext.rhui.emit_race_schedule()
+        return True
 
     def init_node_finished_flags(self, heatNodes):
         self.node_has_finished = {}

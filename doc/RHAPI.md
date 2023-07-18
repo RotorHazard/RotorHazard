@@ -1026,14 +1026,14 @@ Clear laps and reset `race.status` to `READY`. Fails if `race.status` is `STAGIN
 
 ## Event Results
 
-View or clear result data for all races, heats, classes, and event totals.
+View result data for all races, heats, classes, and event totals.
 These methods are accessed via `RHAPI.eventresults` 
 
 ### All Properties and Methods
 
 #### eventresults.results
 _Read only_
-#### eventresults.results_clear
+Calculated cumulative results. Returns `dict`.
 
 
 
@@ -1046,10 +1046,16 @@ These methods are accessed via `RHAPI.language`
 
 #### language.languages
 _Read only_
+List of available languages. Returns `list[string]`.
+
 #### language.dictionary
 _Read only_
+Full translation dictionary of all loaded languages. Returns `dict`.
+
 #### language.\_\_(text, domain='')
-text, domain=''
+Translate `text`. Returns translated `string`, or `text` if not possible.
+-`text` (string): Input to translate
+-`domain` _(optional)_ (string): Language to use, overriding system setting
 
 
 
@@ -1062,6 +1068,7 @@ These methods are accessed via `RHAPI.interface`
 
 #### interface.seats
 _Read only_
+Hardware interface information. Returns `list[Node]`.
 
 
 
@@ -1074,9 +1081,16 @@ These methods are accessed via `RHAPI.sensors`
 
 #### sensors.sensors_dict
 _Read only_
+All sensor names and data. Returns `dict` of `name`(string):`Sensor`.
+
 #### sensors.sensor_names
 _Read only_
+List of available sensors. Returns `list[string]`.
+
 #### sensors.sensor_objs
 _Read only_
+List of sensor data. Returns `list[Sensor]`.
+
 #### sensors.sensor_obj(name)
-name
+Individual sensor data. Returns `Sensor`.
+- `name` (): Name of sensor to retrieve
