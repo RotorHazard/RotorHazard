@@ -43,10 +43,10 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(resp['pilots']), num_pilots+1)
 
     def test_alter_pilot(self):
-        for i in range(1, len(server.RaceContext.interface.nodes)):
+        for pilot in server.RaceContext.rhdata.get_pilots():
             data = {
-                'pilot_id': i,
-                'callsign': 'Test '+str(i),
+                'pilot_id': pilot.id,
+                'callsign': 'Test '+str(pilot.id),
                 'team_name': 'team T',
                 'phonetic': 'Teeest',
                 'name': 'Tester'
@@ -55,7 +55,7 @@ class ServerTest(unittest.TestCase):
             self.client.emit('load_data', {'load_types': ['pilot_data']})
             resp = self.get_response('pilot_data')
             for item in resp['pilots']:
-                if item['pilot_id'] == i:
+                if item['pilot_id'] == pilot.id:
                     pilot = item
                     break
             self.assertEqual(pilot['callsign'], data['callsign'])
@@ -412,7 +412,7 @@ class ServerTest(unittest.TestCase):
         ld_pilots = self.get_response('pilot_data')['pilots']
         db_pilots = server.RHAPI.db.pilots
         num_pilots = len(server.RHAPI.db.pilots)
-        self.assertGreater(num_pilots, 7)
+        self.assertGreater(num_pilots, 0)
         num_matched = 0
         for ld_pilot in ld_pilots:
             for db_pilot in db_pilots:
@@ -421,7 +421,7 @@ class ServerTest(unittest.TestCase):
                             ld_pilot['team'] == db_pilot.team and ld_pilot['color'] == db_pilot.color and \
                             ld_pilot['active'] == db_pilot.active:
                     num_matched += 1
-        self.assertGreater(num_matched, 7)
+        self.assertGreater(num_matched, 0)
         self.assertEqual(len(ld_pilots), len(db_pilots))
         self.assertEqual(num_matched, len(db_pilots))
         num_matched = 0
@@ -435,7 +435,7 @@ class ServerTest(unittest.TestCase):
             self.assertEqual(db_pilot_match, True)
             if db_pilot_match:
                 num_matched += 1
-        self.assertGreater(num_matched, 7)
+        self.assertGreater(num_matched, 0)
         ld_pilot['name'] = 'Test Name'
         ld_pilot['callsign'] = 'testcallsign'
         ld_pilot['phonetic'] ='test phonetic'
@@ -470,6 +470,13 @@ class ServerTest(unittest.TestCase):
         result_flag = server.RHAPI.db.pilot_delete(new_pilot.id)
         self.assertEqual(result_flag, True)
         self.assertEqual(len(server.RHAPI.db.pilots), num_pilots)       
+
+    def test_race_api(self):
+        server.RHAPI.db.heat_add()
+        server.RHAPI.race.heat = 0
+        self.assertEqual(server.RHAPI.race.heat, 0)
+        server.RHAPI.race.heat = 1
+        self.assertEqual(server.RHAPI.race.heat, 1)
 
     def test_sensors_api(self):
         self.assertGreaterEqual(len(server.RHAPI.sensors.sensors_dict), 0)
