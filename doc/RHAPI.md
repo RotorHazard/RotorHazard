@@ -916,12 +916,12 @@ These methods are accessed via `RHAPI.race`
 #### race.pilots
 _Read only_
 Pilot IDs, indexed by seat. Returns `list[int]`.
-To change pilots, adjust the corresponding `Heat`.
+To change pilots, adjust the corresponding heat (identified by `race.heat`).
 
 #### race.teams
 _Read only_
 Team of each pilot, indexed by seat. Returns `list[string]`.
-To change teams, adjust the corresponding `Pilot`.
+To change teams, adjust the corresponding pilot (identified by matching seat index in `race.pilots`).
 
 #### race.slots
 _Read only_
@@ -933,15 +933,18 @@ Active color for each seat, indexed by seat. Returns `list[Color]`.
 
 #### race.heat
 _Read/write_
-ID of assigned heat (`int` or `None`).
+ID of assigned heat (`int` or `None`). `None` is practice mode.
+To change active heat options, adjust the assigned heat.
 
 #### race.frequencyset
 _Read/write_
 ID of current frequency set (`int`).
+To change active frequency set options, adjust the assigned frequency set.
 
 #### race.raceformat
-_Read only_
-Active race format object. Returns either `RaceFormat` or `None` if time is in secondary mode
+_Read/write_
+Active race format object. Returns `RaceFormat`, or `None` if timer is in secondary mode.
+To change active format options, adjust the assigned race format.
 
 #### race.status
 _Read only_
@@ -955,36 +958,69 @@ Current status of system. Returns `RaceStatus`.
 
 #### race.stage_time_internal
 _Read only_
-
+Internal (monotonic) timestamp of race staging start time. Returns `int`
 
 #### race.start_time
 _Read only_
+System timestamp of race start time. Returns `datetime`. 
+
 #### race.start_time_internal
 _Read only_
+Internal (monotonic) timestamp of race start time. Is a future time during staging. Returns `int`.
+
 #### race.end_time_internal
 _Read only_
+Internal (monotonic) timestamp of race end time. Invalid unless `race.status` is `DONE`. Returns `int`.
+
 #### race.seats_finished
 _Read only_
+Flag indicating whether pilot in a seat has completed all laps. Returns `dict` with the format `id` (int):`value` (boolean).
+
 #### race.laps
 _Read only_
+Calculated lap results. Returns `dict`.
+
 #### race.any_laps_recorded
 _Read only_
+Whether any laps have been recorded for this race. Returns `boolean`.
+
 #### race.laps_raw
 _Read only_
+All lap data. Returns `list[dict]`.
+
 #### race.laps_active_raw(filter_late_laps=False)
-filter_late_laps=False
+All lap data, removing deleted laps. Returns `list[dict]`.
+- `filter_late_laps` _(optional)_: Set `True` to also remove laps flagged as late.
+
 #### race.results
 _Read only_
+Calculated race results. Returns `dict`.
+
 #### race.team_results
 _Read only_
+Calculated race team results. Returns `dict`, or `None` if not in team mode.
+
 #### race.scheduled
 _Read only_
+Internal (monotonic) timestamp of scheduled race staging start time. Returns `int`, or `None` if race is not scheduled. 
 
 #### race.schedule(sec_or_none, minutes=0)
-sec_or_none, minutes=0
-#### race.stage
+Schedule race with a relative future time offset. Fails if `race.status` is not `READY`. Cancels existing schedule if both values are falsy. Returns boolean success value.
+- `sec_or_none`: seconds ahead to schedule race
+- `minutes` _(optional)_: minutes ahead to schedule race
+
+#### race.stage()
+Begin race staging sequence. May fail if `race.status` is not `READY`. No return value.
+
 #### race.stop(doSave=False)
-doSave=False
+Stop race. No return value.
+- `doSave` _(optional)_: run race data save routines immediately after stopping
+
+#### race.save()
+Save laps and clear race data. May activate heat advance and other procedures. No return value.
+
+#### race.clear()
+Clear laps and reset `race.status` to `READY`. Fails if `race.status` is `STAGING` or `RACING`—stop race before using. No return value.
 
 
 
