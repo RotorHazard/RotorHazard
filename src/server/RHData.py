@@ -1253,17 +1253,20 @@ class RHData():
 
     def resolve_slot_unset_nodes(self, heat_or_id):
         heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
-        used_nodes = []
+        used_seats = []
         slots = self.get_heatNodes_by_heat(heat_id)
+        slots.sort(key=lambda x:x.id)
         for s in slots:
-            used_nodes.append(s.node_index)
+            used_seats.append(s.node_index)
 
-        # create inverse of used_nodes
-        available_seats = set(range(len(slots))) - set(used_nodes)
-
+        seat = 0
         for s in slots:
-            if s.node_index == None and len(available_seats):
-                s.node_index = available_seats.pop()
+            if s.node_index == None:
+                while seat in used_seats:
+                    seat += 1
+                
+                s.node_index = seat
+                seat += 1
 
         self.commit()
 

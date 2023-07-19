@@ -952,7 +952,32 @@
 			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_id});
 			rotorhazard.event.heats[heat_idx].auto_frequency = auto_frequency;
 
-			update_heat_ui($(this).closest('li.rh-heat'), parseInt($(this).data('heat')));
+			if(!auto_frequency) {
+				var heat = rotorhazard.event.heats[heat_idx];
+
+				heat.slots.sort((a, b) => a.id - b.id);
+
+				var used_seats = []
+				for (var s in heat.slots) {
+					if (heat.slots[s].node_index != null) {
+						used_seats.push(heat.slots[s].node_index);
+					}
+				}
+
+				var idx = 0;
+				for (var s in heat.slots) {
+					if (heat.slots[s].node_index == null) {
+						while (used_seats.includes(idx)) {
+							idx++;
+						}
+						heat.slots[s].node_index = idx;
+						idx++;
+					}
+				}
+				heat.slots.sort((a, b) => a.node_index - b.node_index);
+			}
+
+			display_classes();
 		});
 
 		$(document).on("click", 'button.plan-calc', function (event) {
