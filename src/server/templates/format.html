@@ -29,6 +29,7 @@
 
 	var heat_to_unlock = null;
 	var class_to_unlock = null;
+	var current_format = null;
 
 	$(document).ready(function () {
 		socket.on('language', function (msg) {
@@ -1366,10 +1367,16 @@
 				for (var i = 0; i < rotorhazard.event.race_formats.length; i++) {
 					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>');
 				}
-				if (rotorhazard.event.race_status) {
-					$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
-				} else {
+				if (current_format == 'last') {
 					$('#set_race_format').val($('#set_race_format option:last').val());
+				} else if (current_format) {
+					$('#set_race_format').val(current_format);
+				} else {
+					if (rotorhazard.event.race_status) {
+						$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
+					} else {
+						$('#set_race_format').val(parseInt($('#set_race_format option:last').val()));
+					}
 				}
 
 				$('#set_points_method').empty();
@@ -1488,10 +1495,13 @@
 		});
 
 		$('#set_race_format').change(function (event) {
+			current_format = $('#set_race_format').val();
 			display_format();
 		});
 
 		$('button#add_race_format').click(function (event) {
+			current_format = 'last';
+
 			var format_id = parseInt($('#set_race_format').val());
 			var data = {
 				source_format_id: format_id
@@ -1507,6 +1517,7 @@
 		$('button#delete_race_format').click(function (event) {
 			$.magnificPopup.close();
 
+			current_format = null;
 			var format_id = parseInt($('#set_race_format').val());
 			var data = {
 				format_id: format_id
