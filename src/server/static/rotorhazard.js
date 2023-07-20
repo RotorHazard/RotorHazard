@@ -2152,9 +2152,11 @@ var freq = {
 		if (fObj === null || fObj.frequency == 0) {
 			channelBlock.children('.ch').html('—');
 			channelBlock.children('.fr').html('');
+			channelBlock.attr('title', '');
 		} else {
 			channelBlock.children('.ch').html(fObj.key);
 			channelBlock.children('.fr').html(fObj.frequency);
+			channelBlock.attr('title', fObj.frequency);
 		}
 	},
 	updateBlocks: function() {

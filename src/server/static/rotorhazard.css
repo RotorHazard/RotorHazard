@@ -1402,9 +1402,37 @@ main.page-home {
 	margin: 0 0 0.5rem;
 }
 
-.heats .channel-block  {
+.heats .channel-block {
 	width: 2.5em;
 	margin-right: 0.5rem;
+	position: relative;
+}
+
+.heats .channel-block .fr {
+	clip: rect(1px, 1px, 1px, 1px);
+	position: absolute;
+}
+
+@media (pointer: coarse), (hover: none) {
+	.heats .channel-block:focus::after,
+	.heats .channel-block:hover::after {
+		content: attr(title);
+		position: absolute;
+		z-index: 10;
+		left: calc(100% - 1px);
+		color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
+		background-color: var(--contrast_1_low);
+		border: solid 1px hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
+		padding: 0.25rem;
+	}
+	@media (prefers-color-scheme: dark) {
+		.heats .channel-block:focus::after,
+		.heats .channel-block:hover::after {
+			color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+			background-color: var(--contrast_1_high);
+			border: solid 1px hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+		}
+	}
 }
 
 .heats .pilot-name {
