@@ -2043,7 +2043,7 @@ class RHData():
         if isinstance(profile_or_id, Database.Profiles):
             return profile_or_id
         else:
-            return self._Database.Pilot.query.get(profile_or_id)
+            return self._Database.Profiles.query.get(profile_or_id)
 
     def resolve_id_from_profile_or_id(self, profile_or_id):
         if isinstance(profile_or_id, Database.Profiles):

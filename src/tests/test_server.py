@@ -476,21 +476,43 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(server.RHAPI.race.heat, 0)
         server.RHAPI.race.heat = 1
         self.assertEqual(server.RHAPI.race.heat, 1)
+        
+    def test_rhapi_frequencyset(self):
+        original_set = server.RHAPI.race.frequencyset
+        num_sets = len(server.RHAPI.db.frequencysets)
+        frequencyset_1 = server.RHAPI.db.frequencyset_add()
+        frequencyset_2 = server.RHAPI.db.frequencyset_add()
+        self.assertEqual(num_sets + 2, len(server.RHAPI.db.frequencysets))
+        self.assertNotEqual(frequencyset_1.id, frequencyset_2.id)
+        server.RHAPI.race.frequencyset = frequencyset_1.id
+        self.assertEqual(server.RHAPI.race.frequencyset.id, frequencyset_1.id)
+        server.RHAPI.race.frequencyset = frequencyset_2.id
+        self.assertEqual(server.RHAPI.race.frequencyset.id, frequencyset_2.id)
+        server.RHAPI.race.frequencyset = original_set.id
+        result = server.RHAPI.db.frequencyset_delete(frequencyset_1)
+        self.assertEqual(result, True)
+        result = server.RHAPI.db.frequencyset_delete(frequencyset_2.id)
+        self.assertEqual(result, True)
+        self.assertEqual(num_sets, len(server.RHAPI.db.frequencysets))
 
-        server.RHAPI.db.frequencyset_add()
-        server.RHAPI.race.frequencyset = 1
-        self.assertEqual(server.RHAPI.race.frequencyset.id, 1)
-        server.RHAPI.race.frequencyset = 2
-        self.assertEqual(server.RHAPI.race.frequencyset.id, 2)
-
+    def test_rhapi_format(self):
+        server.RHAPI.race.stop()
+        server.RHAPI.race.clear()
         num_formats = len(server.RHAPI.db.raceformats)
-        server.RHAPI.db.raceformat_add(name="RaceFormat Test {}".format(num_formats))
-        server.RHAPI.db.raceformat_add(name="RaceFormat Test {}".format(num_formats + 1))
-
-        server.RHAPI.race.raceformat = num_formats + 1
-        self.assertEqual(server.RHAPI.db.raceformat_by_id(num_formats + 1).name, server.RHAPI.race.raceformat.name)
-        server.RHAPI.race.raceformat = num_formats + 2
-        self.assertEqual(server.RHAPI.db.raceformat_by_id(num_formats + 2).name, server.RHAPI.race.raceformat.name)
+        format_1 = server.RHAPI.db.raceformat_add(name="RaceFormat Test {}".format(num_formats + 1))
+        format_2 = server.RHAPI.db.raceformat_add(name="RaceFormat Test {}".format(num_formats + 2))
+        self.assertEqual(num_formats + 2, len(server.RHAPI.db.raceformats))
+        self.assertNotEqual(format_1.id, format_2.id)
+        server.RHAPI.race.raceformat = format_1.id
+        self.assertEqual(server.RHAPI.db.raceformat_by_id(format_1.id).name, server.RHAPI.race.raceformat.name)
+        server.RHAPI.race.raceformat = format_2.id
+        self.assertEqual(server.RHAPI.db.raceformat_by_id(format_2.id).name, server.RHAPI.race.raceformat.name)
+        server.RHAPI.race.raceformat = 1
+        result = server.RHAPI.db.raceformat_delete(format_1.id)
+        self.assertEqual(result, True)
+        result = server.RHAPI.db.raceformat_delete(format_2.id)
+        self.assertEqual(result, True)
+        self.assertEqual(num_formats, len(server.RHAPI.db.raceformats))
 
     def test_sensors_api(self):
         self.assertGreaterEqual(len(server.RHAPI.sensors.sensors_dict), 0)

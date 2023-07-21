@@ -1799,19 +1799,21 @@ def on_set_race_format(data):
     if RaceContext.race.race_status == RaceStatus.READY: # prevent format change if race running
         race_format_val = data['race_format']
         RaceContext.race.format = RaceContext.rhdata.get_raceFormat(race_format_val)
-        RaceContext.rhui.emit_current_laps()
 
         Events.trigger(Evt.RACE_FORMAT_SET, {
             'race_format': race_format_val,
             })
 
-        RaceContext.rhui.emit_current_leaderboard() # Run page, to update leaderboard if changing to/from team racing
-        RaceContext.rhui.emit_race_status()
+        if request:
+            RaceContext.rhui.emit_current_laps()
+            RaceContext.rhui.emit_current_leaderboard() # Run page, to update leaderboard if changing to/from team racing
+            RaceContext.rhui.emit_race_status()
         logger.info("set race format to '%s' (%s)" % (RaceContext.race.format.name, RaceContext.race.format.id))
     else:
-        RaceContext.rhui.emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        if request:
+            RaceContext.rhui.emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+            RaceContext.rhui.emit_race_status()
         logger.info("Format change prevented by active race")
-        RaceContext.rhui.emit_race_status()
 
 RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions
 
