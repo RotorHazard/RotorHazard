@@ -412,8 +412,11 @@
 			$('.race_status_message').html(race.status_msg);
 		});
 
-		function callout_current_leader(pilot_phonetic) {
+		function callout_current_leader(pilot_phonetic, play_tone_flag) {
 			if (!rotorhazard.winner_declared_flag) {
+				if (play_tone_flag && rotorhazard.beep_race_leader_lap) {
+					speak(LEADER_FLAG_CHAR);
+				}
 				speak('<div class="speech">' + pilot_phonetic + " " + __l('is leading') + '</div>');
 			}
 		}
@@ -464,6 +467,12 @@
 						speak('<div class="speech">' + ttstext + '</div>');
 					}
 				}
+			}
+		})
+
+		socket.on('phonetic_leader', function (msg) {
+			if (rotorhazard.voice_race_leader) {
+				setTimeout(callout_current_leader, (rotorhazard.voice_race_leader * 1000), (msg.pilot ? msg.pilot : msg.callsign), true);
 			}
 		})
 
