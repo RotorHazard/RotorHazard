@@ -1862,12 +1862,33 @@ def check_win_team_fastest_consecutive(raceObj, rhDataObj, consecutivesCount, **
         'status': WinStatus.NONE
     }
 
-def get_leading_pilot_id(results):
+def get_leading_pilot_id(raceObj, interfaceObj, onlyNewFlag=False):
     try:
-        primary_leaderboard = results['meta']['primary_leaderboard']
-        results_list = results[primary_leaderboard]
-        if len(results_list) > 1:  # only return leader if more than one pilot
-            return results_list[0]['pilot_id']
+        lboard_name = raceObj.results['meta']['primary_leaderboard']
+        leaderboard = raceObj.results[lboard_name]
+        if len(leaderboard) > 1:  # only return leader if more than one pilot
+            # check if another racer with enough laps is currently crossing
+            lead_lap = leaderboard[0]['laps']
+            if lead_lap > 0: # must have at least one lap
+                # if race stopped then don't wait for crossing to finish
+                if raceObj.race_status != RaceStatus.DONE:
+                    # check if there are active crossings coming onto lead lap
+                    for line in leaderboard[1:]:
+                        if line['laps'] >= lead_lap - 1:
+                            node = interfaceObj.nodes[line['node']]
+                            if node.pass_crossing_flag:
+                                logger.info('Waiting for node {0} crossing to determine leader'.format(line['node']+1))
+                                return RHUtils.PILOT_ID_NONE
+                pilot_id = leaderboard[0]['pilot_id']
+                if onlyNewFlag:
+                    if lead_lap == raceObj.race_leader_lap and pilot_id == raceObj.race_leader_pilot_id:
+                        return RHUtils.PILOT_ID_NONE  # reported leader previously so return none
+                prev_lead_lap = raceObj.race_leader_lap
+                raceObj.race_leader_lap = lead_lap
+                raceObj.race_leader_pilot_id = pilot_id
+                logger.debug('Race leader pilot_id={}, lap={}, prevLap={}'.format(pilot_id, lead_lap, prev_lead_lap))
+                # return ID of leader, but not if from previous lap (because of deleted lap)
+                return pilot_id if lead_lap >= prev_lead_lap else RHUtils.PILOT_ID_NONE
     except Exception:
         logger.exception("Error in Results 'get_leading_pilot_id()'")
     return RHUtils.PILOT_ID_NONE

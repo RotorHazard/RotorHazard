@@ -2063,6 +2063,8 @@ def on_stage_race():
         RaceContext.race.timer_running = False # indicate race timer not running
         RaceContext.race.race_status = RaceStatus.STAGING
         RaceContext.race.win_status = WinStatus.NONE
+        RaceContext.race.race_leader_lap = 0  # clear current race leader
+        RaceContext.race.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
         RaceContext.race.status_message = ''
         RaceContext.race.any_races_started = True
 
@@ -2615,6 +2617,8 @@ def on_discard_laps(**kwargs):
     RaceContext.race.race_status = RaceStatus.READY # Flag status as ready to start next race
     RaceContext.interface.set_race_status(RaceStatus.READY)
     RaceContext.race.win_status = WinStatus.NONE
+    RaceContext.race.race_leader_lap = 0  # clear current race leader
+    RaceContext.race.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
     RaceContext.race.status_message = ''
     RaceContext.rhui.emit_current_laps() # Race page, blank laps to the web client
     RaceContext.rhui.emit_current_leaderboard() # Race page, blank leaderboard to the web client
@@ -2893,7 +2897,16 @@ def on_delete_lap(data):
 
     RaceContext.race.clear_results()
     PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+    RaceContext.race.get_results()  # update leaderboard before checking possible updated winner/leader
     check_win_condition(deletedLap=True)  # handle possible change in win status
+
+    # handle possible change in race leader
+    leader_pilot_id = Results.get_leading_pilot_id(RaceContext.race, RaceContext.interface, True)
+    if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+        RaceContext.rhui.emit_phonetic_leader(leader_pilot_id)
+        leader_pilot_obj = RaceContext.rhdata.get_pilot(leader_pilot_id)
+        if leader_pilot_obj:
+            logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
 
     RaceContext.rhui.emit_current_laps() # Race page, update web client
     RaceContext.rhui.emit_current_leaderboard() # Race page, update web client
@@ -2934,7 +2947,16 @@ def on_restore_deleted_lap(data):
 
     RaceContext.race.clear_results()
     PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+    RaceContext.race.get_results()  # update leaderboard before checking possible updated winner/leader
     check_win_condition(deletedLap=True)  # handle possible change in win status
+
+    # handle possible change in race leader
+    leader_pilot_id = Results.get_leading_pilot_id(RaceContext.race, RaceContext.interface, True)
+    if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+        RaceContext.rhui.emit_phonetic_leader(leader_pilot_id)
+        leader_pilot_obj = RaceContext.rhdata.get_pilot(leader_pilot_id)
+        if leader_pilot_obj:
+            logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
 
     RaceContext.rhui.emit_current_laps() # Race page, update web client
     RaceContext.rhui.emit_current_leaderboard() # Race page, update web client
@@ -3522,10 +3544,21 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                                                  team_name == Results.get_leading_team_name(RaceContext.race.team_results)), \
                                                 node_finished_flag, node.index)
                             else:
+                                if check_leader:
+                                    leader_pilot_id = Results.get_leading_pilot_id(RaceContext.race, RaceContext.interface, True)
+                                else:
+                                    leader_pilot_id = RHUtils.PILOT_ID_NONE
                                 RaceContext.rhui.emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
-                                                (check_leader and \
-                                                 pilot_id == Results.get_leading_pilot_id(RaceContext.race.results)), \
-                                                node_finished_flag, node.index)
+                                                (pilot_id == leader_pilot_id), node_finished_flag, node.index)
+                                if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+                                    # if new leading pilot was not called out above (different pilot) then call out now
+                                    if leader_pilot_id != pilot_id:
+                                        RaceContext.rhui.emit_phonetic_leader(leader_pilot_id)
+                                        leader_pilot_obj = RaceContext.rhdata.get_pilot(leader_pilot_id)
+                                        if leader_pilot_obj:
+                                            logger.info('Pilot {} is leading'.format(leader_pilot_obj.callsign))
+                                    else:
+                                        logger.info('Pilot {} is leading'.format(pilot_namestr))
 
                             # check for and announce possible winner (but wait until pass-record processing(s) is finished)
                             PassInvokeFuncQueueObj.put(check_win_condition, emit_leaderboard_on_win=True) 

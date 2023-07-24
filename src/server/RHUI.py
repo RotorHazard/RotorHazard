@@ -848,6 +848,19 @@ class RHUI():
         else:
             self._socket.emit('phonetic_data', emit_payload)
 
+    def emit_phonetic_leader(self, pilot_id, **params):
+        '''Emits phonetic pilot name for race leader.'''
+        pilot = self._racecontext.rhdata.get_pilot(pilot_id)
+        emit_payload = {}
+        if pilot:
+            emit_payload['pilot'] = pilot.phonetic
+            emit_payload['callsign'] = pilot.callsign
+            emit_payload['pilot_id'] = pilot.id
+        if ('nobroadcast' in params):
+            emit('phonetic_leader', emit_payload)
+        else:
+            self._socket.emit('phonetic_leader', emit_payload)
+
     def emit_race_saved(self, new_race, race_data, **params):
         emit_payload = {
             'race_id': new_race.id,

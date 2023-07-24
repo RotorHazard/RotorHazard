@@ -50,6 +50,9 @@ class RHRace():
         self.team_cacheStatus = None # whether cache is valid
         self.win_status = WinStatus.NONE # whether race is won
 
+        self.race_leader_lap = 0  # current race leader
+        self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
+
         self._seat_colors = []
         self.external_flag = False # is race data controlled externally (from cluster)
 
