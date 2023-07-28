@@ -121,6 +121,9 @@ class DatabaseAPI():
     def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
         return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
 
+    def pilot_ids_by_attribute(self, name, value):
+        return self._racecontext.rhdata.get_pilot_id_by_attribute(name, value)
+
     def pilot_add(self, name=None, callsign=None, phonetic=None, team=None, color=None):
         #TODO: attribute support
         data = {}

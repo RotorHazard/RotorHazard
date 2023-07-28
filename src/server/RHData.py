@@ -898,6 +898,10 @@ class RHData():
         pilot_id = self.resolve_id_from_pilot_or_id(pilot_or_id)
         return self._Database.PilotAttribute.query.filter_by(id=pilot_id).all()
 
+    def get_pilot_id_by_attribute(self, name, value):
+        attrs = self._Database.PilotAttribute.query.filter_by(name=name, value=value).all()
+        return [attr.id for attr in attrs]
+
     # Heats
     def resolve_heat_from_heat_or_id(self, heat_or_id):
         if isinstance(heat_or_id, Database.Heat):

@@ -267,6 +267,11 @@ The value of a single custom attribute assigned to pilot. Returns `string`.
 - `name` (string): attribute to retrieve
 - `default_value` _(optional)_: value to return if attribute does not exist
 
+#### db.pilot_ids_by_attribute(name, value)
+ID of pilots with attribute matching the specified attribute/value combination. Returns `list[int]`.
+- `name` (string): attribute to match
+- `value` (string): value to match
+
 #### db.pilot_add(name=None, callsign=None, phonetic=None, team=None, color=None)
 Add a new pilot to the database. Returns the new `Pilot`.
 - `name` _(optional)_ (string): Name for new pilot
