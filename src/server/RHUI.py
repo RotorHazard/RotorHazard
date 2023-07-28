@@ -154,6 +154,10 @@ class RHUI():
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
 
+    # Socket listeners
+    def socket_listen(self, message, handler):
+        self._socket.on_event(message, handler)
+
     # General Emits
     def emit_frontend_load(self, **params):
         '''Emits reload command.'''

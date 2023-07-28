@@ -66,6 +66,9 @@ class UserInterfaceAPI():
     def message_alert(self, message):
         self._racecontext.rhui.emit_priority_message(message, True)
 
+    # Socket
+    def socket_listen(self, message, handler):
+        self._racecontext.rhui.socket_listen(message, handler)
 
 #
 # Data structures

@@ -165,6 +165,17 @@ Sends a message which appears as a pop-up alert.
 - `message` (string): Text of message to display
 
 
+### Sockets
+
+#### ui.socket_listen(message, handler)
+Calls function when a socket event is received.
+- `message` (string): Socket event name
+- `handler` (callable): Function to call
+
+`handler` is passed socket data as an argument.
+
+
+
 
 ## Data Fields
 
