@@ -11,6 +11,7 @@ class RHAPI():
     def __init__(self, race_context):
         self.API_VERSION_MAJOR = API_VERSION_MAJOR
         self.API_VERSION_MINOR = API_VERSION_MINOR
+        self.server_info = None
 
         self._racecontext = race_context
 
@@ -771,16 +772,17 @@ class RaceAPI():
             return None
 
     def stage(self):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
 
     def stop(self, doSave=False):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
 
     def save(self):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
 
     def clear(self):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
+
 
 #
 # Language

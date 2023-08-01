@@ -338,6 +338,22 @@ class ServerTest(unittest.TestCase):
         self.assertIn('timestamp', resp)
         self.assertEqual(resp['timestamp'], server.monotonic_to_epoch_millis(server.RaceContext.race.start_time_monotonic) + 19800)
 
+# trackside compatibility
+
+    def test_trackside_get_pi_time
+        resp = self.client.emit('get_server_time', callback=True)
+        self.assertIn('server_time_s', resp)
+        resp['server_time_s']
+
+    def test_trackside_stage_race
+        resp = self.client.emit('get_server_time', callback=True)
+        server_ts = resp['server_time_s']
+
+        resp = self.client.emit('ts_race_stage', {'start_time_s': server_ts + 2})
+
+    def test_trackside_stop_race
+        resp = self.client.emit('ts_race_stop')
+
 # RHAPI
 
     def test_api_root(self):
