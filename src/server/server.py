@@ -4529,6 +4529,9 @@ APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, serverInfo))
 #register event actions
 EventActionsObj = EventActions.EventActions(Events, RaceContext)
 
+# make event actions available to cluster/secondary timers
+RaceContext.cluster.setEventActionsObj(EventActionsObj)
+
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
     if not RaceContext.rhdata.get_option("secret_key"):

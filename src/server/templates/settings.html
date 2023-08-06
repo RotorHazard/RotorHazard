@@ -997,24 +997,8 @@
 
 		socket.on('action_setup', function (msg) {
 			rotorhazard.actions ??= {}
-
 			rotorhazard.actions.effects = msg.effects;
-
-			rotorhazard.actions.events = { // TODO: load from server
-				raceStage: 'Race Stage',
-				raceStart: 'Race Start',
-				raceFinish: 'Race Finish',
-				raceStop: 'Race Stop',
-				raceWin: 'Race Win',
-				racePilotDone: 'Pilot Done',
-				heatSet: 'Heat Change',
-				raceSchedule: 'Race Schedule',
-				raceScheduleCancel: 'Cancel Scheduled Race',
-				lapsSave: 'Save Laps',
-				lapsDiscard: 'Discard Laps',
-				roundsComplete: 'Rounds Complete'
-			}
-
+			rotorhazard.actions.events = msg.events;
 			updateActionList();
 		});
 

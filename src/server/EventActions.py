@@ -29,6 +29,9 @@ class EventActions:
     def getRegisteredEffects(self):
         return self.effects
 
+    def getEventActionsList(self):
+        return self.eventActionsList
+
     def loadActions(self, _args=None):
         actionSetting = self._racecontext.rhdata.get_option('actions')
         if actionSetting:
@@ -38,6 +41,17 @@ class EventActions:
                 self.logger.error("Can't load stored actions JSON")
         else:
             self.logger.debug("No actions to load")
+
+    def addEventAction(self, event, effect, text):
+        item = { 'event': event, 'effect': effect, 'text': text }
+        self.eventActionsList.append(item)
+        self._racecontext.rhdata.set_option('actions', json.dumps(self.eventActionsList))
+
+    def containsAction(self, event):
+        for item in self.eventActionsList:
+            if item.get('event') == event:
+                return True
+        return False
 
     @catchLogExceptionsWrapper
     def doActions(self, args):

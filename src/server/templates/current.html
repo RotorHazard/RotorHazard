@@ -509,6 +509,20 @@
 			}
 		})
 
+		socket.on('play_beep_tone', function (msg) {
+            var volume = msg.volume;
+			if (volume) {
+				volume = volume / 100.0
+			} else {
+				volume = rotorhazard.voice_volume;
+			}
+			var toneType = msg.toneType;
+			if (!toneType) {
+				toneType = 'sine';
+			}
+			play_beep(msg.duration, msg.frequency, volume, toneType);
+		});
+
 		socket.on('current_heat', function (msg) {
 			for (var idx in msg.heatNodes) {
 				hn = msg.heatNodes[idx];

@@ -408,9 +408,30 @@ class RHUI():
                         'fields': [field.frontend_repr() for field in effects[effect].fields] if effects[effect].fields else None
                     }
 
+                events_list = {
+                    Evt.RACE_STAGE: 'Race Stage',
+                    Evt.RACE_START: 'Race Start',
+                    Evt.RACE_FINISH: 'Race Finish',
+                    Evt.RACE_STOP: 'Race Stop',
+                    Evt.RACE_WIN: 'Race Win',
+                    Evt.RACE_PILOT_DONE: 'Pilot Done',
+                    Evt.HEAT_SET: 'Heat Change',
+                    Evt.RACE_SCHEDULE: 'Race Schedule',
+                    Evt.RACE_SCHEDULE_CANCEL: 'Cancel Scheduled Race',
+                    Evt.LAPS_SAVE: 'Save Laps',
+                    Evt.LAPS_DISCARD: 'Discard Laps',
+                    Evt.ROUNDS_COMPLETE: 'Rounds Complete'
+                }
+
+                # if event names for any configured events not in list then add them
+                for item in EventActionsObj.getEventActionsList():
+                    event_name = item.get('event')
+                    if event_name and not event_name in events_list:
+                        events_list[event_name] = event_name
+
                 emit_payload = {
                     'enabled': True,
-                    'events': None,
+                    'events': events_list,
                     'effects': effect_list,
                 }
 
@@ -962,6 +983,19 @@ class RHUI():
             emit('cluster_connect_change', emit_payload)
         else:
             self._socket.emit('cluster_connect_change', emit_payload)
+
+    def emit_play_beep_tone(self, duration, frequency, volume=None, toneType=None, **params):
+        '''Emits beep/tone.'''
+        emit_payload = {
+            'duration': duration,
+            'frequency': frequency,
+            'volume': volume,
+            'toneType': toneType
+        }
+        if ('nobroadcast' in params):
+            emit('play_beep_tone', emit_payload)
+        else:
+            self._socket.emit('play_beep_tone', emit_payload)
 
     def emit_callouts(self):
         callouts = self._racecontext.rhdata.get_option('voiceCallouts')
