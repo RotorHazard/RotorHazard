@@ -2738,7 +2738,7 @@ def emit_heat_plan_result(new_heat_id, calc_result):
             pilot = RaceContext.rhdata.get_pilot(heatNode.pilot_id)
             if pilot:
                 heatNode_data['callsign'] = pilot.callsign
-                if pilot.used_frequencies and heatNode.node_index:
+                if pilot.used_frequencies and heatNode.node_index is not None:
                     used_freqs = json.loads(pilot.used_frequencies)
                     heatNode_data['frequency_change'] = (used_freqs[-1]['f'] != profile_freqs["f"][heatNode.node_index])
                 else:
