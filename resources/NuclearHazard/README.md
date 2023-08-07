@@ -100,7 +100,9 @@ Print the case with support for only the pi/power hole, sd card cutout, and led 
 
 ## Problems
 
-Can't flash STM32: make sure you enabled UART and [changed config.txt](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#3-apply-changes-to-bootconfigtxt)
+Can't flash STM32: Make sure you enabled UART and [changed config.txt](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#3-apply-changes-to-bootconfigtxt)
+
+RXs won't change channel: There was a batch of RX carrier cards that had the alignment dot on the wrong side of the board. If your RXs aren't changing channels, try inserting the carrier cards backwards. The current gerber and all timers sold from now on have this fixed.
 
 ## Schematic
 
