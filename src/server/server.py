@@ -758,14 +758,11 @@ def on_cluster_message_ack(data):
     messagePayload = data.get('messagePayload') if data else None
     RaceContext.cluster.emit_cluster_ack_to_primary(messageType, messagePayload)
 
-# RotorHazard events
-
 @SOCKET_IO.on('dispatch_event')
+@catchLogExceptionsWrapper
 def dispatch_event(evtArgs):
     '''Dispatch generic event.'''
     Events.trigger(Evt.UI_DISPATCH, evtArgs)
-
-Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
 @SOCKET_IO.on('load_data')
 @catchLogExceptionsWrapper
@@ -4021,7 +4018,7 @@ def _do_init_rh_interface():
         RaceContext.interface.pass_record_callback = pass_record_callback
         RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
         RaceContext.interface.node_crossing_callback = node_crossing_callback
-        RaceContext.rhui._interface = RaceContext.interface
+        RaceContext.rhui._interface = RaceContext.interface  #pylint: disable=protected-access
         return True
     except:
         logger.exception("Error initializing RH interface")
@@ -4223,6 +4220,9 @@ RHUtils.idAndLogSystemInfo()
 check_requirements()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+# RotorHazard events dispatch
+Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
 # load plugins
 plugin_modules = []
