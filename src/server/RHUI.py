@@ -2,8 +2,8 @@
 # RHUI Helper
 # Provides abstraction for user interface
 #
-from typing import List, Any
-from dataclasses import dataclass, asdict
+from typing import List, Any  # @UnusedImport
+from dataclasses import dataclass, asdict  # @UnresolvedImport
 from enum import Enum
 from flask import request
 from flask_socketio import emit
@@ -938,6 +938,7 @@ class RHUI():
             self._socket.emit('phonetic_split_call', emit_payload)
 
     def emit_split_pass_info(self, pilot_id, split_id, split_time):
+        self._racecontext.race.clear_results()
         self.emit_current_laps()  # update all laps on the race page
         self.emit_phonetic_split(pilot_id, split_id, split_time)
 
