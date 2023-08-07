@@ -2809,6 +2809,7 @@ def finalize_current_heat_set(new_heat_id):
 
     RaceContext.rhui.emit_current_heat() # Race page, to update heat selection button
     RaceContext.rhui.emit_current_leaderboard() # Race page, to update callsigns in leaderboard
+    RaceContext.rhui.emit_current_laps()  # make sure Current-race page shows correct number of node slots
     RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('set_current_heat')
