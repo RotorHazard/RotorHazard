@@ -561,6 +561,13 @@ class ClusterNodeSet:
             self.ClusterSendAckQueueObj = SendAckQueue(20, SOCKET_IO, logger)
         self.ClusterSendAckQueueObj.put(messageType, messagePayload, waitForAckFlag)
 
+    def emit_cluster_ack_to_primary(self, messageType, messagePayload):
+        '''Emits cluster message-acknowledge to primary timer.'''
+        if self.ClusterSendAckQueueObj:
+            self.ClusterSendAckQueueObj.ack(messageType, messagePayload)
+        else:
+            logger.warning("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
+
     def emit_join_cluster_response(self, SOCKET_IO, serverInfoItems):
         '''Emits 'join_cluster_response' message to primary timer.'''
         payload = {

@@ -754,12 +754,9 @@ def on_cluster_event_trigger(data):
 @catchLogExceptionsWrapper
 def on_cluster_message_ack(data):
     ''' Received message acknowledgement from primary. '''
-    if ClusterSendAckQueueObj:
-        messageType = str(data.get('messageType')) if data else None
-        messagePayload = data.get('messagePayload') if data else None
-        ClusterSendAckQueueObj.ack(messageType, messagePayload)
-    else:
-        logger.warning("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
+    messageType = str(data.get('messageType')) if data else None
+    messagePayload = data.get('messagePayload') if data else None
+    RaceContext.cluster.emit_cluster_ack_to_primary(messageType, messagePayload)
 
 # RotorHazard events
 
