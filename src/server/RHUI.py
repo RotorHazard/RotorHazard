@@ -2,8 +2,8 @@
 # RHUI Helper
 # Provides abstraction for user interface
 #
-from typing import List, Any
-from dataclasses import dataclass, asdict
+from typing import List, Any  # @UnusedImport
+from dataclasses import dataclass, asdict  # @UnresolvedImport
 from enum import Enum
 from flask import request
 from flask_socketio import emit
@@ -413,9 +413,30 @@ class RHUI():
                         'fields': [field.frontend_repr() for field in effects[effect].fields] if effects[effect].fields else None
                     }
 
+                events_list = {
+                    Evt.RACE_STAGE: 'Race Stage',
+                    Evt.RACE_START: 'Race Start',
+                    Evt.RACE_FINISH: 'Race Finish',
+                    Evt.RACE_STOP: 'Race Stop',
+                    Evt.RACE_WIN: 'Race Win',
+                    Evt.RACE_PILOT_DONE: 'Pilot Done',
+                    Evt.HEAT_SET: 'Heat Change',
+                    Evt.RACE_SCHEDULE: 'Race Schedule',
+                    Evt.RACE_SCHEDULE_CANCEL: 'Cancel Scheduled Race',
+                    Evt.LAPS_SAVE: 'Save Laps',
+                    Evt.LAPS_DISCARD: 'Discard Laps',
+                    Evt.ROUNDS_COMPLETE: 'Rounds Complete'
+                }
+
+                # if event names for any configured events not in list then add them
+                for item in EventActionsObj.getEventActionsList():
+                    event_name = item.get('event')
+                    if event_name and not event_name in events_list:
+                        events_list[event_name] = event_name
+
                 emit_payload = {
                     'enabled': True,
-                    'events': None,
+                    'events': events_list,
                     'effects': effect_list,
                 }
 
@@ -924,6 +945,7 @@ class RHUI():
             self._socket.emit('phonetic_split_call', emit_payload)
 
     def emit_split_pass_info(self, pilot_id, split_id, split_time):
+        self._racecontext.race.clear_results()
         self.emit_current_laps()  # update all laps on the race page
         self.emit_phonetic_split(pilot_id, split_id, split_time)
 
@@ -969,6 +991,19 @@ class RHUI():
             emit('cluster_connect_change', emit_payload)
         else:
             self._socket.emit('cluster_connect_change', emit_payload)
+
+    def emit_play_beep_tone(self, duration, frequency, volume=None, toneType=None, **params):
+        '''Emits beep/tone.'''
+        emit_payload = {
+            'duration': duration,
+            'frequency': frequency,
+            'volume': volume,
+            'toneType': toneType
+        }
+        if ('nobroadcast' in params):
+            emit('play_beep_tone', emit_payload)
+        else:
+            self._socket.emit('play_beep_tone', emit_payload)
 
     def emit_callouts(self):
         callouts = self._racecontext.rhdata.get_option('voiceCallouts')

@@ -13,7 +13,7 @@ def getTotalPilots(rhapi, generate_args):
     input_class_id = generate_args.get('input_class')
 
     if input_class_id:
-        if 'total_pilots' in generate_args:
+        if generate_args.get('total_pilots'):
             total_pilots = int(generate_args['total_pilots'])
         else:
             race_class = rhapi.db.raceclass_by_id(input_class_id)
@@ -92,7 +92,7 @@ def generateLadder(rhapi, generate_args=None):
             else:
                 # slot advances
                 for adv_idx in range(advances_per_heat):
-                    heat.slots.append(HeatPlanSlot(SeedMethod.HEAT_INDEX, -len(heats) - 2, adv_idx + 1))
+                    heat.slots.append(HeatPlanSlot(SeedMethod.HEAT_INDEX, adv_idx + 1, -len(heats) - 2))
 
             heats = [heat, *heats] # insert at front
             heat_pilots = 0

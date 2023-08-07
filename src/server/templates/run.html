@@ -1472,6 +1472,20 @@
 			}
 		});
 
+		socket.on('play_beep_tone', function (msg) {
+            var volume = msg.volume;
+			if (volume) {
+				volume = volume / 100.0
+			} else {
+				volume = rotorhazard.voice_volume;
+			}
+			var toneType = msg.toneType;
+			if (!toneType) {
+				toneType = 'sine';
+			}
+			play_beep(msg.duration, msg.frequency, volume, toneType);
+		});
+
 		$('#set_profile').change(function (event) {
 			var data = {
 				profile: $(this).val()

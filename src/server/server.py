@@ -754,21 +754,15 @@ def on_cluster_event_trigger(data):
 @catchLogExceptionsWrapper
 def on_cluster_message_ack(data):
     ''' Received message acknowledgement from primary. '''
-    if ClusterSendAckQueueObj:
-        messageType = str(data.get('messageType')) if data else None
-        messagePayload = data.get('messagePayload') if data else None
-        ClusterSendAckQueueObj.ack(messageType, messagePayload)
-    else:
-        logger.warning("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
-
-# RotorHazard events
+    messageType = str(data.get('messageType')) if data else None
+    messagePayload = data.get('messagePayload') if data else None
+    RaceContext.cluster.emit_cluster_ack_to_primary(messageType, messagePayload)
 
 @SOCKET_IO.on('dispatch_event')
+@catchLogExceptionsWrapper
 def dispatch_event(evtArgs):
     '''Dispatch generic event.'''
     Events.trigger(Evt.UI_DISPATCH, evtArgs)
-
-Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
 @SOCKET_IO.on('load_data')
 @catchLogExceptionsWrapper
@@ -2760,7 +2754,7 @@ def emit_heat_plan_result(new_heat_id, calc_result):
             pilot = RaceContext.rhdata.get_pilot(heatNode.pilot_id)
             if pilot:
                 heatNode_data['callsign'] = pilot.callsign
-                if pilot.used_frequencies and heatNode.node_index:
+                if pilot.used_frequencies and heatNode.node_index is not None:
                     used_freqs = json.loads(pilot.used_frequencies)
                     heatNode_data['frequency_change'] = (used_freqs[-1]['f'] != profile_freqs["f"][heatNode.node_index])
                 else:
@@ -2837,6 +2831,7 @@ def finalize_current_heat_set(new_heat_id):
 
     RaceContext.rhui.emit_current_heat() # Race page, to update heat selection button
     RaceContext.rhui.emit_current_leaderboard() # Race page, to update callsigns in leaderboard
+    RaceContext.rhui.emit_current_laps()  # make sure Current-race page shows correct number of node slots
     RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('set_current_heat')
@@ -4046,7 +4041,7 @@ def _do_init_rh_interface():
         RaceContext.interface.pass_record_callback = pass_record_callback
         RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
         RaceContext.interface.node_crossing_callback = node_crossing_callback
-        RaceContext.rhui._interface = RaceContext.interface
+        RaceContext.rhui._interface = RaceContext.interface  #pylint: disable=protected-access
         return True
     except:
         logger.exception("Error initializing RH interface")
@@ -4248,6 +4243,9 @@ RHUtils.idAndLogSystemInfo()
 check_requirements()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+# RotorHazard events dispatch
+Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
 # load plugins
 plugin_modules = []
@@ -4551,6 +4549,9 @@ APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, serverInfo))
 
 #register event actions
 EventActionsObj = EventActions.EventActions(Events, RaceContext)
+
+# make event actions available to cluster/secondary timers
+RaceContext.cluster.setEventActionsObj(EventActionsObj)
 
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):

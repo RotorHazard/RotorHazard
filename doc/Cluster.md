@@ -1,6 +1,6 @@
-# Cluster
+# Secondary / Split Timers
 
-Additional RotorHazard timers may be attached as "secondary" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'split' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the secondary timer will mirror the actions of the primary (for instance as an "LED-only" timer that displays the actions of the primary).
+Additional RotorHazard timers may be attached as "secondary" units (as a cluster), interfaced via their network connection (i.e., WiFi).  The default mode is 'split' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is supported, in which the secondary timer will mirror the actions of the primary (for instance as an "LED-only" timer that displays the actions of the primary), and also an 'action' mode (see [below](#action-mode)).
 
 ### Configuration
 
@@ -35,7 +35,7 @@ Additional options may be configured, for example:
 }
 ```
 * "address": The IP address and port for the secondary timer.
-* "mode": The mode for the timer (either "split" or "mirror").
+* "mode": The mode for the timer ("split", "mirror", or "action").
 * "distance": The distance from the previous timer (used to calculate speed).
 * "queryInterval": Number of seconds between heartbeat/query messages (default 10).
 * "recEventsFlag": Set 'true' to propogate timer events from primary (default 'false' for "split" timer, 'true' for "mirror" timer).
@@ -44,6 +44,60 @@ Additional options may be configured, for example:
 The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'primary' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
 
 On the secondary timer, no configuration changes are needed.
+
+### Action Mode
+
+A secondary timer may be configured to operate in 'action' mode, where each lap pass on the timer triggers an event (and a configurable action/effect). Here is a basic sample configuration:
+```
+	"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "action", "event": "Action Gate Lap Pass"}],
+```
+Additional options may be configured:
+```
+	"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "action", "event": "Action Gate Lap Pass",
+			"effect": "speak", "text": "%PILOT% did action gate", "minRepeatSecs": 10,
+		 	"toneDuration": 50, "toneFrequency": 400, "toneVolume": 100, "toneType": "square"}],
+```
+The name specified by the "event" parameter will appear as an item in the 'Event Actions' section on the 'Settings' page in the RotorHazard web GUI. If a matching event/action does not already exist then it will be created and populated with the values specified by the "event" and "effect" parameters (these values may be modified in the RotorHazard web GUI).
+* "event": The name of the event/action to be triggered
+* "effect": "speak" (the default), "message", "alert", or "none" (to have no action associated with the event)
+* "text": The text value for the effect (it may include substitution values like "%PILOT%")
+* "minRepeatSecs": The minimum number of seconds allowed between repeated triggerings of the event/action (default is 10)
+
+A tone may be configured to be played after each lap pass on the timer:
+* "toneDuration": The length of the tone, in milliseconds (or 0 for no tone, the default)
+* "toneFrequency": The frequency of the tone, in hertz (or 0 for no tone, the default)
+* "toneVolume": The volume of the tone, from 0 to 100 (the default is 100)
+* "toneType": The sound type of the tone, one of: "square" (the default), "sine", "sawtooth", or "triangle"
+
+<br/>
+
+### Notes
+
+For best results, the primary and secondary timers should be running the same version of the RotorHazard server.
+
+Missed/incorrect split times will have no impact on the recording of lap times by the primary timer.
+
+To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/secondary timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
+
+The status of connected secondary timers may be viewed on the *Settings* page in the *Status* section. (This status information is also available on the *Run* page.) The following items are displayed:
+ * *Address* - Network address for the secondary timer (click to bring up the web-GUI for the timer)
+ * *Type* - After the address will be an 'S' if split timer, an 'M' if mirror timer, or an 'A' if action timer
+ * *Latency: last min avg max* - Network latency (in milliseconds) for heartbeat/query messages
+ * *Disconnects* - Number of times the secondary timer has been disconnected
+ * *Contacts* - Number of network contacts with the secondary timer
+ * *Time Diff* - Time difference (in milliseconds) between system clocks on primary and secondary timer
+ * *Up* - Number of seconds the secondary timer has been connected
+ * *Down* - Number of seconds the secondary timer has been disconnected
+ * *Availability* - Availability rating (as a percentage) for the secondary timer
+ * *Last Contact* - Time (in seconds) since last contact with the timer, or a status message
+
+The web-GUI for the secondary timer may be accessed by clicking on the *Address* value on the status display on the primary timer. From there, lap history may be viewed, marshaling performed and settings adjusted.
+
+When a secondary timer operating in 'split' mode establishes a connection (aka joins the cluster), the database on the timer is backed up and then any existing race data are cleared. The filenames on these backups will have the form "autoBkp_database_YYYYMMDD_HHMMSS.db". The number of these "autoBkp" files retained is limited by the DB_AUTOBKP_NUM_KEEP setting (in "config.json" under GENERAL), with the default value of 30.
+
+A secondary can also be a primary, but sub-splits are not propagated upwards.
+
+<br/>
 
 ### Clock Synchronization
 
@@ -68,45 +122,7 @@ On all timers:
 	sudo systemctl disable systemd-timesyncd
 	sudo service ntp restart
 
-### Random number generator
-
-The random number generator helps improve WiFi connectivity (maintains entropy for encryption). Activate hardware RNG to improve available entropy.
-
-	sudo apt-get install rng-tools
-
-Edit /etc/default/rng-tools and uncomment the line:
-
-    HRNGDEVICE=/dev/hwrng
-
-Then, restart rng-tools with
-
-    sudo service rng-tools restart
-
-### Notes
-
-For best results, the primary and secondary timers should be running the same version of the RotorHazard server.
-
-Missed/incorrect split times will have no impact on the recording of lap times by the primary timer.
-
-To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/secondary timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
-
-The status of connected secondary timers may be viewed on the *Settings* page in the *Status* section. (This status information is also available on the *Run* page.) The following items are displayed:
- * *Address* - Network address for the secondary timer (click to bring up the web-GUI for the timer)
- * *Type* - After the address will be an 'S' if split timer or an 'M' if mirror timer
- * *Latency: last min avg max* - Network latency (in milliseconds) for heartbeat/query messages
- * *Disconnects* - Number of times the secondary timer has been disconnected
- * *Contacts* - Number of network contacts with the secondary timer
- * *Time Diff* - Time difference (in milliseconds) between system clocks on primary and secondary timer
- * *Up* - Number of seconds the secondary timer has been connected
- * *Down* - Number of seconds the secondary timer has been disconnected
- * *Availability* - Availability rating (as a percentage) for the secondary timer
- * *Last Contact* - Time (in seconds) since last contact with the timer, or a status message
-
-The web-GUI for the secondary timer may be accessed by clicking on the *Address* value on the status display on the primary timer. From there, lap history may be viewed, marshaling performed and settings adjusted.
-
-When a secondary timer operating in 'split' mode establishes a connection (aka joins the cluster), the database on the timer is backed up and then any existing race data are cleared. The filenames on these backups will have the form "autoBkp_database_YYYYMMDD_HHMMSS.db". The number of these "autoBkp" files retained is limited by the DB_AUTOBKP_NUM_KEEP setting (in "config.json" under GENERAL), with the default value of 30.
-
-A secondary can also be a primary, but sub-splits are not propagated upwards.
+### Wi-Fi based cluster
 
 If you want to use a Wi-Fi based cluster, instructions for setting up an access point (Wi-Fi hotspot) can be found at
 <https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md>.
@@ -125,3 +141,25 @@ iface wlan0 inet static
 	post-up systemctl restart hostapd
 ```
 to make dhcpcd play nice with hostapd.
+
+### Random number generator
+
+The random number generator helps improve WiFi connectivity (maintains entropy for encryption). Activate hardware RNG to improve available entropy.
+
+	sudo apt-get install rng-tools
+
+Edit /etc/default/rng-tools and uncomment the line:
+
+    HRNGDEVICE=/dev/hwrng
+
+Then, restart rng-tools with
+
+    sudo service rng-tools restart
+
+<br/>
+
+-----------------------------
+
+See Also:  
+[doc/Software Setup.md](Software%20Setup.md)  
+[doc/User Guide.md](User%20Guide.md)
