@@ -173,7 +173,6 @@ Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 
 RaceContext.sensors = Sensors()
 RaceContext.cluster = None
-ClusterSendAckQueueObj = None
 PassInvokeFuncQueueObj = InvokeFuncQueue(logger)
 serverInfo = None
 serverInfoItems = None
