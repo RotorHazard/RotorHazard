@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 class TracksideConnector():
     def __init__(self, rhapi):
         self._rhapi = rhapi
+        self.enabled = False
+
         self._rhapi.events.on(Evt.RACE_LAP_RECORDED, self.race_lap_recorded)
 
     def initialize(self, _args):
@@ -25,12 +27,15 @@ class TracksideConnector():
         # logger.debug(self._rhapi.db.pilot_ids_by_attribute('trackside_ID', '123'))
 
     def server_info(self, _arg=None):
+        self.enabled = True
         return self._rhapi.server_info
 
     def server_time(self, _arg=None):
+        self.enabled = True
         return monotonic()
 
     def race_stage(self, arg=None):
+        self.enabled = True
         if self._rhapi.race.status != RaceStatus.READY:
             self._rhapi.race.stop(doSave=True)
 
@@ -44,12 +49,13 @@ class TracksideConnector():
         self._rhapi.race.stage(start_race_args)
 
     def race_lap_recorded(self, args):
-        lap_ts = self._rhapi.race.start_time_internal + (args['lap']['lap_time_stamp'] / 1000)
-        payload = {
-            'seat': args['node_index'],
-            'server_timestamp': lap_ts,
-        }
-        self._rhapi.ui.socket_broadcast('ts_lap_data', payload)
+        if self.enabled:
+            lap_ts = self._rhapi.race.start_time_internal + (args['lap']['lap_time_stamp'] / 1000)
+            payload = {
+                'seat': args['node_index'],
+                'server_timestamp': lap_ts,
+            }
+            self._rhapi.ui.socket_broadcast('ts_lap_data', payload)
 
     def race_stop(self, arg=None):
         self._rhapi.race.stop()
