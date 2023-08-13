@@ -71,6 +71,12 @@ class UserInterfaceAPI():
     def socket_listen(self, message, handler):
         self._racecontext.rhui.socket_listen(message, handler)
 
+    def socket_send(self, message, data):
+        self._racecontext.rhui.socket_send(message, data)
+
+    def socket_broadcast(self, message, data):
+        self._racecontext.rhui.socket_broadcast(message, data)
+
 #
 # Data structures
 #

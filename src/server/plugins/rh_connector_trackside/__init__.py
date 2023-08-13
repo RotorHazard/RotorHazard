@@ -8,9 +8,10 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
 
-class Tests():
+class TracksideConnector():
     def __init__(self, rhapi):
         self._rhapi = rhapi
+        self._rhapi.events.on(Evt.RACE_LAP_RECORDED, self.race_lap_recorded)
 
     def initialize(self, _args):
         logger.info('Initializing Trackside connector')
@@ -42,10 +43,18 @@ class Tests():
 
         self._rhapi.race.stage(start_race_args)
 
+    def race_lap_recorded(self, args):
+        lap_ts = self._rhapi.race.start_time_internal + (args['lap']['lap_time_stamp'] / 1000)
+        payload = {
+            'seat': args['node_index'],
+            'server_timestamp': lap_ts,
+        }
+        self._rhapi.ui.socket_broadcast('ts_lap_data', payload)
+
     def race_stop(self, arg=None):
         self._rhapi.race.stop()
 
 def initialize(rhapi):
-    connector = Tests(rhapi)
+    connector = TracksideConnector(rhapi)
     rhapi.events.on(Evt.STARTUP, connector.initialize)
 

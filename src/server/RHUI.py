@@ -155,9 +155,15 @@ class RHUI():
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
 
-    # Socket listeners
+    # Socket generics
     def socket_listen(self, message, handler):
         self._socket.on_event(message, handler)
+
+    def socket_send(self, message, data):
+        emit(message, data)
+
+    def socket_broadcast(self, message, data):
+        self._socket.emit(message, data)
 
     # General Emits
     def emit_frontend_load(self, **params):
