@@ -43,7 +43,7 @@ class TracksideConnector():
         for seat in arg:
             frequencies[seat] = arg[seat]
 
-        self._rhdata.db.frequencyset_alter(set_id, frequencies=frequencies)
+        self._rhapi.db.frequencyset_alter(set_id, frequencies=frequencies)
 
     def race_stage(self, arg=None):
         self.enabled = True
@@ -61,10 +61,11 @@ class TracksideConnector():
 
     def race_lap_recorded(self, args):
         if self.enabled:
-            lap_ts = self._rhapi.race.start_time_internal + (args['lap']['lap_time_stamp'] / 1000)
             payload = {
                 'seat': args['node_index'],
-                'server_timestamp': lap_ts,
+                'frequency': args['frequency'],
+                'peak_rssi': args['peak_rssi'],
+                'lap_time': args['lap']['lap_time_stamp'] / 1000,
             }
             self._rhapi.ui.socket_broadcast('ts_lap_data', payload)
 

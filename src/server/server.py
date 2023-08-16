@@ -3517,6 +3517,8 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
+                            'peak_rssi': node.pass_peak_rssi,
+                            'frequency': node.frequency,
                             'color': RaceContext.race.seat_colors[node.index],
                             'lap': lap_data,
                             'results': RaceContext.race.get_results(),
