@@ -90,7 +90,7 @@ There is a voltage divider on the board going from the main power supply to an A
 
 <img src="img/casemodel.png" alt="drawing" width="500"/>
 
-To download the most up-to-date 3D model, open the [Onshape project](https://cad.onshape.com/documents/c21f8ac03c166bed0d6faeab/w/4bf3b280307091cb20025cb6/e/e612456715c51f2099caf754?renderMode=0&uiState=6442fc1c72ca37077803aba0) right click the NuclearHazard tab at the bottom, choose export, select STL format, check "Export unique parts as individual files", and click Export.
+To download the most up-to-date 3D model, open the [Onshape project](https://cad.onshape.com/documents/c21f8ac03c166bed0d6faeab/w/4bf3b280307091cb20025cb6/e/3b397b4fdfda612f6dfa1d79) right click the NuclearHazard tab at the bottom, choose export, select STL format, check "Export unique parts as individual files", and click Export.
 
 <img src="img/downloadstl.png" alt="drawing" width="500"/>
 
