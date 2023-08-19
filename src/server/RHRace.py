@@ -17,7 +17,7 @@ class RHRace():
         self.__ = self._racecontext.language.__
         # setup/options
         self.num_nodes = 0
-        self.current_heat = 1 # heat ID
+        self.current_heat = RHUtils.HEAT_ID_NONE # heat ID
         self.node_pilots = {} # current race pilots, by node, filled on heat change
         self.node_teams = {} # current race teams, by node, filled on heat change
         self._format = None # raceformat object

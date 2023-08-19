@@ -547,16 +547,13 @@ class RHUI():
             'current': {}
         }
 
-        if self._racecontext.race.current_heat is RHUtils.HEAT_ID_NONE:
-            emit_payload['current']['displayname'] = __("Practice")
-        else:
-            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name
-
         # current
         if self._racecontext.race.current_heat is RHUtils.HEAT_ID_NONE:
             emit_payload['current']['displayname'] = __("Practice")
         else:
-            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name
+            heat = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat)
+            if heat:
+                emit_payload['current']['displayname'] = heat.display_name
 
         emit_payload['current']['heat'] = self._racecontext.race.current_heat
         emit_payload['current']['status_msg'] = self._racecontext.race.status_message

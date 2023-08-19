@@ -231,6 +231,7 @@ def createBlueprint(RaceContext, serverInfo):
                 "race_status": RaceContext.race.race_status,
                 "currentProfile": RaceContext.rhdata.get_option('currentProfile'),
                 "currentFormat": RaceContext.rhdata.get_option('currentFormat'),
+                "currentHeat": RaceContext.rhdata.get_option('currentHeat'),
             }
         }
 

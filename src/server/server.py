@@ -1193,10 +1193,10 @@ def on_delete_heat(data):
     '''Delete heat.'''
     heat_id = data['heat']
     result = RaceContext.rhdata.delete_heat(heat_id)
-    if result is not None:
-        if RaceContext.last_race and RaceContext.last_race.current_heat == result:
+    if result:
+        if RaceContext.last_race and RaceContext.last_race.current_heat == heat_id:
             RaceContext.last_race = None  # if last-race heat deleted then clear last race
-        if RaceContext.race.current_heat == result:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
+        if RaceContext.race.current_heat == heat_id:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
             set_current_heat_data(RHUtils.HEAT_ID_NONE)
         RaceContext.rhui.emit_heat_data()
 
@@ -1462,6 +1462,7 @@ def restore_database_file(db_file_name):
             gevent.sleep(1)  # pause/yield to allow changes to be committed
             reset_current_laps()
             clean_results_cache()
+            RaceContext.race.current_heat = RaceContext.rhdata.get_optionInt('currentHeat')
             expand_heats()
             raceformat_id = RaceContext.rhdata.get_optionInt('currentFormat')
             RaceContext.race.format = RaceContext.rhdata.get_raceFormat(raceformat_id)
@@ -1564,7 +1565,7 @@ def on_reset_database(data):
         reset_current_laps()
         RaceContext.rhdata.reset_raceFormats()
         RaceContext.race.format = RaceContext.rhdata.get_first_raceFormat()
-    finalize_current_heat_set(RaceContext.rhdata.get_first_safe_heat_id())
+    finalize_current_heat_set(RaceContext.rhdata.get_initial_heat_id())
     RaceContext.rhui.emit_heat_data()
     RaceContext.rhui.emit_pilot_data()
     RaceContext.rhui.emit_format_data()
@@ -2763,6 +2764,7 @@ def on_confirm_heat(data):
 
 def finalize_current_heat_set(new_heat_id):
     RaceContext.race.current_heat = new_heat_id
+    RaceContext.rhdata.set_option('currentHeat', RaceContext.race.current_heat)
 
     if new_heat_id == RHUtils.HEAT_ID_NONE:
         RaceContext.race.node_pilots = {}
@@ -3804,7 +3806,7 @@ def init_race_state():
     reset_current_laps()
 
     # Set current heat
-    finalize_current_heat_set(RaceContext.rhdata.get_first_safe_heat_id())
+    finalize_current_heat_set(RaceContext.rhdata.get_initial_heat_id())
 
     # Normalize results caches
     RaceContext.pagecache.set_valid(False)
