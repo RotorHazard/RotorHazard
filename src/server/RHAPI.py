@@ -189,7 +189,7 @@ class DatabaseAPI():
 
         for name, value in [
             ('name', name),
-            ('raceclass_id', raceclass),
+            ('class_id', raceclass),
             ('auto_frequency', auto_frequency),
             ]:
             if value is not None:
@@ -208,7 +208,7 @@ class DatabaseAPI():
 
         for name, value in [
             ('name', name),
-            ('raceclass_id', raceclass),
+            ('class_id', raceclass),
             ('auto_frequency', auto_frequency),
             ('status', status),
             ]:
