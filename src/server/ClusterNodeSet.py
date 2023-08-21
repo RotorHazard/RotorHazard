@@ -598,7 +598,7 @@ class ClusterNodeSet:
 
     def addSecondary(self, secondary):
         self.secondaries.append(secondary)
-        if not secondary.isMirrorMode:  # secondary time in 'split' or 'action' mode
+        if not secondary.isMirrorMode:  # secondary timer in 'split' or 'action' mode
             self.splitSecondaries.append(secondary)
         if secondary.recEventsFlag:
             self.recEventsSecondaries.append(secondary)

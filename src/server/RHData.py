@@ -728,6 +728,14 @@ class RHData():
     def get_pilots(self):
         return self._Database.Pilot.query.all()
 
+    def get_pilot_for_callsign(self, callsign):
+        pilots = self.get_pilots()
+        if pilots:
+            for pilot in pilots:
+                if pilot.callsign == callsign:
+                    return pilot
+        return None
+
     def add_pilot(self, init=None):
         color = RHUtils.hslToHex(False, 100, 50)
 
@@ -1673,6 +1681,19 @@ class RHData():
                 slot.seed_rank = slot_data['seed_rank']
 
         self.commit()
+
+    def check_all_heat_nodes_filled(self, heat_id):
+        heat_nodes = self.get_heatNodes_by_heat(heat_id)
+        for node_obj in self._racecontext.interface.nodes:
+            matched_flag = False
+            for heat_node in heat_nodes:
+                if heat_node.node_index == node_obj.index and \
+                        (heat_node.pilot_id != RHUtils.PILOT_ID_NONE or node_obj.frequency <= 0):
+                    matched_flag = True
+                    break
+            if not matched_flag:
+                return False
+        return True
 
     # Race Classes
     def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):
