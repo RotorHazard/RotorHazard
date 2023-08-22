@@ -630,6 +630,7 @@ class RHUI():
             current_heat['order'] = heat.order
             current_heat['status'] = heat.status
             current_heat['auto_frequency'] = heat.auto_frequency
+            current_heat['next_round'] = self._racecontext.rhdata.get_max_round(heat.id)
 
             current_heat['slots'] = []
 
@@ -847,7 +848,8 @@ class RHUI():
             'current_heat': self._racecontext.race.current_heat,
             'heatNodes': heatNode_data,
             'heat_format': heat_format,
-            'heat_class': heat_class
+            'heat_class': heat_class,
+            'next_round': self._racecontext.rhdata.get_max_round(self._racecontext.race.current_heat) + 1 if self._racecontext.race.current_heat else None,
         }
         if ('nobroadcast' in params):
             emit('current_heat', emit_payload)

@@ -4,6 +4,10 @@
 	var data_dependencies = [
 		'all_languages',
 		'language',
+		{
+			'type': 'ui',
+			'value': 'run'
+		},
 		'node_data',
 		'frequency_data',
 		'pilot_data',
@@ -201,6 +205,56 @@
 			$('.rssi-graph').prop('hidden', true);
 		}
 
+		socket.on('ui', function (msg) {
+			if (msg.page == 'run') {
+				$('#custom-ui').empty();
+
+				for (var i in msg.panels) {
+					var panel = msg.panels[i];
+
+					var panel_el = $('<div class="panel collapsing active">');
+					var panel_header_el = $('<div class="panel-header">');
+					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+					var panel_content_el = $('<div class="panel-content">');
+					panel_content_el.hide();
+
+					var form_el = $('<ol class="form">');
+
+					for (var f_idx in panel.settings) {
+						var settings = { ...panel.settings[f_idx] };
+
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_option';
+						settings.id = 'genericOption_' + settings.name;
+						settings.data = {
+							field: settings.name,
+						}
+
+						var field = rhui.buildField(settings);
+
+						form_el.append(field);
+					}
+					panel_content_el.append(form_el);
+					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
+
+					panel_el.append(panel_header_el);
+					panel_el.append(panel_content_el);
+
+					$('#custom-ui').append(panel_el);
+				}
+			}
+		});
+
+		$(document).on('change', '.set_ui_option', function (event) {
+			var field = $(this).data('field');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				option: field,
+				value: value
+			};
+			socket.emit('set_option', data);
+		});
 
 		function any_laps_recorded() {
 			if (current_laps && 'node_index' in current_laps) {
@@ -943,8 +997,10 @@
 
 			if (msg.current_heat === 0) {
 				$('#practice-warning').show();
+				$('#next-round').hide();
 			} else {
 				$('#practice-warning').hide();
+				$('#next-round').text(__("Round") + " " + msg.next_round).show();
 			}
 		});
 
@@ -2153,6 +2209,8 @@
 			<select id="set_race_format">
 				<option>{{ __('Loading...') }}</option>
 			</select>
+
+			<span id="next-round"></span>
 		</div>
 
 		<div id="practice-warning" style="display:none">{{ __('Practice mode: Races will not be saved until a heat is selected') }}</div>
