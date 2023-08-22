@@ -140,6 +140,7 @@ def import_json(importer_class, rhapi, source, args):
             'secret_key',
             'currentProfile',
             'currentFormat',
+            'currentHeat',
             'eventResults',
             'eventResults_cacheStatus',
         ]

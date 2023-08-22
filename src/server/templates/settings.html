@@ -124,40 +124,42 @@
 		}
 
 		socket.on('ui', function (msg) {
-			$('#custom-ui').empty();
+			if (msg.page == 'settings') {
+				$('#custom-ui').empty();
 
-			for (var i in msg) {
-				var panel = msg[i];
+				for (var i in msg.panels) {
+					var panel = msg.panels[i];
 
-				var panel_el = $('<div class="panel collapsing active">');
-				var panel_header_el = $('<div class="panel-header">');
-				panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
-				var panel_content_el = $('<div class="panel-content">');
-				panel_content_el.hide();
+					var panel_el = $('<div class="panel collapsing active">');
+					var panel_header_el = $('<div class="panel-header">');
+					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+					var panel_content_el = $('<div class="panel-content">');
+					panel_content_el.hide();
 
-				var form_el = $('<ol class="form">');
+					var form_el = $('<ol class="form">');
 
-				for (var f_idx in panel.settings) {
-					var settings = { ...panel.settings[f_idx] };
+					for (var f_idx in panel.settings) {
+						var settings = { ...panel.settings[f_idx] };
 
-					settings.wrapperEl = 'li';
-					settings.fieldClass = 'set_ui_option';
-					settings.id = 'genericOption_' + settings.name;
-					settings.data = {
-						field: settings.name,
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_option';
+						settings.id = 'genericOption_' + settings.name;
+						settings.data = {
+							field: settings.name,
+						}
+
+						var field = rhui.buildField(settings);
+
+						form_el.append(field);
 					}
+					panel_content_el.append(form_el);
+					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
 
-					var field = rhui.buildField(settings);
+					panel_el.append(panel_header_el);
+					panel_el.append(panel_content_el);
 
-					form_el.append(field);
+					$('#custom-ui').append(panel_el);
 				}
-				panel_content_el.append(form_el);
-				panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
-
-				panel_el.append(panel_header_el);
-				panel_el.append(panel_content_el);
-
-				$('#custom-ui').append(panel_el);
 			}
 		});
 
@@ -1769,7 +1771,7 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_if_node_finished">{{ __('After Pilot Done') }}</label>
+						<label for="voice_if_node_finished">{{ __('Laps After Pilot Done') }}</label>
 					</div>
 					<select id="voice_if_node_finished">
 						<option value="0">{{ __('Never') }}</option>

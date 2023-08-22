@@ -353,6 +353,7 @@ class RHData():
                 "timeFormatPhonetic",
                 "currentProfile",
                 "currentFormat",
+                "currentHeat",
                 "calibrationMode",
                 "MinLapSec",
                 "MinLapBehavior",
@@ -726,6 +727,14 @@ class RHData():
 
     def get_pilots(self):
         return self._Database.Pilot.query.all()
+
+    def get_pilot_for_callsign(self, callsign):
+        pilots = self.get_pilots()
+        if pilots:
+            for pilot in pilots:
+                if pilot.callsign == callsign:
+                    return pilot
+        return None
 
     def add_pilot(self, init=None):
         color = RHUtils.hslToHex(False, 100, 50)
@@ -1132,7 +1141,7 @@ class RHData():
         return heat, race_list
 
     def delete_heat(self, heat_or_id):
-        # Deletes heat. Returns heat-ID if successful, None if not
+        # Deletes heat. Returns True if successful, False if not
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
         if heat:
             heat_count = self._Database.Heat.query.count()
@@ -1167,8 +1176,9 @@ class RHData():
                                 heat.id = 1
                                 for heatnode in heatnodes:
                                     heatnode.heat_id = heat.id
-                                self.commit()
+                                # self.commit()  # 'set_option()' below will do call to 'commit()'
                                 self._racecontext.race.current_heat = 1
+                                self.set_option('currentHeat', self._racecontext.race.current_heat)
                             else:
                                 logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat.id))
                     except Exception as ex:
@@ -1179,12 +1189,21 @@ class RHData():
             logger.info("No heat to delete")
             return False
 
-    def get_first_safe_heat_id(self):
+    def get_initial_heat_id(self):
         heats = self.get_heats()
 
+        sav_heat_id = self.get_optionInt('currentHeat', RHUtils.HEAT_ID_NONE)
+        if sav_heat_id != RHUtils.HEAT_ID_NONE:
+            for heat in heats:
+                if heat.id == sav_heat_id:
+                    return sav_heat_id
+
+        # find and return ID of first "safe" heat
+        cur_heat_id = RHUtils.HEAT_ID_NONE
         for heat in heats:
             if heat.status == HeatStatus.CONFIRMED:
-                return heat.id
+                cur_heat_id = heat.id
+                break
 
             if not heat.auto_frequency:
                 slots = self.get_heatNodes_by_heat(heat.id)
@@ -1194,9 +1213,12 @@ class RHData():
                         is_dynamic = True
 
                 if not is_dynamic:
-                    return heat.id
+                    cur_heat_id = heat.id
+                    break
 
-        return RHUtils.HEAT_ID_NONE
+        if cur_heat_id != sav_heat_id:
+            self.set_option('currentHeat', cur_heat_id)
+        return cur_heat_id
 
     def get_next_heat_id(self, current_heat_or_id):
         current_heat = self.resolve_heat_from_heat_or_id(current_heat_or_id)
@@ -1584,7 +1606,8 @@ class RHData():
 
     def reset_heats(self, nofill=False):
         self.clear_heats()
-        self._racecontext.race.current_heat = None
+        self._racecontext.race.current_heat = RHUtils.HEAT_ID_NONE
+        self.set_option('currentHeat', self._racecontext.race.current_heat)
         logger.info('Database heats reset')
 
     def reset_heat_plans(self):
@@ -1662,6 +1685,19 @@ class RHData():
                 slot.seed_rank = slot_data['seed_rank']
 
         self.commit()
+
+    def check_all_heat_nodes_filled(self, heat_id):
+        heat_nodes = self.get_heatNodes_by_heat(heat_id)
+        for node_obj in self._racecontext.interface.nodes:
+            matched_flag = False
+            for heat_node in heat_nodes:
+                if heat_node.node_index == node_obj.index and \
+                        (heat_node.pilot_id != RHUtils.PILOT_ID_NONE or node_obj.frequency <= 0):
+                    matched_flag = True
+                    break
+            if not matched_flag:
+                return False
+        return True
 
     # Race Classes
     def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):
@@ -3079,6 +3115,7 @@ class RHData():
         self.set_option("startThreshLowerDuration", "0")
         self.set_option("nextHeatBehavior", "0")
         self.set_option("currentFormat", "1")
+        self.set_option("currentHeat", "0")
 
         logger.info("Reset global settings")
 

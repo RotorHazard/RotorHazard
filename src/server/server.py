@@ -1193,10 +1193,10 @@ def on_delete_heat(data):
     '''Delete heat.'''
     heat_id = data['heat']
     result = RaceContext.rhdata.delete_heat(heat_id)
-    if result is not None:
-        if RaceContext.last_race and RaceContext.last_race.current_heat == result:
+    if result:
+        if RaceContext.last_race and RaceContext.last_race.current_heat == heat_id:
             RaceContext.last_race = None  # if last-race heat deleted then clear last race
-        if RaceContext.race.current_heat == result:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
+        if RaceContext.race.current_heat == heat_id:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
             set_current_heat_data(RHUtils.HEAT_ID_NONE)
         RaceContext.rhui.emit_heat_data()
 
@@ -1462,6 +1462,7 @@ def restore_database_file(db_file_name):
             gevent.sleep(1)  # pause/yield to allow changes to be committed
             reset_current_laps()
             clean_results_cache()
+            RaceContext.race.current_heat = RaceContext.rhdata.get_optionInt('currentHeat')
             expand_heats()
             raceformat_id = RaceContext.rhdata.get_optionInt('currentFormat')
             RaceContext.race.format = RaceContext.rhdata.get_raceFormat(raceformat_id)
@@ -1564,7 +1565,7 @@ def on_reset_database(data):
         reset_current_laps()
         RaceContext.rhdata.reset_raceFormats()
         RaceContext.race.format = RaceContext.rhdata.get_first_raceFormat()
-    finalize_current_heat_set(RaceContext.rhdata.get_first_safe_heat_id())
+    finalize_current_heat_set(RaceContext.rhdata.get_initial_heat_id())
     RaceContext.rhui.emit_heat_data()
     RaceContext.rhui.emit_pilot_data()
     RaceContext.rhui.emit_format_data()
@@ -1986,7 +1987,7 @@ def on_get_pi_time():
     emit('pi_time', {
         'pi_time_s': monotonic()
     })
-    
+
 @SOCKET_IO.on('get_server_time')
 @catchLogExceptionsWrapper
 def on_get_server_time():
@@ -2002,6 +2003,10 @@ def on_stage_race(data=None):
 
     heat_data = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
     race_format = RaceContext.race.format
+    if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
+        check_create_sec_format_heat()
+
+    heat_data = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
 
     if heat_data:
         heatNodes = RaceContext.rhdata.get_heatNodes_by_heat(RaceContext.race.current_heat)
@@ -2091,12 +2096,12 @@ def on_stage_race(data=None):
 
         if not assigned_start_ok_flag:
             staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
-    
+
             staging_random_ms = random.randint(0, race_format.start_delay_max_ms)
             hide_stage_timer = (race_format.start_delay_max_ms > 0)
-    
+
             staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
-    
+
             if race_format.staging_delay_tones == StagingTones.TONES_NONE:
                 if staging_total_ms > 0:
                     staging_tones = race_format.staging_fixed_tones
@@ -2106,7 +2111,7 @@ def on_stage_race(data=None):
                 staging_tones = staging_total_ms // 1000
                 if staging_random_ms % 1000:
                     staging_tones += 1
-    
+
             RaceContext.race.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
             RaceContext.race.start_time_monotonic = RaceContext.race.stage_time_monotonic + (staging_total_ms / 1000 )
 
@@ -2240,6 +2245,49 @@ def findBestValues(node, node_index):
         'enter_at_level': node.enter_at_level,
         'exit_at_level': node.exit_at_level
     }
+
+# For secondary/split timer, check that current heat has all needed node slots filled with pilots
+#  and create a new 'Secondary-Format Heat' and pilot entries if needed
+def check_create_sec_format_heat():
+    try:
+        use_current_heat_flag = False
+        # check if current heat can be used
+        if RaceContext.race.current_heat != RHUtils.HEAT_ID_NONE:
+            heat_obj = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
+            if heat_obj and RaceContext.rhdata.check_all_heat_nodes_filled(heat_obj.id):
+                use_current_heat_flag = True
+                logger.debug('Using current heat for secondary format: Heat {}'.format(heat_obj.id))
+        if not use_current_heat_flag:
+            # check if any of the existing heats can be used
+            heats = RaceContext.rhdata.get_heats()
+            for heat_obj in heats:
+                if RaceContext.rhdata.check_all_heat_nodes_filled(heat_obj.id):
+                    logger.info('Setting current heat for secondary format to Heat {}'.format(heat_obj.id))
+                    set_current_heat_data(heat_obj.id)
+                    use_current_heat_flag = True
+                    break
+            if not use_current_heat_flag:
+                # create new heat to use
+                heat_pilots = {}
+                # check if existing pilot entries have the default names and use them if no; else create new ones
+                for node_obj in RaceContext.interface.nodes:
+                    callsign = __('~Callsign %d') % (node_obj.index + 1)
+                    pilot_obj = RaceContext.rhdata.get_pilot_for_callsign(callsign)
+                    if pilot_obj is None:
+                        pilot_name = __('~Pilot %d Name') % (node_obj.index + 1)
+                        pilot_obj = RaceContext.rhdata.add_pilot({'callsign': callsign, 'name': pilot_name})
+                        logger.info('Created new pilot entry for secondary format: id={}, callsign: {}'.\
+                                    format(pilot_obj.id, pilot_obj.callsign))
+                    else:
+                        logger.info('Reusing pilot entry for secondary format: id={}, callsign: {}'.\
+                                    format(pilot_obj.id, pilot_obj.callsign))
+                    heat_pilots[node_obj.index] = pilot_obj.id
+                heat_obj = RaceContext.rhdata.add_heat(init={'name': 'Secondary-Format Heat'},
+                                                       initPilots=heat_pilots)
+                logger.info('Creating and using new heat for secondary format: Heat {}'.format(heat_obj.id))
+                set_current_heat_data(heat_obj.id)
+    except:
+        logger.exception("Error checking/creating heat for secondary format")
 
 @catchLogExceptionsWrapper
 def race_start_thread(start_token):
@@ -2785,6 +2833,7 @@ def on_confirm_heat(data):
 
 def finalize_current_heat_set(new_heat_id):
     RaceContext.race.current_heat = new_heat_id
+    RaceContext.rhdata.set_option('currentHeat', RaceContext.race.current_heat)
 
     if new_heat_id == RHUtils.HEAT_ID_NONE:
         RaceContext.race.node_pilots = {}
@@ -3828,7 +3877,7 @@ def init_race_state():
     reset_current_laps()
 
     # Set current heat
-    finalize_current_heat_set(RaceContext.rhdata.get_first_safe_heat_id())
+    finalize_current_heat_set(RaceContext.rhdata.get_initial_heat_id())
 
     # Normalize results caches
     RaceContext.pagecache.set_valid(False)

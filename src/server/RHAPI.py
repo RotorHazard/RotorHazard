@@ -77,6 +77,35 @@ class UserInterfaceAPI():
     def socket_broadcast(self, message, data):
         self._racecontext.rhui.socket_broadcast(message, data)
 
+    # Broadcasts
+    def broadcast_ui(self, page):
+        self._racecontext.rhui.emit_ui(page)
+
+    def broadcast_frequencies(self):
+        self._racecontext.rhui.emit_frequency_data()
+
+    def broadcast_pilots(self):
+        self._racecontext.rhui.emit_pilot_data()
+
+    def broadcast_heats(self):
+        self._racecontext.rhui.emit_heat_data()
+
+    def broadcast_raceclasses(self):
+        self._racecontext.rhui.emit_class_data()
+
+    def broadcast_raceformats(self):
+        self._racecontext.rhui.emit_format_data()
+
+    def broadcast_current_heat(self):
+        self._racecontext.rhui.emit_current_heat()
+
+    def broadcast_frequencyset(self):
+        self._racecontext.rhui.emit_node_tuning()
+
+    def broadcast_race_status(self):
+        self._racecontext.rhui.emit_race_status()
+
+
 #
 # Data structures
 #
@@ -202,7 +231,7 @@ class DatabaseAPI():
 
         for name, value in [
             ('name', name),
-            ('raceclass_id', raceclass),
+            ('class_id', raceclass),
             ('auto_frequency', auto_frequency),
             ]:
             if value is not None:
@@ -221,7 +250,7 @@ class DatabaseAPI():
 
         for name, value in [
             ('name', name),
-            ('raceclass_id', raceclass),
+            ('class', raceclass),
             ('auto_frequency', auto_frequency),
             ('status', status),
             ]:

@@ -150,20 +150,19 @@ Adds a Flask Blueprint which can be used to provide access to custom pages/URLs.
 Send messages to RotorHazard's frontend.
 
 #### ui.message_speak(message)
-Sends a message which is parsed by the text-to-speech synthesizer.
+Send a message which is parsed by the text-to-speech synthesizer.
 
 - `message` (string): Text of message to be spoken
 
 #### ui.message_notify(message)
-Sends a message which appears in the message center and notification bar.
+Send a message which appears in the message center and notification bar.
 
 - `message` (string): Text of message to display
 
 #### ui.message_alert(message)
-Sends a message which appears as a pop-up alert.
+Send a message which appears as a pop-up alert.
 
 - `message` (string): Text of message to display
-
 
 ### Sockets
 
@@ -174,6 +173,38 @@ Calls function when a socket event is received.
 
 `handler` is passed socket data as an argument.
 
+### Data Broadcast
+
+Update data displayed on frontend. Use after modifying data structures with other API methods.
+
+#### ui.broadcast_ui(page):
+Broadcast UI panel setup to all connected clients.
+
+- `page` (string): Page to update
+
+#### ui.broadcast_frequencies():
+Broadcast seat frequencies to all connected clients.
+
+#### ui.broadcast_pilots():
+Broadcast pilot data to all connected clients.
+
+#### ui.broadcast_heats():
+Broadcast heat data to all connected clients.
+
+#### ui.broadcast_raceclasses():
+Broadcast race class data to all connected clients.
+
+#### ui.broadcast_raceformats():
+Broadcast race format data to all connected clients.
+
+#### ui.broadcast_current_heat():
+Broadcast current heat selection to all connected clients.
+
+#### ui.broadcast_frequencyset():
+Broadcast frequency set data to all connected clients.
+
+#### ui.broadcast_race_status():
+Broadcast race setup and status to all connected clients.
 
 
 
@@ -188,7 +219,7 @@ Options are simple storage variables which persist to the database and can be pr
 
 #### fields.options
 _Read only_
-Provides a list of options registered by plugins. Does not include built-in options.
+Provide a list of options registered by plugins. Does not include built-in options.
 
 #### fields.register_option(field, panel=None, order=0)
 Register an option and optioanlly assign it to be desiplayed on a UI panel.
@@ -305,7 +336,7 @@ Heats are represented with the `Heat` class, which has the following properties:
 - `id` (int): Internal identifier
 - `name` (string): User-facing name
 - `class_id` (int): ID of associated race class
-- `results` (dict|None): Calculated cumulative heat summary results
+- `results` (dict|None): Internal use only; see below
 - `_cache_status`: Internal use only
 - `order` (int): Not yet implemented
 - `status` (HeatStatus): Current status of heat as `PLANNED` or `CONFIRMED`
@@ -313,6 +344,8 @@ Heats are represented with the `Heat` class, which has the following properties:
 - `active` (boolean): Not yet implemented
 
 The sentinel value `RHUtils.HEAT_ID_NONE` should be used when no heat is defined.
+
+NOTE: Results should be accessed with the `db.heat_results` method and not by reading the `results` property directly. The `results` property is unreliable because results calulation is delayed to improve system performance. `db.heat_results` ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
 
 #### db.heats
 _Read only_
@@ -423,7 +456,7 @@ Race classes are represented with the `RaceClass` class, which has the following
 - `description` (string): User-facing long description, accepts markdown
 - `format_id` (int): ID for class-wide required race format definition
 - `win_condition` (string): ranking algorithm
-- `results` (dict|None): Calculated cumulative race class results
+- `results` (dict|None): Internal use only; see below
 - `_cache_status`: Internal use only
 - `ranking` (dict|None): Calculated race class ranking
 - `rank_settings` (string): JSON-serialized arguments for ranking algorithm
@@ -434,6 +467,8 @@ Race classes are represented with the `RaceClass` class, which has the following
 - `active` (boolean): Not yet implemented
 
 The sentinel value `RHUtils.CLASS_ID_NONE` should be used when no race class is defined.
+
+NOTE: Results should be accessed with the `db.raceclass_results` method and not by reading the `results` property directly. The `results` property is unreliable because results calulation is delayed to improve system performance. `db.raceclass_results` ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
 
 `Database.HeatAdvanceType` defines how the UI will automatically advance heats after a race is finished.
 - `HeatAdvanceType.NONE`: Do nothing
@@ -663,8 +698,10 @@ Saved races are represented with the `SavedRaceMeta` class, which has the follow
 - `format_id` (int): ID of associated race format
 - `start_time` (int): Internal (monotonic) time value of race start
 - `start_time_formatted` (string): Human-readable time of race start
-- `results` (dict|None): Calculated race results
+- `results` (dict|None): Internal use only; see below
 - `_cache_status`: Internal use only
+
+NOTE: Results should be accessed with the `db.race_results` method and not by reading the `results` property directly. The `results` property is unreliable because results calulation is delayed to improve system performance. `db.race_results` ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
 
 #### db.races
 _Read only_

@@ -484,7 +484,57 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(db_pilot_match, True)
         result_flag = server.RHAPI.db.pilot_delete(new_pilot.id)
         self.assertEqual(result_flag, True)
-        self.assertEqual(len(server.RHAPI.db.pilots), num_pilots)       
+        self.assertEqual(len(server.RHAPI.db.pilots), num_pilots)
+
+        self.client.emit('load_data', {'load_types': ['heat_data']})
+        ld_heats = self.get_response('heat_data')['heats']
+        db_heats = server.RHAPI.db.heats
+        num_heats = len(server.RHAPI.db.heats)
+        self.assertGreater(num_pilots, 0)
+        num_matched = 0        
+        for ld_heat in ld_heats:
+            for db_heat in db_heats:
+                if ld_heat['id'] == db_heat.id and \
+                   ld_heat['name'] == db_heat.name and \
+                   ld_heat['displayname'] == db_heat.display_name and \
+                   ld_heat['class_id'] == db_heat.class_id and \
+                   ld_heat['order'] == db_heat.order and \
+                   ld_heat['status'] == db_heat.status and \
+                   ld_heat['auto_frequency'] == db_heat.auto_frequency:
+                    num_matched += 1
+        self.assertGreater(num_matched, 0)
+        self.assertEqual(len(ld_heats), len(db_heats))
+        self.assertEqual(num_matched, len(db_heats))
+
+        ld_heat['name'] = 'Test Name'
+        ld_heat['class_id'] = 1
+        ld_heat['auto_frequency'] = False 
+        new_heat = server.RHAPI.db.heat_add(name=ld_heat['name'], raceclass=ld_heat['class_id'], auto_frequency=ld_heat['auto_frequency'])
+        self.assertNotEqual(new_heat, None)
+        self.assertEqual(len(server.RHAPI.db.heats), num_heats+1)
+        db_heat = server.RHAPI.db.heat_by_id(new_heat.id)
+        self.assertNotEqual(db_heat, None)
+        db_heat_match = (ld_heat['name'] == db_heat.name and \
+                   ld_heat['class_id'] == db_heat.class_id and \
+                   ld_heat['auto_frequency'] == db_heat.auto_frequency)
+        self.assertEqual(db_heat_match, True)
+        ld_heat['name'] = 'Test Name 2'
+        ld_heat['class_id'] = 2
+        ld_heat['auto_frequency'] = True 
+        new_heat2, race_list = server.RHAPI.db.heat_alter(new_heat.id, name=ld_heat['name'], raceclass=ld_heat['class_id'], auto_frequency=ld_heat['auto_frequency'])
+
+        self.assertNotEqual(new_heat2, None)
+        self.assertNotEqual(race_list, None)
+        db_heat = server.RHAPI.db.heat_by_id(new_heat.id)
+        self.assertNotEqual(db_heat, None)
+        self.assertEqual(db_heat.id, new_heat2.id)
+        db_heat_match = (ld_heat['name'] == db_heat.name and \
+                           ld_heat['class_id'] == db_heat.class_id and \
+                           ld_heat['auto_frequency'] == db_heat.auto_frequency)
+        self.assertEqual(db_heat_match, True)
+        result_flag = server.RHAPI.db.heat_delete(new_heat.id)
+        self.assertEqual(result_flag, True)
+        self.assertEqual(len(server.RHAPI.db.heats), num_pilots)
 
     def test_race_api(self):
         server.RHAPI.db.heat_add()

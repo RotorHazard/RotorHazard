@@ -645,7 +645,11 @@ void setBuzzerState(bool onFlag)
         {
             currentBuzzerStateFlag = true;
             pinMode(BUZZER_OUTPUT_PIN, OUTPUT);
+#ifdef NUCLEARHAZARD_HARDWARE
+            analogWrite(BUZZER_OUTPUT_PIN, 512);
+#else
             digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_ONSTATE);
+#endif
         }
     }
     else

@@ -23,6 +23,7 @@ class UIFieldType(Enum):
     BASIC_INT = "basic_int"
     SELECT = "select"
     CHECKBOX = "checkbox"
+    PASSWORD = "password"
 
 @dataclass
 class UIFieldSelectOption():
@@ -93,6 +94,16 @@ class RHUI():
 
     # Pilot Attributes
     def register_pilot_attribute(self, field:UIField):
+        for idx, attribute in enumerate(self._pilot_attributes):
+            if attribute.name == field.name:
+                self._pilot_attributes[idx] = field
+                logger.debug(F'Redefining pilot attribute "{field.name}"')
+                break
+        else:
+            self._pilot_attributes.append(field)
+        return self._pilot_attributes
+    
+        
         if not any(x.name == field.name for x in self._pilot_attributes):
             self._pilot_attributes.append(field)
             return self._pilot_attributes
@@ -104,10 +115,14 @@ class RHUI():
 
     # UI Panels
     def register_ui_panel(self, name, label, page, order=0):
-        if not any(x.name == name for x in self._ui_panels):
+        for idx, panel in enumerate(self._ui_panels):
+            if panel.name == name:
+                self._ui_panels[idx] = UIPanel(name, label, page, order)
+                logger.debug(F'Redefining panel "{name}"')
+                break
+        else:
             self._ui_panels.append(UIPanel(name, label, page, order))
-            return self.ui_panels
-        # TODO: field redefine & warning
+        return self.ui_panels
 
     @property
     def ui_panels(self):
@@ -115,9 +130,14 @@ class RHUI():
 
     # General Settings
     def register_general_setting(self, field:UIField, panel=None, order=0):
-        if not any(x.name == field.name for x in self._general_settings):
+        for idx, setting in enumerate(self._general_settings):
+            if setting.name == field.name:
+                self._general_settings[idx] = GeneralSetting(field.name, field, panel, order)
+                logger.debug(F'Redefining setting "{field.name}"')
+                break
+        else:
             self._general_settings.append(GeneralSetting(field.name, field, panel, order))
-            return self._general_settings
+        return self._general_settings
 
     @property
     def general_settings(self):
@@ -125,7 +145,13 @@ class RHUI():
 
     # button
     def register_quickbutton(self, panel, name, label, fn, args=None):
-        self._quickbuttons.append(QuickButton(panel, name, label, fn, args))
+        for idx, button in enumerate(self._quickbuttons):
+            if button.name == name:
+                self._quickbuttons[idx] = QuickButton(panel, name, label, fn, args)
+                logger.debug(F'Redefining quickbutton "{name}"')
+                break
+        else:
+            self._quickbuttons.append(QuickButton(panel, name, label, fn, args))
         return self._quickbuttons
 
     def get_panel_settings(self, name):
@@ -176,7 +202,10 @@ class RHUI():
     def emit_ui(self, page, **params):
         '''Emits UI objects'''
 
-        emit_payload = []
+        emit_payload = {
+            'page': page,
+            'panels': []
+        }
 
         for panel in self.ui_panels:
             if panel.page == page:
@@ -197,7 +226,7 @@ class RHUI():
                         'label': button.label,
                     })
 
-                emit_payload.append({
+                emit_payload['panels'].append({
                     'panel': {
                         'name': panel.name,
                         'label': panel.label,
@@ -558,16 +587,13 @@ class RHUI():
             'current': {}
         }
 
-        if self._racecontext.race.current_heat is RHUtils.HEAT_ID_NONE:
-            emit_payload['current']['displayname'] = __("Practice")
-        else:
-            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name
-
         # current
         if self._racecontext.race.current_heat is RHUtils.HEAT_ID_NONE:
             emit_payload['current']['displayname'] = __("Practice")
         else:
-            emit_payload['current']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat).display_name
+            heat = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat)
+            if heat:
+                emit_payload['current']['displayname'] = heat.display_name
 
         emit_payload['current']['heat'] = self._racecontext.race.current_heat
         emit_payload['current']['status_msg'] = self._racecontext.race.status_message
