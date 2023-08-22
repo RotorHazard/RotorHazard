@@ -150,21 +150,52 @@ Adds a Flask Blueprint which can be used to provide access to custom pages/URLs.
 Send messages to RotorHazard's frontend.
 
 #### ui.message_speak(message)
-Sends a message which is parsed by the text-to-speech synthesizer.
+Send a message which is parsed by the text-to-speech synthesizer.
 
 - `message` (string): Text of message to be spoken
 
 #### ui.message_notify(message)
-Sends a message which appears in the message center and notification bar.
+Send a message which appears in the message center and notification bar.
 
 - `message` (string): Text of message to display
 
 #### ui.message_alert(message)
-Sends a message which appears as a pop-up alert.
+Send a message which appears as a pop-up alert.
 
 - `message` (string): Text of message to display
 
+### Data Broadcast
 
+Update data displayed on frontend. Use after modifying data structures with other API methods.
+
+#### ui.broadcast_ui(page):
+Broadcast UI panel setup to all connected clients.
+
+- `page` (string): Page to update
+
+#### ui.broadcast_frequencies():
+Broadcast seat frequencies to all connected clients.
+
+#### ui.broadcast_pilots():
+Broadcast pilot data to all connected clients.
+
+#### ui.broadcast_heats():
+Broadcast heat data to all connected clients.
+
+#### ui.broadcast_raceclasses():
+Broadcast race class data to all connected clients.
+
+#### ui.broadcast_raceformats():
+Broadcast race format data to all connected clients.
+
+#### ui.broadcast_current_heat():
+Broadcast current heat selection to all connected clients.
+
+#### ui.broadcast_frequencyset():
+Broadcast frequency set data to all connected clients.
+
+#### ui.broadcast_race_status():
+Broadcast race setup and status to all connected clients.
 
 ## Data Fields
 
@@ -177,7 +208,7 @@ Options are simple storage variables which persist to the database and can be pr
 
 #### fields.options
 _Read only_
-Provides a list of options registered by plugins. Does not include built-in options.
+Provide a list of options registered by plugins. Does not include built-in options.
 
 #### fields.register_option(field, panel=None, order=0)
 Register an option and optioanlly assign it to be desiplayed on a UI panel.

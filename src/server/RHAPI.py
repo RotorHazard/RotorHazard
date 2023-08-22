@@ -66,6 +66,33 @@ class UserInterfaceAPI():
     def message_alert(self, message):
         self._racecontext.rhui.emit_priority_message(message, True)
 
+    def broadcast_ui(self, page):
+        self._racecontext.rhui.emit_ui(page)
+
+    def broadcast_frequencies(self):
+        self._racecontext.rhui.emit_frequency_data()
+
+    def broadcast_pilots(self):
+        self._racecontext.rhui.emit_pilot_data()
+
+    def broadcast_heats(self):
+        self._racecontext.rhui.emit_heat_data()
+
+    def broadcast_raceclasses(self):
+        self._racecontext.rhui.emit_class_data()
+
+    def broadcast_raceformats(self):
+        self._racecontext.rhui.emit_format_data()
+
+    def broadcast_current_heat(self):
+        self._racecontext.rhui.emit_current_heat()
+
+    def broadcast_frequencyset(self):
+        self._racecontext.rhui.emit_node_tuning()
+
+    def broadcast_race_status(self):
+        self._racecontext.rhui.emit_race_status()
+
 
 #
 # Data structures
