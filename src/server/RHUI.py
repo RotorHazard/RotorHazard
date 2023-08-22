@@ -23,6 +23,7 @@ class UIFieldType(Enum):
     BASIC_INT = "basic_int"
     SELECT = "select"
     CHECKBOX = "checkbox"
+    PASSWORD = "password"
 
 @dataclass
 class UIFieldSelectOption():

@@ -53,6 +53,13 @@ var rhui = {
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
+		} else if (settings.field_type == 'password') {
+			var field = $('<input>')
+				.attr('type', 'password')
+				.attr('placeholder', settings.placeholder);
+
+			wrapper.append(labelWrap);
+			wrapper.append(field);
 		} else if (settings.field_type == 'basic_int') {
 			var field = $('<input>')
 				.attr('type', 'number')

@@ -184,6 +184,7 @@ input, select, textarea {
 }
 
 input[type="text"],
+input[type="password"],
 input[type="number"],
 textarea {
 	width: 100%;
@@ -197,6 +198,7 @@ textarea {
 
 @media (prefers-color-scheme: dark) {
 	input[type="text"],
+	input[type="password"],
 	input[type="number"],
 	textarea {
 		border-color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
