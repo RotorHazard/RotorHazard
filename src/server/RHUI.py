@@ -191,7 +191,10 @@ class RHUI():
     def emit_ui(self, page, **params):
         '''Emits UI objects'''
 
-        emit_payload = []
+        emit_payload = {
+            'page': page,
+            'panels': []
+        }
 
         for panel in self.ui_panels:
             if panel.page == page:
@@ -212,7 +215,7 @@ class RHUI():
                         'label': button.label,
                     })
 
-                emit_payload.append({
+                emit_payload['panels'].append({
                     'panel': {
                         'name': panel.name,
                         'label': panel.label,
