@@ -340,18 +340,18 @@ class ServerTest(unittest.TestCase):
 
 # trackside compatibility
 
-    def test_trackside_get_pi_time
+    def test_trackside_get_pi_time(self):
         resp = self.client.emit('get_server_time', callback=True)
         self.assertIn('server_time_s', resp)
         resp['server_time_s']
 
-    def test_trackside_stage_race
+    def test_trackside_stage_race(self):
         resp = self.client.emit('get_server_time', callback=True)
         server_ts = resp['server_time_s']
 
         resp = self.client.emit('ts_race_stage', {'start_time_s': server_ts + 2})
 
-    def test_trackside_stop_race
+    def test_trackside_stop_race(self):
         resp = self.client.emit('ts_race_stop')
 
 # RHAPI
@@ -534,7 +534,7 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(db_heat_match, True)
         result_flag = server.RHAPI.db.heat_delete(new_heat.id)
         self.assertEqual(result_flag, True)
-        self.assertEqual(len(server.RHAPI.db.heats), num_pilots)
+        self.assertEqual(len(server.RHAPI.db.heats), num_heats)
 
     def test_race_api(self):
         server.RHAPI.db.heat_add()
