@@ -1,34 +1,26 @@
 # NuclearHazard Timer
 
-The NuclearHazard by NuclearQuads represents the next generation of RotorHazard timer hardware.
+NuclearHazard is a design system which allows simple access to RotorHazard timer hardware by allowing it to be populated directly by PCB manufacturers.
 
-[Buy timers here!](https://www.etsy.com/listing/1428199972/nuclearhazard-rotorhazard-timer)
+[NuclearHazard timer kits are available for purchase](https://www.etsy.com/listing/1428199972/nuclearhazard-rotorhazard-timer) from the board designer.
 
 ## Features
 
-Instead of a PCB with many additional modules, this board uses the bare components to maintain compatibility while being **fully assembled** by the PCB manufacturer.
+Instead of a PCB the must be populated with many additional modules, this board uses the bare components to maintain compatibility while being fully assembled by the PCB manufacturer.
 
-This uses the same STM32 chip as the BluePill board, but built right into the main board. Updating the STM32 is easily done through the web interface.
-
-The RX modules are soldered to dual-RX carrier boards, which slot in to connectors on the main board for easy upgrades.
-
-Fits all **Model A, B, and Zero** Raspberry Pis.
-
-Power, fan, and LED connectors are all included on the main board.
-
-2-5S power input (21V recommended max). **NOTE: V3 boards incorrectly say 2-6S but 6S can damage the regulator.**
-
-RTC battery is connected to the STM32's RTC battery pin, but **the software does not support this method of RTC yet.**
-
-VBAT is sensed by the STM32 but **the software does not support the Pi monitoring from this yet.**
+- The same STM32 chip as the BluePill board is attached directly to the main NuclearHazard board. Updating the STM32 is easily done through the web interface.
+- RX modules are soldered to dual-RX carrier boards, which slot in to connectors on the main board for easy upgrades.
+- Fits all **Model A, B, and Zero** Raspberry Pis.
+- Power, fan, and LED connectors are included on the main board.
+- 2–5S power input (21V recommended max).
+- Hardware support for STM32-based RTC (see [Future Provisions](#future-provisions))
+- Hardware support for STM32-based VBAT monitoring (see [Future Provisions](#future-provisions))
 
 ## Assembly
 
-Before installing the Pi onto the board, install the board in the case and secure with 2-4 screws. Use 4-6mm M3 screws.
+Before installing the Pi onto the board, install the board in the case and secure with 2–4 screws. Use 4–6mm M3 screws.
 
-When installing the Pi onto the board, line up the 40-pin connector and press both sides evenly.
-
-You could use [11mm standoffs](https://www.adafruit.com/product/2336) between the timer board and the Pi, but they are not needed.
+When installing the Pi onto the board, line up the 40-pin connector and press both sides evenly. You may use [11mm standoffs](https://www.adafruit.com/product/2336) between the timer board and the Pi, but they are not needed.
 
 The RX module cards can carry 1 or 2 RX5808s. The RotorHazard software will sense (on boot) which solts are filled and work with any number of modules in any slots on the board. Just make sure the cards are inserted correctly (with the dots lined up). 
 
@@ -36,7 +28,7 @@ The RX module cards can carry 1 or 2 RX5808s. The RotorHazard software will sens
 
 If the card is inserted the wrong way, the timer will not be able to set the VRX channel and you'll have bad readings. When adding an RX to a card, be careful to not get solder on the gold plated edge connectors.
 
-If you order a timer from me, I will have the latest node code with the buzzer fix uploaded to the STM32 already. Otherwise the STM32 will need to be flashed after installing the Pi and software. To do so, power the board and use the RH web flashing interface. This board uses a slightly different beeper that needs a line of the node code changed to work. The .bin in the node_src folder has this change. There is also a direct connection for a FTDI adapter to the STM32 to program without the Pi.
+The STM32 will need to be flashed after installing the Pi and software. To do so, power the board and use the RH web flashing interface. This board uses a slightly different beeper that needs a line of the node code changed to work. The .bin in the node_src folder has this change. There is also a direct connection for a FTDI adapter to the STM32 to program without the Pi. *If you order a timer from the designer, the latest node code with the buzzer fix will already be uploaded to the STM32.*
 
 ## Extra Info
 
@@ -44,7 +36,7 @@ If you order a timer from me, I will have the latest node code with the buzzer f
 
 If adding many 5V accessories (LEDs, Fans) try to be concious of the power draw. The 5V regulator on this board is rated for 3A and is already running the Pi and the Fan outputs.
 
-The 3.3V rail is used for the STM, VRXs, and various other little things.
+The 3.3V rail is used for the STM, VRXs, and various support components.
 
 ### LED plugs
 
@@ -52,7 +44,7 @@ There are two plugs for connecting LEDs. The one labeled **LED1 is the main one 
 
 <img src="img/led.jpg" alt="drawing" width="500"/>
 
-The LED2 plug is connected to the STM32's PA15 by default. Currently there is no code to support LED output from the STM, but it could be added. If for some reason you need to use a different GPIO output on the Pi for an LED strip, the LED2 plug can be switched to the Pi's GPIO18 (V3 PCB is misprinted with GPIO9) with the solder jumper (read next paragraph). Make sure to change the software configuration to match. Currently using GPIO18 from the Pi with this board doesn't work. Constant beeping and weird software behavior is observed in this configuration. Let us know if you find a solution.
+The LED2 plug is connected to the STM32's PA15 by default. Currently there is no code to support LED output from the STM, but it could be added. If for some reason you need to use a different GPIO output on the Pi for an LED strip, the LED2 plug can be switched to the Pi's GPIO18 with the solder jumper (see next paragraph). Make sure to change the software configuration to match. **However, currently using GPIO18 from the Pi with this board is not functional.**
 
 There are solder jumpers on the PCBs to switch the LED signal pins. For each plug there is a small trace between two of the pads to enable the default connection. If you want to change from the default connection, you'll have to cut the trace between the jumper pads, then add a solder blob from the middle pad to ONE of the outer pins. After making changes to the jumpers but before powering it up, use a multimeter to ensure only one of the outer pads have continuity to the middle pad.
 
@@ -60,49 +52,55 @@ There are solder jumpers on the PCBs to switch the LED signal pins. For each plu
 
 ### Fan connectors
 
-The fan connectors are JST-XH and supply 5V any time the Pi is commanding them on. To bypass the Pi control, solder the jumper and it'll always supply 5V. There are polarity markings next to the connectors. Make sure your fan matches these. The picture on **the amazon listing for the fans I bought showed the wrong polarity**. If needed, repin the fan connector.
+The fan connectors are JST-XH and supply 5V any time the Pi is commanding them on. To bypass the Pi control, solder the jumper and it'll always supply 5V. There are polarity markings next to the connectors. Make sure your fan matches these. **Pictures on amazon listings for fans should not be trusted.** If needed, repin the fan connector.
 
 ### Power connectors
 
-I have no recommendations for power buttons since I just pull the power or use software to shut down, but there is a 2.54mm pitch header with the power button and LED connections marked on the board. Feel free to add recommendations here if desired.
+There is a 2.54mm pitch header with the power switch and LED connections marked on the board where a power switch can be added. Use a toggle-type button or switch.
 
 ### Ground pad for shielding
 
-I'm not experienced with shielding, but if needed, there is a ground pad near the RXs that could be used to connect shielding to the board's reference.
+There is a ground pad near the RXs that can be used to connect shielding to the board's reference/ground.
 
 ## Future Provisions
 
-This board has some hardware features that don't have software support yet, but hopefully will some day. **Don't buy a product based on unimplemented features.**
+This board has some hardware features that don't have software support yet. Support may or may not be developed.
 
 ### ESP32
 
-There is a footprint for a ESP32-WROOM-32UE module. This is currently unused and unpopulated, but it's connected per the schematic. This could be used for ELRS or some other kind of integration in the future but don't count on it.
+There is a footprint for a ESP32-WROOM-32UE module which is connected per the schematic.
 
 ### RTC
 
-There is a battery connector that powers the STM32's RTC. Currently this does nothing. With some software help, this could enable the Pi to boot with the proper time without an internet connection.
+There is a battery connector that powers the STM32's RTC. Software changes could enable the Pi to boot with the proper time without an internet connection.
 
 ### Battery voltage monitoring
 
-There is a voltage divider on the board going from the main power supply to an ADC on the STM32. This would be very nice to have reported to the Pi and displayed on the web interface with an audible alert when it gets below a set threshold.
+There is a voltage divider on the board going from the main power supply to an ADC on the STM32. Software changes could allow this to be reported to the Pi and RotorHazard sensor interface.
 
 ## Case
 
 <img src="img/casemodel.png" alt="drawing" width="500"/>
 
-To download the most up-to-date 3D model, open the [Onshape project](https://cad.onshape.com/documents/c21f8ac03c166bed0d6faeab/w/4bf3b280307091cb20025cb6/e/3b397b4fdfda612f6dfa1d79) right click the NuclearHazard tab at the bottom, choose export, select STL format, check "Export unique parts as individual files", and click Export.
+To download the most up-to-date 3D model:
+1 open the [Onshape project](https://cad.onshape.com/documents/c21f8ac03c166bed0d6faeab/w/4bf3b280307091cb20025cb6/e/3b397b4fdfda612f6dfa1d79) 
+2. right click the NuclearHazard tab at the bottom
+3. choose export
+4. select STL format
+5. check "Export unique parts as individual files"
+6. click Export
 
 <img src="img/downloadstl.png" alt="drawing" width="500"/>
 
-There are two versions of the lid- one for a 40mm fan and one for a 50mm fan.
+There are two versions of the lid: one for a 40mm fan and one for a 50mm fan.
 
 Print the case with support for only the pi/power hole, sd card cutout, and led headers. Make sure there is no other unnecessary support.
 
-## Problems
+## Troubleshooting
 
-Can't flash STM32: Make sure you enabled UART and [changed config.txt](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#3-apply-changes-to-bootconfigtxt)
+**Can't flash STM32**: Make sure UART is enabled and [config.txt](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#3-apply-changes-to-bootconfigtxt) is set up.
 
-RXs won't change channel: There was a batch of RX carrier cards that had the alignment dot on the wrong side of the board. If your RXs aren't changing channels, try inserting the carrier cards backwards. The current gerber and all timers sold from now on have this fixed.
+**RXs won't change channel**: An early batch of RX carrier cards misprinted the alignment dot. Try inserting the carrier cards backwards.
 
 ## Schematic
 
@@ -110,7 +108,7 @@ RXs won't change channel: There was a batch of RX carrier cards that had the ali
 
 ## Ordering the PCB
 
-Only order yourself if you're already familiar with the process or are going to put in effort to learn. To order this design straight from the factory yourself, follow these instructions.
+You may order the design files direct from JLCPCB, though it is an involved and technical process.
 
 1. Sign in to [jlcpcb.com](jlcpcb.com)
 2. Click "Order Now" on the homepage
@@ -134,9 +132,8 @@ Only order yourself if you're already familiar with the process or are going to 
 14. Click NEXT on the component placements tab
 15. Select your favorite product description on the right side
 16. Click SAVE TO CART
-
 17. Go back to the "Order Now" page and upload the NuclearHazardRXConnector_Gerber.zip file
-18. Repeat 4-6
+18. Repeat 4–6
 19. Select "ENIG" for "Surface Finish"
 20. Select "Yes" for "Gold Fingers"
 21. Make sure PCB Assembly is disabled

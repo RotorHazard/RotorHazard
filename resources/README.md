@@ -10,6 +10,8 @@
 
 * [RotorHazard PCB 1.2 (Arduinos)](PCB/README.md)
 
+* [NuclearHazard (Prepopulated S32)](NuclearHazard/README.md)
+
 <br>
 
 ### 3D-Printable Cases
