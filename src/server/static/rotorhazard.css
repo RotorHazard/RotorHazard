@@ -861,6 +861,11 @@ main.page-home {
 	display: none;
 }
 
+#next-round {
+	white-space: nowrap;
+	display: inline-block;
+}
+
 .round {
 	margin-bottom: 1rem;
 }

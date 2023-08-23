@@ -2862,10 +2862,10 @@ class RHData():
         self.commit()
 
     def get_max_round(self, heat_id):
-        return self._Database.DB.session.query(
+        return int(self._Database.DB.session.query(
             self._Database.DB.func.max(
                 self._Database.SavedRaceMeta.round_id
-            )).filter_by(heat_id=heat_id).scalar()
+            )).filter_by(heat_id=heat_id).scalar() or 0)
 
     # Pilot-Races
     def get_savedPilotRace(self, pilotrace_id):
