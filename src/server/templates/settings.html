@@ -131,6 +131,7 @@
 					var panel = msg.panels[i];
 
 					var panel_el = $('<div class="panel collapsing active">');
+					panel_el.attr('id', 'ui-custom-' + panel.panel.name);
 					var panel_header_el = $('<div class="panel-header">');
 					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
 					var panel_content_el = $('<div class="panel-content">');
@@ -159,6 +160,20 @@
 					panel_el.append(panel_content_el);
 
 					$('#custom-ui').append(panel_el);
+				}
+
+				// load panel state
+				for (var panel in rotorhazard.panelstates) {
+					var panel_obj = $('#' + panel);
+					var panelstate = rotorhazard.panelstates[panel];
+
+					if (panelstate) {
+						panel_obj.addClass('open');
+						panel_obj.children('.panel-content').stop().slideDown();
+					} else {
+						panel_obj.removeClass('open');
+						panel_obj.children('.panel-content').stop().slideUp();
+					}
 				}
 			}
 		});
