@@ -438,8 +438,8 @@
 						method: rank_method,
 					}
 
-					if (race_class.ranksettings && race_class.ranksettings[settings.id]) {
-						settings.value = race_class.ranksettings[settings.id];
+					if (race_class.ranksettings && race_class.ranksettings[settings.name]) {
+						settings.value = race_class.ranksettings[settings.name];
 					}
 
 					var field = rhui.buildField(settings);
