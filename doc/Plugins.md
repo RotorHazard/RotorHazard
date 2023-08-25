@@ -143,6 +143,7 @@ The row dicts may additionally contain any other keys the author deems necessary
 
 `meta` is a dict with the following format:
 
+- `method_label` _optional_ (string): User-facing rank title (for Results page)
 - `rank_fields` (list): A list of dicts with the following format:
     - `name` (string): the key of the field in `leaderboard` with data to display
     - `label` (string): user-facing text used as column header in the ranking table

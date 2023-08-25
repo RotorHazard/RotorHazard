@@ -285,36 +285,8 @@
 							class_info.append('<p>' + __('No format restriction') + '</p>');
 						}
 
-						if (race_class.win_condition) {
-							var condition_text = 'Undefined';
-							switch (race_class.win_condition) {
-								case 1:
-									condition_text = 'Laps/Time';
-									break;
-								case 2:
-									condition_text = 'Fastest Lap';
-									break;
-								case 3:
-									condition_text = 'Fastest Consecutive';
-									break;
-								case 4:
-									condition_text = 'Best Round (Laps/Time)';
-									break;
-								case 5:
-									condition_text = 'Best 2 Rounds (Laps/Time)';
-									break;
-								case 6:
-									condition_text = 'Best 3 Rounds (Laps/Time)';
-									break;
-								case 7:
-									condition_text = 'Best 4 Rounds (Laps/Time)';
-									break;
-								case 8:
-									condition_text = 'Best 5 Rounds (Laps/Time)';
-									break;
-							}
-
-							class_info.append('<p><strong>'+ __('Ranking') + ':</strong> '+ condition_text + '</p>');
+						if (race_class.rank_method_label) {
+							class_info.append('<p><strong>'+ __('Ranking') + ':</strong> '+ race_class.rank_method_label + '</p>');
 						}
 
 						if (race_class.rounds) {

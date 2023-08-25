@@ -86,7 +86,11 @@
 								var class_special = $('<div id="class_' + class_id + '_leaderboard" class="panel collapsing class-leaderboard">');
 
 								var class_special_header = $('<div class="panel-header">');
-								class_special_header.append('<h3><button class="no-style">' + __('Class Ranking') + '</button></h3>');
+								var class_header_text = __('Class Ranking');
+								if (current_class.ranking?.meta?.method_label) {
+									class_header_text += '&#8212;' + current_class.ranking.meta.method_label;
+								}
+								class_special_header.append('<h3><button class="no-style">' + class_header_text + '</button></h3>');
 								class_special.append(class_special_header);
 
 								var class_special_content = $('<div class="panel-content" style="display: none">');

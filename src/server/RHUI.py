@@ -689,6 +689,9 @@ class RHUI():
             current_class['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceClass(race_class.id)
             current_classes.append(current_class)
 
+            if current_class['win_condition']:
+                current_class['rank_method_label'] = self._racecontext.raceclass_rank_manager.methods[race_class.win_condition].label
+
         emit_payload = {
             'classes': current_classes,
         }

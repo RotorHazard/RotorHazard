@@ -93,6 +93,7 @@ def rank_best_rounds(rhapi, race_class, args):
             row['position'] = pos
 
         meta = {
+            'method_label': F"Best {rounds} Rounds",
             'rank_fields': [{
                 'name': 'laps',
                 'label': "Laps"
@@ -127,6 +128,7 @@ def rank_best_rounds(rhapi, race_class, args):
             row['position'] = pos
 
         meta = {
+            'method_label': F"Best {rounds} Rounds",
             'rank_fields': [{
                 'name': 'laps',
                 'label': "Laps"

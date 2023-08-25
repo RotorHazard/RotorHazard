@@ -44,7 +44,8 @@ class RaceClassRankManager():
             return False, False
 
         lb, meta = self.methods[method_id].rank(self._rhapi, race_class, args)
-        meta['method_label'] = self.methods[method_id].label
+        if 'method_label' not in meta:
+            meta['method_label'] = self.methods[method_id].label
 
         return lb, meta
 
