@@ -515,7 +515,7 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_savedRaceLaps()
 
     def laps_by_pilotrun(self, run_id):
-        return self._racecontext.get_savedRaceLaps_by_savedPilotRace(run_id)
+        return self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(run_id)
 
     # Options
 
