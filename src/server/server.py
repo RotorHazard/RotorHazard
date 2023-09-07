@@ -1536,6 +1536,8 @@ def on_reset_database(data):
     '''Reset database.'''
     RaceContext.pagecache.set_valid(False)
 
+    on_stop_race()
+    on_discard_laps()
     reset_type = data['reset_type']
     if reset_type == 'races':
         RaceContext.rhdata.clear_race_data()
