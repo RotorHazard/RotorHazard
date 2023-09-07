@@ -2806,58 +2806,63 @@ def on_confirm_heat(data):
         )
         RaceContext.rhdata.resolve_slot_unset_nodes(data['heat_id'])
         RaceContext.rhui.emit_heat_data()
-        finalize_current_heat_set(data['heat_id'])
+
+        if RaceContext.race.race_status == RaceStatus.READY:
+            finalize_current_heat_set(data['heat_id'])
 
 def finalize_current_heat_set(new_heat_id):
-    RaceContext.race.current_heat = new_heat_id
-    RaceContext.rhdata.set_option('currentHeat', RaceContext.race.current_heat)
-
-    if new_heat_id == RHUtils.HEAT_ID_NONE:
-        RaceContext.race.node_pilots = {}
-        RaceContext.race.node_teams = {}
-        logger.info("Switching to practice mode; races will not be saved until a heat is selected")
-
+    if RaceContext.race.race_status == RaceStatus.READY:
+        RaceContext.race.current_heat = new_heat_id
+        RaceContext.rhdata.set_option('currentHeat', RaceContext.race.current_heat)
+    
+        if new_heat_id == RHUtils.HEAT_ID_NONE:
+            RaceContext.race.node_pilots = {}
+            RaceContext.race.node_teams = {}
+            logger.info("Switching to practice mode; races will not be saved until a heat is selected")
+    
+        else:
+            RaceContext.race.node_pilots = {}
+            RaceContext.race.node_teams = {}
+            for idx in range(RaceContext.race.num_nodes):
+                RaceContext.race.node_pilots[idx] = RHUtils.PILOT_ID_NONE
+                RaceContext.race.node_teams[idx] = None
+    
+            for heatNode in RaceContext.rhdata.get_heatNodes_by_heat(new_heat_id):
+                if heatNode.node_index is not None:
+                    RaceContext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
+    
+                    if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
+                        RaceContext.race.node_teams[heatNode.node_index] = RaceContext.rhdata.get_pilot(heatNode.pilot_id).team
+                    else:
+                        RaceContext.race.node_teams[heatNode.node_index] = None
+    
+            heat_data = RaceContext.rhdata.get_heat(new_heat_id)
+    
+            if heat_data.class_id != RHUtils.CLASS_ID_NONE:
+                class_format_id = RaceContext.rhdata.get_raceClass(heat_data.class_id).format_id
+                if class_format_id != RHUtils.FORMAT_ID_NONE:
+                    RaceContext.race.format = RaceContext.rhdata.get_raceFormat(class_format_id)
+                    RaceContext.rhui.emit_current_laps()
+                    logger.info("Forcing race format from class setting: '{0}' ({1})".format(RaceContext.race.format.name, RaceContext.race.format.id))
+    
+            adaptive = bool(RaceContext.rhdata.get_optionInt('calibrationMode'))
+            if adaptive:
+                autoUpdateCalibration()
+    
+        RaceContext.race.updateSeatColors()
+    
+        Events.trigger(Evt.HEAT_SET, {
+            'heat_id': new_heat_id,
+            })
+    
+        RaceContext.race.clear_results() # refresh leaderboard
+    
+        RaceContext.rhui.emit_current_heat() # Race page, to update heat selection button
+        RaceContext.rhui.emit_current_leaderboard() # Race page, to update callsigns in leaderboard
+        RaceContext.rhui.emit_current_laps()  # make sure Current-race page shows correct number of node slots
+        RaceContext.rhui.emit_race_status()
     else:
-        RaceContext.race.node_pilots = {}
-        RaceContext.race.node_teams = {}
-        for idx in range(RaceContext.race.num_nodes):
-            RaceContext.race.node_pilots[idx] = RHUtils.PILOT_ID_NONE
-            RaceContext.race.node_teams[idx] = None
-
-        for heatNode in RaceContext.rhdata.get_heatNodes_by_heat(new_heat_id):
-            if heatNode.node_index is not None:
-                RaceContext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-                if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                    RaceContext.race.node_teams[heatNode.node_index] = RaceContext.rhdata.get_pilot(heatNode.pilot_id).team
-                else:
-                    RaceContext.race.node_teams[heatNode.node_index] = None
-
-        heat_data = RaceContext.rhdata.get_heat(new_heat_id)
-
-        if heat_data.class_id != RHUtils.CLASS_ID_NONE:
-            class_format_id = RaceContext.rhdata.get_raceClass(heat_data.class_id).format_id
-            if class_format_id != RHUtils.FORMAT_ID_NONE:
-                RaceContext.race.format = RaceContext.rhdata.get_raceFormat(class_format_id)
-                RaceContext.rhui.emit_current_laps()
-                logger.info("Forcing race format from class setting: '{0}' ({1})".format(RaceContext.race.format.name, RaceContext.race.format.id))
-
-        adaptive = bool(RaceContext.rhdata.get_optionInt('calibrationMode'))
-        if adaptive:
-            autoUpdateCalibration()
-
-    RaceContext.race.updateSeatColors()
-
-    Events.trigger(Evt.HEAT_SET, {
-        'heat_id': new_heat_id,
-        })
-
-    RaceContext.race.clear_results() # refresh leaderboard
-
-    RaceContext.rhui.emit_current_heat() # Race page, to update heat selection button
-    RaceContext.rhui.emit_current_leaderboard() # Race page, to update callsigns in leaderboard
-    RaceContext.rhui.emit_current_laps()  # make sure Current-race page shows correct number of node slots
-    RaceContext.rhui.emit_race_status()
+        logger.debug('Prevented heat change for active race')
 
 @SOCKET_IO.on('set_current_heat')
 @catchLogExceptionsWrapper
