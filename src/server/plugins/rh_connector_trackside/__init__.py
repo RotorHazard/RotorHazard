@@ -38,12 +38,8 @@ class TracksideConnector():
 
     def frequency_setup(self, arg=None):
         self.enabled = True
-        set_id = self._rhapi.race.frequencyset
-        frequencies = json.loads(self._rhapi.db.frequencyset_by_id(set_id))
-        for seat in arg:
-            frequencies[seat] = arg[seat]
-
-        self._rhapi.db.frequencyset_alter(set_id, frequencies=frequencies)
+        frequency_set = self._rhapi.race.frequencyset
+        self._rhapi.db.frequencyset_alter(frequency_set.id, frequencies=arg)
 
     def race_stage(self, arg=None):
         self.enabled = True

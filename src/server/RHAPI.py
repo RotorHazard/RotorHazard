@@ -479,7 +479,13 @@ class DatabaseAPI():
 
         if data:
             data['profile_id'] = set_id
-            return self._racecontext.rhdata.alter_profile(data)
+            result = self._racecontext.rhdata.alter_profile(data)
+
+            if set_id == self._racecontext.race.profile.id:
+                self._racecontext.race.profile = result 
+                self._racecontext.rhui.emit_frequency_data()
+
+            return result
 
     def frequencyset_delete(self, set_or_id):
         return self._racecontext.rhdata.delete_profile(set_or_id)
