@@ -40,6 +40,7 @@ class UIField():
     placeholder: str = None
     options: List[UIFieldSelectOption] = None
     order: int = 0 # not implemented
+    private: bool = False
 
     def frontend_repr(self):
         return {
@@ -179,6 +180,16 @@ class RHUI():
     # Blueprints
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
+
+    # Socket generics
+    def socket_listen(self, message, handler):
+        self._socket.on_event(message, handler)
+
+    def socket_send(self, message, data):
+        emit(message, data)
+
+    def socket_broadcast(self, message, data):
+        self._socket.emit(message, data)
 
     # General Emits
     def emit_frontend_load(self, **params):
@@ -751,8 +762,9 @@ class RHUI():
         attrs = []
         types = {}
         for attr in self.pilot_attributes:
-            types[attr.name] = attr.field_type
-            attrs.append(attr.frontend_repr())
+            if not attr.private:
+                types[attr.name] = attr.field_type
+                attrs.append(attr.frontend_repr())
 
         for pilot in self._racecontext.rhdata.get_pilots():
             opts_str = '' # create team-options string for each pilot, with current team selected
@@ -778,7 +790,8 @@ class RHUI():
 
             pilot_attributes = self._racecontext.rhdata.get_pilot_attributes(pilot)
             for attr in pilot_attributes:
-                pilot_data[attr.name] = attr.value != '0' if types.get(attr.name) == UIFieldType.CHECKBOX else attr.value
+                if types.get(attr.name):
+                    pilot_data[attr.name] = attr.value != '0' if types.get(attr.name) == UIFieldType.CHECKBOX else attr.value
 
             pilots_list.append(pilot_data)
 

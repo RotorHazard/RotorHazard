@@ -14,7 +14,7 @@ MIN_PYTHON_MINOR_VERSION = 7
 import logging
 import log
 from datetime import datetime
-from monotonic import monotonic
+from time import monotonic
 import RHTimeFns
 
 log.early_stage_setup()
@@ -1981,6 +1981,7 @@ def on_schedule_race(data):
 def cancel_schedule_race():
     RaceContext.race.schedule(None)
 
+# TODO: Remove
 @SOCKET_IO.on('get_pi_time')
 @catchLogExceptionsWrapper
 def on_get_pi_time():
@@ -1989,13 +1990,24 @@ def on_get_pi_time():
         'pi_time_s': monotonic()
     })
 
+@SOCKET_IO.on('get_server_time')
+@catchLogExceptionsWrapper
+def on_get_server_time():
+    return {'server_time_s': monotonic()}
+
 @SOCKET_IO.on('stage_race')
 @catchLogExceptionsWrapper
-def on_stage_race():
+def on_stage_race(data=None):
+    if data and data.get('secondary_format'):
+        RaceContext.race.format = SECONDARY_RACE_FORMAT
+
+    assigned_start = data.get('start_time_s', False) if data else None
+
+    heat_data = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
     race_format = RaceContext.race.format
     if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
         check_create_sec_format_heat()
-    
+
     heat_data = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
 
     if heat_data:
@@ -2049,12 +2061,13 @@ def on_stage_race():
         # common race start events (do early to prevent processing delay when start is called)
         RaceContext.interface.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        if heat_data and heat_data.class_id != RHUtils.CLASS_ID_NONE:
-            class_format_id = RaceContext.rhdata.get_raceClass(heat_data.class_id).format_id
-            if class_format_id != RHUtils.FORMAT_ID_NONE:
-                RaceContext.race.format = RaceContext.rhdata.get_raceFormat(class_format_id)
-                RaceContext.rhui.emit_current_laps()
-                logger.info("Forcing race format from class setting: '{0}' ({1})".format(RaceContext.race.format.name, RaceContext.race.format.id))
+        if race_format is not SECONDARY_RACE_FORMAT: # don't enforce class format if running as secondary timer
+            if heat_data and heat_data.class_id != RHUtils.CLASS_ID_NONE:
+                class_format_id = RaceContext.rhdata.get_raceClass(heat_data.class_id).format_id
+                if class_format_id != RHUtils.FORMAT_ID_NONE:
+                    RaceContext.race.format = RaceContext.rhdata.get_raceFormat(class_format_id)
+                    RaceContext.rhui.emit_current_laps()
+                    logger.info("Forcing race format from class setting: '{0}' ({1})".format(RaceContext.race.format.name, RaceContext.race.format.id))
 
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
@@ -2074,25 +2087,35 @@ def on_stage_race():
         RaceContext.rhui.emit_current_leaderboard() # Race page, blank leaderboard to the web client
         RaceContext.rhui.emit_race_status()
 
-        staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
+        assigned_start_ok_flag = False
+        if assigned_start:
+            RaceContext.race.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
+            if assigned_start > RaceContext.race.stage_time_monotonic:
+                staging_tones = 0
+                hide_stage_timer = True
+                RaceContext.race.start_time_monotonic = assigned_start
+                assigned_start_ok_flag = True
 
-        staging_random_ms = random.randint(0, race_format.start_delay_max_ms)
-        hide_stage_timer = (race_format.start_delay_max_ms > 0)
+        if not assigned_start_ok_flag:
+            staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
 
-        staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
+            staging_random_ms = random.randint(0, race_format.start_delay_max_ms)
+            hide_stage_timer = (race_format.start_delay_max_ms > 0)
 
-        if race_format.staging_delay_tones == StagingTones.TONES_NONE:
-            if staging_total_ms > 0:
-                staging_tones = race_format.staging_fixed_tones
+            staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
+
+            if race_format.staging_delay_tones == StagingTones.TONES_NONE:
+                if staging_total_ms > 0:
+                    staging_tones = race_format.staging_fixed_tones
+                else:
+                    staging_tones = staging_fixed_ms / 1000
             else:
-                staging_tones = staging_fixed_ms / 1000
-        else:
-            staging_tones = staging_total_ms // 1000
-            if staging_random_ms % 1000:
-                staging_tones += 1
+                staging_tones = staging_total_ms // 1000
+                if staging_random_ms % 1000:
+                    staging_tones += 1
 
-        RaceContext.race.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
-        RaceContext.race.start_time_monotonic = RaceContext.race.stage_time_monotonic + (staging_total_ms / 1000 )
+            RaceContext.race.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
+            RaceContext.race.start_time_monotonic = RaceContext.race.stage_time_monotonic + (staging_total_ms / 1000 )
 
         RaceContext.race.start_time_epoch_ms = monotonic_to_epoch_millis(RaceContext.race.start_time_monotonic)
         RaceContext.race.start_token = random.random()
@@ -2261,7 +2284,7 @@ def check_create_sec_format_heat():
                         logger.info('Reusing pilot entry for secondary format: id={}, callsign: {}'.\
                                     format(pilot_obj.id, pilot_obj.callsign))
                     heat_pilots[node_obj.index] = pilot_obj.id
-                heat_obj = RaceContext.rhdata.add_heat(init={'name': 'Secondary-Format Heat'}, 
+                heat_obj = RaceContext.rhdata.add_heat(init={'name': 'Secondary-Format Heat'},
                                                        initPilots=heat_pilots)
                 logger.info('Creating and using new heat for secondary format: Heat {}'.format(heat_obj.id))
                 set_current_heat_data(heat_obj.id)
@@ -3550,6 +3573,8 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
+                            'peak_rssi': node.pass_peak_rssi,
+                            'frequency': node.frequency,
                             'color': RaceContext.race.seat_colors[node.index],
                             'lap': lap_data,
                             'results': RaceContext.race.get_results(),
@@ -4459,6 +4484,7 @@ if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
 # collect server info for About panel, etc
 buildServerInfo()
 reportServerInfo()
+RHAPI.server_info = serverInfoItems
 
 # Do data consistency checks
 if not db_inited_flag:
@@ -4532,8 +4558,8 @@ SECONDARY_RACE_FORMAT = RHRace.RHRaceFormat(name=__("Secondary"),
                          race_time_sec=0,
                          lap_grace_sec=-1,
                          staging_fixed_tones=0,
-                         start_delay_min_ms=1000,
-                         start_delay_max_ms=1000,
+                         start_delay_min_ms=0,
+                         start_delay_max_ms=0,
                          staging_delay_tones=0,
                          number_laps_win=0,
                          win_condition=WinCondition.NONE,

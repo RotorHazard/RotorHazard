@@ -11,6 +11,7 @@ class RHAPI():
     def __init__(self, race_context):
         self.API_VERSION_MAJOR = API_VERSION_MAJOR
         self.API_VERSION_MINOR = API_VERSION_MINOR
+        self.server_info = None
 
         self._racecontext = race_context
 
@@ -66,6 +67,17 @@ class UserInterfaceAPI():
     def message_alert(self, message):
         self._racecontext.rhui.emit_priority_message(message, True)
 
+    # Socket
+    def socket_listen(self, message, handler):
+        self._racecontext.rhui.socket_listen(message, handler)
+
+    def socket_send(self, message, data):
+        self._racecontext.rhui.socket_send(message, data)
+
+    def socket_broadcast(self, message, data):
+        self._racecontext.rhui.socket_broadcast(message, data)
+
+    # Broadcasts
     def broadcast_ui(self, page):
         self._racecontext.rhui.emit_ui(page)
 
@@ -144,6 +156,9 @@ class DatabaseAPI():
 
     def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
         return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
+
+    def pilot_ids_by_attribute(self, name, value):
+        return self._racecontext.rhdata.get_pilot_id_by_attribute(name, value)
 
     def pilot_add(self, name=None, callsign=None, phonetic=None, team=None, color=None):
         #TODO: attribute support
@@ -792,16 +807,17 @@ class RaceAPI():
             return None
 
     def stage(self):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
 
     def stop(self, doSave=False):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
 
     def save(self):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
 
     def clear(self):
-        pass # replaced externally until refactored
+        pass # replaced externally until refactored; TODO: refactor
+
 
 #
 # Language

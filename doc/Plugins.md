@@ -452,6 +452,7 @@ An `RHUI.UIField` object defines a frontend user interface for collecting data. 
 - `desc` _optional_ (string): additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
 - `field_type` (UIFieldType): One of `UIFieldType.TEXT`, `UIFieldType.BASIC_INT`, `UIFieldType.SELECT`, or `UIFieldType.CHECKBOX`
 - `value` _optional_ (any): Default value for field
+- `private` _optional_ (boolean): Prevent automatically generated UI
 
 If `field_type` is `TEXT`
 

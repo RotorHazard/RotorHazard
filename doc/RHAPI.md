@@ -164,6 +164,15 @@ Send a message which appears as a pop-up alert.
 
 - `message` (string): Text of message to display
 
+### Sockets
+
+#### ui.socket_listen(message, handler)
+Calls function when a socket event is received.
+- `message` (string): Socket event name
+- `handler` (callable): Function to call
+
+`handler` is passed socket data as an argument.
+
 ### Data Broadcast
 
 Update data displayed on frontend. Use after modifying data structures with other API methods.
@@ -196,6 +205,8 @@ Broadcast frequency set data to all connected clients.
 
 #### ui.broadcast_race_status():
 Broadcast race setup and status to all connected clients.
+
+
 
 ## Data Fields
 
@@ -286,6 +297,11 @@ The value of a single custom attribute assigned to pilot. Returns `string`.
 - `pilot_or_id` (pilot|int): Either the pilot object or the ID of pilot
 - `name` (string): attribute to retrieve
 - `default_value` _(optional)_: value to return if attribute does not exist
+
+#### db.pilot_ids_by_attribute(name, value)
+ID of pilots with attribute matching the specified attribute/value combination. Returns `list[int]`.
+- `name` (string): attribute to match
+- `value` (string): value to match
 
 #### db.pilot_add(name=None, callsign=None, phonetic=None, team=None, color=None)
 Add a new pilot to the database. Returns the new `Pilot`.
