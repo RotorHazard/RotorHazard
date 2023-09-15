@@ -3,6 +3,7 @@
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 0
 
+import json
 import inspect
 from RHUI import UIField
 from eventmanager import Evt
@@ -482,7 +483,10 @@ class DatabaseAPI():
             result = self._racecontext.rhdata.alter_profile(data)
 
             if set_id == self._racecontext.race.profile.id:
-                self._racecontext.race.profile = result 
+                self._racecontext.race.profile = result
+                for idx, value in enumerate(json.loads(result.frequencies)['f']):
+                    if idx < self._racecontext.race.num_nodes:
+                        self._racecontext.interface.set_frequency(idx, value)
                 self._racecontext.rhui.emit_frequency_data()
 
             return result
