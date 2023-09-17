@@ -292,6 +292,7 @@ class RHUI():
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
+                'next_round': self._racecontext.rhdata.get_max_round(heat_id)
             }
         if ('nobroadcast' in params):
             emit('race_status', emit_payload)

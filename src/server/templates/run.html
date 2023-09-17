@@ -299,6 +299,8 @@
 			rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
 			rotorhazard.timer.race.staging_tones = msg.staging_tones;
 
+			$('#next-round').text(__("Round") + " " + msg.next_round);
+
 			switch (msg.race_status) {
 				case 1: // Race running
 					rotorhazard.race_status_go_time = window.performance.now();
