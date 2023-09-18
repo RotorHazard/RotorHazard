@@ -29,7 +29,7 @@ Additional options may be configured, for example:
 {
 	"GENERAL": {
 		... ,
-		"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 50, "callout": "speed"}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
 		"SECONDARY_TIMEOUT": 10
 	}
 }
@@ -37,13 +37,18 @@ Additional options may be configured, for example:
 * "address": The IP address and port for the secondary timer.
 * "mode": The mode for the timer ("split", "mirror", or "action").
 * "distance": The distance from the previous timer (used to calculate speed).
+* "callout":  Which value to be announced, "time", "speed", "both" or "none".
 * "queryInterval": Number of seconds between heartbeat/query messages (default 10).
 * "recEventsFlag": Set 'true' to propogate timer events from primary (default 'false' for "split" timer, 'true' for "mirror" timer).
 * "SECONDARY_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
-The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'primary' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
+On the secondary timer, no configuration changes are needed. It may be necessary to log in to the web interface on the secondary timer and perform tuning adjustments.
 
-On the secondary timer, no configuration changes are needed.
+To enable the announcement of split times, see the "*Secondary/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a secondary timer connects and disconnects, select the "*Secondary Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
+
+To configure a secondary timer to announce speed values, set the "distance" item to a value representing the distance from the previous split timer (or the primary timer). This value will be divided by the number of seconds elapsed since the pass on the previous timer. To have the speed units be announced in miles per hour, measure the distance in feet, divide it by 1.466 and set that as the "distance" value. For instance, if the timers are separated by 100 feet, set the "distance" value to 68.21 (for callouts in MPH). The type of value that is announced (time vs. speed) may be adjusted using the "callout" item.
+
+The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'primary' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
 
 ### Action Mode
 
@@ -76,8 +81,6 @@ A tone may be configured to be played after each lap pass on the timer:
 For best results, the primary and secondary timers should be running the same version of the RotorHazard server.
 
 Missed/incorrect split times will have no impact on the recording of lap times by the primary timer.
-
-To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/secondary timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
 
 The status of connected secondary timers may be viewed on the *Settings* page in the *Status* section. (This status information is also available on the *Run* page.) The following items are displayed:
  * *Address* - Network address for the secondary timer (click to bring up the web-GUI for the timer)

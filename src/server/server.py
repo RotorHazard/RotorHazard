@@ -1538,6 +1538,7 @@ def on_reset_database(data):
 
     on_stop_race()
     on_discard_laps()
+    RaceContext.rhdata.clear_lapSplits()
     reset_type = data['reset_type']
     if reset_type == 'races':
         RaceContext.rhdata.clear_race_data()
@@ -2007,6 +2008,8 @@ def on_stage_race(data=None):
     race_format = RaceContext.race.format
     if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
         check_create_sec_format_heat()
+    
+    RaceContext.rhdata.clear_lapSplits()  # clear lap-splits from previous race
 
     heat_data = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
 
@@ -2708,7 +2711,6 @@ def clear_laps():
     RaceContext.race.laps_winner_name = None  # clear winner in first-to-X-laps race
     RaceContext.race.winning_lap_id = 0
     reset_current_laps() # Clear out the current laps table
-    RaceContext.rhdata.clear_lapSplits()
     logger.info('Current laps cleared')
 
 def init_node_cross_fields():

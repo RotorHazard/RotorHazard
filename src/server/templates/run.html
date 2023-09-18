@@ -736,7 +736,7 @@
 						if(lap.splits) {
 							if(rotorhazard.display_laps_reversed) {
 								if(!current_laps_reversed && lap.splits.length > 1) {
-									lap.splits.laps.reverse();
+									lap.splits.reverse();
 								}
 								$.each(lap.splits, function(k, split) {
 									if ((!curnode_data.finished_flag) || j > 0 ||
@@ -748,21 +748,19 @@
 										}
 										var split_tr = $('<tr>');
 										split_tr.addClass('lap_split');
-										if (rotorhazard.display_lap_id) {
-											var split_id = 'split ';
-											if (lap.splits.length > 1) {
-												split_id += (k+1);
-											}
-											split_tr.append($('<td>').text(split_id));
+										var split_id = 'split ';
+										if (lap.splits.length > 1) {
+											split_id += (split.split_id+1);
 										}
-										var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+										split_tr.append($('<td>').text(split_id));
+										var split_time_td = $('<td colspan=1">').text(split_display);
 										split_tr.append(split_time_td);
 										split_tr.appendTo('#current_laps_' + i);
 									}
 								});
 							}
 							else if(current_laps_reversed && lap.splits.length > 1) {
-								lap.splits.laps.reverse();
+								lap.splits.reverse();
 							}
 						}
 
@@ -836,14 +834,12 @@
 									}
 									var split_tr = $('<tr>');
 									split_tr.addClass('lap_split');
-									if (rotorhazard.display_lap_id) {
-										var split_id = 'split ';
-										if (lap.splits.length > 1) {
-											split_id += (k+1);
-										}
-										split_tr.append($('<td>').text(split_id));
+									var split_id = 'split ';
+									if (lap.splits.length > 1) {
+										split_id += (split.split_id+1);
 									}
-									var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+									split_tr.append($('<td>').text(split_id));
+									var split_time_td = $('<td colspan=1">').text(split_display);
 									split_tr.append(split_time_td);
 									split_tr.appendTo('#current_laps_' + i);
 								}
@@ -945,16 +941,22 @@
 			var ttstext = '';
 			if (rotorhazard.voice_split_timer) {
 				if ((rotorhazard.voice_split_timer & SPLMSK_PILOT_NAME) && msg.pilot_name) {
-					ttstext = msg.pilot_name
+					ttstext = msg.pilot_name;
 				}
-				ttstext += ' ' + __l('split');
-				var sepstr = ' '
-				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) {
-					ttstext += ' ' + msg.split_id
-					sepstr = ', '
+				var sepstr = ' ';
+				if (((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) ||
+							((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time)) {
+					ttstext += ' ' + __l('split');
+					if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) {
+						ttstext += ' ' + msg.split_id;
+					}
+					if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time) {
+						ttstext += ' ' + __l('time') + ' ' + msg.split_time;
+						sepstr = ', ';
+					}
 				}
-				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time) {
-					ttstext += sepstr + msg.split_time
+				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_speed) {
+					ttstext += sepstr + __l('speed') + ' ' + msg.split_speed;
 				}
 				speak('<div class="speech">' + ttstext + '</div>');
 			}
