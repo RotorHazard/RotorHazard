@@ -248,6 +248,7 @@
 			}
 
 			current_laps = race;
+			current_laps_reversed = false;
 			show_current_laps();
 		});
 
@@ -273,7 +274,7 @@
 								if(lap.splits) {
 									if(rotorhazard.display_laps_reversed) {
 										if(!current_laps_reversed && lap.splits.length > 1) {
-											lap.splits.laps.reverse();
+											lap.splits.reverse();
 										}
 										$.each(lap.splits, function(k, split) {
 											if (j > 0 || (split.split_time && split.split_time != '-') ||
@@ -284,28 +285,26 @@
 												}
 												var split_tr = $('<tr>');
 												split_tr.addClass('lap_split');
-												if (rotorhazard.display_lap_id) {
-													var split_id = 'split ';
-													if (lap.splits.length > 1) {
-														split_id += (k+1);
-													}
-													split_tr.append($('<td>').text(split_id));
+												var split_id = 'split ';
+												if (lap.splits.length > 1) {
+													split_id += (split.split_id+1);
 												}
-												var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+												split_tr.append($('<td>').text(split_id));
+												var split_time_td = $('<td colspan=1">').text(split_display);
 												split_tr.append(split_time_td);
 												split_tr.appendTo('#current_laps_' + i);
 											}
 										});
 									}
 									else if(current_laps_reversed && lap.splits.length > 1) {
-										lap.splits.laps.reverse();
+										lap.splits.reverse();
 									}
 								}
 
-								var $tr = $('<tr>');
+								var tr = $('<tr>');
 								var lap_num = lap.lap_number;
 								if (lap_num == 0) {
-									$tr.addClass('lap_0');
+									tr.addClass('lap_0');
 								}
 
 								var local_colspan = 2;
@@ -314,12 +313,12 @@
 									if(lap_num < 0) {
 										lap_num = ' ';
 									}
-									$tr.append(
+									tr.append(
 										$('<td class="display_lap_number">').text(lap_num)
 									);
 								}
-								$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
-								$local_prepend = $('<span class="from_start">');
+								time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
+								local_prepend = $('<span class="from_start">');
 
 								if(rotorhazard.display_time_first_pass) {
 									if(rotorhazard.display_laps_reversed) {
@@ -333,25 +332,25 @@
 									else {
 										ts_val = lap.lap_time_stamp - curnode_data.laps[0].lap_time_stamp;
 									}
-									$local_prepend.text(formatTimeMillis(ts_val, {{ getOption('timeFormat')|tojson }}));
+									local_prepend.text(formatTimeMillis(ts_val, {{ getOption('timeFormat')|tojson }}));
 									if(rotorhazard.display_time_start){
-										$local_prepend.append(" / ");
+										local_prepend.append(" / ");
 									}
 								}
 
 								if(rotorhazard.display_time_start){
-									$local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
+									local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
 								}
-								$time_td.prepend($local_prepend);
-								$tr.append($time_td);
+								time_td.prepend(local_prepend);
+								tr.append(time_td);
 
 								if (lap.lap_number && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
-									$tr.addClass('min-lap-warning');
+									tr.addClass('min-lap-warning');
 								}
 								if (!rotorhazard.event.race_status.unlimited_time && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
-									$tr.addClass('after-time-expired');
+									tr.addClass('after-time-expired');
 								}
-								$tr.appendTo('#current_laps_' + i);
+								tr.appendTo('#current_laps_' + i);
 
 								if(!rotorhazard.display_laps_reversed) {
 									$.each(lap.splits, function(k, split) {
@@ -363,14 +362,12 @@
 											}
 											var split_tr = $('<tr>');
 											split_tr.addClass('lap_split');
-											if (rotorhazard.display_lap_id) {
-												var split_id = 'split ';
-												if (lap.splits.length > 1) {
-													split_id += (k+1);
-												}
-												split_tr.append($('<td>').text(split_id));
+											var split_id = 'split ';
+											if (lap.splits.length > 1) {
+												split_id += (split.split_id+1);
 											}
-											var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+											split_tr.append($('<td>').text(split_id));
+											var split_time_td = $('<td colspan=1">').text(split_display);
 											split_tr.append(split_time_td);
 											split_tr.appendTo('#current_laps_' + i);
 										}
@@ -480,16 +477,22 @@
 			var ttstext = '';
 			if (rotorhazard.voice_split_timer) {
 				if ((rotorhazard.voice_split_timer & SPLMSK_PILOT_NAME) && msg.pilot_name) {
-					ttstext = msg.pilot_name
+					ttstext = msg.pilot_name;
 				}
-				ttstext += ' ' + __l('split');
-				var sepstr = ' '
-				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) {
-					ttstext += ' ' + msg.split_id
-					sepstr = ', '
+				var sepstr = ' ';
+				if (((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) ||
+							((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time)) {
+					ttstext += ' ' + __l('split');
+					if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) {
+						ttstext += ' ' + msg.split_id;
+					}
+					if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time) {
+						ttstext += ' ' + __l('time') + ' ' + msg.split_time;
+						sepstr = ', ';
+					}
 				}
-				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time) {
-					ttstext += sepstr + msg.split_time
+				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_speed) {
+					ttstext += sepstr + __l('speed') + ' ' + msg.split_speed;
 				}
 				speak('<div class="speech">' + ttstext + '</div>');
 			}

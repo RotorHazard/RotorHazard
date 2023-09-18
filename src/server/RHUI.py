@@ -967,25 +967,33 @@ class RHUI():
         else:
             self._socket.emit('phonetic_text', emit_payload)
 
-    def emit_phonetic_split(self, pilot_id, split_id, split_time, **params):
+    def emit_phonetic_split(self, split_data, **params):
         '''Emits phonetic split-pass data.'''
-        pilot = self._racecontext.rhdata.get_pilot(pilot_id)
-        phonetic_name = pilot.phonetic or pilot.callsign
-        phonetic_time = RHUtils.phonetictime_format(split_time, self._racecontext.rhdata.get_option('timeFormatPhonetic'))
+        pilot = self._racecontext.rhdata.get_pilot(split_data.get('pilot_id', RHUtils.PILOT_ID_NONE))
+        phonetic_name = (pilot.phonetic or pilot.callsign) if pilot else ''
+        split_time = split_data.get('split_time')
+        time_callout_flag = split_data.get('time_callout_flag', True)
+        phonetic_time = RHUtils.phonetictime_format(split_time, self._racecontext.rhdata.get_option('timeFormatPhonetic')) \
+                        if (split_time and time_callout_flag) else None
+        split_speed = split_data.get('split_speed')
+        speed_callout_flag = split_data.get('speed_callout_flag', True)
+        phonetic_speed = "{:.1f}".format(split_speed) if  (split_speed and speed_callout_flag) else None
+        split_id = split_data.get('split_id', -1)
         emit_payload = {
             'pilot_name': phonetic_name,
             'split_id': str(split_id+1),
-            'split_time': phonetic_time
+            'split_time': phonetic_time,
+            'split_speed': phonetic_speed
         }
         if ('nobroadcast' in params):
             emit('phonetic_split_call', emit_payload)
         else:
             self._socket.emit('phonetic_split_call', emit_payload)
 
-    def emit_split_pass_info(self, pilot_id, split_id, split_time):
+    def emit_split_pass_info(self, split_data):
         self._racecontext.race.clear_results()
         self.emit_current_laps()  # update all laps on the race page
-        self.emit_phonetic_split(pilot_id, split_id, split_time)
+        self.emit_phonetic_split(split_data)
 
     def emit_enter_at_level(self, node, **params):
         '''Emits enter-at level for given node.'''

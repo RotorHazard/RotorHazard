@@ -40,6 +40,16 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
 
     return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
 
+def split_time_format(millis, timeformat='{m}:{s}.{d}'):
+    '''Convert milliseconds to 00:00.000 with leading zeros removed'''
+    if millis is None:
+        return ''
+    s = time_format(millis, timeformat)
+    if len(s) > 3 and s.startswith("0:"):
+        p = 3 if s[2] == '0' else 2
+        s = s[p:]
+    return s
+
 def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     '''Convert milliseconds to phonetic'''
     if millis is None:

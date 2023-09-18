@@ -142,13 +142,14 @@ class RHRace():
                         last_lap_id = lap_number = lap['lap_number']
                         if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
                             lap_number += 1
-                        splits = self.get_splits(node_idx, lap['lap_number'], True)
+                        splits = self.get_splits(node_idx, last_lap_id)
                         if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
                             fastest_lap_time = lap['lap_time']
                             fastest_lap_index = idx
                     else:
                         lap_number = -1
-                        splits = []
+                        last_lap_id += 1
+                        splits = self.get_splits(node_idx, last_lap_id)
     
                     node_laps.append({
                         'lap_index': idx,
@@ -159,15 +160,6 @@ class RHRace():
                         'splits': splits,
                         'late_lap': lap.get('late_lap', False)
                     })
-
-            splits = self.get_splits(node_idx, last_lap_id+1, False)
-            if splits:
-                node_laps.append({
-                    'lap_number': last_lap_id+1,
-                    'lap_time': '',
-                    'lap_time_stamp': 0,
-                    'splits': splits
-                })
 
             pilot_data = None
             if node_idx in self.node_pilots:
@@ -190,7 +182,7 @@ class RHRace():
         }
         return current_laps
 
-    def get_splits(self, node_idx, lap_id, lapCompleted):
+    def get_splits(self, node_idx, lap_id):
         splits = []
         if self._racecontext.cluster:
             for secondary_index in range(len(self._racecontext.cluster.secondaries)):
@@ -203,13 +195,11 @@ class RHRace():
                             'split_time': split.split_time_formatted,
                             'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
                         }
-                    elif lapCompleted:
+                    else:
                         split_payload = {
                             'split_id': secondary_index,
                             'split_time': '-'
                         }
-                    else:
-                        break
                     splits.append(split_payload)
         return splits
 
