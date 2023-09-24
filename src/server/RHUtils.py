@@ -364,6 +364,37 @@ def find_best_slot_node_adaptive(available_seats):
 
     return None, None, None
 
+def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
+    fastest_str = ""
+    lap_splits = rhapi.db.lap_splits()
+    if lap_splits and len(lap_splits) > 0:
+        pilot_obj = None
+        if sel_pilot_id:  # if 'sel_pilot_id' given then only use splits from that pilot
+            if rhapi.race.race_winner_lap_id > 0:  # filter out splits after race winner declared
+                lap_splits = [s for s in lap_splits if s.lap_id < rhapi.race.race_winner_lap_id and \
+                                                       s.pilot_id == sel_pilot_id]
+            else:
+                lap_splits = [s for s in lap_splits if s.pilot_id == sel_pilot_id]
+        else:
+            if rhapi.race.race_winner_lap_id > 0:  # filter out splits after race winner declared
+                lap_splits = [s for s in lap_splits if s.lap_id < rhapi.race.race_winner_lap_id]
+        fastest_split = max(lap_splits, key=lambda s: s.split_speed)
+        if fastest_split:
+            if sel_pilot_id:
+                if spoken_flag:
+                    fastest_str = "{:.1f}".format(fastest_split.split_speed)
+                else:
+                    fastest_str = "{}".format(fastest_split.split_speed)
+            else:
+                pilot_obj = rhapi.db.pilot_by_id(fastest_split.pilot_id)
+                if pilot_obj:
+                    if spoken_flag:
+                        fastest_str = "{}, {}".format((pilot_obj.phonetic or pilot_obj.callsign),
+                                                      "{:.1f}".format(fastest_split.split_speed))
+                    else:
+                        fastest_str = "{} {}".format(pilot_obj.callsign, fastest_split.split_speed)
+    return fastest_str
+
 # Text replacer
 def doReplace(rhapi, text, args, spoken_flag=False):
     if '%' in text:
@@ -417,6 +448,10 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                                 result['fastest_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
                                 if spoken_flag else result['fastest_lap'])
 
+                    # %FASTEST_SPEED%
+                    text = text.replace('%FASTEST_SPEED%', getFastestSpeedStr(rhapi, spoken_flag, \
+                                                                              result.get('pilot_id')))
+
                     # %CONSECUTIVE%
                     if result['consecutives_base'] == int(rhapi.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', phonetictime_format( \
@@ -445,8 +480,17 @@ def doReplace(rhapi, text, args, spoken_flag=False):
             text = text.replace('%FASTEST_RACE_LAP%', fastest_str)
             # %FASTEST_RACE_LAP_CALL% : Pilot/time for fastest lap in race (with prompt)
             if len(fastest_str) > 0:
-                fastest_str = "{} {}".format(rhapi.__('Fastest lap'), fastest_str)
+                fastest_str = "{} {}".format(rhapi.__('Fastest lap time'), fastest_str)
             text = text.replace('%FASTEST_RACE_LAP_CALL%', fastest_str)
+
+        if '%FASTEST_RACE_SPEED' in text:
+            fastest_str = getFastestSpeedStr(rhapi, spoken_flag)
+            # %FASTEST_RACE_SPEED% : Pilot/speed for fastest speed in race
+            text = text.replace('%FASTEST_RACE_SPEED%', fastest_str)
+            # %FASTEST_RACE_SPEED_CALL% : Pilot/speed for fastest speed in race (with prompt)
+            if len(fastest_str) > 0:
+                fastest_str = "{} {}".format(rhapi.__('Fastest speed'), fastest_str)
+            text = text.replace('%FASTEST_RACE_SPEED_CALL%', fastest_str)
 
         if '%PILOTS%' in text:
             text = text.replace('%PILOTS%', getPilotsListStr(rhapi, ' . ', spoken_flag))

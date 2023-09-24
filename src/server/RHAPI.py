@@ -542,6 +542,9 @@ class DatabaseAPI():
     def laps_by_pilotrun(self, run_id):
         return self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(run_id)
 
+    def lap_splits(self):
+        return self._racecontext.rhdata.get_lapSplits()
+
     # Options
 
     @property
@@ -806,6 +809,34 @@ class RaceAPI():
     def team_results(self):
         return self._racecontext.race.get_team_results()
 
+    @property
+    def win_status(self):
+        return self._racecontext.race.win_status
+
+    @property
+    def race_winner_name(self):
+        return self._racecontext.race.race_winner_name
+
+    @property
+    def race_winner_phonetic(self):
+        return self._racecontext.race.race_winner_phonetic
+
+    @property
+    def race_winner_lap_id(self):
+        return self._racecontext.race.race_winner_lap_id
+
+    @property
+    def race_winner_pilot_id(self):
+        return self._racecontext.race.race_winner_pilot_id
+
+    @property
+    def race_leader_lap(self):
+        return self._racecontext.race.race_leader_lap
+
+    @property
+    def race_leader_pilot_id(self):
+        return self._racecontext.race.race_leader_pilot_id
+    
     def schedule(self, sec_or_none, minutes=0):
         return self._racecontext.race.schedule(sec_or_none, minutes)
 
