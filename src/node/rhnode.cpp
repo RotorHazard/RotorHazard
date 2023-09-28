@@ -65,6 +65,7 @@ uint8_t i2cAddress = 6 + (NODE_NUMBER * 2);
 #define EEPROM_ADRW_EXITAT 4       //address for stored 'exitAtLevel'
 #define EEPROM_ADRW_EXPIRE 6       //address for stored catch history expire duration
 #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
+#define EEPROM_ADRW_NODEID 10    //address for stored 'node id'
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 #define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
 
@@ -137,7 +138,12 @@ static volatile bool shutdownHasBeenStartedFlag = false;
 static volatile bool rpiSignalMissingFlag = false;
 #endif
 
-#if (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
+#if defined(NODE_EEPROM)
+  const int buttonPin = NODE_EEPROM_INPUT_PIN; // Button connected to pin D2
+  int lastButtonState = LOW; // Last known state of the button
+#endif
+
+#if ((!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))) && (!NODE_EEPROM)
 // Configure the I2C address based on input-pin level.
 void configI2cAddress()
 {
@@ -203,6 +209,10 @@ void setup()
 {
     pinMode(MODULE_LED_PIN, OUTPUT);
 
+#ifdef NODE_EEPROM
+  pinMode(NODE_EEPROM_INPUT_PIN, INPUT_PULLUP);
+#endif
+
 #ifdef AUXLED_OUTPUT_PIN
     pinMode(AUXLED_OUTPUT_PIN, OUTPUT);
     digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
@@ -251,10 +261,14 @@ void setup()
     // init pin that can be pulled low (to GND) to disable serial port
     pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
 
-#if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+#if ((!defined(NODE_NUMBER)) || (!NODE_NUMBER)) && (!defined(NODE_EEPROM))
     configI2cAddress();
 #else
+  #if (NODE_EEPROM)
+    i2cAddress = 8 + (eepromReadWord(EEPROM_ADRW_NODEID) * 2);
+  #else
     delay(100);  // delay a bit a let pin level settle before reading input
+  #endif
 #endif
 
     if (digitalRead(DISABLE_SERIAL_PIN) == HIGH)
@@ -270,19 +284,29 @@ void setup()
     cbi(ADCSRA, ADPS1);
     cbi(ADCSRA, ADPS0);
 
+    // output node id for debug
+    Serial.print("Bootup node id: ");
+    Serial.println(i2cAddress);
+
     // if EEPROM-check value matches then read stored values
     if (eepromReadWord(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
     {
         rssiNodePtr->setVtxFreq(eepromReadWord(EEPROM_ADRW_RXFREQ));
         rssiNodePtr->setEnterAtLevel(eepromReadWord(EEPROM_ADRW_ENTERAT));
         rssiNodePtr->setExitAtLevel(eepromReadWord(EEPROM_ADRW_EXITAT));
+        // rssiNodePtr->setNodeNum(eepromReadWord(EEPROM_ADRW_NODEID));
+        // Serial.print("reading nodeid from memory: ");
+        // Serial.println(eepromReadWord(EEPROM_ADRW_NODEID)+1);
     }
     else
     {    // if no match then initialize EEPROM values
         eepromWriteWord(EEPROM_ADRW_RXFREQ, rssiNodePtr->getVtxFreq());
         eepromWriteWord(EEPROM_ADRW_ENTERAT, rssiNodePtr->getEnterAtLevel());
         eepromWriteWord(EEPROM_ADRW_EXITAT, rssiNodePtr->getExitAtLevel());
+        // eepromWriteWord(EEPROM_ADRW_NODEID, rssiNodePtr->getNodeNum());
         eepromWriteWord(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
+        // Serial.print("No nodeid memory match, starting fresh: ");
+        // Serial.println(eepromReadWord(EEPROM_ADRW_NODEID)+1);
     }
 
     rssiNodePtr->initRxModule();  //init and set RX5808 to default frequency
@@ -443,6 +467,25 @@ void loop()
 #ifdef AUXLED_OUTPUT_PIN  // show fast blink while shutdown button pressed
         if (shutdownButtonPressedFlag && (!shutdownHasBeenStartedFlag) && (!rpiSignalMissingFlag))
             digitalWrite(AUXLED_OUTPUT_PIN, ((int)((curTimeMs/2) % 40) == 0) ? HIGH : LOW);
+#endif
+
+#ifdef NODE_EEPROM
+  // Check for button press
+  int buttonState = digitalRead(NODE_EEPROM_INPUT_PIN);
+  if (buttonState == LOW && lastButtonState == HIGH) { // Button pressed
+    // Read the current EEPROM value
+    int currentValue = eepromReadWord(EEPROM_ADRW_NODEID);
+    currentValue++; // Increment the value
+    if (currentValue > 7) {
+      currentValue = 0; // Loop back to 1
+    }
+    // Write the new value to EEPROM
+    eepromWriteWord(EEPROM_ADRW_NODEID, currentValue);
+    // Output to serial for debugging
+    Serial.print("Setting node id to: ");
+    Serial.println(eepromReadWord(EEPROM_ADRW_NODEID)+1);
+  }
+  lastButtonState = buttonState;
 #endif
 
         loopMillis = curTimeMs;
@@ -645,11 +688,7 @@ void setBuzzerState(bool onFlag)
         {
             currentBuzzerStateFlag = true;
             pinMode(BUZZER_OUTPUT_PIN, OUTPUT);
-#ifdef NUCLEARHAZARD_HARDWARE
-            analogWrite(BUZZER_OUTPUT_PIN, 512);
-#else
             digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_ONSTATE);
-#endif
         }
     }
     else

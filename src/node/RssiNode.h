@@ -151,6 +151,8 @@ public:
     void rssiEndCrossing();
 
     uint8_t getNodeIndex() { return nodeIndex; }
+    uint8_t getNodeNum() { return NODE_NUMBER; }
+    void setNodeNum(uint16_t nodeVal) { return nodeVal; }
     uint8_t getSlotIndex() { return slotIndex; }
     bool getActivatedFlag() { return state.activatedFlag; }
     void setActivatedFlag(bool flgVal) { state.activatedFlag = flgVal; }

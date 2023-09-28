@@ -16,6 +16,7 @@
 // Set to 0 for automatic selection via hardware pin
 // See https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing
 #define NODE_NUMBER 0
+#define NODE_EEPROM 1 // Enable this value to read/write node number to eeprom memory
 
 #endif
 
@@ -80,6 +81,10 @@
 #endif
 
 #define DISABLE_SERIAL_PIN 9  //pull pin low (to GND) to disable serial port
+
+#ifdef NODE_EEPROM
+#define NODE_EEPROM_INPUT_PIN 2
+#else
 #define HARDWARE_SELECT_PIN_1 2
 #define HARDWARE_SELECT_PIN_2 3
 #define HARDWARE_SELECT_PIN_3 4
@@ -88,6 +93,7 @@
 #define LEGACY_HARDWARE_SELECT_PIN_3 6
 #define LEGACY_HARDWARE_SELECT_PIN_4 7
 #define LEGACY_HARDWARE_SELECT_PIN_5 8
+#endif
 
 #define MODULE_LED_ONSTATE HIGH
 #define MODULE_LED_OFFSTATE LOW
