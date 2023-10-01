@@ -48,7 +48,12 @@ class RHRace():
 
         self.team_results = None # current race results
         self.team_cacheStatus = None # whether cache is valid
+
         self.win_status = WinStatus.NONE # whether race is won
+        self.race_winner_name = ''
+        self.race_winner_phonetic = ''
+        self.race_winner_lap_id = 0
+        self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
 
         self.race_leader_lap = 0  # current race leader
         self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
