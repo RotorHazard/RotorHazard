@@ -3,6 +3,6 @@
 //
 //The NODE_NUMBER definition is now in the 'config.h' file.
 //
-//The project may be edited and built using Eclipse and thec:\Users\RaceF\OneDrive\Documents\Arduino\node_id_button\io.h
+//The project may be edited and built using Eclipse and the
 // "Eclipse C++ IDE for Arduino" plugin:
 // https://marketplace.eclipse.org/content/eclipse-c-ide-arduino
