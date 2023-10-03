@@ -90,9 +90,10 @@
 #define NODE_ID_LED_PIN_4 4
 #define NODE_ID_LED_PIN_5 3
 #define NODE_ID_LED_PIN_6 2
-#define NODE_ID_LED_BOOT_PIN A3  // Using A3 as a digital pin
 #define NODE_ID_INPUT_PIN 8
-#define NODE_NUMBER 1 // Set the node number to 1 by default for initial boot
+#define PI_BOOT_LED_PIN A3  // Using A3 as a digital pin
+#define PI_BOOT_READY_PIN A6  // Using A6 as a digital pin
+#define NODE_NUMBER 1 // Set the node number to 1 by default for initial bootstrap process
 #else
 #define HARDWARE_SELECT_PIN_1 2
 #define HARDWARE_SELECT_PIN_2 3

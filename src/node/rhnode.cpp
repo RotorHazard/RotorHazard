@@ -139,8 +139,8 @@ static volatile bool rpiSignalMissingFlag = false;
 #endif
 
 #if defined(SOLOSWARM_MODE_FLAG)
-  const int buttonPin = NODE_ID_INPUT_PIN; // Button connected to pin D8 to change node id number
-  int lastButtonState = LOW; // Last known state of the node id button
+  const int NodeIDButtonPin = NODE_ID_INPUT_PIN; // Button connected to pin D8 to change node id number
+  int lastNodeIDButtonState = LOW; // Last known state of the node id button
   void updateLEDsBasedOnNodeID(int eepromAddress); // Function declaration for Node LED ID setup
 #endif
 
@@ -211,7 +211,8 @@ void setup()
     pinMode(MODULE_LED_PIN, OUTPUT);
 
 #ifdef SOLOSWARM_MODE_FLAG
-  pinMode(NODE_ID_LED_BOOT_PIN, INPUT_PULLUP);
+  // Initialize listener pin and pi boot indicator led
+  pinMode(PI_BOOT_LED_PIN, OUTPUT);
   // Initialize LED pins for node id number display
   pinMode(NODE_ID_LED_PIN_1, OUTPUT);
   pinMode(NODE_ID_LED_PIN_2, OUTPUT);
@@ -219,15 +220,14 @@ void setup()
   pinMode(NODE_ID_LED_PIN_4, OUTPUT);
   pinMode(NODE_ID_LED_PIN_5, OUTPUT);
   pinMode(NODE_ID_LED_PIN_6, OUTPUT);
-  // Turn off all node id LEDs to start
+  // Turn off all LEDs to start
   digitalWrite(NODE_ID_LED_PIN_1, LOW);
   digitalWrite(NODE_ID_LED_PIN_2, LOW);
   digitalWrite(NODE_ID_LED_PIN_3, LOW);
   digitalWrite(NODE_ID_LED_PIN_4, LOW);
   digitalWrite(NODE_ID_LED_PIN_5, LOW);
   digitalWrite(NODE_ID_LED_PIN_6, LOW);
-  pinMode(NODE_ID_LED_BOOT_PIN, OUTPUT);  // A3 configured as OUTPUT
-  digitalWrite(NODE_ID_LED_BOOT_PIN, LOW);
+  digitalWrite(PI_BOOT_LED_PIN, LOW);
 #endif
 
 #ifdef AUXLED_OUTPUT_PIN
@@ -482,24 +482,33 @@ void loop()
 
 #ifdef SOLOSWARM_MODE_FLAG
   // Check for Node ID change button press
-  int buttonState = digitalRead(NODE_ID_INPUT_PIN);
-  if (buttonState == LOW && lastButtonState == HIGH) { // Button pressed
+  int nodeIDButtonState = digitalRead(NODE_ID_INPUT_PIN);
+  if (nodeIDButtonState == LOW && lastNodeIDButtonState == HIGH) { // Button pressed
     // Read the current EEPROM value
-    int currentValue = eepromReadWord(EEPROM_ADRW_NODEID);
-    currentValue++; // Increment the value
-    if (currentValue > 5) {
-      currentValue = 0; // Loop back to 1
+    int currentNodeIDValue = eepromReadWord(EEPROM_ADRW_NODEID);
+    currentNodeIDValue++; // Increment the value
+    if (currentNodeIDValue > 5) {
+      currentNodeIDValue = 0; // Loop back to 1
     }
     // Write the new value to EEPROM
-    eepromWriteWord(EEPROM_ADRW_NODEID, currentValue);
+    eepromWriteWord(EEPROM_ADRW_NODEID, currentNodeIDValue);
     // Output to serial for debugging
     Serial.print("Setting node id to: ");
     Serial.println(eepromReadWord(EEPROM_ADRW_NODEID)+1);
   }
-  lastButtonState = buttonState;
+  lastNodeIDButtonState = nodeIDButtonState;
 
   // Turn on the corresponding LED
   updateLEDsBasedOnNodeID(EEPROM_ADRW_NODEID);
+
+  //Check for pi boot indicator from pi signal pin
+  int piBootSignal = analogRead(PI_BOOT_READY_PIN);
+  if (piBootSignal >= 512) {
+    digitalWrite(PI_BOOT_LED_PIN, HIGH);  // Turn LED on
+  } else {
+    digitalWrite(PI_BOOT_LED_PIN, LOW);  // Turn LED off
+  }
+
 #endif
         loopMillis = curTimeMs;
     }
