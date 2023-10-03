@@ -16,7 +16,8 @@
 // Set to 0 for automatic selection via hardware pin
 // See https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing
 #define NODE_NUMBER 0
-#define NODE_EEPROM 1 // Enable this value to read/write node number to eeprom memory
+
+#define SOLOSWARM_MODE_FLAG 1 // Enable this value to enable soloSwarm feature options
 
 #endif
 
@@ -82,8 +83,15 @@
 
 #define DISABLE_SERIAL_PIN 9  //pull pin low (to GND) to disable serial port
 
-#ifdef NODE_EEPROM
-#define NODE_EEPROM_INPUT_PIN 2
+#ifdef SOLOSWARM_MODE_FLAG
+#define NODE_ID_LED_PIN_1 7
+#define NODE_ID_LED_PIN_2 6
+#define NODE_ID_LED_PIN_3 5
+#define NODE_ID_LED_PIN_4 4
+#define NODE_ID_LED_PIN_5 3
+#define NODE_ID_LED_PIN_6 2
+#define NODE_ID_LED_BOOT_PIN A3  // Using A3 as a digital pin
+#define NODE_ID_INPUT_PIN 8
 #else
 #define HARDWARE_SELECT_PIN_1 2
 #define HARDWARE_SELECT_PIN_2 3

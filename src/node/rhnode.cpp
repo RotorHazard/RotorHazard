@@ -138,12 +138,13 @@ static volatile bool shutdownHasBeenStartedFlag = false;
 static volatile bool rpiSignalMissingFlag = false;
 #endif
 
-#if defined(NODE_EEPROM)
-  const int buttonPin = NODE_EEPROM_INPUT_PIN; // Button connected to pin D2
-  int lastButtonState = LOW; // Last known state of the button
+#if defined(SOLOSWARM_MODE_FLAG)
+  const int buttonPin = NODE_ID_INPUT_PIN; // Button connected to pin D8 to change node id number
+  int lastButtonState = LOW; // Last known state of the node id button
+  void updateLEDsBasedOnNodeID(int eepromAddress); // Function declaration for Node LED ID setup
 #endif
 
-#if ((!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))) && (!NODE_EEPROM)
+#if ((!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))) && (!SOLOSWARM_MODE_FLAG)
 // Configure the I2C address based on input-pin level.
 void configI2cAddress()
 {
@@ -209,8 +210,24 @@ void setup()
 {
     pinMode(MODULE_LED_PIN, OUTPUT);
 
-#ifdef NODE_EEPROM
-  pinMode(NODE_EEPROM_INPUT_PIN, INPUT_PULLUP);
+#ifdef SOLOSWARM_MODE_FLAG
+  pinMode(NODE_ID_LED_BOOT_PIN, INPUT_PULLUP);
+  // Initialize LED pins for node id number display
+  pinMode(NODE_ID_LED_PIN_1, OUTPUT);
+  pinMode(NODE_ID_LED_PIN_2, OUTPUT);
+  pinMode(NODE_ID_LED_PIN_3, OUTPUT);
+  pinMode(NODE_ID_LED_PIN_4, OUTPUT);
+  pinMode(NODE_ID_LED_PIN_5, OUTPUT);
+  pinMode(NODE_ID_LED_PIN_6, OUTPUT);
+  // Turn off all node id LEDs to start
+  digitalWrite(NODE_ID_LED_PIN_1, LOW);
+  digitalWrite(NODE_ID_LED_PIN_2, LOW);
+  digitalWrite(NODE_ID_LED_PIN_3, LOW);
+  digitalWrite(NODE_ID_LED_PIN_4, LOW);
+  digitalWrite(NODE_ID_LED_PIN_5, LOW);
+  digitalWrite(NODE_ID_LED_PIN_6, LOW);
+  pinMode(NODE_ID_LED_BOOT_PIN, OUTPUT);  // A3 configured as OUTPUT
+  digitalWrite(NODE_ID_LED_BOOT_PIN, LOW);
 #endif
 
 #ifdef AUXLED_OUTPUT_PIN
@@ -261,10 +278,10 @@ void setup()
     // init pin that can be pulled low (to GND) to disable serial port
     pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
 
-#if ((!defined(NODE_NUMBER)) || (!NODE_NUMBER)) && (!defined(NODE_EEPROM))
+#if ((!defined(NODE_NUMBER)) || (!NODE_NUMBER)) && (!defined(SOLOSWARM_MODE_FLAG))
     configI2cAddress();
 #else
-  #if (NODE_EEPROM)
+  #if (SOLOSWARM_MODE_FLAG)
     i2cAddress = 8 + (eepromReadWord(EEPROM_ADRW_NODEID) * 2);
   #else
     delay(100);  // delay a bit a let pin level settle before reading input
@@ -294,19 +311,13 @@ void setup()
         rssiNodePtr->setVtxFreq(eepromReadWord(EEPROM_ADRW_RXFREQ));
         rssiNodePtr->setEnterAtLevel(eepromReadWord(EEPROM_ADRW_ENTERAT));
         rssiNodePtr->setExitAtLevel(eepromReadWord(EEPROM_ADRW_EXITAT));
-        // rssiNodePtr->setNodeNum(eepromReadWord(EEPROM_ADRW_NODEID));
-        // Serial.print("reading nodeid from memory: ");
-        // Serial.println(eepromReadWord(EEPROM_ADRW_NODEID)+1);
     }
     else
     {    // if no match then initialize EEPROM values
         eepromWriteWord(EEPROM_ADRW_RXFREQ, rssiNodePtr->getVtxFreq());
         eepromWriteWord(EEPROM_ADRW_ENTERAT, rssiNodePtr->getEnterAtLevel());
         eepromWriteWord(EEPROM_ADRW_EXITAT, rssiNodePtr->getExitAtLevel());
-        // eepromWriteWord(EEPROM_ADRW_NODEID, rssiNodePtr->getNodeNum());
         eepromWriteWord(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
-        // Serial.print("No nodeid memory match, starting fresh: ");
-        // Serial.println(eepromReadWord(EEPROM_ADRW_NODEID)+1);
     }
 
     rssiNodePtr->initRxModule();  //init and set RX5808 to default frequency
@@ -469,14 +480,14 @@ void loop()
             digitalWrite(AUXLED_OUTPUT_PIN, ((int)((curTimeMs/2) % 40) == 0) ? HIGH : LOW);
 #endif
 
-#ifdef NODE_EEPROM
-  // Check for button press
-  int buttonState = digitalRead(NODE_EEPROM_INPUT_PIN);
+#ifdef SOLOSWARM_MODE_FLAG
+  // Check for Node ID change button press
+  int buttonState = digitalRead(NODE_ID_INPUT_PIN);
   if (buttonState == LOW && lastButtonState == HIGH) { // Button pressed
     // Read the current EEPROM value
     int currentValue = eepromReadWord(EEPROM_ADRW_NODEID);
     currentValue++; // Increment the value
-    if (currentValue > 7) {
+    if (currentValue > 5) {
       currentValue = 0; // Loop back to 1
     }
     // Write the new value to EEPROM
@@ -486,8 +497,10 @@ void loop()
     Serial.println(eepromReadWord(EEPROM_ADRW_NODEID)+1);
   }
   lastButtonState = buttonState;
-#endif
 
+  // Turn on the corresponding LED
+  updateLEDsBasedOnNodeID(EEPROM_ADRW_NODEID);
+#endif
         loopMillis = curTimeMs;
     }
 }
@@ -843,6 +856,64 @@ void handleRpiSignalAndShutdownActions(mtime_t curTimeMs)
 #endif  // defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
 }
 #endif  // defined(RPI_SIGNAL_PIN) || defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+
+//handle node id led indicator system for SOLOSWARM
+#ifdef SOLOSWARM_MODE_FLAG
+void updateLEDsBasedOnNodeID(int eepromAddress) {
+  switch (eepromReadWord(eepromAddress) + 1) {
+      case 1:
+        digitalWrite(NODE_ID_LED_PIN_1, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_2, LOW);
+        digitalWrite(NODE_ID_LED_PIN_3, LOW);
+        digitalWrite(NODE_ID_LED_PIN_4, LOW);
+        digitalWrite(NODE_ID_LED_PIN_5, LOW);
+        digitalWrite(NODE_ID_LED_PIN_6, LOW);
+        break;
+      case 2:
+        digitalWrite(NODE_ID_LED_PIN_1, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_2, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_3, LOW);
+        digitalWrite(NODE_ID_LED_PIN_4, LOW);
+        digitalWrite(NODE_ID_LED_PIN_5, LOW);
+        digitalWrite(NODE_ID_LED_PIN_6, LOW);
+        break;
+      case 3:
+        digitalWrite(NODE_ID_LED_PIN_1, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_2, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_3, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_4, LOW);
+        digitalWrite(NODE_ID_LED_PIN_5, LOW);
+        digitalWrite(NODE_ID_LED_PIN_6, LOW);
+        break;
+      case 4:
+        digitalWrite(NODE_ID_LED_PIN_1, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_2, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_3, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_4, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_5, LOW);
+        digitalWrite(NODE_ID_LED_PIN_6, LOW);
+        break;
+      case 5:
+        digitalWrite(NODE_ID_LED_PIN_1, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_2, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_3, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_4, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_5, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_6, LOW);
+        break;
+      case 6:
+        digitalWrite(NODE_ID_LED_PIN_1, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_2, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_3, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_4, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_5, HIGH);
+        digitalWrite(NODE_ID_LED_PIN_6, HIGH);
+        break;
+      default:
+        Serial.println("NODE_ID_LED ERROR: Invalid node id number detected for LED system. EEPROM_ADRW_NODEID must be between 1 and 6.");
+    }
+  }
+#endif
 
 // Handle status message sent from server
 void handleStatusMessage(byte msgTypeVal, byte msgDataVal)
