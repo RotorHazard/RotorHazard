@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.0.0-dev.9" # Public release version code
+RELEASE_VERSION = "4.0.0-dev.10" # Public release version code
 SERVER_API = 41 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -1538,6 +1538,7 @@ def on_reset_database(data):
 
     on_stop_race()
     on_discard_laps()
+    RaceContext.rhdata.clear_lapSplits()
     reset_type = data['reset_type']
     if reset_type == 'races':
         RaceContext.rhdata.clear_race_data()
@@ -2007,6 +2008,8 @@ def on_stage_race(data=None):
     race_format = RaceContext.race.format
     if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
         check_create_sec_format_heat()
+    
+    RaceContext.rhdata.clear_lapSplits()  # clear lap-splits from previous race
 
     heat_data = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
 
@@ -2075,6 +2078,10 @@ def on_stage_race(data=None):
         RaceContext.race.timer_running = False # indicate race timer not running
         RaceContext.race.race_status = RaceStatus.STAGING
         RaceContext.race.win_status = WinStatus.NONE
+        RaceContext.race.race_winner_name = ''
+        RaceContext.race.race_winner_phonetic = ''
+        RaceContext.race.race_winner_lap_id = 0
+        RaceContext.race.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
         RaceContext.race.race_leader_lap = 0  # clear current race leader
         RaceContext.race.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
         RaceContext.race.status_message = ''
@@ -2371,8 +2378,6 @@ def race_start_thread(start_token):
         RaceContext.race.race_status = RaceStatus.RACING # To enable registering passed laps
         RaceContext.interface.set_race_status(RaceStatus.RACING)
         RaceContext.race.timer_running = True # indicate race timer is running
-        RaceContext.race.laps_winner_name = None  # name of winner in first-to-X-laps race
-        RaceContext.race.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
 
         # kick off race expire processing
         race_format = RaceContext.race.format
@@ -2682,6 +2687,10 @@ def on_discard_laps(**kwargs):
     RaceContext.race.race_status = RaceStatus.READY # Flag status as ready to start next race
     RaceContext.interface.set_race_status(RaceStatus.READY)
     RaceContext.race.win_status = WinStatus.NONE
+    RaceContext.race.race_winner_name = ''
+    RaceContext.race.race_winner_phonetic = ''
+    RaceContext.race.race_winner_lap_id = 0
+    RaceContext.race.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
     RaceContext.race.race_leader_lap = 0  # clear current race leader
     RaceContext.race.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
     RaceContext.race.status_message = ''
@@ -2705,10 +2714,7 @@ RHAPI.race.clear = on_discard_laps
 def clear_laps():
     '''Clear the current laps table.'''
     RaceContext.branch_race_obj()
-    RaceContext.race.laps_winner_name = None  # clear winner in first-to-X-laps race
-    RaceContext.race.winning_lap_id = 0
     reset_current_laps() # Clear out the current laps table
-    RaceContext.rhdata.clear_lapSplits()
     logger.info('Current laps cleared')
 
 def init_node_cross_fields():
@@ -3680,6 +3686,10 @@ def check_win_condition(**kwargs):
         if del_lap_flag and RaceContext.race.win_status != previous_win_status and \
                             RaceContext.race.win_status == WinStatus.NONE:
             RaceContext.race.win_status = WinStatus.NONE
+            RaceContext.race.race_winner_name = ''
+            RaceContext.race.race_winner_phonetic = ''
+            RaceContext.race.race_winner_lap_id = 0
+            RaceContext.race.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
             RaceContext.race.status_message = ''
             logger.info("Race status msg:  <None>")
             return win_status_dict
@@ -3689,21 +3699,29 @@ def check_win_condition(**kwargs):
             win_data = win_status_dict['data']
             if race_format.team_racing_mode:
                 win_str = win_data.get('name', '')
-                status_msg_str = __('Winner is') + ' ' + __('Team') + ' ' + win_str
+                team_win_str = __('Team') + ' ' + win_str
+                RaceContext.race.race_winner_name = team_win_str
+                RaceContext.race.race_winner_phonetic = team_win_str
+                status_msg_str = __('Winner is') + ' ' + team_win_str
                 log_msg_str = "Race status msg:  Winner is Team " + win_str
                 phonetic_str = status_msg_str
             else:
                 win_str = win_data.get('callsign', '')
+                RaceContext.race.race_winner_name = win_str
+                RaceContext.race.race_winner_lap_id = win_data.get('laps', 0)
                 status_msg_str = __('Winner is') + ' ' + win_str
                 log_msg_str = "Race status msg:  Winner is " + win_str
-                if 'pilot_id' in win_data and win_data['pilot_id'] is not None:
-                    win_phon_name = RaceContext.rhdata.get_pilot(win_data['pilot_id']).phonetic
+                win_pilot_id = win_data.get('pilot_id')
+                if win_pilot_id:
+                    RaceContext.race.race_winner_pilot_id = win_pilot_id
+                    win_phon_name = RaceContext.rhdata.get_pilot(win_pilot_id).phonetic
                 elif win_data['callsign']:
                     win_phon_name = win_data['callsign']
                 else:
                     win_phon_name = None
                 if (not win_phon_name) or len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_data.get('callsign', '')
+                RaceContext.race.race_winner_phonetic = win_phon_name
                 phonetic_str = __('Winner is') + ' ' + win_phon_name
 
             # if racer lap was deleted then only output if win-status details changed

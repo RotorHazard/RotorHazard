@@ -1812,14 +1812,14 @@
 					SPLMSK_SPLIT_TIME = 0x04
 					-->
 					<div class="label-block">
-						<label for="voice_split_timer">{{ __('Cluster/Split Timer') }}</label>
+						<label for="voice_split_timer">{{ __('Secondary/Split Timer') }}</label>
 					</div>
 					<select id="voice_split_timer">
 						<option value="0">{{ __('None') }}</option>
 						<option value="1">{{ __('Pilot Name') }}</option>
-						<option value="5">{{ __('Pilot Name, Split Time') }}</option>
+						<option value="5">{{ __('Pilot Name, Split Value') }}</option>
 						<option value="3">{{ __('Pilot Name, Split ID') }}</option>
-						<option value="7">{{ __('Pilot Name, Split ID, Split Time') }}</option>
+						<option value="7">{{ __('Pilot Name, Split ID, Split Value') }}</option>
 						<option value="2">{{ __('Split ID') }}</option>
 						<option value="4">{{ __('Split Time') }}</option>
 						<option value="6">{{ __('Split ID, Split Time') }}</option>
@@ -1894,7 +1894,7 @@
 					<li><label><input type="checkbox" id="beep_race_leader_lap"> {{ __('Race Leader Lap') }}</label></li>
 					<li><label><input type="checkbox" id="beep_race_winner_declared"> {{ __('Race Winner Declared') }}</label></li>
 					{% if cluster_has_secondaries %}
-					<li><label><input type="checkbox" id="beep_cluster_connect"> {{ __('Cluster Timer Connect / Disconnect') }}</label></li>
+					<li><label><input type="checkbox" id="beep_cluster_connect"> {{ __('Secondary Timer Connect / Disconnect') }}</label></li>
 					{% endif %}
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>

@@ -26,7 +26,7 @@ Note: Many of the setup commands below require that the Rasperry Pi has internet
 
 Install the Raspberry Pi OS, following the official instructions: https://www.raspberrypi.org/help
 
-The standard-recommended setup is to use a Raspberry Pi 3 board and install the [Raspberry Pi OS](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) (32-bit, Desktop).
+The standard-recommended setup is to use a Raspberry Pi 3 or Pi 4 board and install the [Raspberry Pi OS](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) (Desktop).
 
 Tip: Any time you intend to use a monitor (via HDMI) with the Raspberry Pi, connect it before powering up the Pi. Connecting the monitor after power up tends to not work (blank screen).
 
@@ -351,7 +351,7 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 To install the RotorHazard server on these systems:
 
-1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . To check if Python is installed, open up a command prompt and enter ```python --version```
+1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.7. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
 
 1. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 

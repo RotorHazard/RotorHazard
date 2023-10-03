@@ -3,6 +3,7 @@
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 0
 
+import json
 import inspect
 from RHUI import UIField
 from eventmanager import Evt
@@ -479,7 +480,16 @@ class DatabaseAPI():
 
         if data:
             data['profile_id'] = set_id
-            return self._racecontext.rhdata.alter_profile(data)
+            result = self._racecontext.rhdata.alter_profile(data)
+
+            if set_id == self._racecontext.race.profile.id:
+                self._racecontext.race.profile = result
+                for idx, value in enumerate(json.loads(result.frequencies)['f']):
+                    if idx < self._racecontext.race.num_nodes:
+                        self._racecontext.interface.set_frequency(idx, value)
+                self._racecontext.rhui.emit_frequency_data()
+
+            return result
 
     def frequencyset_delete(self, set_or_id):
         return self._racecontext.rhdata.delete_profile(set_or_id)
@@ -531,6 +541,9 @@ class DatabaseAPI():
 
     def laps_by_pilotrun(self, run_id):
         return self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(run_id)
+
+    def lap_splits(self):
+        return self._racecontext.rhdata.get_lapSplits()
 
     # Options
 
@@ -796,6 +809,34 @@ class RaceAPI():
     def team_results(self):
         return self._racecontext.race.get_team_results()
 
+    @property
+    def win_status(self):
+        return self._racecontext.race.win_status
+
+    @property
+    def race_winner_name(self):
+        return self._racecontext.race.race_winner_name
+
+    @property
+    def race_winner_phonetic(self):
+        return self._racecontext.race.race_winner_phonetic
+
+    @property
+    def race_winner_lap_id(self):
+        return self._racecontext.race.race_winner_lap_id
+
+    @property
+    def race_winner_pilot_id(self):
+        return self._racecontext.race.race_winner_pilot_id
+
+    @property
+    def race_leader_lap(self):
+        return self._racecontext.race.race_leader_lap
+
+    @property
+    def race_leader_pilot_id(self):
+        return self._racecontext.race.race_leader_pilot_id
+    
     def schedule(self, sec_or_none, minutes=0):
         return self._racecontext.race.schedule(sec_or_none, minutes)
 
