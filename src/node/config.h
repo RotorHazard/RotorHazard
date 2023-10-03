@@ -92,6 +92,7 @@
 #define NODE_ID_LED_PIN_6 2
 #define NODE_ID_LED_BOOT_PIN A3  // Using A3 as a digital pin
 #define NODE_ID_INPUT_PIN 8
+#define NODE_NUMBER 1 // Set the node number to 1 by default for initial boot
 #else
 #define HARDWARE_SELECT_PIN_1 2
 #define HARDWARE_SELECT_PIN_2 3

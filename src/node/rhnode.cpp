@@ -144,7 +144,7 @@ static volatile bool rpiSignalMissingFlag = false;
   void updateLEDsBasedOnNodeID(int eepromAddress); // Function declaration for Node LED ID setup
 #endif
 
-#if ((!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))) && (!SOLOSWARM_MODE_FLAG)
+#if (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER))) && (!SOLOSWARM_MODE_FLAG)
 // Configure the I2C address based on input-pin level.
 void configI2cAddress()
 {
@@ -203,7 +203,7 @@ void configI2cAddress()
         i2cAddress = 8 + (i2cAddress * 2);
     }
 }
-#endif  // (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
+#endif  // (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER)) && (!SOLOSWARM_MODE_FLAG)
 
 // Initialize program
 void setup()
@@ -278,10 +278,10 @@ void setup()
     // init pin that can be pulled low (to GND) to disable serial port
     pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
 
-#if ((!defined(NODE_NUMBER)) || (!NODE_NUMBER)) && (!defined(SOLOSWARM_MODE_FLAG))
+#if ((!defined(NODE_NUMBER)) && (!defined(SOLOSWARM_MODE_FLAG)))
     configI2cAddress();
 #else
-  #if (SOLOSWARM_MODE_FLAG)
+  #if (defined(SOLOSWARM_MODE_FLAG))
     i2cAddress = 8 + (eepromReadWord(EEPROM_ADRW_NODEID) * 2);
   #else
     delay(100);  // delay a bit a let pin level settle before reading input
