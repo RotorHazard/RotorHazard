@@ -492,6 +492,15 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                 fastest_str = "{} {}".format(rhapi.__('Fastest speed'), fastest_str)
             text = text.replace('%FASTEST_RACE_SPEED_CALL%', fastest_str)
 
+        if '%WINNER' in text:
+            winner_str = rhapi.race.race_winner_phonetic if spoken_flag else rhapi.race.race_winner_name
+            # %WINNER% : Pilot callsign for winner of race
+            text = text.replace('%WINNER%', winner_str)
+            # %WINNER_CALL% : Pilot callsign for winner of race (with prompt)
+            if len(winner_str) > 0:
+                winner_str = "{} {}".format(rhapi.__('Winner is'), winner_str)
+            text = text.replace('%WINNER_CALL%', winner_str)
+
         if '%PILOTS%' in text:
             text = text.replace('%PILOTS%', getPilotsListStr(rhapi, ' . ', spoken_flag))
         if '%LINEUP%' in text:
