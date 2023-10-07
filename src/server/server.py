@@ -2130,7 +2130,7 @@ def on_stage_race(data=None):
             'staging_tones': staging_tones,
             'pi_starts_at_s': RaceContext.race.start_time_monotonic,
             'color': ColorVal.ORANGE,
-            'heat': RaceContext.race.current_heat,
+            'heat_id': RaceContext.race.current_heat,,
         }
 
         eventPayload['race_node_colors'] = RaceContext.race.seat_colors
@@ -2355,7 +2355,7 @@ def race_start_thread(start_token):
 
         # do time-critical tasks
         Events.trigger(Evt.RACE_START, {
-            'heat': RaceContext.race.current_heat,
+            'heat_id': RaceContext.race.current_heat,,
             'color': ColorVal.GREEN
             })
 
@@ -2397,7 +2397,7 @@ def race_expire_thread(start_token):
             logger.info("Race count-down timer reached expiration")
             RaceContext.race.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH, {
-                'heat': RaceContext.race.current_heat,
+                'heat_id': RaceContext.race.current_heat,,
                 })
             PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
             check_win_condition(at_finish=True, start_token=start_token)
@@ -2459,7 +2459,7 @@ def do_stop_race_actions(doSave=False):
         RaceContext.interface.set_race_status(RaceStatus.DONE)
 
         Events.trigger(Evt.RACE_STOP, {
-            'heat': RaceContext.race.current_heat,
+            'heat_id': RaceContext.race.current_heat,
             'color': ColorVal.RED
         })
         PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished

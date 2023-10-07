@@ -65,7 +65,7 @@ class HeatGeneratorManager():
                 self._events.trigger(Evt.HEAT_GENERATE, {
                     'generator': generator_id,
                     'generate_args': generate_args,
-                    'output_class': result
+                    'output_class_id': result
                     })
             else:
                 logger.warning("Failed generating heats: generator returned no data")
