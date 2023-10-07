@@ -61,8 +61,12 @@ class HeatGeneratorManager():
         if generated_heats:
             result = self.apply(generator_id, generated_heats, generate_args)
 
-            if result:
-                self._events.trigger(Evt.HEAT_GENERATE)
+            if result is not False:
+                self._events.trigger(Evt.HEAT_GENERATE, {
+                    'generator': generator_id,
+                    'generate_args': generate_args,
+                    'output_class': result
+                    })
             else:
                 logger.warning("Failed generating heats: generator returned no data")
             return result
@@ -142,7 +146,7 @@ class HeatGeneratorManager():
         if filled_pool and len(pilot_pool):
             logger.info("{} unseeded pilots remaining in pool".format(len(pilot_pool)))
 
-        return True
+        return output_class
 
 class HeatGenerator():
     def __init__(self, label, generator_fn, default_args=None, settings:List[UIField]=None, name=None):
