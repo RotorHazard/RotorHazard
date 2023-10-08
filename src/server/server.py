@@ -3586,7 +3586,8 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             'color': RaceContext.race.seat_colors[node.index],
                             'lap': lap_data,
                             'results': RaceContext.race.get_results(),
-                            'gap_info': Results.get_gap_info(RaceContext, node.index)
+                            'gap_info': Results.get_gap_info(RaceContext, node.index),
+                            'pilot_done_flag': pilot_done_flag,
                             })
 
                         if pilot_done_flag:
