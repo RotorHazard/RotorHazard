@@ -1747,8 +1747,8 @@
 							field: settings.name,
 						}
 
-						if (raceformat.points_settings && raceformat.points_settings[settings.id]) {
-							settings.value = raceformat.points_settings[settings.id];
+						if (raceformat.points_settings?.points_list) {
+							settings.value = raceformat.points_settings.points_list;
 						} else if (!('value' in settings)) {
 							settings.value = null
 						}
