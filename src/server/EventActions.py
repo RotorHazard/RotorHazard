@@ -60,7 +60,8 @@ class EventActions:
                 self.runEffect(action, args)
 
     def runEffect(self, action, args):
-        self.logger.debug("Calling effect '{}' with {}".format(action, args))
+        self.logger.debug("Calling effect '{}', node {}".format(action, \
+                            ((args.get('node_index', -1) + 1) if isinstance(args, dict) else 0)))
         self.effects[action['effect']].runEffect(action, args)
 
 class ActionEffect():
