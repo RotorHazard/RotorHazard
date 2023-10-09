@@ -4431,6 +4431,7 @@ if len(sys.argv) > 0:
 
 RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
 hasMirrors = False
+secondary = None
 try:
     for sec_idx, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
         if isinstance(secondary_info, string_types):
@@ -4453,7 +4454,8 @@ try:
                 subclass='mirror'
                 )
             break
-        secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, monotonic_to_epoch_millis, RELEASE_VERSION)
+        secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, monotonic_to_epoch_millis,
+                                  RELEASE_VERSION, secondary)
         RaceContext.cluster.addSecondary(secondary)
 except:
     logger.exception("Error adding secondary to cluster")

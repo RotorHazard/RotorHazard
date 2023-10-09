@@ -30,7 +30,7 @@ class SecondaryNode:
     TIMEDIFF_MEDIAN_SIZE = 30
     TIMEDIFF_CORRECTION_THRESH_MS = 250  # correct split times if secondary clock more off than this
 
-    def __init__(self, idVal, info, RaceContext, monotonic_to_epoch_millis, server_release_version):
+    def __init__(self, idVal, info, RaceContext, monotonic_to_epoch_millis, server_release_version, prev_sec_obj=None):
         self.id = idVal
         self.info = info
         self._racecontext = RaceContext
@@ -40,6 +40,13 @@ class SecondaryNode:
         if not '://' in addr:
             addr = 'http://' + addr
         self.address = addr
+        self.queryInterval = info.get('queryInterval', 0)
+        if self.queryInterval <= 0:
+            self.queryInterval = 10
+        self.firstQueryInterval = 3 if self.queryInterval >= 3 else 1
+        self.queryTimeout = info.get('timeout', 300)
+        self.distance = float(info.get('distance', 0.0)) * 1000.0
+        self.nextSecObj = None
         modeStr = str(info.get('mode', SecondaryNode.SPLIT_MODE)).lower()
         if modeStr == SecondaryNode.MIRROR_MODE:
             self.isMirrorMode = True
@@ -60,13 +67,9 @@ class SecondaryNode:
             self.secondaryModeStr = SecondaryNode.SPLIT_MODE
             if modeStr != SecondaryNode.SPLIT_MODE:
                 logger.warning("Invalid 'mode' value in secondary timer config: {}".format(modeStr))
+            if self.distance > 0.0 and prev_sec_obj:  # if this timer is tracking speed then
+                prev_sec_obj.nextSecObj = self      #  give previous timer obj a reference to this one
         self.recEventsFlag = info.get('recEventsFlag', self.isMirrorMode)
-        self.queryInterval = info.get('queryInterval', 0)
-        if self.queryInterval <= 0:
-            self.queryInterval = 10
-        self.firstQueryInterval = 3 if self.queryInterval >= 3 else 1
-        self.queryTimeout = info.get('timeout', 300)
-        self.distance = float(info.get('distance', 0.0)) * 1000.0
         calloutStr = info.get('callout')
         if calloutStr is not None:
             calloutStr = calloutStr.lower()
@@ -110,6 +113,7 @@ class SecondaryNode:
         self.runningFlag = False
         self.parentNodeSet = None
         self.actionPassTimes = {}
+        self.prevSecPassTStamps = {}
         self.sio = socketio.Client(reconnection=False, request_timeout=1)
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
@@ -384,11 +388,18 @@ class SecondaryNode:
                 
                 if pilot_id != RHUtils.PILOT_ID_NONE:
 
+                    pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)
+                    callsign = pilot_obj.callsign if pilot_obj else None
+
                     if not self.isActionMode:
 
                         # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
                         split_ts = data['timestamp'] - self._racecontext.race.start_time_epoch_ms
-        
+
+                        # if secondary-timer clock was detected as not synchronized then apply correction
+                        if self.timeCorrectionMs != 0:
+                            split_ts -= self.timeCorrectionMs
+
                         act_laps_list = self._racecontext.race.get_active_laps(late_lap_flag=True)[node_index]
                         lap_count = max(0, len(act_laps_list) - 1)
                         split_id = self.id
@@ -400,32 +411,32 @@ class SecondaryNode:
         
                             if len(lap_split) <= 0: # first split for this lap
                                 if split_id > 0:
-                                    logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
+                                    logger.debug('Ignoring missing splits before {} for node {}, pilot {}'.\
+                                                 format(split_id+1, node_index+1, callsign))
                                 last_split_ts = last_lap_ts
                             else:
                                 last_split_id = lap_split[-1].split_id
                                 if split_id > last_split_id:
                                     if split_id > last_split_id + 1:
-                                        logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
+                                        logger.debug('Ignoring missing splits between {} and {} for node {}, pilot {}'.\
+                                                     format(last_split_id+1, split_id+1, node_index+1, callsign))
                                     last_split_ts = lap_split[-1].split_time_stamp
                                 else:
-                                    logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
+                                    logger.debug('Ignoring out-of-order split {} for node {}, pilot {}'.\
+                                                 format(split_id+1, node_index+1, callsign))
                                     last_split_ts = None
                         else:
-                            logger.info('Ignoring split {0} before zero lap for node {1}'.format(split_id+1, node_index+1))
+                            logger.debug('Ignoring split {} before zero lap for node {}, pilot {}'.\
+                                         format(split_id+1, node_index+1, callsign))
                             last_split_ts = None
         
                         if last_split_ts is not None:
         
-                            # if secondary-timer clock was detected as not synchronized then apply correction
-                            if self.timeCorrectionMs != 0:
-                                split_ts -= self.timeCorrectionMs
-        
                             split_time = round(split_ts - last_split_ts, 3)
                             split_speed = round(self.distance / float(split_time), 2) if self.distance > 0.0 else None
                             split_time_str = RHUtils.split_time_format(split_time, self._racecontext.rhdata.get_option('timeFormat'))
-                            logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
-                                .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
+                            logger.info('Split pass record: Node {}, pilot {}, lap {}, split {}, time={}, speed={}' \
+                                .format(node_index+1, callsign, lap_count+1, split_id+1, split_time_str, \
                                 ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
         
                             split_data = {
@@ -444,15 +455,48 @@ class SecondaryNode:
                             self._racecontext.rhdata.add_lapSplit(split_data)
                             self._racecontext.rhui.emit_split_pass_info(split_data)
 
+                        # if usual tracking (above) does not generate speed value, see about using saved timestamp from
+                        #  previous split timer (to allow for speed callouts on practice runs between the split timers)
+                        elif self.distance > 0.0 and isinstance(self.prevSecPassTStamps, dict) and len(self.prevSecPassTStamps) > 0:
+                            last_split_ts = self.prevSecPassTStamps.get(node_index)  # timestamp from previous split timer
+                            if last_split_ts and last_split_ts > 0.0:
+                                split_time = round(split_ts - last_split_ts, 3)
+                                split_speed = round(self.distance / float(split_time), 2)
+                                split_time_str = RHUtils.split_time_format(split_time, self._racecontext.rhdata.get_option('timeFormat'))
+                                logger.info('Split pass record (for speed): Node {}, pilot {}, lap {}, split {}, time={}, speed={}' \
+                                    .format(node_index+1, callsign, lap_count+1, split_id+1, split_time_str, \
+                                    ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
+                                split_data = {
+                                    'node_index': node_index,
+                                    'pilot_id': pilot_id,
+                                    'lap_id': lap_count,
+                                    'split_id': split_id,
+                                    'split_time_stamp': split_ts,
+                                    'split_time': split_time,
+                                    'split_time_formatted': split_time_str,
+                                    'split_speed': split_speed,
+                                    'time_callout_flag': self.timeCalloutFlag,
+                                    'speed_callout_flag': self.speedCalloutFlag
+                                }
+                                self._racecontext.rhui.emit_phonetic_split(split_data)
+
+                        if self.nextSecObj:  # if next timer needs it then save timestamp in its object
+                            self.nextSecObj.prevSecPassTStamps[node_index] = split_ts
+
+                        # if there's a timestamp from a previous split timer saved, clear it now
+                        if isinstance(self.prevSecPassTStamps, dict) and \
+                                              len(self.prevSecPassTStamps) > 0 and \
+                                              self.prevSecPassTStamps.get(node_index):
+                            self.prevSecPassTStamps[node_index] = None
+
                     else:  # Action mode
-                        pilot = self._racecontext.rhdata.get_pilot(pilot_id)
                         minRepeatSecs = self.info.get('minRepeatSecs', 10)
                         if now_secs - self.actionPassTimes.get(node_index, 0) >= minRepeatSecs:
                             self.actionPassTimes[node_index] = now_secs
                             eventStr = self.info.get('event', 'runEffect')
                             effectStr = self.info.get('effect', None)
                             logger.info("Secondary 'action' timer pass record: Node {}, pilot_id {}, callsign {}, event='{}', effect={}".\
-                                        format(node_index+1, pilot_id, pilot.callsign, eventStr, effectStr))
+                                        format(node_index+1, pilot_id, callsign, eventStr, effectStr))
                             duration = int(self.info.get('toneDuration', 0))
                             if duration > 0:
                                 frequency = int(self.info.get('toneFrequency', 0))
@@ -462,12 +506,12 @@ class SecondaryNode:
                                     self._racecontext.rhui.emit_play_beep_tone(duration, frequency, volume, toneType)
                             if effectStr and len(effectStr) > 0:
                                 if self.parentNodeSet and self.parentNodeSet.Events:
-                                    self.parentNodeSet.Events.trigger(eventStr, {'pilot_id': pilot.id})
+                                    self.parentNodeSet.Events.trigger(eventStr, {'pilot_id': pilot_id})
                                 else:
                                     logger.warning("Secondary 'action' timer pass record without 'parentNodeSet' configured")
                         else:
                             logger.info("Ignoring secondary 'action' timer pass record too soon after previous (limit={} secs): Node {}, pilot_id {}, callsign {}".\
-                                        format(minRepeatSecs, node_index+1, pilot_id, pilot.callsign))
+                                        format(minRepeatSecs, node_index+1, pilot_id, callsign))
                 
                 else:
                     logger.info('Split pass record dismissed: Node: {0}, no pilot on node'.format(node_index+1))
