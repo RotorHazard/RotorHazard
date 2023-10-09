@@ -1657,12 +1657,12 @@ class RHData():
         else:
             return None
 
-    def alter_heatNodes_fast(self, list):
+    def alter_heatNodes_fast(self, slot_list):
         # Alters heatNodes quickly, in batch
         # !! Unsafe for general use. Intentionally light type checking,    !!
         # !! DOES NOT trigger events, clear results, or update cached data !!
 
-        for slot_data in list:
+        for slot_data in slot_list:
             slot_id = slot_data['slot_id']
             slot = self._Database.HeatNode.query.get(slot_id)
 
