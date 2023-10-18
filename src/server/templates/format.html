@@ -317,7 +317,7 @@
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 						selectbox.append('<option value="">' + __('From Race Format') + '</option>');
 						for (var j in rotorhazard.raceclass_rank_methods) {
-							selectbox.append('<option value="' + rotorhazard.raceclass_rank_methods[j].name +'">' + rotorhazard.raceclass_rank_methods[j].label + '</option>');
+							selectbox.append('<option value="' + rotorhazard.raceclass_rank_methods[j].name +'">' + __(rotorhazard.raceclass_rank_methods[j].label) + '</option>');
 						}
 						/*
 						selectbox.append('<option value="1">Laps/Time</option>');
