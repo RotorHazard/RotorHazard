@@ -76,11 +76,11 @@ class QuickButton():
     fn: callable
     args: dict
 
-# Language placeholder (Overwritten after module init)
-def __(*args):
-    return args
-
 class RHUI():
+    # Language placeholder (Overwritten after module init)
+    def __(self, *args):
+        return args
+
     def __init__(self, APP, SOCKET_IO, RaceContext, Events):
         self._app = APP
         self._socket = SOCKET_IO
@@ -445,7 +445,7 @@ class RHUI():
                 effect_list = {}
                 for effect in effects:
                     effect_list[effect] = {
-                        'name': __(effects[effect].label),
+                        'name': self.__(effects[effect].label),
                         'fields': [field.frontend_repr() for field in effects[effect].fields] if effects[effect].fields else None
                     }
 
@@ -590,7 +590,7 @@ class RHUI():
 
         # current
         if self._racecontext.race.current_heat is RHUtils.HEAT_ID_NONE:
-            emit_payload['current']['displayname'] = __("Practice")
+            emit_payload['current']['displayname'] = self.__("Practice")
         else:
             heat = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat)
             if heat:
@@ -609,7 +609,7 @@ class RHUI():
             emit_payload['last_race'] = {}
 
             if self._racecontext.last_race.current_heat is RHUtils.HEAT_ID_NONE:
-                emit_payload['last_race']['displayname'] = __("Practice")
+                emit_payload['last_race']['displayname'] = self.__("Practice")
             else:
                 if (self._racecontext.last_race):
                     heat = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat)
