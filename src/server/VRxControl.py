@@ -33,6 +33,7 @@ class VRxControlManager():
             self.Events.on(Evt.RACE_FINISH, 'VRx', self.doRaceFinish)
             self.Events.on(Evt.RACE_STOP, 'VRx', self.doRaceStop)
             self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.doRaceLapRecorded, {}, 200, True)
+            self.Events.on(Evt.RACE_PILOT_DONE, 'VRx', self.doRacePilotDone, {}, 200, True)
             self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.doLapsClear)
             self.Events.on(Evt.LAP_DELETE, 'VRx', self.doLapDelete)
             self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.doFrequencySet, {}, 200, True)
@@ -189,6 +190,10 @@ class VRxControlManager():
         for controller in self.controllers.values():
             controller.do_race_lap_recorded(args)
 
+    def doRacePilotDone(self, args):
+        for controller in self.controllers.values():
+            controller.do_race_pilot_done(args)
+
     def doLapsClear(self, args):
         for controller in self.controllers.values():
             controller.do_laps_clear(args)
@@ -323,6 +328,13 @@ class VRxController():
         self.onRaceLapRecorded(args)
 
     def onRaceLapRecorded(self, _args):
+        pass #override this method
+
+    @catchLogExceptionsWrapper
+    def do_race_pilot_done(self, args):
+        self.onRacePilotDone(args)
+
+    def onRacePilotDone(self, _args):
         pass #override this method
 
     @catchLogExceptionsWrapper
