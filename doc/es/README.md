@@ -6,7 +6,7 @@
 * [Blindaje Señal y Posición en Carrera](Shielding%20and%20Course%20Position.md)
 * [Guía de Configuración de Evento](Event%20Setup%20Guide.md)
 
-## System Reference
+## Referencia del Sistema
 * [Instrucciones de Configuración de Hardware](Hardware%20Setup.md)
 * [Instrucciones de Configuración de Software](Software%20Setup.md)
 * [Raspberry Pi Referencia y Notas](Raspberry%20Pi%20Reference.md)
