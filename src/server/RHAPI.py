@@ -5,7 +5,7 @@ API_VERSION_MINOR = 0
 
 import json
 import inspect
-from RHUI import UIField
+from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 
 class RHAPI():
@@ -155,8 +155,12 @@ class DatabaseAPI():
     def pilot_attributes(self, pilot_or_id):
         return self._racecontext.rhdata.get_pilot_attributes(pilot_or_id)
 
-    def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
-        return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
+    def pilot_attribute_value(self, pilot_or_id, name):
+        for field in self._racecontext.rhui.pilot_attributes:
+            if field.name == name:
+                return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, field.name, field.value)
+        else:
+            return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name)
 
     def pilot_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_pilot_id_by_attribute(name, value)
@@ -552,6 +556,14 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_options()
 
     def option(self, name, default=False, as_int=False):
+        for setting in self._racecontext.rhui.general_settings:
+            if setting.name == name:
+                field = setting.field
+                default = field.value
+                if field.field_type == UIFieldType.BASIC_INT:
+                    as_int = True
+                break
+
         if as_int:
             if default is not False:
                 return self._racecontext.rhdata.get_optionInt(name, default)
