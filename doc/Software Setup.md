@@ -126,7 +126,7 @@ The next step is to create a virtual environment, to install the RotorHazard ser
 
 ```bash
 cd ~/RotorHazard/src/server
-python3 -m venv venv
+python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
