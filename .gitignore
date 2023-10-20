@@ -15,6 +15,9 @@ db_bkp
 # Run logs
 logs
 
+# Specific folders
+venv
+
 # User files, except the README
 /src/server/static/user/*
 !/src/server/static/user/README.md
