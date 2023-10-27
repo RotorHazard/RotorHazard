@@ -7,6 +7,7 @@
 	// TODO: UI for class order
 
 	var data_dependencies = [
+		'all_languages',
 		'language',
 		{
 			'type': 'ui',
@@ -316,7 +317,7 @@
 						var selectbox = $('<select class="set_race_class_win_condition" id="class_win_condition_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 						selectbox.append('<option value="">' + __('From Race Format') + '</option>');
 						for (var j in rotorhazard.raceclass_rank_methods) {
-							selectbox.append('<option value="' + rotorhazard.raceclass_rank_methods[j].name +'">' + rotorhazard.raceclass_rank_methods[j].label + '</option>');
+							selectbox.append('<option value="' + rotorhazard.raceclass_rank_methods[j].name +'">' + __(rotorhazard.raceclass_rank_methods[j].label) + '</option>');
 						}
 						/*
 						selectbox.append('<option value="1">Laps/Time</option>');
@@ -2306,7 +2307,7 @@
 <!--Generators-->
 <div id="heat_generator" class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __(' Generators') }}</h2>
+		<h2>{{ __('Generators') }}</h2>
 	</div>
 	<div class="panel-content">
 		<ol class="form">

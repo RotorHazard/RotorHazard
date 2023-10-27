@@ -38,7 +38,7 @@ var rhui = {
 
 		var label = $('<label>')
 			.attr('for', settings.id)
-			.text(settings.label);
+			.text(__(settings.label));
 
 		labelWrap.append(label);
 
