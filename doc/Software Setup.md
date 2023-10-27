@@ -315,13 +315,14 @@ sudo systemctl stop rotorhazard
 To update an existing RotorHazard installation: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
 unzip temp.zip
 mv RotorHazard RotorHazard.old
-mv RotorHazard-1.2.3 RotorHazard
+mv RotorHazard-v1.2.3 RotorHazard
 rm temp.zip
 cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
 cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
+cp RotorHazard.old/src/server/venv RotorHazard/src/server/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
 
