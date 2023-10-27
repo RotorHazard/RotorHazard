@@ -107,12 +107,14 @@ sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
 After the above commands are entered, the system should default to using Python 3. The default version can be switched back and forth via the command: `sudo update-alternatives --config python`
 
 ### 6. Install the RotorHazard Server
+
 Install the RotorHazard server code under '/home/pi/' on the Raspberry Pi as follows:
 
 Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code.
 
 In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands using a terminal window:
-```
+
+```bash
 cd ~
 wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
 unzip temp.zip
@@ -120,10 +122,13 @@ mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip
 ```
 
-Enter the commands below to install RotorHazard server dependencies (be patient, this may take a few minutes):
-```
+The next step is to create a virtual environment, to install the RotorHazard server dependencies (be patient, this may take a few minutes):
+
+```bash
 cd ~/RotorHazard/src/server
-sudo pip install -r requirements.txt
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### 7. Setup Config File
@@ -171,7 +176,7 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 ### WS2812b LED Support
 
-Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)' (which is among the libraries installed via the `sudo pip install -r requirements.txt` command.
+Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is among the libraries installed via the `pip install -r requirements.txt` command.
 
 The **LED_COUNT** value must be set in the `src/server/config.json` file; other LED configuration options will attempt to use reasonable defaults. **LED_ROWS** must be set for multiline displays. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings. The following items may be set:
 ```
@@ -227,22 +232,26 @@ sudo apt install openjdk-8-jdk-headless
 The following instructions will start the web server on the raspberry pi, allowing full control and configuration of the system to run races and save lap times.
 
 ### Manual Start
+
 Open a terminal window and enter the following:
-```
+```bash
 cd ~/RotorHazard/src/server
+source venv/bin/activate
 python server.py
 ```
 The server may be stopped by hitting Ctrl-C
 
 ### Start on Boot
+
 To configure the system to automatically start the RotorHazard server when booting up:
 
 Create a service file:
-```
+```bash
 sudo nano /lib/systemd/system/rotorhazard.service
 ```
+
 with the following contents
-```
+```bash
 [Unit]
 Description=RotorHazard Server
 After=multi-user.target
@@ -250,12 +259,13 @@ After=multi-user.target
 [Service]
 User=pi
 WorkingDirectory=/home/pi/RotorHazard/src/server
-ExecStart=/usr/bin/python server.py
+ExecStart=/home/pi/RotorHazard/src/server/venv/bin/python server.py
 
 [Install]
 WantedBy=multi-user.target
 ```
-*Note: if username was changed during Pi OS setup, be sure to change `pi` in `User` and `WorkingDirectory` to match your username.
+
+*Note: if username was changed during Pi OS setup, be sure to change `pi` in `User`, `WorkingDirectory` and `ExecStart` to match your username.
 
 Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, remove `User=pi` from this config.
 
