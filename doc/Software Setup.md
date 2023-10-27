@@ -322,7 +322,7 @@ mv RotorHazard-v1.2.3 RotorHazard
 rm temp.zip
 cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
 cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
-cp RotorHazard.old/src/server/venv RotorHazard/src/server/
+cp -r RotorHazard.old/src/server/venv RotorHazard/src/server/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
 
