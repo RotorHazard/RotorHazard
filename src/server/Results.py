@@ -964,7 +964,7 @@ class LapInfo():
         seat = None
         position = None
         callsign = None
-        split_time = None
+        diff_time = None
         lap_number = None
         last_lap_time = None
         total_time = None
@@ -1116,7 +1116,7 @@ def get_gap_info(RaceContext, seat_index):
         pass_info.next_rank.seat = int(next_rank_split_result['node'])
         pass_info.next_rank.position = None
         pass_info.next_rank.callsign = str(next_rank_split_result['callsign'])
-        pass_info.next_rank.split_time = int(round(next_rank_split, 0 ))
+        pass_info.next_rank.diff_time = int(round(next_rank_split, 0 ))
         pass_info.next_rank.lap_number = next_rank_split_result['laps']
         pass_info.next_rank.last_lap_time = None
         pass_info.next_rank.total_time = int(round(next_rank_split_result['total_time_raw'], 0))
@@ -1135,7 +1135,7 @@ def get_gap_info(RaceContext, seat_index):
         pass_info.first_rank.seat = int(first_rank_split_result['node'])
         pass_info.first_rank.position = None
         pass_info.first_rank.callsign = str(first_rank_split_result['callsign'])
-        pass_info.first_rank.split_time = int(round(first_rank_split, 0))
+        pass_info.first_rank.diff_time = int(round(first_rank_split, 0))
         pass_info.first_rank.lap_number = first_rank_split_result['laps']
         pass_info.first_rank.last_lap_time = None
         pass_info.first_rank.total_time = int(round(first_rank_split_result['total_time_raw'], 0))
