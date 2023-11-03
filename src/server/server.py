@@ -45,7 +45,6 @@ import subprocess
 import importlib
 # import copy
 from functools import wraps
-from six import string_types
 
 from flask import Flask, send_file, request, Response, session, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
@@ -860,7 +859,7 @@ def on_set_frequency(data):
     '''Set node frequency.'''
     if RaceContext.cluster:
         RaceContext.cluster.emitToSplits('set_frequency', data)
-    if isinstance(data, string_types): # LiveTime compatibility
+    if isinstance(data, str): # LiveTime compatibility
         data = json.loads(data)
     node_index = data['node']
     frequency = int(data['frequency'])
@@ -4294,7 +4293,7 @@ def check_requirements():
     try:
         import importlib.metadata  # @UnusedImport pylint: disable=redefined-outer-name
         chk_list = [['Flask==','flask'], ['Flask-SocketIO==','flask_socketio'], \
-                    ['Flask_SocketIO==','flask_socketio'], ['six==','six'], \
+                    ['Flask_SocketIO==','flask_socketio'], \
                     ['flask_sqlalchemy==','flask_sqlalchemy'], ['gevent==','gevent'], \
                     ['gevent-websocket==','gevent-websocket'], ['monotonic==','monotonic'], \
                     ['requests==','requests']]
@@ -4442,7 +4441,7 @@ hasMirrors = False
 secondary = None
 try:
     for sec_idx, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
-        if isinstance(secondary_info, string_types):
+        if isinstance(secondary_info, str):
             secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
         if 'address' not in secondary_info:
             raise RuntimeError("Secondary 'address' item not specified")
