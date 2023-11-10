@@ -736,6 +736,7 @@ function timerModel() {
 	this.drift_correction = 0;
 
 	this.warn_until = 0; // display sync warning
+	this.rendered = null;
 
 	var self = this;
 
@@ -914,6 +915,15 @@ function timerModel() {
 	}
 
 	this.renderHTML = function() {
+		html = this.getHTML();
+		if (html !== this.rendered) {
+			this.rendered = html;
+			return html;
+		}
+		return false
+	}
+
+	this.getHTML = function() {
 		if (this.local_zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
 			return '--:--';
 		}
@@ -1276,21 +1286,30 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 		}
 	}
 
-	$('.time-display').html(timer.renderHTML());
+	rendered = timer.renderHTML();
+	if (rendered) {
+		$('.time-display').text(rendered);
+	}
 }
 rotorhazard.timer.deferred.callbacks.stop = function(timer){
-	$('.time-display').html(timer.renderHTML());
+	rendered = timer.renderHTML();
+	if (rendered) {
+		$('.time-display').text(rendered);
+	}
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	rotorhazard.timer.deferred.stop();
-	$('.time-display').html(__('Wait'));
+	$('.time-display').text(__('Wait'));
 }
 
 // race/staging timer callbacks
 rotorhazard.timer.race.phased_staging = true;
 
 rotorhazard.timer.race.callbacks.start = function(timer){
-	$('.time-display').html(timer.renderHTML());
+	rendered = timer.renderHTML();
+	if (rendered) {
+		$('.time-display').text(rendered);
+	}
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
 }
 
@@ -1358,7 +1377,10 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 			}
 		}
 	}
-	$('.time-display').html(timer.renderHTML());
+	rendered = timer.renderHTML();
+	if (rendered) {
+		$('.time-display').text(rendered);
+	}
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
@@ -1368,7 +1390,10 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 	else {
 		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	}
-	$('.time-display').html(timer.renderHTML());
+	rendered = timer.renderHTML();
+	if (rendered) {
+		$('.time-display').text(rendered);
+	}
 }
 rotorhazard.timer.race.callbacks.self_resync = function(timer){
 	// display resync warning
