@@ -95,7 +95,7 @@ Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
 sudo apt install python3-dev libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
 ```
-The minimum version of Python supported is 3.7 Check the current default version of Python by entering the following command:
+The minimum version of Python supported is 3.8 Check the current default version of Python by entering the following command:
 ```
 python --version
 ```
@@ -326,7 +326,7 @@ cp -r RotorHazard.old/src/server/venv RotorHazard/src/server/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
 
-For RotorHazard the minimum version of Python supported is 3.7. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
+For RotorHazard the minimum version of Python supported is 3.8. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
 
 The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
 ```
@@ -362,7 +362,7 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 To install the RotorHazard server on these systems:
 
-1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.7. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
+1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.8. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
 
 1. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 
