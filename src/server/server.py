@@ -4,8 +4,8 @@ SERVER_API = 41 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
-MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.7)
-MIN_PYTHON_MINOR_VERSION = 7
+MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.8)
+MIN_PYTHON_MINOR_VERSION = 8
 
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else

@@ -1,5 +1,4 @@
 # RHTimeFns:  Helpers for datetime and timezone functions.
-#             Supports python 2 and python 3
 
 from datetime import datetime
 
