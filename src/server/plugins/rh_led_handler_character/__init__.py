@@ -156,8 +156,8 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'rhapi' in args:
-        result = args['rhapi'].race.results
+    if 'RHAPI' in args:
+        result = args['RHAPI'].race.results
     else:
         return False
 
