@@ -17,6 +17,7 @@ const WINNER_FLAG_CHAR = 'W';
 
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
+var checkSpeakQueueCntr = 0;
 
 /* global functions */
 function supportsLocalStorage() {
@@ -471,9 +472,10 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 			fadetime = 0;
 	
 		oscillator.start();
-		setTimeout(function(fade){
-			gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
-		}, duration, fadetime);
+		setTimeout(function(gNode, fade){
+			gNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
+		}, duration, gainNode, fadetime);
+
 		/*
 		setTimeout(function(){
 			oscillator.stop();

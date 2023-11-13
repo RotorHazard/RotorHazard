@@ -217,13 +217,16 @@
 						var obj = speakObjsQueue.shift();
 						if (speakObjsQueue.length > 0)    //if more items in queue then
 							checkSpeakQueueFlag = false;  //don't check again until speaking begins
+							checkSpeakQueueCntr = 10;     //set timeout counter to make sure the wait is not indefinite
 						if (!doSpeak(obj)) {                  //if speaking not triggered then
 							checkSpeakQueueFlag = true;       //don't wait for it
 						}
 					}
-				}  //make sure previous speak has started before checking queue again
-				else if (isSpeakingFlag)
+				}  //make sure previous speak has started before checking queue again (up to timeout)
+				else if (isSpeakingFlag || --checkSpeakQueueCntr <= 0) {
 					checkSpeakQueueFlag = true;
+					checkSpeakQueueCntr = 0;
+				}
 			}
 		});
 
@@ -494,7 +497,9 @@
 				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_speed) {
 					ttstext += sepstr + __l('speed') + ' ' + msg.split_speed;
 				}
-				speak('<div class="speech">' + ttstext + '</div>');
+				if (ttstext.length > 0) {
+					speak('<div class="speech">' + ttstext + '</div>');
+				}
 			}
 		})
 
