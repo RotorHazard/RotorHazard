@@ -85,12 +85,12 @@ class RHRace():
     @catchLogExceptionsWrapper
     def stage(self, data=None):
         if data and data.get('secondary_format'):
-            self.format = SECONDARY_RACE_FORMAT
+            self.format = self._racecontext.serverstate.secondary_race_format
 
         assigned_start = data.get('start_time_s', False) if data else None
 
         race_format = self.format
-        if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
+        if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
             check_create_sec_format_heat()
 
         self._racecontext.rhdata.clear_lapSplits()  # clear lap-splits from previous race
@@ -135,7 +135,7 @@ class RHRace():
             self._racecontext.cluster.emitToSplits('stage_race')
     
         if self.race_status != RaceStatus.READY:
-            if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
+            if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
                 if self.race_status == RaceStatus.RACING:
                     return  # if race in progress then leave it be
                 # if missed stop/discard message then clear current race
@@ -148,7 +148,7 @@ class RHRace():
             # common race start events (do early to prevent processing delay when start is called)
             self._racecontext.interface.enable_calibration_mode() # Nodes reset triggers on next pass
     
-            if race_format is not SECONDARY_RACE_FORMAT: # don't enforce class format if running as secondary timer
+            if race_format is not self._racecontext.serverstate.secondary_race_format: # don't enforce class format if running as secondary timer
                 if heat_data and heat_data.class_id != RHUtils.CLASS_ID_NONE:
                     class_format_id = self._racecontext.rhdata.get_raceClass(heat_data.class_id).format_id
                     if class_format_id != RHUtils.FORMAT_ID_NONE:
@@ -208,7 +208,7 @@ class RHRace():
                 self.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
                 self.start_time_monotonic = self.stage_time_monotonic + (staging_total_ms / 1000 )
     
-            self.start_time_epoch_ms = monotonic_to_epoch_millis(self.start_time_monotonic)
+            self.start_time_epoch_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.start_time_monotonic)
             self.start_token = random.random()
             gevent.spawn(self.race_start_thread, self.start_token)
     
@@ -237,7 +237,7 @@ class RHRace():
         # clear any lingering crossings at staging (if node rssi < enterAt)
         for node in self._racecontext.interface.nodes:
             if node.crossing_flag and node.frequency > 0 and \
-                (self.format is SECONDARY_RACE_FORMAT or
+                (self.format is self._racecontext.serverstate.secondary_race_format or
                 (node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.current_rssi < node.enter_at_level)):
                 logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
@@ -253,7 +253,7 @@ class RHRace():
                         format(lower_amount, self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')))
             lower_end_time = self.start_time_monotonic + self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')
             for node in self._racecontext.interface.nodes:
-                if node.frequency > 0 and (self.format is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
+                if node.frequency > 0 and (self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                     if node.current_rssi < node.enter_at_level:
                         diff_val = int((node.enter_at_level-node.exit_at_level)*lower_amount/100)
                         if diff_val > 0:
@@ -304,7 +304,7 @@ class RHRace():
                 node.under_min_lap_count = 0
                 # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
                 if node.crossing_flag and node.frequency > 0 and (
-                    self.format is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
+                    self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                     logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
                                format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                     self._racecontext.interface.force_end_crossing(node.index)
@@ -378,7 +378,7 @@ class RHRace():
             self.end_time = monotonic() # Update the race end time stamp
             delta_time = self.end_time - self.start_time_monotonic
     
-            logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.0f}s'.format(self.end_time, monotonic_to_epoch_millis(self.end_time), delta_time))
+            logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.0f}s'.format(self.end_time, self._racecontext.serverstate.monotonic_to_epoch_millis(self.end_time), delta_time))
     
             min_laps_list = []  # show nodes with laps under minimum (if any)
             for node in self._racecontext.interface.nodes:
@@ -420,7 +420,7 @@ class RHRace():
             for node in self._racecontext.interface.nodes:
                 # if node EnterAt/ExitAt values need to be restored then do it soon
                 if node.frequency > 0 and (
-                    self.format is SECONDARY_RACE_FORMAT or (
+                    self.format is self._racecontext.serverstate.secondary_race_format or (
                         node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
                         node.start_thresh_lower_flag)):
                     node.start_thresh_lower_time = self.end_time + 0.1
@@ -549,7 +549,7 @@ class RHRace():
     
                 # reject passes before race start and with disabled (no-pilot) nodes
                 race_format = self.format
-                if (pilot_id is not None and pilot_id != RHUtils.PILOT_ID_NONE) or race_format is SECONDARY_RACE_FORMAT or self.current_heat is RHUtils.HEAT_ID_NONE:
+                if (pilot_id is not None and pilot_id != RHUtils.PILOT_ID_NONE) or race_format is self._racecontext.serverstate.secondary_race_format or self.current_heat is RHUtils.HEAT_ID_NONE:
                     if lap_timestamp_absolute >= self.start_time_monotonic:
     
                         # if node EnterAt/ExitAt values need to be restored then do it soon
@@ -573,7 +573,7 @@ class RHRace():
                             lap_time = lap_time_stamp
                             node.first_cross_flag = True  # indicate first crossing completed
     
-                        if race_format is SECONDARY_RACE_FORMAT:
+                        if race_format is self._racecontext.serverstate.secondary_race_format:
                             min_lap = 0  # don't enforce min-lap time if running as secondary timer
                             min_lap_behavior = 0
                         else:

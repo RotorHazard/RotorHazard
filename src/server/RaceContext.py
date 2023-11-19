@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 class RaceContext():
     '''Class to hold race management variables.'''
     def __init__(self):
+        self.serverstate = ServerState()
         self.interface = None
         self.sensors = None
         self.cluster = None
@@ -63,3 +64,14 @@ class RaceContext():
         self.last_race.team_results = self.race.team_results
         self.last_race.team_cacheStatus = self.race.team_cacheStatus
         self.last_race.win_status = self.race.win_status
+
+class ServerState:
+    # epoch time of server launch
+    program_start_epoch_time = None
+    # monotonic time of server launch
+    program_start_mtonic = None
+    # offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
+    mtonic_to_epoch_millis_offset = None
+
+    # race format used in secondary mode (must be initialized after database)
+    secondary_race_format = None

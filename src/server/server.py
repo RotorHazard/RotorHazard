@@ -28,9 +28,6 @@ PROGRAM_START_EPOCH_TIME = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).tot
 # program-start time (in milliseconds, starting at zero)
 PROGRAM_START_MTONIC = monotonic()
 
-# offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
-MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
-
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
 # Normal importing resumes here
@@ -97,6 +94,10 @@ from HeatGenerator import HeatGeneratorManager
 # Create shared context
 RaceContext = RaceContext.RaceContext()
 RHAPI = RHAPI.RHAPI(RaceContext)
+
+RaceContext.serverstate.program_start_epoch_time = PROGRAM_START_EPOCH_TIME
+RaceContext.serverstate.program_start_mtonic = PROGRAM_START_MTONIC
+RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - 1000.0*RaceContext.serverstate.mtonic_to_epoch_millis_offset
 
 Events = EventManager(RHAPI)
 RaceContext.events = Events
@@ -179,7 +180,6 @@ server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 
-SECONDARY_RACE_FORMAT = None
 RaceContext.rhdata = RHData.RHData(Database, Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
@@ -202,10 +202,6 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
     if subclass:
         item['subclass'] = subclass
     ui_server_messages[mainclass] = item
-
-# convert 'monotonic' time to epoch milliseconds since 1970-01-01
-def monotonic_to_epoch_millis(secs):
-    return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
@@ -630,7 +626,7 @@ def disconnect_handler():
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
 def on_join_cluster():
-    RaceContext.race.format = SECONDARY_RACE_FORMAT
+    RaceContext.race.format = RaceContext.serverstate.secondary_race_format
     RaceContext.rhui.emit_current_laps()
     RaceContext.rhui.emit_race_status()
     logger.info("Joined cluster")
@@ -659,7 +655,7 @@ def on_join_cluster_ex(data=None):
                                                    "autoBkp_", "DB_AUTOBKP_NUM_KEEP")
         except:
             logger.exception("Error making db-autoBkp / clearing races on split timer")
-        RaceContext.race.format = SECONDARY_RACE_FORMAT
+        RaceContext.race.format = RaceContext.serverstate.secondary_race_format
         RaceContext.rhui.emit_current_laps()
         RaceContext.rhui.emit_race_status()
     Events.trigger(Evt.CLUSTER_JOIN, {
@@ -672,7 +668,7 @@ def on_join_cluster_ex(data=None):
 def on_check_secondary_query(_data):
     ''' Check-query received from primary; return response. '''
     payload = {
-        'timestamp': monotonic_to_epoch_millis(monotonic())
+        'timestamp': RaceContext.serverstate.monotonic_to_epoch_millis(monotonic())
     }
     SOCKET_IO.emit('check_secondary_response', payload)
 
@@ -2711,7 +2707,6 @@ heartbeat_thread_function.last_error_rep_time = monotonic()
 def clock_check_thread_function():
     ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
         (This can happen if NTP synchronization occurs after server starts up.) '''
-    global PROGRAM_START_EPOCH_TIME
     global MTONIC_TO_EPOCH_MILLIS_OFFSET
     global serverInfoItems
     try:
@@ -2721,15 +2716,15 @@ def clock_check_thread_function():
                 break
             time_now = monotonic()
             epoch_now = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
-            diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
+            diff_ms = epoch_now - RaceContext.serverstate.monotonic_to_epoch_millis(time_now)
             if abs(diff_ms) > 30000:
-                PROGRAM_START_EPOCH_TIME += diff_ms
+                RaceContext.serverstate.program_start_epoch_time += diff_ms
                 MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
-                logger.info("Adjusting PROGRAM_START_EPOCH_TIME for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
-                            format(diff_ms/1000, PROGRAM_START_EPOCH_TIME))
+                logger.info("Adjusting RaceContext.serverstate.program_start_epoch_time for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
+                            format(diff_ms/1000, RaceContext.serverstate.program_start_epoch_time))
                 # update values that will be reported if running as cluster timer
-                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(RaceContext.serverstate.program_start_epoch_time)
+                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(RaceContext.serverstate.program_start_epoch_time/1000.0))
                 if RaceContext.cluster.has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
                     RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, serverInfoItems)
@@ -2758,7 +2753,7 @@ def ms_to_race_start():
 
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
-    delta_time = monotonic() - PROGRAM_START_MTONIC
+    delta_time = monotonic() - RaceContext.serverstate.program_start_mtonic
     milli_sec = delta_time * 1000.0
     return milli_sec
 
@@ -2790,7 +2785,7 @@ def node_crossing_callback(node):
 
     if RaceContext.race.race_status == RaceStatus.RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
-        if RaceContext.race.format is SECONDARY_RACE_FORMAT or (
+        if RaceContext.race.format is RaceContext.serverstate.secondary_race_format or (
             node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.first_cross_flag):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
@@ -3227,8 +3222,8 @@ def buildServerInfo():
         # create version of 'serverInfo' without 'about_html' entry
         serverInfoItems = serverInfo.copy()
         serverInfoItems.pop('about_html', None)
-        serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+        serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(RaceContext.serverstate.program_start_epoch_time)
+        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(RaceContext.serverstate.program_start_epoch_time/1000.0))
 
         return serverInfo
 
@@ -3304,7 +3299,7 @@ def check_requirements():
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
+logger.debug('Program started at {0:.0f}'.format(RaceContext.serverstate.program_start_epoch_time))
 RHUtils.idAndLogSystemInfo()
 
 check_requirements()
@@ -3446,7 +3441,7 @@ try:
                 subclass='mirror'
                 )
             break
-        secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, monotonic_to_epoch_millis,
+        secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, RaceContext.serverstate.monotonic_to_epoch_millis,
                                   RELEASE_VERSION, secondary)
         RaceContext.cluster.addSecondary(secondary)
 except:
@@ -3565,7 +3560,7 @@ except Exception:
     sys.exit(1)
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
-SECONDARY_RACE_FORMAT = RHRace.RHRaceFormat(name=__("Secondary"),
+RaceContext.serverstate.secondary_race_format = RHRace.RHRaceFormat(name=__("Secondary"),
                          unlimited_time=1,
                          race_time_sec=0,
                          lap_grace_sec=-1,
