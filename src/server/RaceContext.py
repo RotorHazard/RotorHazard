@@ -75,3 +75,8 @@ class ServerState:
 
     # race format used in secondary mode (must be initialized after database)
     secondary_race_format = None
+
+    # convert 'monotonic' time to epoch milliseconds since 1970-01-01
+    def monotonic_to_epoch_millis(self, secs):
+        return 1000.0*secs + self.mtonic_to_epoch_millis_offset
+

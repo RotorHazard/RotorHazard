@@ -1138,7 +1138,7 @@ def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RaceContext.rhdata.alter_heat(data)
     if RaceContext.race.current_heat == heat.id:  # if current heat was altered then update heat data
-        set_current_heat_data(heat.id, silent=True)
+        RaceContext.race.set_heat(heat.id, silent=True)
     RaceContext.rhui.emit_heat_data(noself=True)
     if ('name' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
@@ -1155,7 +1155,7 @@ def on_delete_heat(data):
         if RaceContext.last_race and RaceContext.last_race.current_heat == heat_id:
             RaceContext.last_race = None  # if last-race heat deleted then clear last race
         if RaceContext.race.current_heat == heat_id:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
-            set_current_heat_data(RHUtils.HEAT_ID_NONE)
+            RaceContext.race.set_heat(RHUtils.HEAT_ID_NONE)
         RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('add_race_class')
@@ -1526,7 +1526,7 @@ def on_reset_database(data):
         RaceContext.race.reset_current_laps()
         RaceContext.rhdata.reset_raceFormats()
         RaceContext.race.format = RaceContext.rhdata.get_first_raceFormat()
-    finalize_current_heat_set(RaceContext.rhdata.get_initial_heat_id())
+    RaceContext.race.set_heat(RaceContext.rhdata.get_initial_heat_id(), force=True)
     RaceContext.rhui.emit_heat_data()
     RaceContext.rhui.emit_pilot_data()
     RaceContext.rhui.emit_format_data()
@@ -1944,150 +1944,6 @@ def cancel_schedule_race():
 def on_stage_race(*args):
     RaceContext.race.stage(*args)
 
-def autoUpdateCalibration():
-    ''' Apply best tuning values to nodes '''
-    if RaceContext.race.current_heat == RHUtils.HEAT_ID_NONE:
-        logger.debug('Skipping auto calibration; server in practice mode')
-        return None
-
-    for node_index, node in enumerate(RaceContext.interface.nodes):
-        calibration = findBestValues(node, node_index)
-
-        if node.enter_at_level is not calibration['enter_at_level']:
-            on_set_enter_at_level({
-                'node': node_index,
-                'enter_at_level': calibration['enter_at_level']
-            })
-
-        if node.exit_at_level is not calibration['exit_at_level']:
-            on_set_exit_at_level({
-                'node': node_index,
-                'exit_at_level': calibration['exit_at_level']
-            })
-
-    logger.info('Updated calibration with best discovered values')
-    RaceContext.rhui.emit_enter_and_exit_at_levels()
-
-def findBestValues(node, node_index):
-    ''' Search race history for best tuning values '''
-
-    # get commonly used values
-    heat = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-    pilot = RaceContext.rhdata.get_pilot_from_heatNode(RaceContext.race.current_heat, node_index)
-    current_class = heat.class_id
-    races = RaceContext.rhdata.get_savedRaceMetas()
-    races.sort(key=lambda x: x.id, reverse=True)
-    pilotRaces = RaceContext.rhdata.get_savedPilotRaces()
-    pilotRaces.sort(key=lambda x: x.id, reverse=True)
-
-    # test for disabled node
-    if pilot is RHUtils.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
-        logger.debug('Node {0} calibration: skipping disabled node'.format(node.index+1))
-        return {
-            'enter_at_level': node.enter_at_level,
-            'exit_at_level': node.exit_at_level
-        }
-
-    # test for same heat, same node
-    for race in races:
-        if race.heat_id == heat.id:
-            for pilotRace in pilotRaces:
-                if pilotRace.race_id == race.id and \
-                    pilotRace.node_index == node_index and \
-                    pilotRace.frequency == node.frequency:
-                    logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
-                    return {
-                        'enter_at_level': pilotRace.enter_at,
-                        'exit_at_level': pilotRace.exit_at
-                    }
-            break
-
-    # test for same class, same pilot, same node
-    for race in races:
-        if race.class_id == current_class:
-            for pilotRace in pilotRaces:
-                if pilotRace.race_id == race.id and \
-                    pilotRace.node_index == node_index and \
-                    pilotRace.pilot_id == pilot and \
-                    pilotRace.frequency == node.frequency:
-                    logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
-                    return {
-                        'enter_at_level': pilotRace.enter_at,
-                        'exit_at_level': pilotRace.exit_at
-                    }
-            break
-
-    # test for same pilot, same node
-    for pilotRace in pilotRaces:
-        if pilotRace.node_index == node_index and \
-            pilotRace.pilot_id == pilot and \
-            pilotRace.frequency == node.frequency:
-            logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
-            return {
-                'enter_at_level': pilotRace.enter_at,
-                'exit_at_level': pilotRace.exit_at
-            }
-
-    # test for same node
-    for pilotRace in pilotRaces:
-        if pilotRace.node_index == node_index and \
-            pilotRace.frequency == node.frequency:
-            logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
-            return {
-                'enter_at_level': pilotRace.enter_at,
-                'exit_at_level': pilotRace.exit_at
-            }
-
-    # fallback
-    logger.debug('Node {0} calibration: no calibration hints found, no change'.format(node.index+1))
-    return {
-        'enter_at_level': node.enter_at_level,
-        'exit_at_level': node.exit_at_level
-    }
-
-# For secondary/split timer, check that current heat has all needed node slots filled with pilots
-#  and create a new 'Secondary-Format Heat' and pilot entries if needed
-def check_create_sec_format_heat():
-    try:
-        use_current_heat_flag = False
-        # check if current heat can be used
-        if RaceContext.race.current_heat != RHUtils.HEAT_ID_NONE:
-            heat_obj = RaceContext.rhdata.get_heat(RaceContext.race.current_heat)
-            if heat_obj and RaceContext.rhdata.check_all_heat_nodes_filled(heat_obj.id):
-                use_current_heat_flag = True
-                logger.debug('Using current heat for secondary format: Heat {}'.format(heat_obj.id))
-        if not use_current_heat_flag:
-            # check if any of the existing heats can be used
-            heats = RaceContext.rhdata.get_heats()
-            for heat_obj in heats:
-                if RaceContext.rhdata.check_all_heat_nodes_filled(heat_obj.id):
-                    logger.info('Setting current heat for secondary format to Heat {}'.format(heat_obj.id))
-                    set_current_heat_data(heat_obj.id)
-                    use_current_heat_flag = True
-                    break
-            if not use_current_heat_flag:
-                # create new heat to use
-                heat_pilots = {}
-                # check if existing pilot entries have the default names and use them if no; else create new ones
-                for node_obj in RaceContext.interface.nodes:
-                    callsign = __('~Callsign %d') % (node_obj.index + 1)
-                    pilot_obj = RaceContext.rhdata.get_pilot_for_callsign(callsign)
-                    if pilot_obj is None:
-                        pilot_name = __('~Pilot %d Name') % (node_obj.index + 1)
-                        pilot_obj = RaceContext.rhdata.add_pilot({'callsign': callsign, 'name': pilot_name})
-                        logger.info('Created new pilot entry for secondary format: id={}, callsign: {}'.\
-                                    format(pilot_obj.id, pilot_obj.callsign))
-                    else:
-                        logger.info('Reusing pilot entry for secondary format: id={}, callsign: {}'.\
-                                    format(pilot_obj.id, pilot_obj.callsign))
-                    heat_pilots[node_obj.index] = pilot_obj.id
-                heat_obj = RaceContext.rhdata.add_heat(init={'name': 'Secondary-Format Heat'},
-                                                       initPilots=heat_pilots)
-                logger.info('Creating and using new heat for secondary format: Heat {}'.format(heat_obj.id))
-                set_current_heat_data(heat_obj.id)
-    except:
-        logger.exception("Error checking/creating heat for secondary format")
-
 @SOCKET_IO.on('stop_race')
 def on_stop_race(*args):
     RaceContext.race.stop(*args)
@@ -2154,7 +2010,7 @@ def on_resave_laps(data):
 
     # run adaptive calibration
     if RaceContext.rhdata.get_optionInt('calibrationMode'):
-        autoUpdateCalibration()
+        RaceContext.race.auto_calibrate()
 
     # spawn thread for updating results caches
     params = {
@@ -2227,14 +2083,6 @@ def calc_heat(heat_id, silent=False):
     else:
         return 'no-heat'
 
-def set_current_heat_data(new_heat_id, silent=False):
-    result = calc_heat(new_heat_id, silent)
-
-    if result == 'safe':
-        finalize_current_heat_set(new_heat_id)
-    elif result == 'no-heat':
-        finalize_current_heat_set(RHUtils.HEAT_ID_NONE)
-
 def emit_heat_plan_result(new_heat_id, calc_result):
     heat = RaceContext.rhdata.get_heat(new_heat_id)
     heatNodes = []
@@ -2287,71 +2135,13 @@ def on_confirm_heat(data):
         RaceContext.rhui.emit_heat_data()
 
         if RaceContext.race.race_status == RaceStatus.READY:
-            finalize_current_heat_set(data['heat_id'])
-
-def finalize_current_heat_set(new_heat_id):
-    if RaceContext.race.race_status == RaceStatus.READY:
-        RaceContext.race.current_heat = new_heat_id
-        RaceContext.rhdata.set_option('currentHeat', RaceContext.race.current_heat)
-    
-        if new_heat_id == RHUtils.HEAT_ID_NONE:
-            RaceContext.race.node_pilots = {}
-            RaceContext.race.node_teams = {}
-            logger.info("Switching to practice mode; races will not be saved until a heat is selected")
-    
-        else:
-            RaceContext.race.node_pilots = {}
-            RaceContext.race.node_teams = {}
-            for idx in range(RaceContext.race.num_nodes):
-                RaceContext.race.node_pilots[idx] = RHUtils.PILOT_ID_NONE
-                RaceContext.race.node_teams[idx] = None
-    
-            for heatNode in RaceContext.rhdata.get_heatNodes_by_heat(new_heat_id):
-                if heatNode.node_index is not None:
-                    RaceContext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
-    
-                    if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                        RaceContext.race.node_teams[heatNode.node_index] = RaceContext.rhdata.get_pilot(heatNode.pilot_id).team
-                    else:
-                        RaceContext.race.node_teams[heatNode.node_index] = None
-    
-            heat_data = RaceContext.rhdata.get_heat(new_heat_id)
-    
-            if heat_data.class_id != RHUtils.CLASS_ID_NONE:
-                class_format_id = RaceContext.rhdata.get_raceClass(heat_data.class_id).format_id
-                if class_format_id != RHUtils.FORMAT_ID_NONE:
-                    RaceContext.race.format = RaceContext.rhdata.get_raceFormat(class_format_id)
-                    RaceContext.rhui.emit_current_laps()
-                    logger.info("Forcing race format from class setting: '{0}' ({1})".format(RaceContext.race.format.name, RaceContext.race.format.id))
-    
-            adaptive = bool(RaceContext.rhdata.get_optionInt('calibrationMode'))
-            if adaptive:
-                autoUpdateCalibration()
-    
-        RaceContext.race.updateSeatColors()
-    
-        Events.trigger(Evt.HEAT_SET, {
-            'heat_id': new_heat_id,
-            })
-    
-        RaceContext.race.clear_results() # refresh leaderboard
-    
-        RaceContext.rhui.emit_current_heat() # Race page, to update heat selection button
-        RaceContext.rhui.emit_current_leaderboard() # Race page, to update callsigns in leaderboard
-        RaceContext.rhui.emit_current_laps()  # make sure Current-race page shows correct number of node slots
-        RaceContext.rhui.emit_race_status()
-    else:
-        logger.debug('Prevented heat change for active race')
+            RaceContext.race.set_heat(data['heat_id'], force=True)
 
 @SOCKET_IO.on('set_current_heat')
 @catchLogExceptionsWrapper
 def on_set_current_heat(data):
     '''Update the current heat variable and data.'''
-    new_heat_id = data['heat']
-    logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
-    set_current_heat_data(new_heat_id)
-
-RHAPI.race._heat_set = on_set_current_heat # TODO: Refactor management functions
+    RaceContext.race.set_heat(data['heat'])
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -2889,7 +2679,7 @@ def init_race_state():
     RaceContext.race.reset_current_laps()
 
     # Set current heat
-    finalize_current_heat_set(RaceContext.rhdata.get_initial_heat_id())
+    RaceContext.race.set_heat(RaceContext.rhdata.get_initial_heat_id(), force=True)
 
     # Normalize results caches
     RaceContext.pagecache.set_valid(False)
