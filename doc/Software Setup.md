@@ -99,12 +99,7 @@ The minimum version of Python supported is 3.8 Check the current default version
 ```
 python --version
 ```
-If the version reported is older than Python 3, enter the following commands to switch the default version to Python 3:
-```
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
-```
-After the above commands are entered, the system should default to using Python 3. The default version can be switched back and forth via the command: `sudo update-alternatives --config python`
+If the version reported is Python 3.7 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
 
 ### 6. Install the RotorHazard Server
 
@@ -326,7 +321,7 @@ cp -r RotorHazard.old/src/server/venv RotorHazard/src/server/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
 
-For RotorHazard the minimum version of Python supported is 3.8. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
+For RotorHazard the minimum version of Python supported is 3.8. If the installed version is Python 3.7 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
 
 The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
 ```
