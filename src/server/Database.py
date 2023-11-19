@@ -293,6 +293,7 @@ class LapSource:
     MANUAL = 1
     RECALC = 2
     AUTOMATIC = 3
+    API = 4
 
 class Profiles(DB.Model):
     __tablename__ = 'profiles'
