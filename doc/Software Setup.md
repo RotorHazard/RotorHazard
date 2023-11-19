@@ -313,7 +313,7 @@ cd ~
 wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
 unzip temp.zip
 mv RotorHazard RotorHazard.old
-mv RotorHazard-v1.2.3 RotorHazard
+mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip
 cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
 cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
