@@ -5,6 +5,7 @@ RotorHazard event manager
 import logging
 import gevent
 import copy
+import threading
 from RHUtils import catchLogExceptionsWrapper
 from monotonic import monotonic
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class EventManager:
     processEventObj = gevent.event.Event()
+    _evtLock = threading.Lock()
 
     events = {}
     eventOrder = {}
@@ -21,8 +23,11 @@ class EventManager:
         self._rhapi = rhapi
 
     def on(self, event, name, handler_fn, default_args=None, priority=200, unique=False):
+
         if default_args == None:
             default_args = {}
+
+        self._evtLock.acquire()
 
         if event not in self.events:
             self.events[event] = {}
@@ -36,9 +41,14 @@ class EventManager:
 
         self.eventOrder[event] = [key for key, _value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
 
+        self._evtLock.release()
+
         return True
 
     def off(self, event, name):
+
+        self._evtLock.acquire()
+
         if event not in self.events:
             return True
 
@@ -48,11 +58,15 @@ class EventManager:
         del(self.events[event][name])
 
         self.eventOrder[event] = [key for key, _value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
+        
+        self._evtLock.release()
 
         return True
 
     def trigger(self, event, evt_args=None):
-        # logger.debug('-Triggered event- {0}'.format(event))
+
+        self._evtLock.acquire()
+
         evt_list = []
         if event in self.eventOrder:
             for name in self.eventOrder[event]:
@@ -61,10 +75,14 @@ class EventManager:
             for name in self.eventOrder[Evt.ALL]:
                 evt_list.append([Evt.ALL, name])
 
+        self._evtLock.release()
+
         if len(evt_list):
             for ev, name in evt_list:
-                handler = self.events[ev][name]
-                args = copy.copy(handler['default_args'])
+
+                with self._evtLock:
+                    handler = self.events[ev][name]
+                    args = copy.copy(handler['default_args'])
 
                 if evt_args:
                     if args:
@@ -81,20 +99,23 @@ class EventManager:
                     threadName = name
 
                 # stop any threads with same name
+                self._evtLock.acquire()
                 for token in self.eventThreads.copy():
                     if token in self.eventThreads and self.eventThreads[token]['name'] == name:
                         self.eventThreads[token]['thread'].kill(block=False)
                     if token in self.eventThreads and self.eventThreads[token]['thread'].dead:
                         self.eventThreads.pop(token, False)
+                self._evtLock.release()
 
                 if handler['priority'] < 100:
                     self.run_handler(handler['handler_fn'], args)
                 else:
                     greenlet = gevent.spawn(self.run_handler, handler['handler_fn'], args)
-                    self.eventThreads[greenlet.minimal_ident] = {
-                        'name': threadName,
-                        'thread': greenlet
-                        }
+                    with self._evtLock:
+                        self.eventThreads[greenlet.minimal_ident] = {
+                            'name': threadName,
+                            'thread': greenlet
+                            }
 
     @catchLogExceptionsWrapper
     def run_handler(self, handler, args):
