@@ -10,7 +10,6 @@ Flask-SocketIO==5.3.*
 python-socketio==5.8.*
 python-engineio==4.4.*
 websocket-client==1.5.*
-six==1.14.*
 
 # Database
 flask_sqlalchemy==2.4.*
