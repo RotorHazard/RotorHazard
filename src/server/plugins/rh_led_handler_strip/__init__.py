@@ -7,28 +7,20 @@ import random
 import math
 from monotonic import monotonic
 
+
 def leaderProxy(args):
-    if 'effect_fn' in args:
-        if 'results' in args and args['results']:
-            result = args['results']
-        elif 'RACE' in args and hasattr(args['RACE'], 'results'):
-            result = args['RACE'].results
-        else:
-            return False
-
-        if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 
-            leaderboard = result[result['meta']['primary_leaderboard']]
-        else:
-            return False
-
-        if len(leaderboard):
-            leader = leaderboard[0]
-            if leader['starts']:
-                if 'node_index' not in args or args['node_index'] != leader['node']:
-                    args['color'] = args['manager'].getDisplayColor(leader['node'], from_result=True)
-                args['effect_fn'](args)
-                return True
-    return False
+    try:
+        result = args['RHAPI'].race.results
+        leaderboard = result[result['meta']['primary_leaderboard']]
+        leader = leaderboard[0]
+        if leader['starts']:
+            if 'node_index' not in args or args['node_index'] != leader['node']:
+                args['pilot_id'] = leader['pilot_id']
+                args['color'] = args['manager'].getDisplayColor(leader['node'], from_result=True)
+            args['effect_fn'](args)
+            return True
+    except:
+        return False
 
 def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
     if pattern == ColorPattern.SOLID:
