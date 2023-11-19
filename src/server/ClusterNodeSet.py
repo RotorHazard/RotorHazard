@@ -24,6 +24,7 @@ class SecondaryNode:
     TIME_CALLOUT = "time"
     SPEED_CALLOUT = "speed"
     BOTH_CALLOUT = "both"
+    NAME_ONLY_CALLOUT = "nameOnly"
     NONE_CALLOUT = "none"
 
     LATENCY_AVG_SIZE = 30
@@ -76,22 +77,32 @@ class SecondaryNode:
         if calloutStr == SecondaryNode.TIME_CALLOUT:
             self.timeCalloutFlag = True
             self.speedCalloutFlag = False
+            self.nameCalloutFlag = True
         elif calloutStr == SecondaryNode.SPEED_CALLOUT:
             self.timeCalloutFlag = False
             self.speedCalloutFlag = True
+            self.nameCalloutFlag = True
         elif calloutStr == SecondaryNode.BOTH_CALLOUT:
             self.timeCalloutFlag = True
             self.speedCalloutFlag = True
+            self.nameCalloutFlag = True
+        elif calloutStr == SecondaryNode.NAME_ONLY_CALLOUT:
+            self.timeCalloutFlag = False
+            self.speedCalloutFlag = False
+            self.nameCalloutFlag = True
         elif calloutStr == SecondaryNode.NONE_CALLOUT:
             self.timeCalloutFlag = False
             self.speedCalloutFlag = False
+            self.nameCalloutFlag = False
         else:
             if self.distance > 0.0:  # if 'distance' specified then default to calling out speed only
                 self.timeCalloutFlag = False
                 self.speedCalloutFlag = True
+                self.nameCalloutFlag = True
             else:
                 self.timeCalloutFlag = True
                 self.speedCalloutFlag = False
+                self.nameCalloutFlag = True
             if calloutStr is not None:
                 logger.warning("Invalid 'callout' value in secondary timer config: {}".format(calloutStr))
         self.startConnectTime = 0
@@ -410,17 +421,21 @@ class SecondaryNode:
                             lap_split = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_count)
         
                             if len(lap_split) <= 0: # first split for this lap
-                                if split_id > 0:
-                                    logger.debug('Ignoring missing splits before {} for node {}, pilot {}'.\
+                                if split_id == 0:
+                                    last_split_ts = last_lap_ts
+                                else:
+                                    logger.debug('Ignoring (first) out-of-order split {} for node {}, pilot {}'.\
                                                  format(split_id+1, node_index+1, callsign))
-                                last_split_ts = last_lap_ts
+                                    last_split_ts = None
                             else:
                                 last_split_id = lap_split[-1].split_id
                                 if split_id > last_split_id:
-                                    if split_id > last_split_id + 1:
-                                        logger.debug('Ignoring missing splits between {} and {} for node {}, pilot {}'.\
+                                    if split_id == last_split_id + 1:
+                                        last_split_ts = lap_split[-1].split_time_stamp
+                                    else:
+                                        logger.debug('Ignoring split due to missing splits between {} and {} for node {}, pilot {}'.\
                                                      format(last_split_id+1, split_id+1, node_index+1, callsign))
-                                    last_split_ts = lap_split[-1].split_time_stamp
+                                        last_split_ts = None
                                 else:
                                     logger.debug('Ignoring out-of-order split {} for node {}, pilot {}'.\
                                                  format(split_id+1, node_index+1, callsign))
@@ -439,6 +454,14 @@ class SecondaryNode:
                                 .format(node_index+1, callsign, lap_count+1, split_id+1, split_time_str, \
                                 ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
         
+                            duration = int(self.info.get('toneDuration', 0))
+                            if duration > 0:
+                                frequency = int(self.info.get('toneFrequency', 0))
+                                volume = int(self.info.get('toneVolume', 100))
+                                toneType = self.info.get('toneType', 'square')
+                                if frequency > 0 and volume > 0:
+                                    self._racecontext.rhui.emit_play_beep_tone(duration, frequency, volume, toneType)
+
                             split_data = {
                                 'node_index': node_index,
                                 'pilot_id': pilot_id,
@@ -449,7 +472,8 @@ class SecondaryNode:
                                 'split_time_formatted': split_time_str,
                                 'split_speed': split_speed,
                                 'time_callout_flag': self.timeCalloutFlag,
-                                'speed_callout_flag': self.speedCalloutFlag
+                                'speed_callout_flag': self.speedCalloutFlag,
+                                'name_callout_flag': self.nameCalloutFlag
                             }
                             
                             self._racecontext.rhdata.add_lapSplit(split_data)
@@ -466,6 +490,13 @@ class SecondaryNode:
                                 logger.info('Split pass record (for speed): Node {}, pilot {}, lap {}, split {}, time={}, speed={}' \
                                     .format(node_index+1, callsign, lap_count+1, split_id+1, split_time_str, \
                                     ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
+                                duration = int(self.info.get('toneDuration', 0))
+                                if duration > 0:
+                                    frequency = int(self.info.get('toneFrequency', 0))
+                                    volume = int(self.info.get('toneVolume', 100))
+                                    toneType = self.info.get('toneType', 'square')
+                                    if frequency > 0 and volume > 0:
+                                        self._racecontext.rhui.emit_play_beep_tone(duration, frequency, volume, toneType)
                                 split_data = {
                                     'node_index': node_index,
                                     'pilot_id': pilot_id,
@@ -476,7 +507,8 @@ class SecondaryNode:
                                     'split_time_formatted': split_time_str,
                                     'split_speed': split_speed,
                                     'time_callout_flag': self.timeCalloutFlag,
-                                    'speed_callout_flag': self.speedCalloutFlag
+                                    'speed_callout_flag': self.speedCalloutFlag,
+                                    'name_callout_flag': self.nameCalloutFlag
                                 }
                                 self._racecontext.rhui.emit_phonetic_split(split_data)
 
