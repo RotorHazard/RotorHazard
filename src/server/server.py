@@ -47,7 +47,7 @@ import importlib
 from functools import wraps
 from six import string_types
 
-from flask import Flask, send_file, request, Response, session, templating, redirect, abort, copy_current_request_context
+from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
 
 import socket
@@ -88,7 +88,7 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 from Plugins import search_modules  #pylint: disable=import-error
 from Sensors import Sensors  #pylint: disable=import-error
 import RHRace
-from RHRace import WinCondition, WinStatus, RaceStatus, StagingTones
+from RHRace import WinCondition, RaceStatus
 from data_export import DataExportManager
 from data_import import DataImportManager
 from VRxControl import VRxControlManager
@@ -2183,21 +2183,6 @@ def build_atomic_result_caches(params):
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     RaceContext.race.discard_laps(**kwargs)
-
-def init_node_cross_fields():
-    '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    for node in RaceContext.interface.nodes:
-        node.current_pilot_id = RHUtils.PILOT_ID_NONE
-        if node.frequency and node.frequency > 0:
-            if RaceContext.race.current_heat is not RHUtils.HEAT_ID_NONE:
-                heatnodes = RaceContext.rhdata.get_heatNodes_by_heat(RaceContext.race.current_heat)
-                for heatnode in heatnodes:
-                    if heatnode.node_index == node.index:
-                        node.current_pilot_id = heatnode.pilot_id
-                        break
-
-        node.first_cross_flag = False
-        node.show_crossing_flag = False
 
 @SOCKET_IO.on('calc_pilots')
 @catchLogExceptionsWrapper

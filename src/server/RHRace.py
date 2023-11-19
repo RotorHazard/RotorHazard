@@ -86,16 +86,15 @@ class RHRace():
     def stage(self, data=None):
         if data and data.get('secondary_format'):
             self.format = SECONDARY_RACE_FORMAT
-    
+
         assigned_start = data.get('start_time_s', False) if data else None
-    
-        heat_data = self._racecontext.rhdata.get_heat(self.current_heat)
+
         race_format = self.format
         if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
             check_create_sec_format_heat()
-        
+
         self._racecontext.rhdata.clear_lapSplits()  # clear lap-splits from previous race
-    
+
         heat_data = self._racecontext.rhdata.get_heat(self.current_heat)
     
         if heat_data:
@@ -143,7 +142,7 @@ class RHRace():
                 logger.info("Forcing race clear/restart because running as secondary timer")
                 self.discard_laps()
             elif self.race_status == RaceStatus.DONE and not self.any_laps_recorded():
-                self.on_discard_laps()  # if no laps then allow restart
+                self.discard_laps()  # if no laps then allow restart
 
         if self.race_status == RaceStatus.READY: # only initiate staging if ready
             # common race start events (do early to prevent processing delay when start is called)
@@ -158,7 +157,7 @@ class RHRace():
                         logger.info("Forcing race format from class setting: '{0}' ({1})".format(self.format.name, self.format.id))
     
             self.clear_laps() # Clear laps before race start
-            init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
+            self.init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
             self._racecontext.last_race = None # clear all previous race data
             self.timer_running = False # indicate race timer not running
             self.race_status = RaceStatus.STAGING
@@ -213,27 +212,21 @@ class RHRace():
             self.start_token = random.random()
             gevent.spawn(self.race_start_thread, self.start_token)
     
+            # Announce staging with final parameters
             eventPayload = {
-                'hide_stage_timer': hide_stage_timer,
-                'pi_staging_at_s': self.stage_time_monotonic,
-                'staging_tones': staging_tones,
-                'pi_starts_at_s': self.start_time_monotonic,
-                'color': ColorVal.ORANGE,
-                'heat_id': self.current_heat,
-            }
-    
-            eventPayload['race_node_colors'] = self.seat_colors
-    
-            self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
-    
-            SOCKET_IO.emit('stage_ready', {
                 'hide_stage_timer': hide_stage_timer,
                 'pi_staging_at_s': self.stage_time_monotonic,
                 'staging_tones': staging_tones,
                 'pi_starts_at_s': self.start_time_monotonic,
                 'unlimited_time': race_format.unlimited_time,
                 'race_time_sec': race_format.race_time_sec,
-            }) # Announce staging with final parameters
+                'color': ColorVal.ORANGE,
+                'heat_id': self.current_heat,
+                'race_node_colors': self.seat_colors,
+            }
+
+            self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
+            self._racecontext.rhui.emit_race_stage(eventPayload)
     
         else:
             logger.info("Attempted to stage race while status is not 'ready'")
@@ -376,7 +369,8 @@ class RHRace():
         else:
             self.do_stop_race_actions(doSave)
     
-        SOCKET_IO.emit('stop_timer') # Loop back to race page to stop the timer
+        # Loop back to race page to stop the timer
+        self._racecontext.rhui.emit_race_stop() 
     
     @catchLogExceptionsWrapper
     def do_stop_race_actions(self, doSave=False):
@@ -518,7 +512,7 @@ class RHRace():
     
         logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
     
-        self.on_discard_laps(saved=True) # Also clear the current laps
+        self.discard_laps(saved=True) # Also clear the current laps
     
         next_heat = self._racecontext.rhdata.get_next_heat_id(heat)
         if next_heat is not heat.id:
@@ -942,6 +936,21 @@ class RHRace():
 
         self.clear_results()
         logger.debug('Database current laps reset')
+
+    def init_node_cross_fields(self):
+        '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
+        for node in self._racecontext.interface.nodes:
+            node.current_pilot_id = RHUtils.PILOT_ID_NONE
+            if node.frequency and node.frequency > 0:
+                if self.current_heat is not RHUtils.HEAT_ID_NONE:
+                    heatnodes = self._racecontext.rhdata.get_heatNodes_by_heat(self.current_heat)
+                    for heatnode in heatnodes:
+                        if heatnode.node_index == node.index:
+                            node.current_pilot_id = heatnode.pilot_id
+                            break
+
+            node.first_cross_flag = False
+            node.show_crossing_flag = False
 
     def schedule(self, s, m=0):
         if self.race_status != RaceStatus.READY:

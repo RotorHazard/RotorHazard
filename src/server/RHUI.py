@@ -265,6 +265,12 @@ class RHUI():
 
             self._socket.emit('priority_message', emit_payload)
 
+    def emit_race_stage(self, payload):
+        self._socket.emit('stage_ready', payload)
+
+    def emit_race_stop(self):
+        self._socket.emit('stop_timer')
+
     def emit_race_schedule(self):
         self._socket.emit('race_scheduled', {
             'scheduled': self._racecontext.race.scheduled,
