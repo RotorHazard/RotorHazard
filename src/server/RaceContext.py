@@ -6,15 +6,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 class RaceContext():
-    '''Class to hold race management variables.'''
     def __init__(self):
         self.serverstate = ServerState()
         self.interface = None
         self.sensors = None
         self.cluster = None
+        self.calibration = None
 
         self.race = None
         self.last_race = None
+        self.heatautomator = None
 
         self.rhdata = None
 

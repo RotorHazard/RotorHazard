@@ -66,6 +66,8 @@ import EventActions
 import RaceContext
 import RHData
 import RHUI
+import calibration
+import heat_automation
 import RHAPI
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
@@ -97,7 +99,7 @@ RHAPI = RHAPI.RHAPI(RaceContext)
 
 RaceContext.serverstate.program_start_epoch_time = PROGRAM_START_EPOCH_TIME
 RaceContext.serverstate.program_start_mtonic = PROGRAM_START_MTONIC
-RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - 1000.0*RaceContext.serverstate.mtonic_to_epoch_millis_offset
+RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - 1000.0*RaceContext.serverstate.program_start_mtonic
 
 Events = EventManager(RHAPI)
 RaceContext.events = Events
@@ -192,6 +194,9 @@ RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
+
+RaceContext.calibration = calibration.Calibration(RaceContext)
+RaceContext.heatautomator = heat_automation.HeatAutomator(RaceContext)
 
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
@@ -961,103 +966,17 @@ def restore_node_frequency(node_index):
 @catchLogExceptionsWrapper
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
-    node_index = data['node']
+    seat_index = data['node']
     enter_at_level = data['enter_at_level']
-
-    if node_index < 0 or node_index >= RaceContext.race.num_nodes:
-        logger.info('Unable to set enter-at ({0}) on node {1}; node index out of range'.format(enter_at_level, node_index+1))
-        return
-
-    if not enter_at_level:
-        logger.info('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
-        enter_at_level = RaceContext.interface.nodes[node_index].enter_at_level
-
-    profile = RaceContext.race.profile
-    enter_ats = json.loads(profile.enter_ats)
-
-    # handle case where more nodes were added
-    while node_index >= len(enter_ats["v"]):
-        enter_ats["v"].append(None)
-
-    enter_ats["v"][node_index] = enter_at_level
-
-    profile = RaceContext.rhdata.alter_profile({
-        'profile_id': profile.id,
-        'enter_ats': enter_ats
-        })
-    RaceContext.race.profile = profile
-
-    RaceContext.interface.set_enter_at_level(node_index, enter_at_level)
-
-    Events.trigger(Evt.ENTER_AT_LEVEL_SET, {
-        'nodeIndex': node_index,
-        'enter_at_level': enter_at_level,
-        })
-
-    logger.info('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
+    RaceContext.calibration.set_enter_at_level(seat_index, enter_at_level)
 
 @SOCKET_IO.on('set_exit_at_level')
 @catchLogExceptionsWrapper
 def on_set_exit_at_level(data):
     '''Set node exit-at level.'''
-    node_index = data['node']
+    seat_index = data['node']
     exit_at_level = data['exit_at_level']
-
-    if node_index < 0 or node_index >= RaceContext.race.num_nodes:
-        logger.info('Unable to set exit-at ({0}) on node {1}; node index out of range'.format(exit_at_level, node_index+1))
-        return
-
-    if not exit_at_level:
-        logger.info('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
-        exit_at_level = RaceContext.interface.nodes[node_index].exit_at_level
-
-    profile = RaceContext.race.profile
-    exit_ats = json.loads(profile.exit_ats)
-
-    # handle case where more nodes were added
-    while node_index >= len(exit_ats["v"]):
-        exit_ats["v"].append(None)
-
-    exit_ats["v"][node_index] = exit_at_level
-
-    profile = RaceContext.rhdata.alter_profile({
-        'profile_id': profile.id,
-        'exit_ats': exit_ats
-        })
-    RaceContext.race.profile = profile
-
-    RaceContext.interface.set_exit_at_level(node_index, exit_at_level)
-
-    Events.trigger(Evt.EXIT_AT_LEVEL_SET, {
-        'nodeIndex': node_index,
-        'exit_at_level': exit_at_level,
-        })
-
-    logger.info('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
-
-def hardware_set_all_enter_ats(enter_at_levels):
-    '''send update to nodes'''
-    logger.debug("Sending enter-at values to nodes: " + str(enter_at_levels))
-    for idx in range(RaceContext.race.num_nodes):
-        if enter_at_levels[idx]:
-            RaceContext.interface.set_enter_at_level(idx, enter_at_levels[idx])
-        else:
-            on_set_enter_at_level({
-                'node': idx,
-                'enter_at_level': RaceContext.interface.nodes[idx].enter_at_level
-                })
-
-def hardware_set_all_exit_ats(exit_at_levels):
-    '''send update to nodes'''
-    logger.debug("Sending exit-at values to nodes: " + str(exit_at_levels))
-    for idx in range(RaceContext.race.num_nodes):
-        if exit_at_levels[idx]:
-            RaceContext.interface.set_exit_at_level(idx, exit_at_levels[idx])
-        else:
-            on_set_exit_at_level({
-                'node': idx,
-                'exit_at_level': RaceContext.interface.nodes[idx].exit_at_level
-                })
+    RaceContext.calibration.set_exit_at_level(seat_index, exit_at_level)
 
 @SOCKET_IO.on("set_start_thresh_lower_amount")
 @catchLogExceptionsWrapper
@@ -1337,8 +1256,8 @@ def on_set_profile(data, emit_vals=True):
                 heartbeat_thread_function.imdtabler_flag = True
 
         hardware_set_all_frequencies(freqs)
-        hardware_set_all_enter_ats(enter_ats)
-        hardware_set_all_exit_ats(exit_ats)
+        RaceContext.calibration.hardware_set_all_enter_ats(enter_ats)
+        RaceContext.calibration.hardware_set_all_exit_ats(exit_ats)
 
     else:
         logger.warning('Invalid set_profile value: ' + str(profile_val))
@@ -2010,7 +1929,7 @@ def on_resave_laps(data):
 
     # run adaptive calibration
     if RaceContext.rhdata.get_optionInt('calibrationMode'):
-        RaceContext.race.auto_calibrate()
+        RaceContext.calibration.auto_calibrate()
 
     # spawn thread for updating results caches
     params = {
@@ -2040,7 +1959,7 @@ def on_discard_laps(**kwargs):
 @catchLogExceptionsWrapper
 def on_calc_pilots(data):
     heat_id = data['heat']
-    calc_heat(heat_id)
+    RaceContext.heatautomator.calc_heat(heat_id)
 
 @SOCKET_IO.on('calc_reset')
 @catchLogExceptionsWrapper
@@ -2048,79 +1967,6 @@ def on_calc_reset(data):
     data['status'] = Database.HeatStatus.PLANNED
     on_alter_heat(data)
     RaceContext.rhui.emit_heat_data()
-
-def calc_heat(heat_id, silent=False):
-    heat = RaceContext.rhdata.get_heat(heat_id)
-
-    if (heat):
-        calc_result = RaceContext.rhdata.calc_heat_pilots(heat)
-
-        if calc_result['calc_success'] is False:
-            logger.warning('{} plan cannot be fulfilled.'.format(heat.display_name))
-
-        if calc_result['calc_success'] is None:
-            # Heat is confirmed or has saved races
-            return 'safe'
-
-        if calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False and not heat.auto_frequency:
-            # Heat has no calc issues, no dynamic slots, and auto-frequnecy is off
-            return 'safe'
-
-        adaptive = bool(RaceContext.rhdata.get_optionInt('calibrationMode'))
-
-        if adaptive:
-            calc_fn = RHUtils.find_best_slot_node_adaptive
-        else:
-            calc_fn = RHUtils.find_best_slot_node_basic
-
-        RaceContext.rhdata.run_auto_frequency(heat, RaceContext.race.profile.frequencies, RaceContext.race.num_nodes, calc_fn)
-
-        if request and not silent:
-            emit_heat_plan_result(heat_id, calc_result)
-
-        return 'unsafe'
-
-    else:
-        return 'no-heat'
-
-def emit_heat_plan_result(new_heat_id, calc_result):
-    heat = RaceContext.rhdata.get_heat(new_heat_id)
-    heatNodes = []
-
-    heatNode_objs = RaceContext.rhdata.get_heatNodes_by_heat(heat.id)
-    heatNode_objs.sort(key=lambda x: x.id)
-
-    profile_freqs = json.loads(RaceContext.race.profile.frequencies)
-
-    for heatNode in heatNode_objs:
-        heatNode_data = {
-            'node_index': heatNode.node_index,
-            'pilot_id': heatNode.pilot_id,
-            'callsign': None,
-            'method': heatNode.method,
-            'seed_rank': heatNode.seed_rank,
-            'seed_id': heatNode.seed_id
-            }
-        if heatNode.pilot_id:
-            pilot = RaceContext.rhdata.get_pilot(heatNode.pilot_id)
-            if pilot:
-                heatNode_data['callsign'] = pilot.callsign
-                if pilot.used_frequencies and heatNode.node_index is not None:
-                    used_freqs = json.loads(pilot.used_frequencies)
-                    heatNode_data['frequency_change'] = (used_freqs[-1]['f'] != profile_freqs["f"][heatNode.node_index])
-                else:
-                    heatNode_data['frequency_change'] = True
-
-        heatNodes.append(heatNode_data)
-
-    emit_payload = {
-        'heat': new_heat_id,
-        'displayname': heat.display_name,
-        'slots': heatNodes,
-        'calc_result': calc_result
-    }
-
-    emit('heat_plan_result', emit_payload)
 
 @SOCKET_IO.on('confirm_heat_plan')
 @catchLogExceptionsWrapper
@@ -2555,17 +2401,11 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     gevent.sleep(0.025)  # delay to avoid potential I/O error
     if is_enter_at_flag:
         logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
-        on_set_enter_at_level({
-            'node': node.index,
-            'enter_at_level': node.enter_at_level
-        })
+        RaceContext.calibration.set_enter_at_level(node.index, node.enter_at_level)
         RaceContext.rhui.emit_enter_at_level(node)
     else:
         logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
-        on_set_exit_at_level({
-            'node': node.index,
-            'exit_at_level': node.exit_at_level
-        })
+        RaceContext.calibration.set_exit_at_level(node.index, node.exit_at_level)
         RaceContext.rhui.emit_exit_at_level(node)
 
 @catchLogExcDBCloseWrapper
