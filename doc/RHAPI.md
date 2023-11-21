@@ -781,6 +781,7 @@ Laps are represented with the `SavedRaceLap` class, which has the following prop
 - `LapSource.MANUAL`: Lap added manually by user in UI
 - `LapSource.RECALC`: Lap added after recalculation (marshaling) or RSSI data
 - `LapSource.AUTOMATIC`: Lap added by other automatic process
+- `LapSource.API`: Lap added by API (plugin)
 
 #### db.laps
 _Read only_
