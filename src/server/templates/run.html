@@ -2049,6 +2049,18 @@
 		$(document).on('keyup', function(e) {
 			// keyboard shortcuts
 			switch (e.which) {
+				case 83:  // S
+					if ( this !== event.target && event.target.id !== "set_current_heat"
+						&& event.target.id !== "set_race_format"
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
+					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+						// race schedule: s
+						$('#schedule_race').trigger('click');
+					}
+					break;
 				case 90:  // Z
 					if ( this !== event.target && event.target.id !== "set_current_heat"
 						&& event.target.id !== "set_race_format"
