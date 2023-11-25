@@ -16,7 +16,7 @@ def showBitmap(args):
     else:
         return False
 
-    def setPixels(img):
+    def setPixels(img, panel_w):
         pos = 0
         for row in range(0, img.height):
             for col in range(0, img.width):
@@ -26,7 +26,7 @@ def showBitmap(args):
                 c = col
                 if Config.LED['INVERTED_PANEL_ROWS']:
                     if row % 2 == 0:
-                        c = 15 - col
+                        c = (panel_w - 1) - col
 
                 px = img.getpixel((c, row))
                 strip.setPixelColor(pos, Color(px[0], px[1], px[2]))
@@ -64,7 +64,7 @@ def showBitmap(args):
             output_img.paste(img, (pad_left, pad_top))
             output_img = output_img.rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
 
-            setPixels(output_img)
+            setPixels(output_img, panel_w)
             strip.show()
             gevent.sleep(delay/1000.0)
 
