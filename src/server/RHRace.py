@@ -280,8 +280,10 @@ class RHRace():
                 eventPayload = {
                     'hide_stage_timer': hide_stage_timer,
                     'pi_staging_at_s': self.stage_time_monotonic,
+                    'server_staging_epoch_ms': self._racecontext.serverstate.monotonic_to_epoch_millis(self.stage_time_monotonic),
                     'staging_tones': staging_tones,
                     'pi_starts_at_s': self.start_time_monotonic,
+                    'server_start_epoch_ms': self.start_time_epoch_ms,
                     'unlimited_time': race_format.unlimited_time,
                     'race_time_sec': race_format.race_time_sec,
                     'color': ColorVal.ORANGE,
