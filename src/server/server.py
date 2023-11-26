@@ -702,6 +702,9 @@ def on_cluster_event_trigger(data):
                 RaceContext.race.seat_colors = evtArgs['race_node_colors']
             else:
                 RaceContext.race.updateSeatColors(mode_override=0)
+            evtArgs['pi_staging_at_s'] = (evtArgs['server_staging_epoch_ms'] - MTONIC_TO_EPOCH_MILLIS_OFFSET) / 1000
+            evtArgs['pi_starts_at_s'] = (evtArgs['server_start_epoch_ms'] - MTONIC_TO_EPOCH_MILLIS_OFFSET) / 1000
+
         elif evtName == Evt.RACE_START:
             RaceContext.race.race_status = RaceStatus.RACING
         elif evtName == Evt.RACE_STOP:
