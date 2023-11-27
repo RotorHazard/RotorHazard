@@ -22,11 +22,16 @@ logger = logging.getLogger(__name__)
 
 EPOCH_START = RHTimeFns.getEpochStartTime()
 
-# program-start time, in milliseconds since 1970-01-01
-PROGRAM_START_EPOCH_TIME = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
+_prog_start_epoch1 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
 
-# program-start time (in milliseconds, starting at zero)
+# program time counter (seconds)
 PROGRAM_START_MTONIC = monotonic()
+
+# do average of before and after to exact timing match between PROGRAM_START_EPOCH_TIME and PROGRAM_START_MTONIC
+_prog_start_epoch2 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
+
+# program-start time, in milliseconds since 1970-01-01
+PROGRAM_START_EPOCH_TIME = int((_prog_start_epoch1 + _prog_start_epoch2) * 500.0 + 0.5)   # *1000/2.0
 
 # offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
 MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
@@ -3396,10 +3401,16 @@ def clock_check_thread_function():
             gevent.sleep(10)
             if RaceContext.race.any_races_started:  # stop monitoring after any race started
                 break
-            time_now = monotonic()
             epoch_now = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
-            diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
+            diff_ms = epoch_now - monotonic_to_epoch_millis(monotonic())
             if abs(diff_ms) > 30000:
+                _epoch1 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
+                time_now = monotonic()
+                # do average of before and after to exact timing match
+                _epoch2 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
+                # current time, in milliseconds since 1970-01-01
+                epoch_now = int((_epoch1 + _epoch2) * 500.0 + 0.5)   # *1000/2.0
+                diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
                 PROGRAM_START_EPOCH_TIME += diff_ms
                 MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
                 logger.info("Adjusting PROGRAM_START_EPOCH_TIME for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
