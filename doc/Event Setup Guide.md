@@ -7,9 +7,7 @@ The basics of running an event are:
 - Run races
 
 ## Set Frequencies
-Choose which set of requencies you will use for the event. From `Settings`, open `Frequency Setup`. Select a frequency for each seat and set unused seats to *Disabled*.
-
-- Frequencies are
+Choose which set of frequencies you will use for the event. From `Settings`, open `Frequency Setup`. Select a frequency for each seat and set unused seats to *Disabled*.
 
 ## Clear Existing Data (if needed)
 From `Format`, open `Data Management`. Use the options here to reset or remove outdated information.
@@ -17,14 +15,14 @@ From `Format`, open `Data Management`. Use the options here to reset or remove o
 ## Add Event Details (optional)
 From `Format`, open the `Event` panel. Update the Event Name and Description.
 
-- Event information is public and appears on the `Event` page.
+- Event information is public and appears on the `Event` page
 
 ## Add Pilots
 From `Format`, open `Pilots` panel. Add an entry for each pilot participating. Give each pilot a *Callsign* to identify them.
 
 - Callsigns are the primary pilot identifier and appear in most places
 - Pilot names appear on the `Event` page and in heat selection boxes
-- Phonetic changes how the timer text-to-speech engine announces a pilot; it is never shown visually
+- Phonetic can be used to change how the timer text-to-speech engine announces a pilot; it is never shown visually
 
 ## Create Race Formats (optional)
 From `Format`, open `Race Formats`. [Adjust the settings](User%20Guide.md#race-format) or create new formats to match your group's preferred settings.
@@ -48,4 +46,4 @@ Switch to the `Run` page. Find the appropriate heat in the dropdown. Use the "St
 ## Confirm
 Save the race when it concludes. Use the `Marshal` page to [tune the timer](Tuning%20Parameters.md) for each pilot. Future races will self-calibrate using this data.
 
-- Results become visible from the `Results` page.
+- Results become visible on the `Results` page.
