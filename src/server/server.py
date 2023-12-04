@@ -24,7 +24,7 @@ EPOCH_START = RHTimeFns.getEpochStartTime()
 
 _prog_start_epoch1 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
 
-# program time counter (seconds)
+# program start time (in time.monotonic seconds)
 PROGRAM_START_MTONIC = monotonic()
 
 # do average of before and after to exact timing match between PROGRAM_START_EPOCH_TIME and PROGRAM_START_MTONIC
@@ -2368,7 +2368,8 @@ def race_start_thread(start_token):
             })
 
         # do secondary start tasks (small delay is acceptable)
-        RaceContext.race.start_time = datetime.now() # record standard-formatted time
+        RaceContext.race.start_time = datetime.now() # record start time as datetime object
+        RaceContext.race.start_time_formatted = RHTimeFns.datetimeToFormattedStr(RaceContext.race.start_time) # record standard-formatted time
 
         for node in RaceContext.interface.nodes:
             node.history_values = [] # clear race history
@@ -2391,7 +2392,9 @@ def race_start_thread(start_token):
             gevent.spawn(race_expire_thread, start_token)
 
         RaceContext.rhui.emit_race_status() # Race page, to set race button states
-        logger.info('Race started at {:.3f} ({:.0f})'.format(RaceContext.race.start_time_monotonic, RaceContext.race.start_time_epoch_ms))
+        logger.info('Race started at {:.3f} ({:.0f}) time={}'.format(RaceContext.race.start_time_monotonic, \
+                                                                     RaceContext.race.start_time_epoch_ms,
+                                                                     RaceContext.race.start_time_formatted))
 
 @catchLogExceptionsWrapper
 def race_expire_thread(start_token):
@@ -2451,8 +2454,10 @@ def do_stop_race_actions(doSave=False):
     if RaceContext.race.race_status == RaceStatus.RACING:
         RaceContext.race.end_time = monotonic() # Update the race end time stamp
         delta_time = RaceContext.race.end_time - RaceContext.race.start_time_monotonic
+        end_time_ms = monotonic_to_epoch_millis(RaceContext.race.end_time)
 
-        logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.0f}s'.format(RaceContext.race.end_time, monotonic_to_epoch_millis(RaceContext.race.end_time), delta_time))
+        logger.info('Race stopped at {:.3f} ({:.0f}), time={}, duration {:.0f}s'.format(RaceContext.race.end_time, \
+                                end_time_ms, RHTimeFns.epochMsToFormattedStr(end_time_ms), delta_time))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in RaceContext.interface.nodes:
@@ -2552,7 +2557,7 @@ def do_save_actions():
         'class_id': heat.class_id,
         'format_id': RaceContext.race.format.id if hasattr(RaceContext.race.format, 'id') else RHUtils.FORMAT_ID_NONE,
         'start_time': RaceContext.race.start_time_monotonic,
-        'start_time_formatted': RaceContext.race.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+        'start_time_formatted': RaceContext.race.start_time_formatted
         }
 
     new_race = RaceContext.rhdata.add_savedRaceMeta(new_race_data)
@@ -3413,11 +3418,11 @@ def clock_check_thread_function():
                 diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
                 PROGRAM_START_EPOCH_TIME += diff_ms
                 MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
-                logger.info("Adjusting PROGRAM_START_EPOCH_TIME for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
-                            format(diff_ms/1000, PROGRAM_START_EPOCH_TIME))
+                logger.info("Adjusting PROGRAM_START_EPOCH_TIME for shift in system clock ({:.1f} secs) to: {:.0f}, time={}".\
+                            format(diff_ms/1000, PROGRAM_START_EPOCH_TIME, RHTimeFns.epochMsToFormattedStr(PROGRAM_START_EPOCH_TIME)))
                 # update values that will be reported if running as cluster timer
                 serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+                serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(PROGRAM_START_EPOCH_TIME)
                 if RaceContext.cluster.has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
                     RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, serverInfoItems)
@@ -3569,9 +3574,11 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             exit_fmtstr = RHUtils.time_format((node.exit_at_timestamp-RaceContext.race.start_time_monotonic)*1000, \
                                                               RaceContext.rhdata.get_option('timeFormat')) \
                                            if node.exit_at_timestamp else "0"
-                            logger.debug('Lap pass{}: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
+                            logger.debug('Lap pass{}: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, passTime={}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
                                         .format(late_str, node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
-                                                lap_timestamp_absolute, RaceContext.interface.get_lap_source_str(source), \
+                                                lap_timestamp_absolute, 
+                                                RHTimeFns.epochMsToFormattedStr(monotonic_to_epoch_millis(lap_timestamp_absolute)), \
+                                                RaceContext.interface.get_lap_source_str(source), \
                                                 enter_fmtstr, exit_fmtstr, \
                                                 (node.exit_at_timestamp-node.enter_at_timestamp)*1000, pilot_namestr))
 
@@ -4254,7 +4261,7 @@ def buildServerInfo():
         serverInfoItems = serverInfo.copy()
         serverInfoItems.pop('about_html', None)
         serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+        serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(PROGRAM_START_EPOCH_TIME)
 
         return serverInfo
 
@@ -4330,7 +4337,8 @@ def check_requirements():
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
+logger.debug('Program started at {:.0f}, time={}'.format(PROGRAM_START_EPOCH_TIME,
+                                                         RHTimeFns.epochMsToFormattedStr(PROGRAM_START_EPOCH_TIME)))
 RHUtils.idAndLogSystemInfo()
 
 check_requirements()
