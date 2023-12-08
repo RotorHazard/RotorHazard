@@ -145,7 +145,7 @@ class Calibration:
             if race.heat_id == heat.id:
                 for pilotRace in pilotRaces:
                     if pilotRace.race_id == race.id and \
-                        pilotRace.seat_index == seat_index and \
+                        pilotRace.node_index == seat_index and \
                         pilotRace.frequency == node.frequency:
                         logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
                         return {
@@ -159,7 +159,7 @@ class Calibration:
             if race.class_id == current_class:
                 for pilotRace in pilotRaces:
                     if pilotRace.race_id == race.id and \
-                        pilotRace.seat_index == seat_index and \
+                        pilotRace.node_index == seat_index and \
                         pilotRace.pilot_id == pilot and \
                         pilotRace.frequency == node.frequency:
                         logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
@@ -171,7 +171,7 @@ class Calibration:
 
         # test for same pilot, same node
         for pilotRace in pilotRaces:
-            if pilotRace.seat_index == seat_index and \
+            if pilotRace.node_index == seat_index and \
                 pilotRace.pilot_id == pilot and \
                 pilotRace.frequency == node.frequency:
                 logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
@@ -182,7 +182,7 @@ class Calibration:
 
         # test for same node
         for pilotRace in pilotRaces:
-            if pilotRace.seat_index == seat_index and \
+            if pilotRace.node_index == seat_index and \
                 pilotRace.frequency == node.frequency:
                 logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
                 return {

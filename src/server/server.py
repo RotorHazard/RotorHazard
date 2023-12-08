@@ -1849,6 +1849,20 @@ def on_use_led_effect(data):
 
 # Race management socket io events
 
+# TODO: Remove
+@SOCKET_IO.on('get_pi_time')
+@catchLogExceptionsWrapper
+def on_get_pi_time():
+    # never broadcasts to all (client must make request)
+    emit('pi_time', {
+        'pi_time_s': monotonic()
+    })
+
+@SOCKET_IO.on('get_server_time')
+@catchLogExceptionsWrapper
+def on_get_server_time():
+    return {'server_time_s': monotonic()}
+
 @SOCKET_IO.on('schedule_race')
 @catchLogExceptionsWrapper
 def on_schedule_race(data):

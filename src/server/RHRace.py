@@ -108,7 +108,7 @@ class RHRace():
                             pilot_names_list.append(pilot_obj.callsign)
 
             if request and len(pilot_names_list) <= 0:
-                self._racecontext.rhui.emit_priority_message(self._racecontext.__('No valid pilots in race'), True, nobroadcast=True)
+                self._racecontext.rhui.emit_priority_message(self._racecontext.language.__('No valid pilots in race'), True, nobroadcast=True)
 
             logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
             max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
@@ -1038,17 +1038,17 @@ class RHRace():
                 win_data = win_status_dict['data']
                 if race_format.team_racing_mode:
                     win_str = win_data.get('name', '')
-                    team_win_str = self._racecontext.__('Team') + ' ' + win_str
+                    team_win_str = self._racecontext.language.__('Team') + ' ' + win_str
                     self.race_winner_name = team_win_str
                     self.race_winner_phonetic = team_win_str
-                    status_msg_str = self._racecontext.__('Winner is') + ' ' + team_win_str
+                    status_msg_str = self._racecontext.language.__('Winner is') + ' ' + team_win_str
                     log_msg_str = "Race status msg:  Winner is Team " + win_str
                     phonetic_str = status_msg_str
                 else:
                     win_str = win_data.get('callsign', '')
                     self.race_winner_name = win_str
                     self.race_winner_lap_id = win_data.get('laps', 0)
-                    status_msg_str = self._racecontext.__('Winner is') + ' ' + win_str
+                    status_msg_str = self._racecontext.language.__('Winner is') + ' ' + win_str
                     log_msg_str = "Race status msg:  Winner is " + win_str
                     win_pilot_id = win_data.get('pilot_id')
                     if win_pilot_id:
@@ -1061,7 +1061,7 @@ class RHRace():
                     if (not win_phon_name) or len(win_phon_name) <= 0:  # if no phonetic then use callsign
                         win_phon_name = win_data.get('callsign', '')
                     self.race_winner_phonetic = win_phon_name
-                    phonetic_str = self._racecontext.__('Winner is') + ' ' + win_phon_name
+                    phonetic_str = self._racecontext.language.__('Winner is') + ' ' + win_phon_name
 
                 # if racer lap was deleted then only output if win-status details changed
                 if (not del_lap_flag) or self.win_status != previous_win_status or \
@@ -1080,13 +1080,13 @@ class RHRace():
             elif win_status_dict['status'] == WinStatus.TIE:
                 # announce tied
                 if win_status_dict['status'] != previous_win_status:
-                    self.status_message = self._racecontext.__('Race Tied')
+                    self.status_message = self._racecontext.language.__('Race Tied')
                     logger.info("Race status msg:  Race Tied")
                     self._racecontext.rhui.emit_phonetic_text(self.status_message, 'race_winner')
             elif win_status_dict['status'] == WinStatus.OVERTIME:
                 # announce overtime
                 if win_status_dict['status'] != previous_win_status:
-                    self.status_message = self._racecontext.__('Race Tied: Overtime')
+                    self.status_message = self._racecontext.language.__('Race Tied: Overtime')
                     logger.info("Race status msg:  Race Tied: Overtime")
                     self._racecontext.rhui.emit_phonetic_text(self.status_message, 'race_winner')
 
@@ -1460,10 +1460,10 @@ class RHRace():
                     heat_pilots = {}
                     # check if existing pilot entries have the default names and use them if no; else create new ones
                     for node_obj in self._racecontext.interface.nodes:
-                        callsign = self._racecontext.__('~Callsign %d') % (node_obj.index + 1)
+                        callsign = self._racecontext.language.__('~Callsign %d') % (node_obj.index + 1)
                         pilot_obj = self._racecontext.rhdata.get_pilot_for_callsign(callsign)
                         if pilot_obj is None:
-                            pilot_name = self._racecontext.__('~Pilot %d Name') % (node_obj.index + 1)
+                            pilot_name = self._racecontext.language.__('~Pilot %d Name') % (node_obj.index + 1)
                             pilot_obj = self._racecontext.rhdata.add_pilot({'callsign': callsign, 'name': pilot_name})
                             logger.info('Created new pilot entry for secondary format: id={}, callsign: {}'.\
                                         format(pilot_obj.id, pilot_obj.callsign))

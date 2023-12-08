@@ -48,7 +48,7 @@ class HeatAutomator:
             return 'no-heat'
 
     def calc_heat_pilots(self, heat_or_id):
-        heat = self._racecontext.RHData.resolve_heat_from_heat_or_id(heat_or_id)
+        heat = self._racecontext.rhdata.resolve_heat_from_heat_or_id(heat_or_id)
 
         result = {
              'calc_success': True,
@@ -68,14 +68,14 @@ class HeatAutomator:
             return result
 
         # don't alter if saved races exist
-        race_list = self._racecontext.RHData.get_savedRaceMetas_by_heat(heat.id) 
+        race_list = self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id) 
 
         if (race_list):
             result['calc_success'] = None
             logger.debug("Skipping pilot recalculation: Races exist (heat {})".format(heat.id))
             return result
 
-        slots = self._racecontext.RHData.get_heatNodes_by_heat(heat.id)
+        slots = self._racecontext.rhdata.get_heatNodes_by_heat(heat.id)
         for slot in slots:
             if slot.method == ProgramMethod.NONE:
                 slot.pilot_id = RHUtils.PILOT_ID_NONE
@@ -85,10 +85,10 @@ class HeatAutomator:
                     if slot.seed_rank:
                         result['has_calc_pilots'] = True
                         logger.debug('Seeding Slot {} from Heat {}'.format(slot.id, slot.seed_id))
-                        seed_heat = self._racecontext.RHData.get_heat(slot.seed_id)
+                        seed_heat = self._racecontext.rhdata.get_heat(slot.seed_id)
 
                         if seed_heat:
-                            output = self._racecontext.RHData.get_results_heat(seed_heat)
+                            output = self._racecontext.rhdata.get_results_heat(seed_heat)
                             if output:
                                 results = output[output['meta']['primary_leaderboard']]
                                 if slot.seed_rank - 1 < len(results):
@@ -115,16 +115,16 @@ class HeatAutomator:
                     if slot.seed_rank:
                         result['has_calc_pilots'] = True
                         logger.debug('Seeding Slot {} from Class {}'.format(slot.id, slot.seed_id))
-                        seed_class = self._racecontext.RHData.get_raceClass(slot.seed_id)
+                        seed_class = self._racecontext.rhdata.get_raceClass(slot.seed_id)
 
                         if seed_class:
                             positions = None
 
-                            ranking = self._racecontext.RHData.get_ranking_raceClass(seed_class)
+                            ranking = self._racecontext.rhdata.get_ranking_raceClass(seed_class)
                             if ranking: # manual ranking
                                 positions = ranking['ranking']
                             else: # auto ranking
-                                results = self._racecontext.RHData.get_results_raceClass(seed_class)
+                                results = self._racecontext.rhdata.get_results_raceClass(seed_class)
                                 if results:
                                     positions = results[results['meta']['primary_leaderboard']]
 
@@ -150,13 +150,13 @@ class HeatAutomator:
 
             logger.debug('Slot {} Pilot is {}'.format(slot.id, slot.pilot_id if slot.pilot_id else None))
 
-        self._racecontext.RHData.commit()
+        self._racecontext.rhdata.commit()
         return result
 
     def run_auto_frequency(self, heat_or_id, current_frequencies, num_nodes, calc_fn):
         logger.debug('running auto-frequency with {}'.format(calc_fn))
-        heat = self._racecontext.RHData.resolve_heat_from_heat_or_id(heat_or_id)
-        slots = self._racecontext.RHData.get_heatNodes_by_heat(heat.id)
+        heat = self._racecontext.rhdata.resolve_heat_from_heat_or_id(heat_or_id)
+        slots = self._racecontext.rhdata.get_heatNodes_by_heat(heat.id)
 
         if heat.auto_frequency:
             # clear all node assignments
@@ -181,7 +181,7 @@ class HeatAutomator:
             # get frequency matches from pilots
             for slot in slots:
                 if slot.pilot_id:
-                    used_frequencies_json = self._racecontext.RHData.get_pilot(slot.pilot_id).used_frequencies
+                    used_frequencies_json = self._racecontext.rhdata.get_pilot(slot.pilot_id).used_frequencies
                     if used_frequencies_json:
                         used_frequencies = json.loads(used_frequencies_json)
                         for node in available_seats:
@@ -261,7 +261,7 @@ class HeatAutomator:
                 logger.error('calc_fn is not a valid auto-frequency algortihm')
                 return False
 
-            self._racecontext.RHData.commit()
+            self._racecontext.rhdata.commit()
         else:
             logger.debug('requested auto-frequency when disabled')
 
