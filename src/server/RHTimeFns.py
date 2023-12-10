@@ -13,3 +13,9 @@ def getUtcDateTimeNow():
     if useTimezoneFlag:
         return datetime.now(datetime.timezone.utc)
     return datetime.utcnow()
+
+def datetimeToFormattedStr(datetimeObj):
+    return datetimeObj.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+def epochMsToFormattedStr(epochMs):
+    return datetimeToFormattedStr(datetime.fromtimestamp(epochMs / 1000.0))
