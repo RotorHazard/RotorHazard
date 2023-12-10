@@ -271,7 +271,9 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is among the libraries installed via the `pip install -r requirements.txt` command.
 
-The **LED_COUNT** value must be set in the `src/server/config.json` file; other LED configuration options will attempt to use reasonable defaults. **LED_ROWS** must be set for multiline displays. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings. The following items may be set:
+The `LED_COUNT` value must be set in the `src/server/config.json` file; other LED configuration options will attempt to use reasonable defaults.
+
+See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings. The following items may be set:
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
 LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
@@ -284,10 +286,10 @@ LED_STRIP:  Strip type and color ordering (default is 'GRB')
 PANEL_ROTATE:  Optional panel-rotation value (default 0)
 INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default false)
 ```
-***LED_GPIO*** is not the hardware pin index.
-If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
+`LED_GPIO` is not the hardware pin index.
+If specified, the `LED_STRIP` value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
 
-Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must run the server with `sudo` or connect LEDs to a different GPIO pin. If using a "rotorhazard.service" file to [start the server on boot](#start-on-boot), it may be run as root by leaving out the "User=pi" line.
+Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must connect LEDs to a different GPIO pin or run the server with `sudo`. If using a "rotorhazard.service" file to [start the server on boot](#start-on-boot), it may be run as root by leaving out the "User=pi" line.
 
 See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) section in [doc/Hardware Setup.md](Hardware%20Setup.md).
 
@@ -299,7 +301,10 @@ sudo apt-get install libjpeg-dev
 sudo pip install pillow
 sudo apt-get install libopenjp2-7-dev
 ```
-In addition to these package installations, ensure LED_ROWS is set correctly for your display.
+
+- `LED_ROWS` **must be set** for multiline displays. 
+- If your multiline panel image requires rotation, use `PANEL_ROTATE` with the number of 90-degree CCW rotations needed (0..3). 
+- If alternating lines appear jumbled, try setting `INVERTED_PANEL_ROWS` to `true`.
 
 ### Java Support
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
