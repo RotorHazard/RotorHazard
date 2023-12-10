@@ -196,7 +196,7 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                if args['rhapi'].race.status == RaceStatus.DONE:
+                if args['RHAPI'].race.status == RaceStatus.DONE:
                     text = str(line['laps'])
                 else:
                     # first callsign character
@@ -366,7 +366,7 @@ def discover():
     if (Config.LED['LED_ROWS'] >= 16):
         effects.append(
             LEDEffect(
-                "Text: 4-Node Lap Count",
+                "Text: 4-Seat Lap Count",
                 multiLapGrid, {
                     'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING],
                     'recommended': [
