@@ -65,7 +65,7 @@ Event information is displayed to users, such as on the home page when users fir
 
 _Consecutive Laps Base_ sets the number of laps which RotorHazard calculates for its Consecutive Laps race formats and results.
 
-_Minimum lap Time_ and _Minimum Lap Behavior_ change how RotorHazard highlights or discards short passes. _Minimum Lap Time_ changes the threshold under which will activate the _Minimum Lap Behavior_. Use the "discard" behavior with caution, as this will eliminate data that may have been valid.
+_Minimum Lap Time_ and _Minimum Lap Behavior_ change how RotorHazard highlights or discards short passes. _Minimum Lap Time_ changes the threshold under which will activate the _Minimum Lap Behavior_. Use the "discard" behavior with caution, as this will eliminate data that may have been valid.
 
 #### Pilots
 Add an entry for each pilot that will race. The system will announce pilots based on their callsign. A phonetic spelling for a callsign may be used to influence the voice callouts; it is not required.
@@ -88,8 +88,8 @@ Classes may be given a name and description in addition to other properties:
 
 Heats are groups of pilots racing together simultaneously. Heats contain slots where you assign pilots who will race. Optional heat names can be added if desired. The number of slots available is determined by the hardware configuration of the timer. Each slot has a mode and assignment criteria. Heat slots may be set to *None* to prevent a pilot from being assigned.
 - "Pilot": directly assigns a pilot to this race slot
-- "Heat": Use the results of another heat when seeding this heat. when selected, choose the heat to seed from and the ranking position that will be used
-- "Class": Use the results of a class when seeding this heat. when selected, choose the class to seed from and the ranking position that will be used
+- "Heat": Use the results of another heat when seeding this heat. When selected, choose the heat to seed from and the ranking position that will be used
+- "Class": Use the results of a class when seeding this heat. When selected, choose the class to seed from and the ranking position that will be used
 
 If "Auto Frequency" is on, slots are not assigned to seats (and frequencies) until a heat is seeded. This is strongly recommended if the "Heat" or "Class" methods are used.
 
@@ -107,21 +107,21 @@ _Generator_ selects which method to use.
 _Input_ chooses which class will be used to seed the generated heats. Choose "-All Pilots-" to use every currently loaded pilot with no regard for ranking.
 _Output_ selects where to place the generated results. Choose "-New Class-" to have RotorHazard create a class where the results will be placed.
 
-If a generator has additionl parameters, they will appear when the "Generate Heats" button is pressed.
+If a generator has additional parameters, they will appear when the "Generate Heats" button is pressed.
 
 - _Balanced Random Fill_: Fills heats randomly from the input pool, keeping the number of pilots in each heat as consistent as possible.
-    - _Maximum pilots per heat_: Limits the total number of pilots that are drawn from the input pool for each heat; if _Auto_, will use the current number of seats which are not disabled.
+    - _Maximum pilots per heat_: Limits the total number of pilots that are drawn from the input pool for each heat; if _Auto_, will use the current number of seats which are not disabled
     - _Maximum pilots in class_: Limits the total number of pilots that are drawn from the input pool for the class, if an input class is selected
     - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
     - _Heat title suffix_: Modifies the name of generated heats
-- _Ladder_: Generates ladder (sometimes called "letter") heats.
+- _Ladder_: Generates ladder (sometimes called "letter") heats
     - _Advances per heat_: Number of pilots which will advance (or "bump") up to the next higher ladder heat (0 is acceptable)
     - _Seeded slots per heat_: Number of pilots which are seeded into each ladder heat from the input pool
     - _Pilots in class_: Limits the total number of pilots that are drawn from the input pool for the class, if an input class is selected
     - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
     - _Heat title suffix_: Modifies the name of generated heats
 - _Ranked Fill_:
-    - _Maximum pilots per heat_: Limits the total number of pilots that are drawn from the input pool for each heat; if _Auto_, will use the current number of seats which are not disabled.
+    - _Maximum pilots per heat_: Limits the total number of pilots that are drawn from the input pool for each heat; if _Auto_, will use the current number of seats which are not disabled
     - _Maximum pilots in class_: Limits the total number of pilots that are drawn from the input pool for the class, if an input class is selected
     - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
     - _Heat title suffix_: Modifies the name of generated heats
@@ -191,9 +191,13 @@ With _Fastest Lap_ and _Fastest 3 Consecutive Laps_, teams with differing number
 
 
 #### Data Management
+
 _Stored Data_ can be used to backup the current database (save to a file on the pi and prompt to download it) or restore events from stored data files
-_Reset_ may clear races, classes, heats, pilots, and race formats.
+
+_Reset_ may clear races, classes, heats, pilots, and race formats
+
 _Import_ uses plugins to extract data from files and fill event values
+
 _Export_ uses plugins to extract event values and save to files
 
 
@@ -214,13 +218,13 @@ All audio controls are local to the browser and device where you set them, inclu
 
 Voice select chooses the text-to-speech engine. Available selections are provided by the web browser and operating system.
 
-Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Clock" announcement will perioically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
+Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Clock" announcement will periodically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
 
 Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Volume" controls race start and end signals.
 
 Indicator beeps are very short tones that give feedback on how the timer is working, and are most useful when trying to tune it. Each node is identified with a unique audio pitch. "Crossing Entered" will beep once when a pass begins, and "Crossing Exited" will beep twice rapidly when a pass is completed. "Manual Lap Button" will beep once if the "Manual" button is used to force a simulated pass.
 
-If you select "Use MP3 Tones instead of synthetic tones" then the '.mp3' files at "src/server/static/audio" will be used to play the tones.
+If you select "Use MP3 Tones instead of synthetic tones" then the '.mp3' files at "src/server/static/audio" will be used to play the tones. (This is necessary on some web browsers and operating systems.)
 
 #### Event Actions
 Extend and personalize your timer's behavior by attaching *Effects* to *Events*. The timer generates an *Event* on race start, lap recorded, pilot done, etc. *Effects* are behaviors that can be triggered. Each effect may have parameters which can be configured.
@@ -249,7 +253,7 @@ _This section will not appear if your timer does not have LEDs configured. A not
 Choose the interface language, and change parameters that affect the appearance of the timer such as its name and color scheme. You can also shut down the server from here.
 
 #### Status
-Provides information about sensors and the timer cluster (split and mirror timers). A reconnect button appears here if cluster timer communications fail and RotorHazard cannot automatically recover.
+Provides information about sensors and the timer cluster (secondary/split and mirror timers). A _reconnect_ button appears here if cluster timer communications fail and RotorHazard cannot automatically recover.
 
 
 ### Run
