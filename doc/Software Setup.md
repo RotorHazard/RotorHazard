@@ -104,10 +104,10 @@ Enter the following commands to setup the Python virtual environment:
 cd ~
 python -m venv .venv
 ```
-Configure the user shell to automatically activate the Python virtual environment by entering the command `nano .profile` to edit the ".profile" file and adding the following lines to the end of the file:
+Configure the user shell to automatically activate the Python virtual environment by entering the command `nano .bashrc` to edit the ".bashrc" file and adding the following lines to the end of the file:
 ```
 VIRTUAL_ENV_DISABLE_PROMPT=1
-source .venv/bin/activate
+source ~/.venv/bin/activate
 ```
 Save and exit the editor (CTRL-X, Y, ENTER)
 
