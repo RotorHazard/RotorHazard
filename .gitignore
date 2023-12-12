@@ -7,7 +7,6 @@
 
 # RH Database and backups
 *.db
-db_bkp
 
 # Local system configuration
 /src/server/config.json
