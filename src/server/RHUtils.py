@@ -199,7 +199,7 @@ def catchLogExceptionsWrapper(func):
 def uniqueName(desiredName, otherNames):
     if desiredName in otherNames:
         newName = desiredName
-        match = re.match('^(.*) ([0-9]*)$', desiredName)
+        match = re.match('^(.*) ([0-9]+)$', desiredName)
         if match:
             nextInt = int(match.group(2))
             nextInt += 1
