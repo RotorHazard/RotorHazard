@@ -1447,6 +1447,8 @@ def on_list_backups():
 
         files.sort(key=str.casefold)
 
+        files = list(filter(lambda x: x.endswith(".db"), files))
+
         emit_payload = {
             'backup_files': files
         }
