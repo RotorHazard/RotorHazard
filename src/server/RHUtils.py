@@ -199,7 +199,7 @@ def catchLogExceptionsWrapper(func):
 def uniqueName(desiredName, otherNames):
     if desiredName in otherNames:
         newName = desiredName
-        match = re.match('^(.*) ([0-9]*)$', desiredName)
+        match = re.match('^(.*) ([0-9]+)$', desiredName)
         if match:
             nextInt = int(match.group(2))
             nextInt += 1
@@ -303,7 +303,7 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
             if rhapi.race.race_winner_lap_id > 0:  # filter out splits after race winner declared
                 lap_splits = [s for s in lap_splits if s.lap_id < rhapi.race.race_winner_lap_id]
         fastest_split = max(lap_splits, key=lambda s: (s.split_speed if s.split_speed else 0.0))
-        if fastest_split:
+        if fastest_split and fastest_split.split_speed:
             if sel_pilot_id:
                 if spoken_flag:
                     fastest_str = "{:.1f}".format(fastest_split.split_speed)

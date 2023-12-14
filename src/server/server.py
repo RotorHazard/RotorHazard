@@ -4,8 +4,8 @@ SERVER_API = 41 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
-MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.7)
-MIN_PYTHON_MINOR_VERSION = 7
+MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.8)
+MIN_PYTHON_MINOR_VERSION = 8
 
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
@@ -22,11 +22,16 @@ logger = logging.getLogger(__name__)
 
 EPOCH_START = RHTimeFns.getEpochStartTime()
 
-# program-start time, in milliseconds since 1970-01-01
-PROGRAM_START_EPOCH_TIME = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
+_prog_start_epoch1 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
 
-# program-start time (in milliseconds, starting at zero)
+# program start time (in time.monotonic seconds)
 PROGRAM_START_MTONIC = monotonic()
+
+# do average of before and after to exact timing match between PROGRAM_START_EPOCH_TIME and PROGRAM_START_MTONIC
+_prog_start_epoch2 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
+
+# program-start time, in milliseconds since 1970-01-01
+PROGRAM_START_EPOCH_TIME = int((_prog_start_epoch1 + _prog_start_epoch2) * 500.0 + 0.5)   # *1000/2.0
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
@@ -42,7 +47,6 @@ import subprocess
 import importlib
 # import copy
 from functools import wraps
-from six import string_types
 
 from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
@@ -823,7 +827,7 @@ def on_set_frequency(data):
     '''Set node frequency.'''
     if RaceContext.cluster:
         RaceContext.cluster.emitToSplits('set_frequency', data)
-    if isinstance(data, string_types): # LiveTime compatibility
+    if isinstance(data, str): # LiveTime compatibility
         data = json.loads(data)
     node_index = data['node']
     frequency = int(data['frequency'])
@@ -2010,7 +2014,7 @@ def on_delete_lap(data):
 @SOCKET_IO.on('restore_deleted_lap')
 def on_restore_deleted_lap(data):
     RaceContext.race.restore_deleted_lap(data)
-    
+
 
 @SOCKET_IO.on('simulate_lap')
 @catchLogExceptionsWrapper
@@ -2364,17 +2368,23 @@ def clock_check_thread_function():
             gevent.sleep(10)
             if RaceContext.race.any_races_started:  # stop monitoring after any race started
                 break
-            time_now = monotonic()
             epoch_now = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
-            diff_ms = epoch_now - RaceContext.serverstate.monotonic_to_epoch_millis(time_now)
+            diff_ms = epoch_now - RaceContext.serverstate.monotonic_to_epoch_millis(monotonic())
             if abs(diff_ms) > 30000:
+                _epoch1 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
+                time_now = monotonic()
+                # do average of before and after to exact timing match
+                _epoch2 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
+                # current time, in milliseconds since 1970-01-01
+                epoch_now = int((_epoch1 + _epoch2) * 500.0 + 0.5)   # *1000/2.0
+                diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
                 RaceContext.serverstate.program_start_epoch_time += diff_ms
                 MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
-                logger.info("Adjusting RaceContext.serverstate.program_start_epoch_time for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
-                            format(diff_ms/1000, RaceContext.serverstate.program_start_epoch_time))
+                logger.info("Adjusting RaceContext.serverstate.program_start_epoch_time for shift in system clock ({:.1f} secs) to: {:.0f}, time={}".\
+                            format(diff_ms/1000, RaceContext.serverstate.program_start_epoch_time, RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
                 # update values that will be reported if running as cluster timer
                 serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(RaceContext.serverstate.program_start_epoch_time)
-                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(RaceContext.serverstate.program_start_epoch_time/1000.0))
+                serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)
                 if RaceContext.cluster.has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
                     RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, serverInfoItems)
@@ -2867,7 +2877,7 @@ def buildServerInfo():
         serverInfoItems = serverInfo.copy()
         serverInfoItems.pop('about_html', None)
         serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(RaceContext.serverstate.program_start_epoch_time)
-        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(RaceContext.serverstate.program_start_epoch_time/1000.0))
+        serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)
 
         return serverInfo
 
@@ -2917,7 +2927,7 @@ def check_requirements():
     try:
         import importlib.metadata  # @UnusedImport pylint: disable=redefined-outer-name
         chk_list = [['Flask==','flask'], ['Flask-SocketIO==','flask_socketio'], \
-                    ['Flask_SocketIO==','flask_socketio'], ['six==','six'], \
+                    ['Flask_SocketIO==','flask_socketio'], \
                     ['flask_sqlalchemy==','flask_sqlalchemy'], ['gevent==','gevent'], \
                     ['gevent-websocket==','gevent-websocket'], ['monotonic==','monotonic'], \
                     ['requests==','requests']]
@@ -2943,7 +2953,8 @@ def check_requirements():
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:.0f}'.format(RaceContext.serverstate.program_start_epoch_time))
+logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time,
+                                                         RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
 RHUtils.idAndLogSystemInfo()
 
 check_requirements()
@@ -3065,7 +3076,7 @@ hasMirrors = False
 secondary = None
 try:
     for sec_idx, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
-        if isinstance(secondary_info, string_types):
+        if isinstance(secondary_info, str):
             secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
         if 'address' not in secondary_info:
             raise RuntimeError("Secondary 'address' item not specified")

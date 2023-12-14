@@ -16,7 +16,7 @@ import RHUtils
 from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import gevent
 from eventmanager import Evt
-from six.moves import UserDict
+from collections import UserDict
 import logging
 
 logger = logging.getLogger(__name__)

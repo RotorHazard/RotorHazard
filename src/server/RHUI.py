@@ -1014,26 +1014,28 @@ class RHUI():
 
     def emit_phonetic_split(self, split_data, **params):
         '''Emits phonetic split-pass data.'''
-        pilot = self._racecontext.rhdata.get_pilot(split_data.get('pilot_id', RHUtils.PILOT_ID_NONE))
-        phonetic_name = (pilot.phonetic or pilot.callsign) if pilot else ''
-        split_time = split_data.get('split_time')
+        name_callout_flag = split_data.get('name_callout_flag', True)
         time_callout_flag = split_data.get('time_callout_flag', True)
-        phonetic_time = RHUtils.phonetictime_format(split_time, self._racecontext.rhdata.get_option('timeFormatPhonetic')) \
-                        if (split_time and time_callout_flag) else None
-        split_speed = split_data.get('split_speed')
         speed_callout_flag = split_data.get('speed_callout_flag', True)
-        phonetic_speed = "{:.1f}".format(split_speed) if  (split_speed and speed_callout_flag) else None
-        split_id = split_data.get('split_id', -1)
-        emit_payload = {
-            'pilot_name': phonetic_name,
-            'split_id': str(split_id+1),
-            'split_time': phonetic_time,
-            'split_speed': phonetic_speed
-        }
-        if ('nobroadcast' in params):
-            emit('phonetic_split_call', emit_payload)
-        else:
-            self._socket.emit('phonetic_split_call', emit_payload)
+        if name_callout_flag or time_callout_flag or speed_callout_flag:
+            pilot = self._racecontext.rhdata.get_pilot(split_data.get('pilot_id', RHUtils.PILOT_ID_NONE))
+            phonetic_name = (pilot.phonetic or pilot.callsign) if name_callout_flag and pilot else ''
+            split_time = split_data.get('split_time')
+            phonetic_time = RHUtils.phonetictime_format(split_time, self._racecontext.rhdata.get_option('timeFormatPhonetic')) \
+                            if (time_callout_flag and split_time) else None
+            split_speed = split_data.get('split_speed')
+            phonetic_speed = "{:.1f}".format(split_speed) if  (speed_callout_flag and split_speed) else None
+            split_id = split_data.get('split_id', -1)
+            emit_payload = {
+                'pilot_name': phonetic_name,
+                'split_id': str(split_id+1),
+                'split_time': phonetic_time,
+                'split_speed': phonetic_speed
+            }
+            if ('nobroadcast' in params):
+                emit('phonetic_split_call', emit_payload)
+            else:
+                self._socket.emit('phonetic_split_call', emit_payload)
 
     def emit_split_pass_info(self, split_data):
         self._racecontext.race.clear_results()

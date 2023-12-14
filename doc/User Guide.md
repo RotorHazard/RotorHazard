@@ -8,6 +8,7 @@
     - [Event](#event)
     - [Results](#results)
     - [Current](#current)
+    - [Format](#format)
     - [Settings](#settings)
     - [Run](#run)
     - [Marshal](#marshal)
@@ -55,61 +56,87 @@ This page displays information about the currently running race, including real-
 In the Audio Control section, the user can select whether any one pilot, all pilots, or no pilots will have laps announced. In this way, a pilot might elect to hear only their own laps announced. A user can also adjust the voice, volume, rate, and pitch of these announcements.
 
 
-### Settings
+### Format
 
-This page allows changing the timer's optional settings and event setup.
+This page is for adjusting event-specific parameters.
 
-#### Frequency Setup
-Choose a preset or manually select frequencies for each node. Arbitrary frequency selection is possible, as is disabling a node. The IMD score for currently selected frequencies is calculated and displayed at the bottom of the panel.
+#### Event
+Event information is displayed to users, such as on the home page when users first connect to the system or at the top of the Results page.
 
-Profiles contain frequencies and node tuning values. Changing this list immediately activates the selected profile, and changing current frequencies and node tuning immediately saves to the profile.
+_Consecutive Laps Base_ sets the number of laps which RotorHazard calculates for its Consecutive Laps race formats and results.
 
-#### Sensor Tuning
-See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
-
-#### Event and Classes
-Event information is displayed on the home page when users first connect to the system.
-
-Classes are not required for events; there's no need to create a class unless you will have two or more in the event. Classes can be used to have separate generated statistics for groups of heats. For example, Open and Spec class, or Beginner/Pro classes.
-
-#### Heats
-Add heats until there are enough for all pilots racing. Optional heat names can be added if desired. Heat slots may be set to *None* if no pilot is assigned there.
-
-If you are using classes, assign each heat to a class. Be sure to add enough heats for each pilot in each class; heats assigned to one class are not available in another.
-
-As you run races, heats will become locked and cannot be modified. This protects saved race data from becoming invalid. To modify heats again, open the *Database* panel and clear races.
+_Minimum Lap Time_ and _Minimum Lap Behavior_ change how RotorHazard highlights or discards short passes. _Minimum Lap Time_ changes the threshold under which will activate the _Minimum Lap Behavior_. Use the "discard" behavior with caution, as this will eliminate data that may have been valid.
 
 #### Pilots
 Add an entry for each pilot that will race. The system will announce pilots based on their callsign. A phonetic spelling for a callsign may be used to influence the voice callouts; it is not required.
 
-#### Audio Control
-All audio controls are local to the browser and device where you set them, including the list of available languages, volumes, and which announcements or indicators are in use.
+_Pilot Sort_ affects how pilot selectors in the RotorHazard interface will be sorted. Reloading the page may be necessary to see the effects.
 
-Voice select chooses the text-to-speech engine. Available selections are provided by the web browser and operating system.
+_Color Mode_ affects how RotorHazard assigns colors to pilots in each race.
+- "Seat": assigns a color based on which seat a pilot is slotted into for the race
+- "Pilot": assigns a color based on the color value chosen in the pilot list
+- "Frequency": assigns a color based on the frequency selected for the seat, per the color standard established by Betaflight
 
-Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Clock" announcement will perioically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
+#### Classes and Heats
+Classes are groups of heats and races that share common characteristics. Each class will have its own results and ranking calculated separately from others. Classes are not required for events but are generally recommended. Class results can be useful for seeding multiple events phases, such as qualifying into finals. Create a class (if desired) and add heats to it.
 
-Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Volume" controls race start and end signals.
+Classes may be given a name and description in addition to other properties:
+- _Race Format_: if selected, this race format is force-applied to all races in the class
+- _Ranking_: method by which this class is ranked. May be extended by plugins
+- _Rounds_: number of rounds after which RotorHazard considers the heat to be done; leave at 0 to continue running this class until another is manually chosen
+- _Advance Heat_: determines whether RotorHazard will automatically move to the next heat when a race in this class concludes
 
-Indicator beeps are very short tones that give feedback on how the timer is working, and are most useful when trying to tune it. Each node is identified with a unique audio pitch. "Crossing Entered" will beep once when a pass begins, and "Crossing Exited" will beep twice rapidly when a pass is completed. "Manual Lap Button" will beep once if the "Manual" button is used to force a simulated pass.
+Heats are groups of pilots racing together simultaneously. Heats contain slots where you assign pilots who will race. Optional heat names can be added if desired. The number of slots available is determined by the hardware configuration of the timer. Each slot has a mode and assignment criteria. Heat slots may be set to *None* to prevent a pilot from being assigned.
+- "Pilot": directly assigns a pilot to this race slot
+- "Heat": Use the results of another heat when seeding this heat. When selected, choose the heat to seed from and the ranking position that will be used
+- "Class": Use the results of a class when seeding this heat. When selected, choose the class to seed from and the ranking position that will be used
 
-If you select "Use MP3 Tones instead of synthetic tones" then the '.mp3' files at "src/server/static/audio" will be used to play the tones.
+If "Auto Frequency" is on, slots are not assigned to seats (and frequencies) until a heat is seeded. This is strongly recommended if the "Heat" or "Class" methods are used.
 
-#### Event Actions
-Extend and personalize your timer's behavior by attaching *Effects* to *Events*. The timer generates an *Event* on race start, lap recorded, pilot done, etc. *Effects* are behaviors that can be triggered. Each effect may have parameters which can be configured.
+If any of the slots uses either "Heat" or "Class" method, or if "Auto Frequency" is on, dynamic seeding becomes active for the heat.
 
-For example, you might add the "Speak" effect to the "Pilot Done" event in order to call out when each pilot has completed their own laps.
+A dynamically seeded heat can be in the "Plan" or "Seeded" state. A newly created heat is in the Plan state, and a race cannot be run until the heat is seeded. You may seed a heat using the "Seed Now" button, which will pull the current results from any selected heats and classes to create pilot assignments. If "Auto Frequency" is on, slots (and frequencies) are also assigned during this step. Plan heats are seeded when selected on the [Run](#run) page. If you confirm the assignments shown, the heat becomes seeded. Seeded heats that have not yet been used to run a race can be switched back to the "Plan" state using the "Revert to Plan" button. Note that seeding is not deterministic; reseeding may not produce the same results.
 
-* _Speak_ produces an audible voice callout
-* _Message_ creates a standard text notification
-* _Alert_ creates a priority (pop-up) alert message
+As you run races, classes and heats will become locked and cannot be modified. This protects saved race data from becoming invalid. You may unlock heats and classes to modify their data. If you do, you are rewriting race history for those heats and classes as if they were set up from the beginning. _If you wish to make a change to a heat going forward only and without affecting race history, duplicate the heat to create a new one._ Clearing races from the event will unlock all heats and classes.
 
-For the above effects, you can use "%PILOT%" for a callsign when a pilot triggers the event.
+#### Generators
 
-#### Race Format
-Race formats define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.
+Generators create classes and heats. Several generators are built into RotorHazard by default, and additional generators may be available if added by plugin.
 
-Hitting the "+" button will duplicate the current race format, and the "x" button will remove the current race format. (Once a race format is removed there is not a direct way to recover it, but if you go to "Settings | Database", select "Races and Race Formats" in the drop-down and then hit "Clear Data" it will restore the race formats to the original set. Note that any customized race formats will be deleted.)
+_Generator_ selects which method to use.
+_Input_ chooses which class will be used to seed the generated heats. Choose "-All Pilots-" to use every currently loaded pilot with no regard for ranking.
+_Output_ selects where to place the generated results. Choose "-New Class-" to have RotorHazard create a class where the results will be placed.
+
+If a generator has additional parameters, they will appear when the "Generate Heats" button is pressed.
+
+- _Balanced Random Fill_: Fills heats randomly from the input pool, keeping the number of pilots in each heat as consistent as possible.
+    - _Maximum pilots per heat_: Limits the total number of pilots that are drawn from the input pool for each heat; if _Auto_, will use the current number of seats which are not disabled
+    - _Maximum pilots in class_: Limits the total number of pilots that are drawn from the input pool for the class, if an input class is selected
+    - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
+    - _Heat title suffix_: Modifies the name of generated heats
+- _Ladder_: Generates ladder (sometimes called "letter") heats
+    - _Advances per heat_: Number of pilots which will advance (or "bump") up to the next higher ladder heat (0 is acceptable)
+    - _Seeded slots per heat_: Number of pilots which are seeded into each ladder heat from the input pool
+    - _Pilots in class_: Limits the total number of pilots that are drawn from the input pool for the class, if an input class is selected
+    - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
+    - _Heat title suffix_: Modifies the name of generated heats
+- _Ranked Fill_:
+    - _Maximum pilots per heat_: Limits the total number of pilots that are drawn from the input pool for each heat; if _Auto_, will use the current number of seats which are not disabled
+    - _Maximum pilots in class_: Limits the total number of pilots that are drawn from the input pool for the class, if an input class is selected
+    - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
+    - _Heat title suffix_: Modifies the name of generated heats
+- _Regulation bracket, double elimination_:
+    - _Spec_: Regulation to follow for generating brackets
+    - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
+- _Regulation bracket, single elimination_:
+    - _Spec_: Regulation to follow for generating brackets
+    - _Seed from rank_: Skips pilots before seeding; useful for "next 16"-type brackets
+
+
+#### Race Formats
+Race formats define how an individual race is conducted. Choose a format to adjust.
+
+The "+" button will duplicate the current race format, and the "x" button will remove the current race format. (Once a race format is removed it cannot be recovered, but default formats may be restored from the Data Management panel.)
 
 The race clock can count up or down as selected by _Race Clock Mode_. Use "No Time Limit" for a "First to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
 
@@ -117,7 +144,7 @@ During a "Fixed Time" race, _Grace Period_ is the amount of time after the race 
 
 Each race begins with a staging sequence. Adjust the _Prestage Tones_ value to control the length of the *prestage* phase, during which one tone will sound each second. Next is the *staging* phase, which can be a fixed or random duration. _Minimum Staging Time_ sets a fixed minimum duration for the *staging* phase. If _Random Staging Time_ is greater than zero, the timer will additionally delay randomly between zero and this value. Setting _Random Staging Time_ above zero also hides the staging clock, which will show "Ready" instead of a countdown. Choose whether tones are heard during the *staging* phase with _Staging Tones_.
 
-#####Examples:
+##### Examples:
 * A fixed "3, 2, 1, Go" countdown start:
     * _Prestage Tones_: 3
     * _Staging Tones_: (any)
@@ -125,17 +152,17 @@ Each race begins with a staging sequence. Adjust the _Prestage Tones_ value to c
     * _Random Staging Time_: 0.0
 * 1 prestage tone followed by a start tone within 1–5 seconds:
     * _Prestage Tones_: 1
-    * _Staging Tones_: None    
+    * _Staging Tones_: None
     * _Minimum Staging Time_: 1.0
     * _Random Staging Time_: 5.0
 * 5 prestage tones followed by a random delay between 0.2 and 3.0 seconds:
     * _Prestage Tones_: 5
-    * _Staging Tones_: None    
+    * _Staging Tones_: None
     * _Minimum Staging Time_: 0.2
     * _Random Staging Time_: 2.8
 * A variable number of tones between 2 and 5, then start:
     * _Prestage Tones_: 2
-    * _Staging Tones_: Each Second    
+    * _Staging Tones_: Each Second
     * _Minimum Staging Time_: 0.2
     * _Random Staging Time_: 3.7
 
@@ -162,7 +189,53 @@ _Team Racing Mode_ activates alternate scoring for additional race formats. Win 
 
 With _Fastest Lap_ and _Fastest 3 Consecutive Laps_, teams with differing numbers of pilots can compete together fairly.
 
-_Minimum lap Time_ highlights or discards passes that would have registered laps less than the specified duration. Use the "discard" behavior with caution, as this will eliminate data that may have been valid. _Minimum Lap Time_ is not stored with the race format.
+
+#### Data Management
+
+_Stored Data_ can be used to backup the current database (save to a file on the pi and prompt to download it) or restore events from stored data files
+
+_Reset_ may clear races, classes, heats, pilots, and race formats
+
+_Import_ uses plugins to extract data from files and fill event values
+
+_Export_ uses plugins to extract event values and save to files
+
+
+### Settings
+
+This page allows changing the timer's optional settings and event setup.
+
+#### Frequency Setup
+Choose a preset or manually select frequencies for each node. Arbitrary frequency selection is possible, as is disabling a node. The IMD score for currently selected frequencies is calculated and displayed at the bottom of the panel.
+
+Profiles contain frequencies and node tuning values. Changing this list immediately activates the selected profile, and changing current frequencies and node tuning immediately saves to the profile.
+
+#### Sensor Tuning
+See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
+
+#### Audio Control
+All audio controls are local to the browser and device where you set them, including the list of available languages, volumes, and which announcements or indicators are in use.
+
+Voice select chooses the text-to-speech engine. Available selections are provided by the web browser and operating system.
+
+Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Clock" announcement will periodically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
+
+Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Volume" controls race start and end signals.
+
+Indicator beeps are very short tones that give feedback on how the timer is working, and are most useful when trying to tune it. Each node is identified with a unique audio pitch. "Crossing Entered" will beep once when a pass begins, and "Crossing Exited" will beep twice rapidly when a pass is completed. "Manual Lap Button" will beep once if the "Manual" button is used to force a simulated pass.
+
+If you select "Use MP3 Tones instead of synthetic tones" then the '.mp3' files at "src/server/static/audio" will be used to play the tones. (This is necessary on some web browsers and operating systems.)
+
+#### Event Actions
+Extend and personalize your timer's behavior by attaching *Effects* to *Events*. The timer generates an *Event* on race start, lap recorded, pilot done, etc. *Effects* are behaviors that can be triggered. Each effect may have parameters which can be configured.
+
+For example, you might add the "Speak" effect to the "Pilot Done" event in order to call out when each pilot has completed their own laps.
+
+* _Speak_ produces an audible voice callout
+* _Message_ creates a standard text notification
+* _Alert_ creates a priority (pop-up) alert message
+
+For the above effects, you can use "%PILOT%" for a callsign when a pilot triggers the event.
 
 #### LED Effects
 Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.
@@ -176,11 +249,11 @@ This section will override the current LED display. Choose to temporarily shut o
 
 _This section will not appear if your timer does not have LEDs configured. A notice appears in the startup log._
 
-#### Database
-Choose to backup the current database (save to a file on the pi and prompt to download it) or clear data. You may clear races, classes, heats, and pilots.
-
 #### System
 Choose the interface language, and change parameters that affect the appearance of the timer such as its name and color scheme. You can also shut down the server from here.
+
+#### Status
+Provides information about sensors and the timer cluster (secondary/split and mirror timers). A _reconnect_ button appears here if cluster timer communications fail and RotorHazard cannot automatically recover.
 
 
 ### Run

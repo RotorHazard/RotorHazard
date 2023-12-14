@@ -2,11 +2,11 @@
 
 - [Introduction](#introduction)
 - [Install RotorHazard on a Raspberry Pi](#install-rotorhazard-on-a-raspberry-pi)
-- [RotorHazard Node Code](#rotorhazard-node-code)
-- [Optional Components](#optional-components)
 - [Running the RotorHazard Server](#running-the-rotorhazard-server)
-- [Updating an Existing Installation](#updating-an-existing-installation)
+- [RotorHazard Node Code](#rotorhazard-node-code)
 - [Enable Port Forwarding](#enable-port-forwarding)
+- [Optional Components](#optional-components)
+- [Updating an Existing Installation](#updating-an-existing-installation)
 - [Other Operating Systems](#other-operating-systems)
 - [Viewing Database Files](#viewing-database-files)
 - [RotorHazard Portable](#rotorhazard-portable)
@@ -14,9 +14,11 @@
 
 ## Introduction
 
-The central software component of the RotorHazard system is its server, written in Python, which operates its functions and serves up web pages to browsers. In a standard setup, the server is run on a RaspberryPi. (It is also possible to run RotorHazard on other types of hardware -- see the [Other Operating Systems](#otheros) section below.)
+The central software component of the RotorHazard system is its server, written in Python, which operates its functions and serves up web pages to browsers. In a standard setup, the server is run on a [Raspberry Pi](https://www.raspberrypi.org). (It is also possible to run RotorHazard on other types of hardware -- see the [Other Operating Systems](#otheros) section below.)
 
 Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.
+
+Once the server is setup and running, see the RotorHazard Race Timer [User Guide](User%20Guide.md) for further instructions and setup tips.
 
 ## Install RotorHazard on a Raspberry Pi
 
@@ -26,7 +28,7 @@ Note: Many of the setup commands below require that the Rasperry Pi has internet
 
 Install the Raspberry Pi OS, following the official instructions: https://www.raspberrypi.org/help
 
-The standard-recommended setup is to use a Raspberry Pi 3 or Pi 4 board and install the [Raspberry Pi OS](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) (Desktop).
+The standard-recommended setup is to use a Raspberry Pi 3 or Pi 4 board, install the [Raspberry Pi OS](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) (Desktop), and configure it with a user named "pi".
 
 Tip: Any time you intend to use a monitor (via HDMI) with the Raspberry Pi, connect it before powering up the Pi. Connecting the monitor after power up tends to not work (blank screen).
 
@@ -72,7 +74,9 @@ dtoverlay=act-led,gpio=24
 dtparam=act_led_trigger=heartbeat
 dtoverlay=gpio-shutdown,gpio_pin=18,debounce=5000
 ```
-Save and exit (CTRL-X, Y, ENTER)
+Save and exit the editor (CTRL-X, Y, ENTER)
+
+*Notes:*
 
 The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors).
 
@@ -80,7 +84,7 @@ The "dtoverlay=miniuart-bt" line moves the high performance UART from the Blueto
 
 The "core_freq" line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the "core_freq" line should be omitted (as per the Raspberry Pi documentation [here](https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md)).
 
-For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_trigger=heartbeat" lines configure a Raspberry-Pi-heartbeat signal that the BPill processor monitors to track the status of the Pi.  The "dtoverlay=gpio-shutdown..." line makes it so the shutdown button still operates if the RotorHazard server is not running.
+For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_trigger=heartbeat" lines configure a Raspberry-Pi-heartbeat signal that the BPill processor monitors to track the status of the Pi. The "dtoverlay=gpio-shutdown..." line makes it so the shutdown button still operates if the RotorHazard server is not running.
 
 
 ### 4. Perform System Update
@@ -95,20 +99,25 @@ Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
 sudo apt install python3-dev libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
 ```
-The minimum version of Python supported is 3.7 Check the current default version of Python by entering the following command:
+Enter the following commands to setup the Python virtual environment:
 ```
-python --version
+cd ~
+python -m venv .venv
 ```
-If the version reported is older than Python 3, enter the following commands to switch the default version to Python 3:
+Configure the user shell to automatically activate the Python virtual environment by entering the command `nano .bashrc` to edit the ".bashrc" file and adding the following lines to the end of the file:
 ```
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
+VIRTUAL_ENV_DISABLE_PROMPT=1
+source ~/.venv/bin/activate
 ```
-After the above commands are entered, the system should default to using Python 3. The default version can be switched back and forth via the command: `sudo update-alternatives --config python`
+Save and exit the editor (CTRL-X, Y, ENTER)
 
-### 6. Install the RotorHazard Server
+### 6. Reboot System
+After the above setup steps are performed, the system should be rebooted by entering the following using a terminal window:
+```
+sudo reboot
+```
 
-Install the RotorHazard server code under '/home/pi/' on the Raspberry Pi as follows:
+### 7. Install the RotorHazard Server
 
 Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code.
 
@@ -122,35 +131,100 @@ mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip
 ```
 
-The next step is to create a virtual environment, to install the RotorHazard server dependencies (be patient, this may take a few minutes):
+Install the RotorHazard server dependencies (be patient, this may take a few minutes):
 
 ```bash
 cd ~/RotorHazard/src/server
-python -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 7. Setup Config File
-In the "src/server" directory, copy the *config-dist.json* file to *config.json*:
+### 8. Setup Config File
+In the "src/server" directory, use the following command to copy the *config-dist.json* file to *config.json*:
 ```
 cp config-dist.json config.json
 ```
+Enter the command `nano config.json` to edit the *config.json* file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. These are the login credentials you will need to enter (in the browser popup window) to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages). Then save and exit the editor (CTRL-X, Y, ENTER).
 
-With a command like `nano config.json` edit the *config.json* file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. These are the login credentials you will need to enter (in the browser popup window) to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages).
+Note that the contents of the *config.json* file must in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
-The contents of the *config.json* file must in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+----------------------------------------------------------------------------
 
-### 8. Reboot System
-After the above setup steps are performed, the system should be rebooted by entering the following using a terminal window:
+## Running the RotorHazard Server
+
+The following instructions will start the RotorHazard server on the Raspberry Pi, allowing full control and configuration of the system to run races and save lap times.
+
+### Manual Start
+
+Open a terminal window and enter the following:
+```bash
+cd ~/RotorHazard/src/server
+python server.py
 ```
-sudo reboot
+The server may be stopped by hitting Ctrl-C
+
+Once the server is running, its web-GUI interface may be accessed in a browser; see the [Connect to the Server](User%20Guide.md#connect-to-the-server) section in the [User Guide](User%20Guide.md) for more information.
+
+### Start on Boot
+
+To configure the system to automatically start the RotorHazard server when booting up:
+
+Create a service file:
+```bash
+sudo nano /lib/systemd/system/rotorhazard.service
 ```
 
-### User Guide
+Copy and paste the following contents into the file:
+```bash
+[Unit]
+Description=RotorHazard Server
+After=multi-user.target
 
-The RotorHazard Race Timer [User Guide](User%20Guide.md) contains further instructions and setup tips for using the timer and the software.
+[Service]
+User=pi
+WorkingDirectory=/home/pi/RotorHazard/src/server
+ExecStart=/home/pi/.venv/bin/python server.py
 
+[Install]
+WantedBy=multi-user.target
+```
+
+*Note*: If the username was configured as something other than "pi" during the Operating System setup, be sure to change the value `pi` in `User`, `WorkingDirectory` and `ExecStart` to match your username.
+
+Save and exit (CTRL-X, Y, ENTER)
+
+Enter the following command to update the service-file permissions:
+```
+sudo chmod 644 /lib/systemd/system/rotorhazard.service
+```
+
+Enter these commands to enable the service:
+```
+sudo systemctl daemon-reload
+sudo systemctl enable rotorhazard.service
+```
+The service may now be started manually by entering the command `sudo systemctl start rotorhazard`, and should start up automatically when the Raspberry Pi is started up.
+
+### Stopping the server service
+If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
+```
+sudo systemctl stop rotorhazard
+```
+To disable the service (so it no longer runs when the system starts up), enter:
+```
+sudo systemctl disable rotorhazard.service
+```
+To query the status of the service:
+```
+sudo systemctl status rotorhazard.service
+```
+If the service is running then the output will contain `Active: active (running)`. Hit the 'Q' key to exit the status command.
+
+### Shutting down the System
+A system shutdown should always be performed before unplugging the power, either by clicking on the 'Shutdown' button on the 'Settings' page on the web GUI, or by entering the following in a terminal:
+```
+sudo shutdown now
+```
+The physical [shutdown button](Shutdown%20Button.md) may also be used on hardware that supports it.
 
 ----------------------------------------------------------------------------
 
@@ -165,174 +239,6 @@ The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.t
 Note that the flash-update steps described in '[src/node/readme_S32_BPill.md](../src/node/readme_S32_BPill.md)' are for developers who wish to build the S32_BPill node firmware from the source code.
 
 The node-code version may be viewed in the Server Log, and via the "About RotorHazard" item in the drop-down menu.
-
-----------------------------------------------------------------------------
-
-## Optional Components
-
-### Real Time Clock
-
-The installation of a real-time clock module allows the RotorHazard timer to maintain the correct date and time even when an internet connection is not available.  See '[doc/Real Time Clock.md](Real%20Time%20Clock.md)' for more information.
-
-### WS2812b LED Support
-
-Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is among the libraries installed via the `pip install -r requirements.txt` command.
-
-The **LED_COUNT** value must be set in the `src/server/config.json` file; other LED configuration options will attempt to use reasonable defaults. **LED_ROWS** must be set for multiline displays. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings. The following items may be set:
-```
-LED_COUNT:  Number of LED pixels in strip (or panel)
-LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
-LED_GPIO:  GPIO connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
-LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
-LED_DMA:  DMA channel to use for generating signal (default 10)
-LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
-LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
-LED_STRIP:  Strip type and color ordering (default is 'GRB')
-PANEL_ROTATE:  Optional panel-rotation value (default 0)
-INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default false)
-```
-***LED_GPIO*** is not the hardware pin index.
-If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
-
-Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must run the server with `sudo` or connect LEDs to a different GPIO pin. If using a service file to start the server on boot, it may be run as root by leaving out the "User=pi" line.
-
-See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) section in [doc/Hardware Setup.md](Hardware%20Setup.md).
-
-#### LED Panel Support
-
-Additional LED effects for a two-dimensional LED display (panel) are available by installing image manipulation libraries.
-```
-sudo apt-get install libjpeg-dev
-sudo pip install pillow
-sudo apt-get install libopenjp2-7-dev
-```
-In addition to these package installations, ensure LED_ROWS is set correctly for your display.
-
-### Java Support
-Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
-```
-java -version
-```
-If the response is "command not found" then Java needs to be installed.
-
-For the Raspberry Pi 3 or Pi 4, use the following command:
-```
-sudo apt install default-jdk-headless
-```
-
-For the Raspberry Pi Zero (or an older-model Pi), use this command:
-```
-sudo apt install openjdk-8-jdk-headless
-```
-
-----------------------------------------------------------------------------
-
-## Running the RotorHazard Server
-
-The following instructions will start the web server on the raspberry pi, allowing full control and configuration of the system to run races and save lap times.
-
-### Manual Start
-
-Open a terminal window and enter the following:
-```bash
-cd ~/RotorHazard/src/server
-source venv/bin/activate
-python server.py
-```
-The server may be stopped by hitting Ctrl-C
-
-### Start on Boot
-
-To configure the system to automatically start the RotorHazard server when booting up:
-
-Create a service file:
-```bash
-sudo nano /lib/systemd/system/rotorhazard.service
-```
-
-with the following contents
-```bash
-[Unit]
-Description=RotorHazard Server
-After=multi-user.target
-
-[Service]
-User=pi
-WorkingDirectory=/home/pi/RotorHazard/src/server
-ExecStart=/home/pi/RotorHazard/src/server/venv/bin/python server.py
-
-[Install]
-WantedBy=multi-user.target
-```
-
-*Note: if username was changed during Pi OS setup, be sure to change `pi` in `User`, `WorkingDirectory` and `ExecStart` to match your username.
-
-Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, remove `User=pi` from this config.
-
-Save and exit (CTRL-X, Y, ENTER).
-
-Update permissions:
-```
-sudo chmod 644 /lib/systemd/system/rotorhazard.service
-```
-
-Enable the service:
-```
-sudo systemctl daemon-reload
-sudo systemctl enable rotorhazard.service
-sudo reboot
-```
-### Stopping the server service
-If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
-```
-sudo systemctl stop rotorhazard
-```
-To disable the service (so it no longer runs when the system starts up), enter:
-```
-sudo systemctl disable rotorhazard.service
-```
-To query the status of the service:
-```
-sudo systemctl status rotorhazard.service
-```
-
-### Shutting down the System
-A system shutdown should always be performed before unplugging the power, either by clicking on the 'Shutdown' button on the 'Settings' page, or by entering the following in a terminal:
-```
-sudo shutdown now
-```
-
-----------------------------------------------------------------------------
-
-<a id="update"></a>
-## Updating an Existing Installation
-
-Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like:
-```
-sudo systemctl stop rotorhazard
-```
-
-To update an existing RotorHazard installation: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
-```
-cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
-unzip temp.zip
-mv RotorHazard RotorHazard.old
-mv RotorHazard-v1.2.3 RotorHazard
-rm temp.zip
-cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
-cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
-cp -r RotorHazard.old/src/server/venv RotorHazard/src/server/
-```
-The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
-
-For RotorHazard the minimum version of Python supported is 3.7. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
-
-The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
-```
-cd ~/RotorHazard/src/server
-sudo pip install --upgrade --no-cache-dir -r requirements.txt
-```
 
 ----------------------------------------------------------------------------
 
@@ -355,6 +261,102 @@ Note: The second *iptables* command will forward port 8080 to 80, so services th
 
 ----------------------------------------------------------------------------
 
+## Optional Components
+
+### Real Time Clock
+
+The installation of a real-time clock module allows the RotorHazard timer to maintain the correct date and time even when an internet connection is not available. See '[doc/Real Time Clock.md](Real%20Time%20Clock.md)' for more information.
+
+### WS2812b LED Support
+
+Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is among the libraries installed via the `pip install -r requirements.txt` command.
+
+The `LED_COUNT` value must be set in the `src/server/config.json` file; other LED configuration options will attempt to use reasonable defaults.
+
+See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings. The following items may be set:
+```
+LED_COUNT:  Number of LED pixels in strip (or panel)
+LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
+LED_GPIO:  GPIO connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
+LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
+LED_DMA:  DMA channel to use for generating signal (default 10)
+LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
+LED_STRIP:  Strip type and color ordering (default is 'GRB')
+PANEL_ROTATE:  Optional panel-rotation value (default 0)
+INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default false)
+```
+`LED_GPIO` is not the hardware pin index.
+If specified, the `LED_STRIP` value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
+
+Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must connect LEDs to a different GPIO pin or run the server with `sudo`. If using a "rotorhazard.service" file to [start the server on boot](#start-on-boot), it may be run as root by leaving out the "User=pi" line.
+
+See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) section in [doc/Hardware Setup.md](Hardware%20Setup.md).
+
+#### LED Panel Support
+
+Additional LED effects for a two-dimensional LED display (panel) are available by installing image manipulation libraries.
+```
+sudo apt-get install libjpeg-dev
+sudo pip install pillow
+sudo apt-get install libopenjp2-7-dev
+```
+
+- `LED_ROWS` **must be set** for multiline displays. 
+- If your multiline panel image requires rotation, use `PANEL_ROTATE` with the number of 90-degree CCW rotations needed (0..3). 
+- If alternating lines appear jumbled, try setting `INVERTED_PANEL_ROWS` to `true`.
+
+### Java Support
+Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
+```
+java -version
+```
+If the response is "command not found" then Java needs to be installed.
+
+For the Raspberry Pi 3 or Pi 4, use the following command:
+```
+sudo apt install default-jdk-headless
+```
+
+For the Raspberry Pi Zero (or an older-model Pi), use this command:
+```
+sudo apt install openjdk-8-jdk-headless
+```
+
+----------------------------------------------------------------------------
+
+<a id="update"></a>
+## Updating an Existing Installation
+
+Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like:
+```
+sudo systemctl stop rotorhazard
+```
+
+To update an existing RotorHazard installation: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
+```
+cd ~
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
+unzip temp.zip
+mv RotorHazard RotorHazard.old
+mv RotorHazard-1.2.3 RotorHazard
+rm temp.zip
+cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
+cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
+```
+The previous installation ends up in the 'RotorHazard.old' directory, which may be moved or deleted.
+
+For RotorHazard the minimum version of Python supported is 3.8. If the installed version is Python 3.7 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
+
+The RotorHazard server dependencies will also need to be updated (be patient, this command may take a few minutes):
+```
+cd ~/RotorHazard/src/server
+pip install --upgrade --no-cache-dir -r requirements.txt
+```
+(On some older setups that were not configured with a Python virtual environment ('venv'), the `pip` command may need to be preceded by `sudo`.)
+
+----------------------------------------------------------------------------
+
 <a id="otheros"></a>
 ## Other Operating Systems
 
@@ -362,7 +364,7 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 To install the RotorHazard server on these systems:
 
-1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.7. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
+1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.8. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
 
 1. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 
@@ -375,7 +377,7 @@ To install the RotorHazard server on these systems:
 
 Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the "Desktop development with C++" Tools may be downloaded (from [here](https://aka.ms/vs/17/release/vs_BuildTools.exe)) and installed to satisfy the requirement.<br>
 
-  * On a Linux system the command to use will likely be:<br/>```sudo pip install -r reqsNonPi.txt```
+  * On a Linux system the command to use will likely be:<br/>```pip install -r reqsNonPi.txt```
 
 
 To run the RotorHazard server on these systems:
@@ -401,7 +403,7 @@ To update an existing installation:
 
   * On a Windows system the command to use will likely be:<br/>```python -m pip install --upgrade --no-cache-dir -r reqsNonPi.txt```<br>
 
-  * On a Linux system the command to use will likely be:<br/>```sudo pip install --upgrade --no-cache-dir -r reqsNonPi.txt```
+  * On a Linux system the command to use will likely be:<br/>```pip install --upgrade --no-cache-dir -r reqsNonPi.txt```
 <br>
 
 ----------------------------------------------------------------------------
@@ -463,7 +465,7 @@ Clicking on the "Select Text" button will select all the displayed log text, whi
 
 **When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended.**
 
-When troubleshooting, another place to check for error messages is the "/var/log/syslog" file, which may be viewed with a command like: `tail -100 /var/log/syslog`
+When troubleshooting, another place to check for error messages is the system log file, which may be viewed with a command like: `journalctl -n 1000`
 
 
 <br/>

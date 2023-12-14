@@ -108,7 +108,7 @@ def printCharacter(args):
 
     img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
 
-    setPixels(strip, img)
+    setPixels(strip, img, panel['width'])
     strip.show()
 
 def scrollText(args):
@@ -146,7 +146,7 @@ def scrollText(args):
         panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
         panel['draw'].text((-i, draw_y), text, font=font, fill=(color))
         img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
-        setPixels(strip, img)
+        setPixels(strip, img, panel['width'])
         strip.show()
         gevent.sleep(10/1000.0)
 
@@ -156,8 +156,8 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'rhapi' in args:
-        result = args['rhapi'].race.results
+    if 'RHAPI' in args:
+        result = args['RHAPI'].race.results
     else:
         return False
 
@@ -196,7 +196,7 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                if args['rhapi'].race.status == RaceStatus.DONE:
+                if args['RHAPI'].race.status == RaceStatus.DONE:
                     text = str(line['laps'])
                 else:
                     # first callsign character
@@ -223,7 +223,7 @@ def multiLapGrid(args):
             panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
 
     img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
-    setPixels(strip, img)
+    setPixels(strip, img, panel['width'])
     strip.show()
 
 def getPanelImg(strip):
@@ -245,7 +245,7 @@ def getPanelImg(strip):
         'draw': ImageDraw.Draw(im)
     }
 
-def setPixels(strip, img):
+def setPixels(strip, img, panel_w):
     pos = 0
     for row in range(0, img.height):
         for col in range(0, img.width):
@@ -255,7 +255,7 @@ def setPixels(strip, img):
             c = col
             if Config.LED['INVERTED_PANEL_ROWS']:
                 if row % 2 == 0:
-                    c = 15 - col
+                    c = (panel_w - 1) - col
 
             px = img.getpixel((c, row))
             strip.setPixelColor(pos, Color(px[0], px[1], px[2]))
@@ -366,7 +366,7 @@ def discover():
     if (Config.LED['LED_ROWS'] >= 16):
         effects.append(
             LEDEffect(
-                "Text: 4-Node Lap Count",
+                "Text: 4-Seat Lap Count",
                 multiLapGrid, {
                     'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING],
                     'recommended': [
