@@ -2377,7 +2377,7 @@ def clock_check_thread_function():
                 _epoch2 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
                 # current time, in milliseconds since 1970-01-01
                 epoch_now = int((_epoch1 + _epoch2) * 500.0 + 0.5)   # *1000/2.0
-                diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
+                diff_ms = epoch_now - RaceContext.serverstate.monotonic_to_epoch_millis(time_now)
                 RaceContext.serverstate.program_start_epoch_time += diff_ms
                 MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
                 logger.info("Adjusting RaceContext.serverstate.program_start_epoch_time for shift in system clock ({:.1f} secs) to: {:.0f}, time={}".\

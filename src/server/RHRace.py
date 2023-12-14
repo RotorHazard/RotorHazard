@@ -3,6 +3,7 @@
 import logging
 import json
 import RHUtils
+import RHTimeFns
 import Results
 import gevent
 import Config
@@ -297,7 +298,8 @@ class RHRace():
                 })
 
             # do secondary start tasks (small delay is acceptable)
-            self.start_time = datetime.now() # record standard-formatted time
+            self.start_time = datetime.now() # record start time as datetime object
+            self.start_time_formatted = RHTimeFns.datetimeToFormattedStr(self.start_time) # record standard-formatted time
 
             for node in self._racecontext.interface.nodes:
                 node.history_values = [] # clear race history
@@ -321,6 +323,8 @@ class RHRace():
 
             self._racecontext.rhui.emit_race_status() # Race page, to set race button states
             logger.info('Race started at {:.3f} ({:.0f})'.format(self.start_time_monotonic, self.start_time_epoch_ms))
+            logger.info('Race started at {:.3f} ({:.0f}) time={}'.format(self.start_time_monotonic, self.start_time_epoch_ms, \
+                                                                                 self.start_time_formatted))
 
     @catchLogExceptionsWrapper
     def race_expire_thread(self, start_token):
@@ -378,8 +382,10 @@ class RHRace():
         if self.race_status == RaceStatus.RACING:
             self.end_time = monotonic() # Update the race end time stamp
             delta_time = self.end_time - self.start_time_monotonic
+            end_time_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.end_time)
 
-            logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.0f}s'.format(self.end_time, self._racecontext.serverstate.monotonic_to_epoch_millis(self.end_time), delta_time))
+            logger.info('Race stopped at {:.3f} ({:.0f}), time={}, duration {:.0f}s'.format(self.end_time, \
+                                            end_time_ms, RHTimeFns.epochMsToFormattedStr(end_time_ms), delta_time))
 
             min_laps_list = []  # show nodes with laps under minimum (if any)
             for node in self._racecontext.interface.nodes:
@@ -476,7 +482,7 @@ class RHRace():
             'class_id': heat.class_id,
             'format_id': self.format.id if hasattr(self.format, 'id') else RHUtils.FORMAT_ID_NONE,
             'start_time': self.start_time_monotonic,
-            'start_time_formatted': self.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            'start_time_formatted': self.start_time_formatted,
             }
 
         new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
@@ -651,9 +657,11 @@ class RHRace():
                                 exit_fmtstr = RHUtils.time_format((node.exit_at_timestamp-self.start_time_monotonic)*1000, \
                                                                   self._racecontext.rhdata.get_option('timeFormat')) \
                                                if node.exit_at_timestamp else "0"
-                                logger.debug('Lap pass{}: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
+                                logger.debug('Lap pass{}: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, passtime={}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
                                             .format(late_str, node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
-                                                    lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source), \
+                                                    lap_timestamp_absolute,
+                                                    RHTimeFns.epochMsToFormattedStr(self._racecontext.serverstate.monotonic_to_epoch_millis(lap_timestamp_absolute)), \
+                                                    self._racecontext.interface.get_lap_source_str(source), \
                                                     enter_fmtstr, exit_fmtstr, \
                                                     (node.exit_at_timestamp-node.enter_at_timestamp)*1000, pilot_namestr))
 
