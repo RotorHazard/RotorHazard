@@ -3,62 +3,92 @@
 # RotorHazard
 **FPV Race Timing and Event Management**
 
-A multi-node radio frequency race timing system for FPV drone racing with event management. Uses 5.8GHz video signals broadcast by drones to trigger lap times. Each node listens on a specified frequency and communicates times to a central server (usually a Raspberry pi). The server's front-end interface, which any device on the same network can connect to via web browser, offers race organizer management and pilot/spectator information. RotorHazard supports up to 16 nodes.
+Uses 5.8GHz video signals broadcast by FPV racing drones for lap timing. Video receiver hardware listens on specified frequencies and communicates times to a central server (usually a Raspberry pi). The server offers race organizer management, pilot/spectator information and results, is accessed with a web browser, and communcates with external systems. Supports up to 16 simultaneous racers.
 
-## Major Features
-* Race timing and event management on local hardware, no internet connection needed
-* Full screen and mobile-friendly responsive interface
-* Simple, visual system calibration
-* Adjust and apply calibration retroactively after race is complete
+> [!TIP]
+>Join a community to discuss RotorHazard: [Discord](https://discord.gg/ANKd2pzBKH) | [Facebook](https://www.facebook.com/groups/rotorhazard)
+>
+>Contributions to RotorHazard can be made on [Patreon](https://www.patreon.com/rotorhazard).
+
+
+## Features
+* Self-contained on local hardware, no internet connection needed
+* Hardware synchronized with user interface for accurate start/end signals; compensates for poor network connectivity
+* Connect other systems and extend functionality via [plugins](doc/Plugins.md)
+* Server runs on any device supporting Python
+
+### Timing
+* Verified accuracy by independent 3rd party testing
+* **Never miss a lap**; Recover laps with full accuracy when reviewing race history
+* Accurately tracks analog and digital (HD) video transmitters
+* Simple, visual system calibration before or after a race has completed
 * Learns which calibration values work for each pilot and automatically applies them to new races (adaptive calibration)
-* **Never miss a lap**; Recover laps with full accuracy by reviewing race history
 * Advanced signal filtering allows accurate reading both indoors and outdoors, even in difficult multipathing environments
-* Accurately tracks analog and DJI HD video transmitters
+
+### Event Management
+* Run events with hundreds of pilots and race heats
 * Manage pilots, heats, classes, and race formats before or after races are run
+* Supports common event/race formats and ranking structures; extensible by plugin
 * Statistics broken out by event, class, heat, and round
 * Generates overlay displays and results pages for use with live streaming software such as OBS
-* Timer hardware synchronized with user interface for accurate start/end signals; compensates for poor network connectivity
-* LED and audio support to indicate race staging, starts, and other events
-* Send live updates of lap times and split times to pilot OSD
-* Control connected video receivers; change frequency and view lock status
-* Connect other systems to extend functionality via MQTT or JSON API
-* Send realtime lap data to LiveTime
+* LED and audio support to indicate race staging, starts, lap times, and other events
+* Send live updates of lap times and split times to external systems such as pilot OSD
 
-## Documentation
-For instructions on how to build and operate the current version of RotorHazard, follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
+<br />
 
-See the [RotorHazard Build Resources](resources/README.md) page for information on race-timer circuit boards and 3D-printable cases.
+## Getting Started
 
-An easy-to-build single-node version of RotorHazard may also be constructed; see [doc/USB Nodes.md](doc/USB%20Nodes.md) for more info.
+RotorHazard consists of three primary components: Timing hardware, server, and frontend interface. **Most users will begin with RotorHazard by building or buying timing hardware and then installing the server software on it.**
 
-**Note:** The 'main' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest) (see "Software Setup Instructions").
+> [!IMPORTANT]
+> Live documentation may contain information that does not apply to the current release. For documentation relating to the *current stable version only*, follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
 
-## Migrating from Delta5
-RotorHazard is compatible with the hardware specifications of the [Delta5 Race Timer](https://github.com/scottgchin/delta5_race_timer). Install the software on  existing hardware per the [setup instructions](doc/Software%20Setup.md), ensuring that you complete a [re-flash of the Arduinos](doc/Software%20Setup.md#rotorhazard-node-code).
+### Timing Hardware
+
+RotorHazard makes use of a collection of RX5808 video receiver modules. Receivers are tuned to active FPV race channels and monitor their signal strength. A small processor (Arduino or STM32) is used to monitor the modules and communicate with the server. Timer builds generally include hardware to run the server as well, making a self-contained unit.
+
+- Choose a style from the available [Build Resources](resources/README.md). Build styles include circuit boards, BOM, and 3D-printable cases.
+- [Delta5 Race Timer](https://github.com/scottgchin/delta5_race_timer) hardware is still supported and runs with full accuracy. Replace the Delta5 server software using the current RotorHazard server [setup instructions](doc/Software%20Setup.md), ensuring that you complete a [re-flash of the Arduinos](doc/Software%20Setup.md#rotorhazard-node-code).
+
+### Server
+
+The RotorHazard server aggregates timing signals, handles event structure, calculates results, provides the management interface, and communicates with external timers and systems. It can be run on most systems where Python can be installed, but **the recommended and best supported installation is to a Raspberry Pi**.
+
+> [!NOTE]
+> The [RotorHazard Install Manager](https://github.com/RotorHazard/RH_Install-Manager) can greatly simplify installation. Once you have installed the operating system to your SD card, download and run the install manager.
+
+> [!IMPORTANT]
+> The 'main' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please visit the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
+
+### Frontend (Event Management) Interface
+
+The frontend interface is used for event management and viewing results. The server can be accessed by any device (laptop, phone, tablet) with a modern web browser (Firefox, Chrome, Safari) on any operating system (Windows, MacOS, Android, iOS).
+
+- Once the server is running, connect to the server's address using standard IP-based networking.
+- All event management is done through the interface.
+- No dedicated software or app is necessary to access the interface.
+
+<br />
 
 ## Additional Resources
-Links to external resources are available from the [Wiki](https://github.com/RotorHazard/RotorHazard/wiki), including extended tutorials, complete SD card images, video content, and a Raspberry Pi setup/install/upgrade/node flashing tool. Browsing these resources is strongly recommended for new users.
 
-## Contributors
-* Michael Niggel
-* Eric Thomas
-* Mark Hale
+RotorHazard's features and functionality can be greatly extended beyond the core system.
 
-With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David Just, Paweł Fabiszewski, Aaron Smith, Diez Roggisch, Roger Bess, Kęstutis Strimaitis, and previous contributors to [Delta5](https://github.com/scottgchin/delta5_race_timer).
+### Plugins
 
-### Translators
-* Dutch: Kenny Van Der Sypt
-* German: Klaus Michael Schneider, Christian Baumgartner
-* Spanish: Ramon Hernandez Roldan
-* French: Yannick M.
-* Polish: Mariusz Misiurek and Paweł Fabiszewski
+Plugins allow 3rd parties to develop code which runs on the RotorHazard server.
+- A list of [Available Plugins](https://github.com/RotorHazard/RotorHazard/wiki/Available-Plugins) is maintained in the Wiki.
+- See [Plugins](doc/Plugins.md) for information on installing and running.
+- Individual plugins may have specific setup requirements. Be sure to read each plugin's documentation before use.
+
+### Wiki
+
+Many additional resources are available from the [Wiki](https://github.com/RotorHazard/RotorHazard/wiki), including extended tutorials, build tools, SD card images, and video content. Browsing these resources is strongly recommended for new users.
+
+<br />
 
 ## Feedback
-Join a community to discuss RotorHazard: [Discord](https://discord.gg/ANKd2pzBKH) | [Facebook](https://www.facebook.com/groups/rotorhazard)
 
-To report bugs or request features, please [post a GitHub issue](https://github.com/RotorHazard/RotorHazard/issues). When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended (See [more information on logging](doc/Software%20Setup.md#logging).)
+To report bugs or request features, please [post a GitHub issue](https://github.com/RotorHazard/RotorHazard/issues). When reporting issues, use the "Download Logs" button and include the generated '.zip' file.
 
-Community contributions are welcome and encouraged; see the [Development.md](doc/Development.md) doc for more info.
-
-## Support
-Contributions to RotorHazard can be made on [Patreon](https://www.patreon.com/rotorhazard).
+Community contributions are welcome and encouraged; see [Development](doc/Development.md) for more info.
