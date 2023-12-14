@@ -496,6 +496,10 @@ ol.form li+li {
 	margin-left: 0.5rem;
 }
 
+.inline-control {
+	margin: 0.5rem 0;
+}
+
 .table-wrap {
 	overflow-x: auto;
 }
