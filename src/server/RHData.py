@@ -332,6 +332,7 @@ class RHData():
             raceMeta_query_data = self.get_legacy_table_data(metadata, 'saved_race_meta')
             racePilot_query_data = self.get_legacy_table_data(metadata, 'saved_pilot_race')
             raceLap_query_data = self.get_legacy_table_data(metadata, 'saved_race_lap')
+            pilotAttribute_query_data = self.get_legacy_table_data(metadata, 'pilot_attribute')
 
             engine.dispose() # close connection after loading
 
@@ -638,6 +639,11 @@ class RHData():
 
                 logger.info('UI Options restored')
 
+                self.restore_table(self._Database.PilotAttribute, pilotAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
                 recover_status['stage_1'] = True
             except Exception as ex:
                 logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
@@ -894,6 +900,7 @@ class RHData():
 
     def clear_pilots(self):
         self._Database.DB.session.query(self._Database.Pilot).delete()
+        self._Database.DB.session.query(self._Database.PilotAttribute).delete()
         self.commit()
 
     def reset_pilots(self):
