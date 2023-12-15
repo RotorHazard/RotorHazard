@@ -356,17 +356,22 @@ class RHData():
                 "calibrationMode",
                 "MinLapSec",
                 "MinLapBehavior",
+                "eventName",
+                "eventDescription",
                 "ledEffects",
                 "ledBrightness",
                 "ledColorNodes",
                 "ledColorFreqs",
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
-                "nextHeatBehavior",
                 "voiceCallouts",
                 "actions",
                 "consecutivesCount"
             ]
+
+            # Carry over registered plugin options
+            for field in self._racecontext.rhui.general_settings:
+                carryoverOpts.extend(field.name)
 
             # RSSI reduced by half for 2.0.0
             if migrate_db_api < 23:
@@ -620,9 +625,13 @@ class RHData():
 
                 self.reset_options()
                 if options_query_data:
-                    for opt in options_query_data:
-                        if opt['option_name'] in carryoverOpts:
+                    if migrate_db_api == self._SERVER_API:
+                        for opt in options_query_data:
                             self.set_option(opt['option_name'], opt['option_value'])
+                    else:
+                        for opt in options_query_data:
+                            if opt['option_name'] in carryoverOpts:
+                                self.set_option(opt['option_name'], opt['option_value'])
 
                 logger.info('UI Options restored')
 
