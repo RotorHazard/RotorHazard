@@ -1185,6 +1185,13 @@
 			rotorhazard.event.pilot_attributes = msg.attributes;
 			rotorhazard.event.pilots = msg.pilots;
 			rotorhazard.options.pilotSort = msg.pilotSort;
+
+			if (rotorhazard.options.pilotSort == 'callsign') {
+				rotorhazard.event.pilots.sort((a, b) => a.callsign.localeCompare(b.callsign, undefined, {sensitivity: 'base'}));
+			} else {
+				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+			}
+
 			display_pilots();
 			display_classes();
 			display_unclassified_heats();
@@ -1240,8 +1247,6 @@
 				}
 
 				$('.pilots').append('<li class="new-pilot-container"><button id="add_pilot">' + __('Add Pilot') + '</button></li>');
-
-				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 
 				$('.set_pilot_position').each(function(){
 					$(this).empty();
@@ -2121,6 +2126,18 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
+		});
+
+		$(document).on('change', '#set_pilotSort', function (event) {
+			rotorhazard.options.pilotSort = $(this).val();
+			if (rotorhazard.options.pilotSort == 'callsign') {
+				rotorhazard.event.pilots.sort((a, b) => a.callsign.localeCompare(b.callsign, undefined, {sensitivity: 'base'}));
+			} else {
+				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+			}
+			display_pilots();
+			display_classes();
+			display_unclassified_heats();
 		});
 
 		$(document).on('change', '#parameters input,#parameters select', function (event) {
