@@ -1842,12 +1842,16 @@
 			};
 			socket.emit('restore_database', data);
 
-			$.magnificPopup.open({
-				items: {
-					src: '#data_restore_progress',
-					type: 'inline',
-				}
-			});
+			setTimeout(
+				function() {
+					$.magnificPopup.open({
+						items: {
+							src: '#data_restore_progress',
+							type: 'inline',
+						}
+					});
+				}, 100
+			);
 		});
 
 		$('button#delete_database').click(function (event) {
@@ -1865,9 +1869,19 @@
 			}
 		});
 
+		$('button#archive-event').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				with_archive: true,
+				reset_type: $('#reset_type').val()
+			};
+			socket.emit('reset_database', data);
+		});
+
 		$('button#reset_database').click(function (event) {
 			$.magnificPopup.close();
 			var data = {
+				with_archive: false,
 				reset_type: $('#reset_type').val()
 			};
 			socket.emit('reset_database', data);

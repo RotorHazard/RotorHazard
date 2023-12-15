@@ -135,7 +135,7 @@ class RHData():
 
     # File Handling
 
-    def backup_db_file(self, copy_flag, prefix_str=None):
+    def backup_db_file(self, copy_flag, prefix_str=None, use_filename=None):
         self.close()
         self.clean()
         try:     # generate timestamp from last-modified time of database file
@@ -147,6 +147,9 @@ class RHData():
             if prefix_str:
                 dbname = prefix_str + dbname
             bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
+            if use_filename:
+                bkp_name = self._DB_BKP_DIR_NAME + '/' + use_filename + dbext
+
             if not os.path.exists(self._DB_BKP_DIR_NAME):
                 os.makedirs(self._DB_BKP_DIR_NAME)
             RHUtils.checkSetFileOwnerPi(self._DB_BKP_DIR_NAME)

@@ -1545,6 +1545,11 @@ def on_reset_database(data):
     on_stop_race()
     on_discard_laps()
     RaceContext.rhdata.clear_lapSplits()
+
+    if data.get('with_archive'):
+        RaceContext.rhdata.backup_db_file(True, use_filename=RaceContext.rhdata.get_option('eventName'))
+        on_list_backups()
+
     reset_type = data['reset_type']
     if reset_type == 'races':
         RaceContext.rhdata.clear_race_data()
