@@ -3408,7 +3408,7 @@ def clock_check_thread_function():
                             format(diff_ms/1000, PROGRAM_START_EPOCH_TIME))
                 # update values that will be reported if running as cluster timer
                 serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+                serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(PROGRAM_START_EPOCH_TIME)
                 if RaceContext.cluster.has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
                     RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, serverInfoItems)
@@ -4245,7 +4245,7 @@ def buildServerInfo():
         serverInfoItems = serverInfo.copy()
         serverInfoItems.pop('about_html', None)
         serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+        serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(PROGRAM_START_EPOCH_TIME)
 
         return serverInfo
 
