@@ -1,10 +1,10 @@
+import gevent.monkey
+gevent.monkey.patch_all()
+
 import sys
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 import webbrowser
-
-import gevent.monkey
-gevent.monkey.patch_all()
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
