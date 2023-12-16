@@ -571,7 +571,7 @@ def getPilotFreqsStr(rhapi, sep_str, spoken_flag):
     return pilots_str
 
 def cleanVarName(varStr): 
-    return re.sub('\W|^(?=\d)','_', varStr)
+    return re.sub(r'\W|^(?=\d)','_', varStr)
 
 def checkPythonVersion(majorVer, minorVer):
     try:
