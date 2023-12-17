@@ -204,7 +204,7 @@ sudo systemctl enable rotorhazard.service
 ```
 The service may now be started manually by entering the command `sudo systemctl start rotorhazard`, and should start up automatically when the Raspberry Pi is started up.
 
-### Stopping the server service
+### Stopping the Server Service
 If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
 ```
 sudo systemctl stop rotorhazard
@@ -219,7 +219,7 @@ sudo systemctl status rotorhazard.service
 ```
 If the service is running then the output will contain `Active: active (running)`. Hit the 'Q' key to exit the status command.
 
-### Shutting down the System
+### Shutting Down the System
 A system shutdown should always be performed before unplugging the power, either by clicking on the 'Shutdown' button on the 'Settings' page on the web GUI, or by entering the following in a terminal:
 ```
 sudo shutdown now
@@ -298,7 +298,7 @@ See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) sect
 Additional LED effects for a two-dimensional LED display (panel) are available by installing image manipulation libraries.
 ```
 sudo apt-get install libjpeg-dev
-sudo pip install pillow
+pip install pillow==9.5.0
 sudo apt-get install libopenjp2-7-dev
 ```
 
@@ -362,17 +362,28 @@ pip install --upgrade --no-cache-dir -r requirements.txt
 
 The RotorHazard server may be run on any computer with an operating system that supports Python. In these alternate configurations, one or more hardware nodes may be connected via USB -- see [doc/USB Nodes.md](USB%20Nodes.md) for more information. The server may also be run using simulated (mock) nodes.
 
-To install the RotorHazard server on these systems:
+**To install the RotorHazard server on these systems:**
 
 1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.8. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
 
-1. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
+2. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 
-1. Unzip the downloaded file into a directory (aka folder) on the computer.
+3. Unzip the downloaded file into a directory (aka folder) on the computer.
 
-1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
+4. Open up a command prompt and navigate to the topmost RotorHazard directory.
 
-1. Install the RotorHazard server dependencies using the 'reqsNonPi.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+5. Create a Python virtual environment ('venv') by entering: ```python -m venv venv```
+
+6. Activate the Python virtual environment ('venv'):
+
+  * On a Windows system the command to use will likely be: ```venv\Scripts\activate.bat```
+
+  * On a Linux system the command to use will likely be: ```source venv/bin/activate```
+
+7. Using the same command prompt, navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
+
+8. Install the RotorHazard server dependencies using the 'reqsNonPi.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+
   * On a Windows system the command to use will likely be:<br/>```python -m pip install -r reqsNonPi.txt```<br>
 
 Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the "Desktop development with C++" Tools may be downloaded (from [here](https://aka.ms/vs/17/release/vs_BuildTools.exe)) and installed to satisfy the requirement.<br>
@@ -380,13 +391,20 @@ Note: If the above command fails with a message like "error: Microsoft Visual C+
   * On a Linux system the command to use will likely be:<br/>```pip install -r reqsNonPi.txt```
 
 
-To run the RotorHazard server on these systems:
+**To run the RotorHazard server on these systems:**
 
-1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (if not already there).
+1. Open up a command prompt and navigate to the topmost RotorHazard directory.
 
-1. Enter: ```python server.py```
+2. Activate the Python virtual environment ('venv')
+  * On a Windows system the command to use will likely be: ```venv\Scripts\activate.bat```
 
-1. If the server starts up properly, you should see various log messages, including one like this:
+  * On a Linux system the command to use will likely be: ```source venv/bin/activate```
+
+3. Using the same command prompt, navigate to the ```src/server``` directory.
+
+4. Enter: ```python server.py```
+
+5. If the server starts up properly, you should see various log messages, including one like this:
     ```
     Running http server at port 5000
     ```
@@ -399,9 +417,21 @@ If no hardware nodes are configured, the server will operate using simulated (mo
 
 To view the web-GUI interface, open up a web browser and enter into the address bar: ```localhost:5000``` (If the HTTP_PORT value in the configuration has been changed then use that value instead of 5000). If the server is running then the RotorHazard main page should appear. Note that pages reserved for the race director (Admin/Settings) are password protected with the username and password specified in the configuration.
 
-To update an existing installation:
+**To update an existing installation:**
 
-  * On a Windows system the command to use will likely be:<br/>```python -m pip install --upgrade --no-cache-dir -r reqsNonPi.txt```<br>
+1. Using the command prompt, navigate to the topmost RotorHazard directory.
+
+2. Activate the Python virtual environment ('venv'):
+
+  * On a Windows system the command to use will likely be: ```venv\Scripts\activate.bat```
+
+  * On a Linux system the command to use will likely be: ```source venv/bin/activate```
+
+3. Using the command prompt, navigate to the ```src/server``` directory.
+
+4. Enter the update command:
+
+  * On a Windows system the command to use will likely be:<br/>```python -m pip install --upgrade --no-cache-dir -r reqsNonPi.txt```
 
   * On a Linux system the command to use will likely be:<br/>```pip install --upgrade --no-cache-dir -r reqsNonPi.txt```
 <br>
