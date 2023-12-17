@@ -1,14 +1,21 @@
 '''LED visual effects'''
 
-# to use this handler, run:
-#    sudo apt-get install libjpeg-dev
-#    sudo pip install pillow
+# To use this LED-panel plugin see:
+#   https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#led-panel-support
 
+import logging
 import Config
 from eventmanager import Evt
 from led_event_manager import LEDEffect, Color
 import gevent
-from PIL import Image
+
+logger = logging.getLogger(__name__)
+
+try:
+    from PIL import Image
+except ModuleNotFoundError as ex:
+    logger.debug(str(ex) + " ('pillow' module needed to use '" + __name__ + "')")
+    raise ModuleNotFoundError("'pillow' module not found") from ex
 
 def showBitmap(args):
     if 'strip' in args:
