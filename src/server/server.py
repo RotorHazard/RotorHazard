@@ -4359,12 +4359,14 @@ if os.path.isdir('./plugins'):
             plugin_module = importlib.import_module('plugins.' + name)
             if plugin_module.__file__:
                 plugin_modules.append(plugin_module)
-                logger.info('Loaded plugin module {0}'.format(name))
+                logger.info("Loaded plugin '{0}'".format(name))
             else:
-                logger.warning('Plugin module {0} not imported (unable to load file)'.format(name))
-        except ImportError as ex:
-            logger.warning('Plugin module {0} not imported (not supported or may require additional dependencies)'.format(name))
-            logger.debug(ex)
+                logger.warning("Plugin '{}' not imported (unable to load file)".format(name))
+        except ModuleNotFoundError as ex1:
+            logger.info("Plugin '{}' not loaded ({})".format(name, ex1))
+        except Exception as ex2:
+            logger.warning("Plugin '{}' not imported (not supported or may require additional dependencies), ex: {}".\
+                           format(name, ex2))
 else:
     logger.warning('No plugins directory found.')
 
