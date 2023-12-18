@@ -41,7 +41,7 @@ Uses 5.8GHz video signals broadcast by FPV racing drones for lap timing. Video r
 RotorHazard consists of three primary components: Timing hardware, server, and frontend interface. **Most users will begin with RotorHazard by building or buying timing hardware and then installing the server software on it.**
 
 > [!IMPORTANT]
-> Live documentation may contain information that does not apply to the current release. For documentation relating to the *current stable version only*, follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
+> Live documentation may contain information that does not apply to the current release. For documentation relating to the *current stable version only*, follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [latest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
 
 ### Timing Hardware
 
@@ -58,7 +58,7 @@ The RotorHazard server aggregates timing signals, handles event structure, calcu
 > The [RotorHazard Install Manager](https://github.com/RotorHazard/RH_Install-Manager) can greatly simplify installation. Once you have installed the operating system to your SD card, download and run the install manager.
 
 > [!IMPORTANT]
-> The 'main' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please visit the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
+> The 'main' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please visit the [latest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
 
 ### Frontend (Event Management) Interface
 
