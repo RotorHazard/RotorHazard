@@ -135,7 +135,7 @@ class RHData():
 
     # File Handling
 
-    def backup_db_file(self, copy_flag, prefix_str=None):
+    def backup_db_file(self, copy_flag, prefix_str=None, use_filename=None):
         self.close()
         self.clean()
         try:     # generate timestamp from last-modified time of database file
@@ -147,6 +147,9 @@ class RHData():
             if prefix_str:
                 dbname = prefix_str + dbname
             bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
+            if use_filename:
+                bkp_name = self._DB_BKP_DIR_NAME + '/' + use_filename + dbext
+
             if not os.path.exists(self._DB_BKP_DIR_NAME):
                 os.makedirs(self._DB_BKP_DIR_NAME)
             RHUtils.checkSetFileOwnerPi(self._DB_BKP_DIR_NAME)
@@ -329,6 +332,7 @@ class RHData():
             raceMeta_query_data = self.get_legacy_table_data(metadata, 'saved_race_meta')
             racePilot_query_data = self.get_legacy_table_data(metadata, 'saved_pilot_race')
             raceLap_query_data = self.get_legacy_table_data(metadata, 'saved_race_lap')
+            pilotAttribute_query_data = self.get_legacy_table_data(metadata, 'pilot_attribute')
 
             engine.dispose() # close connection after loading
 
@@ -356,17 +360,22 @@ class RHData():
                 "calibrationMode",
                 "MinLapSec",
                 "MinLapBehavior",
+                "eventName",
+                "eventDescription",
                 "ledEffects",
                 "ledBrightness",
                 "ledColorNodes",
                 "ledColorFreqs",
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
-                "nextHeatBehavior",
                 "voiceCallouts",
                 "actions",
                 "consecutivesCount"
             ]
+
+            # Carry over registered plugin options
+            for field in self._racecontext.rhui.general_settings:
+                carryoverOpts.extend(field.name)
 
             # RSSI reduced by half for 2.0.0
             if migrate_db_api < 23:
@@ -620,11 +629,20 @@ class RHData():
 
                 self.reset_options()
                 if options_query_data:
-                    for opt in options_query_data:
-                        if opt['option_name'] in carryoverOpts:
+                    if migrate_db_api == self._SERVER_API:
+                        for opt in options_query_data:
                             self.set_option(opt['option_name'], opt['option_value'])
+                    else:
+                        for opt in options_query_data:
+                            if opt['option_name'] in carryoverOpts:
+                                self.set_option(opt['option_name'], opt['option_value'])
 
                 logger.info('UI Options restored')
+
+                self.restore_table(self._Database.PilotAttribute, pilotAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
 
                 recover_status['stage_1'] = True
             except Exception as ex:
@@ -882,6 +900,7 @@ class RHData():
 
     def clear_pilots(self):
         self._Database.DB.session.query(self._Database.Pilot).delete()
+        self._Database.DB.session.query(self._Database.PilotAttribute).delete()
         self.commit()
 
     def reset_pilots(self):
@@ -3115,7 +3134,7 @@ class RHData():
         self.set_option("MinLapSec", "10")
         self.set_option("MinLapBehavior", "0")
         # event information
-        self.set_option("eventName", self.__("FPV Race"))
+        self.set_option("eventName", "{} {}".format(datetime.now().strftime('%Y-%m-%d'), self.__("FPV Race")))
         self.set_option("eventDescription", "")
         # LED settings
         self.set_option("ledBrightness", "32")

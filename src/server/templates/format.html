@@ -1842,12 +1842,16 @@
 			};
 			socket.emit('restore_database', data);
 
-			$.magnificPopup.open({
-				items: {
-					src: '#data_restore_progress',
-					type: 'inline',
-				}
-			});
+			setTimeout(
+				function() {
+					$.magnificPopup.open({
+						items: {
+							src: '#data_restore_progress',
+							type: 'inline',
+						}
+					});
+				}, 100
+			);
 		});
 
 		$('button#delete_database').click(function (event) {
@@ -1865,9 +1869,19 @@
 			}
 		});
 
+		$('button#archive-event').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				with_archive: true,
+				reset_type: $('#reset_type').val()
+			};
+			socket.emit('reset_database', data);
+		});
+
 		$('button#reset_database').click(function (event) {
 			$.magnificPopup.close();
 			var data = {
+				with_archive: false,
 				reset_type: $('#reset_type').val()
 			};
 			socket.emit('reset_database', data);
@@ -2206,6 +2220,9 @@
 		<h2>{{ __('Event') }}</h2>
 	</div>
 	<div class="panel-content">
+		<div class="control-set">
+			<button data-mfp-src="#database_archive_new_confirm" class="open-mfp-popup">{{ __('Archive/New Event') }}</button>
+		</div>
 		<ol class="form">
 			<li>
 				<div class="label-block">
@@ -2244,6 +2261,74 @@
 				</select>
 			</li>
 		</ol>
+
+		<h3>{{ __('Event Archive') }}</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="database_list">{{ __('Archived Events') }}</label>
+				</div>
+				<select id="database_list" disabled="disabled">
+					<option value="-">{{ __('No Saved Databases') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button data-mfp-src="#database_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Event') }}</button>
+			<button data-mfp-src="#database_delete_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Delete Event') }}</button>
+		</div>
+
+		<div id="database_archive_new_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Archiving saves all current data and creates a new event.') }} <em>{{ __('Clearing data without archiving is not recoverable.') }}</em></p>
+
+				<div class="inline-control">
+					<div class="label-block">
+						<label for="reset_type">{{ __('Items to Clear') }}</label>
+					</div>
+					<select id="reset_type">
+						<option value="races">{{ __('Races') }}</option>
+						<option value="heats">{{ __('Races and Heats') }}</option>
+						<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
+						<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
+						<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+						<option value="formats">{{ __('Races and Race Formats') }}</option>
+					</select>
+				</div>
+				<div class="control-set">
+					<button id="archive-event">{{ __('Archive Event') }}</button>
+					<button class="btn-danger" id="reset_database">{{ __('Clear Data Only') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+				</div>
+			</div>
+		</div>
+
+		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="restore_database">{{ __('Restore Event') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="data_restore_progress" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Data restore in progress. Please wait...') }}</p>
+			</div>
+		</div>
+
+		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleted event database files are not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="delete_database">{{ __('Delete Event') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+	</div>
 </div>
 
 <!--Pilots list for editing-->
@@ -2510,60 +2595,20 @@
 	</div>
 </div>
 
-<!--Event Overview-->
+<!--Data Management-->
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('Data Management') }}</h2>
 	</div>
 	<div class="panel-content">
-		{% if Debug %}
 		<div class="control-set">
+			<button id="backup_database">{{ __('Backup/Download Database') }}</button>
+			{% if Debug %}
 			<a href="/database" class="debug button-like">{{ __('View Database') }}</a>
+			{% endif %}
 		</div>
-		{% endif %}
 
 		<ul id="db-management">
-			<li>
-				<h3>{{ __('Stored Data') }}</h3>
-				<div class="control-set">
-					<button id="backup_database">{{ __('Backup Database') }}</button>
-				</div>
-				<ol class="form">
-					<li>
-						<div class="label-block">
-							<label for="database_list">{{ __('Stored Databases') }}</label>
-						</div>
-						<select id="database_list" disabled="disabled">
-							<option value="-">{{ __('No Saved Databases') }}</option>
-						</select>
-					</li>
-				</ol>
-				<div class="control-set">
-					<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
-					<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete File') }}</button>
-				</div>
-			</li>
-			<li>
-				<h3>{{ __('Reset') }}</h3>
-				<ol class="form">
-					<li>
-						<div class="label-block">
-							<label for="reset_type">{{ __('Items to Clear') }}</label>
-						</div>
-						<select id="reset_type">
-							<option value="races">{{ __('Races') }}</option>
-							<option value="heats">{{ __('Races and Heats') }}</option>
-							<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
-							<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
-							<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
-							<option value="formats">{{ __('Races and Race Formats') }}</option>
-						</select>
-					</li>
-				</ol>
-				<div class="control-set">
-					<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
-				</div>
-			</li>
 			<li>
 				<h3>{{ __('Import') }}</h3>
 				<ol class="form">
@@ -2604,40 +2649,6 @@
 				</div>
 			</li>
 		</ul>
-
-		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<div id="data_restore_progress" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Data restore in progress. Please wait...') }}</p>
-			</div>
-		</div>
-
-		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
 	</div>
 </div>
 
