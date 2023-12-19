@@ -101,14 +101,14 @@ def printCharacter(args):
     use_small_flag = True
     if panel['height'] >= 16:
         font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
-        w, h = font.getsize(text)
+        _, _, w, h = font.getbbox(text)
         if w <= panel['width'] - 1:
             use_small_flag = False
             h = 16
 
     if use_small_flag:
         font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
-        w, h = font.getsize(text)
+        _, _, w, h = font.getbbox(text)
         h = 8
 
     panel['draw'].text((int((panel['width']-w)/2), int((panel['height']-h)/2)), text, font=font, fill=(color))
@@ -140,11 +140,11 @@ def scrollText(args):
 
     if panel['height'] >= 16:
         font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
-        w, h = font.getsize(text)
+        _, _, w, h = font.getbbox(text)
         h = 16
     else:
         font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
-        w, h = font.getsize(text)
+        _, _, w, h = font.getbbox(text)
         h = 8
 
     draw_y = int((panel['height']-h)/2)
@@ -209,7 +209,7 @@ def multiLapGrid(args):
                     # first callsign character
                     text = line['callsign'][0]
 
-            w, h = font.getsize(text)
+            _, _, w, h = font.getbbox(text)
             h = font_h
             color = convertColor(args['manager'].getDisplayColor(line['node'], from_result=True))
 
