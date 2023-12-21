@@ -1424,6 +1424,37 @@ function get_interrupt_message() {
 	}
 }
 
+function push_message(message, interrupt=false) {
+	system_messages.push(message);
+	if (interrupt) {
+		interrupt_message_queue.push(message);
+		if (interrupt_message_queue.length == 1) {
+			get_interrupt_message();
+		}
+	} else {
+		standard_message_queue.push(message);
+		if (standard_message_queue.length == 1) {
+			get_standard_message();
+		}
+	}
+
+	update_system_message_display();
+	$('#message-notification').prop('hidden', false);
+}
+
+function update_system_message_display() {
+	$('#message-count').html(system_messages.length);
+	$('#message-queue').empty();
+	if (system_messages.length) {
+		for (var m in system_messages) {
+			var sysmsg = system_messages[m];
+			$('#message-queue').append('<li><div class="message">' + sysmsg + '</div><button class="no-style">×<span class="screen-reader-text"> dismiss</span></button></li>');
+		}
+	} else {
+		$('#message-notification').prop('hidden', true);
+	}
+}
+
 function init_popup_generics() {
 	$('.open-mfp-popup').magnificPopup({
 		type:'inline',
@@ -1436,6 +1467,7 @@ if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name
 	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
 }
 rotorhazard.restoreData();
+
 
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
@@ -1567,21 +1599,7 @@ jQuery(document).ready(function($){
 
 	// popup messaging
 	socket.on('priority_message', function (msg) {
-		system_messages.push(msg.message);
-		if (msg.interrupt) {
-			interrupt_message_queue.push(msg.message);
-			if (interrupt_message_queue.length == 1) {
-				get_interrupt_message()
-			}
-		} else {
-			standard_message_queue.push(msg.message);
-			if (standard_message_queue.length == 1) {
-				get_standard_message()
-			}
-		}
-
-		update_system_message_display();
-		$('#message-notification').prop('hidden', false);
+		push_message(msg.message, msg.interrupt);
 	});
 
 	$(document).on('click', '#message-dismiss-all', function(el){
@@ -1595,19 +1613,6 @@ jQuery(document).ready(function($){
 		system_messages.splice(index, 1);
 		update_system_message_display();
 	});
-
-	function update_system_message_display() {
-		$('#message-count').html(system_messages.length);
-		$('#message-queue').empty();
-		if (system_messages.length) {
-			for (var m in system_messages) {
-				var sysmsg = system_messages[m];
-				$('#message-queue').append('<li><div class="message">' + sysmsg + '</div><button class="no-style">×<span class="screen-reader-text"> dismiss</span></button></li>');
-			}
-		} else {
-			$('#message-notification').prop('hidden', true);
-		}
-	}
 
 	document.onkeyup = function(e) {
 		if (e.which == 27) {
