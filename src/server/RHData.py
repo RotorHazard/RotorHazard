@@ -16,7 +16,7 @@ import glob
 import RHUtils
 import Database
 import Results
-from monotonic import monotonic
+from time import monotonic
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Database import ProgramMethod, HeatAdvanceType, HeatStatus

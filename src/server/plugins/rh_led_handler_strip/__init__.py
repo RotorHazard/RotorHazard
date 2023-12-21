@@ -5,7 +5,7 @@ from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
 import gevent
 import random
 import math
-from monotonic import monotonic
+from time import monotonic
 
 
 def leaderProxy(args):

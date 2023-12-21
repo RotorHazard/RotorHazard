@@ -7,7 +7,7 @@ except:
 import gevent
 import os
 import logging
-from monotonic import monotonic
+from time import monotonic
 
 I2C_CHILL_TIME = float(os.environ.get('RH_I2C_SLEEP', '0.015')) # Delay after i2c read/write
 

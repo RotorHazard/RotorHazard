@@ -6,7 +6,7 @@ import logging
 import gevent
 import copy
 from RHUtils import catchLogExceptionsWrapper
-from monotonic import monotonic
+from time import monotonic
 
 logger = logging.getLogger(__name__)
 

@@ -22,9 +22,7 @@ greenlet==3.0.*
 cffi==1.15.*
 
 # Other
-monotonic==1.5.*
 pyserial==3.4.*
-paho-mqtt==1.5.*
 requests==2.30.*
 
 # Pi IO

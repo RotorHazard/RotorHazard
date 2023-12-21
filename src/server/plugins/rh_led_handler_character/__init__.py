@@ -9,7 +9,7 @@ from eventmanager import Evt
 from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal
 from RHRace import RaceStatus
 import gevent
-from monotonic import monotonic
+from time import monotonic
 
 logger = logging.getLogger(__name__)
 

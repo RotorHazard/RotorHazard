@@ -10,7 +10,7 @@ import Config
 import random
 from datetime import datetime
 from flask import request
-from monotonic import monotonic
+from time import monotonic
 from eventmanager import Evt
 from util.InvokeFuncQueue import InvokeFuncQueue
 from RHUtils import catchLogExceptionsWrapper

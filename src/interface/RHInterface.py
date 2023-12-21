@@ -3,7 +3,7 @@
 import os
 import logging
 import gevent # For threads and timing
-from monotonic import monotonic # to capture read timing
+from time import monotonic # to capture read timing
 
 from Plugins import Plugins
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
