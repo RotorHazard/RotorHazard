@@ -811,7 +811,8 @@ class RaceAPI():
     def laps_active_raw(self, filter_late_laps=False):
         return self._racecontext.race.get_active_laps(filter_late_laps)
 
-    def lap_add(self, seat, timestamp):
+    def lap_add(self, seat_index, timestamp):
+        seat = self._racecontext.interface.nodes[seat_index]
         return self._racecontext.race.add_lap(seat, timestamp, LapSource.API)
 
     @property
@@ -864,7 +865,7 @@ class RaceAPI():
         return self._racecontext.race.stage()
 
     def stop(self, doSave=False):
-        return self._racecontext.race.stop(doSave=False)
+        return self._racecontext.race.stop(doSave)
 
     def save(self):
         return self._racecontext.race.save()

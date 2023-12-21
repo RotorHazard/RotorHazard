@@ -602,7 +602,15 @@ class RHRace():
                         lap_late_flag = False
                         pilot_done_flag = False
                         if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
-                            if lap_time < (min_lap * 1000):  # if lap time less than minimum
+                            if lap_time <= 0: # if lap is non-sequential
+                                logger.info('Ignoring lap prior to already recorded lap: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
+                                           .format(node.index+1, lap_number, \
+                                                   lap_time_fmtstr, lap_ts_fmtstr, \
+                                                   self._racecontext.interface.get_lap_source_str(source), \
+                                                   pilot_namestr))
+                                lap_ok_flag = False
+
+                            if lap_ok_flag and lap_time < (min_lap * 1000):  # if lap time less than minimum
                                 node.under_min_lap_count += 1
                                 logger.info('Pass record under lap minimum ({}): Node={}, lap={}, lapTime={}, sinceStart={}, count={}, source={}, pilot: {}' \
                                            .format(min_lap, node.index+1, lap_number, \
@@ -612,7 +620,7 @@ class RHRace():
                                 if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                     lap_ok_flag = False
 
-                            if race_format.unlimited_time == 0 and \
+                            if lap_ok_flag and race_format.unlimited_time == 0 and \
                                 race_format.lap_grace_sec > -1 and \
                                 lap_time_stamp > (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
                                 logger.info('Ignoring lap after grace period expired: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
