@@ -179,8 +179,6 @@ Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 
 RaceContext.sensors = Sensors()
 RaceContext.cluster = None
-serverInfo = None
-serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 server_ipaddress_str = None
 ShutdownButtonInputHandler = None
@@ -319,18 +317,18 @@ def render_template(template_name_or_list, **context):
 @APP.route('/')
 def render_index():
     '''Route to home page.'''
-    return render_template('home.html', serverInfo=serverInfo,
+    return render_template('home.html', serverInfo=RaceContext.serverstate.template_info_dict,
                            getOption=RaceContext.rhdata.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/event')
 def render_event():
     '''Route to heat summary page.'''
-    return render_template('event.html', num_nodes=RaceContext.race.num_nodes, serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('event.html', num_nodes=RaceContext.race.num_nodes, serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
 
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
-    return render_template('results.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
+    return render_template('results.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/run')
 @requires_auth
@@ -345,7 +343,7 @@ def render_run():
                 'index': idx
             })
 
-    return render_template('run.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('run.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
         vrx_enabled=RaceContext.vrx_manager.isEnabled(),
         num_nodes=RaceContext.race.num_nodes,
@@ -364,7 +362,7 @@ def render_current():
                 'index': idx
             })
 
-    return render_template('current.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('current.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes,
         nodes=nodes,
         cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
@@ -373,14 +371,14 @@ def render_current():
 @requires_auth
 def render_marshal():
     '''Route to race management page.'''
-    return render_template('marshal.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('marshal.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/format')
 @requires_auth
 def render_format():
     '''Route to settings page.'''
-    return render_template('format.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('format.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/settings')
@@ -406,7 +404,7 @@ def render_settings():
     elif Config.GENERAL['configFile'] == 0:
         server_messages_formatted += '<li class="config config-none warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
 
-    return render_template('settings.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('settings.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
         led_events_enabled=RaceContext.led_manager.isEnabled(),
         vrx_enabled=RaceContext.vrx_manager.isEnabled(),
@@ -420,20 +418,20 @@ def render_settings():
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
-    return render_template('streams.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streams.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/stream/results')
 def render_stream_results():
     '''Route to current race leaderboard stream.'''
-    return render_template('streamresults.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streamresults.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/stream/node/<int:node_id>')
 def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
     if node_id <= RaceContext.race.num_nodes:
-        return render_template('streamnode.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        return render_template('streamnode.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
             node_id=node_id-1
         )
     else:
@@ -442,14 +440,14 @@ def render_stream_node(node_id):
 @APP.route('/stream/class/<int:class_id>')
 def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
-    return render_template('streamclass.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streamclass.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         class_id=class_id
     )
 
 @APP.route('/stream/heat/<int:heat_id>')
 def render_stream_heat(heat_id):
     '''Route to heat display for streaming.'''
-    return render_template('streamheat.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streamheat.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes,
         heat_id=heat_id
     )
@@ -459,26 +457,26 @@ def render_stream_heat(heat_id):
 def render_scanner():
     '''Route to scanner page.'''
 
-    return render_template('scanner.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('scanner.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/decoder')
 @requires_auth
 def render_decoder():
     '''Route to race management page.'''
-    return render_template('decoder.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('decoder.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/imdtabler')
 def render_imdtabler():
     '''Route to IMDTabler page.'''
-    return render_template('imdtabler.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('imdtabler.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
 
 @APP.route('/updatenodes')
 @requires_auth
 def render_updatenodes():
     '''Route to update nodes page.'''
-    return render_template('updatenodes.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__, \
+    return render_template('updatenodes.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__, \
                            fw_src_str=getDefNodeFwUpdateUrl())
 
 # Debug Routes
@@ -487,13 +485,13 @@ def render_updatenodes():
 @requires_auth
 def render_hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('hardwarelog.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
 
 @APP.route('/database')
 @requires_auth
 def render_database():
     '''Route to database page.'''
-    return render_template('database.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('database.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
         pilots=RaceContext.rhdata.get_pilots(),
         heats=RaceContext.rhdata.get_heats(),
         heatnodes=RaceContext.rhdata.get_heatNodes(),
@@ -508,7 +506,7 @@ def render_database():
 @requires_auth
 def render_vrxstatus():
     '''Route to VRx status debug page.'''
-    return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('vrxstatus.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
 
 # Documentation Viewer
 
@@ -535,7 +533,7 @@ def render_viewDocs():
             doc = f.read()
 
         return templating.render_template('viewdocs.html',
-            serverInfo=serverInfo,
+            serverInfo=RaceContext.serverstate.template_info_dict,
             getOption=RaceContext.rhdata.get_option,
             __=__,
             doc=doc
@@ -670,7 +668,7 @@ def on_join_cluster_ex(data=None):
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
                 })
-    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, serverInfoItems)
+    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, RaceContext.serverstate)
 
 @SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
@@ -2362,7 +2360,6 @@ def clock_check_thread_function():
     ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
         (This can happen if NTP synchronization occurs after server starts up.) '''
     global MTONIC_TO_EPOCH_MILLIS_OFFSET
-    global serverInfoItems
     try:
         while True:
             gevent.sleep(10)
@@ -2383,11 +2380,9 @@ def clock_check_thread_function():
                 logger.info("Adjusting RaceContext.serverstate.program_start_epoch_time for shift in system clock ({:.1f} secs) to: {:.0f}, time={}".\
                             format(diff_ms/1000, RaceContext.serverstate.program_start_epoch_time, RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
                 # update values that will be reported if running as cluster timer
-                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(RaceContext.serverstate.program_start_epoch_time)
-                serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)
                 if RaceContext.cluster.has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
-                    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, serverInfoItems)
+                    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, RaceContext.serverstate.info_dict)
     except KeyboardInterrupt:
         logger.info("clock_check_thread terminated by keyboard interrupt")
         raise
@@ -2778,121 +2773,21 @@ def initialize_rh_interface():
 
 # Create and save server/node information
 def buildServerInfo():
-    global serverInfo
-    global serverInfoItems
-    try:
-        serverInfo = {}
-
-        serverInfo['about_html'] = "<ul>"
-
-        # Release Version
-        serverInfo['release_version'] = RELEASE_VERSION
-        serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
-
-        # Server API
-        serverInfo['server_api'] = SERVER_API
-        serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
-
-        # Server API
-        serverInfo['json_api'] = JSON_API
-
-        # Node API levels
-        node_api_level = 0
-        serverInfo['node_api_match'] = True
-
-        serverInfo['node_api_lowest'] = 0
-        serverInfo['node_api_levels'] = [None]
-
-        info_node = RaceContext.interface.get_info_node_obj()
-        if info_node:
-            if info_node.api_level:
-                node_api_level = info_node.api_level
-                serverInfo['node_api_lowest'] = node_api_level
-                if len(RaceContext.interface.nodes):
-                    serverInfo['node_api_levels'] = []
-                    for node in RaceContext.interface.nodes:
-                        serverInfo['node_api_levels'].append(node.api_level)
-                        if node.api_level != node_api_level:
-                            serverInfo['node_api_match'] = False
-                        if node.api_level < serverInfo['node_api_lowest']:
-                            serverInfo['node_api_lowest'] = node.api_level
-                    # if multi-node and all api levels same then only include one entry
-                    if serverInfo['node_api_match'] and RaceContext.interface.nodes[0].multi_node_index >= 0:
-                        serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
-                else:
-                    serverInfo['node_api_levels'] = [node_api_level]
-
-        serverInfo['about_html'] += "<li>" + __("Node API") + ": "
-        if node_api_level:
-            if serverInfo['node_api_match']:
-                serverInfo['about_html'] += str(node_api_level)
-            else:
-                serverInfo['about_html'] += "[ "
-                for idx, level in enumerate(serverInfo['node_api_levels']):
-                    serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
-                serverInfo['about_html'] += "]"
-        else:
-            serverInfo['about_html'] += "None (Delta5)"
-
-        serverInfo['about_html'] += "</li>"
-
-        # Node firmware versions
-        node_fw_version = None
-        serverInfo['node_version_match'] = True
-        serverInfo['node_fw_versions'] = [None]
-        if info_node:
-            if info_node.firmware_version_str:
-                node_fw_version = info_node.firmware_version_str
-                if len(RaceContext.interface.nodes):
-                    serverInfo['node_fw_versions'] = []
-                    for node in RaceContext.interface.nodes:
-                        serverInfo['node_fw_versions'].append(\
-                                node.firmware_version_str if node.firmware_version_str else "0")
-                        if node.firmware_version_str != node_fw_version:
-                            serverInfo['node_version_match'] = False
-                    # if multi-node and all versions same then only include one entry
-                    if serverInfo['node_version_match'] and RaceContext.interface.nodes[0].multi_node_index >= 0:
-                        serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
-                else:
-                    serverInfo['node_fw_versions'] = [node_fw_version]
-        if node_fw_version:
-            serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
-            if serverInfo['node_version_match']:
-                serverInfo['about_html'] += str(node_fw_version)
-            else:
-                serverInfo['about_html'] += "[ "
-                for idx, ver in enumerate(serverInfo['node_fw_versions']):
-                    serverInfo['about_html'] += str(idx+1) + ":" + str(ver) + " "
-                serverInfo['about_html'] += "]"
-            serverInfo['about_html'] += "</li>"
-
-        serverInfo['node_api_best'] = NODE_API_BEST
-        if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
-            # Show Recommended API notice
-            serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
-
-        serverInfo['about_html'] += "</ul>"
-
-        # create version of 'serverInfo' without 'about_html' entry
-        serverInfoItems = serverInfo.copy()
-        serverInfoItems.pop('about_html', None)
-        serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(RaceContext.serverstate.program_start_epoch_time)
-        serverInfoItems['prog_start_time'] = RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)
-
-        return serverInfo
-
-    except:
-        logger.exception("Error in 'buildServerInfo()'")
+    RaceContext.serverstate.release_version = RELEASE_VERSION
+    RaceContext.serverstate.server_api_version = SERVER_API
+    RaceContext.serverstate.json_api_version = JSON_API
+    RaceContext.serverstate.node_api_best = NODE_API_BEST
+    RaceContext.serverstate.build_info()
 
 # Log server/node information
 def reportServerInfo():
-    logger.debug("Server info:  " + json.dumps(serverInfoItems))
-    if serverInfo['node_api_match'] is False:
+    logger.debug("Server info:  " + json.dumps(RaceContext.serverstate.info_dict))
+    if RaceContext.serverstate.node_api_match is False:
         logger.info('** WARNING: Node API mismatch **')
         set_ui_message('node-match',
             __("Node versions do not match and may not function similarly"), header='Warning')
     if RaceContext.race.num_nodes > 0:
-        if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
+        if RaceContext.serverstate.node_api_lowest < NODE_API_SUPPORTED:
             logger.info('** WARNING: Node firmware is out of date and may not function properly **')
             msgStr = __("Node firmware is out of date and may not function properly")
             if RaceContext.interface.get_fwupd_serial_name() != None:
@@ -2900,7 +2795,7 @@ def reportServerInfo():
                           " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                           __("its processor.")
             set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
-        elif serverInfo['node_api_lowest'] < NODE_API_BEST:
+        elif RaceContext.serverstate.node_api_lowest < NODE_API_BEST:
             logger.info('** NOTICE: Node firmware update is available **')
             msgStr = __("Node firmware update is available")
             if RaceContext.interface.get_fwupd_serial_name() != None:
@@ -2908,7 +2803,7 @@ def reportServerInfo():
                           " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                           __("its processor.")
             set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
-        elif serverInfo['node_api_lowest'] > NODE_API_BEST:
+        elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
             logger.warning('** WARNING: Node firmware is newer than this server version supports **')
             set_ui_message('node-newer',
                 __("Node firmware is newer than this server version and may not function properly"),
@@ -3146,7 +3041,7 @@ if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
 # collect server info for About panel, etc
 buildServerInfo()
 reportServerInfo()
-RHAPI.server_info = serverInfoItems
+RHAPI.server_info = RaceContext.serverstate.info_dict
 
 # Do data consistency checks
 if not db_inited_flag:
@@ -3264,7 +3159,7 @@ RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Eve
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
 # register endpoints
-APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, serverInfo))
+APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
 
 #register event actions
 EventActionsObj = EventActions.EventActions(Events, RaceContext)
