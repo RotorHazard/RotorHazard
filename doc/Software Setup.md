@@ -419,17 +419,21 @@ To view the web-GUI interface, open up a web browser and enter into the address 
 
 **To update an existing installation:**
 
-1. Using the command prompt, navigate to the topmost RotorHazard directory.
+1. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 
-2. Activate the Python virtual environment ('venv'):
+2. Unzip the downloaded file into the RotorHazard directory (aka folder) on the computer, overwriting the existing version.
+
+3. Using the command prompt, navigate to the topmost RotorHazard directory.
+
+4. Activate the Python virtual environment ('venv'):
 
   * On a Windows system the command to use will likely be: ```venv\Scripts\activate.bat```
 
   * On a Linux system the command to use will likely be: ```source venv/bin/activate```
 
-3. Using the command prompt, navigate to the ```src/server``` directory.
+5. Using the command prompt, navigate to the ```src/server``` directory.
 
-4. Enter the update command:
+6. Enter the update command:
 
   * On a Windows system the command to use will likely be:<br/>```python -m pip install --upgrade --no-cache-dir -r reqsNonPi.txt```
 
