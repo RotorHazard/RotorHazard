@@ -97,7 +97,7 @@ sudo apt update && sudo apt upgrade
 ### 5. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
-sudo apt install python3-dev libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
+sudo apt install python3-dev python3-venv libffi-dev python3-smbus build-essential python3-pip git scons swig python3-rpi.gpio
 ```
 Enter the following commands to setup the Python virtual environment:
 ```
