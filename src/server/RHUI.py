@@ -10,6 +10,7 @@ from flask_socketio import emit
 from eventmanager import Evt
 import json
 import subprocess
+import re
 from collections import OrderedDict
 import gevent
 import RHUtils
@@ -243,27 +244,28 @@ class RHUI():
 
     def emit_priority_message(self, message, interrupt=False, caller=False, **params):
         ''' Emits message to all clients '''
-        emit_payload = {
-            'message': message,
-            'interrupt': interrupt
-        }
-        if ('nobroadcast' in params):
-            emit('priority_message', emit_payload)
-        else:
-            if interrupt:
-                self._events.trigger(Evt.MESSAGE_INTERRUPT, {
-                    'message': message,
-                    'interrupt': interrupt,
-                    'caller': caller
-                    })
+        if message and re.search(r"[0-z]", message):
+            emit_payload = {
+                'message': message,
+                'interrupt': interrupt
+            }
+            if ('nobroadcast' in params):
+                emit('priority_message', emit_payload)
             else:
-                self._events.trigger(Evt.MESSAGE_STANDARD, {
-                    'message': message,
-                    'interrupt': interrupt,
-                    'caller': caller
-                    })
+                if interrupt:
+                    self._events.trigger(Evt.MESSAGE_INTERRUPT, {
+                        'message': message,
+                        'interrupt': interrupt,
+                        'caller': caller
+                        })
+                else:
+                    self._events.trigger(Evt.MESSAGE_STANDARD, {
+                        'message': message,
+                        'interrupt': interrupt,
+                        'caller': caller
+                        })
 
-            self._socket.emit('priority_message', emit_payload)
+                self._socket.emit('priority_message', emit_payload)
 
     def emit_race_schedule(self):
         self._socket.emit('race_scheduled', {
