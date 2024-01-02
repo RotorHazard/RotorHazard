@@ -422,6 +422,27 @@ class ServerTest(unittest.TestCase):
                       attr.field_type == UIFieldType.TEXT)
         self.assertEqual(attr_match, True)
 
+        server.RHAPI.fields.register_heat_attribute(UIField('test_attribute', 'Test Attribute', UIFieldType.TEXT))
+        attr = server.RHAPI.fields.heat_attributes[0]
+        attr_match = (attr.name == 'test_attribute'  and \
+                      attr.label == "Test Attribute" and \
+                      attr.field_type == UIFieldType.TEXT)
+        self.assertEqual(attr_match, True)
+
+        server.RHAPI.fields.register_raceclass_attribute(UIField('test_attribute', 'Test Attribute', UIFieldType.TEXT))
+        attr = server.RHAPI.fields.raceclass_attributes[0]
+        attr_match = (attr.name == 'test_attribute'  and \
+                      attr.label == "Test Attribute" and \
+                      attr.field_type == UIFieldType.TEXT)
+        self.assertEqual(attr_match, True)
+
+        server.RHAPI.fields.register_race_attribute(UIField('test_attribute', 'Test Attribute', UIFieldType.TEXT))
+        attr = server.RHAPI.fields.race_attributes[0]
+        attr_match = (attr.name == 'test_attribute'  and \
+                      attr.label == "Test Attribute" and \
+                      attr.field_type == UIFieldType.TEXT)
+        self.assertEqual(attr_match, True)
+
     def test_database_api(self):
         self.client.emit('load_data', {'load_types': ['pilot_data']})
         ld_pilots = self.get_response('pilot_data')['pilots']
@@ -542,7 +563,50 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(server.RHAPI.race.heat, 0)
         server.RHAPI.race.heat = 1
         self.assertEqual(server.RHAPI.race.heat, 1)
-        
+
+    def test_attributes(self):
+        # Ensure there is a stored pilot, heat, class, and race
+        server.RHAPI.db.pilot_add()
+        server.RHAPI.db.heat_add()
+        server.RHAPI.db.raceclass_add()
+        server.RHAPI.race.stage()
+        server.RHAPI.race.stop()
+        server.RHAPI.race.save()
+
+        pilot = server.RHAPI.db.pilots[0]
+        heat = server.RHAPI.db.heats[0]
+        raceclass = server.RHAPI.db.raceclasses[0]
+        race = server.RHAPI.db.races[0]
+
+        server.RHAPI.db.pilot_alter(pilot.id, attributes={'test_attribute': 'test-pilot-attr'})
+        server.RHAPI.db.heat_alter(heat.id, attributes={'test_attribute': 'test-heat-attr'})
+        server.RHAPI.db.raceclass_alter(raceclass.id, attributes={'test_attribute': 'test-raceclass-attr'})
+        server.RHAPI.db.race_alter(race.id, attributes={'test_attribute': 'test-race-attr'})
+
+        attributes_by_obj = server.RHAPI.db.pilot_attributes(pilot)
+        #attributes_by_id = server.RHAPI.db.pilot_attributes(pilot.id)
+        #self.assertEqual(attributes_by_obj, attributes_by_id)
+        attr_by_obj = server.RHAPI.db.pilot_attribute_value(pilot, 'test_attribute')
+        self.assertEqual(attr_by_obj, 'test-pilot-attr')
+
+        attributes_by_obj = server.RHAPI.db.heat_attributes(heat)
+        #attributes_by_id = server.RHAPI.db.heat_attributes(heat.id)
+        #self.assertEqual(attributes_by_obj, attributes_by_id)
+        attr_by_obj = server.RHAPI.db.heat_attribute_value(heat, 'test_attribute')
+        self.assertEqual(attr_by_obj, 'test-heat-attr')
+
+        attributes_by_obj = server.RHAPI.db.raceclass_attributes(raceclass)
+        #attributes_by_id = server.RHAPI.db.raceclass_attributes(raceclass.id)
+        #self.assertEqual(attributes_by_obj, attributes_by_id)
+        attr_by_obj = server.RHAPI.db.raceclass_attribute_value(raceclass, 'test_attribute')
+        self.assertEqual(attr_by_obj, 'test-raceclass-attr')
+
+        attributes_by_obj = server.RHAPI.db.race_attributes(race)
+        #attributes_by_id = server.RHAPI.db.race_attributes(race.id)
+        #self.assertEqual(attributes_by_obj, attributes_by_id)
+        attr_by_obj = server.RHAPI.db.race_attribute_value(race, 'test_attribute')
+        self.assertEqual(attr_by_obj, 'test-race-attr')
+
     def test_rhapi_frequencyset(self):
         original_set = server.RHAPI.race.frequencyset
         num_sets = len(server.RHAPI.db.frequencysets)
