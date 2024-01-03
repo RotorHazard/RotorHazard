@@ -34,6 +34,7 @@ class Pilot(DB.Model):
     color = DB.Column(DB.String(7), nullable=True)
     used_frequencies = DB.Column(DB.String, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
+    photo = DB.Column(DB.String(256), nullable=True)
 
     @property
     def display_callsign(self):

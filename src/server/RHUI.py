@@ -299,6 +299,15 @@ class RHUI():
         else:
             self._socket.emit('race_status', emit_payload)
 
+    def emit_race_overdue(self, **params):
+        '''Emits race status.'''
+
+        emit_payload = {}
+        if ('nobroadcast' in params):
+            emit('race_overdue', emit_payload)
+        else:
+            self._socket.emit('race_overdue', emit_payload)
+
     def emit_frequency_data(self, **params):
         '''Emits node data.'''
         profile_freqs = json.loads(self._racecontext.race.profile.frequencies)
@@ -787,6 +796,7 @@ class RHUI():
                 'team_options': opts_str,
                 'color': pilot.color,
                 'locked': locked,
+                'photo': pilot.photo
             }
 
             pilot_attributes = self._racecontext.rhdata.get_pilot_attributes(pilot)

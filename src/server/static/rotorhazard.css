@@ -271,6 +271,57 @@ button, select, .button-like {
 	color: var(--contrast_0_low);
 }
 
+.photo {
+	width: 100%;
+}
+
+.pilot-photo-input {
+	visibility:hidden;
+}
+
+.photo a {
+	display:inline-block;
+}
+
+.delete_photo {
+	vertical-align:top; 
+	height:100%;
+}
+
+.photo-input-label {
+	border: solid 0.125em hsl(212.7, 67.8%, 29.2%);
+	border-radius: 0.25rem;
+	padding: 0.25em 0.5em;
+	color: #fff;
+	font-size: inherit;
+	font-family: inherit;
+	cursor: pointer;
+	min-height: 2em;
+	box-sizing: border-box;
+	display: inline-block;
+	vertical-align: middle;
+	text-decoration: none;
+
+	background: hsl(212.7, 67.8%, 29.2%);
+	background: -moz-linear-gradient(top, hsl(213.8, 53.8%, 46.7%) 0%, hsl(212.7, 67.8%, 29.2%) 100%);
+	background: -webkit-linear-gradient(top, hsl(213.8, 53.8%, 46.7%) 0%,hsl(212.7, 67.8%, 29.2%) 100%);
+	background: linear-gradient(to bottom, hsl(213.8, 53.8%, 46.7%) 0%,hsl(212.7, 67.8%, 29.2%) 100%);
+
+	border-color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
+	background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
+	background: -moz-linear-gradient(top, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%, hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
+	background: -webkit-linear-gradient(top, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%,hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
+	background: linear-gradient(to bottom, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%,hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
+	color: var(--contrast_0_low);
+}
+
+.pilot-photo {
+	max-height:50px; 
+	max-width:100px;
+	width: auto;
+	height: auto;
+}
+
 button svg {
 	vertical-align: text-bottom;
 }

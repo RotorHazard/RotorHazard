@@ -450,6 +450,28 @@ def render_stream_heat(heat_id):
         heat_id=heat_id
     )
 
+@APP.route('/stream/heatwop/<int:heat_id>')
+def render_stream_heat_wop(heat_id):
+    '''Route to heat display for streaming.'''
+    return render_template('streamheatwop.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        num_nodes=RaceContext.race.num_nodes,
+        heat_id=heat_id
+    )
+
+@APP.route('/upload/pilot-photo', methods =['POST'])
+@requires_auth
+def upload_pilot_photo():
+    pilot_id = request.form['pilot_id']
+    photo = request.files['photo']
+
+    basepath = os.path.dirname(os.path.abspath(__file__))
+    staticPath = 'static/pilot-photos'
+    fullname = os.path.join(basepath, staticPath, photo.filename)
+
+    photo.save(fullname)
+
+    return '{"path":"/' + staticPath + '/' + photo.filename + '"}'
+
 @APP.route('/scanner')
 @requires_auth
 def render_scanner():
@@ -1251,11 +1273,33 @@ def on_add_pilot():
     RaceContext.rhdata.add_pilot()
     RaceContext.rhui.emit_pilot_data()
 
+def is_photo_used(pilots, pilotId, photoName):
+    for pilot in pilots:
+        if(pilot.id != pilotId and pilot.photo == photoName):
+            return True
+    
+    return False
+
 @SOCKET_IO.on('alter_pilot')
 @catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
+
+    pilots = RaceContext.rhdata.get_pilots()
+    previousPhoto = ''
+
     _pilot, race_list = RaceContext.rhdata.alter_pilot(data)
+
+    if('photo' in data and data['photo'] == None and previousPhoto != None):
+        photoUsed = is_photo_used(pilots, data['pilot_id'], previousPhoto)
+        
+        if(photoUsed):
+            logger.info("Photo used. Will not be deleted")
+        else:
+            logger.info("Photo not used. Will be deleted")
+            basepath = os.path.dirname(os.path.abspath(__file__))
+            os.remove(basepath + previousPhoto)
+            logger.info("Photo deleted successfully")
 
     RaceContext.rhui.emit_pilot_data(noself=True) # Settings page, new pilot settings
 
@@ -1272,7 +1316,20 @@ def on_alter_pilot(data):
 @catchLogExceptionsWrapper
 def on_delete_pilot(data):
     '''Delete pilot.'''
+
+    pilots = RaceContext.rhdata.get_pilots()
+    previousPhoto = ''
+
     result = RaceContext.rhdata.delete_pilot(data['pilot'])
+
+    if(previousPhoto != None):
+        if(is_photo_used(pilots, data['pilot_id'], previousPhoto)):
+            logger.info("Photo used. Will not be deleted")
+        else:
+            logger.info("Photo not used. Will be deleted")
+            basepath = os.path.dirname(os.path.abspath(__file__))
+            os.remove(basepath + previousPhoto)
+            logger.info("Photo deleted successfully")
 
     if result:
         RaceContext.rhui.emit_pilot_data()
@@ -2405,6 +2462,7 @@ def race_expire_thread(start_token):
             PassInvokeFuncQueueObj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
             check_win_condition(at_finish=True, start_token=start_token)
             RaceContext.rhui.emit_current_leaderboard()
+            RaceContext.rhui.emit_race_overdue()
             if race_format.lap_grace_sec > -1:
                 gevent.sleep((RaceContext.race.start_time_monotonic + race_format.race_time_sec + race_format.lap_grace_sec) - monotonic())
                 if RaceContext.race.race_status == RaceStatus.RACING and RaceContext.race.start_token == start_token:

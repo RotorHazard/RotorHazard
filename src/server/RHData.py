@@ -744,7 +744,8 @@ class RHData():
             team=RHUtils.DEF_TEAM_NAME,
             phonetic='',
             color=color,
-            used_frequencies=None)
+            used_frequencies=None,
+            photo='')
 
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
@@ -763,6 +764,8 @@ class RHData():
                 new_pilot.phonetic = init['phonetic']
             if 'color' in init:
                 new_pilot.color = init['color']
+            if 'photo' in init:
+                photo = init['photo']
 
         self.commit()
 
@@ -787,6 +790,8 @@ class RHData():
             pilot.name = data['name']
         if 'color' in data:
             pilot.color = data['color']
+        if 'photo' in data:
+            pilot.photo = data['photo']
 
         if 'pilot_attr' in data and 'value' in data:
             attribute = self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=data['pilot_attr']).one_or_none()

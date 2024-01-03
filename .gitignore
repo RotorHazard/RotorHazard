@@ -27,3 +27,9 @@ venv
 /src/server/plugins/*
 !/src/server/plugins/rh_*
 !/src/server/plugins/README.md
+
+/*Python38/*
+/.metadata/*
+
+/src/server/static/pilot-photos/*
+!/src/server/static/pilot-photos/default.png

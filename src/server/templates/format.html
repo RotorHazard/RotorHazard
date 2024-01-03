@@ -1180,6 +1180,55 @@
 			socket.emit('duplicate_heat', data);
 		});
 
+		$(document).on("change", ".pilot-photo-input", function(){
+			let photo = $(this).prop('files')[0];
+			let formData = new FormData();
+			let pilot_id = $(this).data('pilot_id');
+
+			formData.append("pilot_id", pilot_id);
+			formData.append("photo", photo);
+
+			fetch('./upload/pilot-photo', {method: "POST", body: formData})
+			.then((resp) => {
+				if(resp.status === 200){
+					return resp.json();  
+				}
+			})
+			.then((json) => {
+				var data = {
+					pilot_id: parseInt(pilot_id),
+					photo: json.path
+				};
+				socket.emit('alter_pilot', data);
+				return json;
+			})
+			.then((json) => {
+				$(this).hide();
+				var parent = $(this).parent();
+				parent.find('.photo-input-label').hide();
+				parent.append('<a href="'+ json.path +'" target="_blank" title="Click to enlarge"><img src="' + json.path + '" class="pilot-photo"/></a>');
+				parent.append('<button class="delete_photo btn-danger" data-pilot_id="' + pilot_id +'">×</button>');
+			});
+		});
+
+		$(document).on("click", ".delete_photo", function(){
+			let pilot_id = $(this).data('pilot_id');
+
+			var data = {
+				pilot_id: parseInt(pilot_id),
+				photo: null
+			};
+
+			socket
+			.emit('alter_pilot', data, () => {
+				$(this).hide();
+				var parent = $(this).parent();
+				parent.find('a').hide();
+				parent.append('<label for="photo_'+ pilot_id +'" class="photo-input-label">Add pilot photo</label>');
+				parent.append('<input type="file" id="photo_'+ pilot_id +'" class="pilot-photo-input" data-pilot_id="' + pilot_id + '" accept="image/png, image/jpeg"></input>');
+			});
+		});
+
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			rotorhazard.event.pilot_attributes = msg.attributes;
@@ -1219,6 +1268,25 @@
 						phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
 						phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 						el.append(phonetic);
+						// if('photo' in pilot)
+						// {					
+							var photo=$('<div class="photo">');
+
+							if(!pilot['photo'] || pilot.photo == null)
+							{
+								var inputLabel = $('<label for="photo_'+ pilot.pilot_id +'" class="photo-input-label">Add pilot photo</label>')
+								var photoInput = $('<input type="file" id="photo_'+ pilot.pilot_id +'" class="pilot-photo-input" data-pilot_id="' + pilot.pilot_id + '" accept="image/png, image/jpeg"></input>');
+								
+								photo.append(inputLabel);
+								photo.append(photoInput);
+							}
+							else
+							{
+								photo.append('<a href="'+ pilot.photo +'" target="_blank" title="Click to enlarge"><img src="' + pilot.photo + '" class="pilot-photo" /></a>')
+								photo.append('<button class="delete_photo btn-danger" data-pilot_id="' + pilot.pilot_id +'">x</button>');
+							}
+							el.append(photo);
+						// }
 						el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
 
 						if (!pilot.locked) {

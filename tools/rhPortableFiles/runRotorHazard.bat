@@ -1,9 +1,10 @@
 @echo off
-pushd %~d0%~p0RotorHazardRun\src\server
+cd C:\src\RotorHazard_WoP\src\server
 if "%1"=="" goto noparam
-start ..\..\python38\python server.py --viewdb "%1" results
+start C:\src\RotorHazard_WoP\Python38\python.exe server.py --viewdb "%1" results
 goto ex
 :noparam
-start ..\..\python38\python server.py --launchb results
+start C:\src\RotorHazard_WoP\Python38\python.exe server.py --launchb results
 :ex
+pause
 popd

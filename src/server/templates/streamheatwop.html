@@ -1,0 +1,170 @@
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Heat') }}{% endblock %}{% block head %}
+<link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'frequency_data',
+		'heat_data',
+        'pilot_data'
+	];
+
+	rotorhazard.show_messages = false;
+	var heat_data;
+	var streamheat = {{ heat_id }}
+
+	$(document).ready(function () {
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
+
+		if (streamheat == 0) {
+			socket.emit('load_data', {'load_types': [
+				'heat_data',
+				'current_heat',
+			]});
+		}
+
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		socket.on('frequency_data', function (msg) {
+			if (msg.fdata.length) {
+				for (var i in msg.fdata) {
+					var fObj = freq.getFObjbyFData(msg.fdata[i]);
+					rotorhazard.nodes[i].fObj = fObj;
+					$('#s_channel_' + i).val(fObj.frequency);
+					$('#f_table_' + i).val(fObj.fString);
+					freq.updateBlock(fObj, i);
+				}
+			}
+		});
+
+		function display_nothing() {
+			$('#header h1').html(__('No Data'))
+			$('#leaderboard').html('<p>' + __('There is no saved race data available to view.') + '</p>');
+		}
+
+		function display_heats() {
+            if (rotorhazard.event.heats &&
+				rotorhazard.event.pilots &&
+                streamheat)
+                {
+                    var heat = rotorhazard.event.heats.find(obj => {return obj.id == streamheat});
+
+                    if (heat.name) {
+                        var heatname = heat.name;
+                    } else {
+                        var heatname = __('Heat') + ' ' + heat.id;
+                    }
+
+                    $('#heat-id').html(heatname);
+
+                    $('#pilot_0').find('.photo_container').empty();
+                    $('#pilot_1').find('.photo_container').empty();
+                    $('#pilot_2').find('.photo_container').empty();
+                    $('#pilot_3').find('.photo_container').empty();
+
+                    var numPilots = heat.slots.filter(el => {
+                        return el > 0;
+                    }).length;
+
+                    for (j in heat.slots) {
+                        var slot = heat.slots[j];
+                        
+                        if (slot.pilot_id) {              
+                            var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == heat.slots[j].pilot_id});
+
+                            var heatpilot = pilot.pilot_id;
+
+                            callsign = pilot.callsign;
+                            name = pilot.name;
+                            photo =pilot.photo;
+
+                            if(callsign === '')
+                            {
+                                $('#pilot_'+j).find('.pilot-name-container').hide();
+                                $('#pilot_'+j).find('.pilot-channel').hide();							
+                                continue;
+                            }
+                            else
+                            {
+                                $('#pilot_'+j).find('.pilot-name-container').show();
+                                $('#pilot_'+j).find('.pilot-channel').show();
+                            }
+
+                            $('#pilot_'+j).find('.pilot-name-container').find('.pilot-name').html(callsign);
+
+                            if(photo === undefined || photo == undefined || photo === null || photo == null)
+                                $('#pilot_'+j).find('.photo_container').append('<img src="/static/pilot-photos/default.png" style="height:300px; width:300px; object-fit:cover; opacity:90%;"/>');
+                            else
+                                $('#pilot_'+j).find('.photo_container').append('<img src="'+photo+'" style="height:300px; width:300px; object-fit:cover; opacity:90%;"/>');
+                    }
+                }
+                freq.updateBlocks();
+            }
+		}
+
+		socket.on('heat_data', function (msg) {
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
+		});
+
+		socket.on('pilot_data', function (msg) {
+			rotorhazard.event.pilots = msg.pilots;
+			rotorhazard.options.pilotSort = msg.pilotSort;
+			display_heats();
+		});
+
+		socket.on('current_heat', function (msg) {
+			streamheat = msg.current_heat;
+			display_heats();
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+<video id="bgVideo" preload="true" playsinline autoplay loop muted>
+    <source src="/static/currentHeatBackground.mp4" type="video/mp4" >
+</video>   
+<main style="">
+	<!--Display the race leaderboard-->
+	<p id="heat-id" style="position:relative; font-size:80px; width:100%; text-align:center; color:white; weight: 500; margin:0px; margin-top: 10px;">Heat 0</p>
+	<div id="pilots">
+		<div id="pilot_0" style="position:absolute; left:210px;top:220px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#44a43a">R1</p>	
+			<div class="pilot-name-container" style="width:300px; height:50px; background-color:#44a43a">
+				<p class="pilot-name" style="font-size:30px; color:white; height:50px; width:300px; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container"></div>		
+		</div>
+		<div id="pilot_1" style="position:absolute; left:610px;top:140px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#c775b0">R3</p>	
+			<div class="pilot-name-container" style="width:300px; height:50px; background-color:#c775b0">
+				<p class="pilot-name" style="font-size:30px; color:white; height:50px; width:300px; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container"></div>		
+		</div>
+		<div id="pilot_2" style="position:absolute; left:1010px;top:140px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#bea72b">R6</p>	
+			<div class="pilot-name-container" style="width:300px; height:50px; background-color:#bea72b">
+				<p class="pilot-name" style="font-size:30px; color:white; height:50px; width:300px; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container"></div>		
+		</div>
+		<div id="pilot_3" style="position:absolute; left:1410px;top:220px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#65b9c1">R7</p>	
+			<div class="pilot-name-container" style="width:300px; height:50px; background-color:#65b9c1">
+				<p class="pilot-name" style="font-size:30px; color:white; height:50px; width:300px; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container"></div>		
+		</div>
+	</div>
+</main>
+{% endblock %}
