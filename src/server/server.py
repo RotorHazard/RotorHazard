@@ -2866,7 +2866,14 @@ determineHostAddress(2)  # attempt to determine IP address, but don't wait too l
 # RotorHazard events dispatch
 Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
-# load plugins
+# Plugin handling
+class plugin():
+    def __init__(self, name, module):
+        self.module = module
+        self.name = name
+        self.meta = None
+        self.enabled = False
+
 plugin_modules = []
 if os.path.isdir('./plugins'):
     dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
@@ -2874,8 +2881,8 @@ if os.path.isdir('./plugins'):
         try:
             plugin_module = importlib.import_module('plugins.' + name)
             if plugin_module.__file__:
-                plugin_modules.append(plugin_module)
-                logger.info("Loaded plugin '{0}'".format(name))
+                plugin_modules.append(plugin(name, plugin_module))
+                logger.debug("Found plugin '{}'".format(name))
             else:
                 logger.warning("Plugin '{}' not imported (unable to load file)".format(name))
         except ModuleNotFoundError as ex1:
@@ -2887,8 +2894,41 @@ else:
     logger.warning('No plugins directory found.')
 
 for plugin in plugin_modules:
-    if 'initialize' in dir(plugin) and callable(getattr(plugin, 'initialize')):
-        plugin.initialize(RHAPI)
+    # default-enable bundled plugins
+    if plugin.name.startswith("rh_"):
+        plugin.enabled = True
+
+    if plugin.enabled:
+        if 'initialize' in dir(plugin.module) and callable(getattr(plugin.module, 'initialize')):
+            if 'get_meta' in dir(plugin.module) and callable(getattr(plugin.module, 'get_meta')):
+                meta = plugin.module.get_meta()
+                if isinstance(meta, dict):
+                    plugin.meta = plugin.module.get_meta()
+
+            version_major = 1
+            version_minor = 0
+
+            if plugin.meta:
+                try:
+                    version = plugin.meta.get('rhapi_version').split('.')
+                    version_major = int(version[0])
+                    version_minor = int(version[1])
+                except:
+                    logger.info("Can't parse API declaration for plugin '{}', assuming 1.0".format(plugin.name))
+
+            if version_major > RaceContext.rhapi.API_VERSION_MAJOR:
+                logger.info("Plugin '{}' not loaded (required RHAPI version is newer than this server)".format(plugin.name))
+            elif version_major == RaceContext.rhapi.API_VERSION_MAJOR and version_minor > RaceContext.rhapi.API_VERSION_MINOR:
+                logger.info("Plugin '{}' not loaded (required RHAPI version is newer than this server)".format(plugin.name))
+            else:
+                plugin.module.initialize(RHAPI)
+                logger.info("Loaded plugin '{}': {}".format(plugin.name, plugin.meta))
+        else:
+            logger.info("Plugin '{}' not loaded (can't initialize)".format(plugin.name))
+    else:
+        logger.info("Plugin '{}' not loaded (disabled)".format(plugin.name))
+
+# RaceContext.serverstate.plugins = plugin_modules
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
