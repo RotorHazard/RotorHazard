@@ -441,10 +441,18 @@
 			var lapList = $('#laps tbody');
 			lapList.empty();
 
+			var lapsSummary = $('#laps-summary .laps tbody');
+			lapsSummary.empty();
+			lapsSummary.append('<tr>');
+			
+			var hiddenLapSummary = $('#lap-summary-hidden');
+
 			var lap_index = 0;
 			for (var lap_i in laps_obj) {
 				var lap = laps_obj[lap_i];
 				var lapData = $('<tr>');
+				var lapSummaryData = $('<td>');
+				var hiddenLapSummaryData = '';
 				$(lapData).data("lapTimeStamp", lap.lap_time_stamp);
 
 				if (lap.deleted) {
@@ -462,6 +470,13 @@
 					lapData.append('<td>' + lap_index + '</td>');
 					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
 					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getOption('timeFormat')|tojson }}) + '</td>');
+
+					if(lap_index > 0)
+						lapSummaryData.append((lap.lap_time / 1000).toFixed(3).replace('.',','));
+
+					if(lap_index > 0)
+						hiddenLapSummaryData = (lap.lap_time / 1000).toFixed(3).replace('.',',') + '\t';
+
 					lap_index++;
 				} else {
 					deleted_lap_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);
@@ -497,7 +512,23 @@
 				}
 
 				lapList.append(lapData);
+
+				if(hiddenLapSummaryData != '') {
+					lapsSummary.append(lapSummaryData);
+				}
+
+				hiddenLapSummary.append(hiddenLapSummaryData);
 			}
+
+			lapsSummary.append('</tr>');
+
+			hiddenLapSummary.text(hiddenLapSummary.text().slice(0,-1));
+
+			$('#copy-laps').click(function () {
+				var hiddenLapSummary = $('#lap-summary-hidden');			
+
+				navigator.clipboard.writeText(hiddenLapSummary.text());
+			});
 
 			// When a user clicks on a lap, toggle that lap's highlight pointer in the graph.
 			$('#laps td:not(:last-child)').click( function(){
@@ -1093,6 +1124,14 @@
 				</thead>
 				<tbody></tbody>
 				</table>
+
+				<div id="laps-summary">
+					<table class="laps">
+						<tbody></tbody>
+					</table>
+					<span id="lap-summary-hidden"></span>
+					<button id="copy-laps"> Copy laps</button>					
+				</div>
 			</div>
 
 			<div class="sidebar-controls">
