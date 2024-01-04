@@ -531,7 +531,7 @@
 			});
 		}
 
-		$('#recalc').click(function(){
+		function recalc_race() {
 			precalc_laps = precalc_rx_data();
 			if (race_loaded) {
 				var laps = recalc_rx_data();
@@ -548,34 +548,67 @@
 				$('#laps').removeClass('invalid');
 				enableUI();
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
+		}
+
+		$('#enterat').on('input', function (event) {
+			validate_enter();
 		});
 
 		$('#enterat').change(function(){
-			$(this).val(Math.min($(this).val(), graph.options.maxValue));
-			$(this).val(Math.max($(this).val(), graph.options.minValue));
+			validate_enter();
+		});
+
+		function validate_enter() {
+			var enter_el = $('#enterat');
+			var rssi = enter_el.val();
+
+			enter_el.val(Math.min(rssi, graph.options.maxValue));
+			enter_el.val(Math.max(rssi, graph.options.minValue));
+
+			if (rssi < current_race_data.exit_at)  {
+				current_race_data.exit_at = rssi;
+				$('#exitat').val(rssi);
+			}
 
 			clearMarkedLap();
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
 			precalc_laps = precalc_rx_data();
 			renderGraph();
+
+			recalc_race();
+		}
+
+		$('#exitat').on('input', function (event) {
+			validate_exit();
 		});
 
 		$('#exitat').change(function(){
-			$(this).val(Math.min($(this).val(), graph.options.maxValue));
-			$(this).val(Math.max($(this).val(), graph.options.minValue));
+			validate_exit()
+		});
+
+		function validate_exit() {
+			var exit_el = $('#exitat');
+			var rssi = exit_el.val();
+
+			exit_el.val(Math.min(rssi, graph.options.maxValue));
+			exit_el.val(Math.max(rssi, graph.options.minValue));
+
+			if (rssi > current_race_data.enter_at)  {
+				current_race_data.enter_at = rssi
+				$('#enterat').val(rssi);
+			}
 
 			clearMarkedLap();
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
 			precalc_laps = precalc_rx_data();
 			renderGraph();
-		});
+
+			recalc_race();
+		}
 
 		function recalc_rx_data() {
 			return precalc_laps;
@@ -668,6 +701,17 @@
 					});
 			}
 
+			// auto-delete late laps
+			var finished = false;
+			for (var lap_i in laps) {
+				var lap = laps[lap_i];
+				if (finished) {
+					lap.deleted = true;
+				} else if (!current_race_data.race_format.unlimited_time && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
+					finished = true;
+				}
+			}
+
 			// redraw crossings
 			clearCrossings();
 			for (var lap_i in laps) {
@@ -711,23 +755,26 @@
 		}
 
 		$('#add-lap').click(function(){
-			if (race_loaded) {
-				current_race_data.laps.push({
-					crossingStart: 0,
-					crossingEnd: 0,
-					lap_time_stamp: parseInt($('#manual-lap-time').val() * 1000),
-					source: 1,
-					deleted: false
-				});
-				calc_lap_times(current_race_data.laps)
-				clearMarkedLap();
-				displayLaps(current_race_data.laps);
-				renderGraph();
-			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
+			lap_time_s = $('#manual-lap-time').val();
+
+			if (lap_time_s.length > 0) {
+				if (race_loaded) {
+					current_race_data.laps.push({
+						crossingStart: 0,
+						crossingEnd: 0,
+						lap_time_stamp: parseInt(lap_time_s * 1000),
+						source: 1,
+						deleted: false
+					});
+					calc_lap_times(current_race_data.laps)
+					clearMarkedLap();
+					displayLaps(current_race_data.laps);
+					renderGraph();
+				} else {
+					push_message(__('No race loaded'));
 				}
+			} else {
+				push_message(__('To add a lap manually, first specify lap time'));
 			}
 		});
 
@@ -747,10 +794,7 @@
 				displayLaps(laps);
 				renderGraph();
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -781,10 +825,7 @@
 				});
 				race_list_loaded = false
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -808,10 +849,7 @@
 				this_pilotrace.exit_at = current_race_data.exit_at;
 				this_pilotrace.laps = current_race_data.laps;
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -824,12 +862,9 @@
 				var node = current_race_data.node_index;
 				$('#enterat').val(rotorhazard.nodes[node].enter_at_level);
 				$('#exitat').val(rotorhazard.nodes[node].exit_at_level);
-				renderGraph();
+				recalc_race();
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -847,15 +882,9 @@
 					socket.emit('set_exit_at_level', data);
 				}
 
-				standard_message_queue.push(__('Enter/Exit points saved to active node'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('Enter/Exit points saved to active node'));
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -907,18 +936,10 @@
 
 				if (adjustEnter) {
 					$('#enterat').val(rssi);
-					$('#enterat').trigger('change');
-					if (rssi < current_race_data.exit_at + 2)  {
-						$('#exitat').val(rssi - 2);
-						$('#exitat').trigger('change');
-					}
+					validate_enter();
 				} else {
 					$('#exitat').val(rssi);
-					$('#exitat').trigger('change');
-					if (rssi > current_race_data.enter_at - 2)  {
-						$('#enterat').val(rssi + 2);
-						$('#enterat').trigger('change');
-					}
+					validate_exit();
 				}
 			}
 		}
@@ -956,7 +977,7 @@
 					}
 				});
 			} else {
-				$('#recalc').trigger('click');
+				recalc_race();
 			}
 		}
 
@@ -971,14 +992,14 @@
 			if (!isTouchEvent) {
 				if (canDrag) {
 					handleGraphInteractionMove(evt);
-					$('#recalc').trigger('click');
+					recalc_race();
 				}
 			}
 		})
 		$(graph_canvas).on('mouseup', function(evt){
 			if (!isTouchEvent) {
 				if (isDragging) {
-					$('#recalc').trigger('click');
+					recalc_race();
 				} else {
 					handleGraphInteractionTap(evt);
 				}
@@ -994,7 +1015,7 @@
 					$('#enterat').trigger('change');
 					$('#exitat').val(startingExit);
 					$('#exitat').trigger('change');
-					$('#recalc').trigger('click');
+					recalc_race();
 				}
 			}
 			isTouchEvent = false;
@@ -1025,7 +1046,7 @@
 			evt.preventDefault();
 			if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
 				if (isDragging) {
-					$('#recalc').trigger('click');
+					recalc_race();
 				} else {
 					handleGraphInteractionTap(evt);
 				}
@@ -1037,7 +1058,7 @@
 			$('#enterat').trigger('change');
 			$('#exitat').val(startingExit);
 			$('#exitat').trigger('change');
-			$('#recalc').trigger('click');
+			recalc_race();
 			isTouchEvent = true;
 		});
 
@@ -1108,7 +1129,6 @@
 					<input type="number" id="enterat" value="" placeholder="{{ __('EnterAt') }}" disabled />
 					<label for="exitat" class="screen-reader-text">{{ __('ExitAt') }}</label>
 					<input type="number" id="exitat" value="" placeholder="{{ __('ExitAt') }}" disabled />
-					<button id="recalc" disabled>{{ __('Recalculate Race') }}</button>
 					<button id="load-transitions" disabled>{{ __('Load from Node') }}</button>
 					<button id="save-transitions" disabled>{{ __('Save to Node') }}</button>
 				</div>

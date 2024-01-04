@@ -1863,10 +1863,7 @@
 		});
 
 		socket.on('reset_confirm', function () {
-			standard_message_queue.push(__('Data Cleared'));
-			if (standard_message_queue.length == 1) {
-				get_standard_message()
-			}
+			push_message(__('Data Cleared'));
 		});
 
 		$('button#archive-event').click(function (event) {

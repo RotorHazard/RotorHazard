@@ -273,10 +273,7 @@
 			source = el.data('source');
 			if (source) {
 				pilot = el.parent().children('.pilot').html()
-				standard_message_queue.push(__('Source for') + " " + pilot + ": " + source);
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('Source for') + " " + pilot + ": " + source);
 			}
 		})
 
