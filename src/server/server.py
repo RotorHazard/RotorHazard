@@ -2872,7 +2872,7 @@ class plugin():
         self.module = module
         self.name = name
         self.meta = None
-        self.enabled = False
+        self.enabled = True #TODO: remove temporary default-enable of all plugins
 
 plugin_modules = []
 if os.path.isdir('./plugins'):
@@ -2900,31 +2900,31 @@ for plugin in plugin_modules:
 
     if plugin.enabled:
         if 'initialize' in dir(plugin.module) and callable(getattr(plugin.module, 'initialize')):
-            if 'get_meta' in dir(plugin.module) and callable(getattr(plugin.module, 'get_meta')):
-                meta = plugin.module.get_meta()
+            if 'metadata' in dir(plugin.module):
+                meta = plugin.module.metadata
                 if isinstance(meta, dict):
-                    plugin.meta = plugin.module.get_meta()
+                    plugin.meta = meta
 
             version_major = 1
             version_minor = 0
 
             if plugin.meta:
                 try:
-                    version = plugin.meta.get('rhapi_version').split('.')
+                    version = plugin.meta.get('required_rhapi_version').split('.')
                     version_major = int(version[0])
                     version_minor = int(version[1])
                 except:
                     logger.info("Can't parse API declaration for plugin '{}', assuming 1.0".format(plugin.name))
 
-            if version_major > RaceContext.rhapi.API_VERSION_MAJOR:
+            if version_major > RHAPI.API_VERSION_MAJOR:
                 logger.info("Plugin '{}' not loaded (required RHAPI version is newer than this server)".format(plugin.name))
-            elif version_major == RaceContext.rhapi.API_VERSION_MAJOR and version_minor > RaceContext.rhapi.API_VERSION_MINOR:
+            elif version_major == RHAPI.API_VERSION_MAJOR and version_minor > RHAPI.API_VERSION_MINOR:
                 logger.info("Plugin '{}' not loaded (required RHAPI version is newer than this server)".format(plugin.name))
             else:
                 plugin.module.initialize(RHAPI)
                 logger.info("Loaded plugin '{}': {}".format(plugin.name, plugin.meta))
         else:
-            logger.info("Plugin '{}' not loaded (can't initialize)".format(plugin.name))
+            logger.info("Plugin '{}' not loaded (no initialize function)".format(plugin.name))
     else:
         logger.info("Plugin '{}' not loaded (disabled)".format(plugin.name))
 
