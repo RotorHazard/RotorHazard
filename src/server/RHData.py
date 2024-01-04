@@ -332,6 +332,9 @@ class RHData():
             racePilot_query_data = self.get_legacy_table_data(metadata, 'saved_pilot_race')
             raceLap_query_data = self.get_legacy_table_data(metadata, 'saved_race_lap')
             pilotAttribute_query_data = self.get_legacy_table_data(metadata, 'pilot_attribute')
+            heatAttribute_query_data = self.get_legacy_table_data(metadata, 'heat_attribute')
+            raceClassAttribute_query_data = self.get_legacy_table_data(metadata, 'race_class_attribute')
+            savedRaceAttribute_query_data = self.get_legacy_table_data(metadata, 'saved_race_meta_attribute')
 
             engine.dispose() # close connection after loading
 
@@ -643,6 +646,21 @@ class RHData():
                         'value': None
                     })
 
+                self.restore_table(self._Database.HeatAttribute, heatAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
+                self.restore_table(self._Database.RaceClassAttribute, raceClassAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
+                self.restore_table(self._Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
                 recover_status['stage_1'] = True
             except Exception as ex:
                 logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
@@ -913,7 +931,8 @@ class RHData():
         return self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
 
     def get_pilot_attribute_value(self, pilot_or_id, name, default_value=None):
-        attr = self._Database.PilotAttribute.query.filter_by(id=pilot_or_id, name=name).one_or_none()
+        pilot_id = self.resolve_id_from_pilot_or_id(pilot_or_id)
+        attr = self._Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
 
         if attr is not None:
             return attr.value
@@ -1133,6 +1152,13 @@ class RHData():
 
                 self.clear_results_event()
                 self._racecontext.pagecache.set_valid(False)
+
+        if 'heat_attr' in data and 'value' in data:
+            attribute = self._Database.HeatAttribute.query.filter_by(id=heat_id, name=data['heat_attr']).one_or_none()
+            if attribute:
+                attribute.value = data['value']
+            else:
+                self._Database.DB.session.add(self._Database.HeatAttribute(id=heat_id, name=data['heat_attr'], value=data['value']))
 
         self.commit()
 
@@ -1414,6 +1440,28 @@ class RHData():
         self.commit()
         return True
 
+    #Heat Attributes
+    def get_heat_attribute(self, heat_or_id, name):
+        heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
+        return self._Database.HeatAttribute.query.filter_by(id=heat_id, name=name).one_or_none()
+
+    def get_heat_attribute_value(self, heat_or_id, name, default_value=None):
+        heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
+        attr = self._Database.HeatAttribute.query.filter_by(id=heat_id, name=name).one_or_none()
+
+        if attr is not None:
+            return attr.value
+        else:
+            return default_value
+
+    def get_heat_attributes(self, heat_or_id):
+        heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
+        return self._Database.HeatAttribute.query.filter_by(id=heat_id).all()
+
+    def get_heat_id_by_attribute(self, name, value):
+        attrs = self._Database.HeatAttribute.query.filter_by(name=name, value=value).all()
+        return [attr.id for attr in attrs]
+
     # HeatNodes
     #def resolve_heatNode_from_heatNode_or_id(self, heatNode_or_id):
     #    if isinstance(heatNode_or_id, Database.HeatNode):
@@ -1665,6 +1713,13 @@ class RHData():
                     for heat in heats:
                         self.clear_results_heat(heat)
 
+        if 'class_attr' in data and 'value' in data:
+            attribute = self._Database.RaceClassAttribute.query.filter_by(id=race_class_id, name=data['class_attr']).one_or_none()
+            if attribute:
+                attribute.value = data['value']
+            else:
+                self._Database.DB.session.add(self._Database.RaceClassAttribute(id=race_class_id, name=data['class_attr'], value=data['value']))
+
         self.commit()
 
         self._Events.trigger(Evt.CLASS_ALTER, {
@@ -1875,6 +1930,28 @@ class RHData():
         self.clear_raceClasses()
         logger.info('Database race classes reset')
         return True
+
+    #RaceClass Attributes
+    def get_raceclass_attribute(self, raceclass_or_id, name):
+        raceclass_id = self.resolve_id_from_raceClass_or_id(raceclass_or_id)
+        return self._Database.RaceClassAttribute.query.filter_by(id=raceclass_id, name=name).one_or_none()
+
+    def get_raceclass_attribute_value(self, raceclass_or_id, name, default_value=None):
+        raceclass_id = self.resolve_id_from_raceClass_or_id(raceclass_or_id)
+        attr = self._Database.RaceClassAttribute.query.filter_by(id=raceclass_id, name=name).one_or_none()
+
+        if attr is not None:
+            return attr.value
+        else:
+            return default_value
+
+    def get_raceclass_attributes(self, raceclass_or_id):
+        raceclass_id = self.resolve_id_from_raceClass_or_id(raceclass_or_id)
+        return self._Database.RaceClassAttribute.query.filter_by(id=raceclass_id).all()
+
+    def get_raceclass_id_by_attribute(self, name, value):
+        attrs = self._Database.RaceClassAttribute.query.filter_by(name=name, value=value).all()
+        return [attr.id for attr in attrs]
 
     # Profiles
     def resolve_profile_from_profile_or_id(self, profile_or_id):
@@ -2477,6 +2554,16 @@ class RHData():
     def savedRaceMetas_has_raceClass(self, class_id):
         return bool(self._Database.SavedRaceMeta.query.filter_by(class_id=class_id).count())
 
+    def alter_savedRaceMeta(self, race_id, data):
+        if 'race_attr' in data and 'value' in data:
+            attribute = self._Database.SavedRaceMetaAttribute.query.filter_by(id=race_id, name=data['race_attr']).one_or_none()
+            if attribute:
+                attribute.value = data['value']
+            else:
+                self._Database.DB.session.add(self._Database.SavedRaceMetaAttribute(id=race_id, name=data['race_attr'], value=data['value']))
+
+        self.commit()
+
     def add_savedRaceMeta(self, data):
         new_race = self._Database.SavedRaceMeta(
             round_id=data['round_id'],
@@ -2680,6 +2767,28 @@ class RHData():
             self._Database.DB.func.max(
                 self._Database.SavedRaceMeta.round_id
             )).filter_by(heat_id=heat_id).scalar() or 0)
+
+    #SavedRace Attributes
+    def get_savedrace_attribute(self, savedrace_or_id, name):
+        savedrace_id = self.resolve_id_from_savedRaceMeta_or_id(savedrace_or_id)
+        return self._Database.SavedRaceMetaAttribute.query.filter_by(id=savedrace_id, name=name).one_or_none()
+
+    def get_savedrace_attribute_value(self, savedrace_or_id, name, default_value=None):
+        savedrace_id = self.resolve_id_from_savedRaceMeta_or_id(savedrace_or_id)
+        attr = self._Database.SavedRaceMetaAttribute.query.filter_by(id=savedrace_id, name=name).one_or_none()
+
+        if attr is not None:
+            return attr.value
+        else:
+            return default_value
+
+    def get_savedrace_attributes(self, savedrace_or_id):
+        savedrace_id = self.resolve_id_from_savedRaceMeta_or_id(savedrace_or_id)
+        return self._Database.SavedRaceMetaAttribute.query.filter_by(id=savedrace_id).all()
+
+    def get_savedrace_id_by_attribute(self, name, value):
+        attrs = self._Database.SavedRaceMetaAttribute.query.filter_by(name=name, value=value).all()
+        return [attr.id for attr in attrs]
 
     # Pilot-Races
     def get_savedPilotRace(self, pilotrace_id):

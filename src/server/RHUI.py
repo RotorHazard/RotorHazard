@@ -89,6 +89,9 @@ class RHUI():
         self._events = Events
 
         self._pilot_attributes = []
+        self._heat_attributes = []
+        self._raceclass_attributes = []
+        self._savedrace_attributes = []
         self._ui_panels = []
         self._general_settings = []
         self._quickbuttons = []
@@ -107,6 +110,51 @@ class RHUI():
     @property
     def pilot_attributes(self):
         return self._pilot_attributes
+
+    # Heat Attributes
+    def register_heat_attribute(self, field:UIField):
+        for idx, attribute in enumerate(self._heat_attributes):
+            if attribute.name == field.name:
+                self._heat_attributes[idx] = field
+                logger.debug(F'Redefining heat attribute "{field.name}"')
+                break
+        else:
+            self._heat_attributes.append(field)
+        return self._heat_attributes
+
+    @property
+    def heat_attributes(self):
+        return self._heat_attributes
+
+    # Race Class Attributes
+    def register_raceclass_attribute(self, field:UIField):
+        for idx, attribute in enumerate(self._raceclass_attributes):
+            if attribute.name == field.name:
+                self._raceclass_attributes[idx] = field
+                logger.debug(F'Redefining raceclass attribute "{field.name}"')
+                break
+        else:
+            self._raceclass_attributes.append(field)
+        return self._raceclass_attributes
+
+    @property
+    def raceclass_attributes(self):
+        return self._raceclass_attributes
+
+    # Race Attributes
+    def register_savedrace_attribute(self, field:UIField):
+        for idx, attribute in enumerate(self._savedrace_attributes):
+            if attribute.name == field.name:
+                self._savedrace_attributes[idx] = field
+                logger.debug(F'Redefining savedrace attribute "{field.name}"')
+                break
+        else:
+            self._savedrace_attributes.append(field)
+        return self._savedrace_attributes
+
+    @property
+    def savedrace_attributes(self):
+        return self._savedrace_attributes
 
     # UI Panels
     def register_ui_panel(self, name, label, page, order=0):
