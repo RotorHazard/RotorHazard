@@ -1,4 +1,5 @@
 ''' Class to access race functions and details '''
+from Database import LapSource
 
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 0
@@ -746,10 +747,7 @@ class RaceAPI():
 
     @heat.setter
     def heat(self, heat_id):
-        self._heat_set({'heat': heat_id})
-
-    def _heat_set(self, data):
-        pass # replaced externally. TODO: Refactor management functions
+        return self._racecontext.race.set_heat(heat_id)
 
     @property
     def frequencyset(self):
@@ -813,6 +811,10 @@ class RaceAPI():
     def laps_active_raw(self, filter_late_laps=False):
         return self._racecontext.race.get_active_laps(filter_late_laps)
 
+    def lap_add(self, seat_index, timestamp):
+        seat = self._racecontext.interface.nodes[seat_index]
+        return self._racecontext.race.add_lap(seat, timestamp, LapSource.API)
+
     @property
     def results(self):
         return self._racecontext.race.get_results()
@@ -860,16 +862,16 @@ class RaceAPI():
             return None
 
     def stage(self):
-        pass # replaced externally until refactored; TODO: refactor
+        return self._racecontext.race.stage()
 
     def stop(self, doSave=False):
-        pass # replaced externally until refactored; TODO: refactor
+        return self._racecontext.race.stop(doSave)
 
     def save(self):
-        pass # replaced externally until refactored; TODO: refactor
+        return self._racecontext.race.save()
 
     def clear(self):
-        pass # replaced externally until refactored; TODO: refactor
+        return self._racecontext.race.discard_laps()
 
 
 #

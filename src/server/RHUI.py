@@ -267,6 +267,51 @@ class RHUI():
 
                 self._socket.emit('priority_message', emit_payload)
 
+    def emit_heat_plan_result(self, new_heat_id, calc_result):
+        heat = self._racecontext.rhdata.get_heat(new_heat_id)
+        heatNodes = []
+
+        heatNode_objs = self._racecontext.rhdata.get_heatNodes_by_heat(heat.id)
+        heatNode_objs.sort(key=lambda x: x.id)
+
+        profile_freqs = json.loads(self._racecontext.race.profile.frequencies)
+
+        for heatNode in heatNode_objs:
+            heatNode_data = {
+                'node_index': heatNode.node_index,
+                'pilot_id': heatNode.pilot_id,
+                'callsign': None,
+                'method': heatNode.method,
+                'seed_rank': heatNode.seed_rank,
+                'seed_id': heatNode.seed_id
+                }
+            if heatNode.pilot_id:
+                pilot = self._racecontext.rhdata.get_pilot(heatNode.pilot_id)
+                if pilot:
+                    heatNode_data['callsign'] = pilot.callsign
+                    if pilot.used_frequencies and heatNode.node_index is not None:
+                        used_freqs = json.loads(pilot.used_frequencies)
+                        heatNode_data['frequency_change'] = (used_freqs[-1]['f'] != profile_freqs["f"][heatNode.node_index])
+                    else:
+                        heatNode_data['frequency_change'] = True
+
+            heatNodes.append(heatNode_data)
+
+        emit_payload = {
+            'heat': new_heat_id,
+            'displayname': heat.display_name,
+            'slots': heatNodes,
+            'calc_result': calc_result
+        }
+
+        self._socket.emit('heat_plan_result', emit_payload)
+
+    def emit_race_stage(self, payload):
+        self._socket.emit('stage_ready', payload)
+
+    def emit_race_stop(self):
+        self._socket.emit('stop_timer')
+
     def emit_race_schedule(self):
         self._socket.emit('race_scheduled', {
             'scheduled': self._racecontext.race.scheduled,

@@ -484,6 +484,12 @@
 					case 2:
 						lapData.append('<td>Recalc</td>');
 						break;
+					case 3:
+						lapData.append('<td>Automatic</td>');
+						break;
+					case 4:
+						lapData.append('<td>API (plugin)</td>');
+						break;
 				}
 
 				if (lap.deleted) {
@@ -531,7 +537,7 @@
 				var laps = recalc_rx_data();
 				for (var lap_i in current_race_data.laps) {
 					var lap = current_race_data.laps[lap_i];
-					if (lap.source == 1) {
+					if (lap.source == 1 || lap.source == 4) { // LapSource.MANUAL = 1, LapSource.API = 4
 						laps.push(lap);
 					}
 				}

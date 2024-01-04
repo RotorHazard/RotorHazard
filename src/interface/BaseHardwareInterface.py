@@ -13,7 +13,9 @@ class BaseHardwareInterface(object):
     LAP_SOURCE_REALTIME = 0
     LAP_SOURCE_MANUAL = 1
     LAP_SOURCE_RECALC = 2
-    LAP_SOURCE_LABEL_STRS = ["realtime", "manual", "recalc"]
+    LAP_SOURCE_AUTOMATIC = 3
+    LAP_SOURCE_API = 4
+    LAP_SOURCE_LABEL_STRS = ["realtime", "manual", "recalc", "automatic", "API"]
 
     RACE_STATUS_READY = 0
     RACE_STATUS_STAGING = 3
