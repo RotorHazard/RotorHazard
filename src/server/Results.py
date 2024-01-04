@@ -11,7 +11,7 @@ import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import logging
-from monotonic import monotonic
+from time import monotonic
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
 logger = logging.getLogger(__name__)

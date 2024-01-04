@@ -1,6 +1,6 @@
 '''RotorHazard I2C interface layer.'''
 import logging
-from monotonic import monotonic
+from time import monotonic
 
 from Node import Node
 from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT, \

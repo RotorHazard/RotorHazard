@@ -4,7 +4,7 @@ import logging
 import gevent
 import json
 import socketio
-from monotonic import monotonic
+from time import monotonic
 import RHUtils
 from RHRace import RaceStatus
 from eventmanager import Evt

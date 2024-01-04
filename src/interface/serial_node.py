@@ -3,7 +3,7 @@ import logging
 import serial # For serial comms
 import gevent
 import time
-from monotonic import monotonic
+from time import monotonic
 
 from Node import Node
 from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUNT, \
