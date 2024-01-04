@@ -179,12 +179,12 @@ class DatabaseAPI():
     def pilot_attributes(self, pilot_or_id):
         return self._racecontext.rhdata.get_pilot_attributes(pilot_or_id)
 
-    def pilot_attribute_value(self, pilot_or_id, name):
+    def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
         for field in self._racecontext.rhui.pilot_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, field.name, field.value)
         else:
-            return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name)
+            return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
 
     def pilot_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_pilot_id_by_attribute(name, value)
@@ -249,12 +249,12 @@ class DatabaseAPI():
     def heat_attributes(self, heat_or_id):
         return self._racecontext.rhdata.get_heat_attributes(heat_or_id)
 
-    def heat_attribute_value(self, heat_or_id, name):
+    def heat_attribute_value(self, heat_or_id, name, default_value=None):
         for field in self._racecontext.rhui.heat_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_heat_attribute_value(heat_or_id, field.name, field.value)
         else:
-            return self._racecontext.rhdata.get_heat_attribute_value(heat_or_id, name)
+            return self._racecontext.rhdata.get_heat_attribute_value(heat_or_id, name, default_value)
 
     def heat_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_heat_id_by_attribute(name, value)
@@ -365,12 +365,12 @@ class DatabaseAPI():
     def raceclass_attributes(self, raceclass_or_id):
         return self._racecontext.rhdata.get_raceclass_attributes(raceclass_or_id)
 
-    def raceclass_attribute_value(self, raceclass_or_id, name):
+    def raceclass_attribute_value(self, raceclass_or_id, name, default_value=None):
         for field in self._racecontext.rhui.raceclass_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_raceclass_attribute_value(raceclass_or_id, field.name, field.value)
         else:
-            return self._racecontext.rhdata.get_raceclass_attribute_value(raceclass_or_id, name)
+            return self._racecontext.rhdata.get_raceclass_attribute_value(raceclass_or_id, name, default_value)
 
     def raceclass_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_raceclass_id_by_attribute(name, value)
@@ -581,12 +581,12 @@ class DatabaseAPI():
     def race_attributes(self, race_or_id):
         return self._racecontext.rhdata.get_savedrace_attributes(race_or_id)
 
-    def race_attribute_value(self, race_or_id, name):
+    def race_attribute_value(self, race_or_id, name, default_value=None):
         for field in self._racecontext.rhui.savedrace_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_savedrace_attribute_value(race_or_id, field.name, field.value)
         else:
-            return self._racecontext.rhdata.get_savedrace_attribute_value(race_or_id, name)
+            return self._racecontext.rhdata.get_savedrace_attribute_value(race_or_id, name, default_value)
 
     def race_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_savedrace_id_by_attribute(name, value)
