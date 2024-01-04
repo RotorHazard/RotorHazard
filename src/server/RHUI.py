@@ -103,12 +103,6 @@ class RHUI():
         else:
             self._pilot_attributes.append(field)
         return self._pilot_attributes
-    
-        
-        if not any(x.name == field.name for x in self._pilot_attributes):
-            self._pilot_attributes.append(field)
-            return self._pilot_attributes
-        # TODO: field redefine & warning
 
     @property
     def pilot_attributes(self):
