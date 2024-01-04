@@ -647,6 +647,21 @@ class RHData():
                         'value': None
                     })
 
+                self.restore_table(self._Database.HeatAttribute, heatAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
+                self.restore_table(self._Database.RaceClassAttribute, raceClassAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
+                self.restore_table(self._Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
                 recover_status['stage_1'] = True
             except Exception as ex:
                 logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
