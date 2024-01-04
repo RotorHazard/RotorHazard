@@ -1,7 +1,7 @@
 ''' Class to access race functions and details '''
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 0
+API_VERSION_MINOR = 1
 
 import json
 import inspect
