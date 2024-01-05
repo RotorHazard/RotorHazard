@@ -2615,7 +2615,7 @@ button.color-picker {
 	margin: 0.25rem 0;
 	display: flex;
 	flex-wrap: wrap;
-	align-items: flex-start;
+	align-content: flex-start;
 }
 
 #plugin-list .details .description {
