@@ -51,47 +51,52 @@ body {
 }
 
 #position {
-	background: background: hsl(25, 85%, 55%);
+	background: hsl(25, 85%, 55%);
 	color: #000;
 	background: var(--position_background_color);
 	color: var(--position_foreground_color);
 
 	font-size: 5rem;
 	line-height: 1;
-	padding: 0.25rem 0 0.75rem;
-	width: 6rem;
-	height: 6rem;
+	padding: var(--position_padding);
+	width: 8rem;
+	height: 7rem;
 	display: inline-block;
 	text-align: center;
 	overflow: hidden;
 	box-sizing: border-box;
 
 	position: absolute;
-	top: 0;
-	left: 0;
+	top: var(--position_top);
+	left: var(--position_left);
+	right: var(--position_right);
+	bottom: var(--position_bottom);
 }
 
 #pilot-info {
 	background: hsl(212.7, 67.8%, 29.2%);
-	color: #fff;
+	color: #2F0449;
 	background: var(--pilot_color);
 	color: var(--contrast_pilot_color);
 
-	font-size: 2.5rem;
-	line-height: 1.5;
-	padding: 0 0.25em;
-	height: 1.5em;
+	font-size: 2.5em;
+	line-height: 1em;
+	padding: var(--pilot_padding);
+	height: 1.25em;
 
 	position: absolute;
-	top: 0;
-	left: 6rem;
-	right: 0;
+	top: var(--pilot_top);
+	left: var(--pilot_left);
+	right: var(--pilot_right);
+	bottom: var(--pilot_bottom);
 
 	display: flex;
+
+	flex-direction: var(--pilot_flex_direction);
 }
 
 #callsign {
-	flex: 1 1 auto;
+	flex: var(--callsign_flex);
 	margin-right: 1rem;
 	text-overflow: ellipsis;
 	overflow: hidden;
@@ -100,15 +105,17 @@ body {
 }
 
 #rank_stat {
-	flex: 0 0 auto;
+	flex: var(--rank_flex);
 }
 
 #current-laps {
 	position: absolute;
-	top: 4rem;
-	padding: 0.25rem 0.5rem;
-	right: 0;
-	text-align: right;
+	padding:var(--laps_padding);
+	top: var(--laps_top);
+	left: var(--laps_left);
+	bottom: var(--laps_bottom);
+	right: var(--laps_right);
+	text-align: var(--laps_text_align);
 	font-size: 2rem;
 	color: #fff;
 	text-shadow:
@@ -120,6 +127,8 @@ body {
 		0.03em -0.03em 0 #000,
 		-0.03em 0.03em 0 #000,
 		0.03em 0.03em 0 #000;
+	display:flex;
+	flex-direction:var(--laps_flex_direction);
 }
 
 .display_lap_number {

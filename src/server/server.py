@@ -435,6 +435,17 @@ def render_stream_node(node_id):
     else:
         return False
 
+@APP.route('/stream/nodewop/<int:node_id>')
+def render_stream_node_wop(node_id):
+    '''Route to single node overlay for streaming.'''
+    if node_id <= RaceContext.race.num_nodes:
+        position = request.args.get('position')
+        return render_template('streamnodewop.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+            node_id=node_id-1, pos=position
+        )
+    else:
+        return False
+
 @APP.route('/stream/class/<int:class_id>')
 def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
