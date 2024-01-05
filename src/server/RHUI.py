@@ -309,6 +309,47 @@ class RHUI():
 
                 self._socket.emit('priority_message', emit_payload)
 
+    def emit_plugin_list(self, **params):
+        plugins = self._racecontext.serverstate.plugins
+
+        plugin_data = []
+        for plugin in plugins:
+            plugin_info = {
+                'name': None,
+                'author': None,
+                'author_uri': None,
+                'description': None,
+                'info_uri': None,
+                'license': None,
+                'license_uri': None,
+                'version': None,
+                'required_rhapi_version': None,
+                'update_uri': None,
+                'text_domain': None,
+            }
+            if plugin.meta:
+                for key, value in plugin.meta.items():
+                    if key in plugin_info:
+                        plugin_info[key] = value
+            else:
+                plugin_info['name'] = plugin.name
+
+            plugin_info['id'] = plugin.name
+            plugin_info['enabled'] = plugin.enabled
+            plugin_info['loaded'] = plugin.loaded
+            plugin_info['load_issue'] = plugin.load_issue
+
+            plugin_data.append(plugin_info)
+
+        emit_payload = {
+            'plugins': plugin_data
+        }
+
+        if ('nobroadcast' in params):
+            emit('plugin_list', emit_payload)
+        else:
+            self._socket.emit('plugin_list', emit_payload)
+
     def emit_heat_plan_result(self, new_heat_id, calc_result):
         heat = self._racecontext.rhdata.get_heat(new_heat_id)
         heatNodes = []

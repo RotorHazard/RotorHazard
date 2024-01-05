@@ -25,6 +25,7 @@
 		'vrx_list',
 		'backups_list',
 		'exporter_list',
+		'plugin_list',
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
@@ -1519,6 +1520,78 @@
 			$('#set_exit_at_level_' + node).trigger('change');
 			isTouchEvent = true;
 		});
+
+		// Plugins
+		socket.on('plugin_list', function (msg) {
+			msg.plugins.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+
+			var wrap_el = $('#plugin-list');
+			wrap_el.empty();
+
+			var list_el = $('<ul>');
+			for (var idx in msg.plugins) {
+				var plugin = msg.plugins[idx];
+				var plug_el = $('<li>');
+
+				var main_info_el = $('<div class="main-info">');
+				var details_el = $('<div class="details">');
+				var status_el = $('<div class="status">');
+
+				main_info_el.append('<h3 class="name">' + plugin.name + '</h3>');
+
+				if (plugin.author) {
+					if (plugin.author_uri) {
+						main_info_el.append('<div class="author"><a href="' + plugin.author_uri + '">' + plugin.author + '</a></div>');
+					} else {
+						main_info_el.append('<div class="author">' + plugin.author + '</div>');
+					}
+				}
+
+				if (plugin.version) {
+					main_info_el.append('<div class="version">' + plugin.version + '</div>');
+				}
+
+				if (plugin.description) {
+					details_el.append('<div class="description">' + plugin.description + '</div>');
+				} else {
+					details_el.append('<div class="description">(' + __('not provided') + ')</div>');
+				}
+
+				if (plugin.info_uri) {
+					details_el.append('<div class="website"><a href="' + plugin.info_uri + '">' + __('website') + '</a></div>');
+				}
+
+				if (plugin.license_uri) {
+					details_el.append('<div class="license"><a href="' + plugin.license_uri + '">' + __('license') + '</a></div>');
+				} else if (plugin.license) {
+					details_el.append('<div class="license">' + plugin.license + '</div>');
+				}
+
+
+				if (plugin.loaded) {
+					status_el.append('<div class="">' + __('Loaded') + '</div>');
+				} else {
+					plug_el.addClass('load-fail');
+					status_el.append('<div class="">' + __('Not loaded') + ': ' + __(plugin.load_issue) + '</div>');
+				}
+
+				/*
+				if (plugin.enabled) {
+					status_el.append('<button class="disable">' + __('Disable') + '</button>');
+				} else {
+					status_el.append('<button class="enable">' + __('Enable') + '</button>');
+				}
+				*/
+
+				plug_el.append(main_info_el);
+				plug_el.append(details_el);
+				plug_el.append(status_el);
+
+				list_el.append(plug_el);
+			}
+
+			wrap_el.append(list_el);
+		});
 	});
 
 </script>
@@ -1986,6 +2059,18 @@
 	</div>
 </div>
 {% endif %}
+
+<!-- Plugins -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Plugins') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="plugin-list">
+			<p>{{ __('Loading...') }}</p>
+		</div>
+	</div>
+</div>
 
 <!-- System -->
 <div class="panel collapsing">

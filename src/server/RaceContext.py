@@ -72,6 +72,9 @@ class ServerState:
     def __init__(self, racecontext):
         self._racecontext = racecontext
 
+    # PLUGIN STATUS
+    plugins = None
+
     @property
     def info_dict(self):
         return {

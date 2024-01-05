@@ -805,6 +805,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_raceclass_rank_method_list()
         elif load_type == 'race_points_method_list':
             RaceContext.rhui.emit_race_points_method_list()
+        elif load_type == 'plugin_list':
+            RaceContext.rhui.emit_plugin_list(nobroadcast=True)
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -2868,67 +2870,87 @@ Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickb
 
 # Plugin handling
 class plugin():
-    def __init__(self, name, module):
-        self.module = module
+    def __init__(self, name):
         self.name = name
+        self.module = None
         self.meta = None
         self.enabled = True #TODO: remove temporary default-enable of all plugins
+        self.loaded = False
+        self.load_issue = None
+        self.load_issue_detail = None
 
 plugin_modules = []
 if os.path.isdir('./plugins'):
     dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
     for name in dirs:
-        try:
-            plugin_module = importlib.import_module('plugins.' + name)
-            if plugin_module.__file__:
-                plugin_modules.append(plugin(name, plugin_module))
-                logger.debug("Found plugin '{}'".format(name))
-            else:
-                logger.warning("Plugin '{}' not imported (unable to load file)".format(name))
-        except ModuleNotFoundError as ex1:
-            logger.info("Plugin '{}' not loaded ({})".format(name, ex1))
-        except Exception as ex2:
-            logger.warning("Plugin '{}' not imported (not supported or may require additional dependencies), ex: {}".\
-                           format(name, ex2))
+        plugin_modules.append(plugin(name))
 else:
     logger.warning('No plugins directory found.')
 
+def load_plugin(plugin):
+    if not plugin.enabled:
+        plugin.load_issue = "disabled"
+        return False
+
+    try:
+        with open(F'plugins/{plugin.name}/meta.json', 'r') as f:
+            meta = json.load(f)
+
+        if isinstance(meta, dict):
+            plugin.meta = meta
+    except:
+        logger.info('No plugin metadata found for {}'.format(plugin.name))
+
+    try:
+        plugin.module = importlib.import_module('plugins.' + plugin.name)
+        if not plugin.module.__file__:
+            plugin.load_issue = "unable to load file"
+            return False
+    except ModuleNotFoundError as ex1:
+        plugin.load_issue = str(ex1)
+        return False
+    except Exception as ex2:
+        plugin.load_issue = "not supported or may require additional dependencies"
+        plugin.load_issue_detail = ex2
+        return False
+
+    version_major = 1
+    version_minor = 0
+
+    if plugin.meta:
+        try:
+            version = plugin.meta.get('required_rhapi_version').split('.')
+            version_major = int(version[0])
+            version_minor = int(version[1])
+        except:
+            logger.debug("Can't parse API declaration for plugin '{}', assuming 1.0".format(plugin.name))
+
+    if version_major > RHAPI.API_VERSION_MAJOR:
+        plugin.load_issue = "required RHAPI version is newer than this server"
+        return False
+
+    if version_major == RHAPI.API_VERSION_MAJOR and version_minor > RHAPI.API_VERSION_MINOR:
+        plugin.load_issue = "required RHAPI version is newer than this server"
+        return False
+
+    if 'initialize' not in dir(plugin.module) or not callable(getattr(plugin.module, 'initialize')):
+        plugin.load_issue = "no initialize function"
+        return False
+
+    plugin.module.initialize(RHAPI)
+    return True
+
 for plugin in plugin_modules:
-    # default-enable bundled plugins
-    if plugin.name.startswith("rh_"):
-        plugin.enabled = True
-
-    if plugin.enabled:
-        if 'initialize' in dir(plugin.module) and callable(getattr(plugin.module, 'initialize')):
-            if 'metadata' in dir(plugin.module):
-                meta = plugin.module.metadata
-                if isinstance(meta, dict):
-                    plugin.meta = meta
-
-            version_major = 1
-            version_minor = 0
-
-            if plugin.meta:
-                try:
-                    version = plugin.meta.get('required_rhapi_version').split('.')
-                    version_major = int(version[0])
-                    version_minor = int(version[1])
-                except:
-                    logger.info("Can't parse API declaration for plugin '{}', assuming 1.0".format(plugin.name))
-
-            if version_major > RHAPI.API_VERSION_MAJOR:
-                logger.info("Plugin '{}' not loaded (required RHAPI version is newer than this server)".format(plugin.name))
-            elif version_major == RHAPI.API_VERSION_MAJOR and version_minor > RHAPI.API_VERSION_MINOR:
-                logger.info("Plugin '{}' not loaded (required RHAPI version is newer than this server)".format(plugin.name))
-            else:
-                plugin.module.initialize(RHAPI)
-                logger.info("Loaded plugin '{}': {}".format(plugin.name, plugin.meta))
-        else:
-            logger.info("Plugin '{}' not loaded (no initialize function)".format(plugin.name))
+    if load_plugin(plugin):
+        logger.info("Loaded plugin '{}'".format(plugin.name))
+        plugin.loaded = True
     else:
-        logger.info("Plugin '{}' not loaded (disabled)".format(plugin.name))
+        if plugin.load_issue_detail:
+            logger.info("Plugin '{}' not loaded ({}; Ex: {})".format(plugin.name, plugin.load_issue, plugin.load_issue_detail))
+        else:
+            logger.info("Plugin '{}' not loaded ({})".format(plugin.name, plugin.load_issue))
 
-# RaceContext.serverstate.plugins = plugin_modules
+RaceContext.serverstate.plugins = plugin_modules
 
 if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()

@@ -1,0 +1,13 @@
+{
+    "name": "LED Effect: Image",
+    "author": "RotorHazard",
+    "author_uri": "https://github.com/RotorHazard",
+    "description": "Displays images on LED Panel for use as race status indicators",
+    "info_uri": "https://github.com/RotorHazard/RotorHazard/",
+    "license": "RotorHazard",
+    "license_uri": "https://github.com/RotorHazard/RotorHazard/blob/main/LICENSE",
+    "version": "1.0",
+    "required_rhapi_version": "1.0",
+    "update_uri": null,
+    "text_domain": null
+}
