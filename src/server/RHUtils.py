@@ -329,12 +329,14 @@ def doReplace(rhapi, text, args, spoken_flag=False):
             heat = rhapi.db.heat_by_id(rhapi.race.heat)
         text = text.replace('%HEAT%', heat.display_name if heat and heat.display_name else rhapi.__('None'))
 
+        pilot_name_str = ''
         if 'pilot_id' in args or 'node_index' in args:
             if 'pilot_id' in args:
                 pilot = rhapi.db.pilot_by_id(args['pilot_id'])
             else:
                 pilot = rhapi.db.pilot_by_id(rhapi.race.pilots[args['node_index']])
-            text = text.replace('%PILOT%', pilot.spoken_callsign if spoken_flag else pilot.display_callsign)
+            pilot_name_str = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
+            text = text.replace('%PILOT%', pilot_name_str)
 
         race_results = rhapi.race.results
         leaderboard = None
@@ -372,6 +374,27 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                                 result['fastest_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
                                 if spoken_flag else result['fastest_lap'])
 
+                    if '%TIME_BEHIND' in text:
+                        behind_str = phonetictime_format( \
+                                result['time_behind_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                                if spoken_flag else result['time_behind']
+                        # %TIME_BEHIND% : Amount of time behind race leader
+                        text = text.replace('%TIME_BEHIND%', behind_str)
+                        pos_bhind_str = ''
+                        if len(behind_str) > 0:
+                            behind_str = "{} {}".format(behind_str, rhapi.__('behind'))
+                            pos_bhind_str = str(result.get('position', ''))
+                            if pos_bhind_str == '1':  # only do %TIME_BEHIND_POS_CALL% if not first
+                                pos_bhind_str = ''
+                            if len(pos_bhind_str) > 0:
+                                pos_bhind_str = "{} {} {} {}, {}".format(rhapi.__('Pilot'), \
+                                                    pilot_name_str, rhapi.__('finished at position'), \
+                                                    pos_bhind_str, behind_str)
+                        # %TIME_BEHIND_CALL% : Amount of time behind race leader (with prompt)
+                        text = text.replace('%TIME_BEHIND_CALL%', behind_str)
+                        # %TIME_BEHIND_FINPOS_CALL% : Pilot NAME finished at position X, MM:SS.SSS behind
+                        text = text.replace('%TIME_BEHIND_FINPOS_CALL%', pos_bhind_str)
+
                     # %FASTEST_SPEED%
                     text = text.replace('%FASTEST_SPEED%', getFastestSpeedStr(rhapi, spoken_flag, \
                                                                               result.get('pilot_id')))
@@ -384,8 +407,14 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                     else:
                         text = text.replace('%CONSECUTIVE%', rhapi.__('None'))
 
-                    # %POSITION%
-                    text = text.replace('%POSITION%', str(result['position']))
+                    if '%POSITION' in text:
+                        # %POSITION% : Race position for pilot
+                        position_str = str(result.get('position', ''))
+                        text = text.replace('%POSITION%', position_str)
+                        # %POSITION_CALL% : Race position for pilot (with prompt)
+                        if len(position_str) > 0:
+                            position_str = "{} {}".format(rhapi.__('Position'), position_str)
+                        text = text.replace('%POSITION_CALL%', position_str)
 
                     break
 
