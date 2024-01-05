@@ -25,6 +25,13 @@ class ActionsBuiltin():
             text = RHUtils.doReplace(self._rhapi, action['text'], args)
             self._rhapi.ui.message_alert(text)
 
+
+    def clearMessagesEffect(self, action, args):
+        self._rhapi.ui.clear_messages()
+        if 'text' in action:
+            text = RHUtils.doReplace(self._rhapi, action['text'], args)
+            self._rhapi.ui.message_notify(text)
+
     def scheduleEffect(self, action, _args):
         try:
             secs = int(action.get('sec'))
@@ -64,6 +71,14 @@ class ActionsBuiltin():
                     UIField('text', "Alert Text", UIFieldType.TEXT),
                 ],
                 name='alert',
+            ),
+            ActionEffect(
+                "Clear Messages",
+                self.clearMessagesEffect,
+                [
+                    UIField('text', "Message Text (optional)", UIFieldType.TEXT),
+                ],
+                name='clearMessages',
             ),
             ActionEffect(
                 "Schedule Race",

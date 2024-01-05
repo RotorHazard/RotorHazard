@@ -354,6 +354,9 @@ class RHUI():
     def emit_race_stop(self):
         self._socket.emit('stop_timer')
 
+    def emit_clear_priority_messages(self):
+        self._socket.emit('clear_priority_messages')
+
     def emit_race_schedule(self):
         self._socket.emit('race_scheduled', {
             'scheduled': self._racecontext.race.scheduled,
