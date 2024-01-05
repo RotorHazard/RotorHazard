@@ -1602,10 +1602,12 @@ jQuery(document).ready(function($){
 		push_message(msg.message, msg.interrupt);
 	});
 
+	socket.on('clear_priority_messages', function () {
+		clear_system_messages();
+	});
+
 	$(document).on('click', '#message-dismiss-all', function(el){
-		system_messages = [];
-		update_system_message_display();
-		$.magnificPopup.close();
+		clear_system_messages();
 	});
 
 	$(document).on('click', '#message-queue button', function(el){
@@ -1613,6 +1615,12 @@ jQuery(document).ready(function($){
 		system_messages.splice(index, 1);
 		update_system_message_display();
 	});
+
+    function clear_system_messages() {
+		system_messages = [];
+		update_system_message_display();
+		$.magnificPopup.close();
+    }
 
 	document.onkeyup = function(e) {
 		if (e.which == 27) {
