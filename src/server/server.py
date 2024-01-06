@@ -1288,10 +1288,7 @@ def on_backup_database():
     # read DB data and convert to Base64
     with open(bkp_name, mode='rb') as file_obj:
         file_content = file_obj.read()
-    if hasattr(base64, "encodebytes"):
-        file_content = base64.encodebytes(file_content).decode()
-    else:
-        file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method,undefined-variable
+    file_content = base64.encodebytes(file_content).decode()
 
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
@@ -1635,10 +1632,7 @@ def on_download_logs(data):
             # read logs-zip file data and convert to Base64
             with open(zip_path_name, mode='rb') as file_obj:
                 file_content = file_obj.read()
-            if hasattr(base64, "encodebytes"):
-                file_content = base64.encodebytes(file_content).decode()
-            else:
-                file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method,undefined-variable
+            file_content = base64.encodebytes(file_content).decode()
 
             emit_payload = {
                 'file_name': os.path.basename(zip_path_name),
