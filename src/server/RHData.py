@@ -1439,6 +1439,7 @@ class RHData():
     def clear_heats(self):
         self._Database.DB.session.query(self._Database.Heat).delete()
         self._Database.DB.session.query(self._Database.HeatNode).delete()
+        self._Database.DB.session.query(self._Database.HeatAttribute).delete()
         self.commit()
 
     def reset_heats(self, nofill=False):
@@ -1936,6 +1937,7 @@ class RHData():
 
     def clear_raceClasses(self):
         self._Database.DB.session.query(self._Database.RaceClass).delete()
+        self._Database.DB.session.query(self._Database.RaceClassAttribute).delete()
         self.commit()
         return True
 
@@ -2895,6 +2897,7 @@ class RHData():
 
     def clear_race_data(self):
         self._Database.DB.session.query(self._Database.SavedRaceMeta).delete()
+        self._Database.DB.session.query(self._Database.SavedRaceMetaAttribute).delete()
         self._Database.DB.session.query(self._Database.SavedPilotRace).delete()
         self._Database.DB.session.query(self._Database.SavedRaceLap).delete()
         self._Database.DB.session.query(self._Database.LapSplit).delete()
