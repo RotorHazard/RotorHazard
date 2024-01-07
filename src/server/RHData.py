@@ -7,6 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import create_engine, MetaData, Table, inspect
+from sqlalchemy.exc import NoSuchTableError
 from datetime import datetime
 import os
 import traceback
@@ -210,6 +211,8 @@ class RHData():
 
             return output
 
+        except NoSuchTableError:
+            logger.debug('Table "{}" not found in previous database'.format(table_name))
         except Exception as ex:
             logger.warning('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
 
@@ -238,35 +241,45 @@ class RHData():
                             # if row with matching 'id' value was found then update it; otherwise create new row data
                             db_row_update = matching_row if matching_row is not None else class_type()
 
-                            for col in mapped_instance.attrs.keys():  # for each column in new database table
-                                if col in table_query_row.keys() and table_query_row[col] is not None:  # matching column exists in previous DB table
-                                    col_val = table_query_row[col]
+                            columns_list = mapped_instance.columns
+                            columns_keys = columns_list.keys()
+                            for col_key in columns_keys:  # for each column in new database table
+                                col_obj = columns_list.get(col_key)
+                                col_name = getattr(col_obj, 'name', col_key)
+                                if col_name in table_query_row.keys() and table_query_row[col_name] is not None:  # matching column exists in previous DB table
+                                    col_val = table_query_row[col_name]
                                     try:  # get column type in new database table
-                                        table_col_type = class_type.__table__.columns[col].type.python_type
+                                        if str(col_obj.type) != 'BLOB':
+                                            table_col_type = col_obj.type.python_type
+                                        else:
+                                            table_col_type = None
+                                            if logger.getEffectiveLevel() <= logging.DEBUG and len(table_query_data) <= 25:
+                                                logger.debug("restore_table ('{}'): colkey={}, colname={}, coltype=BLOB, valtype={}". \
+                                                        format(table_name_str, col_key, col_name, getattr(type(col_val), '__name__', '???')))
                                     except Exception as ex:
                                         logger.debug("Unable to determine type for column '{}' in 'restore_table' ('{}'): {}".\
-                                                     format(col, table_name_str, getattr(type(ex), '__name__', '????')))
+                                                     format(col_key, table_name_str, getattr(type(ex), '__name__', '????')))
                                         table_col_type = None
                                     if table_col_type is not None and col_val is not None:
                                         col_val_str = str(col_val)
                                         if len(col_val_str) >= 50:
                                             col_val_str = col_val_str[:50] + "..."
                                         if logger.getEffectiveLevel() <= logging.DEBUG and len(table_query_data) <= 25:
-                                            logger.debug("restore_table ('{}'): col={}, coltype={}, val={}, valtype={}".\
-                                                         format(table_name_str, col, getattr(table_col_type, '__name__', '???'), \
+                                            logger.debug("restore_table ('{}'): colkey={}, colname={}, coltype={}, val={}, valtype={}".\
+                                                         format(table_name_str, col_key, col_name, getattr(table_col_type, '__name__', '???'), \
                                                                 col_val_str, getattr(type(col_val), '__name__', '???')))
                                         try:
                                             col_val = table_col_type(col_val)  # explicitly cast value to new-DB column type
                                         except:
                                             logger.warning("Using default because of mismatched type in 'restore_table' ('{}'): col={}, coltype={}, newval={}, newtype={}".\
-                                                           format(table_name_str, col, getattr(table_col_type, '__name__', '???'), \
+                                                           format(table_name_str, col_key, getattr(table_col_type, '__name__', '???'), \
                                                                   col_val_str, getattr(type(col_val), '__name__', '???')))
-                                            col_val = kwargs['defaults'].get(col)
+                                            col_val = kwargs['defaults'].get(col_key)
                                 else:  # matching column does not exist in previous DB table; use default value
-                                    col_val = kwargs['defaults'].get(col) if col != 'id' else None
+                                    col_val = kwargs['defaults'].get(col_key) if col_key != 'id' else None
 
                                 if col_val is not None:
-                                    setattr(db_row_update, col, col_val)
+                                    setattr(db_row_update, col_key, col_val)
 
                             if matching_row is None:  # if new row data then add to table
                                 self._Database.DB.session.add(db_row_update)
@@ -2126,7 +2139,7 @@ class RHData():
     def add_format(self, init=None):
         race_format = self._Database.RaceFormat(
             name='',
-            unlimited_time=0,
+            unlimited_time=1,
             race_time_sec=0,
             lap_grace_sec=-1,
             staging_fixed_tones=0,
