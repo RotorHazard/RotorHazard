@@ -112,6 +112,9 @@ class RHRace():
             if request and len(pilot_names_list) <= 0:
                 self._racecontext.rhui.emit_priority_message(self._racecontext.language.__('No valid pilots in race'), True, nobroadcast=True)
 
+            if request and race_format.race_time_sec == 0 and not race_format.unlimited_time:
+                self._racecontext.rhui.emit_priority_message(self._racecontext.language.__('Race format specifies zero duration'), True, nobroadcast=True)
+
             logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
             max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
             if max_round is None:
