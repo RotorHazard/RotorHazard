@@ -302,7 +302,7 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
         else:
             if rhapi.race.race_winner_lap_id > 0:  # filter out splits after race winner declared
                 lap_splits = [s for s in lap_splits if s.lap_id < rhapi.race.race_winner_lap_id]
-        fastest_split = max(lap_splits, key=lambda s: (s.split_speed if s.split_speed else 0.0))
+        fastest_split = max(lap_splits, default=None, key=lambda s: (s.split_speed if s.split_speed else 0.0))
         if fastest_split and fastest_split.split_speed:
             if sel_pilot_id:
                 if spoken_flag:
