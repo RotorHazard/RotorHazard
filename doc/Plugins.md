@@ -481,7 +481,7 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 ```
 
 ### Metadata
-Plugin authors are strongly encouraged to declare metadata. In your plugin folder, create the JSON-formatted file `meta.json` with the following keys. Keys may be omitted or `null`.
+Plugin authors are strongly encouraged to declare metadata. In your plugin folder, create the JSON-formatted file `manifest.json` with the following keys. Keys may be omitted or `null`.
 
 - `name`: The name of your plugin
 - `author`: The plugin author's name

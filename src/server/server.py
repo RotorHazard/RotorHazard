@@ -2893,7 +2893,7 @@ def load_plugin(plugin):
         return False
 
     try:
-        with open(F'plugins/{plugin.name}/meta.json', 'r') as f:
+        with open(F'plugins/{plugin.name}/manifest.json', 'r') as f:
             meta = json.load(f)
 
         if isinstance(meta, dict):
