@@ -277,7 +277,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 0)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 1)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_ui_api(self):
@@ -356,6 +356,13 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(attr_match, True)
 
         server.RHAPI.fields.register_race_attribute(UIField('test_attribute', 'Test Attribute', UIFieldType.TEXT))
+        attr = server.RHAPI.fields.race_attributes[0]
+        attr_match = (attr.name == 'test_attribute'  and \
+                      attr.label == "Test Attribute" and \
+                      attr.field_type == UIFieldType.TEXT)
+        self.assertEqual(attr_match, True)
+
+        server.RHAPI.fields.register_raceformat_attribute(UIField('test_attribute', 'Test Attribute', UIFieldType.TEXT))
         attr = server.RHAPI.fields.race_attributes[0]
         attr_match = (attr.name == 'test_attribute'  and \
                       attr.label == "Test Attribute" and \
@@ -496,11 +503,13 @@ class ServerTest(unittest.TestCase):
         heat = server.RHAPI.db.heats[0]
         raceclass = server.RHAPI.db.raceclasses[0]
         race = server.RHAPI.db.races[0]
+        format = server.RHAPI.db.raceformats[0]
 
         server.RHAPI.db.pilot_alter(pilot.id, attributes={'test_attribute': 'test-pilot-attr'})
         server.RHAPI.db.heat_alter(heat.id, attributes={'test_attribute': 'test-heat-attr'})
         server.RHAPI.db.raceclass_alter(raceclass.id, attributes={'test_attribute': 'test-raceclass-attr'})
         server.RHAPI.db.race_alter(race.id, attributes={'test_attribute': 'test-race-attr'})
+        server.RHAPI.db.raceformat_alter(format.id, attributes={'test_attribute': 'test-format-attr'})
 
         attributes_by_obj = server.RHAPI.db.pilot_attributes(pilot)
         #attributes_by_id = server.RHAPI.db.pilot_attributes(pilot.id)
@@ -525,6 +534,12 @@ class ServerTest(unittest.TestCase):
         #self.assertEqual(attributes_by_obj, attributes_by_id)
         attr_by_obj = server.RHAPI.db.race_attribute_value(race, 'test_attribute')
         self.assertEqual(attr_by_obj, 'test-race-attr')
+
+        attributes_by_obj = server.RHAPI.db.raceformat_attributes(format)
+        #attributes_by_id = server.RHAPI.db.raceformat_attributes(format.id)
+        #self.assertEqual(attributes_by_obj, attributes_by_id)
+        attr_by_obj = server.RHAPI.db.raceformat_attribute_value(format, 'test_attribute')
+        self.assertEqual(attr_by_obj, 'test-format-attr')
 
     def test_rhapi_frequencyset(self):
         original_set = server.RHAPI.race.frequencyset

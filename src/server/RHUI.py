@@ -92,6 +92,7 @@ class RHUI():
         self._heat_attributes = []
         self._raceclass_attributes = []
         self._savedrace_attributes = []
+        self._raceformat_attributes = []
         self._ui_panels = []
         self._general_settings = []
         self._quickbuttons = []
@@ -155,6 +156,21 @@ class RHUI():
     @property
     def savedrace_attributes(self):
         return self._savedrace_attributes
+
+    # Race Format Attributes
+    def register_raceformat_attribute(self, field:UIField):
+        for idx, attribute in enumerate(self._raceformat_attributes):
+            if attribute.name == field.name:
+                self._raceformat_attributes[idx] = field
+                logger.debug(F'Redefining raceformat attribute "{field.name}"')
+                break
+        else:
+            self._raceformat_attributes.append(field)
+        return self._raceformat_attributes
+
+    @property
+    def raceformat_attributes(self):
+        return self._raceformat_attributes
 
     # UI Panels
     def register_ui_panel(self, name, label, page, order=0):
