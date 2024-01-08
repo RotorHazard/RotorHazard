@@ -7,6 +7,7 @@ from RHUI import UIField
 from eventmanager import Evt
 from dataclasses import dataclass, asdict
 from enum import Enum
+import json
 import logging
 import random
 import RHUtils
@@ -62,6 +63,16 @@ class HeatGeneratorManager():
             result = self.apply(generator_id, generated_heats, generate_args)
 
             if result is not False:
+                meta = generate_args
+                meta['generator'] = generator_id
+                store_value = json.dumps(meta)
+
+                self._racecontext.rhdata.alter_raceClass({
+                    'class_id': result,
+                    'class_attr': 'generate_args',
+                    'value': store_value,
+                })
+
                 self._events.trigger(Evt.HEAT_GENERATE, {
                     'generator': generator_id,
                     'generate_args': generate_args,
