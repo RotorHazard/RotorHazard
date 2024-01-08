@@ -55,11 +55,20 @@ def check_input_tied_low(pin_id):
 def setup(channel, mode, *args, **kwargs):
     if Real_RPi_GPIO_flag:
         GPIO.setup(channel, mode, *args, **kwargs)
-    else:
-        pass
+
+# Set numbering mode for IO pins
+def setmode(mode):
+    if Real_RPi_GPIO_flag:
+        GPIO.setmode(mode)
 
 # Read the value of a GPIO pin
 def input(channel):  #pylint: disable=redefined-builtin
     if Real_RPi_GPIO_flag:
         return GPIO.input(channel)
+    return LOW
+
+# Set output state of a GPIO pin
+def output(channel, state):
+    if Real_RPi_GPIO_flag:
+        return GPIO.output(channel, state)
     return LOW
