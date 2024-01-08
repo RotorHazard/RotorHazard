@@ -4,34 +4,27 @@ import time
 
 try:
     import RPi.GPIO as GPIO
-    RealRPiGPIOFlag = True
+    Real_RPi_GPIO_flag = True
 except ImportError:
     import util.FakeRPiGPIO as GPIO
-    RealRPiGPIOFlag = False
+    Real_RPi_GPIO_flag = False
 except:  # need extra exception catch for Travis CI tests
     import util.FakeRPiGPIO as GPIO
-    RealRPiGPIOFlag = False
+    Real_RPi_GPIO_flag = False
 # if RPi.GPIO not available then use FakeRiGPIO from https://github.com/sn4k3/FakeRPi
 
-RHGPIO_S32ID_PIN = 25  # input is tied low on S32_BPill PCB
 
-S32BPillBoardFlag = False
+# Return True if real hardware GPIO detected
+def is_real_RPi_GPIO():
+    return Real_RPi_GPIO_flag
 
-def isRealRPiGPIO():
-    return RealRPiGPIOFlag
-
-def isS32BPillBoard():
-    return S32BPillBoardFlag
-
-def setS32BPillBoardFlag():
-    global S32BPillBoardFlag
-    S32BPillBoardFlag = True
-
-
-# if input tied low then set flag identifying S32_BPill board
-if RealRPiGPIOFlag:
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(RHGPIO_S32ID_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    time.sleep(0.05)
-    S32BPillBoardFlag = not GPIO.input(RHGPIO_S32ID_PIN)
-    GPIO.setup(RHGPIO_S32ID_PIN, GPIO.IN)
+# Returns True if given input pin is tied low (to GND)
+def check_input_tied_low(pin_id):
+    ret_flag = False
+    if Real_RPi_GPIO_flag:
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(pin_id, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        time.sleep(0.05)
+        ret_flag = not GPIO.input(pin_id)
+        GPIO.setup(pin_id, GPIO.IN)
+    return ret_flag

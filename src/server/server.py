@@ -75,7 +75,6 @@ import heat_automation
 import RHAPI
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
-import RHGPIO
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 
@@ -406,15 +405,15 @@ def render_settings():
         server_messages_formatted += '<li class="config config-none warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
 
     return render_template('settings.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
-        led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
-        led_events_enabled=RaceContext.led_manager.isEnabled(),
-        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
-        num_nodes=RaceContext.race.num_nodes,
-        server_messages=server_messages_formatted,
-        cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
-        node_fw_updatable=(RaceContext.interface.get_fwupd_serial_name()!=None),
-        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
-        Debug=Config.GENERAL['DEBUG'])
+                           led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
+                           led_events_enabled=RaceContext.led_manager.isEnabled(),
+                           vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+                           num_nodes=RaceContext.race.num_nodes,
+                           server_messages=server_messages_formatted,
+                           cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
+                           node_fw_updatable=(RaceContext.interface.get_fwupd_serial_name()!=None),
+                           is_raspberry_pi=RHUtils.is_sys_raspberry_pi(),
+                           Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/streams')
 def render_stream():
@@ -1580,7 +1579,7 @@ def on_shutdown_pi():
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
-    if RHUtils.isSysRaspberryPi():
+    if RHUtils.is_sys_raspberry_pi():
         gevent.sleep(0.1)
         logger.debug("Executing system command:  sudo shutdown now")
         log.wait_for_queue_empty()
@@ -1601,7 +1600,7 @@ def on_reboot_pi():
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
-    if RHUtils.isSysRaspberryPi():
+    if RHUtils.is_sys_raspberry_pi():
         gevent.sleep(0.1)
         logger.debug("Executing system command:  sudo reboot now")
         log.wait_for_queue_empty()
@@ -2692,11 +2691,11 @@ def _do_init_rh_interface():
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
             RaceContext.interface = interfaceModule.get_hardware_interface(config=Config, \
-                            isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
+                            isS32BPillFlag=RHUtils.is_S32_BPill_board(), **hardwareHelpers)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
             if RaceContext.interface and ((not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0) and \
-                        RHUtils.isSysRaspberryPi() and (not RHGPIO.isS32BPillBoard()) and \
+                        RHUtils.is_sys_raspberry_pi() and (not RHUtils.is_S32_BPill_board()) and \
                         ((not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0):
                 try:
                     importlib.import_module('smbus2')
@@ -2838,7 +2837,7 @@ def check_requirements():
                     if line.startswith(entry[0]):
                         num_mismatched += check_req_entry(line, entry[1])
         if num_mismatched > 0:
-            if RHUtils.isSysRaspberryPi():
+            if RHUtils.is_sys_raspberry_pi():
                 logger.warning(__('Try "pip install --upgrade --no-cache-dir -r requirements.txt"'))
             set_ui_message('check_reqs',
                 __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
@@ -2948,13 +2947,13 @@ for plugin in plugin_modules:
 
 RaceContext.serverstate.plugins = plugin_modules
 
-if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
-    RHGPIO.setS32BPillBoardFlag()
+if (not RHUtils.is_S32_BPill_board()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
+    RHUtils.set_S32_BPill_boardFlag()
     logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
-logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
-                                        RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
-if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
+logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
+                                                             RHUtils.is_real_hw_GPIO(), RHUtils.is_S32_BPill_board()))
+if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
     logger.warning("Unable to access real GPIO on Pi; try:  pip install RPi.GPIO")
     set_ui_message(
         'gpio',
@@ -2974,7 +2973,7 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
-if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
+if RHUtils.is_sys_raspberry_pi() and RHUtils.is_S32_BPill_board():
     try:
         if Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
             logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
