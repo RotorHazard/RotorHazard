@@ -110,7 +110,13 @@ class RHRace():
                             pilot_names_list.append(pilot_obj.callsign)
 
             if request and len(pilot_names_list) <= 0:
-                self._racecontext.rhui.emit_priority_message(self._racecontext.language.__('No valid pilots in race'), True, nobroadcast=True)
+                # need to show alert via spawn in case a clear-messages event was just triggered
+                @catchLogExceptionsWrapper
+                @copy_current_request_context
+                def emit_alert_np_msg(self, msg_text):
+                    self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
+                gevent.spawn(emit_alert_np_msg, self, \
+                             self._racecontext.language.__('No valid pilots in race'))
 
             logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
             max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
