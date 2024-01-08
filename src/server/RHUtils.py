@@ -12,7 +12,7 @@ import glob
 import socket
 import random
 import json
-import RHGPIO
+import util.RHGPIO as RHGPIO
 
 logger = logging.getLogger(__name__)
 
