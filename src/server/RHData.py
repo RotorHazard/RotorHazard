@@ -814,6 +814,12 @@ class RHData():
 
         self.commit()
 
+        # ensure clean attributes on creation
+        for attr in self.get_pilot_attributes(new_pilot):
+            self._Database.DB.session.delete(attr)
+
+        self.commit()
+
         self._Events.trigger(Evt.PILOT_ADD, {
             'pilot_id': new_pilot.id,
             })
@@ -913,6 +919,9 @@ class RHData():
             logger.info('Refusing to delete pilot {0}: is in use'.format(pilot.id))
             return False
         else:
+            for attr in self.get_pilot_attributes(pilot_or_id):
+                self._Database.DB.session.delete(attr)
+
             self._Database.DB.session.delete(pilot)
             for heatNode in self._Database.HeatNode.query.all():
                 if heatNode.pilot_id == pilot.id:
@@ -1029,6 +1038,12 @@ class RHData():
                 new_heatNode.pilot_id = initPilots[node_index]
 
             self._Database.DB.session.add(new_heatNode)
+
+        self.commit()
+
+        # ensure clean attributes on creation
+        for attr in self.get_heat_attributes(new_heat):
+            self._Database.DB.session.delete(attr)
 
         self.commit()
 
@@ -1209,6 +1224,9 @@ class RHData():
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
                 return False
             else:
+                for attr in self.get_heat_attributes(heat_or_id):
+                    self._Database.DB.session.delete(attr)
+
                 self._Database.DB.session.delete(heat)
                 for heatnode in heatnodes:
                     self._Database.DB.session.delete(heatnode)
@@ -1618,6 +1636,12 @@ class RHData():
 
         self.commit()
 
+        # ensure clean attributes on creation
+        for attr in self.get_raceclass_attributes(new_race_class):
+            self._Database.DB.session.delete(attr)
+
+        self.commit()
+
         self._Events.trigger(Evt.CLASS_ADD, {
             'class_id': new_race_class.id,
             })
@@ -1753,6 +1777,9 @@ class RHData():
             logger.info('Refusing to delete class {0}: is in use'.format(race_class.id))
             return False
         else:
+            for attr in self.get_raceclass_attributes(raceClass_or_id):
+                self._Database.DB.session.delete(attr)
+
             self._Database.DB.session.delete(race_class)
             for heat in self._Database.Heat.query.all():
                 if heat.class_id == race_class.id:
@@ -2593,6 +2620,13 @@ class RHData():
             })
         )
         self._Database.DB.session.add(new_race)
+
+        self.commit()
+
+        # ensure clean attributes on creation
+        for attr in self.get_savedrace_attributes(new_race):
+            self._Database.DB.session.delete(attr)
+
         self.commit()
 
         logger.info('Race added: Race {0}'.format(new_race.id))
