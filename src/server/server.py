@@ -2701,10 +2701,10 @@ def _do_init_rh_interface():
                     importlib.import_module('gevent')
                 except ImportError:
                     logger.warning("Unable to import libraries for I2C nodes; try:  " +\
-                                   "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
+                                   "pip install --upgrade --no-cache-dir -r requirements.txt")
                     set_ui_message(
                         'i2c',
-                        __("Unable to import libraries for I2C nodes. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
+                        __("Unable to import libraries for I2C nodes. Try: <code>pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
                         header='Warning',
                         subclass='no-library'
                         )
@@ -2837,9 +2837,9 @@ def check_requirements():
                         num_mismatched += check_req_entry(line, entry[1])
         if num_mismatched > 0:
             if RHUtils.isSysRaspberryPi():
-                logger.warning(__('Try "sudo pip install --upgrade --no-cache-dir -r requirements.txt"'))
+                logger.warning(__('Try "pip install --upgrade --no-cache-dir -r requirements.txt"'))
             set_ui_message('check_reqs',
-                __("Package-version mismatches detected. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
+                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
                 header='Warning', subclass='none')
     except ModuleNotFoundError as ex:
         logger.debug("Unable to check package requirements: {}".format(ex))
@@ -2953,10 +2953,10 @@ if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
 logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
                                         RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
 if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
-    logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
+    logger.warning("Unable to access real GPIO on Pi; try:  pip install RPi.GPIO")
     set_ui_message(
         'gpio',
-        __("Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>"),
+        __("Unable to access real GPIO on Pi. Try: <code>pip install RPi.GPIO</code>"),
         header='Warning',
         subclass='no-access'
         )
