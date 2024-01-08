@@ -9,7 +9,7 @@ import gevent
 import Config
 import random
 from datetime import datetime
-from flask import request
+from flask import request, copy_current_request_context
 from time import monotonic
 from eventmanager import Evt
 from util.InvokeFuncQueue import InvokeFuncQueue
@@ -111,9 +111,6 @@ class RHRace():
 
             if request and len(pilot_names_list) <= 0:
                 self._racecontext.rhui.emit_priority_message(self._racecontext.language.__('No valid pilots in race'), True, nobroadcast=True)
-
-            if request and race_format.race_time_sec == 0 and not race_format.unlimited_time:
-                self._racecontext.rhui.emit_priority_message(self._racecontext.language.__('Race format specifies zero duration'), True, nobroadcast=True)
 
             logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
             max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
@@ -232,6 +229,17 @@ class RHRace():
 
             self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
             self._racecontext.rhui.emit_race_stage(eventPayload)
+
+            if request and heat_data and race_format.race_time_sec == 0 and not race_format.unlimited_time:
+                logger.warning("Current race format '{}' specifies an invalid combination of RaceClockMode=FixedTime and TimeDuration=0".\
+                               format(race_format.name))
+                # need to show alert via spawn in case a clear-messages event was just triggered
+                @catchLogExceptionsWrapper
+                @copy_current_request_context
+                def emit_alert_msg(self, msg_text):
+                    self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
+                gevent.spawn(emit_alert_msg, self, \
+                             self._racecontext.language.__('Current race format specifies fixed time with zero duration'))
 
         else:
             logger.info("Attempted to stage race while status is not 'ready'")
