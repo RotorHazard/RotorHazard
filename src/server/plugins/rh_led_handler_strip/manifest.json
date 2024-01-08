@@ -1,0 +1,13 @@
+{
+    "name": "LED: Basic support",
+    "author": "RotorHazard",
+    "author_uri": "https://github.com/RotorHazard",
+    "description": "Simple LED effects and animations",
+    "info_uri": "https://github.com/RotorHazard/RotorHazard/",
+    "license": "RotorHazard",
+    "license_uri": "https://github.com/RotorHazard/RotorHazard/blob/main/LICENSE",
+    "version": "1.0",
+    "required_rhapi_version": "1.0",
+    "update_uri": null,
+    "text_domain": null
+}

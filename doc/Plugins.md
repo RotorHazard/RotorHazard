@@ -13,6 +13,7 @@
     - [Data Exporters](#data-exporters)
     - [Data Importers](#data-importers)
     - [UI Fields](#ui-fields)
+    - [Metadata](#metadata)
 
 ## Installing and Running
 
@@ -478,3 +479,18 @@ Import UI Fields objects from RHUI.
 ```
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 ```
+
+### Metadata
+Plugin authors are strongly encouraged to declare metadata. In your plugin folder, create the JSON-formatted file `manifest.json` with the following keys. Keys may be omitted or `null`.
+
+- `name`: The name of your plugin
+- `author`: The plugin author's name
+- `author_uri`: valid HTTP link to the author's website
+- `description`: short description of the plugin's function 
+- `info_uri`: valid HTTP link to a website about the plugin
+- `license`: name of the plugin's license
+- `license_uri`: valid HTTP link to the plugin's license information
+- `version`: a version identifier for the plugin's own code
+- `required_rhapi_version`: the minimum RHAPI version required to run the plugin, such as "1.1" 
+- `update_uri`: (not yet implemented)
+- `text_domain`: (not yet implemented)
