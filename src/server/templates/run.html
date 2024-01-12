@@ -365,6 +365,8 @@
 					$('body').removeClass('race-stopped');
 					$('body').addClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					rotorhazard.timer.race.stop();
+					rotorhazard.timer.race.renderHTML();
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}

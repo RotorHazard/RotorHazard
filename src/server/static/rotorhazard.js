@@ -1362,6 +1362,9 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	}
 	$('.time-display').html(timer.renderHTML());
 }
+rotorhazard.timer.race.callbacks.stop = function(timer){
+	$('.time-display').html(timer.renderHTML());
+}
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
 	if (rotorhazard.use_mp3_tones) {
