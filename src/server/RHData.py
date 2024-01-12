@@ -348,6 +348,7 @@ class RHData():
             heatAttribute_query_data = self.get_legacy_table_data(metadata, 'heat_attribute')
             raceClassAttribute_query_data = self.get_legacy_table_data(metadata, 'race_class_attribute')
             savedRaceAttribute_query_data = self.get_legacy_table_data(metadata, 'saved_race_meta_attribute')
+            raceFormatAttribute_query_data = self.get_legacy_table_data(metadata, 'race_format_attribute')
 
             engine.dispose() # close connection after loading
 
@@ -670,6 +671,11 @@ class RHData():
                     })
 
                 self.restore_table(self._Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
+                        'name': '',
+                        'value': None
+                    })
+
+                self.restore_table(self._Database.RaceFormatAttribute, raceFormatAttribute_query_data, defaults={
                         'name': '',
                         'value': None
                     })
@@ -2212,6 +2218,12 @@ class RHData():
         self._Database.DB.session.add(race_format)
         self.commit()
 
+        # ensure clean attributes on creation
+        for attr in self.get_raceformat_attributes(race_format):
+            self._Database.DB.session.delete(attr)
+
+        self.commit()
+
         return race_format
 
     def duplicate_raceFormat(self, source_format_or_id):
@@ -2300,6 +2312,13 @@ class RHData():
             else:
                 logger.warning("Adding points method settings without established type")
 
+        if 'format_attr' in data and 'value' in data:
+            attribute = self._Database.RaceFormatAttribute.query.filter_by(id=data['format_id'], name=data['format_attr']).one_or_none()
+            if attribute:
+                attribute.value = data['value']
+            else:
+                self._Database.DB.session.add(self._Database.RaceFormatAttribute(id=data['format_id'], name=data['format_attr'], value=data['value']))
+
         self.commit()
 
         self._racecontext.race.clear_results() # refresh leaderboard
@@ -2349,6 +2368,9 @@ class RHData():
 
         race_format = self._Database.RaceFormat.query.get(format_id)
         if race_format and len(self.get_raceFormats()) > 1: # keep one format
+            for attr in self.get_raceformat_attributes(format_id):
+                self._Database.DB.session.delete(attr)
+
             self._Database.DB.session.delete(race_format)
             self.commit()
 
@@ -2363,6 +2385,7 @@ class RHData():
 
     def clear_raceFormats(self):
         self._Database.DB.session.query(self._Database.RaceFormat).delete()
+        self._Database.DB.session.query(self._Database.RaceFormatAttribute).delete()
         for race_class in self.get_raceClasses():
             self.alter_raceClass({
                 'class_id': race_class.id,
@@ -2558,6 +2581,28 @@ class RHData():
         self.commit()
         logger.info("Database reset race formats")
         return True
+
+    # Race Format Attributes
+    def get_raceformat_attribute(self, raceformat_or_id, name):
+        raceformat_id = self.resolve_id_from_raceFormat_or_id(raceformat_or_id)
+        return self._Database.RaceFormatAttribute.query.filter_by(id=raceformat_id, name=name).one_or_none()
+
+    def get_raceformat_attribute_value(self, raceformat_or_id, name, default_value=None):
+        raceformat_id = self.resolve_id_from_raceFormat_or_id(raceformat_or_id)
+        attr = self._Database.RaceFormatAttribute.query.filter_by(id=raceformat_id, name=name).one_or_none()
+
+        if attr is not None:
+            return attr.value
+        else:
+            return default_value
+
+    def get_raceformat_attributes(self, raceformat_or_id):
+        raceformat_id = self.resolve_id_from_raceFormat_or_id(raceformat_or_id)
+        return self._Database.RaceFormatAttribute.query.filter_by(id=raceformat_id).all()
+
+    def get_raceformat_id_by_attribute(self, name, value):
+        attrs = self._Database.RaceFormatAttribute.query.filter_by(name=name, value=value).all()
+        return [attr.id for attr in attrs]
 
     # Race Meta
     def resolve_savedRaceMeta_from_savedRaceMeta_or_id(self, savedRaceMeta_or_id):

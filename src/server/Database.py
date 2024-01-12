@@ -374,6 +374,14 @@ class RaceFormat(DB.Model):
         logger.warning("Use of deprecated staging_tones attribute, use 'staging_delay_tones'", stack_info=True)
         self.staging_delay_tones = value
 
+class RaceFormatAttribute(DB.Model):
+    __tablename__ = 'race_format_attribute'
+    __table_args__ = (
+        DB.UniqueConstraint('id', 'name'),
+    )
+    id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False, primary_key=True)
+    name = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    value = DB.Column(DB.String(), nullable=True)
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'

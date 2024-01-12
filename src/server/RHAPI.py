@@ -150,6 +150,14 @@ class FieldsAPI():
     def register_race_attribute(self, field:UIField):
         return self._racecontext.rhui.register_savedrace_attribute(field)
 
+    # Race Attribute
+    @property
+    def raceformat_attributes(self):
+        return self._racecontext.rhui.raceformat_attributes
+
+    def register_raceformat_attribute(self, field:UIField):
+        return self._racecontext.rhui.register_raceformat_attribute(field)
+
     # General Setting
     @property
     def options(self):
@@ -472,11 +480,33 @@ class DatabaseAPI():
 
         return self._racecontext.rhdata.add_format(data)
 
+    def raceformat_attributes(self, raceformat_or_id):
+        return self._racecontext.rhdata.get_raceformat_attributes(raceformat_or_id)
+
+    def raceformat_attribute_value(self, raceformat_or_id, name, default_value=None):
+        for field in self._racecontext.rhui.raceformat_attributes:
+            if field.name == name:
+                return self._racecontext.rhdata.get_raceformat_attribute_value(raceformat_or_id, field.name, field.value)
+        else:
+            return self._racecontext.rhdata.get_raceformat_attribute_value(raceformat_or_id, name, default_value)
+
+    def raceformat_ids_by_attribute(self, name, value):
+        return self._racecontext.rhdata.get_raceformat_id_by_attribute(name, value)
+
     def raceformat_duplicate(self, source_format_or_id):
         return self._racecontext.rhdata.duplicate_raceFormat(source_format_or_id)
 
-    def raceformat_alter(self, raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None):
+    def raceformat_alter(self, raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None, attributes=None):
         data = {}
+
+        if isinstance(attributes, dict):
+            data['format_id'] = raceformat_id
+            for key, value in attributes.items():
+                data['format_attr'] = key
+                data['value'] = value
+                self._racecontext.rhdata.alter_raceFormat(data)
+
+            data = {}
 
         for name, value in [
             ('format_name', name),
