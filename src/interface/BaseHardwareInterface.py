@@ -58,6 +58,15 @@ class BaseHardwareInterface(object):
                 if callable(self.node_crossing_callback):
                     cross_list.append(node)
 
+            # calc peak duration
+            if node.current_rssi == node.pass_peak_rssi and node.current_rssi != node.peak_tracking_rssi:
+                node.peak_tracking = True
+                node.peak_tracking_rssi = node.current_rssi
+                node.peak_start_timestamp = readtime
+            if node.peak_tracking and node.current_rssi < node.pass_peak_rssi:
+                node.peak_tracking = False
+                node.pass_peak_duration = readtime - node.peak_start_timestamp
+
             # calc lap timestamp
             if ms_val < 0 or ms_val > 9999999:
                 ms_val = 0  # don't allow negative or too-large value

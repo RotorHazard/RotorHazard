@@ -34,6 +34,11 @@ class Node:
         self.debug_pass_count = 0
         self.bad_rssi_count = 0
 
+        self.peak_tracking = False
+        self.peak_tracking_rssi = 0
+        self.peak_start_timestamp = False
+        self.pass_peak_duration = 0
+
         self.enter_at_level = 0
         self.exit_at_level = 0
 

@@ -484,6 +484,7 @@ class RHUI():
                 'node_nadir_rssi': [node.node_nadir_rssi for node in self._racecontext.interface.nodes],
                 'pass_peak_rssi': [node.pass_peak_rssi for node in self._racecontext.interface.nodes],
                 'pass_nadir_rssi': [node.pass_nadir_rssi for node in self._racecontext.interface.nodes],
+                'pass_peak_duration': [node.pass_peak_duration for node in self._racecontext.interface.nodes],
                 'debug_pass_count': [node.debug_pass_count for node in self._racecontext.interface.nodes]
             }
         if ('nobroadcast' in params):
