@@ -1597,6 +1597,16 @@ jQuery(document).ready(function($){
 		}
 	});
 
+	// display socket status
+	function socket_listener() {
+		if (socket.connected) {
+			$('.socket-warning').slideUp();
+		} else {
+			$('.socket-warning').slideDown();
+		}
+	}
+	setInterval(socket_listener, 1000);
+
 	// popup messaging
 	socket.on('priority_message', function (msg) {
 		push_message(msg.message, msg.interrupt);
