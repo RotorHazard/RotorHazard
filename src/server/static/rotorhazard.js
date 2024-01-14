@@ -16,9 +16,9 @@ const LEADER_FLAG_CHAR = 'L';
 const WINNER_FLAG_CHAR = 'W';
 
 // Display sync warning above (ms)
-const SYNC_WARNING_THRESHOLD_1 = 10
-const SYNC_WARNING_THRESHOLD_3 = 50
-const SYNC_WARNING_THRESHOLD_10 = 100
+const SYNC_WARNING_THRESHOLD_1 = 2
+const SYNC_WARNING_THRESHOLD_3 = 10
+const SYNC_WARNING_THRESHOLD_10 = 60
 
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
