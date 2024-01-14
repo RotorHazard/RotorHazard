@@ -109,7 +109,21 @@
 			for (var i in rotorhazard.server_time_differential_samples) {
 				a = Math.min(a, rotorhazard.server_time_differential_samples[i].response);
 			}
-			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.server_time_differential_samples.length + '/' + max_samples + ' samples)</p>');
+			rotorhazard.sync_within = Math.ceil(a);
+
+			$('#server-lag').html('<p>Sync quality: within ' + rotorhazard.sync_within + 'ms (' + rotorhazard.server_time_differential_samples.length + '/' + max_samples + ' samples)</p>');
+
+			if (
+				(max_samples >= 10 && SYNC_WARNING_THRESHOLD_10 > rotorhazard.sync_within) ||
+				(max_samples >= 3 && SYNC_WARNING_THRESHOLD_3 > rotorhazard.sync_within) ||
+				SYNC_WARNING_THRESHOLD_1 > rotorhazard.sync_within) {
+				rotorhazard.has_server_sync = true;
+				if (!rotorhazard.timer.running()) {
+					$('.timing-clock .warning').hide();
+				}
+			} else {
+				$('.timing-clock .warning .value').text(rotorhazard.sync_within + 'ms');
+			}
 		});
 
 		socket.on('language', function (msg) {
@@ -365,6 +379,8 @@
 					$('body').removeClass('race-stopped');
 					$('body').addClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					rotorhazard.timer.race.stop();
+					rotorhazard.timer.race.renderHTML();
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}
@@ -2229,7 +2245,13 @@
 <div id="main_panel" class="panel">
 	<div class="panel-content full-width">
 		<div class="timer">
-			<div class="timing-clock"><div class="warning" title="Browser Sync Loss">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
+			<div class="timing-clock">
+				<div class="warning">
+					<div class="symbol">&#9888;&#xFE0E; {{ __('Sync') }}</div>
+					<div class="value">{{ __('Acquiring') }}</div>
+				</div>
+				<div class="time-display">--:--</div>
+			</div>
 		</div>
 
 		<!--Buttons for controlling the race-->

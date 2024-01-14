@@ -775,6 +775,19 @@ main {
 	margin: 0 auto;
 }
 
+/* Socket status */
+
+.socket-warning {
+	text-align: center;
+	padding: 0.25rem;
+	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
+	background: hsl(8.2, 86.5%, 53.7%);
+	background: -moz-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%, hsl(13.1, 64.6%, 37.6%) 100%);
+	background: -webkit-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
+	background: linear-gradient(to bottom, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
+	color: #fff;
+}
+
 /* Home */
 
 .page-home .header h1 {
@@ -861,8 +874,8 @@ main.page-home {
 .timing-clock .warning {
 	position: absolute;
 	left: 0.25em;
-	line-height: 1.3;
-	display: none;
+	font-size: 1.2rem;
+	text-align: left;
 }
 
 #next-round {

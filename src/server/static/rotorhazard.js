@@ -15,6 +15,11 @@ const MAX_LOG_VOLUME = 1.0;
 const LEADER_FLAG_CHAR = 'L';
 const WINNER_FLAG_CHAR = 'W';
 
+// Display sync warning above (ms)
+const SYNC_WARNING_THRESHOLD_1 = 2
+const SYNC_WARNING_THRESHOLD_3 = 10
+const SYNC_WARNING_THRESHOLD_10 = 60
+
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
 var checkSpeakQueueCntr = 0;
@@ -1079,6 +1084,8 @@ var rotorhazard = {
 	pi_time_request: false,
 	server_time_differential: null,
 	server_time_differential_samples: [], // stored previously acquired offsets
+	has_server_sync: false,
+	sync_within: Infinity,
 	winner_declared_flag: false,
 
 	timer: {
@@ -1087,6 +1094,9 @@ var rotorhazard = {
 		stopAll: function() {
 			this.deferred.stop();
 			this.race.stop();
+		},
+		running: function() {
+			return (this.deferred.running || this.race.running);
 		}
 	},
 	saveData: function() {
@@ -1254,6 +1264,9 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 	}
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
+	if (rotorhazard.has_server_sync && timer.warn_until < window.performance.now()) {
+		$('.timing-clock .warning').hide();
+	}
 	if (rotorhazard.voice_race_timer != 0) {
 		if (timer.time_tenths < -36000 && !(timer.time_tenths % -36000)) { // 2+ hour callout
 			var hours = timer.time_tenths / -36000;
@@ -1287,6 +1300,14 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	rotorhazard.timer.deferred.stop();
 	$('.time-display').html(__('Wait'));
 }
+rotorhazard.timer.deferred.callbacks.self_resync = function(timer){
+	// display resync warning
+	if (rotorhazard.has_server_sync) {
+		$('.timing-clock .warning .value').text(__('recovery'));
+	}
+	timer.warn_until = window.performance.now() + 3000;
+	$('.timing-clock .warning').show();
+}
 
 // race/staging timer callbacks
 rotorhazard.timer.race.phased_staging = true;
@@ -1297,7 +1318,7 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 }
 
 rotorhazard.timer.race.callbacks.step = function(timer){
-	if (timer.warn_until < window.performance.now()) {
+	if (rotorhazard.has_server_sync && timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
 	if (timer.time_tenths < 0) {
@@ -1362,6 +1383,9 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	}
 	$('.time-display').html(timer.renderHTML());
 }
+rotorhazard.timer.race.callbacks.stop = function(timer){
+	$('.time-display').html(timer.renderHTML());
+}
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
 	if (rotorhazard.use_mp3_tones) {
@@ -1374,6 +1398,9 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 }
 rotorhazard.timer.race.callbacks.self_resync = function(timer){
 	// display resync warning
+	if (rotorhazard.has_server_sync) {
+		$('.timing-clock .warning .value').text(__('recovery'));
+	}
 	timer.warn_until = window.performance.now() + 3000;
 	$('.timing-clock .warning').show();
 }
@@ -1596,6 +1623,16 @@ jQuery(document).ready(function($){
 			}
 		}
 	});
+
+	// display socket status
+	function socket_listener() {
+		if (socket.connected) {
+			$('.socket-warning').slideUp();
+		} else {
+			$('.socket-warning').slideDown();
+		}
+	}
+	setInterval(socket_listener, 1000);
 
 	// popup messaging
 	socket.on('priority_message', function (msg) {
