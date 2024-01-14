@@ -25,13 +25,13 @@ EPOCH_START = RHTimeFns.getEpochStartTime()
 _prog_start_epoch1 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
 
 # program start time (in time.monotonic seconds)
-PROGRAM_START_MTONIC = monotonic()
+_program_start_mtonic = monotonic()
 
-# do average of before and after to exact timing match between PROGRAM_START_EPOCH_TIME and PROGRAM_START_MTONIC
+# do average of before and after to exact timing match between _program_start_epoch_time and _program_start_mtonic
 _prog_start_epoch2 = (RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds()
 
 # program-start time, in milliseconds since 1970-01-01
-PROGRAM_START_EPOCH_TIME = int((_prog_start_epoch1 + _prog_start_epoch2) * 500.0 + 0.5)   # *1000/2.0
+_program_start_epoch_time = int((_prog_start_epoch1 + _prog_start_epoch2) * 500.0 + 0.5)   # *1000/2.0
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
@@ -101,9 +101,10 @@ from HeatGenerator import HeatGeneratorManager
 RaceContext = RaceContext.RaceContext()
 RHAPI = RHAPI.RHAPI(RaceContext)
 
-RaceContext.serverstate.program_start_epoch_time = PROGRAM_START_EPOCH_TIME
-RaceContext.serverstate.program_start_mtonic = PROGRAM_START_MTONIC
-RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - 1000.0*RaceContext.serverstate.program_start_mtonic
+RaceContext.serverstate.program_start_epoch_time = _program_start_epoch_time
+RaceContext.serverstate.program_start_mtonic = _program_start_mtonic
+RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - \
+                                                        1000.0*RaceContext.serverstate.program_start_mtonic
 
 Events = EventManager(RHAPI)
 RaceContext.events = Events
@@ -2360,9 +2361,8 @@ heartbeat_thread_function.last_error_rep_time = monotonic()
 
 @catchLogExceptionsWrapper
 def clock_check_thread_function():
-    ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
+    ''' Monitor system clock and adjust 'program_start_epoch_time' if significant jump detected.
         (This can happen if NTP synchronization occurs after server starts up.) '''
-    global MTONIC_TO_EPOCH_MILLIS_OFFSET
     try:
         while True:
             gevent.sleep(10)
@@ -2379,9 +2379,11 @@ def clock_check_thread_function():
                 epoch_now = int((_epoch1 + _epoch2) * 500.0 + 0.5)   # *1000/2.0
                 diff_ms = epoch_now - RaceContext.serverstate.monotonic_to_epoch_millis(time_now)
                 RaceContext.serverstate.program_start_epoch_time += diff_ms
-                MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
-                logger.info("Adjusting RaceContext.serverstate.program_start_epoch_time for shift in system clock ({:.1f} secs) to: {:.0f}, time={}".\
-                            format(diff_ms/1000, RaceContext.serverstate.program_start_epoch_time, RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
+                RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - \
+                                                                        1000.0*RaceContext.serverstate.program_start_mtonic
+                logger.info("Adjusting 'program_start_epoch_time' for shift in system clock ({:.1f} secs) to: {:.0f}, time={}".\
+                            format(diff_ms/1000, RaceContext.serverstate.program_start_epoch_time, \
+                                   RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
                 # update values that will be reported if running as cluster timer
                 if RaceContext.cluster.has_joined_cluster():
                     logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
