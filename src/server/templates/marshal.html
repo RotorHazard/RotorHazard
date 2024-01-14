@@ -25,6 +25,7 @@
 	var current_race_data = {};
 	var precalc_laps = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
+	var min_lap_behavior = {{ getOption('MinLapBehavior') }};
 
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
@@ -641,6 +642,7 @@
 				}
 			}
 
+			var last_lap_time_stamp = -Infinity;
 			for(var idx in current_race_data.history_values) {
 				var rssi = current_race_data.history_values[idx];
 				var time = current_race_data.history_times[idx];
@@ -674,16 +676,21 @@
 
 						if (lap_time_stamp > 0) { // reject passes before race start
 							var crossingEnd = time;
-							laps.push({
+							var lapdata = {
 								crossingStart: crossingStart,
 								crossingEnd: crossingEnd,
 								lap_time_stamp: lap_time_stamp, // zero stamp within race
 								source: 2, // recalc
 								deleted: false
-							});
+							};
+							if (min_lap_behavior && lap_time_stamp < last_lap_time_stamp + min_lap) {
+								lapdata.deleted = true;
+							}
+							laps.push(lapdata);
 						}
 						crossing = false;
 						peakRssi = 0;
+						last_lap_time_stamp = lap_time_stamp;
 					}
 				}
 			}
