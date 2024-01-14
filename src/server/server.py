@@ -430,8 +430,9 @@ def render_stream_results():
 @APP.route('/stream/node/<int:node_id>')
 def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
+    use_inactive_nodes = 'true' if request.args.get('use_inactive_nodes') else 'false'
     return render_template('streamnode.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
-        node_id=node_id-1
+        node_id=node_id-1, use_inactive_nodes=use_inactive_nodes
     )
 
 @APP.route('/stream/class/<int:class_id>')

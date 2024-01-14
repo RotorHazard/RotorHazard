@@ -16,6 +16,7 @@
 	current_laps = false;
 	active_seat = {{ node_id }};
 	active_nodes = []
+	use_inactive_nodes = {{ use_inactive_nodes }};
 	streamnode = active_seat;
 
 	$(document).ready(function () {
@@ -28,16 +29,18 @@
 		});
 
 		socket.on('frequency_data', function (msg) {
-			active_nodes = [];
-			if (msg.fdata.length) {
-				for (var i in msg.fdata) {
-					var fObj = freq.getFObjbyFData(msg.fdata[i]);
-					if (fObj.frequency) {
-						active_nodes.push(i);
+			if (!use_inactive_nodes) {
+				active_nodes = [];
+				if (msg.fdata.length) {
+					for (var i in msg.fdata) {
+						var fObj = freq.getFObjbyFData(msg.fdata[i]);
+						if (fObj.frequency) {
+							active_nodes.push(i);
+						}
 					}
 				}
+				streamnode = active_nodes[active_seat] ? active_nodes[active_seat] : -1;
 			}
-			streamnode = active_nodes[active_seat] ? active_nodes[active_seat] : -1;
 		});
 
 		socket.on('current_heat', function (msg) {
