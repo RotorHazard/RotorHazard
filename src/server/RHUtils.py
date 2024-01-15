@@ -12,7 +12,7 @@ import glob
 import socket
 import random
 import json
-import util.RHGPIO as RHGPIO
+import util.RH_GPIO as RH_GPIO
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def idAndLogSystemInfo():
             logger.info("Host machine: " + modelStr.strip('\0'))
         logger.info("Host OS: {} {}".format(platform.system(), platform.release()))
         logger.info("Python version: {}".format(getPythonVersionStr()))
-        S32_BPill_board_flag = RHGPIO.check_input_tied_low(RHGPIO_S32ID_PIN)
+        S32_BPill_board_flag = RH_GPIO.check_input_tied_low(RHGPIO_S32ID_PIN)
         if S32_BPill_board_flag:
             logger.info("S32_BPill board detected")
     except Exception:
@@ -120,7 +120,7 @@ def set_S32_BPill_boardFlag():
 
 # Return True if real hardware GPIO detected
 def is_real_hw_GPIO():
-    return RHGPIO.is_real_RPi_GPIO()
+    return RH_GPIO.is_real_RPi_GPIO()
 
 # Returns "primary" IP address for local host.  Based on:
 #  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib

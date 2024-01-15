@@ -30,7 +30,7 @@ import time
 import traceback
 from functools import reduce
 
-sys.path.append('util')  # needed at runtime to find RHGPIO module
+sys.path.append('util')  # needed at runtime to find RH_GPIO module
 
 Console_output_fn = print
 
@@ -761,7 +761,7 @@ def is_sys_raspberry_pi():
 # reset BPill processor into bootloader mode
 def reset_to_boot_0():
     try:
-        import RHGPIO as GPIO
+        import RH_GPIO as GPIO
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(GPIO_RESET_PIN, GPIO.OUT)
         GPIO.output(GPIO_RESET_PIN, GPIO.HIGH)  # reset pin high (inactive)
@@ -783,7 +783,7 @@ def reset_to_boot_0():
 # reset BPill processor
 def reset_to_run():
     try:
-        import RHGPIO as GPIO
+        import RH_GPIO as GPIO
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(GPIO_RESET_PIN, GPIO.OUT)
         GPIO.output(GPIO_RESET_PIN, GPIO.HIGH)  # reset pin high (inactive)

@@ -16,7 +16,7 @@ except:  # need extra exception catch for Travis CI tests
     Real_RPi_GPIO_flag = False
 # if RPi.GPIO not available then use FakeRiGPIO from https://github.com/sn4k3/FakeRPi
 
-# alias these GPIO constants so they can be referenced using RHGPIO
+# alias these GPIO constants so they can be referenced using RH_GPIO
 BOARD = GPIO.BOARD
 BCM = GPIO.BCM
 IN = GPIO.IN

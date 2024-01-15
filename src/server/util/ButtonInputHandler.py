@@ -1,9 +1,9 @@
 # ButtonInputHandler:  Handler for a button connected to a GPIO input pin
 
 import sys
-sys.path.append('util')  # needed at runtime to find RHGPIO module
+sys.path.append('util')  # needed at runtime to find RH_GPIO module
 
-import RHGPIO
+import RH_GPIO
 
 class ButtonInputHandler:
     """ Handler for a button connected to a GPIO input pin """
@@ -20,12 +20,12 @@ class ButtonInputHandler:
                                                                    else self.noop
         self.buttonLongPressDelayMs = buttonLongPressDelayMs
         self.longPressReachedFlag = False
-        self.lastInputLevel = RHGPIO.UNKNOWN
+        self.lastInputLevel = RH_GPIO.UNKNOWN
         self.pressedStartTimeSecs = 0
         self.enabledFlag = startEnabledFlag
         self.errorLoggedCount = 0
         try:
-            RHGPIO.setup(gpioPinNum, RHGPIO.IN, pull_up_down=RHGPIO.PUD_UP)
+            RH_GPIO.setup(gpioPinNum, RH_GPIO.IN, pull_up_down=RH_GPIO.PUD_UP)
         except:
             logger.exception("Exception error in ButtonInputHandler setup")
 
@@ -34,14 +34,14 @@ class ButtonInputHandler:
     def pollProcessInput(self, nowTimeSecs):
         try:
             if self.enabledFlag:
-                inLvl = RHGPIO.input(self.gpioPinNum)
-                if self.lastInputLevel == RHGPIO.HIGH:
-                    if inLvl == RHGPIO.LOW:  # new button press detected
+                inLvl = RH_GPIO.input(self.gpioPinNum)
+                if self.lastInputLevel == RH_GPIO.HIGH:
+                    if inLvl == RH_GPIO.LOW:  # new button press detected
                         self.pressedStartTimeSecs = nowTimeSecs
                         self.longPressReachedFlag = False
                         self.buttonPressedCallbackFn()
-                elif self.lastInputLevel == RHGPIO.LOW:
-                    if inLvl == RHGPIO.LOW:  # button long-press detected
+                elif self.lastInputLevel == RH_GPIO.LOW:
+                    if inLvl == RH_GPIO.LOW:  # button long-press detected
                         if self.pressedStartTimeSecs > 0 and \
                                     (nowTimeSecs - self.pressedStartTimeSecs) * 1000 > \
                                     self.buttonLongPressDelayMs:
@@ -51,7 +51,7 @@ class ButtonInputHandler:
                     else:
                         self.buttonReleasedCallbackFn(self.longPressReachedFlag)
                 self.lastInputLevel = inLvl
-                return (inLvl == RHGPIO.LOW) or self.longPressReachedFlag
+                return (inLvl == RH_GPIO.LOW) or self.longPressReachedFlag
         except:
             self.errorLoggedCount += 1
             # log the first ten, but then only 1 per 100 after that
@@ -63,7 +63,7 @@ class ButtonInputHandler:
         self.enabledFlag = flgVal
         if not flgVal:
             self.longPressReachedFlag = False
-            self.lastInputLevel = RHGPIO.UNKNOWN
+            self.lastInputLevel = RH_GPIO.UNKNOWN
             self.pressedStartTimeSecs = 0
 
     def isEnabled(self):
