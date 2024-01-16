@@ -52,6 +52,7 @@ GENERAL['SHUTDOWN_BUTTON_GPIOPIN'] = 18
 GENERAL['SHUTDOWN_BUTTON_DELAYMS'] = 2500
 GENERAL['DB_AUTOBKP_NUM_KEEP'] = 30
 GENERAL['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
+GENERAL['LOG_SENSORS_DATA_RATE'] = 300 # rate at which to log sensor data
 
 InitResultStr = None
 InitResultLogLevel = logging.INFO
