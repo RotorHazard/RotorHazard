@@ -1856,7 +1856,7 @@
 			"Win Condition": "Warunek Wygranej"
 		}
 	},
-	"zh-CN": {
+	"#zh-CN#": {
 		"name": "简体中文",
 		"values": {
 			"%HEAT% : Current heat name": "%HEAT%: 当前比赛名称",
