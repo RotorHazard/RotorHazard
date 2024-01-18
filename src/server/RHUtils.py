@@ -12,6 +12,7 @@ import glob
 import socket
 import random
 import json
+import util.RH_GPIO as RH_GPIO
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,12 @@ PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FORMAT_ID_NONE = 0  # indicator value for unformatted class
-FREQUENCY_ID_NONE = 0       # indicator value for node disabled
-IS_SYS_RASPBERRY_PI = True  # set by 'idAndLogSystemInfo()'
+FREQUENCY_ID_NONE = 0  # indicator value for node disabled
+
+RHGPIO_S32ID_PIN = 25  # GPIO input is tied low on S32_BPill PCB
+
+Is_sys_raspberry_pi_flag = True  # set by 'idAndLogSystemInfo()'
+S32_BPill_board_flag = False  # set by 'idAndLogSystemInfo()'
 
 def time_format(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000'''
@@ -78,8 +83,10 @@ def checkVersionStr(verStr, majorVer, minorVer):
     return int(verList[0]) >= int(majorVer) and int(verList[1]) >= int(minorVer)
 
 def idAndLogSystemInfo():
-    global IS_SYS_RASPBERRY_PI
-    IS_SYS_RASPBERRY_PI = False
+    global Is_sys_raspberry_pi_flag
+    global S32_BPill_board_flag
+    Is_sys_raspberry_pi_flag = False
+    S32_BPill_board_flag = False
     try:
         modelStr = None
         try:
@@ -89,15 +96,31 @@ def idAndLogSystemInfo():
         except:
             pass
         if modelStr and "raspberry pi" in modelStr.lower():
-            IS_SYS_RASPBERRY_PI = True
+            Is_sys_raspberry_pi_flag = True
             logger.info("Host machine: " + modelStr.strip('\0'))
         logger.info("Host OS: {} {}".format(platform.system(), platform.release()))
         logger.info("Python version: {}".format(getPythonVersionStr()))
+        S32_BPill_board_flag = RH_GPIO.check_input_tied_low(RHGPIO_S32ID_PIN)
+        if S32_BPill_board_flag:
+            logger.info("S32_BPill board detected")
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
 
-def isSysRaspberryPi():
-    return IS_SYS_RASPBERRY_PI
+# Returns True if Raspberry Pi hardware detected
+def is_sys_raspberry_pi():
+    return Is_sys_raspberry_pi_flag
+
+# Returns True if S32_BPill board detected
+def is_S32_BPill_board():
+    return S32_BPill_board_flag
+
+def set_S32_BPill_boardFlag():
+    global S32_BPill_board_flag
+    S32_BPill_board_flag = True
+
+# Return True if real hardware GPIO detected
+def is_real_hw_GPIO():
+    return RH_GPIO.is_real_RPi_GPIO()
 
 # Returns "primary" IP address for local host.  Based on:
 #  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
@@ -156,7 +179,7 @@ def substituteAddrWildcards(determineHostAddressFn, destAddrStr):
 # Returns True if owner changed to 'pi' user; False if not.
 def checkSetFileOwnerPi(fileNameStr):
     try:
-        if IS_SYS_RASPBERRY_PI:
+        if Is_sys_raspberry_pi_flag:
             # check that 'pi' user exists, file/dir exists, and owner is 'root'
             if os.path.isdir("/home/pi") and os.path.exists(fileNameStr) and os.stat(fileNameStr).st_uid == 0:
                 subprocess.check_call(["sudo", "chown", "pi:pi", fileNameStr])
