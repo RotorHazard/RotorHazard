@@ -65,6 +65,7 @@ class ButtonInputHandler:
             self.longPressReachedFlag = False
             self.lastInputLevel = RH_GPIO.UNKNOWN
             self.pressedStartTimeSecs = 0
+            RH_GPIO.close_channel(self.gpioPinNum)
 
     def isEnabled(self):
         return self.enabledFlag

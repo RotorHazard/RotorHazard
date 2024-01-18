@@ -36,6 +36,9 @@ _program_start_epoch_time = int((_prog_start_epoch1 + _prog_start_epoch2) * 500.
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
 # Normal importing resumes here
+import RHUtils  # need to import this early to get RH_GPIO initialized before gevent, etc
+from RHUtils import catchLogExceptionsWrapper
+
 import gevent.monkey
 gevent.monkey.patch_all()
 
@@ -57,8 +60,6 @@ import string
 import json
 
 import Config
-import RHUtils
-from RHUtils import catchLogExceptionsWrapper
 
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
 
@@ -601,8 +602,8 @@ def stop_background_threads():
             HEARTBEAT_THREAD.kill(block=True, timeout=0.5)
             HEARTBEAT_THREAD = None
         RaceContext.interface.stop()
-    except Exception:
-        logger.error("Error stopping background threads")
+    except:
+        logger.exception("Error stopping background threads")
 
 #
 # Socket IO Events
@@ -2952,12 +2953,12 @@ if (not RHUtils.is_S32_BPill_board()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']
     logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
 logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
-                                                             RHUtils.is_real_hw_GPIO(), RHUtils.is_S32_BPill_board()))
+                                         RHUtils.get_GPIO_type_str(), RHUtils.is_S32_BPill_board()))
 if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
-    logger.warning("Unable to access real GPIO on Pi; try:  pip install RPi.GPIO")
+    logger.warning("Unable to access real GPIO on Pi; libraries may need to be installed")
     set_ui_message(
         'gpio',
-        __("Unable to access real GPIO on Pi. Try: <code>pip install RPi.GPIO</code>"),
+        __("Unable to access real GPIO on Pi libraries may need to be installed"),
         header='Warning',
         subclass='no-access'
         )

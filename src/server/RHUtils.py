@@ -90,9 +90,8 @@ def idAndLogSystemInfo():
     try:
         modelStr = None
         try:
-            fileHnd = open("/proc/device-tree/model", "r")
-            modelStr = fileHnd.read()
-            fileHnd.close()
+            with open("/proc/device-tree/model", 'r') as fileHnd:
+                modelStr = fileHnd.read()
         except:
             pass
         if modelStr and "raspberry pi" in modelStr.lower():
@@ -114,13 +113,18 @@ def is_sys_raspberry_pi():
 def is_S32_BPill_board():
     return S32_BPill_board_flag
 
+# Debug-test function for setting the S32_BPill-board-detected flag
 def set_S32_BPill_boardFlag():
     global S32_BPill_board_flag
     S32_BPill_board_flag = True
 
-# Return True if real hardware GPIO detected
+# Returns True if real hardware GPIO detected
 def is_real_hw_GPIO():
-    return RH_GPIO.is_real_RPi_GPIO()
+    return RH_GPIO.is_real_hw_GPIO()
+
+# Returns a string indicating the type of GPIO detected
+def get_GPIO_type_str():
+    return RH_GPIO.get_GPIO_type_str()
 
 # Returns "primary" IP address for local host.  Based on:
 #  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib

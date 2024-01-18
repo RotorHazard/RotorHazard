@@ -1,6 +1,8 @@
 # Real Time Clock
 
-The standard Raspberry Pi does not feature a real-time clock (RTC) -- when it has an internet connection the Pi will fetch the current date and time from an online server, but if an internet connection is not available when the Pi starts up, its date/time will be wrong.  (It will usually revert to the last date/time it was using, and go from there.)
+**Note:** These instructions are not compatible with the Raspberry Pi 5. The Pi 5 has an onboard real-time clock, so the recommended setup is to install a [backup battery](https://www.raspberrypi.com/documentation/computers/raspberry-pi-5.html#adding-a-backup-battery) onto the Pi 5 board (and not install an external RTC module). 
+
+The standard Raspberry Pi (before the Pi 5) does not feature a real-time clock (RTC) -- when it has an internet connection the Pi will fetch the current date and time from an online server, but if an internet connection is not available when the Pi starts up, its date/time will be wrong.  (It will usually revert to the last date/time it was using, and go from there.)
 
 Adding a real-time clock module addresses this problem.  The [DS3231](https://www.adafruit.com/product/3013) module is recommended, as it keeps very accurate time.  There are other, cheaper modules that will also do the job (albeit with less precision), such as the [PCF8523](https://www.adafruit.com/product/3295) and [DS1307](https://www.adafruit.com/product/3296).
 
