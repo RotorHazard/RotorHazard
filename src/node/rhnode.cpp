@@ -37,7 +37,7 @@
 // Note: Configure Arduino NODE_NUMBER value in 'config.h'
 
 // firmware version string (prefix allows text to be located in '.bin' file)
-const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.4";
+const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.5";
 
 // build date/time strings
 const char *firmwareBuildDateString = "FIRMWARE_BUILDDATE: " __DATE__;
@@ -555,6 +555,7 @@ void i2cTransmit()
 
 void serialEvent()
 {
+    int iterCount = 0;
     while (SERIALCOM.available())
     {
         uint8_t nextByte = SERIALCOM.read();
@@ -601,6 +602,8 @@ void serialEvent()
                 serialMessage.buffer.size = 0;
             }
         }
+        if (++iterCount > 20)   // if lots of data is coming in then the serial events can prevent the
+            return;             //   'loop()' fn from running, so return if too many iterations in a row
     }
 }
 
