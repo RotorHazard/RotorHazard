@@ -1,5 +1,6 @@
 '''RotorHazard hardware interface layer.'''
 import logging
+import os
 import serial # For serial comms
 import gevent
 import time
@@ -14,7 +15,8 @@ from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUN
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
 SERIAL_BAUD_RATES = [921600, 115200]
-DEF_S32BPILL_SERIAL_PORT = "/dev/serial0"
+SYS_DEV_DIR_PATH = "/dev/"
+DEF_S32BPILL_SERIAL_PORTS = ["ttyAMA0", "serial0"]
 
 logger = logging.getLogger(__name__)
 
@@ -229,8 +231,14 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     nodes = []
     config_ser_ports = getattr(config, 'SERIAL_PORTS', [])
     if isS32BPillFlag and len(config_ser_ports) == 0:
-        config_ser_ports.append(DEF_S32BPILL_SERIAL_PORT)
-        logger.debug("Using default serial port ('{}') for S32_BPill board".format(DEF_S32BPILL_SERIAL_PORT))
+        try:    # if "/dev/ttyAMA0" exist then use it, otherwise use "/dev/serial0"
+            def_port = SYS_DEV_DIR_PATH + (DEF_S32BPILL_SERIAL_PORTS[0] \
+                                if DEF_S32BPILL_SERIAL_PORTS[0] in os.listdir(SYS_DEV_DIR_PATH) \
+                                else DEF_S32BPILL_SERIAL_PORTS[1])
+            config_ser_ports.append(def_port)
+            logger.debug("Using default serial port ('{}') for S32_BPill board".format(def_port))
+        except:
+            pass
     if config_ser_ports:
         for index, comm in enumerate(config_ser_ports):
             rev_val = None

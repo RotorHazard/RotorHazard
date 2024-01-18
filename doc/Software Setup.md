@@ -28,7 +28,7 @@ Note: Many of the setup commands below require that the Rasperry Pi has internet
 
 Install the Raspberry Pi OS, following the official instructions: https://www.raspberrypi.org/help
 
-The standard-recommended setup is to use a Raspberry Pi 3 or Pi 4 board, install the [Raspberry Pi OS](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) (Desktop), and configure it with a user named "pi".
+The standard-recommended setup is to use a Raspberry Pi 3, Pi 4 or Pi 5 board, install the [Raspberry Pi OS](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) (Desktop), and configure it with a user named "pi".
 
 Tip: Any time you intend to use a monitor (via HDMI) with the Raspberry Pi, connect it before powering up the Pi. Connecting the monitor after power up tends to not work (blank screen).
 
@@ -64,7 +64,7 @@ Add the following lines to the end of the file:
 dtparam=i2c_baudrate=75000
 dtoverlay=miniuart-bt
 ```
-If the Raspberry Pi in use is a Pi 3 model or older (not a Pi 4) then also add this line:
+If the Raspberry Pi in use is a Pi 3 model or older (not a Pi 4 or 5) then add this line:
 ```
 core_freq=250
 ```
@@ -72,7 +72,15 @@ core_freq=250
 ```
 dtoverlay=act-led,gpio=24
 dtparam=act_led_trigger=heartbeat
+```
+If the Raspberry Pi in use is a Pi 4 model or older (not a Pi 5) then add this line:
+```
 dtoverlay=gpio-shutdown,gpio_pin=18,debounce=5000
+```
+If the Raspberry Pi in use is a Pi 5 model then add these lines:
+```
+dtoverlay=uart0-pi5
+dtoverlay=i2c1-pi5
 ```
 Save and exit the editor (CTRL-X, Y, ENTER)
 
@@ -82,9 +90,11 @@ The first line sets the transfer rate on the I2C bus (which is used to communica
 
 The "dtoverlay=miniuart-bt" line moves the high performance UART from the Bluetooth device to the GPIO pins, which is needed for setups like the S32_BPill that use the serial port as the communications channel to the nodes.
 
-The "core_freq" line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the "core_freq" line should be omitted (as per the Raspberry Pi documentation [here](https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md)).
+The "core_freq" line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 or Pi 5 is being used, the "core_freq" line should be omitted (as per the Raspberry Pi documentation [here](https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md)).
 
 For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_trigger=heartbeat" lines configure a Raspberry-Pi-heartbeat signal that the BPill processor monitors to track the status of the Pi. The "dtoverlay=gpio-shutdown..." line makes it so the shutdown button still operates if the RotorHazard server is not running.
+
+If the Raspberry Pi 5 is being used, the "dtoverlay=uart0-pi5" and "dtoverlay=i2c1-pi5" lines configure the devices to operate similar to how they do with the Pi 3 & 4. 
 
 
 ### 4. Perform System Update
@@ -102,7 +112,7 @@ sudo apt install python3-dev python3-venv libffi-dev python3-smbus build-essenti
 Enter the following commands to setup the Python virtual environment:
 ```
 cd ~
-python -m venv .venv
+python -m venv --system-site-packages .venv
 ```
 Configure the user shell to automatically activate the Python virtual environment by entering the command `nano .bashrc` to edit the ".bashrc" file and adding the following lines to the end of the file:
 ```
@@ -313,7 +323,7 @@ java -version
 ```
 If the response is "command not found" then Java needs to be installed.
 
-For the Raspberry Pi 3 or Pi 4, use the following command:
+For the Raspberry Pi 3 or newer, use the following command:
 ```
 sudo apt install default-jdk-headless
 ```
@@ -372,7 +382,7 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 4. Open up a command prompt and navigate to the topmost RotorHazard directory.
 
-5. Create a Python virtual environment ('venv') by entering: ```python -m venv venv```
+5. Create a Python virtual environment ('venv') by entering: ```python -m venv --system-site-packages .venv```
 
 6. Activate the Python virtual environment ('venv'):
 
