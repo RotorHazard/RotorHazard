@@ -78,6 +78,7 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
 def getPythonVersionStr():
     return sys.version.split()[0]
 
+# True if the given version ('verStr') is higher than or equal to the specified version
 def checkVersionStr(verStr, majorVer, minorVer):
     verList = verStr.split('.')
     return int(verList[0]) >= int(majorVer) and int(verList[1]) >= int(minorVer)
@@ -88,22 +89,82 @@ def idAndLogSystemInfo():
     Is_sys_raspberry_pi_flag = False
     S32_BPill_board_flag = False
     try:
-        modelStr = None
-        try:
-            with open("/proc/device-tree/model", 'r') as fileHnd:
-                modelStr = fileHnd.read()
-        except:
-            pass
+        modelStr = getHostModelStr()
         if modelStr and "raspberry pi" in modelStr.lower():
             Is_sys_raspberry_pi_flag = True
             logger.info("Host machine: " + modelStr.strip('\0'))
-        logger.info("Host OS: {} {}".format(platform.system(), platform.release()))
+        hostInfoStr = getHostOsInfoStr()
+        if hostInfoStr:
+            logger.info("Host OS: {}".format(hostInfoStr))
         logger.info("Python version: {}".format(getPythonVersionStr()))
         S32_BPill_board_flag = RH_GPIO.check_input_tied_low(RHGPIO_S32ID_PIN)
         if S32_BPill_board_flag:
             logger.info("S32_BPill board detected")
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
+
+# Returns an informational string about the host model / machine, or None if unable
+def getHostModelStr():
+    _modelStr = None
+    try:
+        try:
+            with open("/proc/device-tree/model", 'r') as fileHnd:
+                _modelStr = fileHnd.read()
+        except:
+            pass
+    except Exception as ex:
+        logger.debug("Error in 'getHostModelStr': {}".format(ex))
+    return _modelStr
+
+# Returns an informational string about the host operating system, or None if unable
+def getHostOsInfoStr():
+    _hostInfoStr = None
+    try:
+        osRelStr = getOsReleasePrettyName()
+        if osRelStr:
+            _hostInfoStr = "{}{} ({} {})".format( \
+                osRelStr, getOsBitSizeStr(" "), platform.system(), platform.release())
+        else:
+            _hostInfoStr = "{} {}{}".format(platform.system(), platform.release(), getOsBitSizeStr(" "))
+    except Exception as ex:
+        logger.debug("Error in 'getHostOsInfoStr': {}".format(ex))
+    return _hostInfoStr
+
+# Reads the '/etc/os-release' file and returns the value of the PRETTY_NAME entry; or None if unsuccessful
+def getOsReleasePrettyName():
+    _prettyNameStr = None
+    try:
+        etcOsReleasePath = '/etc/os-release'
+        delim1Str = 'PRETTY_NAME="'
+        delim2Str = '"'
+        if os.path.exists(etcOsReleasePath):
+            with open(etcOsReleasePath, 'r') as fileHnd:
+                relInfoStr = fileHnd.read()
+            sPos = relInfoStr.find(delim1Str)
+            if sPos >= 0:
+                sPos += len(delim1Str)
+                ePos = relInfoStr.find(delim2Str, sPos)
+                if ePos > sPos:
+                    _prettyNameStr = relInfoStr[sPos:ePos]
+    except Exception as ex:
+        logger.debug("Error in 'getOsReleasePrettyName': {}".format(ex))
+    return _prettyNameStr
+
+# Returns a string indicating the bit size of the operating system (32 or 64-bit), or an empty string if unable
+def getOsBitSizeStr(prefixStr=None, suffixStr="-bit"):
+    _bitSizeStr = ''
+    try:
+        fetchedStr = subprocess.check_output(['getconf', 'LONG_BIT']).decode("utf-8").rstrip()
+        if fetchedStr and len(fetchedStr) > 0 and len(fetchedStr) <= 3 and \
+                        fetchedStr[0].isdigit() and fetchedStr[1].isdigit():
+            _bitSizeStr = fetchedStr  # expected return string is "32" or "64"
+            if prefixStr:
+                _bitSizeStr = prefixStr + _bitSizeStr
+            if suffixStr:
+                _bitSizeStr = _bitSizeStr + suffixStr
+    except Exception as ex:
+        logger.debug("Error in 'getOsBitSizeStr': {}".format(ex))
+    return _bitSizeStr
 
 # Returns True if Raspberry Pi hardware detected
 def is_sys_raspberry_pi():
@@ -553,6 +614,7 @@ def getPilotFreqsStr(rhapi, sep_str, spoken_flag):
 def cleanVarName(varStr): 
     return re.sub(r'\W|^(?=\d)','_', varStr)
 
+# Logs a warning message if the version of python in use is lower than the specified version
 def checkPythonVersion(majorVer, minorVer):
     try:
         verStr = getPythonVersionStr()
