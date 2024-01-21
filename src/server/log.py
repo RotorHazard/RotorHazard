@@ -318,7 +318,8 @@ def delete_old_log_files(num_keep_val, lfname, lfext, err_str):
     return num_del, err_str
 
 
-def create_log_files_zip(logger, config_file, db_file):
+def create_log_files_zip(logger, config_file, db_file, boot_config_file="/boot/config.txt", \
+                         boot_config_name="boot_config.txt"):
     zip_file_obj = None
     try:
         if os.path.exists(LOG_DIR_NAME):
@@ -333,11 +334,16 @@ def create_log_files_zip(logger, config_file, db_file):
                 if root == LOG_DIR_NAME:  # don't include sub-directories
                     for fname in files:
                         zip_file_obj.write(os.path.join(root, fname))
-            # also include configuration and database files
-            if config_file and os.path.isfile(config_file):
-                zip_file_obj.write(config_file)
-            if db_file and os.path.isfile(db_file):
-                zip_file_obj.write(db_file)
+            try:
+                # also include configuration, database, and OS boot-config files
+                if config_file and os.path.isfile(config_file):
+                    zip_file_obj.write(config_file)
+                if db_file and os.path.isfile(db_file):
+                    zip_file_obj.write(db_file)
+                if boot_config_file and os.path.isfile(boot_config_file):
+                    zip_file_obj.write(boot_config_file, boot_config_name)
+            except Exception:
+                logger.exception("Error adding files to log-files .zip file")
             zip_file_obj.close()
             return zip_path_name
     except Exception:
