@@ -669,7 +669,7 @@ def on_join_cluster_ex(data=None):
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
                 })
-    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, RaceContext.serverstate)
+    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, RaceContext.serverstate.info_dict)
 
 @SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
