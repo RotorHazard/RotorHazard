@@ -868,12 +868,6 @@
 			var slot_id = parseInt($(this).data('slot'));
 			var pilot_id = parseInt($(this).val());
 
-			var data = {
-				heat: heat_id,
-				slot_id: slot_id,
-				pilot: pilot_id
-			};
-
 			// switch none to pilot if needed
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			var slot = heat.slots.find(obj => {return obj.id == slot_id});
@@ -881,9 +875,15 @@
 				slot.pilot_id = pilot_id;
 				if (slot.method == -1) {
 					slot.method = 0;
-					data.method = 0;
 				}
 			}
+
+			var data = {
+				heat: heat_id,
+				slot_id: slot_id,
+				pilot: pilot_id,
+				method: slot.method
+			};
 
 			socket.emit('alter_heat', data);
 		});

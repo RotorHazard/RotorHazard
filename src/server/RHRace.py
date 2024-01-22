@@ -87,7 +87,7 @@ class RHRace():
                 'heat_id': self.current_heat,
                 })
 
-            self._racecontext.rhui.emit_priority_message(self.__("Next race begins in {0:01d}:{1:02d}".format(int(m), int(s))), True)
+            # self._racecontext.rhui.emit_priority_message(self.__("Next race begins in {0:01d}:{1:02d}".format(int(m), int(s))), True)
 
             logger.info("Scheduling race in {0:01d}:{1:02d}".format(int(m), int(s)))
         else:

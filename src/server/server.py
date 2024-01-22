@@ -46,7 +46,7 @@ import importlib
 # import copy
 from functools import wraps
 
-from flask import Flask, send_file, request, Response, session, templating, redirect, abort, copy_current_request_context
+from flask import Flask, send_file, request, Response, session, templating, redirect, abort, copy_current_request_context, make_response
 from flask_socketio import SocketIO, emit
 
 import socket
@@ -323,6 +323,14 @@ def render_event():
     '''Route to heat summary page.'''
     return render_template('event.html', num_nodes=RaceContext.race.num_nodes, serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
 
+@APP.route('/event/heat/<int:heat_id>')
+def render_event_heat(heat_id):
+    '''Route to heat display for event management.'''
+    return render_template('eventheatwop.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        num_nodes=RaceContext.race.num_nodes,
+        heat_id=heat_id
+    )
+
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
@@ -342,6 +350,25 @@ def render_run():
             })
 
     return render_template('run.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
+        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+        num_nodes=RaceContext.race.num_nodes,
+        nodes=nodes,
+        cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
+
+@APP.route('/stream/race-timer')
+def render_race_timer():
+    '''Route to race management page.'''
+    frequencies = [node.frequency for node in RaceContext.interface.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
+    return render_template('streamracetimer.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
         vrx_enabled=RaceContext.vrx_manager.isEnabled(),
         num_nodes=RaceContext.race.num_nodes,
@@ -603,6 +630,17 @@ def redirect_race():
 @APP.route('/heats')
 def redirect_heats():
     return redirect("/event", code=301)
+
+@APP.route('/touchportal/start-race', methods =['POST'])
+def touchportal_start_race():
+    on_stage_race()
+    return make_response("", 200)
+
+
+@APP.route('/touchportal/stop-race', methods =['POST'])
+def touchportal_stop_race():
+    on_stop_race()
+    return make_response("", 200)
 
 #
 # Background threads
@@ -1286,9 +1324,9 @@ def on_add_pilot():
 
 def is_photo_used(pilots, pilotId, photoName):
     for pilot in pilots:
-        if(pilot.id != pilotId and pilot.photo == photoName):
+        if(pilot.id != pilotId and pilot.photo == photoName and pilot.photo != '' and pilot.photo != None):
+            logger.info("Photo used by pilot " + str(pilot.id))
             return True
-    
     return False
 
 @SOCKET_IO.on('alter_pilot')
@@ -1297,11 +1335,13 @@ def on_alter_pilot(data):
     '''Update pilot.'''
 
     pilots = RaceContext.rhdata.get_pilots()
-    previousPhoto = ''
+    pilot = RaceContext.rhdata.get_pilot(data['pilot_id'])
+
+    previousPhoto = pilot.photo
 
     _pilot, race_list = RaceContext.rhdata.alter_pilot(data)
 
-    if('photo' in data and data['photo'] == None and previousPhoto != None):
+    if('photo' in data and (data['photo'] == None or data['photo'] == '') and (previousPhoto != None and previousPhoto != '')):
         photoUsed = is_photo_used(pilots, data['pilot_id'], previousPhoto)
         
         if(photoUsed):
@@ -1329,12 +1369,14 @@ def on_delete_pilot(data):
     '''Delete pilot.'''
 
     pilots = RaceContext.rhdata.get_pilots()
-    previousPhoto = ''
+    pilot = RaceContext.rhdata.get_pilot(data['pilot'])
+
+    previousPhoto = pilot.photo
 
     result = RaceContext.rhdata.delete_pilot(data['pilot'])
 
-    if(previousPhoto != None):
-        if(is_photo_used(pilots, data['pilot_id'], previousPhoto)):
+    if(previousPhoto != None and previousPhoto != ''):
+        if(is_photo_used(pilots, data['pilot'], previousPhoto)):
             logger.info("Photo used. Will not be deleted")
         else:
             logger.info("Photo not used. Will be deleted")
