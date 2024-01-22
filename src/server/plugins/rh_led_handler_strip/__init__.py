@@ -7,6 +7,7 @@ import random
 import math
 from time import monotonic
 
+ledOnOffInvokedFlag = False  # flagging to allow exit from 'rainbowCycleLoopFn()'
 
 def leaderProxy(args):
     try:
@@ -23,6 +24,9 @@ def leaderProxy(args):
         return False
 
 def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
+    global ledOnOffInvokedFlag
+    ledOnOffInvokedFlag = True  # flagging to allow exit from 'rainbowCycleLoopFn()'
+
     if pattern == ColorPattern.SOLID:
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color)
@@ -92,15 +96,30 @@ def rainbowCycle(args):
 
     if args and 'wait_ms' in args:
         wait_ms = args['wait_ms']
+        if wait_ms < 1:
+            wait_ms = 1
     else:
         wait_ms = 2
 
-    while True:
-        for j in range(256):
-            for i in range(strip.numPixels()):
-                strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
-            strip.show()
-            gevent.sleep(wait_ms/1000.0)
+    def rainbowCycleLoopFn():
+        try:
+            global ledOnOffInvokedFlag
+            ledOnOffInvokedFlag = False
+            while not ledOnOffInvokedFlag:  # loop until 'led_on()' or  'led_off()' called
+                for j in range(256):
+                    for i in range(strip.numPixels()):
+                        strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+                    strip.show()
+                    if ledOnOffInvokedFlag:
+                        return
+                    gevent.sleep(wait_ms/1000.0)
+        except Exception as ex:
+            print("Exception in 'rainbowCycleLoopFn()': {}".format(ex))
+    global ledOnOffInvokedFlag
+    ledOnOffInvokedFlag = True  # give any previously spawned 'rainbowCycleLoopFn()' a chance to exit
+    gevent.sleep(wait_ms/500.0)
+    gevent.spawn(rainbowCycleLoopFn)
+    return True
 
 '''  #pylint: disable=pointless-string-statement
 def theaterChaseRainbow(strip, wait_ms=25):

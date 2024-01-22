@@ -583,6 +583,8 @@ def start_background_threads(forceFlag=False):
     if BACKGROUND_THREADS_ENABLED or forceFlag:
         BACKGROUND_THREADS_ENABLED = True
         RaceContext.interface.start()
+        if getattr(RaceContext.led_manager,"setEnabledFlag"):
+            RaceContext.led_manager.setEnabledFlag(True)
         global HEARTBEAT_THREAD
         if HEARTBEAT_THREAD is None:
             HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
@@ -594,6 +596,8 @@ def stop_background_threads():
         stop_shutdown_button_thread()
         if RaceContext.cluster:
             RaceContext.cluster.shutdown()
+        if getattr(RaceContext.led_manager,"setEnabledFlag"):
+            RaceContext.led_manager.setEnabledFlag(False)
         global BACKGROUND_THREADS_ENABLED
         BACKGROUND_THREADS_ENABLED = False
         global HEARTBEAT_THREAD

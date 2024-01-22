@@ -33,6 +33,7 @@ class LEDEventManager:
         self.strip = strip
         self._racecontext = RaceContext
         self._rhapi = RHAPI
+        self.enabledFlag = True
 
         # hold
         self.registerEffect(LEDEffect("Hold", lambda *_args: None, {
@@ -60,6 +61,11 @@ class LEDEventManager:
 
     def isEnabled(self):
         return True
+
+    def setEnabledFlag(self, flgVal):
+        self.enabledFlag = flgVal
+        if not flgVal:
+            self.clear()
 
     def registerEffect(self, effect):
         self.eventEffects[effect['name']] = effect
@@ -140,7 +146,7 @@ class LEDEventManager:
         result = args['handler_fn'](args)
         if result == False:
             logger.debug('LED effect %s produced no output', args['handler_fn'])
-        if 'preventIdle' not in args or not args['preventIdle']:
+        if self.enabledFlag and ('preventIdle' not in args or not args['preventIdle']):
             if 'time' in args:
                 time = args['time']
             else:
@@ -153,17 +159,18 @@ class LEDEventManager:
 
     @catchLogExceptionsWrapper
     def activateIdle(self):
-        gevent.idle()
-        event = None
-        if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
-            event = LEDEvent.IDLE_DONE
-        elif self._racecontext.race.race_status == RHRace.RaceStatus.READY:
-            event = LEDEvent.IDLE_READY
-        elif self._racecontext.race.race_status == RHRace.RaceStatus.RACING:
-            event = LEDEvent.IDLE_RACING
+        if self.enabledFlag:
+            gevent.idle()
+            event = None
+            if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
+                event = LEDEvent.IDLE_DONE
+            elif self._racecontext.race.race_status == RHRace.RaceStatus.READY:
+                event = LEDEvent.IDLE_READY
+            elif self._racecontext.race.race_status == RHRace.RaceStatus.RACING:
+                event = LEDEvent.IDLE_RACING
 
-        if event and event in self.events:
-            self.eventEffects[self.events[event]]['handler_fn'](self.idleArgs[event])
+            if event and event in self.events:
+                self.eventEffects[self.events[event]]['handler_fn'](self.idleArgs[event])
 
 
 class NoLEDManager():
@@ -172,6 +179,9 @@ class NoLEDManager():
 
     def isEnabled(self):
         return False
+
+    def setEnabledFlag(self, flgVal):
+        pass
 
     def __getattr__(self, *_args, **_kwargs):
         def nothing(*_args, **_kwargs):
@@ -189,6 +199,9 @@ class ClusterLEDManager():
 
     def isEnabled(self):
         return False
+
+    def setEnabledFlag(self, flgVal):
+        pass
 
     def registerEffect(self, effect):
         self.eventEffects[effect['name']] = effect

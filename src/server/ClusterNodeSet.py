@@ -134,6 +134,7 @@ class SecondaryNode:
         self.start_connection()
 
     def start_connection(self):
+        logger.debug("Starting connection for secondary timer {}".format(self.id+1))
         self.startConnectTime = 0
         self.lastContactTime = -1
         self.firstContactTime = 0
@@ -151,11 +152,12 @@ class SecondaryNode:
             self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
         self.timeDiffMedianMs = 0
         self.progStartEpoch = 0
-        gevent.spawn(self.secondary_worker_thread)
         self.runningFlag = True
+        gevent.spawn(self.secondary_worker_thread)
 
     def secondary_worker_thread(self):
         self.startConnectTime = monotonic()
+        logger.debug("Started worker thread for secondary timer {}".format(self.id+1))
         gevent.sleep(0.1)
         while self.runningFlag:
             try:
@@ -277,6 +279,7 @@ class SecondaryNode:
                     logger.exception("Exception in SecondaryNode worker thread for secondary {} (sio.conn={})".\
                                      format(self.id+1, self.sio.connected))
                     gevent.sleep(9)
+        logger.debug("Exiting worker thread for secondary timer {}".format(self.id+1))
 
     def emit(self, event, data = None):
         try:
@@ -699,11 +702,12 @@ class ClusterNodeSet:
                 del args['_eventName']
                 payload['evt_args'] = json.dumps(args, default=lambda _: '<not serializiable>')
                 self.emitEventTrigger(payload)
-        except Exception as ex:
-            logger.exception("Exception in 'Events.trigger()': " + ex)
+        except:
+            logger.exception("Exception in 'Events.trigger()'")
 
     def shutdown(self):
         for secondary in self.secondaries:
+            logger.debug("Setting 'runningFlag' to False on secondary timer {}".format(secondary.id+1))
             secondary.runningFlag = False
 
     def addSecondary(self, secondary):
