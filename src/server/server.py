@@ -2324,6 +2324,13 @@ def heartbeat_thread_function():
                 RaceContext.sensors.update_environmental_data()
                 RaceContext.rhui.emit_environmental_data()
 
+            # log environment data occasionally:
+            if (heartbeat_thread_function.iter_tracker % (Config.GENERAL['LOG_SENSORS_DATA_RATE']*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+                if RaceContext.sensors.sensors_dict:
+                    logger.info("Sensor snapshot:")
+                    for name, obj in RaceContext.sensors.sensors_dict.items():
+                        logger.info(f"{name}: {obj.getReadings()}")
+
             time_now = monotonic()
 
             # check if race is to be started
