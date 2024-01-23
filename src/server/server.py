@@ -2330,7 +2330,8 @@ def heartbeat_thread_function():
             if (heartbeat_thread_function.iter_tracker % (Config.GENERAL['LOG_SENSORS_DATA_RATE']*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 if RaceContext.sensors.sensors_dict:
                     logger.info("Sensor snapshot:")
-                    logger.info(json.dumps(RaceContext.sensors.sensors_dict, indent=2))
+                    for name, obj in RaceContext.sensors.sensors_dict.items():
+                        logger.info(f"{name}: {obj.getReadings()}")
 
             time_now = monotonic()
 
