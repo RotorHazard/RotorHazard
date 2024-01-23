@@ -72,8 +72,7 @@ class EventManager:
                     else:
                         args = evt_args
 
-                if ev == Evt.ALL:
-                    args['_eventName'] = event
+                args['_eventName'] = event
 
                 if handler['unique']:
                     threadName = name + str(monotonic())

@@ -134,7 +134,8 @@ class LEDEventManager:
 
     @catchLogExceptionsWrapper
     def activateEffect(self, args):
-        if 'caller' in args and args['caller'] == 'shutdown':
+        if args.get('_eventName') == Evt.SHUTDOWN:
+            self.clear()
             return False
 
         result = args['handler_fn'](args)
