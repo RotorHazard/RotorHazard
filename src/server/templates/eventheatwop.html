@@ -68,10 +68,10 @@
 
 					if(spotterheat !== undefined)
 					{
-						if (spotterheat.note) {
+						if (spotterheat.name) {
 							var spottingHeatname = spotterheat.name;
 						} else {
-							var spottingHeatname = __('Heat') + ' ' + spotterheat.heat_id;
+							var spottingHeatname = __('Heat') + ' ' + spotterheat.id;
 						}
 
 						$('#spottingHeat-id').html(spottingHeatname);
