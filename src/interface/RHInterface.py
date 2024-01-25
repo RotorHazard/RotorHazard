@@ -140,7 +140,7 @@ class RHInterface(BaseHardwareInterface):
         self.nodes = Plugins(suffix='node')
         self.discover_nodes(*args, **kwargs)
 
-        self.data_loggers = []
+        self.data_loggers = {}
         if len(self.nodes) > 0:
             for node in self.nodes:
                 node.frequency = self.get_value_16(node, READ_FREQUENCY)
@@ -158,10 +158,9 @@ class RHInterface(BaseHardwareInterface):
                                      node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
     
                     if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                        self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
+                        self.data_loggers[node.index] = open("data_{0}.csv".format(node.index+1), 'w')
                         logger.info("Data logging enabled for node {0}".format(node.index+1))
-                    else:
-                        self.data_loggers.append(None)
+
                 else:
                     logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
                 if node.api_level >= 32:
@@ -357,8 +356,8 @@ class RHInterface(BaseHardwareInterface):
                                     node.node_nadir_rssi = rssi_val
 
                             if node.api_level >= 18:
-                                data_logger = self.data_loggers[node.index]
-                                if data_logger:
+                                if node.index in self.data_loggers:
+                                    data_logger = self.data_loggers[node.index]
                                     data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15}\n".format(readtime,lap_id, int(ms_val), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, pn_history.peakRssi, pn_history.peakFirstTime, pn_history.peakLastTime, pn_history.nadirRssi, pn_history.nadirFirstTime, pn_history.nadirLastTime))
 
                         else:  # if newer API functions not supported
