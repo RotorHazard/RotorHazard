@@ -37,6 +37,11 @@
 	}
 
 	$(document).ready(function () {
+		if ('{{ getOption('calibrationMode') }}' == '0') {
+			$('#load-transitions').prop('hidden', false);
+			$('#save-transitions').prop('hidden', false);
+		}
+
 		socket.on('ui', function (msg) {
 			if (msg.page == 'marshal') {
 				$('#custom-ui').empty();
@@ -1136,8 +1141,8 @@
 					<input type="number" id="enterat" value="" placeholder="{{ __('EnterAt') }}" disabled />
 					<label for="exitat" class="screen-reader-text">{{ __('ExitAt') }}</label>
 					<input type="number" id="exitat" value="" placeholder="{{ __('ExitAt') }}" disabled />
-					<button id="load-transitions" disabled>{{ __('Load from Node') }}</button>
-					<button id="save-transitions" disabled>{{ __('Save to Node') }}</button>
+					<button id="load-transitions" hidden disabled>{{ __('Load from Node') }}</button>
+					<button id="save-transitions" hidden disabled>{{ __('Save to Node') }}</button>
 				</div>
 				<div class="control-block">
 					<h3>{{ __('Modify') }}</h3>
