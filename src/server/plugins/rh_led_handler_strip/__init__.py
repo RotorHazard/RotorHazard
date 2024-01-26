@@ -90,13 +90,15 @@ def rainbowCycle(args):
     else:
         return False
 
-    if args and 'wait_ms' in args:
+    if args.get('wait_ms') and wait_ms > 0:
         wait_ms = args['wait_ms']
     else:
         wait_ms = 2
 
     while True:
         for j in range(256):
+            if args.get('_effect') and args['_effect'].terminate_flag:
+                return
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
             strip.show()

@@ -25,8 +25,8 @@ class LEDEventManager:
     events = {}
     idleArgs = {}
     eventEffects = {}
-    eventThread = None
     displayColorCache = []
+    running_effect = None
 
     def __init__(self, eventmanager, strip, RaceContext, RHAPI):
         self.Events = eventmanager
@@ -62,7 +62,7 @@ class LEDEventManager:
         return True
 
     def registerEffect(self, effect):
-        self.eventEffects[effect['name']] = effect
+        self.eventEffects[effect.name] = effect
         return True
 
     def getRegisteredEffects(self):
@@ -82,12 +82,12 @@ class LEDEventManager:
             self.Events.off(event, 'LED')
             return True
 
-        args = copy.deepcopy(self.eventEffects[name]['default_args'])
+        args = copy.deepcopy(self.eventEffects[name].default_args)
         if args is None:
             args = {}
 
         args.update({
-            'handler_fn': self.eventEffects[name]['handler_fn'],
+            'effect': self.eventEffects[name],
             'strip': self.strip,
             'manager': self,
             'RHAPI': self._rhapi
@@ -137,23 +137,33 @@ class LEDEventManager:
         if 'caller' in args and args['caller'] == 'shutdown':
             return False
 
-        result = args['handler_fn'](args)
+        if self.running_effect:
+            self.running_effect.stop()
+            self.running_effect.fn_thread.join()
+
+        effect = args['effect']
+        result = effect.run(args)
+        self.running_effect = effect
+
         if result == False:
             logger.debug('LED effect %s produced no output', args['handler_fn'])
         if 'preventIdle' not in args or not args['preventIdle']:
-            if 'time' in args:
-                time = args['time']
-            else:
-                time = 0
+            time = args.get('time')
 
             if time:
                 gevent.sleep(float(time))
 
-            self.activateIdle()
+            if self.running_effect == effect:
+                self.activateIdle()
 
     @catchLogExceptionsWrapper
     def activateIdle(self):
         gevent.idle()
+
+        if self.running_effect:
+            self.running_effect.stop()
+            self.running_effect.fn_thread.join()
+
         event = None
         if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
             event = LEDEvent.IDLE_DONE
@@ -163,7 +173,9 @@ class LEDEventManager:
             event = LEDEvent.IDLE_RACING
 
         if event and event in self.events:
-            self.eventEffects[self.events[event]]['handler_fn'](self.idleArgs[event])
+            effect = self.eventEffects[self.events[event]]
+            effect.run(self.idleArgs[event])
+            self.running_effect = effect
 
 
 class NoLEDManager():
@@ -210,8 +222,6 @@ def Color(red, green, blue):
     and 255 is the highest intensity.
     """
     return (red << 16) | (green << 8) | blue
-
-
 
 class ColorVal:
     NONE = Color(0,0,0)
@@ -315,15 +325,21 @@ class LEDEvent:
         },
     ]
 
-class LEDEffect(UserDict):
+class LEDEffect():
     def __init__(self, label, handler_fn, valid_events, default_args=None, name=None):
         if name is None:
             name = cleanVarName(label)
 
-        UserDict.__init__(self, {
-            "name": name,
-            "label": label,
-            "handler_fn": handler_fn,
-            "valid_events": valid_events,
-            "default_args": default_args
-        })
+        self.label = label
+        self.handler_fn = handler_fn
+        self.valid_events = valid_events
+        self.default_args = default_args
+        self.name = name
+        self.fn_thread = None
+
+    def run(self, args):
+        self.terminate_flag = False
+        self.fn_thread = gevent.spawn(self.handler_fn, {**args, '_effect':self})
+
+    def stop(self):
+        self.terminate_flag = True
