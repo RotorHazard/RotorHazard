@@ -134,7 +134,8 @@ class LEDEventManager:
 
     @catchLogExceptionsWrapper
     def activateEffect(self, args):
-        if 'caller' in args and args['caller'] == 'shutdown':
+        if args.get('_eventName') == Evt.SHUTDOWN:
+            self.clear()
             return False
 
         if self.running_effect:
@@ -302,10 +303,6 @@ class LEDEvent:
         {
             "event": Evt.STARTUP,
             "label": "Server Startup"
-        },
-        {
-            "event": Evt.SHUTDOWN,
-            "label": "Server Shutdown"
         },
         {
             "event": Evt.CLUSTER_JOIN,
