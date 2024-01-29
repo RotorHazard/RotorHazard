@@ -592,6 +592,7 @@ def stop_background_threads():
         stop_shutdown_button_thread()
         if RaceContext.cluster:
             RaceContext.cluster.shutdown()
+        RaceContext.led_manager.clear()  # stop any LED effect in progress
         global BACKGROUND_THREADS_ENABLED
         BACKGROUND_THREADS_ENABLED = False
         global HEARTBEAT_THREAD

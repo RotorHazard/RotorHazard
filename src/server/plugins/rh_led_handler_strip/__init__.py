@@ -90,15 +90,18 @@ def rainbowCycle(args):
     else:
         return False
 
-    if args.get('wait_ms') and wait_ms > 0:
-        wait_ms = args['wait_ms']
-    else:
+    effect_obj = args.get('_effect')
+    if not hasattr(effect_obj, 'is_terminated'):
+        return False
+
+    wait_ms = args.get('wait_ms', 2)
+    if wait_ms <= 0:
         wait_ms = 2
 
     while True:
         for j in range(256):
-            if args.get('_effect') and args['_effect'].terminate_flag:
-                return
+            if effect_obj.is_terminated():
+                return True
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
             strip.show()
@@ -320,6 +323,10 @@ def larsonScanner(args):
     else:
         return False
 
+    effect_obj = args.get('_effect')
+    if not hasattr(effect_obj, 'is_terminated'):
+        return False
+
     a = {
         'color': ColorVal.WHITE,
         'eyeSize': 4,
@@ -337,6 +344,8 @@ def larsonScanner(args):
 
     for _k in range(a['iterations']):
         for i in range(strip.numPixels()-a['eyeSize']-1):
+            if effect_obj.is_terminated():
+                return True
             strip.setPixelColor(i-1, ColorVal.NONE)
 
             strip.setPixelColor(i, dim(a['color'], 0.25))
@@ -346,9 +355,13 @@ def larsonScanner(args):
             strip.show()
             gevent.sleep(a['speedDelay']/1000.0)
 
+        if effect_obj.is_terminated():
+            return True
         gevent.sleep(a['returnDelay']/1000.0)
 
         for i in range(strip.numPixels()-a['eyeSize']-2, -1, -1):
+            if effect_obj.is_terminated():
+                return True
             if i < strip.numPixels()-a['eyeSize']-2:
                 strip.setPixelColor(i+a['eyeSize']+2, ColorVal.NONE)
 
@@ -359,6 +372,8 @@ def larsonScanner(args):
             strip.show()
             gevent.sleep(a['speedDelay']/1000.0)
 
+        if effect_obj.is_terminated():
+            return True
         gevent.sleep(a['returnDelay']/1000.0)
 
 def dim(color, decay):
