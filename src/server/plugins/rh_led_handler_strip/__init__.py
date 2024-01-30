@@ -1,17 +1,11 @@
 '''LED visual effects'''
 
 from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, LEDEffectExit
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, effect_delay
 import gevent
 import random
 import math
 from time import monotonic
-
-def sleep_or_exit(ms, effect_obj):
-    if not hasattr(effect_obj, 'is_terminated') or effect_obj.is_terminated():
-        raise LEDEffectExit
-    if ms:
-        gevent.sleep(ms/1000.0)
 
 def leaderProxy(args):
     try:
@@ -64,7 +58,7 @@ def chase(args):
 
     for i in range(a['iterations'] * sum(a['pattern'])):
         led_on(strip, a['color'], a['pattern'], i)
-        gevent.sleep(a['speedDelay']/1000.0)
+        effect_delay(a['speedDelay'], args.get('_effect'))
 
 def color_wheel(pos):
     """Generate rainbow colors across 0-255 positions."""
@@ -95,21 +89,16 @@ def rainbowCycle(args):
     else:
         return False
 
-    effect_obj = args.get('_effect')
-    sleep_or_exit(0, effect_obj)
-
     wait_ms = args.get('wait_ms', 2)
     if wait_ms <= 0:
         wait_ms = 2
 
     while True:
         for j in range(256):
-            if effect_obj.is_terminated():
-                return True
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
             strip.show()
-            sleep_or_exit(wait_ms, effect_obj)
+            effect_delay(wait_ms, args.get('_effect'))
 
 '''  #pylint: disable=pointless-string-statement
 def theaterChaseRainbow(strip, wait_ms=25):
@@ -120,7 +109,7 @@ def theaterChaseRainbow(strip, wait_ms=25):
             for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, color_wheel((i+j) % 255))
             strip.show()
-            gevent.sleep(wait_ms/1000.0)
+            effect_delay(wait_ms, args.get('_effect'))
             for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, 0)
 '''
@@ -172,7 +161,7 @@ def colorWipe(args):
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, a['color'])
         strip.show()
-        gevent.sleep(a['speedDelay']/1000.0)
+        effect_delay(a['speedDelay'], args.get('_effect'))
 
 def fade(args):
     if 'strip' in args:
@@ -208,10 +197,10 @@ def fade(args):
                 c = dim(a['color'], j/float(a['steps']))
                 led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(a['speedDelay']/1000.0)
+                effect_delay(a['speedDelay'], args.get('_effect'))
 
             led_on(strip, a['color'], a['pattern'])
-            gevent.sleep(a['onTime']/1000.0)
+            effect_delay(a['onTime'], args.get('_effect'))
 
         # fade out
         if a['outSteps']:
@@ -220,11 +209,11 @@ def fade(args):
                 c = dim(a['color'], j/float(a['outSteps']))
                 led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(a['speedDelay']/1000.0)
+                effect_delay(a['speedDelay'], args.get('_effect'))
 
             led_off(strip)
 
-        gevent.sleep(a['offTime']/1000.0)
+        effect_delay(a['offTime'], args.get('_effect'))
 
 def sparkle(args):
     if 'strip' in args:
@@ -265,16 +254,13 @@ def sparkle(args):
                     strip.setPixelColor(px, a['color'])
 
         strip.show()
-        gevent.sleep(a['speedDelay']/1000.0)
+        effect_delay(a['speedDelay'], args.get('_effect'))
 
 def meteor(args):
     if 'strip' in args:
         strip = args['strip']
     else:
         return False
-
-    effect_obj = args.get('_effect')
-    sleep_or_exit(0, effect_obj)
 
     a = {
         'color': ColorVal.WHITE,
@@ -303,7 +289,7 @@ def meteor(args):
                 strip.setPixelColor(i-j, a['color'])
 
         strip.show()
-        sleep_or_exit(a['speedDelay'], effect_obj)
+        effect_delay(a['speedDelay'], args.get('_effect'))
 
 def stagingTrigger(args):
     stage_time = args['pi_staging_at_s']
@@ -318,7 +304,7 @@ def stagingTrigger(args):
             diff = stage_time - monotonic()
             diff_to_s = diff % 1
             if diff:
-                gevent.sleep(diff_to_s)
+                effect_delay(diff_to_s*1000, args.get('_effect'))
                 idx += 1
                 args['effect_fn'](args)
             else:
@@ -360,11 +346,9 @@ def larsonScanner(args):
                 strip.setPixelColor(i+j+1, a['color'])
             strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
             strip.show()
-            gevent.sleep(a['speedDelay']/1000.0)
+            effect_delay(a['speedDelay'], args.get('_effect'))
 
-        if effect_obj.is_terminated():
-            return True
-        gevent.sleep(a['returnDelay']/1000.0)
+        effect_delay(a['returnDelay'], args.get('_effect'))
 
         for i in range(strip.numPixels()-a['eyeSize']-2, -1, -1):
             if effect_obj.is_terminated():
@@ -377,11 +361,9 @@ def larsonScanner(args):
                 strip.setPixelColor(i+j+1, a['color'])
             strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
             strip.show()
-            gevent.sleep(a['speedDelay']/1000.0)
+            effect_delay(a['speedDelay'], args.get('_effect'))
 
-        if effect_obj.is_terminated():
-            return True
-        gevent.sleep(a['returnDelay']/1000.0)
+        effect_delay(a['returnDelay'], args.get('_effect'))
 
 def dim(color, decay):
     r = (color & 0x00ff0000) >> 16
