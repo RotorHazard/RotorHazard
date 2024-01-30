@@ -386,9 +386,9 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 6. Activate the Python virtual environment ('venv'):
 
-  * On a Windows system the command to use will likely be: ```venv\Scripts\activate.bat```
+  * On a Windows system the command to use will likely be: ```.venv\Scripts\activate.bat```
 
-  * On a Linux system the command to use will likely be: ```source venv/bin/activate```
+  * On a Linux system the command to use will likely be: ```source .venv/bin/activate```
 
 7. Using the same command prompt, navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
 
@@ -406,9 +406,9 @@ Note: If the above command fails with a message like "error: Microsoft Visual C+
 1. Open up a command prompt and navigate to the topmost RotorHazard directory.
 
 2. Activate the Python virtual environment ('venv')
-  * On a Windows system the command to use will likely be: ```venv\Scripts\activate.bat```
+  * On a Windows system the command to use will likely be: ```.venv\Scripts\activate.bat```
 
-  * On a Linux system the command to use will likely be: ```source venv/bin/activate```
+  * On a Linux system the command to use will likely be: ```source .venv/bin/activate```
 
 3. Using the same command prompt, navigate to the ```src/server``` directory.
 
@@ -437,9 +437,9 @@ To view the web-GUI interface, open up a web browser and enter into the address 
 
 4. Activate the Python virtual environment ('venv'):
 
-  * On a Windows system the command to use will likely be: ```venv\Scripts\activate.bat```
+  * On a Windows system the command to use will likely be: ```.venv\Scripts\activate.bat```
 
-  * On a Linux system the command to use will likely be: ```source venv/bin/activate```
+  * On a Linux system the command to use will likely be: ```source .venv/bin/activate```
 
 5. Using the command prompt, navigate to the ```src/server``` directory.
 
