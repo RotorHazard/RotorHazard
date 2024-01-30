@@ -3,21 +3,22 @@
 import time
 
 try:
-    import lgpio
-    import gpiozero
-    Real_GPIO_Zero_flag = True
-    Real_RPi_GPIO_flag = False
-    GPIO = {}
-except ImportError:
     try:
-        import RPi.GPIO as GPIO
-        Real_GPIO_Zero_flag = False
-        Real_RPi_GPIO_flag = True
-    except ImportError:
-        Real_GPIO_Zero_flag = False
+        import lgpio
+        import gpiozero
+        Real_GPIO_Zero_flag = True
         Real_RPi_GPIO_flag = False
         GPIO = {}
-except:  # need extra exception catch for Travis CI tests
+    except ImportError:
+        try:
+            import RPi.GPIO as GPIO
+            Real_GPIO_Zero_flag = False
+            Real_RPi_GPIO_flag = True
+        except ImportError:
+            Real_GPIO_Zero_flag = False
+            Real_RPi_GPIO_flag = False
+            GPIO = {}
+except:  # if failure then assume no hardware GPIO available
     Real_GPIO_Zero_flag = False
     Real_RPi_GPIO_flag = False
     GPIO = {}
