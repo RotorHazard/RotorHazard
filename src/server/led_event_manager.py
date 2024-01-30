@@ -132,20 +132,6 @@ class LEDEventManager:
 
         return RHUtils.hexToColor('#ffffff')
 
-    # Stops any currently-running effect and runs the given effect
-    def runNewEffect(self, new_effect, args):
-        result = False
-        if hasattr(new_effect, 'run_effect'):
-            cur_effect = self.running_effect
-            self.running_effect = None
-            if hasattr(cur_effect, 'stop_effect'):
-                cur_effect.stop_effect()  # terminate greenlet thread and wait for it to finish
-                if self.running_effect:  # if another effect got started while waiting for 'join' then
-                    return False         #  abort this effect
-            result = new_effect.run_effect(args)
-            self.running_effect = new_effect
-        return result
-
     # Activates the given effect
     @catchLogExceptionsWrapper
     def activateEffect(self, args):
@@ -153,31 +139,25 @@ class LEDEventManager:
             self.clear()
             return False
         new_effect = args.get('effect')
-        result = self.runNewEffect(new_effect, args)
-        if result == False:
-            logger.debug('LED effect %s produced no output', args.get('handler_fn'))
-        if not args.get('preventIdle', False):
-            time_val = args.get('time')
-            if not time_val:  # if zero or none then default to 1 second delay
-                time_val = 1
-            gevent.spawn_later(float(time_val), self.activateIdle, new_effect)
-        return True
 
-    # Activates the idle effect (if configured)
+        if self.running_effect:
+            self.running_effect.stop_effect()
+
+        new_effect.run_effect(args, self.get_idle_fn)
+        self.running_effect = new_effect
+
+    # Provides linkage to the idle effect (if configured)
     @catchLogExceptionsWrapper
-    def activateIdle(self, last_effect):
-        # if no current effect or effect has not changed during idle delay time
-        if (not self.running_effect) or (last_effect and last_effect == self.running_effect):
-            event = None
-            if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
-                event = LEDEvent.IDLE_DONE
-            elif self._racecontext.race.race_status == RHRace.RaceStatus.READY:
-                event = LEDEvent.IDLE_READY
-            elif self._racecontext.race.race_status == RHRace.RaceStatus.RACING:
-                event = LEDEvent.IDLE_RACING
-            if event and event in self.events:
-                idle_effect = self.eventEffects[self.events[event]]
-                self.runNewEffect(idle_effect, self.idleArgs[event])
+    def get_idle_fn(self):
+        if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
+            event = LEDEvent.IDLE_DONE
+        elif self._racecontext.race.race_status == RHRace.RaceStatus.READY:
+            event = LEDEvent.IDLE_READY
+        elif self._racecontext.race.race_status == RHRace.RaceStatus.RACING:
+            event = LEDEvent.IDLE_RACING
+
+        if event and event in self.events:
+            return (self.eventEffects[self.events[event]].handler_fn, self.idleArgs[event])
 
 
 class NoLEDManager():
@@ -323,6 +303,9 @@ class LEDEvent:
         },
     ]
 
+class LEDEffectExit(BaseException):
+    pass
+
 class LEDEffect():
     def __init__(self, label, handler_fn, valid_events, default_args=None, name=None):
         if name is None:
@@ -335,15 +318,32 @@ class LEDEffect():
         self.name = name
         self.fn_thread = None
         self.terminate_flag = False
+        self.idler = None
 
-    def run_effect(self, args):
+    def effect_runner(self, args):
+        try:
+            # run base effect
+            self.handler_fn(args)
+
+            # optional delay
+            time_val = args.get('time') or 0
+            gevent.sleep(time_val)
+
+            # run idler
+            if not self.terminate_flag:
+                idler_fn, idler_args = self.idler()
+                idler_fn(idler_args)
+        except LEDEffectExit:
+            logger.debug(f'LEDEffect "{self.label}" terminated early')
+
+    def run_effect(self, args, idler):
+        self.idler = idler
         self.terminate_flag = False
-        self.fn_thread = gevent.spawn(self.handler_fn, {**args, '_effect':self})
+        self.fn_thread = gevent.spawn(self.effect_runner, {**args, '_effect':self})
 
-    def stop_effect(self, wait_flag=True):
+    def stop_effect(self):
         self.terminate_flag = True
-        if wait_flag and hasattr(self.fn_thread, 'join'):
-            self.fn_thread.join(10)  # wait for thread to finish (up to timeout value)
+        self.fn_thread.join(0.01) #allow no more than 10ms to close thread
 
     def is_terminated(self):
         return self.terminate_flag

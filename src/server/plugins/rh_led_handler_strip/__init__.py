@@ -1,12 +1,17 @@
 '''LED visual effects'''
 
 from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, LEDEffectExit
 import gevent
 import random
 import math
 from time import monotonic
 
+def sleep_or_exit(ms, effect_obj):
+    if not hasattr(effect_obj, 'is_terminated') or effect_obj.is_terminated():
+        raise LEDEffectExit
+    if ms:
+        gevent.sleep(ms/1000.0)
 
 def leaderProxy(args):
     try:
@@ -91,8 +96,7 @@ def rainbowCycle(args):
         return False
 
     effect_obj = args.get('_effect')
-    if not hasattr(effect_obj, 'is_terminated'):
-        return False
+    sleep_or_exit(0, effect_obj)
 
     wait_ms = args.get('wait_ms', 2)
     if wait_ms <= 0:
@@ -105,7 +109,7 @@ def rainbowCycle(args):
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
             strip.show()
-            gevent.sleep(wait_ms/1000.0)
+            sleep_or_exit(wait_ms, effect_obj)
 
 '''  #pylint: disable=pointless-string-statement
 def theaterChaseRainbow(strip, wait_ms=25):
@@ -269,6 +273,9 @@ def meteor(args):
     else:
         return False
 
+    effect_obj = args.get('_effect')
+    sleep_or_exit(0, effect_obj)
+
     a = {
         'color': ColorVal.WHITE,
         'meteorSize': 10,
@@ -296,7 +303,7 @@ def meteor(args):
                 strip.setPixelColor(i-j, a['color'])
 
         strip.show()
-        gevent.sleep(a['speedDelay']/1000.0)
+        sleep_or_exit(a['speedDelay'], effect_obj)
 
 def stagingTrigger(args):
     stage_time = args['pi_staging_at_s']
