@@ -388,7 +388,6 @@ def discover():
         name="stripColor",
     ),
     LEDEffect("Solid", showColor, {
-        'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_START, Evt.RACE_STOP]
         }, {
         'pattern': ColorPattern.SOLID,
@@ -397,7 +396,6 @@ def discover():
         name="stripColorSolid",
     ),
     LEDEffect("Pattern 1-1", showColor, {
-        'include': [Evt.SHUTDOWN],
         }, {
         'pattern': ColorPattern.ALTERNATING,
         'time': 4
@@ -405,7 +403,6 @@ def discover():
         name="stripColor1_1",
     ),
     LEDEffect("Pattern 1-2", showColor, {
-        'include': [Evt.SHUTDOWN],
         }, {
         'pattern': ColorPattern.ONE_OF_THREE,
         'time': 4
@@ -413,7 +410,6 @@ def discover():
         name="stripColor1_2",
     ),
     LEDEffect("Pattern 2-1", showColor, {
-        'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_STAGE]
         }, {
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
@@ -437,7 +433,6 @@ def discover():
         name="stripStaging",
     ),
     LEDEffect("Pattern 4-4", showColor, {
-        'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_FINISH]
         }, {
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
@@ -471,7 +466,7 @@ def discover():
 
     # rainbow
     LEDEffect("Rainbow", rainbow, {
-        'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
+        'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
         }, {
         'time': 4
         },
@@ -636,7 +631,7 @@ def discover():
     # clear - permanently assigned to LEDEventManager.clear()
     LEDEffect("Turn Off", clear, {
         'manual': False,
-        'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
+        'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
         'recommended': [Evt.ALL]
         }, {
             'time': 8

@@ -78,7 +78,6 @@ def showBitmap(args):
 def register_handlers(args):
     for led_effect in [
         LEDEffect("Image: RotorHazard", showBitmap, {
-                'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.STARTUP]
             }, {
                 'bitmaps': [
@@ -89,7 +88,6 @@ def register_handlers(args):
             name='bitmapRHLogo',
         ),
         LEDEffect("Image: Orange Ellipsis", showBitmap, {
-                'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_STAGE]
             }, {
                 'bitmaps': [
@@ -100,7 +98,6 @@ def register_handlers(args):
             name='bitmapOrangeEllipsis',
         ),
         LEDEffect("Image: Green Upward Arrow", showBitmap, {
-                'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_START]
             }, {
                 'bitmaps': [
@@ -111,7 +108,6 @@ def register_handlers(args):
             name='bitmapGreenArrow',
         ),
         LEDEffect("Image: Red X", showBitmap, {
-                'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_STOP]
             }, {
                 'bitmaps': [
@@ -122,7 +118,6 @@ def register_handlers(args):
             name='bitmapRedX',
         ),
         LEDEffect("Image: Checkerboard", showBitmap, {
-                'include': [Evt.SHUTDOWN],
                 'recommended': [Evt.RACE_FINISH, Evt.RACE_STOP]
             }, {
                 'bitmaps': [

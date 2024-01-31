@@ -97,12 +97,7 @@ class LEDEventManager:
             # event is idle
             self.idleArgs[event] = args
         else:
-            if event in [Evt.SHUTDOWN]:
-                priority = 50 # event is direct (blocking)
-            else:
-                priority = 150 # event is normal (threaded/non-blocking)
-
-            self.Events.on(event, 'LED', self.activateEffect, args, priority)
+            self.Events.on(event, 'LED', self.activateEffect, args, 150)
         return True
 
     def clear(self):
