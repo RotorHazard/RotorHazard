@@ -292,7 +292,7 @@ ActionEffect(
 For example, an LED effect might be registered with the following functions:
 ```
 from eventmanager import Evt
-from led_event_manager import LEDEffect
+from led_event_manager import LEDEffect, effect_delay
 
 def my_led_effect(args):
     ...
@@ -306,6 +306,14 @@ def initialize(rhapi):
     rhapi.events.on(Evt.LED_INITIALIZE, register_handlers)
 ```
 
+Effects run as IDLE do not clear the display when they complete.
+
+LED effects which contain animation require execution delays. Effects **MUST** use the provided `effect_delay` for this purpose _(see below)_.
+
+> [!CAUTION]
+> Using `time.sleep`, `gevent.sleep`, or other methods for execution delays in LED effects will prevent proper effect termination and cause visual issues on the LED display or other erratic behavior. 
+
+
 #### LEDEffect(label, handler_fn, valid_events, default_args=None, name=None)
 
 Provides metadata and function linkage for *LED effects*.
@@ -318,7 +326,7 @@ Often, `color` will be passed through as an argument, which is an RGB hexadecima
 - `default_args` _optional_ (dict): provides default arguments for the handler. These arguments will be overwritten if the `Event` provides arguments with the same keys.
 - `name` _optional_ (string): internal identifier (auto-generated from `label` if not provided)
 
-By default, an *LED effect* will be available to all *events* that can produce LED output except *Evt.SHUTDOWN*, *LEDEvent.IDLE_DONE*, *LEDEvent.IDLE_RACING*, and *LEDEvent.IDLE_READY*. This can be modified with `valid_events`. It should contain a dict with the following optional keys. Each value should be a list of event identifiers.
+By default, an *LED effect* will be available to all *events* that can produce LED output except *LEDEvent.IDLE_DONE*, *LEDEvent.IDLE_RACING*, and *LEDEvent.IDLE_READY*. This can be modified with `valid_events`. It should contain a dict with the following optional keys. Each value should be a list of event identifiers.
 - `exclude` (list): this *effect* will never be available for *events* specified here. As a special case, `Evt.ALL` will remove this *effect* from all *events* except those specifically included.
 - `include` (list): this *effect* will always be available for *events* specified here  unless specifically excluded.
 - `recommended` (list): *effects* in this list will receive priority ordering and visibility in the effect selection UI, at the top of the list, with an asterisk. `Evt.ALL` may be used here.
@@ -327,15 +335,12 @@ Normally when an *LED effect*'s handler function completes, the display system w
 
 A list of standard and LED-specific *events* that will accept and trigger *effects* can be found in `src/server/led_event_manager.py`.
 
-Be sure to `import gevent` and set `gevent.sleep` or `gevent.idle` frequently within your handler code. Failure to do this may delay or prevent server response while your handler is running.
-
 Example:
 ```
 LEDEffect(
     "Image: RotorHazard",
     show_bitmap,
     {
-        'include': [Evt.SHUTDOWN],
         'recommended': [Evt.STARTUP]
     },
     {
@@ -350,6 +355,13 @@ LEDEffect(
     }
 )
 ```
+
+#### effect_delay(ms, args)
+
+Delay execution of LED effect code, similar to `time.sleep()`. Works asynchronously so main processes continue and provides for clean effect termination when new LED effects are run.
+
+- `ms` (int|float): number of milliseconds to delay
+- `args` (dict): args passed to the LEDEffect
 
 
 ### Data Exporters
