@@ -334,7 +334,7 @@ class LEDEffect():
             gevent.sleep(time_val)
 
             # run idler
-            if not self.terminate:
+            if not self.terminate and not args.get('preventIdle'):
                 idler_fn, idler_args = self.idler()
                 idler_fn({**idler_args, '_effect':self})
         except LEDEffectExit:
