@@ -302,10 +302,12 @@ class LEDEffectExit(BaseException):
     pass
 
 def effect_delay(ms, effect_obj):
-    if not hasattr(effect_obj, 'is_terminated') or effect_obj.is_terminated():
+    if not hasattr(effect_obj, 'terminate') or effect_obj.terminate:
         raise LEDEffectExit
     if ms:
         gevent.sleep(ms/1000.0)
+        if effect_obj.terminate:
+            raise LEDEffectExit
 
 class LEDEffect():
     def __init__(self, label, handler_fn, valid_events, default_args=None, name=None):
@@ -318,7 +320,7 @@ class LEDEffect():
         self.default_args = default_args
         self.name = name
         self.fn_thread = None
-        self.terminate_flag = False
+        self.terminate = False
         self.idler = None
 
     def effect_runner(self, args):
@@ -331,20 +333,17 @@ class LEDEffect():
             gevent.sleep(time_val)
 
             # run idler
-            if not self.terminate_flag:
+            if not self.terminate:
                 idler_fn, idler_args = self.idler()
                 idler_fn({**idler_args, '_effect':self})
         except LEDEffectExit:
-            logger.debug(f'LEDEffect "{self.label}" terminated early')
+            pass
 
     def run_effect(self, args, idler):
         self.idler = idler
-        self.terminate_flag = False
+        self.terminate = False
         self.fn_thread = gevent.spawn(self.effect_runner, {**args, '_effect':self})
 
     def stop_effect(self):
-        self.terminate_flag = True
-        self.fn_thread.join(0.01) # allow no more than 10ms to close thread
-
-    def is_terminated(self):
-        return self.terminate_flag
+        self.terminate = True
+        self.fn_thread.join(0.01) # wait to close effect if brief
