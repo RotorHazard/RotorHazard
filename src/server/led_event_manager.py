@@ -138,7 +138,7 @@ class LEDEventManager:
         if args.get('_eventName') == Evt.SHUTDOWN:
             self.clear()
             return False
-        new_effect = args.get('effect')
+        new_effect = copy.copy(args.get('effect'))
 
         if self.running_effect:
             self.running_effect.stop_effect()
