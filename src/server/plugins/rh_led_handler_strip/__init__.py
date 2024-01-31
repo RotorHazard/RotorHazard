@@ -337,8 +337,6 @@ def larsonScanner(args):
 
     for _k in range(a['iterations']):
         for i in range(strip.numPixels()-a['eyeSize']-1):
-            if effect_obj.is_terminated():
-                return True
             strip.setPixelColor(i-1, ColorVal.NONE)
 
             strip.setPixelColor(i, dim(a['color'], 0.25))
@@ -351,8 +349,6 @@ def larsonScanner(args):
         effect_delay(a['returnDelay'], args.get('_effect'))
 
         for i in range(strip.numPixels()-a['eyeSize']-2, -1, -1):
-            if effect_obj.is_terminated():
-                return True
             if i < strip.numPixels()-a['eyeSize']-2:
                 strip.setPixelColor(i+a['eyeSize']+2, ColorVal.NONE)
 

@@ -6,7 +6,7 @@
 import logging
 import Config
 from eventmanager import Evt
-from led_event_manager import LEDEffect, Color
+from led_event_manager import LEDEffect, Color, effect_delay
 import gevent
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ def showBitmap(args):
 
             setPixels(output_img, panel_w)
             strip.show()
-            gevent.sleep(delay/1000.0)
+            effect_delay(delay, args.get('_effect'))
 
 def register_handlers(args):
     for led_effect in [

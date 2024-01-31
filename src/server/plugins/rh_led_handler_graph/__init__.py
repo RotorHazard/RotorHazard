@@ -6,7 +6,7 @@
 import logging
 import Config
 from eventmanager import Evt
-from led_event_manager import LEDEffect, Color, ColorVal
+from led_event_manager import LEDEffect, Color, ColorVal, effect_delay
 import gevent
 
 logger = logging.getLogger(__name__)

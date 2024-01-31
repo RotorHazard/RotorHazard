@@ -6,7 +6,7 @@
 import logging
 import Config
 from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, effect_delay
 from RHRace import RaceStatus
 import gevent
 from time import monotonic
@@ -30,7 +30,7 @@ def dataHandler(args):
                     diff = start_time - monotonic()
                     diff_to_s = diff % 1
                     if diff:
-                        gevent.sleep(diff_to_s)
+                        effect_delay(diff_to_s * 1000.0, args.get('_effect'))
                         args['text'] = int(diff)
                         printCharacter(args)
                     else:
@@ -155,7 +155,7 @@ def scrollText(args):
         img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
         setPixels(strip, img, panel['width'])
         strip.show()
-        gevent.sleep(10/1000.0)
+        effect_delay(10, args.get('_effect'))
 
 def multiLapGrid(args):
     if 'strip' in args:
