@@ -498,14 +498,6 @@ class RHData():
                     # current heat structure; use basic migration
 
                     if heat_query_data:
-                        for row in heat_query_data:
-                            if 'note' in row:
-                                row['name'] = row['note']
-                                del row['note']
-                            if 'cacheStatus' in row:
-                                row['_cache_status'] = row['cacheStatus']
-                                del row['cacheStatus']
-
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
@@ -533,15 +525,7 @@ class RHData():
                     # Convert old staging
                     if migrate_db_api < 33:
                         for raceFormat in raceFormat_query_data:
-                            if 'unlimited_time' in row:
-                                raceFormat['unlimited_time'] = raceFormat['race_mode']
-                                del raceFormat['race_mode']
-
-                            if 'staging_tones' in row:
-                                raceFormat['staging_delay_tones'] = raceFormat['staging_tones']
-                                del raceFormat['staging_tones']
-
-                            if 'staging_delay_tones' in raceFormat and raceFormat['staging_delay_tones'] == StagingTones.TONES_ONE:
+                            if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ONE:
                                 raceFormat['staging_fixed_tones'] = 1
 
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
@@ -555,8 +539,8 @@ class RHData():
                                             raceFormat['start_delay_max_ms'] = 0
                                     del raceFormat['start_delay_max']
 
-                            elif 'staging_delay_tones' in raceFormat and raceFormat['staging_delay_tones'] == StagingTones.TONES_ALL:
-                                raceFormat['staging_delay_tones'] = StagingTones.TONES_ALL
+                            elif 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ALL:
+                                raceFormat['staging_tones'] = StagingTones.TONES_ALL
 
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['staging_fixed_tones'] = raceFormat['start_delay_min']
@@ -572,7 +556,7 @@ class RHData():
 
                             else: # None or unsupported
                                 raceFormat['staging_fixed_tones'] = 0
-                                raceFormat['staging_delay_tones'] = StagingTones.TONES_NONE
+                                raceFormat['staging_tones'] = StagingTones.TONES_NONE
 
                                 if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
                                     raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
@@ -611,17 +595,6 @@ class RHData():
                         })
                 else:
                     self.reset_profiles()
-
-                for row in raceClass_query_data:
-                    if 'cacheStatus' in row:
-                        row['_cache_status'] = row['cacheStatus']
-                        del row['cacheStatus']
-                    if 'rankStatus' in row:
-                        row['_rank_status'] = row['rankStatus']
-                        del row['rankStatus']
-                    if 'heatAdvanceType' in row:
-                        row['heat_advance_type'] = row['heatAdvanceType']
-                        del row['heatAdvanceType']
 
                 self.restore_table(self._Database.RaceClass, raceClass_query_data, defaults={
                         'name': 'New class',
