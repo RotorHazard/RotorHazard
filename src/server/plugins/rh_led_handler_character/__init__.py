@@ -30,7 +30,7 @@ def dataHandler(args):
                     diff = start_time - monotonic()
                     diff_to_s = diff % 1
                     if diff:
-                        effect_delay(diff_to_s * 1000.0, args.get('_effect'))
+                        effect_delay(diff_to_s * 1000.0, args)
                         args['text'] = int(diff)
                         printCharacter(args)
                     else:
@@ -155,7 +155,7 @@ def scrollText(args):
         img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
         setPixels(strip, img, panel['width'])
         strip.show()
-        effect_delay(10, args.get('_effect'))
+        effect_delay(10, args)
 
 def multiLapGrid(args):
     if 'strip' in args:

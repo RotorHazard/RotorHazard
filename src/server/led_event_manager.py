@@ -301,7 +301,8 @@ class LEDEvent:
 class LEDEffectExit(BaseException):
     pass
 
-def effect_delay(ms, effect_obj):
+def effect_delay(ms, args):
+    effect_obj = args.get('_effect')
     if not hasattr(effect_obj, 'terminate') or effect_obj.terminate:
         raise LEDEffectExit
     if ms:

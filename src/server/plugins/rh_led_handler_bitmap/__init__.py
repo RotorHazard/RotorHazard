@@ -73,7 +73,7 @@ def showBitmap(args):
 
             setPixels(output_img, panel_w)
             strip.show()
-            effect_delay(delay, args.get('_effect'))
+            effect_delay(delay, args)
 
 def register_handlers(args):
     for led_effect in [
