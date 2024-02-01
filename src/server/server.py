@@ -592,6 +592,7 @@ def stop_background_threads():
         stop_shutdown_button_thread()
         if RaceContext.cluster:
             RaceContext.cluster.shutdown()
+        RaceContext.led_manager.clear()  # stop any LED effect in progress
         global BACKGROUND_THREADS_ENABLED
         BACKGROUND_THREADS_ENABLED = False
         global HEARTBEAT_THREAD
@@ -1761,29 +1762,29 @@ def emit_led_effect_setup(**_params):
 
             for effect in effects:
 
-                if event['event'] in effects[effect]['valid_events'].get('include', []) or (
+                if event['event'] in effects[effect].valid_events.get('include', []) or (
                     event['event'] not in [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING, LEDEvent.IDLE_READY]
-                    and event['event'] not in effects[effect]['valid_events'].get('exclude', [])
-                    and Evt.ALL not in effects[effect]['valid_events'].get('exclude', [])):
+                    and event['event'] not in effects[effect].valid_events.get('exclude', [])
+                    and Evt.ALL not in effects[effect].valid_events.get('exclude', [])):
 
-                    if event['event'] in effects[effect]['valid_events'].get('recommended', []) or \
-                        Evt.ALL in effects[effect]['valid_events'].get('recommended', []):
+                    if event['event'] in effects[effect].valid_events.get('recommended', []) or \
+                        Evt.ALL in effects[effect].valid_events.get('recommended', []):
                         effect_list_recommended.append({
                             'name': effect,
-                            'label': '* ' + __(effects[effect]['label'])
+                            'label': '* ' + __(effects[effect].label)
                         })
                     else:
                         effect_list_normal.append({
                             'name': effect,
-                            'label': __(effects[effect]['label'])
+                            'label': __(effects[effect].label)
                         })
 
             effect_list_recommended.sort(key=lambda x: x['label'])
             effect_list_normal.sort(key=lambda x: x['label'])
 
             emit_payload['events'].append({
-                'event': event["event"],
-                'label': __(event["label"]),
+                'event': event['event'],
+                'label': __(event['label']),
                 'selected': selectedEffect,
                 'effects': effect_list_recommended + effect_list_normal
             })
@@ -1798,10 +1799,10 @@ def emit_led_effects(**_params):
         effect_list = []
         if effects:
             for effect in effects:
-                if effects[effect]['valid_events'].get('manual', True):
+                if effects[effect].valid_events.get('manual', True):
                     effect_list.append({
                         'name': effect,
-                        'label': __(effects[effect]['label'])
+                        'label': __(effects[effect].label)
                     })
 
         emit_payload = {

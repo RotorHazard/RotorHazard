@@ -1,12 +1,11 @@
 '''LED visual effects'''
 
 from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, effect_delay
 import gevent
 import random
 import math
 from time import monotonic
-
 
 def leaderProxy(args):
     try:
@@ -59,7 +58,7 @@ def chase(args):
 
     for i in range(a['iterations'] * sum(a['pattern'])):
         led_on(strip, a['color'], a['pattern'], i)
-        gevent.sleep(a['speedDelay']/1000.0)
+        effect_delay(a['speedDelay'], args)
 
 def color_wheel(pos):
     """Generate rainbow colors across 0-255 positions."""
@@ -90,9 +89,8 @@ def rainbowCycle(args):
     else:
         return False
 
-    if args and 'wait_ms' in args:
-        wait_ms = args['wait_ms']
-    else:
+    wait_ms = args.get('wait_ms', 2)
+    if wait_ms <= 0:
         wait_ms = 2
 
     while True:
@@ -100,7 +98,7 @@ def rainbowCycle(args):
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
             strip.show()
-            gevent.sleep(wait_ms/1000.0)
+            effect_delay(wait_ms, args)
 
 '''  #pylint: disable=pointless-string-statement
 def theaterChaseRainbow(strip, wait_ms=25):
@@ -111,7 +109,7 @@ def theaterChaseRainbow(strip, wait_ms=25):
             for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, color_wheel((i+j) % 255))
             strip.show()
-            gevent.sleep(wait_ms/1000.0)
+            effect_delay(wait_ms, args)
             for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, 0)
 '''
@@ -163,7 +161,7 @@ def colorWipe(args):
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, a['color'])
         strip.show()
-        gevent.sleep(a['speedDelay']/1000.0)
+        effect_delay(a['speedDelay'], args)
 
 def fade(args):
     if 'strip' in args:
@@ -199,10 +197,10 @@ def fade(args):
                 c = dim(a['color'], j/float(a['steps']))
                 led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(a['speedDelay']/1000.0)
+                effect_delay(a['speedDelay'], args)
 
             led_on(strip, a['color'], a['pattern'])
-            gevent.sleep(a['onTime']/1000.0)
+            effect_delay(a['onTime'], args)
 
         # fade out
         if a['outSteps']:
@@ -211,11 +209,11 @@ def fade(args):
                 c = dim(a['color'], j/float(a['outSteps']))
                 led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(a['speedDelay']/1000.0)
+                effect_delay(a['speedDelay'], args)
 
             led_off(strip)
 
-        gevent.sleep(a['offTime']/1000.0)
+        effect_delay(a['offTime'], args)
 
 def sparkle(args):
     if 'strip' in args:
@@ -256,7 +254,7 @@ def sparkle(args):
                     strip.setPixelColor(px, a['color'])
 
         strip.show()
-        gevent.sleep(a['speedDelay']/1000.0)
+        effect_delay(a['speedDelay'], args)
 
 def meteor(args):
     if 'strip' in args:
@@ -291,7 +289,7 @@ def meteor(args):
                 strip.setPixelColor(i-j, a['color'])
 
         strip.show()
-        gevent.sleep(a['speedDelay']/1000.0)
+        effect_delay(a['speedDelay'], args)
 
 def stagingTrigger(args):
     stage_time = args['pi_staging_at_s']
@@ -306,7 +304,7 @@ def stagingTrigger(args):
             diff = stage_time - monotonic()
             diff_to_s = diff % 1
             if diff:
-                gevent.sleep(diff_to_s)
+                effect_delay(diff_to_s*1000, args)
                 idx += 1
                 args['effect_fn'](args)
             else:
@@ -342,9 +340,9 @@ def larsonScanner(args):
                 strip.setPixelColor(i+j+1, a['color'])
             strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
             strip.show()
-            gevent.sleep(a['speedDelay']/1000.0)
+            effect_delay(a['speedDelay'], args)
 
-        gevent.sleep(a['returnDelay']/1000.0)
+        effect_delay(a['returnDelay'], args)
 
         for i in range(strip.numPixels()-a['eyeSize']-2, -1, -1):
             if i < strip.numPixels()-a['eyeSize']-2:
@@ -355,9 +353,9 @@ def larsonScanner(args):
                 strip.setPixelColor(i+j+1, a['color'])
             strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
             strip.show()
-            gevent.sleep(a['speedDelay']/1000.0)
+            effect_delay(a['speedDelay'], args)
 
-        gevent.sleep(a['returnDelay']/1000.0)
+        effect_delay(a['returnDelay'], args)
 
 def dim(color, decay):
     r = (color & 0x00ff0000) >> 16
@@ -382,7 +380,6 @@ def discover():
         name="stripColor",
     ),
     LEDEffect("Solid", showColor, {
-        'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_START, Evt.RACE_STOP]
         }, {
         'pattern': ColorPattern.SOLID,
@@ -391,7 +388,6 @@ def discover():
         name="stripColorSolid",
     ),
     LEDEffect("Pattern 1-1", showColor, {
-        'include': [Evt.SHUTDOWN],
         }, {
         'pattern': ColorPattern.ALTERNATING,
         'time': 4
@@ -399,7 +395,6 @@ def discover():
         name="stripColor1_1",
     ),
     LEDEffect("Pattern 1-2", showColor, {
-        'include': [Evt.SHUTDOWN],
         }, {
         'pattern': ColorPattern.ONE_OF_THREE,
         'time': 4
@@ -407,7 +402,6 @@ def discover():
         name="stripColor1_2",
     ),
     LEDEffect("Pattern 2-1", showColor, {
-        'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_STAGE]
         }, {
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
@@ -431,7 +425,6 @@ def discover():
         name="stripStaging",
     ),
     LEDEffect("Pattern 4-4", showColor, {
-        'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_FINISH]
         }, {
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
@@ -465,7 +458,7 @@ def discover():
 
     # rainbow
     LEDEffect("Rainbow", rainbow, {
-        'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
+        'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
         }, {
         'time': 4
         },
@@ -630,7 +623,7 @@ def discover():
     # clear - permanently assigned to LEDEventManager.clear()
     LEDEffect("Turn Off", clear, {
         'manual': False,
-        'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
+        'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
         'recommended': [Evt.ALL]
         }, {
             'time': 8

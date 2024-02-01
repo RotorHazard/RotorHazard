@@ -72,29 +72,17 @@ class EventManager:
                     else:
                         args = evt_args
 
-                if ev == Evt.ALL:
-                    args['_eventName'] = event
+                args['_eventName'] = event
 
                 if handler['unique']:
                     threadName = name + str(monotonic())
                 else:
                     threadName = name
 
-                # stop any threads with same name
-                for token in self.eventThreads.copy():
-                    if token in self.eventThreads and self.eventThreads[token]['name'] == name:
-                        self.eventThreads[token]['thread'].kill(block=False)
-                    if token in self.eventThreads and self.eventThreads[token]['thread'].dead:
-                        self.eventThreads.pop(token, False)
-
                 if handler['priority'] < 100:
                     self.run_handler(handler['handler_fn'], args)
                 else:
-                    greenlet = gevent.spawn(self.run_handler, handler['handler_fn'], args)
-                    self.eventThreads[greenlet.minimal_ident] = {
-                        'name': threadName,
-                        'thread': greenlet
-                        }
+                    gevent.spawn(self.run_handler, handler['handler_fn'], args)
 
     @catchLogExceptionsWrapper
     def run_handler(self, handler, args):

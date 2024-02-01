@@ -25,8 +25,8 @@ class LEDEventManager:
     events = {}
     idleArgs = {}
     eventEffects = {}
-    eventThread = None
     displayColorCache = []
+    running_effect = None
 
     def __init__(self, eventmanager, strip, RaceContext, RHAPI):
         self.Events = eventmanager
@@ -62,7 +62,7 @@ class LEDEventManager:
         return True
 
     def registerEffect(self, effect):
-        self.eventEffects[effect['name']] = effect
+        self.eventEffects[effect.name] = effect
         return True
 
     def getRegisteredEffects(self):
@@ -82,12 +82,12 @@ class LEDEventManager:
             self.Events.off(event, 'LED')
             return True
 
-        args = copy.deepcopy(self.eventEffects[name]['default_args'])
+        args = copy.deepcopy(self.eventEffects[name].default_args)
         if args is None:
             args = {}
 
         args.update({
-            'handler_fn': self.eventEffects[name]['handler_fn'],
+            'effect': self.eventEffects[name],
             'strip': self.strip,
             'manager': self,
             'RHAPI': self._rhapi
@@ -97,12 +97,7 @@ class LEDEventManager:
             # event is idle
             self.idleArgs[event] = args
         else:
-            if event in [Evt.SHUTDOWN]:
-                priority = 50 # event is direct (blocking)
-            else:
-                priority = 150 # event is normal (threaded/non-blocking)
-
-            self.Events.on(event, 'LED', self.activateEffect, args, priority)
+            self.Events.on(event, 'LED', self.activateEffect, args, 150)
         return True
 
     def clear(self):
@@ -132,29 +127,23 @@ class LEDEventManager:
 
         return RHUtils.hexToColor('#ffffff')
 
+    # Activates the given effect
     @catchLogExceptionsWrapper
     def activateEffect(self, args):
-        if 'caller' in args and args['caller'] == 'shutdown':
+        if args.get('_eventName') == Evt.SHUTDOWN:
+            self.clear()
             return False
+        new_effect = copy.copy(args.get('effect'))
 
-        result = args['handler_fn'](args)
-        if result == False:
-            logger.debug('LED effect %s produced no output', args['handler_fn'])
-        if 'preventIdle' not in args or not args['preventIdle']:
-            if 'time' in args:
-                time = args['time']
-            else:
-                time = 0
+        if self.running_effect:
+            self.running_effect.stop_effect()
 
-            if time:
-                gevent.sleep(float(time))
+        new_effect.run_effect(args, self.get_idle_fn)
+        self.running_effect = new_effect
 
-            self.activateIdle()
-
+    # Provides linkage to the idle effect (if configured)
     @catchLogExceptionsWrapper
-    def activateIdle(self):
-        gevent.idle()
-        event = None
+    def get_idle_fn(self):
         if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
             event = LEDEvent.IDLE_DONE
         elif self._racecontext.race.race_status == RHRace.RaceStatus.READY:
@@ -163,7 +152,7 @@ class LEDEventManager:
             event = LEDEvent.IDLE_RACING
 
         if event and event in self.events:
-            self.eventEffects[self.events[event]]['handler_fn'](self.idleArgs[event])
+            return (self.eventEffects[self.events[event]].handler_fn, self.idleArgs[event])
 
 
 class NoLEDManager():
@@ -210,8 +199,6 @@ def Color(red, green, blue):
     and 255 is the highest intensity.
     """
     return (red << 16) | (green << 8) | blue
-
-
 
 class ColorVal:
     NONE = Color(0,0,0)
@@ -294,10 +281,6 @@ class LEDEvent:
             "label": "Server Startup"
         },
         {
-            "event": Evt.SHUTDOWN,
-            "label": "Server Shutdown"
-        },
-        {
             "event": Evt.CLUSTER_JOIN,
             "label": "Joined Timer Cluster"
         },
@@ -315,15 +298,53 @@ class LEDEvent:
         },
     ]
 
-class LEDEffect(UserDict):
+class LEDEffectExit(BaseException):
+    pass
+
+def effect_delay(ms, args):
+    effect_obj = args.get('_effect')
+    if not hasattr(effect_obj, 'terminate') or effect_obj.terminate:
+        raise LEDEffectExit
+    if ms:
+        gevent.sleep(ms/1000.0)
+        if effect_obj.terminate:
+            raise LEDEffectExit
+
+class LEDEffect():
     def __init__(self, label, handler_fn, valid_events, default_args=None, name=None):
         if name is None:
             name = cleanVarName(label)
 
-        UserDict.__init__(self, {
-            "name": name,
-            "label": label,
-            "handler_fn": handler_fn,
-            "valid_events": valid_events,
-            "default_args": default_args
-        })
+        self.label = label
+        self.handler_fn = handler_fn
+        self.valid_events = valid_events
+        self.default_args = default_args
+        self.name = name
+        self.fn_thread = None
+        self.terminate = False
+        self.idler = None
+
+    def effect_runner(self, args):
+        try:
+            # run base effect
+            self.handler_fn(args)
+
+            # optional delay
+            time_val = args.get('time') or 0
+            gevent.sleep(time_val)
+
+            # run idler
+            if not self.terminate and not args.get('preventIdle'):
+                idler_fn, idler_args = self.idler()
+                idler_fn({**idler_args, '_effect':self})
+        except LEDEffectExit:
+            pass
+
+    def run_effect(self, args, idler):
+        self.idler = idler
+        self.terminate = False
+        self.fn_thread = gevent.spawn(self.effect_runner, {**args, '_effect':self})
+
+    def stop_effect(self):
+        self.terminate = True
+        self.fn_thread.join(0.01) # wait to close effect if brief
