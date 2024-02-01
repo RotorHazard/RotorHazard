@@ -44,6 +44,9 @@
 		});
 
 		md_output = event_converter.makeHtml({{ getOption('eventDescription')|tojson }});
+		if (!md_output) {
+			md_output = '<p><em>(' + __('no description provided') + ')</em></p>';
+		}
 		$('#description').html($(md_output));
 
 		socket.on('frequency_data', function (msg) {
@@ -85,9 +88,17 @@
 				rotorhazard.event.classes) {
 				$(".pilots").empty();
 				$("#heat_list").empty();
+				$('#pilot_list').empty();
 
 				var heats_by_class = {}
 				var active_pilot_ids = []
+
+				if (rotorhazard.event.heats.length == 0) {
+					$('#heat_list').append('<p><em>(' + __('no heats created') + ')</em></p>');
+					$('#section-pilots').hide();
+					return
+				}
+
 				for (var h in rotorhazard.event.heats) {
 					var heat = rotorhazard.event.heats[h];
 
@@ -160,7 +171,7 @@
 
 				// populate pilots
 
-				$('#pilot_list').empty();
+				$('#section-pilots').show();
 
 				for (var p in rotorhazard.event.pilots) {
 					pilot = rotorhazard.event.pilots[p];
