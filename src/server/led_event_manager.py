@@ -144,6 +144,7 @@ class LEDEventManager:
     # Provides linkage to the idle effect (if configured)
     @catchLogExceptionsWrapper
     def get_idle_fn(self):
+        event = None
         if self._racecontext.race.race_status == RHRace.RaceStatus.DONE:
             event = LEDEvent.IDLE_DONE
         elif self._racecontext.race.race_status == RHRace.RaceStatus.READY:
