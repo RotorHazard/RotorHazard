@@ -3,6 +3,7 @@ import os
 import glob
 import logging
 import platform
+import subprocess
 import time
 import zipfile
 import gevent
@@ -318,8 +319,8 @@ def delete_old_log_files(num_keep_val, lfname, lfext, err_str):
     return num_del, err_str
 
 
-def create_log_files_zip(logger, config_file, db_file, boot_config_file="/boot/config.txt", \
-                         boot_config_name="boot_config.txt"):
+def create_log_files_zip(logger, config_file, db_file, boot_config_file="/boot/firmware/config.txt", \
+                         alt_boot_config_file="/boot/config.txt"):
     zip_file_obj = None
     try:
         if os.path.exists(LOG_DIR_NAME):
@@ -341,9 +342,27 @@ def create_log_files_zip(logger, config_file, db_file, boot_config_file="/boot/c
                 if db_file and os.path.isfile(db_file):
                     zip_file_obj.write(db_file)
                 if boot_config_file and os.path.isfile(boot_config_file):
-                    zip_file_obj.write(boot_config_file, boot_config_name)
+                    zip_file_obj.write(boot_config_file, boot_config_file[1:].replace('/','_'))
+                elif alt_boot_config_file and os.path.isfile(alt_boot_config_file):
+                    zip_file_obj.write(alt_boot_config_file, alt_boot_config_file[1:].replace('/','_'))
             except Exception:
                 logger.exception("Error adding files to log-files .zip file")
+            try:
+                # also include current list of Python libraries
+                whichPipStr = subprocess.check_output(['which', 'pip']).decode("utf-8").rstrip()
+                if whichPipStr:  # include execution path to 'pip'
+                    whichPipStr = "$ " + whichPipStr + " list" + os.linesep
+                else:
+                    whichPipStr = ""
+                # fetch output of "pip list" command (send stderr to null because it always contains warning message)
+                fetchedStr = subprocess.check_output(['pip', 'list'], stderr=subprocess.DEVNULL).decode("utf-8").rstrip()
+                if not fetchedStr:
+                    fetchedStr = ""
+                fetchedStr = whichPipStr + "Python version: " + sys.version.split()[0] + \
+                             os.linesep + os.linesep + fetchedStr
+                zip_file_obj.writestr('pip_libs_list.txt', fetchedStr)
+            except Exception:
+                logger.exception("Error adding pip-list libraries info to .zip file")
             zip_file_obj.close()
             return zip_path_name
     except Exception:

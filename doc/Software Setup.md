@@ -54,10 +54,10 @@ sudo raspi-config
   * "serial port hardware enabled": Yes
 
 
-### 3. Apply Changes to '/boot/config.txt'
+### 3. Apply Changes to the 'boot' _config.txt_ file
 Open a terminal window and enter:
 ```
-sudo nano /boot/config.txt
+if [ -f "/boot/firmware/config.txt" ]; then sudo nano /boot/firmware/config.txt; else sudo nano /boot/config.txt; fi
 ```
 Add the following lines to the end of the file:
 ```
@@ -85,6 +85,8 @@ dtoverlay=i2c1-pi5
 Save and exit the editor (CTRL-X, Y, ENTER)
 
 *Notes:*
+
+On newer versions of the Raspberry Pi OS, the boot-config file location is "/boot/firmware/config.txt". On older versions it is "/boot/config.txt".
 
 The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors).
 
