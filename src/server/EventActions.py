@@ -5,6 +5,9 @@ from eventmanager import Evt
 from typing import List
 from RHUI import UIField
 
+from FlaskSqlObjs import APP
+APP.app_context().push()
+
 class EventActions:
     eventActionsList = []
     effects = {}
@@ -77,5 +80,6 @@ class ActionEffect():
 
     @catchLogExceptionsWrapper
     def runEffect(self, action, args):
+        APP.app_context().push()
         self.effect_fn(action, args)
 

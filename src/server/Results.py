@@ -16,6 +16,9 @@ from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
 logger = logging.getLogger(__name__)
 
+from FlaskSqlObjs import APP
+APP.app_context().push()
+
 NONE_NONE_PAIR = [None, None]
 
 class RaceClassRankManager():
@@ -112,6 +115,7 @@ class RacePointsMethod():
 
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
+    APP.app_context().push()
     token = monotonic()
     timing = {
         'start': token

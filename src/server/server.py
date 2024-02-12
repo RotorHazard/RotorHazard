@@ -53,6 +53,20 @@ from functools import wraps
 
 from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
+from flask_sqlalchemy import SQLAlchemy
+
+BASEDIR = os.getcwd()
+DB_FILE_NAME = 'database.db'
+DB_BKP_DIR_NAME = 'db_bkp'
+_DB_OBJ = SQLAlchemy()
+APP = Flask(__name__, static_url_path='/static')
+APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
+APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+APP.app_context().push()
+_DB_OBJ.init_app(APP)
+_DB_OBJ.app = APP
+import FlaskSqlObjs
+FlaskSqlObjs.set_objects(APP, _DB_OBJ)
 
 import socket
 import random
@@ -110,16 +124,12 @@ Events = EventManager(RHAPI)
 RaceContext.events = Events
 EventActionsObj = None
 
-APP = Flask(__name__, static_url_path='/static')
-
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
 HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-DB_FILE_NAME = 'database.db'
-DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 
@@ -164,12 +174,6 @@ if __name__ == '__main__' and len(sys.argv) > 1:
         elif CMDARG_LAUNCH_B_STR not in sys.argv:
             print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
             sys.exit(1)
-
-BASEDIR = os.getcwd()
-APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
-APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-Database.DB.init_app(APP)
-Database.DB.app = APP
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], max_http_buffer_size=5e7)
@@ -2107,7 +2111,7 @@ def reload_callouts():
 @SOCKET_IO.on('play_callout_text')
 @catchLogExceptionsWrapper
 def play_callout_text(data):
-    message = RHUtils.doReplace(RHAPI, data['callout'], {}, True)
+    message = RHData.doReplace(RHAPI, data['callout'], {}, True)
     RaceContext.rhui.emit_phonetic_text(message)
 
 @SOCKET_IO.on('imdtabler_update_freqs')

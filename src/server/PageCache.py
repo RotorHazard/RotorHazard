@@ -16,8 +16,10 @@ import gevent
 
 logger = logging.getLogger(__name__)
 
-from flask_sqlalchemy import SQLAlchemy
-DB = SQLAlchemy()
+import FlaskSqlObjs
+FlaskSqlObjs.APP.app_context().push()
+
+DB = FlaskSqlObjs.DB
 
 class PageCache:
     _CACHE_TIMEOUT = 10

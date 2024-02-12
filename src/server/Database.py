@@ -3,13 +3,15 @@ Database module
 '''
 
 import RHUtils
-from flask_sqlalchemy import SQLAlchemy
 import logging
 logger = logging.getLogger(__name__)
 
+import FlaskSqlObjs
+FlaskSqlObjs.APP.app_context().push()
+
 #pylint: disable=no-member
 
-DB = SQLAlchemy()
+DB = FlaskSqlObjs.DB
 
 # Language placeholder (Overwritten after module init)
 def __(*args):

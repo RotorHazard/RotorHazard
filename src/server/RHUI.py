@@ -19,6 +19,9 @@ from Database import ProgramMethod
 import logging
 logger = logging.getLogger(__name__)
 
+from FlaskSqlObjs import APP
+APP.app_context().push()
+
 class UIFieldType(Enum):
     TEXT = "text"
     BASIC_INT = "basic_int"
