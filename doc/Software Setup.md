@@ -73,7 +73,7 @@ core_freq=250
 dtoverlay=act-led,gpio=24
 dtparam=act_led_trigger=heartbeat
 ```
-If the Raspberry Pi in use is a Pi 4 model or older (not a Pi 5) then add this line:
+If the Raspberry Pi in use is a Pi 4 model or older (not a Pi 5) and your hardware is the S32_BPill setup with [shutdown button](Shutdown%20Button.md) then add this line:
 ```
 dtoverlay=gpio-shutdown,gpio_pin=18,debounce=5000
 ```
@@ -365,7 +365,6 @@ The RotorHazard server dependencies will also need to be updated (be patient, th
 cd ~/RotorHazard/src/server
 pip install --upgrade --no-cache-dir -r requirements.txt
 ```
-(On some older setups that were not configured with a Python virtual environment ('venv'), the `pip` command may need to be preceded by `sudo`.)
 
 ----------------------------------------------------------------------------
 
