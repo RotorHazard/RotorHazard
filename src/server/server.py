@@ -53,20 +53,20 @@ from functools import wraps
 
 from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
-from flask_sqlalchemy import SQLAlchemy
 
 BASEDIR = os.getcwd()
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
-_DB_OBJ = SQLAlchemy()
+_DB_URI = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
+
 APP = Flask(__name__, static_url_path='/static')
-APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
-APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 APP.app_context().push()
-_DB_OBJ.init_app(APP)
-_DB_OBJ.app = APP
-import FlaskSqlObjs
-FlaskSqlObjs.set_objects(APP, _DB_OBJ)
+
+import FlaskAppObj
+FlaskAppObj.set_flask_app(APP)
+
+import Database
+Database.initialize(_DB_URI)
 
 import socket
 import random
@@ -77,7 +77,6 @@ import Config
 
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
 
-import Database
 import Results
 import Language
 import json_endpoints
@@ -189,7 +188,7 @@ server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 
-RaceContext.rhdata = RHData.RHData(Database, Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
+RaceContext.rhdata = RHData.RHData(Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
 
@@ -314,6 +313,12 @@ def render_template(template_name_or_list, **context):
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering template"
+
+# Handler for closing and deallocating database resources
+@APP.teardown_appcontext
+def shutdown_session(exception=None):
+    if Database.DB_session:
+        Database.DB_session.remove()
 
 #
 # Routes
@@ -3126,6 +3131,7 @@ if not db_inited_flag:
         RaceContext.rhdata.primeCache() # Ready the Options cache
 
         if not RaceContext.rhdata.check_integrity():
+            Database.close_database()
             RaceContext.rhdata.recover_database(DB_FILE_NAME, startup=True)
             clean_results_cache()
 

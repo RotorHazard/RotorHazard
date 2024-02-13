@@ -9,7 +9,7 @@ import inspect
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 
-from FlaskSqlObjs import APP
+from FlaskAppObj import APP
 APP.app_context().push()
 
 class RHAPI():

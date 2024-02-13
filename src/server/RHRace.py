@@ -16,7 +16,7 @@ from util.InvokeFuncQueue import InvokeFuncQueue
 from RHUtils import catchLogExceptionsWrapper
 from led_event_manager import ColorVal
 
-from FlaskSqlObjs import APP
+from FlaskAppObj import APP
 APP.app_context().push()
 
 logger = logging.getLogger(__name__)

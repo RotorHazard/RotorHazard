@@ -19,7 +19,7 @@ from Database import ProgramMethod
 import logging
 logger = logging.getLogger(__name__)
 
-from FlaskSqlObjs import APP
+from FlaskAppObj import APP
 APP.app_context().push()
 
 class UIFieldType(Enum):

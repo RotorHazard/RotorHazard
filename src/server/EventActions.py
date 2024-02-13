@@ -5,7 +5,7 @@ from eventmanager import Evt
 from typing import List
 from RHUI import UIField
 
-from FlaskSqlObjs import APP
+from FlaskAppObj import APP
 APP.app_context().push()
 
 class EventActions:

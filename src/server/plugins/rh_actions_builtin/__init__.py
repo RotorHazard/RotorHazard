@@ -5,7 +5,7 @@ from eventmanager import Evt
 from EventActions import ActionEffect
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
-from FlaskSqlObjs import APP
+from FlaskAppObj import APP
 APP.app_context().push()
 
 class ActionsBuiltin():
