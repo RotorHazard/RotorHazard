@@ -54,6 +54,20 @@ from functools import wraps
 from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
 
+BASEDIR = os.getcwd()
+DB_FILE_NAME = 'database.db'
+DB_BKP_DIR_NAME = 'db_bkp'
+_DB_URI = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
+
+APP = Flask(__name__, static_url_path='/static')
+APP.app_context().push()
+
+import FlaskAppObj
+FlaskAppObj.set_flask_app(APP)
+
+import Database
+Database.initialize(_DB_URI)
+
 import socket
 import random
 import string
@@ -63,7 +77,6 @@ import Config
 
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
 
-import Database
 import Results
 import Language
 import json_endpoints
@@ -110,16 +123,12 @@ Events = EventManager(RHAPI)
 RaceContext.events = Events
 EventActionsObj = None
 
-APP = Flask(__name__, static_url_path='/static')
-
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
 HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-DB_FILE_NAME = 'database.db'
-DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 
@@ -165,12 +174,6 @@ if __name__ == '__main__' and len(sys.argv) > 1:
             print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
             sys.exit(1)
 
-BASEDIR = os.getcwd()
-APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
-APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-Database.DB.init_app(APP)
-Database.DB.app = APP
-
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'], max_http_buffer_size=5e7)
 
@@ -185,7 +188,7 @@ server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 
-RaceContext.rhdata = RHData.RHData(Database, Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
+RaceContext.rhdata = RHData.RHData(Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
 
@@ -310,6 +313,12 @@ def render_template(template_name_or_list, **context):
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering template"
+
+# Handler for closing and deallocating database resources
+@APP.teardown_appcontext
+def shutdown_session(exception=None):
+    if Database.DB_session:
+        Database.DB_session.remove()
 
 #
 # Routes
@@ -2107,7 +2116,7 @@ def reload_callouts():
 @SOCKET_IO.on('play_callout_text')
 @catchLogExceptionsWrapper
 def play_callout_text(data):
-    message = RHUtils.doReplace(RHAPI, data['callout'], {}, True)
+    message = RHData.doReplace(RHAPI, data['callout'], {}, True)
     RaceContext.rhui.emit_phonetic_text(message)
 
 @SOCKET_IO.on('imdtabler_update_freqs')
@@ -3122,6 +3131,7 @@ if not db_inited_flag:
         RaceContext.rhdata.primeCache() # Ready the Options cache
 
         if not RaceContext.rhdata.check_integrity():
+            Database.close_database()
             RaceContext.rhdata.recover_database(DB_FILE_NAME, startup=True)
             clean_results_cache()
 

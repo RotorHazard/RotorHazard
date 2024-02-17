@@ -16,6 +16,9 @@ from util.InvokeFuncQueue import InvokeFuncQueue
 from RHUtils import catchLogExceptionsWrapper
 from led_event_manager import ColorVal
 
+from FlaskAppObj import APP
+APP.app_context().push()
+
 logger = logging.getLogger(__name__)
 
 class RHRace():
@@ -253,10 +256,11 @@ class RHRace():
 
     @catchLogExceptionsWrapper
     def race_start_thread(self, start_token):
+        APP.app_context().push()
         # clear any lingering crossings at staging (if node rssi < enterAt)
         for node in self._racecontext.interface.nodes:
             if node.crossing_flag and node.frequency > 0 and \
-                (self.format is self._racecontext.serverstate.secondary_race_format or
+                (self.format is self._racecontext.serverstate.secondary_race_format or \
                 (node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.current_rssi < node.enter_at_level)):
                 logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
@@ -345,6 +349,7 @@ class RHRace():
 
     @catchLogExceptionsWrapper
     def race_expire_thread(self, start_token):
+        APP.app_context().push()
         race_format = self.format
         if race_format and race_format.unlimited_time == 0: # count down
             gevent.sleep(race_format.race_time_sec)
@@ -561,6 +566,7 @@ class RHRace():
     def add_lap(self, node, lap_timestamp_absolute, source):
         '''Handles pass records from the nodes.'''
 
+        APP.app_context().push()
         logger.debug('Pass record: Node={}, abs_ts={:.3f}, source={} ("{}")' \
                      .format(node.index+1, lap_timestamp_absolute, source, self._racecontext.interface.get_lap_source_str(source)))
         node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag

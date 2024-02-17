@@ -9,6 +9,9 @@ import inspect
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 
+from FlaskAppObj import APP
+APP.app_context().push()
+
 class RHAPI():
     def __init__(self, race_context):
         self.API_VERSION_MAJOR = API_VERSION_MAJOR

@@ -2,14 +2,21 @@
 Database module
 '''
 
+import sqlalchemy
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 import RHUtils
-from flask_sqlalchemy import SQLAlchemy
 import logging
 logger = logging.getLogger(__name__)
 
-#pylint: disable=no-member
+DB_engine = None
+DB_session = None
+DB_URI = None
 
-DB = SQLAlchemy()
+Base = declarative_base()
+DB = sqlalchemy
+
+#pylint: disable=no-member
 
 # Language placeholder (Overwritten after module init)
 def __(*args):
@@ -24,7 +31,7 @@ def __(*args):
 # heat 1-N node
 # round 1-N heat
 
-class Pilot(DB.Model):
+class Pilot(Base):
     __tablename__ = 'pilot'
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), nullable=False)
@@ -64,16 +71,16 @@ class Pilot(DB.Model):
     def __repr__(self):
         return '<Pilot %r>' % self.id
 
-class PilotAttribute(DB.Model):
+class PilotAttribute(Base):
     __tablename__ = 'pilot_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
-    )    
+    )
     id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False, primary_key=True)
     value = DB.Column(DB.String(), nullable=True)
 
-class Heat(DB.Model):
+class Heat(Base):
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column('note', DB.String(80), nullable=True)
@@ -121,7 +128,7 @@ class HeatStatus:
     PROJECTED = 1
     CONFIRMED = 2
 
-class HeatAttribute(DB.Model):
+class HeatAttribute(Base):
     __tablename__ = 'heat_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
@@ -130,7 +137,7 @@ class HeatAttribute(DB.Model):
     name = DB.Column(DB.String(80), nullable=False, primary_key=True)
     value = DB.Column(DB.String(), nullable=True)
 
-class HeatNode(DB.Model):
+class HeatNode(Base):
     __tablename__ = 'heat_node'
     __table_args__ = (
         DB.UniqueConstraint('heat_id', 'node_index'),
@@ -153,7 +160,7 @@ class ProgramMethod:
     HEAT_RESULT = 1
     CLASS_RESULT = 2
 
-class RaceClass(DB.Model):
+class RaceClass(Base):
     __tablename__ = 'race_class'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
@@ -217,7 +224,7 @@ class HeatAdvanceType:
     NEXT_HEAT = 1
     NEXT_ROUND = 2
 
-class RaceClassAttribute(DB.Model):
+class RaceClassAttribute(Base):
     __tablename__ = 'race_class_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
@@ -226,7 +233,7 @@ class RaceClassAttribute(DB.Model):
     name = DB.Column(DB.String(80), nullable=False, primary_key=True)
     value = DB.Column(DB.String(), nullable=True)
 
-class LapSplit(DB.Model):
+class LapSplit(Base):
     __tablename__ = 'lap_split'
     __table_args__ = (
         DB.UniqueConstraint('node_index', 'lap_id', 'split_id'),
@@ -244,7 +251,7 @@ class LapSplit(DB.Model):
     def __repr__(self):
         return '<LapSplit %r>' % self.pilot_id
 
-class SavedRaceMeta(DB.Model):
+class SavedRaceMeta(Base):
     __tablename__ = 'saved_race_meta'
     __table_args__ = (
         DB.UniqueConstraint('round_id', 'heat_id'),
@@ -273,7 +280,7 @@ class SavedRaceMeta(DB.Model):
     def __repr__(self):
         return '<SavedRaceMeta %r>' % self.id
 
-class SavedRaceMetaAttribute(DB.Model):
+class SavedRaceMetaAttribute(Base):
     __tablename__ = 'saved_race_meta_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
@@ -282,7 +289,7 @@ class SavedRaceMetaAttribute(DB.Model):
     name = DB.Column(DB.String(80), nullable=False, primary_key=True)
     value = DB.Column(DB.String(), nullable=True)
 
-class SavedPilotRace(DB.Model):
+class SavedPilotRace(Base):
     __tablename__ = 'saved_pilot_race'
     __table_args__ = (
         DB.UniqueConstraint('race_id', 'node_index'),
@@ -302,7 +309,7 @@ class SavedPilotRace(DB.Model):
     def __repr__(self):
         return '<SavedPilotRace %r>' % self.id
 
-class SavedRaceLap(DB.Model):
+class SavedRaceLap(Base):
     __tablename__ = 'saved_race_lap'
     id = DB.Column(DB.Integer, primary_key=True)
     race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
@@ -325,7 +332,7 @@ class LapSource:
     AUTOMATIC = 3
     API = 4
 
-class Profiles(DB.Model):
+class Profiles(Base):
     __tablename__ = 'profiles'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
@@ -335,7 +342,7 @@ class Profiles(DB.Model):
     exit_ats = DB.Column(DB.String(80), nullable=True)
     f_ratio = DB.Column(DB.Integer, nullable=True)
 
-class RaceFormat(DB.Model):
+class RaceFormat(Base):
     __tablename__ = 'race_format'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
@@ -374,7 +381,7 @@ class RaceFormat(DB.Model):
         logger.warning("Use of deprecated staging_tones attribute, use 'staging_delay_tones'", stack_info=True)
         self.staging_delay_tones = value
 
-class RaceFormatAttribute(DB.Model):
+class RaceFormatAttribute(Base):
     __tablename__ = 'race_format_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
@@ -383,7 +390,7 @@ class RaceFormatAttribute(DB.Model):
     name = DB.Column(DB.String(80), nullable=False, primary_key=True)
     value = DB.Column(DB.String(), nullable=True)
 
-class GlobalSettings(DB.Model):
+class GlobalSettings(Base):
     __tablename__ = 'global_settings'
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(40), nullable=False)
@@ -391,3 +398,27 @@ class GlobalSettings(DB.Model):
 
     def __repr__(self):
         return '<GlobalSetting %r>' % self.id
+
+def initialize(db_uri=None):
+    close_database()
+    global DB_URI
+    if db_uri:
+        DB_URI = db_uri
+    global DB_engine
+    DB_engine = create_engine(DB_URI)
+    global DB_session
+    DB_session = scoped_session(sessionmaker(autocommit=False,
+                                             autoflush=False,
+                                             bind=DB_engine))
+    Base.query = DB_session.query_property()
+    Base.metadata.create_all(bind=DB_engine)
+
+def close_database():
+    global DB_session
+    if DB_session:
+        DB_session.remove()
+        DB_session = None
+    global DB_engine
+    if DB_engine:
+        DB_engine.dispose()
+        DB_engine = None
