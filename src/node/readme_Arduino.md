@@ -18,8 +18,6 @@ If you are not using a [RotorHazard PCB](../../resources/PCB/README.md), edit th
 
 Hardware address selection is also possible by grounding hardware pins following the [published specification](https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing) (this is how the Arduinos are wired on the [RotorHazard PCB](../../resources/PCB/README.md)).
 
-The node code may also be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin. Arduino-node project files for Eclipse may be found in the `src/node/project_files/eclipse_arduino` directory -- copy these files to the `src/node` directory. Then, in Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
-
 ## Command-line Compiling and Uploading (Arduino Nodes)
 
 Command-line batch/script files for compiling and uploading the node code may be found in the `src/node/scripts` directory. For these files to work, the Arduino IDE needs to be installed -- Arduino IDE version 1.8 or newer is required, and it can be downloaded from https://www.arduino.cc/en/Main/Software
