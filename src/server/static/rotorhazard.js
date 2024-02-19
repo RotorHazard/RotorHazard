@@ -2065,6 +2065,16 @@ var freq = {
 		S6: 5839,
 		S7: 5878,
 		S8: 5914,
+		O1: 5669,
+		O2: 5705,
+		O3: 5768,
+		O4: 5804,
+		O5: 5839,
+		O6: 5876,
+		O7: 5912,
+		Q1: 5677,
+		Q2: 5794,
+		Q3: 5902,
 	},
 	getFObjbyFData: function(fData) {
 		var keyNames = Object.keys(this.frequencies);
