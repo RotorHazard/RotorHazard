@@ -3131,7 +3131,6 @@ if not db_inited_flag:
         RaceContext.rhdata.primeCache() # Ready the Options cache
 
         if not RaceContext.rhdata.check_integrity():
-            Database.close_database()
             RaceContext.rhdata.recover_database(DB_FILE_NAME, startup=True)
             clean_results_cache()
 

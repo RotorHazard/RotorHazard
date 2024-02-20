@@ -141,6 +141,8 @@ class RHData():
     def backup_db_file(self, copy_flag, prefix_str=None, use_filename=None):
         self.close()
         self.clean()
+        if not copy_flag:
+            Database.close_database()
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
         except:  # if error then use 'now' timestamp
