@@ -226,10 +226,12 @@ class RHData():
         if table_query_data:
             mapped_instance = inspect(class_type)
             table_name_str = "???"
+            was_empty_flag = len(class_type.query.all()) <= 0
             try:
                 table_name_str = getattr(class_type, '__name__', '???')
                 logger.debug("Restoring database table '{}' (len={})".format(table_name_str, len(table_query_data)))
                 restored_row_count = 0
+                last_table_row_id = -1
                 for table_query_row in table_query_data:  # for each row of data queried from previous database
                     try:
                         # check if row is 'Pilot' entry that should be ignored
@@ -237,9 +239,14 @@ class RHData():
                                                       getattr(table_query_row, 'name', '') != '-None-':
 
                             # check if row with matching 'id' value already exists in new DB table
-                            if 'id' in mapped_instance.attrs.keys() and 'id' in table_query_row.keys():
+                            if (not was_empty_flag) and 'id' in mapped_instance.attrs.keys() and 'id' in table_query_row.keys():
                                 table_row_id = table_query_row['id']
-                                matching_row = class_type.query.filter(getattr(class_type,'id')==table_row_id).first()
+                                if table_row_id != last_table_row_id:
+                                    matching_row = class_type.query.filter(getattr(class_type,'id')==table_row_id).first()
+                                    last_table_row_id = table_row_id
+                                else:  # if source table row 'id' value same as last row then create new row
+                                    table_row_id = None
+                                    matching_row = None
                             else:
                                 table_row_id = None
                                 matching_row = None
