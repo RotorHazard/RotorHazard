@@ -2842,8 +2842,7 @@ def check_requirements():
     try:
         import importlib.metadata  # @UnusedImport pylint: disable=redefined-outer-name
         chk_list = [['Flask==','flask'], ['Flask-SocketIO==','flask_socketio'], \
-                    ['Flask_SocketIO==','flask_socketio'], \
-                    ['flask_sqlalchemy==','flask_sqlalchemy'], ['gevent==','gevent'], \
+                    ['Flask_SocketIO==','flask_socketio'], ['gevent==','gevent'], \
                     ['gevent-websocket==','gevent-websocket'], ['monotonic==','monotonic'], \
                     ['requests==','requests']]
         num_mismatched = 0

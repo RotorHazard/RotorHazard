@@ -12,7 +12,6 @@ python-engineio==4.4.*
 websocket-client==1.5.*
 
 # Database
-flask_sqlalchemy==3.1.*
 SQLAlchemy==2.0.*
 
 # gevent
