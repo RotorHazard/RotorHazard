@@ -988,8 +988,8 @@ class RaceAPI():
         else:
             return None
 
-    def stage(self):
-        return self._racecontext.race.stage()
+    def stage(self, args=None):
+        return self._racecontext.race.stage(args)
 
     def stop(self, doSave=False):
         return self._racecontext.race.stop(doSave)

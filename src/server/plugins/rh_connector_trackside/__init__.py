@@ -50,7 +50,7 @@ class TracksideConnector():
             'secondary_format': True,
         }
 
-        if arg.get('start_time_s'):
+        if arg and arg.get('start_time_s'):
             start_race_args['start_time_s'] = arg['start_time_s']
 
         self._rhapi.race.stage(start_race_args)
