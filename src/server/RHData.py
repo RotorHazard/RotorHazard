@@ -3114,7 +3114,6 @@ class RHData():
 
         self.set_option("startThreshLowerAmount", "0")
         self.set_option("startThreshLowerDuration", "0")
-        self.set_option("nextHeatBehavior", "0")
         self.set_option("currentFormat", "1")
         self.set_option("currentHeat", "0")
 
