@@ -12,6 +12,7 @@ class Config():
         self.filename = filename
 
         self.config = {
+            'SECRETS': {},
             'GENERAL': {},
             'HARDWARE': {},
             'LED': {},
@@ -20,6 +21,11 @@ class Config():
             'SENSORS': {},
             'SERIAL_PORTS': [],
         }
+
+        # server secrets:
+        self.config['SECRETS']['ADMIN_USERNAME'] = ''
+        self.config['SECRETS']['ADMIN_PASSWORD'] = ''
+        self.config['SECRETS']['SECRET_KEY'] = ''
 
         # LED strip configuration:
         self.config['LED']['LED_COUNT'] = 0  # Number of LED pixels.
@@ -43,9 +49,6 @@ class Config():
 
         # other default configurations
         self.config['GENERAL']['HTTP_PORT'] = 5000
-        self.config['GENERAL']['SECRET_KEY'] = random.random()
-        self.config['GENERAL']['ADMIN_USERNAME'] = ''
-        self.config['GENERAL']['ADMIN_PASSWORD'] = ''
         self.config['GENERAL']['SECONDARIES'] = []
         self.config['GENERAL']['SECONDARY_TIMEOUT'] = 300  # seconds
         self.config['GENERAL']['DEBUG'] = False
@@ -58,6 +61,13 @@ class Config():
         self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
 
+        # logging defaults
+        self.config['LOGGING']['CONSOLE_LEVEL'] = "INFO"
+        self.config['LOGGING']['SYSLOG_LEVEL'] = "NONE"
+        self.config['LOGGING']['FILELOG_LEVEL'] = "INFO"
+        self.config['LOGGING']['FILELOG_NUM_KEEP'] = 30
+        self.config['LOGGING']['CONSOLE_STREAM'] = "stdout"
+
         self.InitResultStr = None
         self.InitResultLogLevel = logging.INFO
 
@@ -66,26 +76,9 @@ class Config():
             with open(self.filename, 'r') as f:
                 ExternalConfig = json.load(f)
 
-            self.config['GENERAL'].update(ExternalConfig['GENERAL'])
+            for key in ExternalConfig.keys():
+                self.config[key].update(ExternalConfig[key])
 
-            # if auth fields set to empty strings then allow open access to all pages
-            if ExternalConfig['GENERAL'].get('ADMIN_USERNAME') == "" and \
-                        ExternalConfig['GENERAL'].get('ADMIN_PASSWORD') == "":
-                self.config['GENERAL']['ADMIN_USERNAME'] = ''
-                self.config['GENERAL']['ADMIN_PASSWORD'] = ''
-
-            if 'HARDWARE' in ExternalConfig:
-                self.config['HARDWARE'].update(ExternalConfig['HARDWARE'])
-            if 'LOGGING' in ExternalConfig:
-                self.config['LOGGING'].update(ExternalConfig['LOGGING'])
-            if 'LED' in ExternalConfig:
-                self.config['LED'].update(ExternalConfig['LED'])
-            if 'VRX_CONTROL' in ExternalConfig:
-                self.config['VRX_CONTROL'].update(ExternalConfig['VRX_CONTROL'])
-            if 'SENSORS' in ExternalConfig:
-                self.config['SENSORS'].update(ExternalConfig['SENSORS'])
-            if 'SERIAL_PORTS' in ExternalConfig:
-                self.config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
             self.config_file_status = 1
             self.InitResultStr = "Using configuration file '{0}'".format(self.filename)
             self.InitResultLogLevel = logging.INFO
@@ -98,8 +91,10 @@ class Config():
             self.InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
             self.InitResultLogLevel = logging.ERROR
 
-        # Apply legacy config options for backward compatibility
+        self.migrate_legacy_config()
+        self.save_config()
 
+    def migrate_legacy_config(self):
         if 'SERIAL_PORTS' in self.config:
             if not self.config['GENERAL'].get('SERIAL_PORTS'):
                 self.config['GENERAL']['SERIAL_PORTS'] = self.config['SERIAL_PORTS']
@@ -119,6 +114,19 @@ class Config():
             if self.config['LED']['LED_PIN'] and not self.config['LED'].get('LED_GPIO'):
                 self.config['LED']['LED_GPIO'] = self.config['LED']['LED_PIN']
             del self.config['LED']['LED_PIN']
+
+        if 'ADMIN_USERNAME' in self.config['GENERAL']:
+            if self.config['SECRETS'].get('ADMIN_USERNAME'):
+                self.config['SECRETS']['ADMIN_USERNAME'] = self.config['GENERAL']['ADMIN_USERNAME']
+            del self.config['GENERAL']['ADMIN_USERNAME']
+
+        if 'ADMIN_PASSWORD' in self.config['GENERAL']:
+            if self.config['SECRETS'].get('ADMIN_PASSWORD'):
+                self.config['SECRETS']['ADMIN_PASSWORD'] = self.config['GENERAL']['ADMIN_PASSWORD']
+            del self.config['GENERAL']['ADMIN_PASSWORD']
+
+        if 'SECRET_KEY' in self.config['GENERAL']:
+            del self.config['GENERAL']['SECRET_KEY']
 
     # Writes a log message describing the result of the module initialization.
     def logInitResultMessage(self):

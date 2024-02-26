@@ -281,7 +281,7 @@ def getFwfileProctypeStr(fileStr):
 
 def check_auth(username, password):
     '''Check if a username password combination is valid.'''
-    return username == RaceContext.serverconfig.get_item('GENERAL', 'ADMIN_USERNAME') and password == RaceContext.serverconfig.get_item('GENERAL', 'ADMIN_PASSWORD')
+    return username == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') and password == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD')
 
 def authenticate():
     '''Sends a 401 response that enables basic auth.'''
@@ -291,8 +291,8 @@ def authenticate():
         {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
 def requires_auth(f):
-    if RaceContext.serverconfig.get_item('GENERAL', 'ADMIN_USERNAME') != "" or \
-                            RaceContext.serverconfig.get_item('GENERAL', 'ADMIN_PASSWORD') != "":
+    if RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') != "" or \
+                            RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD') != "":
         @wraps(f)
         def decorated_auth(*args, **kwargs):
             auth = request.authorization
@@ -3251,11 +3251,11 @@ RaceContext.cluster.setEventActionsObj(EventActionsObj)
 
 @catchLogExceptionsWrapper
 def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), argv_arr=None):
-    if not RaceContext.serverconfig.get_item('GENERAL', 'SECRET_KEY'):
+    if not RaceContext.serverconfig.get_item('SECRETS', 'SECRET_KEY'):
         new_key = ''.join(random.choice(string.ascii_letters) for _ in range(50))
-        RaceContext.serverconfig.set_item('GENERAL', 'SECRET_KEY', new_key)
+        RaceContext.serverconfig.set_item('SECRETS', 'SECRET_KEY', new_key)
 
-    APP.config['SECRET_KEY'] = RaceContext.serverconfig.get_item('GENERAL', 'SECRET_KEY')
+    APP.config['SECRET_KEY'] = RaceContext.serverconfig.get_item('SECRETS', 'SECRET_KEY')
     logger.info("Running http server at port " + str(port_val))
     init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP, {
