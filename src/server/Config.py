@@ -1,6 +1,7 @@
 '''
 Global configurations
 '''
+import copy
 import logging
 import random
 import json
@@ -156,3 +157,8 @@ class Config():
     def save_config(self):
         with open(self.filename, 'w') as f:
             f.write(json.dumps(self.config, indent=2))
+
+    def get_sharable_config(self):
+        sharable_config = copy.deepcopy(self.config)
+        del sharable_config['SECRETS']
+        return sharable_config
