@@ -6,6 +6,7 @@ API_VERSION_MINOR = 1
 
 import json
 import inspect
+import copy
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 
@@ -32,6 +33,7 @@ class RHAPI():
         self.race = RaceAPI(self._racecontext)
         self.language = LanguageAPI(self._racecontext)
         self.interface = HardwareInterfaceAPI(self._racecontext)
+        self.config = ServerConfigAPI(self._racecontext)
         self.sensors = SensorsAPI(self._racecontext)
         self.eventresults = EventResultsAPI(self._racecontext)
         self.events = EventsAPI(self._racecontext)
@@ -1030,6 +1032,24 @@ class HardwareInterfaceAPI():
     @property
     def seats(self):
         return self._racecontext.interface.nodes
+
+
+#
+# Server Config
+#
+class ServerConfigAPI():
+    def __init__(self, race_context):
+        self._racecontext = race_context
+
+    @property
+    def config(self):
+        return copy.deepcopy(self._racecontext.serverconfig.config)
+
+    def get_item(self, section, item):
+        return self._racecontext.serverconfig.get_item(section, item)
+
+    def set_item(self, section, item, value):
+        return self._racecontext.serverconfig.set_item(section, item, value)
 
 
 #

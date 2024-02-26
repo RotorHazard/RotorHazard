@@ -7,123 +7,144 @@ import json
 
 logger = logging.getLogger(__name__)
 
-CONFIG_FILE_NAME = 'config.json'
+class Config():
+    def __init__(self, filename='config.json'):
+        self.filename = filename
 
-GENERAL = {}
-HARDWARE = {}
-SENSORS = {}
-LED = {}
-SERIAL_PORTS = []
-LOGGING = {}
-VRX_CONTROL = {}
+        self.config = {
+            'GENERAL': {},
+            'HARDWARE': {},
+            'LED': {},
+            'VRX_CONTROL': {},
+            'LOGGING': {},
+            'SENSORS': {},
+            'SERIAL_PORTS': [],
+        }
 
-# LED strip configuration:
-LED['LED_COUNT']      = 0       # Number of LED pixels.
-LED['LED_GPIO']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
-LED['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
-LED['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
-LED['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
-LED['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-LED['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
-LED['LED_ROWS']       = 1       # Number of rows in LED array
-LED['PANEL_ROTATE']   = 0
-LED['INVERTED_PANEL_ROWS'] = False
+        # LED strip configuration:
+        self.config['LED']['LED_COUNT'] = 0  # Number of LED pixels.
+        self.config['LED']['LED_GPIO'] = 10  # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+        self.config['LED']['LED_FREQ_HZ'] = 800000  # LED signal frequency in hertz (usually 800khz)
+        self.config['LED']['LED_DMA'] = 10  # DMA channel to use for generating signal (try 10)
+        self.config['LED']['LED_INVERT'] = False  # True to invert the signal (when using NPN transistor level shift)
+        self.config['LED']['LED_CHANNEL'] = 0  # set to '1' for GPIOs 13, 19, 41, 45 or 53
+        self.config['LED']['LED_STRIP'] = 'GRB'  # Strip type and colour ordering
+        self.config['LED']['LED_ROWS'] = 1  # Number of rows in LED array
+        self.config['LED']['PANEL_ROTATE'] = 0
+        self.config['LED']['INVERTED_PANEL_ROWS'] = False
 
-# Video Receiver Configuration
-VRX_CONTROL['HOST']    = 'localhost'     # MQTT broker IP Address
-VRX_CONTROL['ENABLED'] = False
-VRX_CONTROL['OSD_LAP_HEADER'] = 'L'
+        # Video Receiver Configuration
+        self.config['VRX_CONTROL']['HOST'] = 'localhost'  # MQTT broker IP Address
+        self.config['VRX_CONTROL']['ENABLED'] = False
+        self.config['VRX_CONTROL']['OSD_LAP_HEADER'] = 'L'
 
-# hardware default configurations
-HARDWARE['I2C_BUS'] = 1
+        # hardware default configurations
+        self.config['HARDWARE']['I2C_BUS'] = 1
 
-# other default configurations
-GENERAL['HTTP_PORT'] = 5000
-GENERAL['SECRET_KEY'] = random.random()
-GENERAL['ADMIN_USERNAME'] = 'admin'
-GENERAL['ADMIN_PASSWORD'] = 'rotorhazard'
-GENERAL['SECONDARIES'] = []
-GENERAL['SECONDARY_TIMEOUT'] = 300 # seconds
-GENERAL['DEBUG'] = False
-GENERAL['CORS_ALLOWED_HOSTS'] = '*'
-GENERAL['FORCE_S32_BPILL_FLAG'] = False
-GENERAL['DEF_NODE_FWUPDATE_URL'] = ''
-GENERAL['SHUTDOWN_BUTTON_GPIOPIN'] = 18
-GENERAL['SHUTDOWN_BUTTON_DELAYMS'] = 2500
-GENERAL['DB_AUTOBKP_NUM_KEEP'] = 30
-GENERAL['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
-GENERAL['LOG_SENSORS_DATA_RATE'] = 300 # rate at which to log sensor data
+        # other default configurations
+        self.config['GENERAL']['HTTP_PORT'] = 5000
+        self.config['GENERAL']['SECRET_KEY'] = random.random()
+        self.config['GENERAL']['ADMIN_USERNAME'] = ''
+        self.config['GENERAL']['ADMIN_PASSWORD'] = ''
+        self.config['GENERAL']['SECONDARIES'] = []
+        self.config['GENERAL']['SECONDARY_TIMEOUT'] = 300  # seconds
+        self.config['GENERAL']['DEBUG'] = False
+        self.config['GENERAL']['CORS_ALLOWED_HOSTS'] = '*'
+        self.config['GENERAL']['FORCE_S32_BPILL_FLAG'] = False
+        self.config['GENERAL']['DEF_NODE_FWUPDATE_URL'] = ''
+        self.config['GENERAL']['SHUTDOWN_BUTTON_GPIOPIN'] = 18
+        self.config['GENERAL']['SHUTDOWN_BUTTON_DELAYMS'] = 2500
+        self.config['GENERAL']['DB_AUTOBKP_NUM_KEEP'] = 30
+        self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
+        self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
 
-InitResultStr = None
-InitResultLogLevel = logging.INFO
+        self.InitResultStr = None
+        self.InitResultLogLevel = logging.INFO
 
-# override defaults above with config from file
-try:
-    with open(CONFIG_FILE_NAME, 'r') as f:
-        ExternalConfig = json.load(f)
+        # override defaults above with config from file
+        try:
+            with open(self.filename, 'r') as f:
+                ExternalConfig = json.load(f)
 
-    GENERAL.update(ExternalConfig['GENERAL'])
+            self.config['GENERAL'].update(ExternalConfig['GENERAL'])
 
-    # if auth fields set to empty strings then allow open access to all pages
-    if ExternalConfig['GENERAL'].get('ADMIN_USERNAME') == "" and \
-                ExternalConfig['GENERAL'].get('ADMIN_PASSWORD') == "":
-        GENERAL['ADMIN_USERNAME'] = ''
-        GENERAL['ADMIN_PASSWORD'] = ''
+            # if auth fields set to empty strings then allow open access to all pages
+            if ExternalConfig['GENERAL'].get('ADMIN_USERNAME') == "" and \
+                        ExternalConfig['GENERAL'].get('ADMIN_PASSWORD') == "":
+                self.config['GENERAL']['ADMIN_USERNAME'] = ''
+                self.config['GENERAL']['ADMIN_PASSWORD'] = ''
 
-    if 'HARDWARE' in ExternalConfig:
-        HARDWARE.update(ExternalConfig['HARDWARE'])
-    if 'LOGGING' in ExternalConfig:
-        LOGGING.update(ExternalConfig['LOGGING'])
-    if 'LED' in ExternalConfig:
-        LED.update(ExternalConfig['LED'])
-    if 'VRX_CONTROL' in ExternalConfig:
-        VRX_CONTROL.update(ExternalConfig['VRX_CONTROL'])
+            if 'HARDWARE' in ExternalConfig:
+                self.config['HARDWARE'].update(ExternalConfig['HARDWARE'])
+            if 'LOGGING' in ExternalConfig:
+                self.config['LOGGING'].update(ExternalConfig['LOGGING'])
+            if 'LED' in ExternalConfig:
+                self.config['LED'].update(ExternalConfig['LED'])
+            if 'VRX_CONTROL' in ExternalConfig:
+                self.config['VRX_CONTROL'].update(ExternalConfig['VRX_CONTROL'])
+            if 'SENSORS' in ExternalConfig:
+                self.config['SENSORS'].update(ExternalConfig['SENSORS'])
+            if 'SERIAL_PORTS' in ExternalConfig:
+                self.config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
+            self.config_file_status = 1
+            self.InitResultStr = "Using configuration file '{0}'".format(self.filename)
+            self.InitResultLogLevel = logging.INFO
+        except IOError:
+            self.config_file_status = 0
+            self.InitResultStr = "No configuration file found, using defaults"
+            self.InitResultLogLevel = logging.WARN
+        except ValueError as ex:
+            self.config_file_status = -1
+            self.InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
+            self.InitResultLogLevel = logging.ERROR
 
+        # Apply legacy config options for backward compatibility
 
-    '''  #pylint: disable=pointless-string-statement
-    # Subtree updating
-    try:
-        bitmaptree = LED['BITMAPS']
-        LED'].update(ExternalLED'])
-        LED['BITMAPS'] = bitmaptree
-        LED['BITMAPS'].update(ExternalLED['BITMAPS'])
-    except KeyError:
-        if 'LED' in ExternalConfig:
-            LED'].update(ExternalLED'])
-        else:
-            print "No 'LED' entry found in configuration file "
-    '''
+        if 'SERIAL_PORTS' in self.config:
+            if not self.config['GENERAL'].get('SERIAL_PORTS'):
+                self.config['GENERAL']['SERIAL_PORTS'] = self.config['SERIAL_PORTS']
+            del self.config['SERIAL_PORTS']
 
-    if 'SENSORS' in ExternalConfig:
-        SENSORS.update(ExternalConfig['SENSORS'])
-    if 'SERIAL_PORTS' in ExternalConfig:
-        SERIAL_PORTS.extend(ExternalConfig['SERIAL_PORTS'])
-    GENERAL['configFile'] = 1
-    InitResultStr = "Using configuration file '{0}'".format(CONFIG_FILE_NAME)
-    InitResultLogLevel = logging.INFO
-except IOError:
-    GENERAL['configFile'] = 0
-    InitResultStr = "No configuration file found, using defaults"
-    InitResultLogLevel = logging.WARN
-except ValueError as ex:
-    GENERAL['configFile'] = -1
-    InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
-    InitResultLogLevel = logging.ERROR
+        if 'SLAVES' in self.config['GENERAL']:
+            if self.config['GENERAL']['SLAVES'] and not self.config['GENERAL'].get('SECONDARIES'):
+                self.config['GENERAL']['SECONDARIES'] = self.config['GENERAL']['SLAVES']
+            del self.config['GENERAL']['SLAVES']
 
-# Apply legacy config options for backward compatibility
-if not GENERAL['SECONDARIES']:
-    if 'SLAVES' in GENERAL and GENERAL['SLAVES']:
-        GENERAL['SECONDARIES'] = GENERAL['SLAVES']
+        if 'SLAVE_TIMEOUT' in self.config['GENERAL']:
+            if self.config['GENERAL']['SLAVE_TIMEOUT'] and not self.config['GENERAL'].get('SECONDARY_TIMEOUT'):
+                self.config['GENERAL']['SECONDARY_TIMEOUT'] = self.config['GENERAL']['SLAVE_TIMEOUT']
+            del self.config['GENERAL']['SLAVE_TIMEOUT']
 
-if GENERAL['SECONDARY_TIMEOUT'] == 300:
-    if 'SLAVE_TIMEOUT' in GENERAL and GENERAL['SLAVE_TIMEOUT']:
-        GENERAL['SECONDARY_TIMEOUT'] = GENERAL['SLAVE_TIMEOUT']
+        if 'LED_PIN' in self.config['LED']:
+            if self.config['LED']['LED_PIN'] and not self.config['LED'].get('LED_GPIO'):
+                self.config['LED']['LED_GPIO'] = self.config['LED']['LED_PIN']
+            del self.config['LED']['LED_PIN']
 
-if LED['LED_GPIO'] == 10:
-    if 'LED_PIN' in LED and LED['LED_PIN']:
-        LED['LED_GPIO'] = LED['LED_PIN']
+    # Writes a log message describing the result of the module initialization.
+    def logInitResultMessage(self):
+        if self.InitResultStr:
+            logger.log(self.InitResultLogLevel, self.InitResultStr)
 
-# Writes a log message describing the result of the module initialization.
-def logInitResultMessage():
-    if InitResultStr:
-        logger.log(InitResultLogLevel, InitResultStr)
+    def get_item(self, section, item):
+        try:
+            return self.config[section][item]
+        except:
+            return False
+
+    def get_section(self, section):
+        try:
+            return self.config[section]
+        except:
+            return False
+
+    def set_item(self, section, item, value):
+        try:
+            self.config[section][item] = value
+            self.save_config()
+        except:
+            return False
+        return True
+
+    def save_config(self):
+        with open(self.filename, 'w') as f:
+            f.write(json.dumps(self.config, indent=2))

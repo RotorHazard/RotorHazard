@@ -33,6 +33,7 @@ class RaceContext():
         self.raceclass_rank_manager = None
         self.race_points_manager = None
 
+        self.serverconfig = None
         self.serverstate = ServerState(self)
 
     def branch_race_obj(self):
