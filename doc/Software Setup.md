@@ -318,6 +318,10 @@ sudo apt-get install libopenjp2-7-dev
 - If your multiline panel image requires rotation, use `PANEL_ROTATE` with the number of 90-degree CCW rotations needed (0..3). 
 - If alternating lines appear jumbled, try setting `INVERTED_PANEL_ROWS` to `true`.
 
+#### LED Controller
+
+An alternative to the above methods is to use an LED Controller module, which may be connected to a USB port on any computer that is running the RotorHazard Server. See the [LED Controller repository](https://github.com/RotorHazard/LEDCtrlr) for details on how to wire and program an Arduino board as an LED controller.
+
 ### Java Support
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
 ```
