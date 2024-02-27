@@ -19,7 +19,7 @@ VRX_CONTROL = {}
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
-LED['LED_GPIO']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+LED['LED_GPIO']       = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 LED['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
 LED['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
 LED['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
@@ -28,6 +28,8 @@ LED['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 LED['LED_ROWS']       = 1       # Number of rows in LED array
 LED['PANEL_ROTATE']   = 0
 LED['INVERTED_PANEL_ROWS'] = False
+LED['SERIAL_CTRLR_PORT'] = None      # Serial port for LED-controller module
+LED['SERIAL_CTRLR_BAUD'] = 115200    # Serial baud rate for LED-controller module
 
 # Video Receiver Configuration
 VRX_CONTROL['HOST']    = 'localhost'     # MQTT broker IP Address
