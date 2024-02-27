@@ -206,6 +206,8 @@ class RHData():
         try:
             output = []
             with engine.begin() as conn:
+                if not table_name in metadata.tables:
+                    raise NoSuchTableError
                 table = Table(table_name, metadata, autoload=True)
                 data = conn.execute(sqlalchemy.text("SELECT * from {}".format(table_name))).all()
                 for row in data:
@@ -216,11 +218,11 @@ class RHData():
                         cnt += 1
                     output.append(d)  # one for each row in table
             return output
-
         except NoSuchTableError:
             logger.debug('Table "{}" not found in previous database'.format(table_name))
         except Exception as ex:
             logger.warning('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+        return None
 
     def restore_table(self, class_type, table_query_data, **kwargs):
         if table_query_data:
