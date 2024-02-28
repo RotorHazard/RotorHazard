@@ -3144,22 +3144,32 @@ if Config.LED['LED_COUNT'] > 0:
     # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
     led_brightness = RaceContext.rhdata.get_optionInt("ledBrightness")
-    try:
-        ledModule = importlib.import_module(led_type + '_leds')
-        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-    except ImportError:
-        # No hardware LED handler, the OpenCV emulation
+    if not Config.LED['SERIAL_CTRLR_PORT']:
         try:
-            ledModule = importlib.import_module('cv2_leds')
+            ledModule = importlib.import_module(led_type + '_leds')
             strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
         except ImportError:
-            # No OpenCV emulation, try console output
+            # No hardware LED handler, the OpenCV emulation
             try:
-                ledModule = importlib.import_module('ANSI_leds')
+                ledModule = importlib.import_module('cv2_leds')
                 strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
             except ImportError:
-                ledModule = None
-                logger.info('LED: disabled (no modules available)')
+                # No OpenCV emulation, try console output
+                try:
+                    ledModule = importlib.import_module('ANSI_leds')
+                    strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+                except ImportError:
+                    ledModule = None
+                    logger.info('LED: disabled (no modules available)')
+    else:
+        try:
+            ledModule = importlib.import_module('ledctrlr_leds')
+            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+        except Exception as ex:
+            if "FileNotFound" in str(ex):
+                logger.error("Serial port not found for LED controller: {}".format(ex))
+            else:
+                logger.exception("Error initializing serial LED controller: {}".format(ex))
 else:
     logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
