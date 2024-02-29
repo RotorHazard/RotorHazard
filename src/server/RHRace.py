@@ -1533,15 +1533,20 @@ class RHRace():
 
     def finalize_heat_set(self, new_heat_id): #finalize_current_heat_set
         if self.race_status == RaceStatus.READY:
-            self.current_heat = new_heat_id
-            self._racecontext.rhdata.set_option('currentHeat', self.current_heat)
 
             if new_heat_id == RHUtils.HEAT_ID_NONE:
                 self.node_pilots = {}
                 self.node_teams = {}
-                logger.info("Switching to practice mode; races will not be saved until a heat is selected")
+                if self.current_heat != new_heat_id:
+                    logger.info("Switching to practice mode; races will not be saved until a heat is selected")
+                    self.current_heat = new_heat_id
+                else:
+                    logger.debug("Running in practice mode; races will not be saved until a heat is selected")
+                self._racecontext.rhdata.set_option('currentHeat', self.current_heat)
 
             else:
+                self.current_heat = new_heat_id
+                self._racecontext.rhdata.set_option('currentHeat', self.current_heat)
                 self.node_pilots = {}
                 self.node_teams = {}
                 for idx in range(self.num_nodes):
