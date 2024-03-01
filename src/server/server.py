@@ -73,8 +73,6 @@ import random
 import string
 import json
 
-import Config
-
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
 
 import Results
@@ -113,7 +111,6 @@ from HeatGenerator import HeatGeneratorManager
 # Create shared context
 RaceContext = RaceContext.RaceContext()
 RHAPI = RHAPI.RHAPI(RaceContext)
-RaceContext.serverconfig = Config.Config()
 
 RaceContext.serverstate.program_start_epoch_time = _program_start_epoch_time
 RaceContext.serverstate.program_start_mtonic = _program_start_mtonic

@@ -20,7 +20,6 @@ class Config():
             'VRX_CONTROL': {},
             'LOGGING': {},
             'SENSORS': {},
-            'SERIAL_PORTS': [],
         }
 
         # server secrets:
@@ -61,6 +60,7 @@ class Config():
         self.config['GENERAL']['DB_AUTOBKP_NUM_KEEP'] = 30
         self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
+        self.config['GENERAL']['SERIAL_PORTS'] = []
 
         # logging defaults
         self.config['LOGGING']['CONSOLE_LEVEL'] = "INFO"

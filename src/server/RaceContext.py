@@ -1,5 +1,6 @@
 '''Primary Race management class'''
 
+import Config
 import RHRace
 import RHTimeFns
 import logging
@@ -33,7 +34,7 @@ class RaceContext():
         self.raceclass_rank_manager = None
         self.race_points_manager = None
 
-        self.serverconfig = None
+        self.serverconfig = Config.Config()
         self.serverstate = ServerState(self)
 
     def branch_race_obj(self):
