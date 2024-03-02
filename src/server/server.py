@@ -2829,36 +2829,53 @@ def reportServerInfo():
                 __("Node firmware is newer than this server version and may not function properly"),
                 header='Warning', subclass='api-high')
 
-def check_req_entry(req_line, module_name):
-    installed_ver = importlib.metadata.version(module_name)
-    required_ver = req_line[req_line.index('==')+2 : req_line.rindex('.')]
-    if not installed_ver.startswith(required_ver):
-        logger.warning(__("Package '{}' version mismatch: Required {}, but {} installed").format( \
-                                                module_name, required_ver, installed_ver))
-        return 1
+def check_req_entry(req_line, entry):
+    try:
+        if entry and len(entry) > 0:
+            first_item = entry[0].lower()
+            p = len(first_item) - 1
+            while p > 0 and not first_item[p].isalnum():  # find trailing "=="
+                p -= 1
+            trailing_str = first_item[p+1 : p+3]  # trailing "=="
+            if not trailing_str:
+                trailing_str = "=="
+            if len(entry) == 1:
+                module_name = first_item[:p+1]
+            else:
+                module_name = entry[1]
+            installed_ver = importlib.metadata.version(module_name)
+            required_ver = req_line[req_line.index(trailing_str)+2 : req_line.rindex('.')]
+            if not installed_ver.startswith(required_ver):
+                logger.warning(__("Package '{}' version mismatch: Required {}, but {} installed").format( \
+                                                        module_name, required_ver, installed_ver))
+                return 1
+    except ModuleNotFoundError as ex:
+        logger.info("Unable to check package requirements: {}".format(ex))
     return 0
 
 def check_requirements():
     try:
         import importlib.metadata  # @UnusedImport pylint: disable=redefined-outer-name
-        chk_list = [['Flask==','flask'], ['Flask-SocketIO==','flask_socketio'], \
-                    ['Flask_SocketIO==','flask_socketio'], ['gevent==','gevent'], \
-                    ['gevent-websocket==','gevent-websocket'], ['monotonic==','monotonic'], \
-                    ['requests==','requests']]
+        chk_list = [['Flask=='], ['Flask-SocketIO==','flask_socketio'], ['Flask_SocketIO=='], \
+                    ['gevent=='], ['gevent-websocket=='], ['monotonic=='], ['requests=='], \
+                    ['itsdangerous=='], ['Jinja2==', 'Jinja2'], ['Werkzeug=='], ['MarkupSafe=='], \
+                    ['python-socketio=='], ['python-engineio=='], ['websocket-client=='], \
+                    ['SQLAlchemy=='], ['greenlet=='], ['cffi=='], ['pyserial=='] ]
         num_mismatched = 0
-        with open('requirements.txt') as rf:
+        num_checked = 0
+        req_file_name = "requirements.txt" if RHUtils.is_sys_raspberry_pi() else "reqsNonPi.txt"
+        with open(req_file_name) as rf:
             for line in rf.readlines():
                 for entry in chk_list:
                     if line.startswith(entry[0]):
-                        num_mismatched += check_req_entry(line, entry[1])
+                        num_mismatched += check_req_entry(line, entry)
+                        num_checked += 1
+        logger.debug("Number of required libraries checked: {}".format(num_checked))
         if num_mismatched > 0:
-            if RHUtils.is_sys_raspberry_pi():
-                logger.warning(__('Try "pip install --upgrade --no-cache-dir -r requirements.txt"'))
+            logger.warning(__('Try "pip install --upgrade --no-cache-dir -r {}"'.format(req_file_name)))
             set_ui_message('check_reqs',
-                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
+                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>".format(req_file_name)),
                 header='Warning', subclass='none')
-    except ModuleNotFoundError as ex:
-        logger.debug("Unable to check package requirements: {}".format(ex))
     except:
         logger.exception("Error checking package requirements")
 
