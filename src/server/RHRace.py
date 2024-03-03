@@ -461,7 +461,8 @@ class RHRace():
         self._racecontext.rhui.emit_current_leaderboard()
 
         if doSave:
-            self.do_save_actions()
+            # do with a bit of delay to prevent clearing results before stop event-actions can process them
+            gevent.spawn_later(0.05, self.do_save_actions)
 
     @catchLogExceptionsWrapper
     def save(self):
