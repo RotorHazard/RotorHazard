@@ -197,8 +197,8 @@
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#display_laps_reversed').prop("checked", rotorhazard.display_laps_reversed);
 
-		if ('{{ getOption('ledBrightness') }}' != 'False') {
-			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+		if ('{{ getConfig('LED', 'ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getConfig('LED', 'ledBrightness') }} ));
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
@@ -821,14 +821,14 @@
 							else {
 								ts_val = lap.lap_time_stamp - curnode_data.laps[0].lap_time_stamp;
 							}
-							local_prepend.text(formatTimeMillis(ts_val, {{ getOption('timeFormat')|tojson }}));
+							local_prepend.text(formatTimeMillis(ts_val, {{ getConfig('GENERAL', 'timeFormat')|tojson }}));
 							if(rotorhazard.display_time_start){
 								local_prepend.append(" / ");
 							}
 						}
 
 						if(rotorhazard.display_time_start) {
-							local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
+							local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getConfig('GENERAL', 'timeFormat')|tojson }}));
 						}
 
 						time_td.prepend(local_prepend);

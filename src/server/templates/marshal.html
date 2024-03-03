@@ -29,11 +29,11 @@
 
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
-	if ('{{ getOption('startThreshLowerAmount') }}' != 'False') {
-		start_thresh_lower_amount = {{ getOption('startThreshLowerAmount') }};
+	if ('{{ getConfig('GENERAL', 'startThreshLowerAmount') }}' != 'False') {
+		start_thresh_lower_amount = {{ geConfig('GENERAL', 'startThreshLowerAmount') }};
 	}
-	if ('{{ getOption('startThreshLowerDuration') }}' != 'False') {
-		start_thresh_lower_duration = {{ getOption('startThreshLowerDuration') }};
+	if ('{{ getConfig('GENERAL', 'startThreshLowerDuration') }}' != 'False') {
+		start_thresh_lower_duration = {{ getConfig('GENERAL', 'startThreshLowerDuration') }};
 	}
 
 	$(document).ready(function () {
@@ -467,7 +467,7 @@
 
 					lapData.append('<td>' + lap_index + '</td>');
 					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getOption('timeFormat')|tojson }}) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('GENERAL', 'timeFormat')|tojson }}) + '</td>');
 					lap_index++;
 				} else {
 					deleted_lap_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);

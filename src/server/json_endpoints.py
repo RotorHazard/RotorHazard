@@ -97,7 +97,7 @@ def createBlueprint(RaceContext, serverInfo):
 
         payload = {
             'setup': heat,
-            'leaderboard': Results.calc_leaderboard(RaceContext.rhdata, heat_id=heat_id)
+            'leaderboard': Results.calc_leaderboard(RaceContext, heat_id=heat_id)
         }
 
         return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -170,7 +170,7 @@ def createBlueprint(RaceContext, serverInfo):
 
         payload = {
             "heats": heats,
-            "leaderboard": Results.calc_leaderboard(RaceContext.rhdata)
+            "leaderboard": Results.calc_leaderboard(RaceContext)
         }
 
         return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -208,7 +208,7 @@ def createBlueprint(RaceContext, serverInfo):
             'start_time_formatted': race.start_time_formatted,
             'nodes': pilotraces,
             'sort': RaceContext.rhdata.get_option('pilotSort'),
-            'leaderboard': Results.calc_leaderboard(RaceContext.rhdata, heat_id=heat_id, round_id=round_id)
+            'leaderboard': Results.calc_leaderboard(RaceContext, heat_id=heat_id, round_id=round_id)
         }
 
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}

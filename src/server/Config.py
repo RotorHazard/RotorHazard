@@ -9,7 +9,8 @@ import json
 logger = logging.getLogger(__name__)
 
 class Config():
-    def __init__(self, filename='config.json'):
+    def __init__(self, racecontext, filename='config.json'):
+        self._racecontext = racecontext
         self.filename = filename
 
         self.config = {
@@ -39,6 +40,12 @@ class Config():
         self.config['LED']['PANEL_ROTATE'] = 0
         self.config['LED']['INVERTED_PANEL_ROWS'] = False
 
+        # LED effect configuration
+        self.config['LED']['ledEffects'] = ''
+        self.config['LED']['ledBrightness'] = '32'
+        self.config['LED']['ledColorNodes'] = ''
+        self.config['LED']['ledColorFreqs'] = ''
+
         # Video Receiver Configuration
         self.config['VRX_CONTROL']['HOST'] = 'localhost'  # MQTT broker IP Address
         self.config['VRX_CONTROL']['ENABLED'] = False
@@ -61,6 +68,29 @@ class Config():
         self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
         self.config['GENERAL']['SERIAL_PORTS'] = []
+
+        # timer UI options
+        self.config['GENERAL']['timerName'] = "RotorHazard"
+        self.config['GENERAL']['timerLogo'] = ''
+        self.config['GENERAL']['hue_0'] = '212'
+        self.config['GENERAL']['sat_0'] = '55'
+        self.config['GENERAL']['lum_0_low'] = '29.2'
+        self.config['GENERAL']['lum_0_high'] = '46.7'
+        self.config['GENERAL']['contrast_0_low'] = '#ffffff'
+        self.config['GENERAL']['contrast_0_high'] = '#ffffff'
+        self.config['GENERAL']['hue_1'] = '25'
+        self.config['GENERAL']['sat_1'] = '85.3'
+        self.config['GENERAL']['lum_1_low'] = '37.6'
+        self.config['GENERAL']['lum_1_high'] = '54.5'
+        self.config['GENERAL']['contrast_1_low'] = '#ffffff'
+        self.config['GENERAL']['contrast_1_high'] = '#000000'
+        self.config['GENERAL']['currentLanguage'] = ''
+        self.config['GENERAL']['timeFormat'] = '{m}:{s}.{d}'
+        self.config['GENERAL']['timeFormatPhonetic'] = '{m} {s}.{d}'
+        self.config['GENERAL']['startThreshLowerAmount'] = '0'
+        self.config['GENERAL']['startThreshLowerDuration'] = '0'
+        self.config['GENERAL']['voiceCallouts'] = ''
+        self.config['GENERAL']['actions'] = '' 
 
         # logging defaults
         self.config['LOGGING']['CONSOLE_LEVEL'] = "INFO"
@@ -129,16 +159,72 @@ class Config():
         if 'SECRET_KEY' in self.config['GENERAL']:
             del self.config['GENERAL']['SECRET_KEY']
 
+    def migrate_legacy_db_keys(self):
+        class migrateItem():
+            def __init__(self, source, section='GENERAL', dest=None):
+                self.source = source
+                self.section = section
+                self.dest = dest
+
+            @property
+            def dest(self):
+                return self.dest if self.dest else self.source
+
+        migrations = [
+            migrateItem('timerName'),
+            migrateItem('timerLogo'),
+            migrateItem('hue_0'),
+            migrateItem('sat_0'),
+            migrateItem('lum_0_low'),
+            migrateItem('lum_0_high'),
+            migrateItem('contrast_0_low'),
+            migrateItem('contrast_0_high'),
+            migrateItem('hue_1'),
+            migrateItem('sat_1'),
+            migrateItem('lum_1_low'),
+            migrateItem('lum_1_high'),
+            migrateItem('contrast_1_low'),
+            migrateItem('contrast_1_high'),
+            migrateItem('currentLanguage'),
+            migrateItem('timeFormat'),
+            migrateItem('timeFormatPhonetic'),
+            migrateItem('ledEffects', 'LED'),
+            migrateItem('ledBrightness', 'LED'),
+            migrateItem('ledColorNodes', 'LED'),
+            migrateItem('ledColorFreqs', 'LED'),
+            migrateItem('startThreshLowerAmount'),
+            migrateItem('startThreshLowerDuration'),
+            migrateItem('voiceCallouts'),
+            migrateItem('actions'),
+        ]
+
+        for item in migrations:
+            self._racecontext.serverconfig.set_item(
+                item.dest,
+                item.section,
+                self._racecontext.rhdata.get_option(item.source)
+            )
+
     # Writes a log message describing the result of the module initialization.
     def logInitResultMessage(self):
         if self.InitResultStr:
             logger.log(self.InitResultLogLevel, self.InitResultStr)
 
-    def get_item(self, section, item):
+    def get_item(self, section, key, returntype=None):
         try:
-            return self.config[section][item]
+            return self.config[section][key]
         except:
             return False
+
+    def get_item_int(self, section, key, default_value=0):
+        try:
+            val = self.config[section][key]
+            if val:
+                return int(val)
+            else:
+                return default_value
+        except:
+            return default_value
 
     def get_section(self, section):
         try:
@@ -146,9 +232,9 @@ class Config():
         except:
             return False
 
-    def set_item(self, section, item, value):
+    def set_item(self, section, key, value):
         try:
-            self.config[section][item] = value
+            self.config[section][key] = value
             self.save_config()
         except:
             return False

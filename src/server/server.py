@@ -190,7 +190,7 @@ RaceContext.rhdata = RHData.RHData(Events, RaceContext, SERVER_API, DB_FILE_NAME
 
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
 
-RaceContext.language = Language.Language(RaceContext.rhdata) # initialize language
+RaceContext.language = Language.Language(RaceContext) # initialize language
 __ = RaceContext.language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
 
@@ -326,17 +326,17 @@ def shutdown_session(exception=None):
 def render_index():
     '''Route to home page.'''
     return render_template('home.html', serverInfo=RaceContext.serverstate.template_info_dict,
-                           getOption=RaceContext.rhdata.get_option, __=__, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+                           getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
 @APP.route('/event')
 def render_event():
     '''Route to heat summary page.'''
-    return render_template('event.html', num_nodes=RaceContext.race.num_nodes, serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('event.html', num_nodes=RaceContext.race.num_nodes, serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
 
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
-    return render_template('results.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+    return render_template('results.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
 @APP.route('/run')
 @requires_auth
@@ -351,7 +351,7 @@ def render_run():
                 'index': idx
             })
 
-    return render_template('run.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('run.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
         vrx_enabled=RaceContext.vrx_manager.isEnabled(),
         num_nodes=RaceContext.race.num_nodes,
@@ -370,7 +370,7 @@ def render_current():
                 'index': idx
             })
 
-    return render_template('current.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('current.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes,
         nodes=nodes,
         cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
@@ -379,14 +379,14 @@ def render_current():
 @requires_auth
 def render_marshal():
     '''Route to race management page.'''
-    return render_template('marshal.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('marshal.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/format')
 @requires_auth
 def render_format():
     '''Route to settings page.'''
-    return render_template('format.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('format.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
 @APP.route('/settings')
@@ -412,7 +412,7 @@ def render_settings():
     elif RaceContext.serverconfig.config_file_status == 0:
         server_messages_formatted += '<li class="config config-none warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
 
-    return render_template('settings.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('settings.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
                            led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
                            led_events_enabled=RaceContext.led_manager.isEnabled(),
                            vrx_enabled=RaceContext.vrx_manager.isEnabled(),
@@ -426,34 +426,34 @@ def render_settings():
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
-    return render_template('streams.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streams.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/stream/results')
 def render_stream_results():
     '''Route to current race leaderboard stream.'''
-    return render_template('streamresults.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streamresults.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/stream/node/<int:node_id>')
 def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
     use_inactive_nodes = 'true' if request.args.get('use_inactive_nodes') else 'false'
-    return render_template('streamnode.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streamnode.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         node_id=node_id-1, use_inactive_nodes=use_inactive_nodes
     )
 
 @APP.route('/stream/class/<int:class_id>')
 def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
-    return render_template('streamclass.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streamclass.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         class_id=class_id
     )
 
 @APP.route('/stream/heat/<int:heat_id>')
 def render_stream_heat(heat_id):
     '''Route to heat display for streaming.'''
-    return render_template('streamheat.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('streamheat.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes,
         heat_id=heat_id
     )
@@ -463,26 +463,26 @@ def render_stream_heat(heat_id):
 def render_scanner():
     '''Route to scanner page.'''
 
-    return render_template('scanner.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('scanner.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/decoder')
 @requires_auth
 def render_decoder():
     '''Route to race management page.'''
-    return render_template('decoder.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('decoder.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/imdtabler')
 def render_imdtabler():
     '''Route to IMDTabler page.'''
-    return render_template('imdtabler.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('imdtabler.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
 
 @APP.route('/updatenodes')
 @requires_auth
 def render_updatenodes():
     '''Route to update nodes page.'''
-    return render_template('updatenodes.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__, \
+    return render_template('updatenodes.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, \
                            fw_src_str=getDefNodeFwUpdateUrl())
 
 # Debug Routes
@@ -491,13 +491,13 @@ def render_updatenodes():
 @requires_auth
 def render_hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('hardwarelog.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
 
 @APP.route('/database')
 @requires_auth
 def render_database():
     '''Route to database page.'''
-    return render_template('database.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__,
+    return render_template('database.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
         pilots=RaceContext.rhdata.get_pilots(),
         heats=RaceContext.rhdata.get_heats(),
         heatnodes=RaceContext.rhdata.get_heatNodes(),
@@ -512,7 +512,7 @@ def render_database():
 @requires_auth
 def render_vrxstatus():
     '''Route to VRx status debug page.'''
-    return render_template('vrxstatus.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, __=__)
+    return render_template('vrxstatus.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
 
 # Documentation Viewer
 
@@ -529,7 +529,7 @@ def render_viewDocs():
 
         docPath = folderBase + docfile
 
-        language = RaceContext.rhdata.get_option("currentLanguage")
+        language = RaceContext.serverconfig.get_item('GENERAL', 'currentLanguage')
         if language:
             translated_path = folderBase + language + '/' + docfile
             if os.path.isfile(translated_path):
@@ -540,7 +540,7 @@ def render_viewDocs():
 
         return templating.render_template('viewdocs.html',
             serverInfo=RaceContext.serverstate.template_info_dict,
-            getOption=RaceContext.rhdata.get_option,
+            getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item,
             __=__,
             doc=doc
             )
@@ -559,7 +559,7 @@ def render_viewImg(imgfile):
 
     imgPath = folderBase + folderImg + imgfile
 
-    language = RaceContext.rhdata.get_option("currentLanguage")
+    language = RaceContext.serverconfig.get_item('GENERAL', 'currentLanguage')
     if language:
         translated_path = folderBase + language + '/' + folderImg + imgfile
         if os.path.isfile(translated_path):
@@ -993,7 +993,7 @@ def on_set_exit_at_level(data):
 @catchLogExceptionsWrapper
 def on_set_start_thresh_lower_amount(data):
     start_thresh_lower_amount = data['start_thresh_lower_amount']
-    RaceContext.rhdata.set_option("startThreshLowerAmount", start_thresh_lower_amount)
+    RaceContext.serverconfig.set_item('GENERAL', 'startThreshLowerAmount', start_thresh_lower_amount)
     logger.info("set start_thresh_lower_amount to %s percent" % start_thresh_lower_amount)
     RaceContext.rhui.emit_start_thresh_lower_amount(noself=True)
 
@@ -1001,7 +1001,7 @@ def on_set_start_thresh_lower_amount(data):
 @catchLogExceptionsWrapper
 def on_set_start_thresh_lower_duration(data):
     start_thresh_lower_duration = data['start_thresh_lower_duration']
-    RaceContext.rhdata.set_option("startThreshLowerDuration", start_thresh_lower_duration)
+    RaceContext.serverconfig.set_item('GENERAL', 'startThreshLowerDuration', start_thresh_lower_duration)
     logger.info("set start_thresh_lower_duration to %s seconds" % start_thresh_lower_duration)
     RaceContext.rhui.emit_start_thresh_lower_duration(noself=True)
 
@@ -1009,7 +1009,7 @@ def on_set_start_thresh_lower_duration(data):
 @catchLogExceptionsWrapper
 def on_set_language(data):
     '''Set interface language.'''
-    RaceContext.rhdata.set_option('currentLanguage', data['language'])
+    RaceContext.serverconfig.set_item('GENERAL', 'currentLanguage', data['language'])
 
 @SOCKET_IO.on('cap_enter_at_btn')
 @catchLogExceptionsWrapper
@@ -1827,14 +1827,14 @@ def on_set_led_effect(data):
         if RaceContext.led_manager.isEnabled():
             RaceContext.led_manager.setEventEffect(data['event'], data['effect'])
 
-        effect_opt = RaceContext.rhdata.get_option('ledEffects')
+        effect_opt = RaceContext.serverconfig.get_item('LED', 'ledEffects')
         if effect_opt:
             effects = json.loads(effect_opt)
         else:
             effects = {}
 
         effects[data['event']] = data['effect']
-        RaceContext.rhdata.set_option('ledEffects', json.dumps(effects))
+        RaceContext.serverconfig.get_item('LED', 'ledEffects', json.dumps(effects))
 
         Events.trigger(Evt.LED_EFFECT_SET, {
             'effect': data['event'],
@@ -1937,7 +1937,7 @@ def on_resave_laps(data):
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(lap['lap_time'], float):
-            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RaceContext.rhdata.get_option('timeFormat'))
+            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RaceContext.serverconfig.get_item('GENERAL', 'timeFormat'))
 
         new_racedata['laps'].append({
             'lap_time_stamp': lap['lap_time_stamp'],
@@ -2063,7 +2063,7 @@ def on_LED_brightness(data):
     brightness = data['brightness']
     strip.setBrightness(brightness)
     strip.show()
-    RaceContext.rhdata.set_option("ledBrightness", brightness)
+    RaceContext.serverconfig.set_item('LED', 'ledBrightness', brightness)
     Events.trigger(Evt.LED_BRIGHTNESS_SET, {
         'level': brightness,
         })
@@ -2074,6 +2074,16 @@ def on_set_option(data):
     RaceContext.rhdata.set_option(data['option'], data['value'])
     Events.trigger(Evt.OPTION_SET, {
         'option': data['option'],
+        'value': data['value'],
+        })
+
+@SOCKET_IO.on('set_config')
+@catchLogExceptionsWrapper
+def on_set_config(data):
+    RaceContext.serverconfig.set_item(data['section'], data['key'], data['value'])
+    Events.trigger(Evt.CONFIG_SET, {
+        'section': data['section'],
+        'key': data['key'],
         'value': data['value'],
         })
 
@@ -2102,7 +2112,7 @@ def get_race_elapsed():
 def save_callouts(data):
     # save callouts to Options
     callouts = json.dumps(data['callouts'])
-    RaceContext.rhdata.set_option('voiceCallouts', callouts)
+    RaceContext.serverconfig.set_item('GENERAL', 'voiceCallouts', callouts)
     logger.info('Set all voice callouts')
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 
@@ -2603,7 +2613,7 @@ def init_LED_effects():
         effects[Evt.RACE_STOP] = "bitmapRedX"
 
     # update with DB values (if any)
-    effect_opt = RaceContext.rhdata.get_option('ledEffects')
+    effect_opt = RaceContext.serverconfig.get_item('LED', 'ledEffects')
     if effect_opt:
         effects.update(json.loads(effect_opt))
     # set effects
@@ -3141,7 +3151,7 @@ if RaceContext.serverconfig.get_item('LED', 'LED_COUNT') > 0:
     led_type = os.environ.get('RH_LEDS', 'ws281x')
     # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
-    led_brightness = RaceContext.rhdata.get_optionInt("ledBrightness")
+    led_brightness = RaceContext.serverconfig.get_item('LED', 'ledBrightness')
     try:
         ledModule = importlib.import_module(led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)

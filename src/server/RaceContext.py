@@ -34,7 +34,7 @@ class RaceContext():
         self.raceclass_rank_manager = None
         self.race_points_manager = None
 
-        self.serverconfig = Config.Config()
+        self.serverconfig = Config.Config(self)
         self.serverstate = ServerState(self)
 
     def branch_race_obj(self):

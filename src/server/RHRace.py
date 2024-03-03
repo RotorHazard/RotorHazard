@@ -270,11 +270,11 @@ class RHRace():
             self._racecontext.cluster.doClusterRaceStart()
 
         # set lower EnterAt/ExitAt values if configured
-        if self._racecontext.rhdata.get_optionInt('startThreshLowerAmount') > 0 and self._racecontext.rhdata.get_optionInt('startThreshLowerDuration') > 0:
-            lower_amount = self._racecontext.rhdata.get_optionInt('startThreshLowerAmount')
+        if self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount') > 0 and self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration') > 0:
+            lower_amount = self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount')
             logger.info("Lowering EnterAt/ExitAt values at start of race, amount={0}%, duration={1} secs".\
-                        format(lower_amount, self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')))
-            lower_end_time = self.start_time_monotonic + self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')
+                        format(lower_amount, self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration')))
+            lower_end_time = self.start_time_monotonic + self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration')
             for node in self._racecontext.interface.nodes:
                 if node.frequency > 0 and (self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                     if node.current_rssi < node.enter_at_level:
@@ -444,8 +444,8 @@ class RHRace():
             delta_time = 0
 
         # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
-        if self._racecontext.rhdata.get_optionInt('startThreshLowerAmount') > 0 and \
-                delta_time < self._racecontext.rhdata.get_optionInt('startThreshLowerDuration'):
+        if self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount') > 0 and \
+                delta_time < self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration'):
             for node in self._racecontext.interface.nodes:
                 # if node EnterAt/ExitAt values need to be restored then do it soon
                 if node.frequency > 0 and (
@@ -616,8 +616,8 @@ class RHRace():
                             min_lap = self._racecontext.rhdata.get_optionInt("MinLapSec")
                             min_lap_behavior = self._racecontext.rhdata.get_optionInt("MinLapBehavior")
 
-                        lap_time_fmtstr = RHUtils.time_format(lap_time, self._racecontext.rhdata.get_option('timeFormat'))
-                        lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, self._racecontext.rhdata.get_option('timeFormat'))
+                        lap_time_fmtstr = RHUtils.time_format(lap_time, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
+                        lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
                         pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)
                         pilot_namestr = pilot_obj.callsign if pilot_obj else ""
 
@@ -683,10 +683,10 @@ class RHRace():
                             if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
                                 late_str = " (late lap)" if lap_late_flag else ""
                                 enter_fmtstr = RHUtils.time_format((node.enter_at_timestamp-self.start_time_monotonic)*1000, \
-                                                                   self._racecontext.rhdata.get_option('timeFormat')) \
+                                                                   self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat')) \
                                                if node.enter_at_timestamp else "0"
                                 exit_fmtstr = RHUtils.time_format((node.exit_at_timestamp-self.start_time_monotonic)*1000, \
-                                                                  self._racecontext.rhdata.get_option('timeFormat')) \
+                                                                  self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat')) \
                                                if node.exit_at_timestamp else "0"
                                 logger.debug('Lap pass{}: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, passtime={}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
                                             .format(late_str, node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
@@ -851,10 +851,10 @@ class RHRace():
 
         if db_next and db_last:
             db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
-            db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.rhdata.get_option('timeFormat'))
+            db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
         elif db_next:
             db_next['lap_time'] = db_next['lap_time_stamp']
-            db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.rhdata.get_option('timeFormat'))
+            db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
 
         try:  # delete any split laps for deleted lap
             lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_number)
@@ -909,7 +909,7 @@ class RHRace():
                 if idx >= lap_index:
                     lap['lap_number'] = lap_number
                     lap['lap_time'] = lap['lap_time_stamp'] - last_lap_ts
-                    lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], self._racecontext.rhdata.get_option('timeFormat'))
+                    lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
                 last_lap_ts = lap['lap_time_stamp']
                 lap_number += 1
 
@@ -1269,7 +1269,7 @@ class RHRace():
 
         # cache rebuild
         # logger.debug('Building current race results')
-        build = Results.calc_leaderboard(self._racecontext.rhdata, current_race=self, current_profile=self.profile)
+        build = Results.calc_leaderboard(self._racecontext, current_race=self, current_profile=self.profile)
         self.set_results(token, build)
         return build
 
@@ -1287,7 +1287,7 @@ class RHRace():
 
         # cache rebuild
         logger.debug('Building current race results')
-        build = Results.calc_team_leaderboard(self, self._racecontext.rhdata)
+        build = Results.calc_team_leaderboard(self._racecontext)
         self.set_team_results(token, build)
         return build
 

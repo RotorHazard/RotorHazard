@@ -1394,7 +1394,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Heat {} results'.format(heat.id))
-        build = Results.calc_leaderboard(self, heat_id=heat.id)
+        build = Results.calc_leaderboard(self._racecontext, heat_id=heat.id)
 
         self.set_results_heat(heat, token, build)
         return build
@@ -1819,7 +1819,7 @@ class RHData():
 
         # cache rebuild
         logger.info('Building Class {} results'.format(race_class.id))
-        build = Results.calc_leaderboard(self, class_id=race_class.id)
+        build = Results.calc_leaderboard(self._racecontext, class_id=race_class.id)
         self.set_results_raceClass(race_class, token, build)
         return build
 
@@ -2772,7 +2772,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Race {} (Heat {} Round {}) results'.format(race.id, race.heat_id, race.round_id))
-        build = Results.calc_leaderboard(self, heat_id=race.heat_id, round_id=race.round_id)
+        build = Results.calc_leaderboard(self._racecontext, heat_id=race.heat_id, round_id=race.round_id)
 
         # calc race points
         if race.format_id:
@@ -3078,46 +3078,21 @@ class RHData():
     def reset_options(self):
         self.clear_options()
         self.set_option("server_api", self._SERVER_API)
-        # group identifiers
-        self.set_option("timerName", self.__("RotorHazard"))
-        self.set_option("timerLogo", "")
-        # group colors
-        self.set_option("hue_0", "212")
-        self.set_option("sat_0", "55")
-        self.set_option("lum_0_low", "29.2")
-        self.set_option("lum_0_high", "46.7")
-        self.set_option("contrast_0_low", "#ffffff")
-        self.set_option("contrast_0_high", "#ffffff")
-
-        self.set_option("hue_1", "25")
-        self.set_option("sat_1", "85.3")
-        self.set_option("lum_1_low", "37.6")
-        self.set_option("lum_1_high", "54.5")
-        self.set_option("contrast_1_low", "#ffffff")
-        self.set_option("contrast_1_high", "#000000")
         # timer state
-        self.set_option("currentLanguage", "")
-        self.set_option("timeFormat", "{m}:{s}.{d}")
-        self.set_option("timeFormatPhonetic", "{m} {s}.{d}")
         self.set_option("currentProfile", "1")
         self.set_option("calibrationMode", "1")
+        self.set_option("currentFormat", "1")
+        self.set_option("currentHeat", "0")
         # minimum lap
         self.set_option("MinLapSec", "10")
         self.set_option("MinLapBehavior", "0")
         # event information
         self.set_option("eventName", "{} {}".format(datetime.now().strftime('%Y-%m-%d'), self.__("FPV Race")))
         self.set_option("eventDescription", "")
-        # LED settings
-        self.set_option("ledBrightness", "32")
         # Event results cache
         self.set_option("eventResults_cacheStatus", None)
 
-        self.set_option("startThreshLowerAmount", "0")
-        self.set_option("startThreshLowerDuration", "0")
-        self.set_option("currentFormat", "1")
-        self.set_option("currentHeat", "0")
-
-        logger.info("Reset global settings")
+        logger.info("Reset event options")
 
     # Event Results (Options)
     def get_results_event(self):
@@ -3147,7 +3122,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Event results')
-        build = Results.calc_leaderboard(self)
+        build = Results.calc_leaderboard(self._racecontext)
         self.set_results_event(token, build)
         return build
 
@@ -3247,32 +3222,32 @@ def doReplace(rhapi, text, args, spoken_flag=False):
 
                     # %TOTAL_TIME%
                     text = text.replace('%TOTAL_TIME%', RHUtils.phonetictime_format( \
-                        result['total_time_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                        result['total_time_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
                         if spoken_flag else result['total_time'])
 
                     # %TOTAL_TIME_LAPS%
                     text = text.replace('%TOTAL_TIME_LAPS%', RHUtils.phonetictime_format( \
-                        result['total_time_laps_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                        result['total_time_laps_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
                         if spoken_flag else result['total_time_laps'])
 
                     # %LAST_LAP%
                     text = text.replace('%LAST_LAP%', RHUtils.phonetictime_format( \
-                        result['last_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                        result['last_lap_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
                         if spoken_flag else result['last_lap'])
 
                     # %AVERAGE_LAP%
                     text = text.replace('%AVERAGE_LAP%', RHUtils.phonetictime_format( \
-                        result['average_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                        result['average_lap_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
                         if spoken_flag else result['average_lap'])
 
                     # %FASTEST_LAP%
                     text = text.replace('%FASTEST_LAP%', RHUtils.phonetictime_format( \
-                        result['fastest_lap_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                        result['fastest_lap_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
                         if spoken_flag else result['fastest_lap'])
 
                     if '%TIME_BEHIND' in text:
                         behind_str = RHUtils.phonetictime_format( \
-                            result['time_behind_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                            result['time_behind_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
                             if spoken_flag else result['time_behind']
                         # %TIME_BEHIND% : Amount of time behind race leader
                         text = text.replace('%TIME_BEHIND%', behind_str)
@@ -3298,7 +3273,7 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                     # %CONSECUTIVE%
                     if result['consecutives_base'] == int(rhapi.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', RHUtils.phonetictime_format( \
-                            result['consecutives_raw'], rhapi.db.option('timeFormatPhonetic')) \
+                            result['consecutives_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
                             if spoken_flag else result['consecutives'])
                     else:
                         text = text.replace('%CONSECUTIVE%', rhapi.__('None'))
