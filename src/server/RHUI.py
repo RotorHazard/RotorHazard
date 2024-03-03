@@ -306,6 +306,7 @@ class RHUI():
     def emit_priority_message(self, message, interrupt=False, caller=False, **params):
         ''' Emits message to all clients '''
         if message and re.search(r"[0-z]", message):
+            logger.debug("Emitting {}: {}".format(("alert" if interrupt else "message"), message))
             emit_payload = {
                 'message': message,
                 'interrupt': interrupt
