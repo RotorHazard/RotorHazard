@@ -317,7 +317,25 @@
 
 			for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
 				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
-				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + ' (' + (pilotrace.node_index + 1) + ')</option>');
+				var pilotFreqInfo;
+				if (pilotrace.pilot_freq) {
+					if (pilotrace.pilot_freq.length <= 4) {
+						// if only freq provided then lookup band/channel in table and prepend them
+						var fObj = freq.findByFreq(pilotrace.pilot_freq);
+						if (fObj && fObj.band && fObj.channel) {
+							pilotFreqInfo = " - " + fObj.band + fObj.channel + " " + pilotrace.pilot_freq;
+						} else {
+							pilotFreqInfo = " - " + pilotrace.pilot_freq;
+						}
+					} else {  // if band/channel and freq provided then use them
+						pilotFreqInfo = " - " + pilotrace.pilot_freq;
+					}
+				} else {
+					pilotFreqInfo = ""
+				}
+				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' +
+				        pilotrace.pilot_id + '">' + pilotrace.callsign + ' (' +
+				        (pilotrace.node_index + 1) + ')' + pilotFreqInfo + '</option>');
 			}
 
 			$('#selected_pilot option').each(function(){
