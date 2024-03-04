@@ -672,6 +672,7 @@ class RHUI():
 
     def emit_race_list(self, **params):
         '''Emits race listing'''
+        profile_freqs = json.loads(self._racecontext.race.profile.frequencies)
         heats = {}
         for heat in self._racecontext.rhdata.get_heats():
             if self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id):
@@ -690,6 +691,8 @@ class RHUI():
                             'callsign': nodepilot,
                             'pilot_id': pilotrace.pilot_id,
                             'node_index': pilotrace.node_index,
+                            'pilot_freq': self.get_pilot_freq_info(profile_freqs, pilotrace.frequency, \
+                                                                   pilotrace.node_index)
                         })
                     rounds[race.round_id] = {
                         'race_id': race.id,
@@ -1377,3 +1380,14 @@ class RHUI():
 
         emit('race_points_method_list', emit_payload)
 
+    def get_pilot_freq_info(self, profile_freqs, freq_val, node_idx):
+        try:       # if node freq matches then return band/channel and frequency
+            if freq_val == profile_freqs["f"][node_idx]:
+                band = profile_freqs["b"][node_idx]
+                chan = profile_freqs["c"][node_idx]
+                if band and chan:
+                    return "{}{} {}".format(band, chan, freq_val)
+        except:
+            pass
+        # if node freq does not match then just return frequency
+        return "{}".format(freq_val)
