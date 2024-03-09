@@ -3,6 +3,10 @@
 
 # Development resources
 /.settings
+/.project
+/.pydevproject
+/RotorHazard.iml
+/.idea
 /src/libraries
 
 # RH Database and backups

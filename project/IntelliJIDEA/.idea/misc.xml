@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Black">
+    <option name="sdkName" value="C:\WinApps\Python39\python.exe" />
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="true" project-jdk-name="C:\WinApps\Python39\python.exe" project-jdk-type="Python SDK">
+    <output url="file://$PROJECT_DIR$/classes" />
+  </component>
+</project>
