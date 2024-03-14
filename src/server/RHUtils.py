@@ -1,7 +1,6 @@
 '''
 RotorHazard Helper and utility functions
 '''
-
 import os
 import sys
 import re
@@ -11,6 +10,7 @@ import subprocess
 import glob
 import socket
 import random
+import functools
 import util.RH_GPIO as RH_GPIO
 
 logger = logging.getLogger(__name__)
@@ -274,6 +274,7 @@ def findPrefixedSubstring(dataStr, prefixStr, maxTextSize):
 # Wrapper to be used as a decorator on thread functions, etc, so their exception
 # details are sent to the log file (instead of 'stderr').
 def catchLogExceptionsWrapper(func):
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)

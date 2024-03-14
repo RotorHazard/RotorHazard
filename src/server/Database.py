@@ -16,6 +16,9 @@ DB_URI = None
 Base = declarative_base()
 DB = sqlalchemy
 
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=100
+
 #pylint: disable=no-member
 
 # Language placeholder (Overwritten after module init)
@@ -405,11 +408,10 @@ def initialize(db_uri=None):
     if db_uri:
         DB_URI = db_uri
     global DB_engine
-    DB_engine = create_engine(DB_URI)
+    DB_engine = create_engine(DB_URI, pool_size=DB_POOL_SIZE, max_overflow=DB_MAX_OVERFLOW)
     global DB_session
-    DB_session = scoped_session(sessionmaker(autocommit=False,
-                                             autoflush=False,
-                                             bind=DB_engine))
+    DB_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, \
+                                             bind=DB_engine, expire_on_commit=False))
     Base.query = DB_session.query_property()
     Base.metadata.create_all(bind=DB_engine)
 

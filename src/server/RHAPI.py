@@ -1,4 +1,5 @@
 ''' Class to access race functions and details '''
+import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
@@ -37,6 +38,15 @@ class RHAPI():
         self.events = EventsAPI(self._racecontext)
 
         self.__ = self.language.__ # shortcut access
+
+# Wrapper to be used as a decorator on API functions that do database calls,
+#  so the database session is cleaned up on exit (prevents DB-file handles left open).
+def callWithDatabaseWrapper(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            return func(self, *args, **kwargs)
+    return wrapper
 
 
 #
@@ -86,30 +96,39 @@ class UserInterfaceAPI():
         self._racecontext.rhui.socket_broadcast(message, data)
 
     # Broadcasts
+    @callWithDatabaseWrapper
     def broadcast_ui(self, page):
         self._racecontext.rhui.emit_ui(page)
 
+    @callWithDatabaseWrapper
     def broadcast_frequencies(self):
         self._racecontext.rhui.emit_frequency_data()
 
+    @callWithDatabaseWrapper
     def broadcast_pilots(self):
         self._racecontext.rhui.emit_pilot_data()
 
+    @callWithDatabaseWrapper
     def broadcast_heats(self):
         self._racecontext.rhui.emit_heat_data()
 
+    @callWithDatabaseWrapper
     def broadcast_raceclasses(self):
         self._racecontext.rhui.emit_class_data()
 
+    @callWithDatabaseWrapper
     def broadcast_raceformats(self):
         self._racecontext.rhui.emit_format_data()
 
+    @callWithDatabaseWrapper
     def broadcast_current_heat(self):
         self._racecontext.rhui.emit_current_heat()
 
+    @callWithDatabaseWrapper
     def broadcast_frequencyset(self):
         self._racecontext.rhui.emit_node_tuning()
 
+    @callWithDatabaseWrapper
     def broadcast_race_status(self):
         self._racecontext.rhui.emit_race_status()
 
@@ -179,21 +198,26 @@ class DatabaseAPI():
 
     # Global
 
+    @callWithDatabaseWrapper
     def reset_all(self):
         return self._racecontext.rhdata.reset_all()
 
     # Pilot
 
     @property
+    @callWithDatabaseWrapper
     def pilots(self):
         return self._racecontext.rhdata.get_pilots()
 
+    @callWithDatabaseWrapper
     def pilot_by_id(self, pilot_id):
         return self._racecontext.rhdata.get_pilot(pilot_id)
 
+    @callWithDatabaseWrapper
     def pilot_attributes(self, pilot_or_id):
         return self._racecontext.rhdata.get_pilot_attributes(pilot_or_id)
 
+    @callWithDatabaseWrapper
     def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
         for field in self._racecontext.rhui.pilot_attributes:
             if field.name == name:
@@ -201,9 +225,11 @@ class DatabaseAPI():
         else:
             return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, name, default_value)
 
+    @callWithDatabaseWrapper
     def pilot_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_pilot_id_by_attribute(name, value)
 
+    @callWithDatabaseWrapper
     def pilot_add(self, name=None, callsign=None, phonetic=None, team=None, color=None):
         #TODO: attribute support
         data = {}
@@ -220,6 +246,7 @@ class DatabaseAPI():
 
         return self._racecontext.rhdata.add_pilot(data)
 
+    @callWithDatabaseWrapper
     def pilot_alter(self, pilot_id, name=None, callsign=None, phonetic=None, team=None, color=None, attributes=None):
         data = {}
 
@@ -246,24 +273,30 @@ class DatabaseAPI():
             data['pilot_id'] = pilot_id
             return self._racecontext.rhdata.alter_pilot(data)
 
+    @callWithDatabaseWrapper
     def pilot_delete(self, pilot_or_id):
         return self._racecontext.rhdata.delete_pilot(pilot_or_id)
 
+    @callWithDatabaseWrapper
     def pilots_reset(self):
         return self._racecontext.rhdata.reset_pilots()
 
     # Heat
 
     @property
+    @callWithDatabaseWrapper
     def heats(self):
         return self._racecontext.rhdata.get_heats()
 
+    @callWithDatabaseWrapper
     def heat_by_id(self, heat_id):
         return self._racecontext.rhdata.get_heat(heat_id)
 
+    @callWithDatabaseWrapper
     def heat_attributes(self, heat_or_id):
         return self._racecontext.rhdata.get_heat_attributes(heat_or_id)
 
+    @callWithDatabaseWrapper
     def heat_attribute_value(self, heat_or_id, name, default_value=None):
         for field in self._racecontext.rhui.heat_attributes:
             if field.name == name:
@@ -271,18 +304,23 @@ class DatabaseAPI():
         else:
             return self._racecontext.rhdata.get_heat_attribute_value(heat_or_id, name, default_value)
 
+    @callWithDatabaseWrapper
     def heat_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_heat_id_by_attribute(name, value)
 
+    @callWithDatabaseWrapper
     def heats_by_class(self, raceclass_id):
         return self._racecontext.rhdata.get_heats_by_class(raceclass_id)
 
+    @callWithDatabaseWrapper
     def heat_results(self, heat_or_id):
         return self._racecontext.rhdata.get_results_heat(heat_or_id)
 
+    @callWithDatabaseWrapper
     def heat_max_round(self, heat_id):
         return self._racecontext.rhdata.get_max_round(heat_id)
 
+    @callWithDatabaseWrapper
     def heat_add(self, name=None, raceclass=None, auto_frequency=None):
         data = {}
 
@@ -296,12 +334,14 @@ class DatabaseAPI():
 
         return self._racecontext.rhdata.add_heat(data)
 
+    @callWithDatabaseWrapper
     def heat_duplicate(self, source_heat_or_id, dest_class=None):
         if dest_class:
             return self._racecontext.rhdata.duplicate_heat(source_heat_or_id, dest_class=dest_class)
         else:
             return self._racecontext.rhdata.duplicate_heat(source_heat_or_id)
 
+    @callWithDatabaseWrapper
     def heat_alter(self, heat_id, name=None, raceclass=None, auto_frequency=None, status=None, attributes=None):
         data = {}
 
@@ -327,21 +367,26 @@ class DatabaseAPI():
             data['heat'] = heat_id
             return self._racecontext.rhdata.alter_heat(data)
 
+    @callWithDatabaseWrapper
     def heat_delete(self, heat_or_id):
         return self._racecontext.rhdata.delete_heat(heat_or_id)
 
+    @callWithDatabaseWrapper
     def heats_reset(self):
         return self._racecontext.rhdata.reset_heats()
 
     # Heat -> Slots
 
     @property
+    @callWithDatabaseWrapper
     def slots(self):
         return self._racecontext.rhdata.get_heatNodes()
 
+    @callWithDatabaseWrapper
     def slots_by_heat(self, heat_id):
         return self._racecontext.rhdata.get_heatNodes_by_heat(heat_id)
 
+    @callWithDatabaseWrapper
     def slot_alter(self, slot_id, method=None, pilot=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
         data = {}
 
@@ -364,6 +409,7 @@ class DatabaseAPI():
             data['slot_id'] = slot_id
             return self._racecontext.rhdata.alter_heat(data)
 
+    @callWithDatabaseWrapper
     def slots_alter_fast(self, slot_list):
         # !! Unsafe for general use !!
         return self._racecontext.rhdata.alter_heatNodes_fast(slot_list)
@@ -371,15 +417,19 @@ class DatabaseAPI():
     # Race Class
 
     @property
+    @callWithDatabaseWrapper
     def raceclasses(self):
         return self._racecontext.rhdata.get_raceClasses()
 
+    @callWithDatabaseWrapper
     def raceclass_by_id(self, raceclass_id):
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
 
+    @callWithDatabaseWrapper
     def raceclass_attributes(self, raceclass_or_id):
         return self._racecontext.rhdata.get_raceclass_attributes(raceclass_or_id)
 
+    @callWithDatabaseWrapper
     def raceclass_attribute_value(self, raceclass_or_id, name, default_value=None):
         for field in self._racecontext.rhui.raceclass_attributes:
             if field.name == name:
@@ -387,9 +437,11 @@ class DatabaseAPI():
         else:
             return self._racecontext.rhdata.get_raceclass_attribute_value(raceclass_or_id, name, default_value)
 
+    @callWithDatabaseWrapper
     def raceclass_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_raceclass_id_by_attribute(name, value)
 
+    @callWithDatabaseWrapper
     def raceclass_add(self, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None):
         #TODO add rank settings
         data = {}
@@ -408,9 +460,11 @@ class DatabaseAPI():
         if data:
             return self._racecontext.rhdata.add_raceClass(data)
 
+    @callWithDatabaseWrapper
     def raceclass_duplicate(self, source_class_or_id):
         return self._racecontext.rhdata.duplicate_raceClass(source_class_or_id)
 
+    @callWithDatabaseWrapper
     def raceclass_alter(self, raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, rank_settings=None, attributes=None):
         data = {}
 
@@ -439,27 +493,34 @@ class DatabaseAPI():
             data['class_id'] = raceclass_id
             return self._racecontext.rhdata.alter_raceClass(data)
 
+    @callWithDatabaseWrapper
     def raceclass_results(self, raceclass_or_id):
         return self._racecontext.rhdata.get_results_raceClass(raceclass_or_id)
 
+    @callWithDatabaseWrapper
     def raceclass_ranking(self, raceclass_or_id):
         return self._racecontext.rhdata.get_ranking_raceClass(raceclass_or_id)
 
+    @callWithDatabaseWrapper
     def raceclass_delete(self, raceclass_or_id):
         return self._racecontext.rhdata.delete_raceClass(raceclass_or_id)
 
+    @callWithDatabaseWrapper
     def raceclasses_reset(self):
         return self._racecontext.rhdata.reset_raceClasses()
 
     # Race Format
 
     @property
+    @callWithDatabaseWrapper
     def raceformats(self):
         return self._racecontext.rhdata.get_raceFormats()
 
+    @callWithDatabaseWrapper
     def raceformat_by_id(self, format_id):
         return self._racecontext.rhdata.get_raceFormat(format_id)
 
+    @callWithDatabaseWrapper
     def raceformat_add(self, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None):
         data = {}
 
@@ -483,9 +544,11 @@ class DatabaseAPI():
 
         return self._racecontext.rhdata.add_format(data)
 
+    @callWithDatabaseWrapper
     def raceformat_attributes(self, raceformat_or_id):
         return self._racecontext.rhdata.get_raceformat_attributes(raceformat_or_id)
 
+    @callWithDatabaseWrapper
     def raceformat_attribute_value(self, raceformat_or_id, name, default_value=None):
         for field in self._racecontext.rhui.raceformat_attributes:
             if field.name == name:
@@ -493,12 +556,15 @@ class DatabaseAPI():
         else:
             return self._racecontext.rhdata.get_raceformat_attribute_value(raceformat_or_id, name, default_value)
 
+    @callWithDatabaseWrapper
     def raceformat_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_raceformat_id_by_attribute(name, value)
 
+    @callWithDatabaseWrapper
     def raceformat_duplicate(self, source_format_or_id):
         return self._racecontext.rhdata.duplicate_raceFormat(source_format_or_id)
 
+    @callWithDatabaseWrapper
     def raceformat_alter(self, raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None, attributes=None):
         data = {}
 
@@ -534,21 +600,26 @@ class DatabaseAPI():
             data['format_id'] = raceformat_id
             return self._racecontext.rhdata.alter_raceFormat(data)
 
+    @callWithDatabaseWrapper
     def raceformat_delete(self, raceformat_id):
         return self._racecontext.rhdata.delete_raceFormat(raceformat_id)
 
+    @callWithDatabaseWrapper
     def raceformats_reset(self):
         return self._racecontext.rhdata.reset_raceFormats()
 
     # Frequency Sets (Profiles)
 
     @property
+    @callWithDatabaseWrapper
     def frequencysets(self):
         return self._racecontext.rhdata.get_profiles()
 
+    @callWithDatabaseWrapper
     def frequencyset_by_id(self, set_id):
         return self._racecontext.rhdata.get_profile(set_id)
 
+    @callWithDatabaseWrapper
     def frequencyset_add(self, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None):
         data = {}
 
@@ -571,9 +642,11 @@ class DatabaseAPI():
 
         return new_profile
 
+    @callWithDatabaseWrapper
     def frequencyset_duplicate(self, source_set_or_id):
         return self._racecontext.rhdata.duplicate_profile(source_set_or_id)
 
+    @callWithDatabaseWrapper
     def frequencyset_alter(self, set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None):
         data = {}
 
@@ -600,24 +673,31 @@ class DatabaseAPI():
 
             return result
 
+    @callWithDatabaseWrapper
+    @callWithDatabaseWrapper
     def frequencyset_delete(self, set_or_id):
         return self._racecontext.rhdata.delete_profile(set_or_id)
 
+    @callWithDatabaseWrapper
     def frequencysets_reset(self):
         return self._racecontext.rhdata.reset_profiles()
 
     # Saved Race
 
     @property
+    @callWithDatabaseWrapper
     def races(self):
         return self._racecontext.rhdata.get_savedRaceMetas()
 
+    @callWithDatabaseWrapper
     def race_by_id(self, race_id):
         return self._racecontext.rhdata.get_savedRaceMeta(race_id)
 
+    @callWithDatabaseWrapper
     def race_attributes(self, race_or_id):
         return self._racecontext.rhdata.get_savedrace_attributes(race_or_id)
 
+    @callWithDatabaseWrapper
     def race_attribute_value(self, race_or_id, name, default_value=None):
         for field in self._racecontext.rhui.savedrace_attributes:
             if field.name == name:
@@ -625,18 +705,23 @@ class DatabaseAPI():
         else:
             return self._racecontext.rhdata.get_savedrace_attribute_value(race_or_id, name, default_value)
 
+    @callWithDatabaseWrapper
     def race_ids_by_attribute(self, name, value):
         return self._racecontext.rhdata.get_savedrace_id_by_attribute(name, value)
 
+    @callWithDatabaseWrapper
     def race_by_heat_round(self, heat_id, round_number):
         return self._racecontext.rhdata.get_savedRaceMeta_by_heat_round(heat_id, round_number)
 
+    @callWithDatabaseWrapper
     def races_by_heat(self, heat_id):
         return self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat_id)
 
+    @callWithDatabaseWrapper
     def races_by_raceclass(self, raceclass_id):
         return self._racecontext.rhdata.get_savedRaceMetas_by_raceClass(raceclass_id)
 
+    @callWithDatabaseWrapper
     def race_alter(self, race_id, attributes=None):
         data = {}
 
@@ -647,42 +732,53 @@ class DatabaseAPI():
                 data['value'] = value
                 self._racecontext.rhdata.alter_savedRaceMeta(race_id, data)
 
+    @callWithDatabaseWrapper
     def race_results(self, race_or_id):
         return self._racecontext.rhdata.get_results_savedRaceMeta(race_or_id)
 
+    @callWithDatabaseWrapper
     def races_clear(self):
         return self._racecontext.rhdata.clear_race_data()
 
     # Race -> Pilot Run
 
     @property
+    @callWithDatabaseWrapper
     def pilotruns(self):
         return self._racecontext.rhdata.get_savedPilotRaces()
 
+    @callWithDatabaseWrapper
     def pilotrun_by_id(self, run_id):
         return self._racecontext.rhdata.get_savedPilotRace(run_id)
 
+    @callWithDatabaseWrapper
     def pilotruns_by_race(self, race_id):
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
 
     # Race -> Pilot Run -> Laps
 
     @property
+    @callWithDatabaseWrapper
     def laps(self):
         return self._racecontext.rhdata.get_savedRaceLaps()
 
+    @callWithDatabaseWrapper
     def laps_by_pilotrun(self, run_id):
         return self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(run_id)
 
+    @callWithDatabaseWrapper
     def lap_splits(self):
         return self._racecontext.rhdata.get_lapSplits()
 
     # Options
 
     @property
+    @callWithDatabaseWrapper
+    @callWithDatabaseWrapper
     def options(self):
         return self._racecontext.rhdata.get_options()
 
+    @callWithDatabaseWrapper
     def option(self, name, default=False, as_int=False):
         for setting in self._racecontext.rhui.general_settings:
             if setting.name == name:
@@ -703,14 +799,17 @@ class DatabaseAPI():
         else:
             return self._racecontext.rhdata.get_option(name)
 
+    @callWithDatabaseWrapper
     def option_set(self, name, value):
         return self._racecontext.rhdata.set_option(name, value)
 
+    @callWithDatabaseWrapper
     def options_reset(self):
         return self._racecontext.rhdata.reset_options()
 
     # Event
 
+    @callWithDatabaseWrapper
     def event_results(self):
         return self._racecontext.rhdata.get_results_event()
 
@@ -760,6 +859,7 @@ class HeatGenerateAPI():
     def generators(self):
         return self._racecontext.heat_generate_manager.generators
 
+    @callWithDatabaseWrapper
     def generate(self, generator_id, generate_args):
         return self._racecontext.heat_generate_manager.generate(generator_id, generate_args)
 
@@ -873,25 +973,31 @@ class RaceAPI():
         return self._racecontext.race.current_heat
 
     @heat.setter
+    @callWithDatabaseWrapper
     def heat(self, heat_id):
         return self._racecontext.race.set_heat(heat_id)
 
     @property
+    @callWithDatabaseWrapper
     def frequencyset(self):
         return self._racecontext.race.profile
 
     @frequencyset.setter
+    @callWithDatabaseWrapper
     def frequencyset(self, set_id):
         self._frequencyset_set({'profile': set_id})
 
+    @callWithDatabaseWrapper
     def _frequencyset_set(self, data):
         pass # replaced externally. TODO: Refactor management functions
 
     @property
+    @callWithDatabaseWrapper
     def raceformat(self):
         return self._racecontext.race.format
 
     @raceformat.setter
+    @callWithDatabaseWrapper
     def raceformat(self, format_id):
         self._raceformat_set({'race_format': format_id})
 
@@ -923,6 +1029,7 @@ class RaceAPI():
         return self._racecontext.race.node_has_finished
 
     @property
+    @callWithDatabaseWrapper
     def laps(self):
         return self._racecontext.race.get_lap_results()
 
@@ -943,10 +1050,12 @@ class RaceAPI():
         return self._racecontext.race.add_lap(seat, timestamp, LapSource.API)
 
     @property
+    @callWithDatabaseWrapper
     def results(self):
         return self._racecontext.race.get_results()
 
     @property
+    @callWithDatabaseWrapper
     def team_results(self):
         return self._racecontext.race.get_team_results()
 

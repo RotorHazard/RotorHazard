@@ -136,6 +136,31 @@ class RHData():
             logger.error('Error cleaning database: ' + str(ex))
             return False
 
+    def get_db_session_handle(self):
+        return Database.DB_session()
+
+    # Logs status of database connections; will be at 'debug' level unless # of connections gets large
+    def check_log_db_conns(self):
+        try:
+            num_conns = Database.DB_engine.pool.checkedout()
+            num_over = Database.DB_engine.pool.overflow()
+            num_pool = Database.DB_engine.pool.checkedin()
+            pool_size = Database.DB_engine.pool.size()
+            if num_over <= 0 or num_conns <= pool_size:
+                logger.debug("Database num_conns={}, num_over={}, num_in_pool={}, size={}".\
+                            format(num_conns, num_over, num_pool, pool_size))
+            elif num_over <= Database.DB_MAX_OVERFLOW / 5:
+                logger.info("Database connections into overflow, num_conns={}, num_over={}, num_in_pool={}, size={}".\
+                            format(num_conns, num_over, num_pool, pool_size))
+            elif num_over < Database.DB_MAX_OVERFLOW:
+                logger.warning("Database connections growing too large, num_conns={}, num_over={}, num_in_pool={}, size={}". \
+                            format(num_conns, num_over, num_pool, pool_size))
+            else:
+                logger.error("Database connections overran overflow ({}), num_conns={}, num_over={}, num_in_pool={}, size={}". \
+                               format(Database.DB_MAX_OVERFLOW, num_conns, num_over, num_pool, pool_size))
+        except Exception as ex:
+            logger.error("Error checking database connections: " + str(ex))
+
     # File Handling
 
     def backup_db_file(self, copy_flag, prefix_str=None, use_filename=None):
