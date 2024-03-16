@@ -1099,157 +1099,61 @@ var rotorhazard = {
 			return (this.deferred.running || this.race.running);
 		}
 	},
+	rhStorageItems : [
+		{ name: 'rotorhazard.voice_string_language', getVal: function() {return rotorhazard.voice_string_language;}, setVal: function(val) {rotorhazard.voice_string_language = parseJsonStr(val);} },
+		{ name: 'rotorhazard.voice_language', getVal: function() {return rotorhazard.voice_language;}, setVal: function(val) {rotorhazard.voice_language = parseJsonStr(val);} },
+		{ name: 'rotorhazard.voice_volume', getVal: function() {return rotorhazard.voice_volume;}, setVal: function(val) {rotorhazard.voice_volume = parseJsonStr(val);} },
+		{ name: 'rotorhazard.voice_rate', getVal: function() {return rotorhazard.voice_rate;}, setVal: function(val) {rotorhazard.voice_rate = parseJsonStr(val);} },
+		{ name: 'rotorhazard.voice_pitch', getVal: function() {return rotorhazard.voice_pitch;}, setVal: function(val) {rotorhazard.voice_pitch = parseJsonStr(val);} },
+		{ name: 'rotorhazard.voice_callsign', getVal: function() {return rotorhazard.voice_callsign;}, setVal: function(val) {rotorhazard.voice_callsign = parseIntOrBoolean(val);} },
+		{ name: 'rotorhazard.voice_lap_count', getVal: function() {return rotorhazard.voice_lap_count;}, setVal: function(val) {rotorhazard.voice_lap_count = parseIntOrBoolean(val);} },
+		{ name: 'rotorhazard.voice_team_lap_count', getVal: function() {return rotorhazard.voice_team_lap_count;}, setVal: function(val) {rotorhazard.voice_team_lap_count = parseIntOrBoolean(val);} },
+		{ name: 'rotorhazard.voice_lap_time', getVal: function() {return rotorhazard.voice_lap_time;}, setVal: function(val) {rotorhazard.voice_lap_time = parseIntOrBoolean(val);} },
+		{ name: 'rotorhazard.voice_race_timer', getVal: function() {return rotorhazard.voice_race_timer;}, setVal: function(val) {rotorhazard.voice_race_timer = parseIntOrBoolean(val);} },
+		{ name: 'rotorhazard.voice_race_winner', getVal: function() {return rotorhazard.voice_race_winner;}, setVal: function(val) {rotorhazard.voice_race_winner = parseIntOrBoolean(val);} },
+		{ name: 'rotorhazard.voice_if_node_finished', getVal: function() {return rotorhazard.voice_if_node_finished;}, setVal: function(val) {rotorhazard.voice_if_node_finished = parseIntOrBoolean(val);} },
+		{ name: 'rotorhazard.voice_split_timer', getVal: function() {return rotorhazard.voice_split_timer;}, setVal: function(val) {rotorhazard.voice_split_timer = parseJsonStr(val);} },
+		{ name: 'rotorhazard.voice_race_leader', getVal: function() {return rotorhazard.voice_race_leader;}, setVal: function(val) {rotorhazard.voice_race_leader = parseJsonStr(val);} },
+		{ name: 'rotorhazard.tone_volume', getVal: function() {return rotorhazard.tone_volume;}, setVal: function(val) {rotorhazard.tone_volume = parseJsonStr(val);} },
+		{ name: 'rotorhazard.beep_crossing_entered', getVal: function() {return rotorhazard.beep_crossing_entered;}, setVal: function(val) {rotorhazard.beep_crossing_entered = parseJsonStr(val);} },
+		{ name: 'rotorhazard.beep_crossing_exited', getVal: function() {return rotorhazard.beep_crossing_exited;}, setVal: function(val) {rotorhazard.beep_crossing_exited = parseJsonStr(val);} },
+		{ name: 'rotorhazard.beep_manual_lap_button', getVal: function() {return rotorhazard.beep_manual_lap_button;}, setVal: function(val) {rotorhazard.beep_manual_lap_button = parseJsonStr(val);} },
+		{ name: 'rotorhazard.beep_race_leader_lap', getVal: function() {return rotorhazard.beep_race_leader_lap;}, setVal: function(val) {rotorhazard.beep_race_leader_lap = parseJsonStr(val);} },
+		{ name: 'rotorhazard.beep_race_winner_declared', getVal: function() {return rotorhazard.beep_race_winner_declared;}, setVal: function(val) {rotorhazard.beep_race_winner_declared = parseJsonStr(val);} },
+		{ name: 'rotorhazard.beep_cluster_connect', getVal: function() {return rotorhazard.beep_cluster_connect;}, setVal: function(val) {rotorhazard.beep_cluster_connect = parseJsonStr(val);} },
+		{ name: 'rotorhazard.use_mp3_tones', getVal: function() {return rotorhazard.use_mp3_tones;}, setVal: function(val) {rotorhazard.use_mp3_tones = parseJsonStr(val);} },
+		{ name: 'rotorhazard.beep_on_first_pass_button', getVal: function() {return rotorhazard.beep_on_first_pass_button;}, setVal: function(val) {rotorhazard.beep_on_first_pass_button = parseJsonStr(val);} },
+		{ name: 'rotorhazard.schedule_m', getVal: function() {return rotorhazard.schedule_m;}, setVal: function(val) {rotorhazard.schedule_m = parseJsonStr(val);} },
+		{ name: 'rotorhazard.schedule_s', getVal: function() {return rotorhazard.schedule_s;}, setVal: function(val) {rotorhazard.schedule_s = parseJsonStr(val);} },
+		{ name: 'rotorhazard.indicator_beep_volume', getVal: function() {return rotorhazard.indicator_beep_volume;}, setVal: function(val) {rotorhazard.indicator_beep_volume = parseJsonStr(val);} },
+		{ name: 'rotorhazard.min_lap', getVal: function() {return rotorhazard.min_lap;}, setVal: function(val) {rotorhazard.min_lap = parseJsonStr(val);} },
+		{ name: 'rotorhazard.admin', getVal: function() {return rotorhazard.admin;}, setVal: function(val) {rotorhazard.admin = parseJsonStr(val);} },
+		{ name: 'rotorhazard.primaryPilot', getVal: function() {return rotorhazard.primaryPilot;}, setVal: function(val) {rotorhazard.primaryPilot = parseJsonStr(val);} },
+		{ name: 'rotorhazard.hide_graphs', getVal: function() {return rotorhazard.hide_graphs;}, setVal: function(val) {rotorhazard.hide_graphs = parseJsonStr(val);} },
+		{ name: 'rotorhazard.display_lap_id', getVal: function() {return rotorhazard.display_lap_id;}, setVal: function(val) {rotorhazard.display_lap_id = parseJsonStr(val);} },
+		{ name: 'rotorhazard.display_time_start', getVal: function() {return rotorhazard.display_time_start;}, setVal: function(val) {rotorhazard.display_time_start = parseJsonStr(val);} },
+		{ name: 'rotorhazard.display_time_first_pass', getVal: function() {return rotorhazard.display_time_first_pass;}, setVal: function(val) {rotorhazard.display_time_first_pass = parseJsonStr(val);} },
+		{ name: 'rotorhazard.display_laps_reversed', getVal: function() {return rotorhazard.display_laps_reversed;}, setVal: function(val) {rotorhazard.display_laps_reversed = parseJsonStr(val);} },
+		{ name: 'rotorhazard.display_chan_freq', getVal: function() {return rotorhazard.display_chan_freq;}, setVal: function(val) {rotorhazard.display_chan_freq = parseJsonStr(val);} },
+		{ name: 'rotorhazard.display_late_laps_cur', getVal: function() {return rotorhazard.display_late_laps_cur;}, setVal: function(val) {rotorhazard.display_late_laps_cur = parseIntOrBoolean(val);} }
+	],
 	saveData: function() {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
-		localStorage['rotorhazard.voice_string_language'] = JSON.stringify(this.voice_string_language);
-		localStorage['rotorhazard.voice_language'] = JSON.stringify(this.voice_language);
-		localStorage['rotorhazard.voice_volume'] = JSON.stringify(this.voice_volume);
-		localStorage['rotorhazard.voice_rate'] = JSON.stringify(this.voice_rate);
-		localStorage['rotorhazard.voice_pitch'] = JSON.stringify(this.voice_pitch);
-		localStorage['rotorhazard.voice_callsign'] = JSON.stringify(this.voice_callsign);
-		localStorage['rotorhazard.voice_lap_count'] = JSON.stringify(this.voice_lap_count);
-		localStorage['rotorhazard.voice_team_lap_count'] = JSON.stringify(this.voice_team_lap_count);
-		localStorage['rotorhazard.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
-		localStorage['rotorhazard.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
-		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
-		localStorage['rotorhazard.voice_if_node_finished'] = JSON.stringify(this.voice_if_node_finished);
-		localStorage['rotorhazard.voice_split_timer'] = JSON.stringify(this.voice_split_timer);
-		localStorage['rotorhazard.voice_race_leader'] = JSON.stringify(this.voice_race_leader);
-		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
-		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
-		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
-		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
-		localStorage['rotorhazard.beep_race_leader_lap'] = JSON.stringify(this.beep_race_leader_lap);
-		localStorage['rotorhazard.beep_race_winner_declared'] = JSON.stringify(this.beep_race_winner_declared);
-		localStorage['rotorhazard.beep_cluster_connect'] = JSON.stringify(this.beep_cluster_connect);
-		localStorage['rotorhazard.use_mp3_tones'] = JSON.stringify(this.use_mp3_tones);
-		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
-		localStorage['rotorhazard.schedule_m'] = JSON.stringify(this.schedule_m);
-		localStorage['rotorhazard.schedule_s'] = JSON.stringify(this.schedule_s);
-		localStorage['rotorhazard.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
-		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
-		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
-		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
-		localStorage['rotorhazard.hide_graphs'] = JSON.stringify(this.hide_graphs);
-		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
-		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
-		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
-		localStorage['rotorhazard.display_laps_reversed'] = JSON.stringify(this.display_laps_reversed);
-		localStorage['rotorhazard.display_chan_freq'] = JSON.stringify(this.display_chan_freq);
-		localStorage['rotorhazard.display_late_laps_cur'] = JSON.stringify(this.display_late_laps_cur);
+		for (var idx in this.rhStorageItems) {
+			var entry = this.rhStorageItems[idx]
+			localStorage[entry.name] = JSON.stringify(entry.getVal());
+		}
 		return true;
 	},
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
-			if (localStorage['rotorhazard.voice_string_language']) {
-				this.voice_string_language = parseJsonStr(localStorage['rotorhazard.voice_string_language']);
-			}
-			if (localStorage['rotorhazard.voice_language']) {
-				this.voice_language = parseJsonStr(localStorage['rotorhazard.voice_language']);
-			}
-			if (localStorage['rotorhazard.voice_volume']) {
-				this.voice_volume = parseJsonStr(localStorage['rotorhazard.voice_volume']);
-			}
-			if (localStorage['rotorhazard.voice_rate']) {
-				this.voice_rate = parseJsonStr(localStorage['rotorhazard.voice_rate']);
-			}
-			if (localStorage['rotorhazard.voice_pitch']) {
-				this.voice_pitch = parseJsonStr(localStorage['rotorhazard.voice_pitch']);
-			}
-			if (localStorage['rotorhazard.voice_callsign']) {
-				this.voice_callsign = parseIntOrBoolean(localStorage['rotorhazard.voice_callsign']);
-			}
-			if (localStorage['rotorhazard.voice_lap_count']) {
-				this.voice_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_count']);
-			}
-			if (localStorage['rotorhazard.voice_team_lap_count']) {
-				this.voice_team_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_team_lap_count']);
-			}
-			if (localStorage['rotorhazard.voice_lap_time']) {
-				this.voice_lap_time = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_time']);
-			}
-			if (localStorage['rotorhazard.voice_race_timer']) {
-				this.voice_race_timer = parseIntOrBoolean(localStorage['rotorhazard.voice_race_timer']);
-			}
-			if (localStorage['rotorhazard.voice_race_winner']) {
-				this.voice_race_winner = parseIntOrBoolean(localStorage['rotorhazard.voice_race_winner']);
-			}
-			if (localStorage['rotorhazard.voice_if_node_finished']) {
-				this.voice_if_node_finished = parseIntOrBoolean(localStorage['rotorhazard.voice_if_node_finished']);
-			}
-			if (localStorage['rotorhazard.voice_split_timer']) {
-				this.voice_split_timer = parseJsonStr(localStorage['rotorhazard.voice_split_timer']);
-			}
-			if (localStorage['rotorhazard.voice_race_leader']) {
-				this.voice_race_leader = parseJsonStr(localStorage['rotorhazard.voice_race_leader']);
-			}
-			if (localStorage['rotorhazard.tone_volume']) {
-				this.tone_volume = parseJsonStr(localStorage['rotorhazard.tone_volume']);
-			}
-			if (localStorage['rotorhazard.beep_crossing_entered']) {
-				this.beep_crossing_entered = parseJsonStr(localStorage['rotorhazard.beep_crossing_entered']);
-			}
-			if (localStorage['rotorhazard.beep_crossing_exited']) {
-				this.beep_crossing_exited = parseJsonStr(localStorage['rotorhazard.beep_crossing_exited']);
-			}
-			if (localStorage['rotorhazard.beep_manual_lap_button']) {
-				this.beep_manual_lap_button = parseJsonStr(localStorage['rotorhazard.beep_manual_lap_button']);
-			}
-			if (localStorage['rotorhazard.beep_race_leader_lap']) {
-				this.beep_race_leader_lap = parseJsonStr(localStorage['rotorhazard.beep_race_leader_lap']);
-			}
-			if (localStorage['rotorhazard.beep_race_winner_declared']) {
-				this.beep_race_winner_declared = parseJsonStr(localStorage['rotorhazard.beep_race_winner_declared']);
-			}
-			if (localStorage['rotorhazard.beep_cluster_connect']) {
-				this.beep_cluster_connect = parseJsonStr(localStorage['rotorhazard.beep_cluster_connect']);
-			}
-			if (localStorage['rotorhazard.use_mp3_tones']) {
-				this.use_mp3_tones = parseJsonStr(localStorage['rotorhazard.use_mp3_tones']);
-			}
-			if (localStorage['rotorhazard.beep_on_first_pass_button']) {
-				this.beep_on_first_pass_button = parseJsonStr(localStorage['rotorhazard.beep_on_first_pass_button']);
-			}
-			if (localStorage['rotorhazard.schedule_m']) {
-				this.schedule_m = parseJsonStr(localStorage['rotorhazard.schedule_m']);
-			}
-			if (localStorage['rotorhazard.schedule_s']) {
-				this.schedule_s = parseJsonStr(localStorage['rotorhazard.schedule_s']);
-			}
-			if (localStorage['rotorhazard.indicator_beep_volume']) {
-				this.indicator_beep_volume = parseJsonStr(localStorage['rotorhazard.indicator_beep_volume']);
-			}
-			if (localStorage['rotorhazard.min_lap']) {
-				this.min_lap = parseJsonStr(localStorage['rotorhazard.min_lap']);
-			}
-			if (localStorage['rotorhazard.admin']) {
-				this.admin = parseJsonStr(localStorage['rotorhazard.admin']);
-			}
-			if (localStorage['rotorhazard.primaryPilot']) {
-				this.primaryPilot = parseJsonStr(localStorage['rotorhazard.primaryPilot']);
-			}
-			if (localStorage['rotorhazard.hide_graphs']) {
-				this.hide_graphs = parseJsonStr(localStorage['rotorhazard.hide_graphs']);
-			}
-			if (localStorage['rotorhazard.display_lap_id']) {
-				this.display_lap_id = parseJsonStr(localStorage['rotorhazard.display_lap_id']);
-			}
-			if (localStorage['rotorhazard.display_time_start']) {
-				this.display_time_start = parseJsonStr(localStorage['rotorhazard.display_time_start']);
-			}
-			if (localStorage['rotorhazard.display_time_first_pass']) {
-				this.display_time_first_pass = parseJsonStr(localStorage['rotorhazard.display_time_first_pass']);
-			}
-			if (localStorage['rotorhazard.display_laps_reversed']) {
-				this.display_laps_reversed = parseJsonStr(localStorage['rotorhazard.display_laps_reversed']);
-			}
-			if (localStorage['rotorhazard.display_chan_freq']) {
-				this.display_chan_freq = parseJsonStr(localStorage['rotorhazard.display_chan_freq']);
-			}
-			if (localStorage['rotorhazard.display_late_laps_cur']) {
-				this.display_late_laps_cur = parseIntOrBoolean(localStorage['rotorhazard.display_late_laps_cur']);
+			for (var idx in this.rhStorageItems) {
+				var entry = this.rhStorageItems[idx]
+				if (localStorage[entry.name]) {
+					entry.setVal(localStorage[entry.name]);
+				}
 			}
 			return true;
 		}
