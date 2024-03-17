@@ -1100,49 +1100,49 @@ var rotorhazard = {
 		}
 	},
 	rhStorageItems : [
-		{ name: 'rotorhazard.voice_string_language', getVal: function() {return rotorhazard.voice_string_language;}, setVal: function(val) {rotorhazard.voice_string_language = parseJsonStr(val);} },
-		{ name: 'rotorhazard.voice_language', getVal: function() {return rotorhazard.voice_language;}, setVal: function(val) {rotorhazard.voice_language = parseJsonStr(val);} },
-		{ name: 'rotorhazard.voice_volume', getVal: function() {return rotorhazard.voice_volume;}, setVal: function(val) {rotorhazard.voice_volume = parseJsonStr(val);} },
-		{ name: 'rotorhazard.voice_rate', getVal: function() {return rotorhazard.voice_rate;}, setVal: function(val) {rotorhazard.voice_rate = parseJsonStr(val);} },
-		{ name: 'rotorhazard.voice_pitch', getVal: function() {return rotorhazard.voice_pitch;}, setVal: function(val) {rotorhazard.voice_pitch = parseJsonStr(val);} },
-		{ name: 'rotorhazard.voice_callsign', getVal: function() {return rotorhazard.voice_callsign;}, setVal: function(val) {rotorhazard.voice_callsign = parseIntOrBoolean(val);} },
-		{ name: 'rotorhazard.voice_lap_count', getVal: function() {return rotorhazard.voice_lap_count;}, setVal: function(val) {rotorhazard.voice_lap_count = parseIntOrBoolean(val);} },
-		{ name: 'rotorhazard.voice_team_lap_count', getVal: function() {return rotorhazard.voice_team_lap_count;}, setVal: function(val) {rotorhazard.voice_team_lap_count = parseIntOrBoolean(val);} },
-		{ name: 'rotorhazard.voice_lap_time', getVal: function() {return rotorhazard.voice_lap_time;}, setVal: function(val) {rotorhazard.voice_lap_time = parseIntOrBoolean(val);} },
-		{ name: 'rotorhazard.voice_race_timer', getVal: function() {return rotorhazard.voice_race_timer;}, setVal: function(val) {rotorhazard.voice_race_timer = parseIntOrBoolean(val);} },
-		{ name: 'rotorhazard.voice_race_winner', getVal: function() {return rotorhazard.voice_race_winner;}, setVal: function(val) {rotorhazard.voice_race_winner = parseIntOrBoolean(val);} },
-		{ name: 'rotorhazard.voice_if_node_finished', getVal: function() {return rotorhazard.voice_if_node_finished;}, setVal: function(val) {rotorhazard.voice_if_node_finished = parseIntOrBoolean(val);} },
-		{ name: 'rotorhazard.voice_split_timer', getVal: function() {return rotorhazard.voice_split_timer;}, setVal: function(val) {rotorhazard.voice_split_timer = parseJsonStr(val);} },
-		{ name: 'rotorhazard.voice_race_leader', getVal: function() {return rotorhazard.voice_race_leader;}, setVal: function(val) {rotorhazard.voice_race_leader = parseJsonStr(val);} },
-		{ name: 'rotorhazard.tone_volume', getVal: function() {return rotorhazard.tone_volume;}, setVal: function(val) {rotorhazard.tone_volume = parseJsonStr(val);} },
-		{ name: 'rotorhazard.beep_crossing_entered', getVal: function() {return rotorhazard.beep_crossing_entered;}, setVal: function(val) {rotorhazard.beep_crossing_entered = parseJsonStr(val);} },
-		{ name: 'rotorhazard.beep_crossing_exited', getVal: function() {return rotorhazard.beep_crossing_exited;}, setVal: function(val) {rotorhazard.beep_crossing_exited = parseJsonStr(val);} },
-		{ name: 'rotorhazard.beep_manual_lap_button', getVal: function() {return rotorhazard.beep_manual_lap_button;}, setVal: function(val) {rotorhazard.beep_manual_lap_button = parseJsonStr(val);} },
-		{ name: 'rotorhazard.beep_race_leader_lap', getVal: function() {return rotorhazard.beep_race_leader_lap;}, setVal: function(val) {rotorhazard.beep_race_leader_lap = parseJsonStr(val);} },
-		{ name: 'rotorhazard.beep_race_winner_declared', getVal: function() {return rotorhazard.beep_race_winner_declared;}, setVal: function(val) {rotorhazard.beep_race_winner_declared = parseJsonStr(val);} },
-		{ name: 'rotorhazard.beep_cluster_connect', getVal: function() {return rotorhazard.beep_cluster_connect;}, setVal: function(val) {rotorhazard.beep_cluster_connect = parseJsonStr(val);} },
-		{ name: 'rotorhazard.use_mp3_tones', getVal: function() {return rotorhazard.use_mp3_tones;}, setVal: function(val) {rotorhazard.use_mp3_tones = parseJsonStr(val);} },
-		{ name: 'rotorhazard.beep_on_first_pass_button', getVal: function() {return rotorhazard.beep_on_first_pass_button;}, setVal: function(val) {rotorhazard.beep_on_first_pass_button = parseJsonStr(val);} },
-		{ name: 'rotorhazard.schedule_m', getVal: function() {return rotorhazard.schedule_m;}, setVal: function(val) {rotorhazard.schedule_m = parseJsonStr(val);} },
-		{ name: 'rotorhazard.schedule_s', getVal: function() {return rotorhazard.schedule_s;}, setVal: function(val) {rotorhazard.schedule_s = parseJsonStr(val);} },
-		{ name: 'rotorhazard.indicator_beep_volume', getVal: function() {return rotorhazard.indicator_beep_volume;}, setVal: function(val) {rotorhazard.indicator_beep_volume = parseJsonStr(val);} },
-		{ name: 'rotorhazard.min_lap', getVal: function() {return rotorhazard.min_lap;}, setVal: function(val) {rotorhazard.min_lap = parseJsonStr(val);} },
-		{ name: 'rotorhazard.admin', getVal: function() {return rotorhazard.admin;}, setVal: function(val) {rotorhazard.admin = parseJsonStr(val);} },
-		{ name: 'rotorhazard.primaryPilot', getVal: function() {return rotorhazard.primaryPilot;}, setVal: function(val) {rotorhazard.primaryPilot = parseJsonStr(val);} },
-		{ name: 'rotorhazard.hide_graphs', getVal: function() {return rotorhazard.hide_graphs;}, setVal: function(val) {rotorhazard.hide_graphs = parseJsonStr(val);} },
-		{ name: 'rotorhazard.display_lap_id', getVal: function() {return rotorhazard.display_lap_id;}, setVal: function(val) {rotorhazard.display_lap_id = parseJsonStr(val);} },
-		{ name: 'rotorhazard.display_time_start', getVal: function() {return rotorhazard.display_time_start;}, setVal: function(val) {rotorhazard.display_time_start = parseJsonStr(val);} },
-		{ name: 'rotorhazard.display_time_first_pass', getVal: function() {return rotorhazard.display_time_first_pass;}, setVal: function(val) {rotorhazard.display_time_first_pass = parseJsonStr(val);} },
-		{ name: 'rotorhazard.display_laps_reversed', getVal: function() {return rotorhazard.display_laps_reversed;}, setVal: function(val) {rotorhazard.display_laps_reversed = parseJsonStr(val);} },
-		{ name: 'rotorhazard.display_chan_freq', getVal: function() {return rotorhazard.display_chan_freq;}, setVal: function(val) {rotorhazard.display_chan_freq = parseJsonStr(val);} },
-		{ name: 'rotorhazard.display_late_laps_cur', getVal: function() {return rotorhazard.display_late_laps_cur;}, setVal: function(val) {rotorhazard.display_late_laps_cur = parseIntOrBoolean(val);} }
+		{ name: 'rotorhazard.voice_string_language', getVal: function() {return rotorhazard.voice_string_language;}, setVal: function(val) {rotorhazard.voice_string_language = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_language', getVal: function() {return rotorhazard.voice_language;}, setVal: function(val) {rotorhazard.voice_language = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_volume', getVal: function() {return rotorhazard.voice_volume;}, setVal: function(val) {rotorhazard.voice_volume = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_rate', getVal: function() {return rotorhazard.voice_rate;}, setVal: function(val) {rotorhazard.voice_rate = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_pitch', getVal: function() {return rotorhazard.voice_pitch;}, setVal: function(val) {rotorhazard.voice_pitch = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_callsign', getVal: function() {return rotorhazard.voice_callsign;}, setVal: function(val) {rotorhazard.voice_callsign = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_lap_count', getVal: function() {return rotorhazard.voice_lap_count;}, setVal: function(val) {rotorhazard.voice_lap_count = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_team_lap_count', getVal: function() {return rotorhazard.voice_team_lap_count;}, setVal: function(val) {rotorhazard.voice_team_lap_count = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_lap_time', getVal: function() {return rotorhazard.voice_lap_time;}, setVal: function(val) {rotorhazard.voice_lap_time = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_race_timer', getVal: function() {return rotorhazard.voice_race_timer;}, setVal: function(val) {rotorhazard.voice_race_timer = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_race_winner', getVal: function() {return rotorhazard.voice_race_winner;}, setVal: function(val) {rotorhazard.voice_race_winner = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_if_node_finished', getVal: function() {return rotorhazard.voice_if_node_finished;}, setVal: function(val) {rotorhazard.voice_if_node_finished = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_split_timer', getVal: function() {return rotorhazard.voice_split_timer;}, setVal: function(val) {rotorhazard.voice_split_timer = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_race_leader', getVal: function() {return rotorhazard.voice_race_leader;}, setVal: function(val) {rotorhazard.voice_race_leader = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.tone_volume', getVal: function() {return rotorhazard.tone_volume;}, setVal: function(val) {rotorhazard.tone_volume = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_crossing_entered', getVal: function() {return rotorhazard.beep_crossing_entered;}, setVal: function(val) {rotorhazard.beep_crossing_entered = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_crossing_exited', getVal: function() {return rotorhazard.beep_crossing_exited;}, setVal: function(val) {rotorhazard.beep_crossing_exited = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_manual_lap_button', getVal: function() {return rotorhazard.beep_manual_lap_button;}, setVal: function(val) {rotorhazard.beep_manual_lap_button = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_race_leader_lap', getVal: function() {return rotorhazard.beep_race_leader_lap;}, setVal: function(val) {rotorhazard.beep_race_leader_lap = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_race_winner_declared', getVal: function() {return rotorhazard.beep_race_winner_declared;}, setVal: function(val) {rotorhazard.beep_race_winner_declared = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_cluster_connect', getVal: function() {return rotorhazard.beep_cluster_connect;}, setVal: function(val) {rotorhazard.beep_cluster_connect = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.use_mp3_tones', getVal: function() {return rotorhazard.use_mp3_tones;}, setVal: function(val) {rotorhazard.use_mp3_tones = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_on_first_pass_button', getVal: function() {return rotorhazard.beep_on_first_pass_button;}, setVal: function(val) {rotorhazard.beep_on_first_pass_button = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.schedule_m', getVal: function() {return rotorhazard.schedule_m;}, setVal: function(val) {rotorhazard.schedule_m = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.schedule_s', getVal: function() {return rotorhazard.schedule_s;}, setVal: function(val) {rotorhazard.schedule_s = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.indicator_beep_volume', getVal: function() {return rotorhazard.indicator_beep_volume;}, setVal: function(val) {rotorhazard.indicator_beep_volume = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.min_lap', getVal: function() {return rotorhazard.min_lap;}, setVal: function(val) {rotorhazard.min_lap = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.admin', getVal: function() {return rotorhazard.admin;}, setVal: function(val) {rotorhazard.admin = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.primaryPilot', getVal: function() {return rotorhazard.primaryPilot;}, setVal: function(val) {rotorhazard.primaryPilot = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.hide_graphs', getVal: function() {return rotorhazard.hide_graphs;}, setVal: function(val) {rotorhazard.hide_graphs = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_lap_id', getVal: function() {return rotorhazard.display_lap_id;}, setVal: function(val) {rotorhazard.display_lap_id = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_time_start', getVal: function() {return rotorhazard.display_time_start;}, setVal: function(val) {rotorhazard.display_time_start = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_time_first_pass', getVal: function() {return rotorhazard.display_time_first_pass;}, setVal: function(val) {rotorhazard.display_time_first_pass = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_laps_reversed', getVal: function() {return rotorhazard.display_laps_reversed;}, setVal: function(val) {rotorhazard.display_laps_reversed = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_chan_freq', getVal: function() {return rotorhazard.display_chan_freq;}, setVal: function(val) {rotorhazard.display_chan_freq = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_late_laps_cur', getVal: function() {return rotorhazard.display_late_laps_cur;}, setVal: function(val) {rotorhazard.display_late_laps_cur = parseIntOrBoolean(val);}, isAudio: false }
 	],
 	saveData: function() {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
 		for (var idx in this.rhStorageItems) {
-			var entry = this.rhStorageItems[idx]
+			var entry = this.rhStorageItems[idx];
 			localStorage[entry.name] = JSON.stringify(entry.getVal());
 		}
 		return true;
@@ -1150,7 +1150,7 @@ var rotorhazard = {
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
 			for (var idx in this.rhStorageItems) {
-				var entry = this.rhStorageItems[idx]
+				var entry = this.rhStorageItems[idx];
 				if (localStorage[entry.name]) {
 					entry.setVal(localStorage[entry.name]);
 				}
@@ -1159,7 +1159,78 @@ var rotorhazard = {
 		}
 		return false;
 	},
-}
+	importAudioSettingsDataStr: function(dataStr) {
+		try {
+	        if (dataStr) {
+				var lines_arr = dataStr.split("\n");
+				for (var line_idx in lines_arr) {
+					var line_str = lines_arr[line_idx];
+					if (line_str && line_str.length > 0 && line_str[0] != '#') {
+						var keyValArr = line_str.split("=");
+						if (keyValArr.length > 1) {
+							var matchedFlag = false;
+							for (var idx in rotorhazard.rhStorageItems) {
+								var entry = rotorhazard.rhStorageItems[idx];
+								if (entry.isAudio && keyValArr[0] == entry.name) {
+									entry.setVal(keyValArr[1]);
+									matchedFlag = true;
+									break;
+								}
+							}
+							if (!matchedFlag) {
+								console.error("Error importing audio settings; invalid key: " + keyValArr[0])
+							}
+						}
+					}
+				}
+				rotorhazard.saveData();
+				return true;
+	        }
+		} catch(ex) {
+			console.error("Error importing audio settings: " + ex)
+		}
+		return false;
+	},
+	importAudioSettingsFile: function(fileNameStr) {
+		try {
+	        var fr = new FileReader();
+	        fr.onload = function () {
+	            rotorhazard.importAudioSettingsDataStr(fr.result);
+	        }
+	        fr.readAsText(fileNameStr);
+		} catch(ex) {
+			console.error("Error loading audio settings file: " + ex)
+		}
+	},
+	getAudioSettingsStr: function(date) {
+		var outData = "";
+		if (date) {
+			outData += "# RotorHazard Audio Settings " + this.getCurDateTimeLongStr(date) + "\n";
+		}
+		for (var idx in rotorhazard.rhStorageItems) {
+			var entry = rotorhazard.rhStorageItems[idx];
+			if (entry.isAudio) {
+				outData += entry.name + "=" + JSON.stringify(entry.getVal()) + "\n";
+			}
+		}
+		return outData;
+	},
+	getCurDateTimeLongStr: function(date) {
+		var options = { year: "numeric", month: "short", day: "numeric",
+		                hour: "2-digit", minute: "2-digit", second: "2-digit" };
+		return date.toLocaleTimeString("en-us", options);
+	},
+	getCurDateTimeNumStr: function(date) {
+	function pad2(number) { return (number < 10 ? '0' : '') + number }
+	return date.getFullYear() + pad2(date.getMonth()) + pad2(date.getDay()) + '_' +
+			pad2(date.getHours()) + pad2(date.getMinutes()) + pad2(date.getSeconds());
+	},
+	loadDefaultAudioSettings: function() {
+		return rotorhazard.importAudioSettingsDataStr(defaultAudioSettingsStr);
+	},
+};
+
+var defaultAudioSettingsStr = rotorhazard.getAudioSettingsStr(null);
 
 // deferred timer callbacks (time until race)
 rotorhazard.timer.deferred.callbacks.start = function(timer){

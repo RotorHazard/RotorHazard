@@ -906,6 +906,34 @@
 			}
 		});
 
+		$('button#export_audio_settings').click(function (event) {
+			var date = new Date();
+			var outData = rotorhazard.getAudioSettingsStr(date)
+			saveAs(new Blob([outData], {type: "text/plain;charset=utf-8"}),
+					"rhAudioSettings_" + rotorhazard.getCurDateTimeNumStr(date) + ".cfg");
+		});
+
+		$('button#default_audio_settings').click(function (event) {
+			if (rotorhazard.loadDefaultAudioSettings()) {
+				location.reload(true);
+			}
+		});
+
+		$('#select_audio_import_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#import_audio_settings').prop('disabled', false);
+			}
+		});
+
+		$('button#import_audio_settings').click(function (event) {
+			if ($('#select_audio_import_file').prop('files')[0]) {
+				$('#import_audio_settings').prop('disabled', true);
+				rotorhazard.importAudioSettingsFile($('#select_audio_import_file').prop('files')[0]);
+				$('#select_audio_import_file').val('');
+				location.reload(true);
+			}
+		});
+
 		/* Event Actions */
 
 		function updateActionList() {
@@ -1980,6 +2008,26 @@
 				<input type="range" id="set_indicator_volume" min="0" max="100">
 			</li>
 		</ol>
+		<br>
+		<div class="control-set">
+			<div>
+				<button class="button" id="export_audio_settings">{{ __('Export Audio Settings') }}</button> &nbsp;
+				<button data-mfp-src="#audio_settings_defaults_confirm" class="open-mfp-popup">{{ __('Set Audio Settings to Defaults') }}</button>
+			</div>
+			<div>
+				<label for="select_audio_import_file"><span style="font-weight:bold">{{ __('Select File to Import') }}: </span></label>
+				<input type="file" id="select_audio_import_file" accept=".cfg" />
+				<button id="import_audio_settings" class="btn-danger" disabled="disabled">{{ __('Import Audio Settings') }}</button>
+			</div>
+		</div>
+		<div id="audio_settings_defaults_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Confirm') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('This will overwrite all audio settings. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="default_audio_settings">{{ __('Set Defaults') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
 	</div>
 </div>
 
