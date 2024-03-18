@@ -161,36 +161,54 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate controls
-		$('#voice_callsign').val(rotorhazard.voice_callsign);
-		$('#voice_lap_count').val(rotorhazard.voice_lap_count);
-		$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
-		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
-		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
-		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
-		$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
-		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
-		$('#voice_race_leader').val(rotorhazard.voice_race_leader);
-		$().articulate('volume', rotorhazard.voice_volume);
-		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
-		$('#voice_volume_value').html($('#set_voice_volume').val());
-		$().articulate('rate', rotorhazard.voice_rate);
-		$('#voice_rate_value').html(rotorhazard.voice_rate.toFixed(2));
-		$('#set_voice_rate').val(rotorhazard.voice_rate);
-		$().articulate('pitch', rotorhazard.voice_pitch);
-		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
-		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
-		$('#set_tone_volume').val(volume_logsl.position(rotorhazard.tone_volume));
-		$('#tone_volume_value').html($('#set_tone_volume').val());
-		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
-		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
-		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
-		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
-		$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
-		$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
-		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
-		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
-		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
-		$('#indicator_volume_value').html($('#set_indicator_volume').val());
+		var populate_audio_settings = function() {
+			$('#voice_callsign').val(rotorhazard.voice_callsign);
+			$('#voice_lap_count').val(rotorhazard.voice_lap_count);
+			$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
+			$('#voice_lap_time').val(rotorhazard.voice_lap_time);
+			$('#voice_race_timer').val(rotorhazard.voice_race_timer);
+			$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+			$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
+			$('#voice_split_timer').val(rotorhazard.voice_split_timer);
+			$('#voice_race_leader').val(rotorhazard.voice_race_leader);
+			$().articulate('volume', rotorhazard.voice_volume);
+			$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
+			$('#voice_volume_value').html($('#set_voice_volume').val());
+			$().articulate('rate', rotorhazard.voice_rate);
+			$('#voice_rate_value').html(rotorhazard.voice_rate.toFixed(2));
+			$('#set_voice_rate').val(rotorhazard.voice_rate);
+			$().articulate('pitch', rotorhazard.voice_pitch);
+			$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
+			$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+			$('#set_tone_volume').val(volume_logsl.position(rotorhazard.tone_volume));
+			$('#tone_volume_value').html($('#set_tone_volume').val());
+			$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
+			$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
+			$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+			$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
+			$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
+			$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
+			$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
+			$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
+			$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
+			$('#indicator_volume_value').html($('#set_indicator_volume').val());
+			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
+			if (!rotorhazard.voice_language) {  // if no current default then select first English voice
+				var voices = $().articulate('getVoices');
+				for (var i in voices) {
+					if (voices[i].name && voices[i].name.includes && voices[i].name.includes('English')) {
+						rotorhazard.voice_language = voices[i].name;
+						rotorhazard.saveData();
+						$('#set_voice_language').val(rotorhazard.voice_language);
+						break;
+					}
+				}
+			} else {
+				$('#set_voice_language').val(rotorhazard.voice_language);
+			}
+		};
+		populate_audio_settings();
+
 		$('#schedule_m').val(rotorhazard.schedule_m);
 		$('#schedule_s').val(rotorhazard.schedule_s);
 		$('#hide_graphs').prop("checked", !rotorhazard.hide_graphs);
@@ -1231,7 +1249,9 @@
 		for (var i in voices) {
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
-		$('#set_voice_language').val(rotorhazard.voice_language);
+		if (rotorhazard.voice_language) {
+			$('#set_voice_language').val(rotorhazard.voice_language);
+		}
 
 		$('#set_voice_string_language').change(function (event) {
 			rotorhazard.voice_string_language = $(this).val();
@@ -1400,8 +1420,9 @@
 		});
 
 		$('button#default_audio_settings').click(function (event) {
+			$.magnificPopup.close();
 			if (rotorhazard.loadDefaultAudioSettings()) {
-				location.reload(true);
+				populate_audio_settings();
 			}
 		});
 
@@ -1414,9 +1435,9 @@
 		$('button#import_audio_settings').click(function (event) {
 			if ($('#select_audio_import_file').prop('files')[0]) {
 				$('#import_audio_settings').prop('disabled', true);
-				rotorhazard.importAudioSettingsFile($('#select_audio_import_file').prop('files')[0]);
+				rotorhazard.importAudioSettingsFile(
+							$('#select_audio_import_file').prop('files')[0], populate_audio_settings);
 				$('#select_audio_import_file').val('');
-				location.reload(true);
 			}
 		});
 

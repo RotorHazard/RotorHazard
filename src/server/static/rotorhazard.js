@@ -100,11 +100,11 @@ function contrastColor(hexcolor) {
 }
 
 function rgbtoHex(rgb) {
-    rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-    function hex(x) {
-        return ("0" + parseInt(x).toString(16)).slice(-2);
-    }
-    return "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+	rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	function hex(x) {
+		return ("0" + parseInt(x).toString(16)).slice(-2);
+	}
+	return "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
 }
 
 function hslToHex(h, s, l) {
@@ -1161,7 +1161,7 @@ var rotorhazard = {
 	},
 	importAudioSettingsDataStr: function(dataStr) {
 		try {
-	        if (dataStr) {
+			if (dataStr) {
 				var lines_arr = dataStr.split("\n");
 				for (var line_idx in lines_arr) {
 					var line_str = lines_arr[line_idx];
@@ -1185,19 +1185,22 @@ var rotorhazard = {
 				}
 				rotorhazard.saveData();
 				return true;
-	        }
+			}
 		} catch(ex) {
 			console.error("Error importing audio settings: " + ex)
 		}
 		return false;
 	},
-	importAudioSettingsFile: function(fileNameStr) {
+	importAudioSettingsFile: function(fileNameStr, callBackFn) {
 		try {
-	        var fr = new FileReader();
-	        fr.onload = function () {
-	            rotorhazard.importAudioSettingsDataStr(fr.result);
-	        }
-	        fr.readAsText(fileNameStr);
+			var fr = new FileReader();
+			fr.onload = function () {
+				rotorhazard.importAudioSettingsDataStr(fr.result);
+				if (callBackFn) {
+					callBackFn();
+				}
+			}
+			fr.readAsText(fileNameStr);
 		} catch(ex) {
 			console.error("Error loading audio settings file: " + ex)
 		}
@@ -1217,7 +1220,7 @@ var rotorhazard = {
 	},
 	getCurDateTimeLongStr: function(date) {
 		var options = { year: "numeric", month: "short", day: "numeric",
-		                hour: "2-digit", minute: "2-digit", second: "2-digit" };
+						hour: "2-digit", minute: "2-digit", second: "2-digit" };
 		return date.toLocaleTimeString("en-us", options);
 	},
 	getCurDateTimeNumStr: function(date) {
@@ -1628,11 +1631,11 @@ jQuery(document).ready(function($){
 		update_system_message_display();
 	});
 
-    function clear_system_messages() {
+	function clear_system_messages() {
 		system_messages = [];
 		update_system_message_display();
 		$.magnificPopup.close();
-    }
+	}
 
 	document.onkeyup = function(e) {
 		if (e.which == 27) {
