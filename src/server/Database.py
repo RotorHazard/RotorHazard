@@ -72,7 +72,7 @@ class Pilot(Base):
         return "{} {}".format(__('Pilot'), id)
 
     def __repr__(self):
-        return '<Pilot %r>' % self.id
+        return '<Pilot %r %s>' % (self.id, self.display_name)
 
 class PilotAttribute(Base):
     __tablename__ = 'pilot_attribute'
