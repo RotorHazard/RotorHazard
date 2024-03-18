@@ -49,7 +49,7 @@ import base64
 import subprocess
 import importlib
 # import copy
-from functools import wraps
+import functools
 
 from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
@@ -216,19 +216,15 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
-#  and the database session is closed on thread exit (prevents DB-file handles left open).
-def catchLogExcDBCloseWrapper(func):
+#  and the database session is cleaned up on exit (prevents DB-file handles left open).
+def catchLogExcWithDBWrapper(func):
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
-            retVal = func(*args, **kwargs)
-            RaceContext.rhdata.close()
-            return retVal
+            with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+                return func(*args, **kwargs)
         except:
-            logger.exception("Exception via catchLogExcDBCloseWrapper")
-            try:
-                RaceContext.rhdata.close()
-            except:
-                logger.exception("Error closing DB session in catchLogExcDBCloseWrapper-catch")
+            logger.exception("Exception via catchLogExcWithDBWrapper")
     return wrapper
 
 # Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
@@ -292,7 +288,7 @@ def authenticate():
 def requires_auth(f):
     if Config.GENERAL.get('ADMIN_USERNAME') != "" or \
                             Config.GENERAL.get('ADMIN_PASSWORD') != "":
-        @wraps(f)
+        @functools.wraps(f)
         def decorated_auth(*args, **kwargs):
             auth = request.authorization
             if not auth or not check_auth(auth.username, auth.password):
@@ -300,7 +296,7 @@ def requires_auth(f):
             return f(*args, **kwargs)
         return decorated_auth
     # allow open access if both ADMIN fields set to empty string:
-    @wraps(f)
+    @functools.wraps(f)
     def decorated_noauth(*args, **kwargs):
         return f(*args, **kwargs)
     return decorated_noauth
@@ -618,13 +614,13 @@ def stop_background_threads():
 #
 
 @SOCKET_IO.on('connect')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def connect_handler(auth):
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
     #
-    @catchLogExceptionsWrapper
+    @catchLogExcWithDBWrapper
     @copy_current_request_context
     def finish_connect_handler():
         # push initial data
@@ -640,7 +636,7 @@ def disconnect_handler():
 # Cluster events
 
 @SOCKET_IO.on('join_cluster')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_join_cluster():
     RaceContext.race.format = RaceContext.serverstate.secondary_race_format
     RaceContext.rhui.emit_current_laps()
@@ -651,7 +647,7 @@ def on_join_cluster():
                 })
 
 @SOCKET_IO.on('join_cluster_ex')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_join_cluster_ex(data=None):
     global Server_secondary_mode
     prev_mode = Server_secondary_mode
@@ -689,7 +685,7 @@ def on_check_secondary_query(_data):
     SOCKET_IO.emit('check_secondary_response', payload)
 
 @SOCKET_IO.on('cluster_event_trigger')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_cluster_event_trigger(data):
     ''' Received event trigger from primary. '''
 
@@ -738,7 +734,7 @@ def dispatch_event(evtArgs):
     Events.trigger(Evt.UI_DISPATCH, evtArgs)
 
 @SOCKET_IO.on('load_data')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_load_data(data):
     '''Allow pages to load needed data'''
     load_types = data['load_types']
@@ -831,7 +827,7 @@ def on_broadcast_message(data):
 # Settings socket io events
 
 @SOCKET_IO.on('set_frequency')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_frequency(data):
     '''Set node frequency.'''
     if RaceContext.cluster:
@@ -883,7 +879,7 @@ def on_set_frequency(data):
         heartbeat_thread_function.imdtabler_flag = True
 
 @SOCKET_IO.on('set_frequency_preset')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_frequency_preset(data):
     ''' Apply preset frequencies '''
     if RaceContext.cluster:
@@ -966,7 +962,7 @@ def hardware_set_all_frequencies(freqs):
             'channel': freqs["c"][idx]
             })
 
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def restore_node_frequency(node_index):
     ''' Restore frequency for given node index (update hardware) '''
     gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
@@ -976,7 +972,7 @@ def restore_node_frequency(node_index):
     logger.info('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
 
 @SOCKET_IO.on('set_enter_at_level')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
     seat_index = data['node']
@@ -984,7 +980,7 @@ def on_set_enter_at_level(data):
     RaceContext.calibration.set_enter_at_level(seat_index, enter_at_level)
 
 @SOCKET_IO.on('set_exit_at_level')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_exit_at_level(data):
     '''Set node exit-at level.'''
     seat_index = data['node']
@@ -992,7 +988,7 @@ def on_set_exit_at_level(data):
     RaceContext.calibration.set_exit_at_level(seat_index, exit_at_level)
 
 @SOCKET_IO.on("set_start_thresh_lower_amount")
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_start_thresh_lower_amount(data):
     start_thresh_lower_amount = data['start_thresh_lower_amount']
     RaceContext.rhdata.set_option("startThreshLowerAmount", start_thresh_lower_amount)
@@ -1000,7 +996,7 @@ def on_set_start_thresh_lower_amount(data):
     RaceContext.rhui.emit_start_thresh_lower_amount(noself=True)
 
 @SOCKET_IO.on("set_start_thresh_lower_duration")
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_start_thresh_lower_duration(data):
     start_thresh_lower_duration = data['start_thresh_lower_duration']
     RaceContext.rhdata.set_option("startThreshLowerDuration", start_thresh_lower_duration)
@@ -1008,13 +1004,13 @@ def on_set_start_thresh_lower_duration(data):
     RaceContext.rhui.emit_start_thresh_lower_duration(noself=True)
 
 @SOCKET_IO.on('set_language')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_language(data):
     '''Set interface language.'''
     RaceContext.rhdata.set_option('currentLanguage', data['language'])
 
 @SOCKET_IO.on('cap_enter_at_btn')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_cap_enter_at_btn(data):
     '''Capture enter-at level.'''
     node_index = data['node_index']
@@ -1022,7 +1018,7 @@ def on_cap_enter_at_btn(data):
         logger.info('Starting capture of enter-at level for node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('cap_exit_at_btn')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_cap_exit_at_btn(data):
     '''Capture exit-at level.'''
     node_index = data['node_index']
@@ -1030,7 +1026,7 @@ def on_cap_exit_at_btn(data):
         logger.info('Starting capture of exit-at level for node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('set_scan')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_scan(data):
     global HEARTBEAT_DATA_RATE_FACTOR
     node_index = data['node']
@@ -1049,7 +1045,7 @@ def on_set_scan(data):
         gevent.spawn(restore_node_frequency, node_index)
 
 @SOCKET_IO.on('add_heat')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_add_heat(data=None):
     '''Adds the next available heat number to the database.'''
     if data and 'class' in data:
@@ -1059,13 +1055,13 @@ def on_add_heat(data=None):
     RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('duplicate_heat')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_duplicate_heat(data):
     RaceContext.rhdata.duplicate_heat(data['heat'])
     RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('alter_heat')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RaceContext.rhdata.alter_heat(data)
@@ -1078,7 +1074,7 @@ def on_alter_heat(data):
         RaceContext.rhui.emit_priority_message(message, False)
 
 @SOCKET_IO.on('delete_heat')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_delete_heat(data):
     '''Delete heat.'''
     heat_id = data['heat']
@@ -1091,7 +1087,7 @@ def on_delete_heat(data):
         RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('add_race_class')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
     RaceContext.rhdata.add_raceClass()
@@ -1099,7 +1095,7 @@ def on_add_race_class():
     RaceContext.rhui.emit_heat_data() # Update class selections in heat displays
 
 @SOCKET_IO.on('duplicate_race_class')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_duplicate_race_class(data):
     '''Adds new race class by duplicating an existing one.'''
     RaceContext.rhdata.duplicate_raceClass(data['class'])
@@ -1107,7 +1103,7 @@ def on_duplicate_race_class(data):
     RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('alter_race_class')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
     race_class, altered_race_list = RaceContext.rhdata.alter_raceClass(data)
@@ -1127,7 +1123,7 @@ def on_alter_race_class(data):
         RaceContext.rhui.emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
 @SOCKET_IO.on('delete_class')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_delete_class(data):
     '''Delete class.'''
     result = RaceContext.rhdata.delete_raceClass(data['class'])
@@ -1136,14 +1132,14 @@ def on_delete_class(data):
         RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('add_pilot')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     RaceContext.rhdata.add_pilot()
     RaceContext.rhui.emit_pilot_data()
 
 @SOCKET_IO.on('alter_pilot')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
     _pilot, race_list = RaceContext.rhdata.alter_pilot(data)
@@ -1160,7 +1156,7 @@ def on_alter_pilot(data):
     RaceContext.race.clear_results() # refresh current leaderboard
 
 @SOCKET_IO.on('delete_pilot')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_delete_pilot(data):
     '''Delete pilot.'''
     result = RaceContext.rhdata.delete_pilot(data['pilot'])
@@ -1170,7 +1166,7 @@ def on_delete_pilot(data):
         RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('add_profile')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_add_profile():
     '''Adds new profile (frequency set) in the database.'''
     source_profile = RaceContext.race.profile
@@ -1179,7 +1175,7 @@ def on_add_profile():
     on_set_profile({ 'profile': new_profile.id })
 
 @SOCKET_IO.on('alter_profile')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_alter_profile(data):
     ''' update profile '''
     profile = RaceContext.race.profile
@@ -1190,7 +1186,7 @@ def on_alter_profile(data):
     RaceContext.rhui.emit_node_tuning(noself=True)
 
 @SOCKET_IO.on('delete_profile')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_delete_profile():
     '''Delete profile'''
     profile = RaceContext.race.profile
@@ -1202,7 +1198,7 @@ def on_delete_profile():
         on_set_profile({ 'profile': first_profile_id })
 
 @SOCKET_IO.on("set_profile")
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
     profile_val = int(data['profile'])
@@ -1278,7 +1274,7 @@ def on_set_profile(data, emit_vals=True):
 RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
 
 @SOCKET_IO.on('alter_race')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_alter_race(data):
     '''Update race (retroactively via marshaling).'''
 
@@ -1291,7 +1287,7 @@ def on_alter_race(data):
     RaceContext.rhui.emit_result_data()
 
 @SOCKET_IO.on('backup_database')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_backup_database():
     '''Backup database.'''
     bkp_name = RaceContext.rhdata.backup_db_file(True)  # make copy of DB file
@@ -1339,38 +1335,39 @@ def on_list_backups():
     emit('backups_list', emit_payload)
 
 def restore_database_file(db_file_name):
-    stop_background_threads()
-    gevent.sleep(0.1)
-    try:
-        RaceContext.rhdata.close()
-        RaceContext.race = RHRace.RHRace(RaceContext) # Reset all RACE values
-        RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # restore number of nodes
-        RaceContext.last_race = None
+    with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+        stop_background_threads()
+        gevent.sleep(0.1)
         try:
-            RaceContext.rhdata.recover_database(db_file_name)
-            gevent.sleep(1)  # pause/yield to allow changes to be committed
-            RaceContext.race.reset_current_laps()
-            clean_results_cache()
-            RaceContext.race.current_heat = RaceContext.rhdata.get_optionInt('currentHeat')
-            expand_heats()
-            raceformat_id = RaceContext.rhdata.get_optionInt('currentFormat')
-            RaceContext.race.format = RaceContext.rhdata.get_raceFormat(raceformat_id)
-            RaceContext.rhui.emit_current_laps()
-            success = True
-        except Exception as ex:
-            logger.warning('Clearing all data after recovery failure:  ' + str(ex))
-            db_reset()
+            RaceContext.rhdata.close()
+            RaceContext.race = RHRace.RHRace(RaceContext) # Reset all RACE values
+            RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # restore number of nodes
+            RaceContext.last_race = None
+            try:
+                RaceContext.rhdata.recover_database(db_file_name)
+                gevent.sleep(1)  # pause/yield to allow changes to be committed
+                RaceContext.race.reset_current_laps()
+                clean_results_cache()
+                RaceContext.race.current_heat = RaceContext.rhdata.get_optionInt('currentHeat')
+                expand_heats()
+                raceformat_id = RaceContext.rhdata.get_optionInt('currentFormat')
+                RaceContext.race.format = RaceContext.rhdata.get_raceFormat(raceformat_id)
+                RaceContext.rhui.emit_current_laps()
+                success = True
+            except Exception as ex:
+                logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+                db_reset()
+                success = False
+            init_race_state()
+            init_interface_state()
+        except Exception:
+            logger.exception("Unexpected error in 'restore_database_file()'")
             success = False
-        init_race_state()
-        init_interface_state()
-    except Exception:
-        logger.exception("Unexpected error in 'restore_database_file()'")
-        success = False
-    start_background_threads(True)
-    return success
+        start_background_threads(True)
+        return success
 
 @SOCKET_IO.on('restore_database')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_restore_database(data):
     '''Restore database.'''
     success = None
@@ -1395,7 +1392,7 @@ def on_restore_database(data):
         RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
 
 @SOCKET_IO.on('delete_database')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_delete_database_file(data):
     '''Restore database.'''
     if 'backup_file' in data:
@@ -1420,7 +1417,7 @@ def on_delete_database_file(data):
             logger.warning('Unable to delete {0}: File does not exist'.format(backup_file))
 
 @SOCKET_IO.on('reset_database')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_reset_database(data):
     '''Reset database.'''
     RaceContext.pagecache.set_valid(False)
@@ -1474,7 +1471,7 @@ def on_reset_database(data):
     Events.trigger(Evt.DATABASE_RESET)
 
 @SOCKET_IO.on('export_database')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_export_database_file(data):
     '''Run the selected Exporter'''
     exporter = data['exporter']
@@ -1505,7 +1502,7 @@ def on_export_database_file(data):
     RaceContext.rhui.emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
 @SOCKET_IO.on('import_data')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_import_file(data):
     '''Run the selected Importer'''
     importer = data['importer']
@@ -1535,7 +1532,7 @@ def on_import_file(data):
     RaceContext.rhui.emit_priority_message(__('Data import failed. (See log)'), True, nobroadcast=True)
 
 @SOCKET_IO.on('generate_heats_v2')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_generate_heats_v2(data):
     '''Run the selected Generator'''
     available_seats = 0
@@ -1655,7 +1652,7 @@ def on_download_logs(data):
             logger.exception("Error downloading logs-zip file")
 
 @SOCKET_IO.on("set_min_lap")
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_min_lap(data):
     min_lap = data['min_lap']
     RaceContext.rhdata.set_option("MinLapSec", data['min_lap'])
@@ -1668,7 +1665,7 @@ def on_set_min_lap(data):
     RaceContext.rhui.emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_min_lap_behavior")
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_min_lap_behavior(data):
     min_lap_behavior = int(data['min_lap_behavior'])
     RaceContext.rhdata.set_option("MinLapBehavior", min_lap_behavior)
@@ -1681,7 +1678,7 @@ def on_set_min_lap_behavior(data):
     RaceContext.rhui.emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_race_format")
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_race_format(data):
     ''' set current race_format '''
     if RaceContext.race.race_status == RaceStatus.READY: # prevent format change if race running
@@ -1706,7 +1703,7 @@ def on_set_race_format(data):
 RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions
 
 @SOCKET_IO.on('add_race_format')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_add_race_format(data):
     '''Adds new format in the database by duplicating an existing one.'''
     source_format_id = data['source_format_id']
@@ -1714,7 +1711,7 @@ def on_add_race_format(data):
     RaceContext.rhui.emit_format_data()
 
 @SOCKET_IO.on('alter_race_format')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_alter_race_format(data):
     ''' update race format '''
     race_format, race_list = RaceContext.rhdata.alter_raceFormat(data)
@@ -1735,7 +1732,7 @@ def on_alter_race_format(data):
         RaceContext.rhui.emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
 
 @SOCKET_IO.on('delete_race_format')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_delete_race_format(data):
     '''Delete race format'''
     format_id = data['format_id']
@@ -1822,7 +1819,7 @@ def emit_led_effects(**_params):
         emit('led_effects', emit_payload)
 
 @SOCKET_IO.on('set_led_event_effect')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_led_effect(data):
     '''Set effect for event.'''
     if 'event' in data and 'effect' in data:
@@ -1900,7 +1897,7 @@ def on_save_race(*args):
     RaceContext.race.save(*args)
 
 @SOCKET_IO.on('resave_laps')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_resave_laps(data):
     heat_id = data['heat_id']
     round_id = data['round_id']
@@ -1972,7 +1969,7 @@ def on_resave_laps(data):
         'pilot_id': pilot_id,
         })
 
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def build_atomic_result_caches(params):
     RaceContext.pagecache.set_valid(False)
     Results.build_atomic_results(RaceContext.rhdata, params)
@@ -1984,20 +1981,20 @@ def on_discard_laps(**kwargs):
     RaceContext.race.discard_laps(**kwargs)
 
 @SOCKET_IO.on('calc_pilots')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_calc_pilots(data):
     heat_id = data['heat']
     RaceContext.heatautomator.calc_heat(heat_id)
 
 @SOCKET_IO.on('calc_reset')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_calc_reset(data):
     data['status'] = Database.HeatStatus.PLANNED
     on_alter_heat(data)
     RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('confirm_heat_plan')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_confirm_heat(data):
     if 'heat_id' in data:
         RaceContext.rhdata.alter_heat({
@@ -2012,7 +2009,7 @@ def on_confirm_heat(data):
             RaceContext.race.set_heat(data['heat_id'], force=True)
 
 @SOCKET_IO.on('set_current_heat')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_current_heat(data):
     '''Update the current heat variable and data.'''
     RaceContext.race.set_heat(data['heat'])
@@ -2027,7 +2024,7 @@ def on_restore_deleted_lap(data):
 
 
 @SOCKET_IO.on('simulate_lap')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
@@ -2071,7 +2068,7 @@ def on_LED_brightness(data):
         })
 
 @SOCKET_IO.on('set_option')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_option(data):
     RaceContext.rhdata.set_option(data['option'], data['value'])
     Events.trigger(Evt.OPTION_SET, {
@@ -2080,7 +2077,7 @@ def on_set_option(data):
         })
 
 @SOCKET_IO.on('set_consecutives_count')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def on_set_consecutives_count(data):
     RaceContext.rhdata.set_option('consecutivesCount', data['count'])
     RaceContext.rhdata.clear_results_all()
@@ -2100,7 +2097,7 @@ def get_race_elapsed():
     })
 
 @SOCKET_IO.on('save_callouts')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def save_callouts(data):
     # save callouts to Options
     callouts = json.dumps(data['callouts'])
@@ -2109,12 +2106,12 @@ def save_callouts(data):
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 
 @SOCKET_IO.on('reload_callouts')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def reload_callouts():
     RaceContext.rhui.emit_callouts()
 
 @SOCKET_IO.on('play_callout_text')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def play_callout_text(data):
     message = RHData.doReplace(RHAPI, data['callout'], {}, True)
     RaceContext.rhui.emit_phonetic_text(message)
@@ -2126,7 +2123,7 @@ def imdtabler_update_freqs(data):
     RaceContext.rhui.emit_imdtabler_data(IMDTABLER_JAR_NAME, data['freq_list'].replace(',',' ').split())
 
 @SOCKET_IO.on('clean_cache')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def clean_results_cache():
     ''' wipe all results caches '''
     Events.trigger(Evt.CACHE_CLEAR)
@@ -2141,7 +2138,7 @@ def on_retry_secondary(data):
     RaceContext.rhui.emit_cluster_status()
 
 @SOCKET_IO.on('get_pilotrace')
-@catchLogExceptionsWrapper
+@catchLogExcWithDBWrapper
 def get_pilotrace(data):
     # get single race detail
     if 'pilotrace_id' in data:
@@ -2267,11 +2264,12 @@ def do_bpillfw_update(data):
     initialize_rh_interface()
     if RaceContext.race.num_nodes <= 0:
         SOCKET_IO.emit('upd_messages_append', "\nWarning: No receiver nodes found")
-    buildServerInfo()
-    reportServerInfo()
-    init_race_state()
-    start_background_threads(True)
-    SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
+    with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+        buildServerInfo()
+        reportServerInfo()
+        init_race_state()
+        start_background_threads(True)
+        SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
 
 @SOCKET_IO.on('set_vrx_node')
 @catchLogExceptionsWrapper
@@ -2340,6 +2338,7 @@ def heartbeat_thread_function():
                     logger.info("Sensor snapshot:")
                     for name, obj in RaceContext.sensors.sensors_dict.items():
                         logger.info(f"{name}: {obj.getReadings()}")
+                RaceContext.rhdata.check_log_db_conns()  # also log status of database connections
 
             time_now = monotonic()
 
@@ -2435,7 +2434,7 @@ def ms_from_program_start():
 def pass_record_callback(node, lap_timestamp_absolute, source):
     RaceContext.race.pass_invoke_func_queue_obj.put(RaceContext.race.add_lap, node, lap_timestamp_absolute, source)
 
-@catchLogExcDBCloseWrapper
+@catchLogExcWithDBWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     gevent.sleep(0.025)  # delay to avoid potential I/O error
     if is_enter_at_flag:
@@ -2447,7 +2446,7 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         RaceContext.calibration.set_exit_at_level(node.index, node.exit_at_level)
         RaceContext.rhui.emit_exit_at_level(node)
 
-@catchLogExcDBCloseWrapper
+@catchLogExcWithDBWrapper
 def node_crossing_callback(node):
     RaceContext.rhui.emit_node_crossing_change(node)
     # handle LED gate-status indicators:
@@ -2879,23 +2878,6 @@ def check_requirements():
     except:
         logger.exception("Error checking package requirements")
 
-#
-# Program Initialize
-#
-
-logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time,
-                                                         RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
-RHUtils.idAndLogSystemInfo()
-
-check_requirements()
-
-determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
-
-# RotorHazard events dispatch
-Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
-
-# Plugin handling
 class plugin():
     def __init__(self, name):
         self.name = name
@@ -2905,14 +2887,6 @@ class plugin():
         self.loaded = False
         self.load_issue = None
         self.load_issue_detail = None
-
-plugin_modules = []
-if os.path.isdir('./plugins'):
-    dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
-    for name in dirs:
-        plugin_modules.append(plugin(name))
-else:
-    logger.warning('No plugins directory found.')
 
 def load_plugin(plugin):
     if not plugin.enabled:
@@ -2967,349 +2941,378 @@ def load_plugin(plugin):
     plugin.module.initialize(RHAPI)
     return True
 
-for plugin in plugin_modules:
-    if load_plugin(plugin):
-        logger.info("Loaded plugin '{}'".format(plugin.name))
-        plugin.loaded = True
+#
+# Program Initialize
+#
+
+with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+
+    logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(\
+                RELEASE_VERSION, SERVER_API, NODE_API_BEST))
+    logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time, \
+                                RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
+    RHUtils.idAndLogSystemInfo()
+
+    check_requirements()
+
+    determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+    # RotorHazard events dispatch
+    Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
+
+    # Plugin handling
+    plugin_modules = []
+    if os.path.isdir('./plugins'):
+        dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
+        for name in dirs:
+            plugin_modules.append(plugin(name))
     else:
-        if plugin.load_issue_detail:
-            logger.info("Plugin '{}' not loaded ({}; Ex: {})".format(plugin.name, plugin.load_issue, plugin.load_issue_detail))
+        logger.warning('No plugins directory found.')
+
+    for plugin in plugin_modules:
+        if load_plugin(plugin):
+            logger.info("Loaded plugin '{}'".format(plugin.name))
+            plugin.loaded = True
         else:
-            logger.info("Plugin '{}' not loaded ({})".format(plugin.name, plugin.load_issue))
+            if plugin.load_issue_detail:
+                logger.info("Plugin '{}' not loaded ({}; Ex: {})".format(plugin.name, plugin.load_issue, plugin.load_issue_detail))
+            else:
+                logger.info("Plugin '{}' not loaded ({})".format(plugin.name, plugin.load_issue))
 
-RaceContext.serverstate.plugins = plugin_modules
+    RaceContext.serverstate.plugins = plugin_modules
 
-if (not RHUtils.is_S32_BPill_board()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
-    RHUtils.set_S32_BPill_boardFlag()
-    logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
+    if (not RHUtils.is_S32_BPill_board()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
+        RHUtils.set_S32_BPill_boardFlag()
+        logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
-logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
-                                         RHUtils.get_GPIO_type_str(), RHUtils.is_S32_BPill_board()))
-if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
-    logger.warning("Unable to access real GPIO on Pi; libraries may need to be installed")
-    set_ui_message(
-        'gpio',
-        __("Unable to access real GPIO on Pi libraries may need to be installed"),
-        header='Warning',
-        subclass='no-access'
-        )
+    logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
+                                             RHUtils.get_GPIO_type_str(), RHUtils.is_S32_BPill_board()))
+    if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
+        logger.warning("Unable to access real GPIO on Pi; libraries may need to be installed")
+        set_ui_message(
+            'gpio',
+            __("Unable to access real GPIO on Pi libraries may need to be installed"),
+            header='Warning',
+            subclass='no-access'
+            )
 
-# log results of module initializations
-Config.logInitResultMessage()
-RaceContext.language.logInitResultMessage()
+    # log results of module initializations
+    Config.logInitResultMessage()
+    RaceContext.language.logInitResultMessage()
 
-# check if current log file owned by 'root' and change owner to 'pi' user if so
-if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
-    logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
-    RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME)  # also make sure 'log' dir not owned by 'root'
+    # check if current log file owned by 'root' and change owner to 'pi' user if so
+    if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
+        logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+        RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME)  # also make sure 'log' dir not owned by 'root'
 
-logger.info("Using log file: {0}".format(Current_log_path_name))
+    logger.info("Using log file: {0}".format(Current_log_path_name))
 
-if RHUtils.is_sys_raspberry_pi() and RHUtils.is_S32_BPill_board():
-    try:
-        if Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
-            logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
-                         Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], \
-                         Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS']))
-            ShutdownButtonInputHandler = ButtonInputHandler(
-                            Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], logger, \
-                            shutdown_button_pressed, shutdown_button_released, \
-                            shutdown_button_long_press,
-                            Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS'], False)
-            start_shutdown_button_thread()
-    except Exception:
-        logger.exception("Error setting up shutdown-button handler")
-
-    logger.debug("Resetting S32_BPill processor")
-    s32logger = logging.getLogger("stm32loader")
-    stm32loader.set_console_output_fn(s32logger.info)
-    stm32loader.reset_to_run()
-    stm32loader.set_console_output_fn(None)
-
-hardwareHelpers = {}
-for helper in search_modules(suffix='helper'):
-    try:
-        hardwareHelpers[helper.__name__] = helper.create(Config)
-    except Exception as ex:
-        logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
-
-initRhResultFlag = initialize_rh_interface()
-if not initRhResultFlag:
-    log.wait_for_queue_empty()
-    sys.exit(1)
-
-if len(sys.argv) > 0:
-    if CMDARG_JUMP_TO_BL_STR in sys.argv:
-        stop_background_threads()
-        jump_to_node_bootloader()
-        if CMDARG_FLASH_BPILL_STR in sys.argv:
-            bootJumpArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-            bootJumpPortStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
-                                                len(Config.SERIAL_PORTS) > 0 else None
-            bootJumpSrcStr = sys.argv[bootJumpArgIdx] if bootJumpArgIdx < len(sys.argv) else None
-            if bootJumpSrcStr and bootJumpSrcStr.startswith("--"):  # use next arg as src file (optional)
-                bootJumpSrcStr = None                       #  unless arg is switch param
-            bootJumpSuccessFlag = stm32loader.flash_file_to_stm32(bootJumpPortStr, bootJumpSrcStr)
-            sys.exit(0 if bootJumpSuccessFlag else 1)
-        sys.exit(0)
-    if CMDARG_VIEW_DB_STR in sys.argv:
+    if RHUtils.is_sys_raspberry_pi() and RHUtils.is_S32_BPill_board():
         try:
-            viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
-            RaceContext.rhdata.backup_db_file(True)
-            logger.info("Loading given database file: {}".format(sys.argv[viewdbArgIdx]))
-            restoreDbResultFlag = restore_database_file(sys.argv[viewdbArgIdx])
+            if Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
+                logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
+                             Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], \
+                             Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS']))
+                ShutdownButtonInputHandler = ButtonInputHandler(
+                                Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], logger, \
+                                shutdown_button_pressed, shutdown_button_released, \
+                                shutdown_button_long_press,
+                                Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS'], False)
+                start_shutdown_button_thread()
+        except Exception:
+            logger.exception("Error setting up shutdown-button handler")
+
+        logger.debug("Resetting S32_BPill processor")
+        s32logger = logging.getLogger("stm32loader")
+        stm32loader.set_console_output_fn(s32logger.info)
+        stm32loader.reset_to_run()
+        stm32loader.set_console_output_fn(None)
+
+    hardwareHelpers = {}
+    for helper in search_modules(suffix='helper'):
+        try:
+            hardwareHelpers[helper.__name__] = helper.create(Config)
         except Exception as ex:
-            logger.error("Error loading database file: {}".format(ex))
-            restoreDbResultFlag = False
-        if not restoreDbResultFlag:
-            sys.exit(1)
+            logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
-RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
-hasMirrors = False
-secondary = None
-try:
-    for sec_idx, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
-        if isinstance(secondary_info, str):
-            secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
-        if 'address' not in secondary_info:
-            raise RuntimeError("Secondary 'address' item not specified")
-        # substitute asterisks in given address with values from host IP address
-        secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
-                                                                secondary_info['address'])
-        if 'timeout' not in secondary_info:
-            secondary_info['timeout'] = Config.GENERAL['SECONDARY_TIMEOUT']
-        if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
-            hasMirrors = True
-        elif hasMirrors:
-            logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
-            set_ui_message(
-                'secondary',
-                __("Mirror secondaries must be last; ignoring part of secondary configuration"),
-                header='Notice',
-                subclass='mirror'
-                )
-            break
-        secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, RaceContext.serverstate.monotonic_to_epoch_millis,
-                                  RELEASE_VERSION, secondary)
-        RaceContext.cluster.addSecondary(secondary)
-except:
-    logger.exception("Error adding secondary to cluster")
-    set_ui_message(
-        'secondary',
-        __('Secondary configuration is invalid.'),
-        header='Error',
-        subclass='error'
-        )
+    initRhResultFlag = initialize_rh_interface()
+    if not initRhResultFlag:
+        log.wait_for_queue_empty()
+        sys.exit(1)
 
-if RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
-    RaceContext.cluster.init_repeater()
+    if len(sys.argv) > 0:
+        if CMDARG_JUMP_TO_BL_STR in sys.argv:
+            stop_background_threads()
+            jump_to_node_bootloader()
+            if CMDARG_FLASH_BPILL_STR in sys.argv:
+                bootJumpArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+                bootJumpPortStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+                                                    len(Config.SERIAL_PORTS) > 0 else None
+                bootJumpSrcStr = sys.argv[bootJumpArgIdx] if bootJumpArgIdx < len(sys.argv) else None
+                if bootJumpSrcStr and bootJumpSrcStr.startswith("--"):  # use next arg as src file (optional)
+                    bootJumpSrcStr = None                       #  unless arg is switch param
+                bootJumpSuccessFlag = stm32loader.flash_file_to_stm32(bootJumpPortStr, bootJumpSrcStr)
+                sys.exit(0 if bootJumpSuccessFlag else 1)
+            sys.exit(0)
+        if CMDARG_VIEW_DB_STR in sys.argv:
+            try:
+                viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
+                RaceContext.rhdata.backup_db_file(True)
+                logger.info("Loading given database file: {}".format(sys.argv[viewdbArgIdx]))
+                restoreDbResultFlag = restore_database_file(sys.argv[viewdbArgIdx])
+            except Exception as ex:
+                logger.error("Error loading database file: {}".format(ex))
+                restoreDbResultFlag = False
+            if not restoreDbResultFlag:
+                sys.exit(1)
 
-if RaceContext.race.num_nodes > 0:
-    logger.info('Number of nodes found: {0}'.format(RaceContext.race.num_nodes))
-    # if I2C nodes then only report comm errors if > 1.0%
-    if hasattr(RaceContext.interface.nodes[0], 'i2c_addr'):
-        RaceContext.interface.set_intf_error_report_percent_limit(1.0)
-
-# Delay to get I2C addresses through interface class initialization
-gevent.sleep(0.500)
-
-try:
-    RaceContext.sensors.discover(config=Config.SENSORS, **hardwareHelpers)
-except Exception:
-    logger.exception("Exception while discovering sensors")
-
-# if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
-db_inited_flag = False
-if not os.path.exists(DB_FILE_NAME):
-    logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
-    db_init()
-    db_inited_flag = True
-    RaceContext.rhdata.primeCache() # Ready the Options cache
-
-# check if DB file owned by 'root' and change owner to 'pi' user if so
-if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
-    logger.debug("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
-
-# check if directories owned by 'root' and change owner to 'pi' user if so
-if RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME):
-    logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(DB_BKP_DIR_NAME))
-if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
-    logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOGZIP_DIR_NAME))
-
-# collect server info for About panel, etc
-buildServerInfo()
-reportServerInfo()
-RHAPI.server_info = RaceContext.serverstate.info_dict
-
-# Do data consistency checks
-if not db_inited_flag:
+    RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
+    hasMirrors = False
+    secondary = None
     try:
+        for sec_idx, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
+            if isinstance(secondary_info, str):
+                secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
+            if 'address' not in secondary_info:
+                raise RuntimeError("Secondary 'address' item not specified")
+            # substitute asterisks in given address with values from host IP address
+            secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
+                                                                    secondary_info['address'])
+            if 'timeout' not in secondary_info:
+                secondary_info['timeout'] = Config.GENERAL['SECONDARY_TIMEOUT']
+            if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
+                hasMirrors = True
+            elif hasMirrors:
+                logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
+                set_ui_message(
+                    'secondary',
+                    __("Mirror secondaries must be last; ignoring part of secondary configuration"),
+                    header='Notice',
+                    subclass='mirror'
+                    )
+                break
+            secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, RaceContext.serverstate.monotonic_to_epoch_millis,
+                                      RELEASE_VERSION, secondary)
+            RaceContext.cluster.addSecondary(secondary)
+    except:
+        logger.exception("Error adding secondary to cluster")
+        set_ui_message(
+            'secondary',
+            __('Secondary configuration is invalid.'),
+            header='Error',
+            subclass='error'
+            )
+
+    if RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
+        RaceContext.cluster.init_repeater()
+
+    if RaceContext.race.num_nodes > 0:
+        logger.info('Number of nodes found: {0}'.format(RaceContext.race.num_nodes))
+        # if I2C nodes then only report comm errors if > 1.0%
+        if hasattr(RaceContext.interface.nodes[0], 'i2c_addr'):
+            RaceContext.interface.set_intf_error_report_percent_limit(1.0)
+
+    # Delay to get I2C addresses through interface class initialization
+    gevent.sleep(0.500)
+
+    try:
+        RaceContext.sensors.discover(config=Config.SENSORS, **hardwareHelpers)
+    except Exception:
+        logger.exception("Exception while discovering sensors")
+
+    # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
+    db_inited_flag = False
+    if not os.path.exists(DB_FILE_NAME):
+        logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
+        db_init()
+        db_inited_flag = True
         RaceContext.rhdata.primeCache() # Ready the Options cache
 
-        if not RaceContext.rhdata.check_integrity():
-            RaceContext.rhdata.recover_database(DB_FILE_NAME, startup=True)
-            clean_results_cache()
+    # check if DB file owned by 'root' and change owner to 'pi' user if so
+    if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
+        logger.debug("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
 
-    except Exception as ex:
-        logger.warning('Clearing all data after recovery failure:  ' + str(ex))
-        db_reset()
+    # check if directories owned by 'root' and change owner to 'pi' user if so
+    if RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME):
+        logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(DB_BKP_DIR_NAME))
+    if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
+        logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOGZIP_DIR_NAME))
 
-# Create LED object with appropriate configuration
-strip = None
-if Config.LED['LED_COUNT'] > 0:
-    led_type = os.environ.get('RH_LEDS', 'ws281x')
-    # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
-    #       otherwise it causes problems when run with no existing DB file
-    led_brightness = RaceContext.rhdata.get_optionInt("ledBrightness")
-    if not Config.LED['SERIAL_CTRLR_PORT']:
+    # collect server info for About panel, etc
+    buildServerInfo()
+    reportServerInfo()
+    RHAPI.server_info = RaceContext.serverstate.info_dict
+
+    # Do data consistency checks
+    if not db_inited_flag:
         try:
-            ledModule = importlib.import_module(led_type + '_leds')
-            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-        except ImportError:
-            # No hardware LED handler, the OpenCV emulation
+            RaceContext.rhdata.primeCache() # Ready the Options cache
+
+            if not RaceContext.rhdata.check_integrity():
+                RaceContext.rhdata.recover_database(DB_FILE_NAME, startup=True)
+                clean_results_cache()
+
+        except Exception as ex:
+            logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+            db_reset()
+
+    # Create LED object with appropriate configuration
+    strip = None
+    if Config.LED['LED_COUNT'] > 0:
+        led_type = os.environ.get('RH_LEDS', 'ws281x')
+        # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
+        #       otherwise it causes problems when run with no existing DB file
+        led_brightness = RaceContext.rhdata.get_optionInt("ledBrightness")
+        if not Config.LED['SERIAL_CTRLR_PORT']:
             try:
-                ledModule = importlib.import_module('cv2_leds')
+                ledModule = importlib.import_module(led_type + '_leds')
                 strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
             except ImportError:
-                # No OpenCV emulation, try console output
+                # No hardware LED handler, the OpenCV emulation
                 try:
-                    ledModule = importlib.import_module('ANSI_leds')
+                    ledModule = importlib.import_module('cv2_leds')
                     strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
                 except ImportError:
-                    ledModule = None
-                    logger.info('LED: disabled (no modules available)')
+                    # No OpenCV emulation, try console output
+                    try:
+                        ledModule = importlib.import_module('ANSI_leds')
+                        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+                    except ImportError:
+                        ledModule = None
+                        logger.info('LED: disabled (no modules available)')
+        else:
+            try:
+                ledModule = importlib.import_module('ledctrlr_leds')
+                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+            except Exception as ex:
+                if "FileNotFound" in str(ex):
+                    logger.error("Serial port not found for LED controller: {}".format(ex))
+                else:
+                    logger.exception("Error initializing serial LED controller: {}".format(ex))
     else:
+        logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
+    if strip:
+        # Initialize the library (must be called once before other functions).
         try:
-            ledModule = importlib.import_module('ledctrlr_leds')
-            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
-        except Exception as ex:
-            if "FileNotFound" in str(ex):
-                logger.error("Serial port not found for LED controller: {}".format(ex))
-            else:
-                logger.exception("Error initializing serial LED controller: {}".format(ex))
-else:
-    logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
-if strip:
-    # Initialize the library (must be called once before other functions).
-    try:
-        strip.begin()
-        RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext, RHAPI)
+            strip.begin()
+            RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext, RHAPI)
+            init_LED_effects()
+        except:
+            logger.exception("Error initializing LED support")
+            RaceContext.led_manager = NoLEDManager()
+    elif RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
+        RaceContext.led_manager = ClusterLEDManager(Events)
         init_LED_effects()
-    except:
-        logger.exception("Error initializing LED support")
+    else:
         RaceContext.led_manager = NoLEDManager()
-elif RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
-    RaceContext.led_manager = ClusterLEDManager(Events)
-    init_LED_effects()
-else:
-    RaceContext.led_manager = NoLEDManager()
 
-# leaderboard ranking managers
-RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
-RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RHAPI, Events)
+    # leaderboard ranking managers
+    RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
+    RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RHAPI, Events)
 
-# Initialize internal state with database
-# DB session commit needed to prevent 'application context' errors
-try:
-    init_race_state()
-except Exception:
-    logger.exception("Exception in 'init_race_state()'")
-    log.wait_for_queue_empty()
-    sys.exit(1)
-
-# internal secondary race format for LiveTime (needs to be created after initial DB setup)
-RaceContext.serverstate.secondary_race_format = RHRace.RHRaceFormat(name=__("Secondary"),
-                         unlimited_time=1,
-                         race_time_sec=0,
-                         lap_grace_sec=-1,
-                         staging_fixed_tones=0,
-                         start_delay_min_ms=0,
-                         start_delay_max_ms=0,
-                         staging_delay_tones=0,
-                         number_laps_win=0,
-                         win_condition=WinCondition.NONE,
-                         team_racing_mode=False,
-                         start_behavior=0,
-                         points_method=None)
-
-# Import IMDTabler
-if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
+    # Initialize internal state with database
+    # DB session commit needed to prevent 'application context' errors
     try:
-        java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True).decode("utf-8")
-        logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
-    except:
-        java_ver = None
-        logger.info('Unable to find java; for IMDTabler functionality try:')
-        logger.info('sudo apt install default-jdk-headless')
-    if java_ver:
+        init_race_state()
+    except Exception:
+        logger.exception("Exception in 'init_race_state()'")
+        log.wait_for_queue_empty()
+        sys.exit(1)
+
+    # internal secondary race format for LiveTime (needs to be created after initial DB setup)
+    RaceContext.serverstate.secondary_race_format = RHRace.RHRaceFormat(name=__("Secondary"),
+                             unlimited_time=1,
+                             race_time_sec=0,
+                             lap_grace_sec=-1,
+                             staging_fixed_tones=0,
+                             start_delay_min_ms=0,
+                             start_delay_max_ms=0,
+                             staging_delay_tones=0,
+                             number_laps_win=0,
+                             win_condition=WinCondition.NONE,
+                             team_racing_mode=False,
+                             start_behavior=0,
+                             points_method=None)
+
+    # Import IMDTabler
+    if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
         try:
-            chk_imdtabler_ver = subprocess.check_output( \
-                        'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
-                        stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
-            Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-            logger.debug('Found installed: ' + chk_imdtabler_ver)
-        except Exception:
-            logger.exception('Error checking IMDTabler:  ')
-else:
-    logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+            java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True).decode("utf-8")
+            logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
+        except:
+            java_ver = None
+            logger.info('Unable to find java; for IMDTabler functionality try:')
+            logger.info('sudo apt install default-jdk-headless')
+        if java_ver:
+            try:
+                chk_imdtabler_ver = subprocess.check_output( \
+                            'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
+                            stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
+                Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
+                logger.debug('Found installed: ' + chk_imdtabler_ver)
+            except Exception:
+                logger.exception('Error checking IMDTabler:  ')
+    else:
+        logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
-# VRx Controllers
-RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=Config.VRX_CONTROL)
-Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
+    # VRx Controllers
+    RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=Config.VRX_CONTROL)
+    Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
 
-# data exporters
-RaceContext.export_manager = DataExportManager(RHAPI, Events)
-RaceContext.import_manager = DataImportManager(RHAPI, RaceContext, Events)
+    # data exporters
+    RaceContext.export_manager = DataExportManager(RHAPI, Events)
+    RaceContext.import_manager = DataImportManager(RHAPI, RaceContext, Events)
 
-# heat generators
-RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
+    # heat generators
+    RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
 
-gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
+    gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
-# register endpoints
-APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
+    # register endpoints
+    APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
 
-#register event actions
-EventActionsObj = EventActions.EventActions(Events, RaceContext)
+    #register event actions
+    EventActionsObj = EventActions.EventActions(Events, RaceContext)
 
-# make event actions available to cluster/secondary timers
-RaceContext.cluster.setEventActionsObj(EventActionsObj)
+    # make event actions available to cluster/secondary timers
+    RaceContext.cluster.setEventActionsObj(EventActionsObj)
 
 @catchLogExceptionsWrapper
 def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
-    if not RaceContext.rhdata.get_option("secret_key"):
-        RaceContext.rhdata.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for _ in range(50)))
+    with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+        if not RaceContext.rhdata.get_option("secret_key"):
+            RaceContext.rhdata.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for _ in range(50)))
 
-    APP.config['SECRET_KEY'] = RaceContext.rhdata.get_option("secret_key")
-    logger.info("Running http server at port " + str(port_val))
-    init_interface_state(startup=True)
-    Events.trigger(Evt.STARTUP, {
-        'color': ColorVal.ORANGE,
-        'message': 'RotorHazard ' + RELEASE_VERSION
-        })
+        APP.config['SECRET_KEY'] = RaceContext.rhdata.get_option("secret_key")
+        logger.info("Running http server at port " + str(port_val))
+        init_interface_state(startup=True)
+        Events.trigger(Evt.STARTUP, {
+            'color': ColorVal.ORANGE,
+            'message': 'RotorHazard ' + RELEASE_VERSION
+            })
 
-    # handle launch-browser arguments ("... [pagename] [browsercmd]")
-    if argv_arr and len(argv_arr) > 0:
-        launchbIdx = 0
-        if CMDARG_VIEW_DB_STR in argv_arr:
-            vArgIdx = argv_arr.index(CMDARG_VIEW_DB_STR) + 1
-            if len(argv_arr) > vArgIdx + 1 and (not argv_arr[vArgIdx+1].startswith("--")):
-                launchbIdx = vArgIdx         # if 'pagename' arg given then launch browser (below)
-        if launchbIdx == 0 and CMDARG_LAUNCH_B_STR in argv_arr:
-            launchbIdx = argv_arr.index(CMDARG_LAUNCH_B_STR)
-        if launchbIdx > 0:
-            if len(argv_arr) > launchbIdx + 1 and (not argv_arr[launchbIdx+1].startswith("--")):
-                pageStr = argv_arr[launchbIdx+1]
-                if not pageStr.startswith('/'):
-                    pageStr = '/' +  pageStr
-            else:
-                pageStr = None
-            cmdStr = argv_arr[launchbIdx+2] if len(argv_arr) > launchbIdx+2 and \
-                            (not argv_arr[launchbIdx+2].startswith("--")) else None
-            start_background_threads(True)
-            RaceContext.pagecache.update_cache()
-            gevent.spawn_later(2, RHUtils.launchBrowser, "http://localhost", \
-                               port_val, pageStr, cmdStr)
+        # handle launch-browser arguments ("... [pagename] [browsercmd]")
+        if argv_arr and len(argv_arr) > 0:
+            launchbIdx = 0
+            if CMDARG_VIEW_DB_STR in argv_arr:
+                vArgIdx = argv_arr.index(CMDARG_VIEW_DB_STR) + 1
+                if len(argv_arr) > vArgIdx + 1 and (not argv_arr[vArgIdx+1].startswith("--")):
+                    launchbIdx = vArgIdx         # if 'pagename' arg given then launch browser (below)
+            if launchbIdx == 0 and CMDARG_LAUNCH_B_STR in argv_arr:
+                launchbIdx = argv_arr.index(CMDARG_LAUNCH_B_STR)
+            if launchbIdx > 0:
+                if len(argv_arr) > launchbIdx + 1 and (not argv_arr[launchbIdx+1].startswith("--")):
+                    pageStr = argv_arr[launchbIdx+1]
+                    if not pageStr.startswith('/'):
+                        pageStr = '/' +  pageStr
+                else:
+                    pageStr = None
+                cmdStr = argv_arr[launchbIdx+2] if len(argv_arr) > launchbIdx+2 and \
+                                (not argv_arr[launchbIdx+2].startswith("--")) else None
+                start_background_threads(True)
+                RaceContext.pagecache.update_cache()
+                gevent.spawn_later(2, RHUtils.launchBrowser, "http://localhost", \
+                                   port_val, pageStr, cmdStr)
 
     try:
         # the following fn does not return until the server is shutting down
