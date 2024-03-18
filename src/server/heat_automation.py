@@ -27,7 +27,7 @@ class HeatAutomator:
                 return 'safe'
 
             if calc_result['calc_success'] is True and calc_result['has_calc_pilots'] is False and not heat.auto_frequency:
-                # Heat has no calc issues, no dynamic slots, and auto-frequnecy is off
+                # Heat has no calc issues, no dynamic slots, and auto-frequency is off
                 return 'safe'
 
             adaptive = bool(self._racecontext.serverconfig.get_item_int('TIMING', 'calibrationMode'))
@@ -180,7 +180,7 @@ class HeatAutomator:
                         'matches': []
                         })
 
-            # get frequency matches from pilots
+            # get band/frequency matches from pilots
             for slot in slots:
                 if slot.pilot_id:
                     used_frequencies_json = self._racecontext.rhdata.get_pilot(slot.pilot_id).used_frequencies
@@ -189,7 +189,7 @@ class HeatAutomator:
                         for node in available_seats:
                             end_idx = len(used_frequencies) - 1
                             for f_idx, pilot_freq in enumerate(used_frequencies):
-                                if node['frq']['f'] == pilot_freq['f']:
+                                if node['frq']['f'] == pilot_freq['f'] and node['frq']['b'] == pilot_freq['b']:
                                     node['matches'].append({
                                             'slot': slot,
                                             'band': pilot_freq['b'],
@@ -208,11 +208,13 @@ class HeatAutomator:
                             if slot_match['slot'] != m_slot:
                                 eliminated_matches.append(slot_match)
                         del available_seats[an_idx]
+                        # keep only seats that are not close the the ones we choose
+                        available_seats = [x for x in available_seats if x['frq']['f'] not in range(m_node['frq']['f'] - 10, m_node['frq']['f'] + 10)]
                         for available_node in available_seats:
                             for slot_idx, slot_match in enumerate(available_node['matches']):
                                 if slot_match['slot'] == m_slot:
                                     available_node['matches'][slot_idx] = None
-                                available_node['matches'] = [x for x in available_node['matches'] if x is not None]
+                            available_node['matches'] = [x for x in available_node['matches'] if x is not None]
                     else:
                         # calc function didn't make an assignment
                         random.shuffle(available_seats)
@@ -227,6 +229,7 @@ class HeatAutomator:
                                         for n_idx, node in enumerate(available_seats):
                                             if node['frq']['b'] == 'D':
                                                 eliminated_matches[slot_idx]['slot'].node_index = available_seats[n_idx]['idx']
+                                                tmp_freq = node['frq']['f']
                                                 available_seats[n_idx] = None
                                                 break
                                     else:
@@ -234,10 +237,13 @@ class HeatAutomator:
                                         for n_idx, node in enumerate(available_seats):
                                             if node['frq']['b'] != 'D':
                                                 eliminated_matches[slot_idx]['slot'].node_index = available_seats[n_idx]['idx']
+                                                tmp_freq = node['frq']['f']
                                                 available_seats[n_idx] = None
                                                 break
 
                                     available_seats = [x for x in available_seats if x is not None]
+                                    # keep only seats that are not close the the ones we choose
+                                    available_seats = [x for x in available_seats if x['frq']['f'] not in range(tmp_freq - 10, tmp_freq + 10)]
                                 eliminated_matches[slot_idx] = None
 
                             if len(available_seats):
@@ -250,12 +256,31 @@ class HeatAutomator:
                                 
                             eliminated_matches = [x for x in eliminated_matches if x is not None]
                         else:
-                            # place pilots with no history into first available slots
+                            # place pilots with no history into best available seats
                             for slot in slots:
+                                prefered_band = self._racecontext.rhdata.get_pilot_attribute_value(slot.pilot_id, 'prefered_band')
                                 if slot.node_index is None and slot.pilot_id:
                                     if len(available_seats):
-                                        slot.node_index = available_seats[0]['idx']
-                                        del(available_seats[0])
+                                        if prefered_band == 'dji':
+                                            for n_idx, node in enumerate(available_seats):
+                                                if node['frq']['b'] == 'D':
+                                                    slot.node_index = available_seats[n_idx]['idx']
+                                                    tmp_freq = node['frq']['f']
+                                                    available_seats[n_idx] = None
+                                                    break
+                                        else:
+                                            # Explicitely avoid D band
+                                            for n_idx, node in enumerate(available_seats):
+                                                if node['frq']['b'] != 'D':
+                                                    slot.node_index = available_seats[n_idx]['idx']
+                                                    tmp_freq = node['frq']['f']
+                                                    available_seats[n_idx] = None
+                                                    break
+
+                                        # Remove deleted seats
+                                        available_seats = [x for x in available_seats if x is not None]
+                                        # keep only seats that are not close the the ones we choose
+                                        available_seats = [x for x in available_seats if x['frq']['f'] not in range(tmp_freq - 10, tmp_freq + 10)]
                                     else:
                                         logger.warning("Dropping pilot {}; No remaining available nodes for slot {}".format(slot.pilot_id, slot))
                             break
