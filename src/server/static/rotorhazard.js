@@ -1467,10 +1467,19 @@ function init_popup_generics() {
 	});
 }
 
-// restore local settings
-if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
-	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
+function get_default_articulate_voice() {
+	var voices = $().articulate('getVoices');
+	for (var i in voices) {
+		var voice = voices[i]
+		if (voice && voice.name && voice.name.includes && voice.name.includes('English')) {
+			return voice.name;
+		}
+	}
+	return null;
 }
+
+// restore local settings
+rotorhazard.voice_language = get_default_articulate_voice();  // set initial default voice
 rotorhazard.restoreData();
 
 

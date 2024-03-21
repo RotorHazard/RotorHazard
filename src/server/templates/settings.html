@@ -98,17 +98,20 @@
 			$('#indicator_volume_value').html($('#set_indicator_volume').val());
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
 			if (!rotorhazard.voice_language) {  // if no current default then select first English voice
-				var voices = $().articulate('getVoices');
-				for (var i in voices) {
-					if (voices[i].name && voices[i].name.includes && voices[i].name.includes('English')) {
-						rotorhazard.voice_language = voices[i].name;
-						rotorhazard.saveData();
-						$('#set_voice_language').val(rotorhazard.voice_language);
-						break;
-					}
+				rotorhazard.voice_language = get_default_articulate_voice();
+				rotorhazard.saveData();
+				if ($('#set_voice_language').children('option').length > 0) {
+					$('#set_voice_language').val(rotorhazard.voice_language);
 				}
 			} else {
-				$('#set_voice_language').val(rotorhazard.voice_language);
+				if ($('#set_voice_language').children('option').length > 0) {
+					$('#set_voice_language').val(rotorhazard.voice_language);
+					if (!($('#set_voice_language').val())) {  // if no match then select first English voice
+						rotorhazard.voice_language = get_default_articulate_voice();
+						rotorhazard.saveData();
+						$('#set_voice_language').val(rotorhazard.voice_language);
+					}
+				}
 			}
 		};
 		populate_audio_settings();
@@ -762,7 +765,10 @@
 		for (var i in voices) {
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
-		if (rotorhazard.voice_language) {
+		$('#set_voice_language').val(rotorhazard.voice_language);
+		if (!($('#set_voice_language').val())) {  // if no match then select first English voice
+			rotorhazard.voice_language = get_default_articulate_voice();
+			rotorhazard.saveData();
 			$('#set_voice_language').val(rotorhazard.voice_language);
 		}
 
