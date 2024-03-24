@@ -898,6 +898,10 @@ def on_set_frequency_preset(data):
             bands = ['R', 'R', 'R', 'R']
             channels = [1, 3, 6, 7]
             freqs = [5658, 5732, 5843, 5880]
+        elif data['preset'] == 'RB-4-DO67':
+            bands = ['R', 'R', 'R', 'R', 'D', 'D', 'O', 'O']
+            channels = [1, 3, 6, 7, 6, 7, 6, 7]
+            freqs = [5658, 5732, 5843, 5880, 5880, 5914, 5876, 5912]
         elif data['preset'] == 'RB-8':
             bands = ['R', 'R', 'R', 'R', 'R', 'R', 'R', 'R']
             channels = [1, 2, 3, 4, 5, 6, 7, 8]
