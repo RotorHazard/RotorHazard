@@ -17,8 +17,8 @@ class LedCtrlrPixel:
         self.initial_brightness = brightness
         self.color_order = color_order
         self.pixels_same_tracker = -1  # for detecting if all pixels set to same color
-        self.one_changed_flag = False  # for detecting if only a single pixel was changed since last 'show'
-        self.one_changed_idx = 0
+        self.num_changed_flag = 0  # for detecting if only a single pixel was changed since last 'show'
+        self.last_changed_idx = 0
         self.serial_obj = serial.Serial(port=None, baudrate=serial_ctrlr_baud, timeout=1.0)
         self.serial_obj.setDTR(0)  # clear in case line is tied to processor reset
         self.serial_obj.setRTS(0)
@@ -50,11 +50,8 @@ class LedCtrlrPixel:
     def setPixelColor(self, i, color):
         self.pixels[i] = color
         # track if only a single pixel was changed since last 'show'
-        if not self.one_changed_flag:
-            self.one_changed_flag = True
-            self.one_changed_idx = i
-        else:
-            self.one_changed_flag = False
+        self.num_changed_flag += 1
+        self.last_changed_idx = i
         # track if all pixels end up set to the same color
         if i == 0:
             self.pixels_same_tracker = 0
@@ -67,10 +64,10 @@ class LedCtrlrPixel:
         return self.pixels[i]
 
     def show(self):
-        if self.one_changed_flag:
-            self.one_changed_flag = False  # only a single pixel was changed since last 'show'
+        if self.num_changed_flag == 1:  # if only a single pixel was changed since last 'show'
+            self.num_changed_flag = 0
             self.sendCommandToCtrlr("P {} {:06X}".format(\
-                                  self.one_changed_idx, self.pixels[self.one_changed_idx]))
+                                  self.last_changed_idx, self.pixels[self.last_changed_idx]))
         elif self.pixels_same_tracker == len(self.pixels) - 1:
             self.sendCommandToCtrlr("F {:06X}".format(self.pixels[0]))  # all pixels same color
         else:
