@@ -30,7 +30,7 @@ class HeatAutomator:
                 # Heat has no calc issues, no dynamic slots, and auto-frequnecy is off
                 return 'safe'
 
-            adaptive = bool(self._racecontext.rhdata.get_optionInt('calibrationMode'))
+            adaptive = bool(self._racecontext.serverconfig.get_item_int('GENERAL', 'calibrationMode'))
 
             if adaptive:
                 calc_fn = self.find_best_slot_node_adaptive

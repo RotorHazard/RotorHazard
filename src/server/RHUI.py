@@ -648,7 +648,7 @@ class RHUI():
         '''Emits current minimum lap.'''
         emit_payload = {
             'min_lap': self._racecontext.rhdata.get_optionInt('MinLapSec'),
-            'min_lap_behavior': self._racecontext.rhdata.get_optionInt("MinLapBehavior")
+            'min_lap_behavior': self._racecontext.serverconfig.get_item_int('GENERAL', 'MinLapBehavior')
         }
         if ('nobroadcast' in params):
             emit('min_lap', emit_payload)
@@ -952,14 +952,14 @@ class RHUI():
 
             pilots_list.append(pilot_data)
 
-            if self._racecontext.rhdata.get_option('pilotSort') == 'callsign':
+            if self._racecontext.serverconfig.get_item('GENERAL', 'pilotSort') == 'callsign':
                 pilots_list.sort(key=lambda x: (x['callsign'].casefold(), x['name'].casefold()))
             else:
                 pilots_list.sort(key=lambda x: (x['name'].casefold(), x['callsign'].casefold()))
 
         emit_payload = {
             'pilots': pilots_list,
-            'pilotSort': self._racecontext.rhdata.get_option('pilotSort'),
+            'pilotSort': self._racecontext.serverconfig.get_item('GENERAL', 'pilotSort'),
             'attributes': attrs
         }
         if ('nobroadcast' in params):

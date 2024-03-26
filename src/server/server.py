@@ -1666,7 +1666,7 @@ def on_set_min_lap(data):
 @catchLogExcWithDBWrapper
 def on_set_min_lap_behavior(data):
     min_lap_behavior = int(data['min_lap_behavior'])
-    RaceContext.rhdata.set_option("MinLapBehavior", min_lap_behavior)
+    RaceContext.serverconfig.set_item('GENERAL', 'MinLapBehavior', min_lap_behavior)
 
     Events.trigger(Evt.MIN_LAP_BEHAVIOR_SET, {
         'min_lap_behavior': min_lap_behavior,
@@ -1951,7 +1951,7 @@ def on_resave_laps(data):
     logger.info(message)
 
     # run adaptive calibration
-    if RaceContext.rhdata.get_optionInt('calibrationMode'):
+    if RaceContext.serverconfig.get_item_int('GENERAL', 'calibrationMode'):
         RaceContext.calibration.auto_calibrate()
 
     # spawn thread for updating results caches
@@ -3170,7 +3170,7 @@ with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connect
         led_type = os.environ.get('RH_LEDS', 'ws281x')
         # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
         #       otherwise it causes problems when run with no existing DB file
-        led_brightness = RaceContext.rhdata.get_optionInt("ledBrightness")
+        led_brightness = RaceContext.serverconfig.get_item('LED', 'ledBrightness')
         if not RaceContext.serverconfig.get_item('LED', 'SERIAL_CTRLR_PORT'):
             try:
                 ledModule = importlib.import_module(led_type + '_leds')

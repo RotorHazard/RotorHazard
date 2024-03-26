@@ -276,13 +276,23 @@
 
 		$(document).on('change', '.set_ui_option', function (event) {
 			var field = $(this).data('field');
+			var section = $(this).data('section');
 			var value = rhui.getFieldVal(this);
 
-			var data = {
-				option: field,
-				value: value
-			};
-			socket.emit('set_option', data);
+			if (section) {
+				var data = {
+					section: section,
+					key: field,
+					value: value
+				};
+				socket.emit('set_config', data);
+			} else {
+				var data = {
+					option: field,
+					value: value
+				};
+				socket.emit('set_option', data);
+			}
 		});
 
 		function any_laps_recorded() {

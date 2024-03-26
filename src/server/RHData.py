@@ -3115,12 +3115,10 @@ class RHData():
         self.set_option("server_api", self._SERVER_API)
         # timer state
         self.set_option("currentProfile", "1")
-        self.set_option("calibrationMode", "1")
         self.set_option("currentFormat", "1")
         self.set_option("currentHeat", "0")
         # minimum lap
         self.set_option("MinLapSec", "10")
-        self.set_option("MinLapBehavior", "0")
         # event information
         self.set_option("eventName", "{} {}".format(datetime.now().strftime('%Y-%m-%d'), self.__("FPV Race")))
         self.set_option("eventDescription", "")

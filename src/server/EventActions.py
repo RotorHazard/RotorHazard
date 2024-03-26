@@ -48,7 +48,7 @@ class EventActions:
     def addEventAction(self, event, effect, text):
         item = { 'event': event, 'effect': effect, 'text': text }
         self.eventActionsList.append(item)
-        self._racecontext.rhdata.set_option('actions', json.dumps(self.eventActionsList))
+        self._racecontext.serverconfig.set_item('GENERAL', 'actions', json.dumps(self.eventActionsList))
 
     def containsAction(self, event):
         for item in self.eventActionsList:

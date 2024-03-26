@@ -41,6 +41,7 @@ class Config():
         self.config['LED']['ledBrightness'] = '32'
         self.config['LED']['ledColorNodes'] = ''
         self.config['LED']['ledColorFreqs'] = ''
+        self.config['LED']['ledColorMode'] = ''
 
         # Legacy Video Receiver Configuration (DEPRECATED)
         self.config['VRX_CONTROL'] = {}
@@ -88,6 +89,8 @@ class Config():
         self.config['GENERAL']['startThreshLowerDuration'] = '0'
         self.config['GENERAL']['voiceCallouts'] = ''
         self.config['GENERAL']['actions'] = '{}'
+        self.config['GENERAL']['pilotSort'] = ''
+        self.config['GENERAL']['calibrationMode'] = ''
 
         # logging defaults
         self.config['LOGGING']['CONSOLE_LEVEL'] = "INFO"
@@ -193,6 +196,8 @@ class Config():
             migrateItem('startThreshLowerDuration'),
             migrateItem('voiceCallouts'),
             migrateItem('actions'),
+            migrateItem('pilotSort'),
+            migrateItem('calibrationMode'),
         ]
 
         for item in migrations:

@@ -274,11 +274,11 @@ class RHRace():
                 self._racecontext.cluster.doClusterRaceStart()
 
             # set lower EnterAt/ExitAt values if configured
-            if self._racecontext.rhdata.get_optionInt('startThreshLowerAmount') > 0 and self._racecontext.rhdata.get_optionInt('startThreshLowerDuration') > 0:
-                lower_amount = self._racecontext.rhdata.get_optionInt('startThreshLowerAmount')
+            if self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount') > 0 and self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration') > 0:
+                lower_amount = self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount')
                 logger.info("Lowering EnterAt/ExitAt values at start of race, amount={0}%, duration={1} secs".\
-                            format(lower_amount, self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')))
-                lower_end_time = self.start_time_monotonic + self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')
+                            format(lower_amount, self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration')))
+                lower_end_time = self.start_time_monotonic + self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration')
                 for node in self._racecontext.interface.nodes:
                     if node.frequency > 0 and (self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                         if node.current_rssi < node.enter_at_level:
@@ -630,7 +630,7 @@ class RHRace():
                                 min_lap_behavior = 0
                             else:
                                 min_lap = self._racecontext.rhdata.get_optionInt("MinLapSec")
-                                min_lap_behavior = self._racecontext.rhdata.get_optionInt("MinLapBehavior")
+                                min_lap_behavior = self._racecontext.serverconfig.get_item('GENERAL', "MinLapBehavior")
 
                             lap_time_fmtstr = RHUtils.time_format(lap_time, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
                             lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
@@ -1387,7 +1387,7 @@ class RHRace():
         if mode_override is not False:
             mode = mode_override
         else:
-            mode = self._racecontext.rhdata.get_optionInt('ledColorMode', 0)
+            mode = self._racecontext.serverconfig.get_item_int('GENERAL', 'ledColorMode', 0)
 
         if self.current_heat == RHUtils.HEAT_ID_NONE:
             practice_flag = True
@@ -1397,7 +1397,7 @@ class RHRace():
             practice_flag = False
 
         if mode == 0:
-            seatColorOpt = self._racecontext.rhdata.get_option('seatColors', False)
+            seatColorOpt = self._racecontext.serverconfig.get_item_int('GENERAL', 'seatColors', False)
             if seatColorOpt:
                 seatColors = json.loads(seatColorOpt)
             else:
@@ -1595,7 +1595,7 @@ class RHRace():
                         self._racecontext.rhui.emit_current_laps()
                         logger.info("Forcing race format from class setting: '{0}' ({1})".format(self.format.name, self.format.id))
 
-                adaptive = bool(self._racecontext.rhdata.get_optionInt('calibrationMode'))
+                adaptive = bool(self._racecontext.serverconfig.get_item_int('GENERAL', 'calibrationMode'))
                 if adaptive:
                     self._racecontext.calibration.auto_calibrate()
 
