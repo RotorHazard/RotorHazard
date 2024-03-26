@@ -667,6 +667,10 @@ class RHData():
                         'value': None
                     })
 
+                # Many options migrated to serverconfig in 4.1
+                if if "startup" in kwargs and migrate_db_api < 44:
+                    self._racecontext.serverconfig.migrate_legacy_db_keys()
+
                 recover_status['stage_1'] = True
             except Exception as ex:
                 logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
@@ -3069,6 +3073,10 @@ class RHData():
                 return default_value
         except:
             return default_value
+
+    def delete_option(self, option):
+        Database.GlobalSettings.query.filter_by(option_name=option).delete()
+        self.commit()
 
     def clear_options(self):
         Database.DB_session.query(Database.GlobalSettings).delete()

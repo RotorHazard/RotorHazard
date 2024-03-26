@@ -18,7 +18,6 @@ class Config():
             'GENERAL': {},
             'HARDWARE': {},
             'LED': {},
-            'VRX_CONTROL': {},
             'LOGGING': {},
             'SENSORS': {},
         }
@@ -46,7 +45,8 @@ class Config():
         self.config['LED']['ledColorNodes'] = ''
         self.config['LED']['ledColorFreqs'] = ''
 
-        # Video Receiver Configuration
+        # Legacy Video Receiver Configuration (DEPRECATED)
+        self.config['VRX_CONTROL'] = {}
         self.config['VRX_CONTROL']['HOST'] = 'localhost'  # MQTT broker IP Address
         self.config['VRX_CONTROL']['ENABLED'] = False
         self.config['VRX_CONTROL']['OSD_LAP_HEADER'] = 'L'
@@ -90,7 +90,7 @@ class Config():
         self.config['GENERAL']['startThreshLowerAmount'] = '0'
         self.config['GENERAL']['startThreshLowerDuration'] = '0'
         self.config['GENERAL']['voiceCallouts'] = ''
-        self.config['GENERAL']['actions'] = '' 
+        self.config['GENERAL']['actions'] = '{}'
 
         # logging defaults
         self.config['LOGGING']['CONSOLE_LEVEL'] = "INFO"
@@ -200,10 +200,13 @@ class Config():
 
         for item in migrations:
             self._racecontext.serverconfig.set_item(
-                item.dest,
                 item.section,
+                item.dest,
                 self._racecontext.rhdata.get_option(item.source)
             )
+            self._racecontext.rhdata.delete_option(item.source)
+
+        logger.info('Migrated legacy server config from event database')
 
     # Writes a log message describing the result of the module initialization.
     def logInitResultMessage(self):

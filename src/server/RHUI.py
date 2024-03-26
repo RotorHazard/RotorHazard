@@ -566,7 +566,7 @@ class RHUI():
     def emit_language(self, **params):
         '''Emits race status.'''
         emit_payload = {
-                'language': self._racecontext.rhdata.get_option("currentLanguage"),
+                'language': self._racecontext.serverconfig.get_item('GENERAL', 'currentLanguage'),
                 'languages': self._racecontext.language.getLanguages()
             }
         if ('nobroadcast' in params):
@@ -636,7 +636,7 @@ class RHUI():
     def emit_event_actions(self, **params):
         '''Emits event actions.'''
         emit_payload = {
-            'actions': self._racecontext.rhdata.get_option('actions'),
+            'actions': self._racecontext.serverconfig.get_item('GENERAL', 'actions'),
         }
         if ('nobroadcast' in params):
             emit('event_actions', emit_payload)

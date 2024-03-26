@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.1.0-dev.7" # Public release version code
-SERVER_API = 43 # Server API version
+SERVER_API = 44 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -1834,7 +1834,7 @@ def on_set_led_effect(data):
             effects = {}
 
         effects[data['event']] = data['effect']
-        RaceContext.serverconfig.get_item('LED', 'ledEffects', json.dumps(effects))
+        RaceContext.serverconfig.set_item('LED', 'ledEffects', json.dumps(effects))
 
         Events.trigger(Evt.LED_EFFECT_SET, {
             'effect': data['event'],

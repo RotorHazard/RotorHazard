@@ -36,7 +36,7 @@ class EventActions:
         return self.eventActionsList
 
     def loadActions(self, _args=None):
-        actionSetting = self._racecontext.rhdata.get_option('actions')
+        actionSetting = self._racecontext.serverconfig.get_item('GENERAL', 'actions')
         if actionSetting:
             try:
                 self.eventActionsList = json.loads(actionSetting)
