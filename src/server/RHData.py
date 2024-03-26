@@ -695,7 +695,7 @@ class RHData():
                     })
 
                 # Many options migrated to serverconfig in 4.1
-                if if "startup" in kwargs and migrate_db_api < 44:
+                if "startup" in kwargs and migrate_db_api < 44:
                     self._racecontext.serverconfig.migrate_legacy_db_keys()
 
                 recover_status['stage_1'] = True

@@ -493,7 +493,7 @@ class SecondaryNode:
                                 if last_split_ts and last_split_ts > 0.0:
                                     split_time = round(split_ts - last_split_ts, 3)
                                     split_speed = round(self.distance / float(split_time), 2)
-                                    split_time_str = RHUtils.split_time_format(split_time, self._racecontext.rhdata.get_option('timeFormat'))
+                                    split_time_str = RHUtils.split_time_format(split_time, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
                                     logger.info('Split pass record (for speed): Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
                                             .format(node_index+1, callsign, lap_count+1, split_id+1, split_time_str, split_ts_epoch_str, \
                                                     ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
