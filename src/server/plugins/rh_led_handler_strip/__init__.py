@@ -316,46 +316,52 @@ def larsonScanner(args):
     else:
         return False
 
-    a = {
+    numPixels = strip.numPixels()
+    a = {  # default values to use if not specified in 'args'
         'color': ColorVal.WHITE,
-        'eyeSize': 4,
-        'speedDelay': 256,
+        'eyeSize': 4 if numPixels > 20 else numPixels / 8,  # smaller eye on shorter strips
+        'speedDelay': 256 if numPixels > 20 else 320,  # run slower on shorter strips
         'returnDelay': 50,
         'iterations': 3
     }
     a.update(args)
 
-    a['speedDelay'] = a['speedDelay']/float(strip.numPixels()) # scale effect by strip length
+    color = a['color']
+    eyeSize = int(a['eyeSize'])
+    returnDelay = a['returnDelay']
+    iterations = int(a['iterations'])
+
+    speedDelay = a['speedDelay'] / float(numPixels)  # scale effect by strip length
 
     gevent.idle() # never time-critical
 
     led_off(strip)
 
-    for _k in range(a['iterations']):
-        for i in range(strip.numPixels()-a['eyeSize']-1):
+    for _k in range(iterations):
+        for i in range(numPixels-eyeSize-1):
             strip.setPixelColor(i-1, ColorVal.NONE)
 
-            strip.setPixelColor(i, dim(a['color'], 0.25))
-            for j in range(a['eyeSize']):
-                strip.setPixelColor(i+j+1, a['color'])
-            strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
+            strip.setPixelColor(i, dim(color, 0.25))
+            for j in range(eyeSize):
+                strip.setPixelColor(i+j+1, color)
+            strip.setPixelColor(i+eyeSize+1, dim(color, 0.25))
             strip.show()
-            effect_delay(a['speedDelay'], args)
+            effect_delay(speedDelay, args)
 
-        effect_delay(a['returnDelay'], args)
+        effect_delay(returnDelay, args)
 
-        for i in range(strip.numPixels()-a['eyeSize']-2, -1, -1):
-            if i < strip.numPixels()-a['eyeSize']-2:
-                strip.setPixelColor(i+a['eyeSize']+2, ColorVal.NONE)
+        for i in range(numPixels-eyeSize-2, -1, -1):
+            if i < numPixels-eyeSize-2:
+                strip.setPixelColor(i+eyeSize+2, ColorVal.NONE)
 
-            strip.setPixelColor(i, dim(a['color'], 0.25))
-            for j in range(a['eyeSize']):
-                strip.setPixelColor(i+j+1, a['color'])
-            strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
+            strip.setPixelColor(i, dim(color, 0.25))
+            for j in range(eyeSize):
+                strip.setPixelColor(i+j+1, color)
+            strip.setPixelColor(i+eyeSize+1, dim(color, 0.25))
             strip.show()
-            effect_delay(a['speedDelay'], args)
+            effect_delay(speedDelay, args)
 
-        effect_delay(a['returnDelay'], args)
+        effect_delay(returnDelay, args)
 
 def dim(color, decay):
     r = (color & 0x00ff0000) >> 16
@@ -554,8 +560,6 @@ def discover():
 
     # larson scanner
     LEDEffect("Scanner", larsonScanner, {}, {
-        'eyeSize': 4,
-        'speedDelay': 256,
         'returnDelay': 50,
         'iterations': 3,
         'time': 0

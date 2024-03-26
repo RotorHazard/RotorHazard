@@ -22,11 +22,6 @@ class Config():
             'SENSORS': {},
         }
 
-        # server secrets:
-        self.config['SECRETS']['ADMIN_USERNAME'] = ''
-        self.config['SECRETS']['ADMIN_PASSWORD'] = ''
-        self.config['SECRETS']['SECRET_KEY'] = ''
-
         # LED strip configuration:
         self.config['LED']['LED_COUNT'] = 0  # Number of LED pixels.
         self.config['LED']['LED_GPIO'] = 10  # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
@@ -38,6 +33,8 @@ class Config():
         self.config['LED']['LED_ROWS'] = 1  # Number of rows in LED array
         self.config['LED']['PANEL_ROTATE'] = 0
         self.config['LED']['INVERTED_PANEL_ROWS'] = False
+        self.config['LED']['SERIAL_CTRLR_PORT'] = None      # Serial port for LED-controller module
+        self.config['LED']['SERIAL_CTRLR_BAUD'] = 115200    # Serial baud rate for LED-controller module
 
         # LED effect configuration
         self.config['LED']['ledEffects'] = ''

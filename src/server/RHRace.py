@@ -89,315 +89,325 @@ class RHRace():
 
     @catchLogExceptionsWrapper
     def stage(self, data=None):
-        if data and data.get('secondary_format'):
-            self.format = self._racecontext.serverstate.secondary_race_format
 
-        assigned_start = data.get('start_time_s', False) if data else None
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
-        race_format = self.format
-        if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
-            self.check_create_sec_format_heat()
+            if data and data.get('secondary_format'):
+                self.format = self._racecontext.serverstate.secondary_race_format
 
-        self._racecontext.rhdata.clear_lapSplits()  # clear lap-splits from previous race
+            assigned_start = data.get('start_time_s', False) if data else None
 
-        heat_data = self._racecontext.rhdata.get_heat(self.current_heat)
-
-        if heat_data:
-            heatNodes = self._racecontext.rhdata.get_heatNodes_by_heat(self.current_heat)
-            pilot_names_list = []
-            for heatNode in heatNodes:
-                if heatNode.node_index is not None and heatNode.node_index < self.num_nodes:
-                    if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
-                        pilot_obj = self._racecontext.rhdata.get_pilot(heatNode.pilot_id)
-                        if pilot_obj and pilot_obj.callsign:
-                            pilot_names_list.append(pilot_obj.callsign)
-
-            if request and len(pilot_names_list) <= 0:
-                # need to show alert via spawn in case a clear-messages event was just triggered
-                @catchLogExceptionsWrapper
-                @copy_current_request_context
-                def emit_alert_np_msg(self, msg_text):
-                    self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
-                gevent.spawn(emit_alert_np_msg, self, \
-                             self._racecontext.language.__('No valid pilots in race'))
-
-            logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
-            max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
-            if max_round is None:
-                max_round = 0
-            logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, (max_round+1),
-                                                                       ", ".join(pilot_names_list)))
-        else:
-            heatNodes = []
-
-            profile_freqs = json.loads(self.profile.frequencies)
-
-            class FauxHeatNode():
-                node_index = None
-                pilot_id = 1
-
-            for idx in range(self.num_nodes):
-                if (profile_freqs["f"][idx]):
-                    heatNode = FauxHeatNode
-                    heatNode.node_index = idx
-                    heatNodes.append(heatNode)
-
-        if self._racecontext.cluster:
-            self._racecontext.cluster.emitToSplits('stage_race')
-
-        if self.race_status != RaceStatus.READY:
+            race_format = self.format
             if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
-                if self.race_status == RaceStatus.RACING:
-                    return  # if race in progress then leave it be
-                # if missed stop/discard message then clear current race
-                logger.info("Forcing race clear/restart because running as secondary timer")
-                self.discard_laps()
-            elif self.race_status == RaceStatus.DONE and not self.any_laps_recorded():
-                self.discard_laps()  # if no laps then allow restart
+                self.check_create_sec_format_heat()
 
-        if self.race_status == RaceStatus.READY: # only initiate staging if ready
-            # common race start events (do early to prevent processing delay when start is called)
-            self._racecontext.interface.enable_calibration_mode() # Nodes reset triggers on next pass
+            self._racecontext.rhdata.clear_lapSplits()  # clear lap-splits from previous race
 
-            if race_format is not self._racecontext.serverstate.secondary_race_format: # don't enforce class format if running as secondary timer
-                if heat_data and heat_data.class_id != RHUtils.CLASS_ID_NONE:
-                    class_format_id = self._racecontext.rhdata.get_raceClass(heat_data.class_id).format_id
-                    if class_format_id != RHUtils.FORMAT_ID_NONE:
-                        self.format = self._racecontext.rhdata.get_raceFormat(class_format_id)
-                        self._racecontext.rhui.emit_current_laps()
-                        logger.info("Forcing race format from class setting: '{0}' ({1})".format(self.format.name, self.format.id))
+            heat_data = self._racecontext.rhdata.get_heat(self.current_heat)
 
-            self.clear_laps() # Clear laps before race start
-            self.init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
-            self._racecontext.last_race = None # clear all previous race data
-            self.timer_running = False # indicate race timer not running
-            self.race_status = RaceStatus.STAGING
-            self.win_status = WinStatus.NONE
-            self.race_winner_name = ''
-            self.race_winner_phonetic = ''
-            self.race_winner_lap_id = 0
-            self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
-            self.race_leader_lap = 0  # clear current race leader
-            self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
-            self.status_message = ''
-            self.any_races_started = True
+            if heat_data:
+                heatNodes = self._racecontext.rhdata.get_heatNodes_by_heat(self.current_heat)
+                pilot_names_list = []
+                for heatNode in heatNodes:
+                    if heatNode.node_index is not None and heatNode.node_index < self.num_nodes:
+                        if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
+                            pilot_obj = self._racecontext.rhdata.get_pilot(heatNode.pilot_id)
+                            if pilot_obj and pilot_obj.callsign:
+                                pilot_names_list.append(pilot_obj.callsign)
 
-            self.init_node_finished_flags(heatNodes)
+                if request and len(pilot_names_list) <= 0:
+                    # need to show alert via spawn in case a clear-messages event was just triggered
+                    @catchLogExceptionsWrapper
+                    @copy_current_request_context
+                    def emit_alert_np_msg(self, msg_text):
+                        self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
+                    gevent.spawn(emit_alert_np_msg, self, \
+                                 self._racecontext.language.__('No valid pilots in race'))
 
-            self._racecontext.interface.set_race_status(RaceStatus.STAGING)
-            self._racecontext.rhui.emit_current_laps() # Race page, blank laps to the web client
-            self._racecontext.rhui.emit_current_leaderboard() # Race page, blank leaderboard to the web client
-            self._racecontext.rhui.emit_race_status()
+                logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
+                max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
+                if max_round is None:
+                    max_round = 0
+                logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, (max_round+1),
+                                                                           ", ".join(pilot_names_list)))
+            else:
+                heatNodes = []
 
-            assigned_start_ok_flag = False
-            if assigned_start:
-                self.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
-                if assigned_start > self.stage_time_monotonic:
-                    staging_tones = 0
-                    hide_stage_timer = True
-                    self.start_time_monotonic = assigned_start
-                    assigned_start_ok_flag = True
+                profile_freqs = json.loads(self.profile.frequencies)
 
-            if not assigned_start_ok_flag:
-                staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
+                class FauxHeatNode():
+                    node_index = None
+                    pilot_id = 1
 
-                staging_random_ms = random.randint(0, race_format.start_delay_max_ms)
-                hide_stage_timer = (race_format.start_delay_max_ms > 0)
+                for idx in range(self.num_nodes):
+                    if (profile_freqs["f"][idx]):
+                        heatNode = FauxHeatNode
+                        heatNode.node_index = idx
+                        heatNodes.append(heatNode)
 
-                staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
+            if self._racecontext.cluster:
+                self._racecontext.cluster.emitToSplits('stage_race')
 
-                if race_format.staging_delay_tones == StagingTones.TONES_NONE:
-                    if staging_total_ms > 0:
-                        staging_tones = race_format.staging_fixed_tones
+            if self.race_status != RaceStatus.READY:
+                if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
+                    if self.race_status == RaceStatus.RACING:
+                        return  # if race in progress then leave it be
+                    # if missed stop/discard message then clear current race
+                    logger.info("Forcing race clear/restart because running as secondary timer")
+                    self.discard_laps()
+                elif self.race_status == RaceStatus.DONE and not self.any_laps_recorded():
+                    self.discard_laps()  # if no laps then allow restart
+
+            if self.race_status == RaceStatus.READY: # only initiate staging if ready
+                # common race start events (do early to prevent processing delay when start is called)
+                self._racecontext.interface.enable_calibration_mode() # Nodes reset triggers on next pass
+
+                if race_format is not self._racecontext.serverstate.secondary_race_format: # don't enforce class format if running as secondary timer
+                    if heat_data and heat_data.class_id != RHUtils.CLASS_ID_NONE:
+                        class_format_id = self._racecontext.rhdata.get_raceClass(heat_data.class_id).format_id
+                        if class_format_id != RHUtils.FORMAT_ID_NONE:
+                            self.format = self._racecontext.rhdata.get_raceFormat(class_format_id)
+                            self._racecontext.rhui.emit_current_laps()
+                            logger.info("Forcing race format from class setting: '{0}' ({1})".format(self.format.name, self.format.id))
+
+                self.clear_laps() # Clear laps before race start
+                self.init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
+                self._racecontext.last_race = None # clear all previous race data
+                self.timer_running = False # indicate race timer not running
+                self.race_status = RaceStatus.STAGING
+                self.win_status = WinStatus.NONE
+                self.race_winner_name = ''
+                self.race_winner_phonetic = ''
+                self.race_winner_lap_id = 0
+                self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
+                self.race_leader_lap = 0  # clear current race leader
+                self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
+                self.status_message = ''
+                self.any_races_started = True
+
+                self.init_node_finished_flags(heatNodes)
+
+                self._racecontext.interface.set_race_status(RaceStatus.STAGING)
+                self._racecontext.rhui.emit_current_laps() # Race page, blank laps to the web client
+                self._racecontext.rhui.emit_current_leaderboard() # Race page, blank leaderboard to the web client
+                self._racecontext.rhui.emit_race_status()
+
+                assigned_start_ok_flag = False
+                if assigned_start:
+                    self.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
+                    if assigned_start > self.stage_time_monotonic:
+                        staging_tones = 0
+                        hide_stage_timer = True
+                        self.start_time_monotonic = assigned_start
+                        assigned_start_ok_flag = True
+
+                if not assigned_start_ok_flag:
+                    staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
+
+                    staging_random_ms = random.randint(0, race_format.start_delay_max_ms)
+                    hide_stage_timer = (race_format.start_delay_max_ms > 0)
+
+                    staging_total_ms = staging_fixed_ms + race_format.start_delay_min_ms + staging_random_ms
+
+                    if race_format.staging_delay_tones == StagingTones.TONES_NONE:
+                        if staging_total_ms > 0:
+                            staging_tones = race_format.staging_fixed_tones
+                        else:
+                            staging_tones = staging_fixed_ms / 1000
                     else:
-                        staging_tones = staging_fixed_ms / 1000
-                else:
-                    staging_tones = staging_total_ms // 1000
-                    if staging_random_ms % 1000:
-                        staging_tones += 1
+                        staging_tones = staging_total_ms // 1000
+                        if staging_random_ms % 1000:
+                            staging_tones += 1
 
-                self.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
-                self.start_time_monotonic = self.stage_time_monotonic + (staging_total_ms / 1000 )
+                    self.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
+                    self.start_time_monotonic = self.stage_time_monotonic + (staging_total_ms / 1000 )
 
-            self.start_time_epoch_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.start_time_monotonic)
-            self.start_token = random.random()
-            gevent.spawn(self.race_start_thread, self.start_token)
+                self.start_time_epoch_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.start_time_monotonic)
+                self.start_token = random.random()
+                gevent.spawn(self.race_start_thread, self.start_token)
 
-            # Announce staging with final parameters
-            eventPayload = {
-                'hide_stage_timer': hide_stage_timer,
-                'pi_staging_at_s': self.stage_time_monotonic,
-                'staging_tones': staging_tones,
-                'pi_starts_at_s': self.start_time_monotonic,
-                'unlimited_time': race_format.unlimited_time,
-                'race_time_sec': race_format.race_time_sec,
-                'color': ColorVal.ORANGE,
-                'heat_id': self.current_heat,
-                'race_node_colors': self.seat_colors,
-            }
+                # Announce staging with final parameters
+                eventPayload = {
+                    'hide_stage_timer': hide_stage_timer,
+                    'pi_staging_at_s': self.stage_time_monotonic,
+                    'staging_tones': staging_tones,
+                    'pi_starts_at_s': self.start_time_monotonic,
+                    'unlimited_time': race_format.unlimited_time,
+                    'race_time_sec': race_format.race_time_sec,
+                    'color': ColorVal.ORANGE,
+                    'heat_id': self.current_heat,
+                    'race_node_colors': self.seat_colors,
+                }
 
-            self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
-            self._racecontext.rhui.emit_race_stage(eventPayload)
+                self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
+                self._racecontext.rhui.emit_race_stage(eventPayload)
 
-            if request and heat_data and race_format.race_time_sec == 0 and not race_format.unlimited_time:
-                logger.warning("Current race format '{}' specifies an invalid combination of RaceClockMode=FixedTime and TimeDuration=0".\
-                               format(race_format.name))
-                # need to show alert via spawn in case a clear-messages event was just triggered
-                @catchLogExceptionsWrapper
-                @copy_current_request_context
-                def emit_alert_msg(self, msg_text):
-                    self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
-                gevent.spawn(emit_alert_msg, self, \
-                             self._racecontext.language.__('Current race format specifies fixed time with zero duration'))
+                if request and heat_data and race_format.race_time_sec == 0 and not race_format.unlimited_time:
+                    logger.warning("Current race format '{}' specifies an invalid combination of RaceClockMode=FixedTime and TimeDuration=0".\
+                                   format(race_format.name))
+                    # need to show alert via spawn in case a clear-messages event was just triggered
+                    @catchLogExceptionsWrapper
+                    @copy_current_request_context
+                    def emit_alert_msg(self, msg_text):
+                        self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
+                    gevent.spawn(emit_alert_msg, self, \
+                                 self._racecontext.language.__('Current race format specifies fixed time with zero duration'))
 
-        else:
-            logger.info("Attempted to stage race while status is not 'ready'")
+            else:
+                logger.info("Attempted to stage race while status is not 'ready'")
 
 
     @catchLogExceptionsWrapper
     def race_start_thread(self, start_token):
         APP.app_context().push()
-        # clear any lingering crossings at staging (if node rssi < enterAt)
-        for node in self._racecontext.interface.nodes:
-            if node.crossing_flag and node.frequency > 0 and \
-                (self.format is self._racecontext.serverstate.secondary_race_format or \
-                (node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.current_rssi < node.enter_at_level)):
-                logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
-                           format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
-                self._racecontext.interface.force_end_crossing(node.index)
-
-        if self._racecontext.cluster and self._racecontext.cluster.hasSecondaries():
-            self._racecontext.cluster.doClusterRaceStart()
-
-        # set lower EnterAt/ExitAt values if configured
-        if self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount') > 0 and self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration') > 0:
-            lower_amount = self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount')
-            logger.info("Lowering EnterAt/ExitAt values at start of race, amount={0}%, duration={1} secs".\
-                        format(lower_amount, self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration')))
-            lower_end_time = self.start_time_monotonic + self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration')
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            # clear any lingering crossings at staging (if node rssi < enterAt)
             for node in self._racecontext.interface.nodes:
-                if node.frequency > 0 and (self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
-                    if node.current_rssi < node.enter_at_level:
-                        diff_val = int((node.enter_at_level-node.exit_at_level)*lower_amount/100)
-                        if diff_val > 0:
-                            new_enter_at = node.enter_at_level - diff_val
-                            new_exit_at = max(node.exit_at_level - diff_val, 0)
-                            if node.api_valid_flag and node.is_valid_rssi(new_enter_at):
-                                logger.info("For node {0} lowering EnterAt from {1} to {2} and ExitAt from {3} to {4}"\
-                                        .format(node.index+1, node.enter_at_level, new_enter_at, node.exit_at_level, new_exit_at))
-                                node.start_thresh_lower_time = lower_end_time  # set time when values will be restored
-                                node.start_thresh_lower_flag = True
-                                # use 'transmit_' instead of 'set_' so values are not saved in node object
-                                self._racecontext.interface.transmit_enter_at_level(node, new_enter_at)
-                                self._racecontext.interface.transmit_exit_at_level(node, new_exit_at)
-                        else:
-                            logger.info("Not lowering EnterAt/ExitAt values for node {0} because EnterAt value ({1}) unchanged"\
-                                    .format(node.index+1, node.enter_at_level))
-                    else:
-                        logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
-                                .format(node.index+1, node.current_rssi, node.enter_at_level))
-
-        # do non-blocking delay before time-critical code
-        while (monotonic() < self.start_time_monotonic - 0.5):
-            gevent.sleep(0.1)
-
-        if self.race_status == RaceStatus.STAGING and \
-            self.start_token == start_token:
-            # Only start a race if it is not already in progress
-            # Null this thread if token has changed (race stopped/started quickly)
-
-            # do blocking delay until race start
-            while monotonic() < self.start_time_monotonic:
-                pass
-
-            # !!! RACE STARTS NOW !!!
-
-            # do time-critical tasks
-            self._racecontext.events.trigger(Evt.RACE_START, {
-                'heat_id': self.current_heat,
-                'color': ColorVal.GREEN
-                })
-
-            # do secondary start tasks (small delay is acceptable)
-            self.start_time = datetime.now() # record start time as datetime object
-            self.start_time_formatted = RHTimeFns.datetimeToFormattedStr(self.start_time) # record standard-formatted time
-
-            for node in self._racecontext.interface.nodes:
-                node.history_values = [] # clear race history
-                node.history_times = []
-                node.under_min_lap_count = 0
-                # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
-                if node.crossing_flag and node.frequency > 0 and (
-                    self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
-                    logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
+                if node.crossing_flag and node.frequency > 0 and \
+                    (self.format is self._racecontext.serverstate.secondary_race_format or \
+                    (node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.current_rssi < node.enter_at_level)):
+                    logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                                format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                     self._racecontext.interface.force_end_crossing(node.index)
 
-            self.race_status = RaceStatus.RACING # To enable registering passed laps
-            self._racecontext.interface.set_race_status(RaceStatus.RACING)
-            self.timer_running = True # indicate race timer is running
+            if self._racecontext.cluster and self._racecontext.cluster.hasSecondaries():
+                self._racecontext.cluster.doClusterRaceStart()
 
-            # kick off race expire processing
-            race_format = self.format
-            if race_format and race_format.unlimited_time == 0: # count down
-                gevent.spawn(self.race_expire_thread, start_token)
+            # set lower EnterAt/ExitAt values if configured
+            if self._racecontext.rhdata.get_optionInt('startThreshLowerAmount') > 0 and self._racecontext.rhdata.get_optionInt('startThreshLowerDuration') > 0:
+                lower_amount = self._racecontext.rhdata.get_optionInt('startThreshLowerAmount')
+                logger.info("Lowering EnterAt/ExitAt values at start of race, amount={0}%, duration={1} secs".\
+                            format(lower_amount, self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')))
+                lower_end_time = self.start_time_monotonic + self._racecontext.rhdata.get_optionInt('startThreshLowerDuration')
+                for node in self._racecontext.interface.nodes:
+                    if node.frequency > 0 and (self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
+                        if node.current_rssi < node.enter_at_level:
+                            diff_val = int((node.enter_at_level-node.exit_at_level)*lower_amount/100)
+                            if diff_val > 0:
+                                new_enter_at = node.enter_at_level - diff_val
+                                new_exit_at = max(node.exit_at_level - diff_val, 0)
+                                if node.api_valid_flag and node.is_valid_rssi(new_enter_at):
+                                    logger.info("For node {0} lowering EnterAt from {1} to {2} and ExitAt from {3} to {4}"\
+                                            .format(node.index+1, node.enter_at_level, new_enter_at, node.exit_at_level, new_exit_at))
+                                    node.start_thresh_lower_time = lower_end_time  # set time when values will be restored
+                                    node.start_thresh_lower_flag = True
+                                    # use 'transmit_' instead of 'set_' so values are not saved in node object
+                                    self._racecontext.interface.transmit_enter_at_level(node, new_enter_at)
+                                    self._racecontext.interface.transmit_exit_at_level(node, new_exit_at)
+                            else:
+                                logger.info("Not lowering EnterAt/ExitAt values for node {0} because EnterAt value ({1}) unchanged"\
+                                        .format(node.index+1, node.enter_at_level))
+                        else:
+                            logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
+                                    .format(node.index+1, node.current_rssi, node.enter_at_level))
 
-            self._racecontext.rhui.emit_race_status() # Race page, to set race button states
-            logger.info('Race started at {:.3f} ({:.0f})'.format(self.start_time_monotonic, self.start_time_epoch_ms))
-            logger.info('Race started at {:.3f} ({:.0f}) time={}'.format(self.start_time_monotonic, self.start_time_epoch_ms, \
-                                                                                 self.start_time_formatted))
+            # do non-blocking delay before time-critical code
+            while (monotonic() < self.start_time_monotonic - 0.5):
+                gevent.sleep(0.1)
+
+            if self.race_status == RaceStatus.STAGING and \
+                self.start_token == start_token:
+                # Only start a race if it is not already in progress
+                # Null this thread if token has changed (race stopped/started quickly)
+
+                # do blocking delay until race start
+                while monotonic() < self.start_time_monotonic:
+                    pass
+
+                # !!! RACE STARTS NOW !!!
+
+                # do time-critical tasks
+                self._racecontext.events.trigger(Evt.RACE_START, {
+                    'heat_id': self.current_heat,
+                    'color': ColorVal.GREEN
+                    })
+
+                # do secondary start tasks (small delay is acceptable)
+                self.start_time = datetime.now() # record start time as datetime object
+                self.start_time_formatted = RHTimeFns.datetimeToFormattedStr(self.start_time) # record standard-formatted time
+
+                for node in self._racecontext.interface.nodes:
+                    node.history_values = [] # clear race history
+                    node.history_times = []
+                    node.under_min_lap_count = 0
+                    # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
+                    if node.crossing_flag and node.frequency > 0 and (
+                        self.format is self._racecontext.serverstate.secondary_race_format or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
+                        logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
+                                   format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                        self._racecontext.interface.force_end_crossing(node.index)
+
+                self.race_status = RaceStatus.RACING # To enable registering passed laps
+                self._racecontext.interface.set_race_status(RaceStatus.RACING)
+                self.timer_running = True # indicate race timer is running
+
+                # kick off race expire processing
+                race_format = self.format
+                if race_format and race_format.unlimited_time == 0: # count down
+                    gevent.spawn(self.race_expire_thread, start_token)
+
+                self._racecontext.rhui.emit_race_status() # Race page, to set race button states
+                logger.info('Race started at {:.3f} ({:.0f})'.format(self.start_time_monotonic, self.start_time_epoch_ms))
+                logger.info('Race started at {:.3f} ({:.0f}) time={}'.format(self.start_time_monotonic, self.start_time_epoch_ms, \
+                                                                                     self.start_time_formatted))
 
     @catchLogExceptionsWrapper
     def race_expire_thread(self, start_token):
         APP.app_context().push()
-        race_format = self.format
-        if race_format and race_format.unlimited_time == 0: # count down
-            gevent.sleep(race_format.race_time_sec)
-            # if race still in progress and is still same race
-            if self.race_status == RaceStatus.RACING and self.start_token == start_token:
-                logger.info("Race count-down timer reached expiration")
-                self.timer_running = False # indicate race timer no longer running
-                self._racecontext.events.trigger(Evt.RACE_FINISH, {
-                    'heat_id': self.current_heat,
-                    })
-                self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
-                self.check_win_condition(at_finish=True, start_token=start_token)
-                self._racecontext.rhui.emit_current_leaderboard()
-                if race_format.lap_grace_sec > -1:
-                    gevent.sleep((self.start_time_monotonic + race_format.race_time_sec + race_format.lap_grace_sec) - monotonic())
-                    if self.race_status == RaceStatus.RACING and self.start_token == start_token:
-                        self.stop()
-                        logger.debug("Race grace period reached")
-                    else:
-                        logger.debug("Grace period timer {} is unused".format(start_token))
-            else:
-                logger.debug("Race-time-expire thread {} is unused".format(start_token))
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            race_format = self.format
+            if race_format and race_format.unlimited_time == 0: # count down
+                gevent.sleep(race_format.race_time_sec)
+                # if race still in progress and is still same race
+                if self.race_status == RaceStatus.RACING and self.start_token == start_token:
+                    logger.info("Race count-down timer reached expiration")
+                    self.timer_running = False # indicate race timer no longer running
+                    self._racecontext.events.trigger(Evt.RACE_FINISH, {
+                        'heat_id': self.current_heat,
+                        })
+                    self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+                    self.check_win_condition(at_finish=True, start_token=start_token)
+                    self._racecontext.rhui.emit_current_leaderboard()
+                    if race_format.lap_grace_sec > -1:
+                        gevent.sleep((self.start_time_monotonic + race_format.race_time_sec + race_format.lap_grace_sec) - monotonic())
+                        if self.race_status == RaceStatus.RACING and self.start_token == start_token:
+                            self.stop()
+                            logger.debug("Race grace period reached")
+                        else:
+                            logger.debug("Grace period timer {} is unused".format(start_token))
+                else:
+                    logger.debug("Race-time-expire thread {} is unused".format(start_token))
 
     @catchLogExceptionsWrapper
     def stop(self, doSave=False):
         '''Stops the race and stops registering laps.'''
-        if self._racecontext.cluster:
-            self._racecontext.cluster.emitToSplits('stop_race')
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            if self._racecontext.cluster:
+                self._racecontext.cluster.emitToSplits('stop_race')
 
-        if self.race_status == RaceStatus.RACING:
-            # clear any crossings still in progress
-            any_forced_flag = False
-            for node in self._racecontext.interface.nodes:
-                if node.crossing_flag and node.frequency > 0 and \
-                                node.current_pilot_id != RHUtils.PILOT_ID_NONE:
-                    logger.info("Forcing end crossing for node {} at race stop (rssi={}, enterAt={}, exitAt={})".\
-                                format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
-                    self._racecontext.interface.force_end_crossing(node.index)
-                    any_forced_flag = True
-            if any_forced_flag:  # give forced end-crossings a chance to complete before stopping race
-                gevent.spawn_later(0.5, self.do_stop_race_actions, doSave)
+            if self.race_status == RaceStatus.RACING:
+                # clear any crossings still in progress
+                any_forced_flag = False
+                for node in self._racecontext.interface.nodes:
+                    if node.crossing_flag and node.frequency > 0 and \
+                                    node.current_pilot_id != RHUtils.PILOT_ID_NONE:
+                        logger.info("Forcing end crossing for node {} at race stop (rssi={}, enterAt={}, exitAt={})".\
+                                    format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                        self._racecontext.interface.force_end_crossing(node.index)
+                        any_forced_flag = True
+                if any_forced_flag:  # give forced end-crossings a chance to complete before stopping race
+                    gevent.spawn_later(0.5, self.do_stop_race_actions_thread, doSave)
+                else:
+                    self.do_stop_race_actions(doSave)
             else:
                 self.do_stop_race_actions(doSave)
-        else:
-            self.do_stop_race_actions(doSave)
 
-        # Loop back to race page to stop the timer
-        self._racecontext.rhui.emit_race_stop()
+            # Loop back to race page to stop the timer
+            self._racecontext.rhui.emit_race_stop()
+
+    def do_stop_race_actions_thread(self, doSave=False):
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            self.do_stop_race_actions(doSave)
 
     @catchLogExceptionsWrapper
     def do_stop_race_actions(self, doSave=False):
@@ -461,7 +471,8 @@ class RHRace():
         self._racecontext.rhui.emit_current_leaderboard()
 
         if doSave:
-            self.do_save_actions()
+            # do with a bit of delay to prevent clearing results before stop event-actions can process them
+            gevent.spawn_later(0.05, self.do_save_actions)
 
     @catchLogExceptionsWrapper
     def save(self):
@@ -475,498 +486,509 @@ class RHRace():
     @catchLogExceptionsWrapper
     def do_save_actions(self):
         '''Save current laps data to the database.'''
-        if self.current_heat == RHUtils.HEAT_ID_NONE:
-            self.discard_laps(saved=True)
-            return False
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            if self.current_heat == RHUtils.HEAT_ID_NONE:
+                self.discard_laps(saved=True)
+                return False
 
-        if self._racecontext.cluster:
-            self._racecontext.cluster.emitToSplits('save_laps')
+            if self._racecontext.cluster:
+                self._racecontext.cluster.emitToSplits('save_laps')
 
-        heat = self._racecontext.rhdata.get_heat(self.current_heat)
+            heat = self._racecontext.rhdata.get_heat(self.current_heat)
 
-        # Clear caches
-        self._racecontext.rhdata.clear_results_heat(self.current_heat)
-        self._racecontext.rhdata.clear_results_raceClass(heat.class_id)
-        self._racecontext.rhdata.clear_results_event()
+            # Clear caches
+            self._racecontext.rhdata.clear_results_heat(self.current_heat)
+            self._racecontext.rhdata.clear_results_raceClass(heat.class_id)
+            self._racecontext.rhdata.clear_results_event()
 
-        # Get the last saved round for the current heat
-        max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
+            # Get the last saved round for the current heat
+            max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
 
-        if max_round is None:
-            max_round = 0
-        # Loop through laps to copy to saved races
-        profile = self.profile
-        profile_freqs = json.loads(profile.frequencies)
+            if max_round is None:
+                max_round = 0
+            # Loop through laps to copy to saved races
+            profile = self.profile
+            profile_freqs = json.loads(profile.frequencies)
 
-        new_race_data = {
-            'round_id': max_round+1,
-            'heat_id': self.current_heat,
-            'class_id': heat.class_id,
-            'format_id': self.format.id if hasattr(self.format, 'id') else RHUtils.FORMAT_ID_NONE,
-            'start_time': self.start_time_monotonic,
-            'start_time_formatted': self.start_time_formatted,
+            new_race_data = {
+                'round_id': max_round+1,
+                'heat_id': self.current_heat,
+                'class_id': heat.class_id,
+                'format_id': self.format.id if hasattr(self.format, 'id') else RHUtils.FORMAT_ID_NONE,
+                'start_time': self.start_time_monotonic,
+                'start_time_formatted': self.start_time_formatted,
+                }
+
+            new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
+
+            race_data = {}
+
+            for node_index in range(self.num_nodes):
+                if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                    pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node_index)
+
+                    if pilot_id is not None:
+                        race_data[node_index] = {
+                            'race_id': new_race.id,
+                            'pilot_id': pilot_id,
+                            'history_values': json.dumps(self._racecontext.interface.nodes[node_index].history_values),
+                            'history_times': json.dumps(self._racecontext.interface.nodes[node_index].history_times),
+                            'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
+                            'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
+                            'frequency': self._racecontext.interface.nodes[node_index].frequency,
+                            'laps': self.node_laps[node_index]
+                            }
+
+                        self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {
+                            'b': profile_freqs["b"][node_index],
+                            'c': profile_freqs["c"][node_index],
+                            'f': profile_freqs["f"][node_index]
+                            })
+
+            self._racecontext.rhdata.add_race_data(race_data)
+
+            self._racecontext.events.trigger(Evt.LAPS_SAVE, {
+                'race_id': new_race.id,
+                })
+
+            logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
+
+            self.discard_laps(saved=True) # Also clear the current laps
+
+            next_heat = self._racecontext.rhdata.get_next_heat_id(heat)
+            if next_heat is not heat.id:
+                self.set_heat(next_heat)
+
+            # spawn thread for updating results caches
+            cache_params = {
+                'race_id': new_race.id,
+                'heat_id': new_race.heat_id,
+                'round_id': new_race.round_id,
             }
+            gevent.spawn(self.build_atomic_result_caches, cache_params)
 
-        new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
-
-        race_data = {}
-
-        for node_index in range(self.num_nodes):
-            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node_index)
-
-                if pilot_id is not None:
-                    race_data[node_index] = {
-                        'race_id': new_race.id,
-                        'pilot_id': pilot_id,
-                        'history_values': json.dumps(self._racecontext.interface.nodes[node_index].history_values),
-                        'history_times': json.dumps(self._racecontext.interface.nodes[node_index].history_times),
-                        'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
-                        'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
-                        'frequency': self._racecontext.interface.nodes[node_index].frequency,
-                        'laps': self.node_laps[node_index]
-                        }
-
-                    self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {
-                        'b': profile_freqs["b"][node_index],
-                        'c': profile_freqs["c"][node_index],
-                        'f': profile_freqs["f"][node_index]
-                        })
-
-        self._racecontext.rhdata.add_race_data(race_data)
-
-        self._racecontext.events.trigger(Evt.LAPS_SAVE, {
-            'race_id': new_race.id,
-            })
-
-        logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
-
-        self.discard_laps(saved=True) # Also clear the current laps
-
-        next_heat = self._racecontext.rhdata.get_next_heat_id(heat)
-        if next_heat is not heat.id:
-            self.set_heat(next_heat)
-
-        # spawn thread for updating results caches
-        cache_params = {
-            'race_id': new_race.id,
-            'heat_id': new_race.heat_id,
-            'round_id': new_race.round_id,
-        }
-        gevent.spawn(self.build_atomic_result_caches, cache_params)
-
-        self._racecontext.rhui.emit_race_saved(new_race, race_data)
+            self._racecontext.rhui.emit_race_saved(new_race, race_data)
 
     @catchLogExceptionsWrapper
     def build_atomic_result_caches(self, params):
-        self._racecontext.pagecache.set_valid(False)
-        Results.build_atomic_results(self._racecontext.rhdata, params)
-        self._racecontext.rhui.emit_result_data()
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            self._racecontext.pagecache.set_valid(False)
+            Results.build_atomic_results(self._racecontext.rhdata, params)
+            self._racecontext.rhui.emit_result_data()
 
+    @catchLogExceptionsWrapper
     def add_lap(self, node, lap_timestamp_absolute, source):
         '''Handles pass records from the nodes.'''
-
         APP.app_context().push()
-        logger.debug('Pass record: Node={}, abs_ts={:.3f}, source={} ("{}")' \
-                     .format(node.index+1, lap_timestamp_absolute, source, self._racecontext.interface.get_lap_source_str(source)))
-        node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
-        node.debug_pass_count += 1
-        self._racecontext.rhui.emit_node_data() # For updated triggers and peaks
 
-        profile_freqs = json.loads(self.profile.frequencies)
-        if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE :
-            # always count laps if race is running, otherwise test if lap should have counted before race end
-            if self.race_status is RaceStatus.RACING \
-                or (self.race_status is RaceStatus.DONE and \
-                    lap_timestamp_absolute < self.end_time):
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
-                # Get the current pilot id on the node
-                pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node.index)
+            logger.debug('Pass record: Node={}, abs_ts={:.3f}, source={} ("{}")' \
+                         .format(node.index+1, lap_timestamp_absolute, source, self._racecontext.interface.get_lap_source_str(source)))
+            node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
+            node.debug_pass_count += 1
+            self._racecontext.rhui.emit_node_data() # For updated triggers and peaks
 
-                # reject passes before race start and with disabled (no-pilot) nodes
-                race_format = self.format
-                if (pilot_id is not None and pilot_id != RHUtils.PILOT_ID_NONE) or race_format is self._racecontext.serverstate.secondary_race_format or self.current_heat is RHUtils.HEAT_ID_NONE:
-                    if lap_timestamp_absolute >= self.start_time_monotonic:
+            profile_freqs = json.loads(self.profile.frequencies)
+            if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE :
+                # always count laps if race is running, otherwise test if lap should have counted before race end
+                if self.race_status is RaceStatus.RACING \
+                    or (self.race_status is RaceStatus.DONE and \
+                        lap_timestamp_absolute < self.end_time):
 
-                        # if node EnterAt/ExitAt values need to be restored then do it soon
-                        if node.start_thresh_lower_flag:
-                            node.start_thresh_lower_time = monotonic()
+                    # Get the current pilot id on the node
+                    pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node.index)
 
-                        lap_time_stamp = (lap_timestamp_absolute - self.start_time_monotonic)
-                        lap_time_stamp *= 1000 # store as milliseconds
+                    # reject passes before race start and with disabled (no-pilot) nodes
+                    race_format = self.format
+                    if (pilot_id is not None and pilot_id != RHUtils.PILOT_ID_NONE) or race_format is self._racecontext.serverstate.secondary_race_format or self.current_heat is RHUtils.HEAT_ID_NONE:
+                        if lap_timestamp_absolute >= self.start_time_monotonic:
 
-                        lap_number = len(self.get_active_laps()[node.index])
+                            # if node EnterAt/ExitAt values need to be restored then do it soon
+                            if node.start_thresh_lower_flag:
+                                node.start_thresh_lower_time = monotonic()
 
-                        if lap_number: # This is a normal completed lap
-                            # Find the time stamp of the last lap completed (including "late" laps for timing)
-                            last_lap_time_stamp = self.get_active_laps(True)[node.index][-1]['lap_time_stamp']
+                            lap_time_stamp = (lap_timestamp_absolute - self.start_time_monotonic)
+                            lap_time_stamp *= 1000 # store as milliseconds
 
-                            # New lap time is the difference between the current time stamp and the last
-                            lap_time = lap_time_stamp - last_lap_time_stamp
+                            lap_number = len(self.get_active_laps()[node.index])
 
-                        else: # No previous laps, this is the first pass
-                            # Lap zero represents the time from the launch pad to flying through the gate
-                            lap_time = lap_time_stamp
-                            node.first_cross_flag = True  # indicate first crossing completed
+                            if lap_number: # This is a normal completed lap
+                                # Find the time stamp of the last lap completed (including "late" laps for timing)
+                                last_lap_time_stamp = self.get_active_laps(True)[node.index][-1]['lap_time_stamp']
 
-                        if race_format is self._racecontext.serverstate.secondary_race_format:
-                            min_lap = 0  # don't enforce min-lap time if running as secondary timer
-                            min_lap_behavior = 0
-                        else:
-                            min_lap = self._racecontext.rhdata.get_optionInt("MinLapSec")
-                            min_lap_behavior = self._racecontext.rhdata.get_optionInt("MinLapBehavior")
+                                # New lap time is the difference between the current time stamp and the last
+                                lap_time = lap_time_stamp - last_lap_time_stamp
 
-                        lap_time_fmtstr = RHUtils.time_format(lap_time, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
-                        lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
-                        pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)
-                        pilot_namestr = pilot_obj.callsign if pilot_obj else ""
+                            else: # No previous laps, this is the first pass
+                                # Lap zero represents the time from the launch pad to flying through the gate
+                                lap_time = lap_time_stamp
+                                node.first_cross_flag = True  # indicate first crossing completed
 
-                        lap_ok_flag = True
-                        lap_late_flag = False
-                        pilot_done_flag = False
-                        if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
-                            if lap_time <= 0: # if lap is non-sequential
-                                logger.info('Ignoring lap prior to already recorded lap: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
-                                           .format(node.index+1, lap_number, \
-                                                   lap_time_fmtstr, lap_ts_fmtstr, \
-                                                   self._racecontext.interface.get_lap_source_str(source), \
-                                                   pilot_namestr))
-                                lap_ok_flag = False
+                            if race_format is self._racecontext.serverstate.secondary_race_format:
+                                min_lap = 0  # don't enforce min-lap time if running as secondary timer
+                                min_lap_behavior = 0
+                            else:
+                                min_lap = self._racecontext.rhdata.get_optionInt("MinLapSec")
+                                min_lap_behavior = self._racecontext.rhdata.get_optionInt("MinLapBehavior")
 
-                            if lap_ok_flag and lap_time < (min_lap * 1000):  # if lap time less than minimum
-                                node.under_min_lap_count += 1
-                                logger.info('Pass record under lap minimum ({}): Node={}, lap={}, lapTime={}, sinceStart={}, count={}, source={}, pilot: {}' \
-                                           .format(min_lap, node.index+1, lap_number, \
-                                                   lap_time_fmtstr, lap_ts_fmtstr, \
-                                                   node.under_min_lap_count, self._racecontext.interface.get_lap_source_str(source), \
-                                                   pilot_namestr))
-                                if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
+                            lap_time_fmtstr = RHUtils.time_format(lap_time, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
+                            lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
+                            pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)
+                            pilot_namestr = pilot_obj.callsign if pilot_obj else ""
+
+                            lap_ok_flag = True
+                            lap_late_flag = False
+                            pilot_done_flag = False
+                            if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
+                                if lap_time <= 0: # if lap is non-sequential
+                                    logger.info('Ignoring lap prior to already recorded lap: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
+                                               .format(node.index+1, lap_number, \
+                                                       lap_time_fmtstr, lap_ts_fmtstr, \
+                                                       self._racecontext.interface.get_lap_source_str(source), \
+                                                       pilot_namestr))
                                     lap_ok_flag = False
 
-                            if lap_ok_flag and race_format.unlimited_time == 0 and \
-                                race_format.lap_grace_sec > -1 and \
-                                lap_time_stamp > (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
-                                logger.info('Ignoring lap after grace period expired: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
-                                           .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
-                                                   self._racecontext.interface.get_lap_source_str(source), pilot_namestr))
-                                lap_ok_flag = False
+                                if lap_ok_flag and lap_time < (min_lap * 1000):  # if lap time less than minimum
+                                    node.under_min_lap_count += 1
+                                    logger.info('Pass record under lap minimum ({}): Node={}, lap={}, lapTime={}, sinceStart={}, count={}, source={}, pilot: {}' \
+                                               .format(min_lap, node.index+1, lap_number, \
+                                                       lap_time_fmtstr, lap_ts_fmtstr, \
+                                                       node.under_min_lap_count, self._racecontext.interface.get_lap_source_str(source), \
+                                                       pilot_namestr))
+                                    if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
+                                        lap_ok_flag = False
 
-                        if lap_ok_flag:
-                            node_finished_flag = self.get_node_finished_flag(node.index)
-                            # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
-                            if (race_format.unlimited_time == 0 and lap_time_stamp > race_format.race_time_sec * 1000) or \
-                                (self.format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
-                                self.set_node_finished_flag(node.index)
-                                if not node_finished_flag:
-                                    logger.info('Pilot {} done'.format(pilot_obj.callsign if pilot_obj else node.index))
-                                    pilot_done_flag = True
+                                if lap_ok_flag and race_format.unlimited_time == 0 and \
+                                    race_format.lap_grace_sec > -1 and \
+                                    lap_time_stamp > (race_format.race_time_sec + race_format.lap_grace_sec)*1000:
+                                    logger.info('Ignoring lap after grace period expired: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
+                                               .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
+                                                       self._racecontext.interface.get_lap_source_str(source), pilot_namestr))
+                                    lap_ok_flag = False
 
-                            if node_finished_flag:
-                                lap_late_flag = True  # "late" lap pass (after grace lap)
-                                logger.info('Ignoring lap after pilot done: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
-                                           .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
-                                                   self._racecontext.interface.get_lap_source_str(source), pilot_namestr))
+                            if lap_ok_flag:
+                                node_finished_flag = self.get_node_finished_flag(node.index)
+                                # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
+                                if (race_format.unlimited_time == 0 and lap_time_stamp > race_format.race_time_sec * 1000) or \
+                                    (self.format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
+                                    self.set_node_finished_flag(node.index)
+                                    if not node_finished_flag:
+                                        logger.info('Pilot {} done'.format(pilot_obj.callsign if pilot_obj else node.index))
+                                        pilot_done_flag = True
 
-                            if self.win_status == WinStatus.DECLARED and \
-                                race_format.unlimited_time == 1 and \
-                                self.format.team_racing_mode and \
-                                self.format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                                lap_late_flag = True  # "late" lap pass after team race winner declared (when no time limit)
-                                if pilot_obj:
-                                    t_str = ", Team " + pilot_obj.team
-                                else:
-                                    t_str = ""
-                                logger.info('Ignoring lap after race winner declared: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}{}' \
-                                           .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
-                                                   self._racecontext.interface.get_lap_source_str(source), pilot_namestr, t_str))
+                                if node_finished_flag:
+                                    lap_late_flag = True  # "late" lap pass (after grace lap)
+                                    logger.info('Ignoring lap after pilot done: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
+                                               .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
+                                                       self._racecontext.interface.get_lap_source_str(source), pilot_namestr))
 
-                            if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
-                                late_str = " (late lap)" if lap_late_flag else ""
-                                enter_fmtstr = RHUtils.time_format((node.enter_at_timestamp-self.start_time_monotonic)*1000, \
-                                                                   self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat')) \
-                                               if node.enter_at_timestamp else "0"
-                                exit_fmtstr = RHUtils.time_format((node.exit_at_timestamp-self.start_time_monotonic)*1000, \
-                                                                  self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat')) \
-                                               if node.exit_at_timestamp else "0"
-                                logger.debug('Lap pass{}: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, passtime={}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
-                                            .format(late_str, node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
-                                                    lap_timestamp_absolute,
-                                                    RHTimeFns.epochMsToFormattedStr(self._racecontext.serverstate.monotonic_to_epoch_millis(lap_timestamp_absolute)), \
-                                                    self._racecontext.interface.get_lap_source_str(source), \
-                                                    enter_fmtstr, exit_fmtstr, \
-                                                    (node.exit_at_timestamp-node.enter_at_timestamp)*1000, pilot_namestr))
+                                if self.win_status == WinStatus.DECLARED and \
+                                    race_format.unlimited_time == 1 and \
+                                    self.format.team_racing_mode and \
+                                    self.format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                                    lap_late_flag = True  # "late" lap pass after team race winner declared (when no time limit)
+                                    if pilot_obj:
+                                        t_str = ", Team " + pilot_obj.team
+                                    else:
+                                        t_str = ""
+                                    logger.info('Ignoring lap after race winner declared: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}{}' \
+                                               .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
+                                                       self._racecontext.interface.get_lap_source_str(source), pilot_namestr, t_str))
 
-                            # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
-                            self._racecontext.rhui.emit_pass_record(node, lap_time_stamp)
+                                if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+                                    late_str = " (late lap)" if lap_late_flag else ""
+                                    enter_fmtstr = RHUtils.time_format((node.enter_at_timestamp-self.start_time_monotonic)*1000, \
+                                                                       self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat')) \
+                                                   if node.enter_at_timestamp else "0"
+                                    exit_fmtstr = RHUtils.time_format((node.exit_at_timestamp-self.start_time_monotonic)*1000, \
+                                                                      self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat')) \
+                                                   if node.exit_at_timestamp else "0"
+                                    logger.debug('Lap pass{}: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, passtime={}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
+                                                .format(late_str, node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
+                                                        lap_timestamp_absolute,
+                                                        RHTimeFns.epochMsToFormattedStr(self._racecontext.serverstate.monotonic_to_epoch_millis(lap_timestamp_absolute)), \
+                                                        self._racecontext.interface.get_lap_source_str(source), \
+                                                        enter_fmtstr, exit_fmtstr, \
+                                                        (node.exit_at_timestamp-node.enter_at_timestamp)*1000, pilot_namestr))
 
-                            # Add the new lap to the database
-                            lap_data = {
-                                'lap_number': lap_number,
-                                'lap_time_stamp': lap_time_stamp,
-                                'lap_time': lap_time,
-                                'lap_time_formatted': lap_time_fmtstr,
-                                'source': source,
-                                'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
-                                'late_lap': lap_late_flag
-                            }
-                            self.node_laps[node.index].append(lap_data)
+                                # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
+                                self._racecontext.rhui.emit_pass_record(node, lap_time_stamp)
 
-                            self.clear_results()
+                                # Add the new lap to the database
+                                lap_data = {
+                                    'lap_number': lap_number,
+                                    'lap_time_stamp': lap_time_stamp,
+                                    'lap_time': lap_time,
+                                    'lap_time_formatted': lap_time_fmtstr,
+                                    'source': source,
+                                    'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
+                                    'late_lap': lap_late_flag
+                                }
+                                self.node_laps[node.index].append(lap_data)
 
-                            self._racecontext.events.trigger(Evt.RACE_LAP_RECORDED, {
-                                'pilot_id': pilot_id,
-                                'node_index': node.index,
-                                'peak_rssi': node.pass_peak_rssi,
-                                'frequency': node.frequency,
-                                'color': self.seat_colors[node.index],
-                                'lap': lap_data,
-                                'results': self.get_results(),
-                                'gap_info': Results.get_gap_info(self._racecontext, node.index),
-                                'pilot_done_flag': pilot_done_flag,
-                                })
+                                self.clear_results()
 
-                            if pilot_done_flag:
-                                self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
+                                self._racecontext.events.trigger(Evt.RACE_LAP_RECORDED, {
                                     'pilot_id': pilot_id,
                                     'node_index': node.index,
+                                    'peak_rssi': node.pass_peak_rssi,
+                                    'frequency': node.frequency,
                                     'color': self.seat_colors[node.index],
+                                    'lap': lap_data,
                                     'results': self.get_results(),
+                                    'gap_info': Results.get_gap_info(self._racecontext, node.index),
+                                    'pilot_done_flag': pilot_done_flag,
                                     })
 
-                            self._racecontext.rhui.emit_current_laps() # update all laps on the race page
-                            self._racecontext.rhui.emit_current_leaderboard() # generate and update leaderboard
+                                if pilot_done_flag:
+                                    self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
+                                        'pilot_id': pilot_id,
+                                        'node_index': node.index,
+                                        'color': self.seat_colors[node.index],
+                                        'results': self.get_results(),
+                                        })
 
-                            if lap_number == 0:
-                                self._racecontext.rhui.emit_first_pass_registered(node.index) # play first-pass sound
+                                self._racecontext.rhui.emit_current_laps() # update all laps on the race page
+                                self._racecontext.rhui.emit_current_leaderboard() # generate and update leaderboard
 
-                            if race_format.start_behavior == StartBehavior.FIRST_LAP:
-                                lap_number += 1
+                                if lap_number == 0:
+                                    self._racecontext.rhui.emit_first_pass_registered(node.index) # play first-pass sound
 
-                            # announce lap
-                            if lap_number > 0:
-                                check_leader = race_format.win_condition != WinCondition.NONE and \
-                                               self.win_status != WinStatus.DECLARED
-                                # announce pilot lap number unless winner declared and pilot has finished final lap
-                                lap_id = lap_number if self.win_status != WinStatus.DECLARED or \
-                                                       (not node_finished_flag) else None
-                                if race_format.team_racing_mode:
-                                    team_name = pilot_obj.team if pilot_obj else ""
-                                    team_laps = self.team_results['meta']['teams'][team_name]['laps']
-                                    if not lap_late_flag:
-                                        logger.debug('Lap pass: Node={}, lap={}, pilot={} -> Team {} lap {}' \
-                                              .format(node.index+1, lap_number, pilot_namestr, team_name, team_laps))
-                                    # if winning team has been declared then don't announce team lap number
-                                    if self.win_status == WinStatus.DECLARED:
-                                        team_laps = None
-                                    self._racecontext.rhui.emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
-                                                    (check_leader and \
-                                                     team_name == Results.get_leading_team_name(self.team_results)), \
-                                                    node_finished_flag, node.index)
-                                else:
-                                    if check_leader:
-                                        leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
+                                if race_format.start_behavior == StartBehavior.FIRST_LAP:
+                                    lap_number += 1
+
+                                # announce lap
+                                if lap_number > 0:
+                                    check_leader = race_format.win_condition != WinCondition.NONE and \
+                                                   self.win_status != WinStatus.DECLARED
+                                    # announce pilot lap number unless winner declared and pilot has finished final lap
+                                    lap_id = lap_number if self.win_status != WinStatus.DECLARED or \
+                                                           (not node_finished_flag) else None
+                                    if race_format.team_racing_mode:
+                                        team_name = pilot_obj.team if pilot_obj else ""
+                                        team_laps = self.team_results['meta']['teams'][team_name]['laps']
+                                        if not lap_late_flag:
+                                            logger.debug('Lap pass: Node={}, lap={}, pilot={} -> Team {} lap {}' \
+                                                  .format(node.index+1, lap_number, pilot_namestr, team_name, team_laps))
+                                        # if winning team has been declared then don't announce team lap number
+                                        if self.win_status == WinStatus.DECLARED:
+                                            team_laps = None
+                                        self._racecontext.rhui.emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
+                                                        (check_leader and \
+                                                         team_name == Results.get_leading_team_name(self.team_results)), \
+                                                        node_finished_flag, node.index)
                                     else:
-                                        leader_pilot_id = RHUtils.PILOT_ID_NONE
-                                    self._racecontext.rhui.emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
-                                                    (pilot_id == leader_pilot_id), node_finished_flag, node.index)
-                                    if leader_pilot_id != RHUtils.PILOT_ID_NONE:
-                                        # if new leading pilot was not called out above (different pilot) then call out now
-                                        if leader_pilot_id != pilot_id:
-                                            self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
-                                            leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
-                                            if leader_pilot_obj:
-                                                logger.info('Pilot {} is leading'.format(leader_pilot_obj.callsign))
+                                        if check_leader:
+                                            leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
                                         else:
-                                            logger.info('Pilot {} is leading'.format(pilot_namestr))
+                                            leader_pilot_id = RHUtils.PILOT_ID_NONE
+                                        self._racecontext.rhui.emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
+                                                        (pilot_id == leader_pilot_id), node_finished_flag, node.index)
+                                        if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+                                            # if new leading pilot was not called out above (different pilot) then call out now
+                                            if leader_pilot_id != pilot_id:
+                                                self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
+                                                leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
+                                                if leader_pilot_obj:
+                                                    logger.info('Pilot {} is leading'.format(leader_pilot_obj.callsign))
+                                            else:
+                                                logger.info('Pilot {} is leading'.format(pilot_namestr))
 
-                                # check for and announce possible winner (but wait until pass-record processing(s) is finished)
-                                self.pass_invoke_func_queue_obj.put(self.check_win_condition, emit_leaderboard_on_win=True)
+                                    # check for and announce possible winner (but wait until pass-record processing(s) is finished)
+                                    self.pass_invoke_func_queue_obj.put(self.check_win_condition, emit_leaderboard_on_win=True)
 
+                            else:
+                                # record lap as 'invalid'
+                                self.node_laps[node.index].append({
+                                    'lap_number': lap_number,
+                                    'lap_time_stamp': lap_time_stamp,
+                                    'lap_time': lap_time,
+                                    'lap_time_formatted': lap_time_fmtstr,
+                                    'source': source,
+                                    'deleted': True,
+                                    'invalid': True
+                                })
                         else:
-                            # record lap as 'invalid'
-                            self.node_laps[node.index].append({
-                                'lap_number': lap_number,
-                                'lap_time_stamp': lap_time_stamp,
-                                'lap_time': lap_time,
-                                'lap_time_formatted': lap_time_fmtstr,
-                                'source': source,
-                                'deleted': True,
-                                'invalid': True
-                            })
+                            logger.debug('Pass record dismissed: Node {}, Race not started (abs_ts={:.3f}, source={})' \
+                                .format(node.index+1, lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source)))
                     else:
-                        logger.debug('Pass record dismissed: Node {}, Race not started (abs_ts={:.3f}, source={})' \
+                        logger.debug('Pass record dismissed: Node {}, Pilot not defined (abs_ts={:.3f}, source={})' \
                             .format(node.index+1, lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source)))
-                else:
-                    logger.debug('Pass record dismissed: Node {}, Pilot not defined (abs_ts={:.3f}, source={})' \
-                        .format(node.index+1, lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source)))
-        else:
-            logger.debug('Pass record dismissed: Node {}, Frequency not defined (abs_ts={:.3f}, source={})' \
-                .format(node.index+1, lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source)))
+            else:
+                logger.debug('Pass record dismissed: Node {}, Frequency not defined (abs_ts={:.3f}, source={})' \
+                    .format(node.index+1, lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source)))
 
     @catchLogExceptionsWrapper
     def delete_lap(self, data):
         '''Delete a false lap.'''
 
-        node_index = data['node']
-        lap_index = data['lap_index']
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
-        if node_index is None or lap_index is None:
-            logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
-            return
+            node_index = data['node']
+            lap_index = data['lap_index']
 
-        self.node_laps[node_index][lap_index]['invalid'] = True
+            if node_index is None or lap_index is None:
+                logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
+                return
 
-        time = self.node_laps[node_index][lap_index]['lap_time_stamp']
+            self.node_laps[node_index][lap_index]['invalid'] = True
 
-        race_format = self.format
-        self.set_node_finished_flag(node_index, False)
-        lap_number = 0
-        for lap in self.node_laps[node_index]:
-            lap['deleted'] = False
-            if self.get_node_finished_flag(node_index):
-                lap['late_lap'] = True
-                lap['deleted'] = True
-            else:
-                lap['late_lap'] = False
+            time = self.node_laps[node_index][lap_index]['lap_time_stamp']
 
-            if lap.get('invalid', False):
-                lap['lap_number'] = None
-                lap['deleted'] = True
-            else:
-                lap['lap_number'] = lap_number
-                if race_format.unlimited_time == 0 and lap['lap_time_stamp'] > (race_format.race_time_sec * 1000) or \
-                    (race_format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
-                    self.set_node_finished_flag(node_index)
-                lap_number += 1
+            race_format = self.format
+            self.set_node_finished_flag(node_index, False)
+            lap_number = 0
+            for lap in self.node_laps[node_index]:
+                lap['deleted'] = False
+                if self.get_node_finished_flag(node_index):
+                    lap['late_lap'] = True
+                    lap['deleted'] = True
+                else:
+                    lap['late_lap'] = False
 
-        db_last = False
-        db_next = False
-        for lap in self.node_laps[node_index]:
-            if not lap.get('invalid', False) and ((not lap['deleted']) or lap.get('late_lap', False)):
-                if lap['lap_time_stamp'] < time:
-                    db_last = lap
-                if lap['lap_time_stamp'] > time:
-                    db_next = lap
-                    break
+                if lap.get('invalid', False):
+                    lap['lap_number'] = None
+                    lap['deleted'] = True
+                else:
+                    lap['lap_number'] = lap_number
+                    if race_format.unlimited_time == 0 and lap['lap_time_stamp'] > (race_format.race_time_sec * 1000) or \
+                        (race_format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
+                        self.set_node_finished_flag(node_index)
+                    lap_number += 1
 
-        if db_next and db_last:
-            db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
-            db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
-        elif db_next:
-            db_next['lap_time'] = db_next['lap_time_stamp']
-            db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
+            db_last = False
+            db_next = False
+            for lap in self.node_laps[node_index]:
+                if not lap.get('invalid', False) and ((not lap['deleted']) or lap.get('late_lap', False)):
+                    if lap['lap_time_stamp'] < time:
+                        db_last = lap
+                    if lap['lap_time_stamp'] > time:
+                        db_next = lap
+                        break
 
-        try:  # delete any split laps for deleted lap
-            lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_number)
-            if lap_splits and len(lap_splits) > 0:
-                for lap_split in lap_splits:
-                    self._racecontext.rhdata.clear_lapSplit(lap_split)
-        except:
-            logger.exception("Error deleting split laps")
+            if db_next and db_last:
+                db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
+                db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
+            elif db_next:
+                db_next['lap_time'] = db_next['lap_time_stamp']
+                db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
 
-        self._racecontext.events.trigger(Evt.LAP_DELETE, {
-            'node_index': node_index,
-            })
+            try:  # delete any split laps for deleted lap
+                lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_number)
+                if lap_splits and len(lap_splits) > 0:
+                    for lap_split in lap_splits:
+                        self._racecontext.rhdata.clear_lapSplit(lap_split)
+            except:
+                logger.exception("Error deleting split laps")
 
-        logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
+            self._racecontext.events.trigger(Evt.LAP_DELETE, {
+                'node_index': node_index,
+                })
 
-        self.clear_results()
-        self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
-        self.get_results()  # update leaderboard before checking possible updated winner/leader
-        self.check_win_condition(deletedLap=True)  # handle possible change in win status
+            logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-        # handle possible change in race leader
-        leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
-        if leader_pilot_id != RHUtils.PILOT_ID_NONE:
-            self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
-            leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
-            if leader_pilot_obj:
-                logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
+            self.clear_results()
+            self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+            self.get_results()  # update leaderboard before checking possible updated winner/leader
+            self.check_win_condition(deletedLap=True)  # handle possible change in win status
 
-        self._racecontext.rhui.emit_current_laps() # Race page, update web client
-        self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
+            # handle possible change in race leader
+            leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
+            if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+                self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
+                leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
+                if leader_pilot_obj:
+                    logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
+
+            self._racecontext.rhui.emit_current_laps() # Race page, update web client
+            self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
 
     @catchLogExceptionsWrapper
     def restore_deleted_lap(self, data):
         '''Restore a deleted (or "late") lap.'''
 
-        node_index = data['node']
-        lap_index = data['lap_index']
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
-        if node_index is None or lap_index is None:
-            logger.error("Bad parameter in 'on_restore_deleted_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
-            return
+            node_index = data['node']
+            lap_index = data['lap_index']
 
-        lap_obj = self.node_laps[node_index][lap_index]
+            if node_index is None or lap_index is None:
+                logger.error("Bad parameter in 'on_restore_deleted_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
+                return
 
-        lap_obj['deleted'] = False
-        lap_obj['late_lap'] = False
+            lap_obj = self.node_laps[node_index][lap_index]
 
-        lap_number = 0  # adjust lap numbers and times as needed
-        last_lap_ts = 0
-        for idx, lap in enumerate(self.node_laps[node_index]):
-            if not lap['deleted']:
-                if idx >= lap_index:
-                    lap['lap_number'] = lap_number
-                    lap['lap_time'] = lap['lap_time_stamp'] - last_lap_ts
-                    lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
-                last_lap_ts = lap['lap_time_stamp']
-                lap_number += 1
+            lap_obj['deleted'] = False
+            lap_obj['late_lap'] = False
 
-        self._racecontext.events.trigger(Evt.LAP_RESTORE_DELETED, {
-            'node_index': node_index,
-            })
+            lap_number = 0  # adjust lap numbers and times as needed
+            last_lap_ts = 0
+            for idx, lap in enumerate(self.node_laps[node_index]):
+                if not lap['deleted']:
+                    if idx >= lap_index:
+                        lap['lap_number'] = lap_number
+                        lap['lap_time'] = lap['lap_time_stamp'] - last_lap_ts
+                        lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], self._racecontext.serverconfig.get_item('GENERAL', 'timeFormat'))
+                    last_lap_ts = lap['lap_time_stamp']
+                    lap_number += 1
 
-        logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
+            self._racecontext.events.trigger(Evt.LAP_RESTORE_DELETED, {
+                'node_index': node_index,
+                })
 
-        self.clear_results()
-        self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
-        self.get_results()  # update leaderboard before checking possible updated winner/leader
-        self.check_win_condition(deletedLap=True)  # handle possible change in win status
+            logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-        # handle possible change in race leader
-        leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
-        if leader_pilot_id != RHUtils.PILOT_ID_NONE:
-            self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
-            leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
-            if leader_pilot_obj:
-                logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
+            self.clear_results()
+            self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+            self.get_results()  # update leaderboard before checking possible updated winner/leader
+            self.check_win_condition(deletedLap=True)  # handle possible change in win status
 
-        self._racecontext.rhui.emit_current_laps() # Race page, update web client
-        self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
+            # handle possible change in race leader
+            leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
+            if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+                self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
+                leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
+                if leader_pilot_obj:
+                    logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
+
+            self._racecontext.rhui.emit_current_laps() # Race page, update web client
+            self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
 
     @catchLogExceptionsWrapper
     def discard_laps(self, **kwargs):
         '''Clear the current laps without saving.'''
 
-        if self.race_status == RaceStatus.STAGING or self.race_status == RaceStatus.RACING:
-            self.stop()
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
-        self.clear_laps()
-        self.race_status = RaceStatus.READY # Flag status as ready to start next race
-        self._racecontext.interface.set_race_status(RaceStatus.READY)
-        self.win_status = WinStatus.NONE
-        self.race_winner_name = ''
-        self.race_winner_phonetic = ''
-        self.race_winner_lap_id = 0
-        self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
-        self.race_leader_lap = 0  # clear current race leader
-        self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
-        self.status_message = ''
-        self._racecontext.rhui.emit_current_laps() # Race page, blank laps to the web client
-        self._racecontext.rhui.emit_current_leaderboard() # Race page, blank leaderboard to the web client
-        self._racecontext.rhui.emit_race_status() # Race page, to set race button states
+            if self.race_status == RaceStatus.STAGING or self.race_status == RaceStatus.RACING:
+                self.stop()
 
-        if 'saved' in kwargs and kwargs['saved'] == True:
-            # discarding follows a save action
-            pass
-        else:
-            # discarding does not follow a save action
-            self._racecontext.events.trigger(Evt.LAPS_DISCARD)
-            if self._racecontext.cluster:
-                self._racecontext.cluster.emitToSplits('discard_laps')
+            self.clear_laps()
+            self.race_status = RaceStatus.READY # Flag status as ready to start next race
+            self._racecontext.interface.set_race_status(RaceStatus.READY)
+            self.win_status = WinStatus.NONE
+            self.race_winner_name = ''
+            self.race_winner_phonetic = ''
+            self.race_winner_lap_id = 0
+            self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
+            self.race_leader_lap = 0  # clear current race leader
+            self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
+            self.status_message = ''
+            self._racecontext.rhui.emit_current_laps() # Race page, blank laps to the web client
+            self._racecontext.rhui.emit_current_leaderboard() # Race page, blank leaderboard to the web client
+            self._racecontext.rhui.emit_race_status() # Race page, to set race button states
 
-        self._racecontext.events.trigger(Evt.LAPS_CLEAR)
+            if 'saved' in kwargs and kwargs['saved'] == True:
+                # discarding follows a save action
+                pass
+            else:
+                # discarding does not follow a save action
+                self._racecontext.events.trigger(Evt.LAPS_DISCARD)
+                if self._racecontext.cluster:
+                    self._racecontext.cluster.emitToSplits('discard_laps')
+
+            self._racecontext.events.trigger(Evt.LAPS_CLEAR)
 
     def clear_laps(self):
         '''Clear the current laps table.'''
@@ -999,31 +1021,33 @@ class RHRace():
             node.show_crossing_flag = False
 
     def schedule(self, s, m=0):
-        if self.race_status != RaceStatus.READY:
-            logger.warning("Ignoring request to schedule race: Status not READY")
-            return False
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
-        if s or m:
-            self.scheduled = True
-            self.scheduled_time = monotonic() + (int(m) * 60) + int(s)
+            if self.race_status != RaceStatus.READY:
+                logger.warning("Ignoring request to schedule race: Status not READY")
+                return False
 
-            self._racecontext.events.trigger(Evt.RACE_SCHEDULE, {
-                'scheduled_at': self.scheduled_time,
-                'heat_id': self.current_heat,
-                })
+            if s or m:
+                self.scheduled = True
+                self.scheduled_time = monotonic() + (int(m) * 60) + int(s)
 
-            self._racecontext.rhui.emit_priority_message(self.__("Next race begins in {0:01d}:{1:02d}".format(int(m), int(s))), True)
+                self._racecontext.events.trigger(Evt.RACE_SCHEDULE, {
+                    'scheduled_at': self.scheduled_time,
+                    'heat_id': self.current_heat,
+                    })
 
-            logger.info("Scheduling race in {0:01d}:{1:02d}".format(int(m), int(s)))
-        else:
-            self.scheduled = False
-            self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL, {
-                'heat_id': self.current_heat,
-                })
-            self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
+                self._racecontext.rhui.emit_priority_message(self.__("Next race begins in {0:01d}:{1:02d}".format(int(m), int(s))), True)
 
-        self._racecontext.rhui.emit_race_schedule()
-        return True
+                logger.info("Scheduling race in {0:01d}:{1:02d}".format(int(m), int(s)))
+            else:
+                self.scheduled = False
+                self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL, {
+                    'heat_id': self.current_heat,
+                    })
+                self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
+
+            self._racecontext.rhui.emit_race_schedule()
+            return True
 
     def init_node_finished_flags(self, heatNodes):
         self.node_has_finished = {}
@@ -1533,15 +1557,20 @@ class RHRace():
 
     def finalize_heat_set(self, new_heat_id): #finalize_current_heat_set
         if self.race_status == RaceStatus.READY:
-            self.current_heat = new_heat_id
-            self._racecontext.rhdata.set_option('currentHeat', self.current_heat)
 
             if new_heat_id == RHUtils.HEAT_ID_NONE:
                 self.node_pilots = {}
                 self.node_teams = {}
-                logger.info("Switching to practice mode; races will not be saved until a heat is selected")
+                if self.current_heat != new_heat_id:
+                    logger.info("Switching to practice mode; races will not be saved until a heat is selected")
+                    self.current_heat = new_heat_id
+                else:
+                    logger.debug("Running in practice mode; races will not be saved until a heat is selected")
+                self._racecontext.rhdata.set_option('currentHeat', self.current_heat)
 
             else:
+                self.current_heat = new_heat_id
+                self._racecontext.rhdata.set_option('currentHeat', self.current_heat)
                 self.node_pilots = {}
                 self.node_teams = {}
                 for idx in range(self.num_nodes):

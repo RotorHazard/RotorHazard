@@ -47,9 +47,16 @@ When code is added to an existing file, the new code should follow what's alread
 
 If a PR is modifying functionality, try to avoid unnecessary whitespace changes (i.e., adding/removing trailing spaces or newlines), as this makes it harder to see the functional changes. Improvements to whitespace and code style should be implemented with PRs that do only those things.
 
-## Eclipse PyDev Project
+## Project Files
 
-The [Eclipse IDE](https://www.eclipse.org/eclipseide/) (with the [PyDev](https://www.pydev.org) extension) may be used to edit the Python source code -- the ".project" and ".pydevproject" files define the project, which may be loaded via "File | Open Projects from File System..." in Eclipse.
+The "project" directory contains sample project files for the [IntelliJ IDEA](https://www.jetbrains.com/idea) and [Eclipse IDE](https://www.eclipse.org/eclipseide/) editor/environments. To use them, copy the relevent files/directories to the top-most RotorHazard directory.
+
+For [IntelliJ IDEA](https://www.jetbrains.com/idea), the Python plugin needs to be installed, [see here for documentation](https://www.jetbrains.com/help/idea/plugin-overview.html). The "RotorHazard.iml" file and ".idea" directory define the project, which may be loaded via "File | Open" menu item. 
+The [JetBrains PyCharm IDE](https://www.jetbrains.com/pycharm) may also be used.
+
+For [Eclipse IDE](https://www.eclipse.org/eclipseide/), the [PyDev](https://www.pydev.org) extension needs to be installed. The ".project" and ".pydevproject" files define the project, which may be loaded via "File | Open Projects from File System..." in Eclipse.
+
+## PyLint
 
 The [PyLint](https://github.com/pylint-dev/pylint#pylint) code analyzer is used to improve and reduce bugs in the code. All Python code in the project should be able to pass PyLint analysis with minimal errors and warnings. On Windows the package may be installed via the command:  `python -m pip install pylint`
 

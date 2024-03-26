@@ -136,6 +136,31 @@ class RHData():
             logger.error('Error cleaning database: ' + str(ex))
             return False
 
+    def get_db_session_handle(self):
+        return Database.DB_session()
+
+    # Logs status of database connections; will be at 'debug' level unless # of connections gets large
+    def check_log_db_conns(self):
+        try:
+            num_conns = Database.DB_engine.pool.checkedout()
+            num_over = Database.DB_engine.pool.overflow()
+            num_pool = Database.DB_engine.pool.checkedin()
+            pool_size = Database.DB_engine.pool.size()
+            if num_over <= 0 or num_conns <= pool_size:
+                logger.debug("Database num_conns={}, num_over={}, num_in_pool={}, size={}".\
+                            format(num_conns, num_over, num_pool, pool_size))
+            elif num_over <= Database.DB_MAX_OVERFLOW / 5:
+                logger.info("Database connections into overflow, num_conns={}, num_over={}, num_in_pool={}, size={}".\
+                            format(num_conns, num_over, num_pool, pool_size))
+            elif num_over < Database.DB_MAX_OVERFLOW:
+                logger.warning("Database connections growing too large, num_conns={}, num_over={}, num_in_pool={}, size={}". \
+                            format(num_conns, num_over, num_pool, pool_size))
+            else:
+                logger.error("Database connections overran overflow ({}), num_conns={}, num_over={}, num_in_pool={}, size={}". \
+                               format(Database.DB_MAX_OVERFLOW, num_conns, num_over, num_pool, pool_size))
+        except Exception as ex:
+            logger.error("Error checking database connections: " + str(ex))
+
     # File Handling
 
     def backup_db_file(self, copy_flag, prefix_str=None, use_filename=None):
@@ -206,6 +231,8 @@ class RHData():
         try:
             output = []
             with engine.begin() as conn:
+                if not table_name in metadata.tables:
+                    raise NoSuchTableError
                 table = Table(table_name, metadata, autoload=True)
                 data = conn.execute(sqlalchemy.text("SELECT * from {}".format(table_name))).all()
                 for row in data:
@@ -216,11 +243,11 @@ class RHData():
                         cnt += 1
                     output.append(d)  # one for each row in table
             return output
-
         except NoSuchTableError:
             logger.debug('Table "{}" not found in previous database'.format(table_name))
         except Exception as ex:
             logger.warning('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+        return None
 
     def restore_table(self, class_type, table_query_data, **kwargs):
         if table_query_data:
