@@ -8,7 +8,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
-class Config():
+class Config:
     def __init__(self, racecontext, filename='config.json'):
         self._racecontext = racecontext
         self.filename = filename
@@ -102,6 +102,36 @@ class Config():
         self.InitResultStr = None
         self.InitResultLogLevel = logging.INFO
 
+        self.migrations = [
+            migrateItem('timerName'),
+            migrateItem('timerLogo'),
+            migrateItem('hue_0'),
+            migrateItem('sat_0'),
+            migrateItem('lum_0_low'),
+            migrateItem('lum_0_high'),
+            migrateItem('contrast_0_low'),
+            migrateItem('contrast_0_high'),
+            migrateItem('hue_1'),
+            migrateItem('sat_1'),
+            migrateItem('lum_1_low'),
+            migrateItem('lum_1_high'),
+            migrateItem('contrast_1_low'),
+            migrateItem('contrast_1_high'),
+            migrateItem('currentLanguage'),
+            migrateItem('timeFormat'),
+            migrateItem('timeFormatPhonetic'),
+            migrateItem('ledEffects', 'LED'),
+            migrateItem('ledBrightness', 'LED'),
+            migrateItem('ledColorNodes', 'LED'),
+            migrateItem('ledColorFreqs', 'LED'),
+            migrateItem('startThreshLowerAmount'),
+            migrateItem('startThreshLowerDuration'),
+            migrateItem('voiceCallouts'),
+            migrateItem('actions'),
+            migrateItem('pilotSort'),
+            migrateItem('calibrationMode'),
+        ]
+
         # override defaults above with config from file
         try:
             with open(self.filename, 'r') as f:
@@ -160,47 +190,7 @@ class Config():
             del self.config['GENERAL']['SECRET_KEY']
 
     def migrate_legacy_db_keys(self):
-        class migrateItem():
-            def __init__(self, source, section='GENERAL', dest=None):
-                self.source = source
-                self.section = section
-                self.dest = dest
-
-            @property
-            def dest(self):
-                return self.dest if self.dest else self.source
-
-        migrations = [
-            migrateItem('timerName'),
-            migrateItem('timerLogo'),
-            migrateItem('hue_0'),
-            migrateItem('sat_0'),
-            migrateItem('lum_0_low'),
-            migrateItem('lum_0_high'),
-            migrateItem('contrast_0_low'),
-            migrateItem('contrast_0_high'),
-            migrateItem('hue_1'),
-            migrateItem('sat_1'),
-            migrateItem('lum_1_low'),
-            migrateItem('lum_1_high'),
-            migrateItem('contrast_1_low'),
-            migrateItem('contrast_1_high'),
-            migrateItem('currentLanguage'),
-            migrateItem('timeFormat'),
-            migrateItem('timeFormatPhonetic'),
-            migrateItem('ledEffects', 'LED'),
-            migrateItem('ledBrightness', 'LED'),
-            migrateItem('ledColorNodes', 'LED'),
-            migrateItem('ledColorFreqs', 'LED'),
-            migrateItem('startThreshLowerAmount'),
-            migrateItem('startThreshLowerDuration'),
-            migrateItem('voiceCallouts'),
-            migrateItem('actions'),
-            migrateItem('pilotSort'),
-            migrateItem('calibrationMode'),
-        ]
-
-        for item in migrations:
+        for item in self.migrations:
             self._racecontext.serverconfig.set_item(
                 item.section,
                 item.dest,
@@ -215,7 +205,7 @@ class Config():
         if self.InitResultStr:
             logger.log(self.InitResultLogLevel, self.InitResultStr)
 
-    def get_item(self, section, key, returntype=None):
+    def get_item(self, section, key):
         try:
             return self.config[section][key]
         except:
@@ -253,3 +243,14 @@ class Config():
         sharable_config = copy.deepcopy(self.config)
         del sharable_config['SECRETS']
         return sharable_config
+
+
+class migrateItem:
+    def __init__(self, source, section='GENERAL', dest=None):
+        self.source = source
+        self.section = section
+        self._dest = dest
+
+    @property
+    def dest(self):
+        return self._dest if self._dest else self.source
