@@ -66,7 +66,11 @@
 		});
 
 		$('button#download_logs').click(function (event) {
-			socket.emit('download_logs', {'emit_fn_name': 'logpg_save_logs'});
+			var audioSettingsData = rotorhazard.getAudioSettingsStr(new Date());
+			var outData = { 'emit_fn_name': 'logpg_save_logs',
+							'audioSettingsData' : audioSettingsData,
+							'audioSettingsFName' : "rhAudioSettings.cfg" };
+			socket.emit('download_logs', outData);
 			return false;
 		});
 

@@ -933,7 +933,7 @@
 
 		$('button#export_audio_settings').click(function (event) {
 			var date = new Date();
-			var outData = rotorhazard.getAudioSettingsStr(date)
+			var outData = rotorhazard.getAudioSettingsStr(date);
 			saveAs(new Blob([outData], {type: "text/plain;charset=utf-8"}),
 					"rhAudioSettings_" + rotorhazard.getCurDateTimeNumStr(date) + ".cfg");
 		});
@@ -1132,7 +1132,11 @@
 		});
 
 		$('button#download_logs').click(function (event) {
-			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
+			var audioSettingsData = rotorhazard.getAudioSettingsStr(new Date());
+			var outData = { 'emit_fn_name': 'settings_save_logs',
+							'audioSettingsData' : audioSettingsData,
+							'audioSettingsFName' : "rhAudioSettings.cfg" };
+			socket.emit('download_logs', outData);
 		});
 
 		socket.on('settings_save_logs', function (msg) {
