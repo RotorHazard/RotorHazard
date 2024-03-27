@@ -319,7 +319,7 @@ def delete_old_log_files(num_keep_val, lfname, lfext, err_str):
     return num_del, err_str
 
 
-def create_log_files_zip(logger, config_file, db_file, boot_config_file="/boot/firmware/config.txt", \
+def create_log_files_zip(logger, config_file, db_file, outData=None, boot_config_file="/boot/firmware/config.txt", \
                          alt_boot_config_file="/boot/config.txt"):
     zip_file_obj = None
     try:
@@ -347,6 +347,15 @@ def create_log_files_zip(logger, config_file, db_file, boot_config_file="/boot/f
                     zip_file_obj.write(alt_boot_config_file, alt_boot_config_file[1:].replace('/','_'))
             except Exception:
                 logger.exception("Error adding files to log-files .zip file")
+            try:
+                # include current audio settings
+                if outData:
+                    audioSettingsData = outData.get('audioSettingsData')
+                    audioSettingsFName = outData.get('audioSettingsFName')
+                    if audioSettingsData and audioSettingsFName:
+                        zip_file_obj.writestr(audioSettingsFName, audioSettingsData)
+            except Exception:
+                logger.exception("Error adding audio settings info to .zip file")
             try:
                 # also include current list of Python libraries
                 whichPipStr = subprocess.check_output(['which', 'pip']).decode("utf-8").rstrip()
