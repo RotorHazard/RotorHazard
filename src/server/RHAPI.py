@@ -774,7 +774,6 @@ class DatabaseAPI():
 
     @property
     @callWithDatabaseWrapper
-    @callWithDatabaseWrapper
     def options(self):
         return self._racecontext.rhdata.get_options()
 
