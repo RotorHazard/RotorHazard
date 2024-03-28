@@ -4,7 +4,6 @@
 #   https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#led-panel-support
 
 import logging
-import Config
 from eventmanager import Evt
 from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, effect_delay
 from RHRace import RaceStatus
@@ -96,7 +95,7 @@ def printCharacter(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip)
+    panel = getPanelImg(strip, args['RHAPI'].config)
 
     use_small_flag = True
     if panel['height'] >= 16:
@@ -113,9 +112,9 @@ def printCharacter(args):
 
     panel['draw'].text((int((panel['width']-w)/2), int((panel['height']-h)/2)), text, font=font, fill=(color))
 
-    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
+    img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
 
-    setPixels(strip, img, panel['width'])
+    setPixels(strip, img, panel['width'], args['RHAPI'].config)
     strip.show()
 
 def scrollText(args):
@@ -136,7 +135,7 @@ def scrollText(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip)
+    panel = getPanelImg(strip, args['RHAPI'].config)
 
     if panel['height'] >= 16:
         font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
@@ -152,8 +151,8 @@ def scrollText(args):
     for i in range(-panel['width'], w + panel['width']):
         panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
         panel['draw'].text((-i, draw_y), text, font=font, fill=(color))
-        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
-        setPixels(strip, img, panel['width'])
+        img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
+        setPixels(strip, img, panel['width'], args['RHAPI'].config)
         strip.show()
         effect_delay(10, args)
 
@@ -175,7 +174,7 @@ def multiLapGrid(args):
     else:
         return False
 
-    panel = getPanelImg(strip)
+    panel = getPanelImg(strip, args['RHAPI'].config)
     if panel['height'] < 16:
         return False
 
@@ -229,15 +228,15 @@ def multiLapGrid(args):
 
             panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
 
-    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
-    setPixels(strip, img, panel['width'])
+    img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', ['PANEL_ROTATE']), expand=True)
+    setPixels(strip, img, panel['width'], args['RHAPI'].config)
     strip.show()
 
-def getPanelImg(strip):
-    panel_w = Config.LED['LED_COUNT'] // Config.LED['LED_ROWS']
-    panel_h = Config.LED['LED_ROWS']
+def getPanelImg(strip, config):
+    panel_w = config.get_item('LED', 'LED_COUNT') // config.get_item('LED', 'LED_ROWS')
+    panel_h = config.get_item('LED', 'LED_ROWS')
 
-    if Config.LED['PANEL_ROTATE'] % 2:
+    if config.get_item('LED', 'PANEL_ROTATE') % 2:
         width = panel_h
         height = panel_w
     else:
@@ -252,7 +251,7 @@ def getPanelImg(strip):
         'draw': ImageDraw.Draw(im)
     }
 
-def setPixels(strip, img, panel_w):
+def setPixels(strip, img, panel_w, config):
     pos = 0
     for row in range(0, img.height):
         for col in range(0, img.width):
@@ -260,7 +259,7 @@ def setPixels(strip, img, panel_w):
                 return
 
             c = col
-            if Config.LED['INVERTED_PANEL_ROWS']:
+            if config.get_item('LED', 'INVERTED_PANEL_ROWS'):
                 if row % 2 == 0:
                     c = (panel_w - 1) - col
 
@@ -275,7 +274,7 @@ def clearPixels(strip):
 def convertColor(color):
     return color >> 16, (color >> 8) % 256, color % 256
 
-def discover():
+def discover(rhapi):
     effects = [
     LEDEffect(
         "Text: Lap Count",
@@ -370,7 +369,7 @@ def discover():
     ),
     ]
 
-    if (Config.LED['LED_ROWS'] >= 16):
+    if (rhapi.config.get_item('LED', 'LED_ROWS') >= 16):
         effects.append(
             LEDEffect(
                 "Text: 4-Seat Lap Count",
@@ -392,9 +391,9 @@ def discover():
     return effects
 
 def register_handlers(args):
-    for led_effect in discover():
+    for led_effect in discover(args['RHAPI']):
         args['register_fn'](led_effect)
 
 def initialize(rhapi):
-    rhapi.events.on(Evt.LED_INITIALIZE, register_handlers)
+    rhapi.events.on(Evt.LED_INITIALIZE, register_handlers, {'RHAPI': rhapi})
 

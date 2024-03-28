@@ -34,8 +34,8 @@
 
 <div class="header">
 	<h1>
-		{% if getOption("timerLogo") %}
-			<img src="./static/user/{{ getOption('timerLogo') }}" alt="{{ getOption('timerName') }}" />
+		{% if getConfig('GENERAL', 'timerLogo') %}
+			<img src="./static/user/{{ getConfig('GENERAL', 'timerLogo') }}" alt="{{ getConfig('GENERAL', 'timerName') }}" />
 		{% else %}
 			<div class="rh-logo"></div>
 		{% endif %}
