@@ -194,7 +194,7 @@ class RHRace():
 
                 assigned_start_ok_flag = False
                 if assigned_start:
-                    self.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
+                    self.stage_time_monotonic = monotonic() + float(self._racecontext.serverconfig.get_item('GENERAL', 'RACE_START_DELAY_EXTRA_SECS'))
                     if assigned_start > self.stage_time_monotonic:
                         staging_tones = 0
                         hide_stage_timer = True
@@ -219,7 +219,7 @@ class RHRace():
                         if staging_random_ms % 1000:
                             staging_tones += 1
 
-                    self.stage_time_monotonic = monotonic() + float(Config.GENERAL['RACE_START_DELAY_EXTRA_SECS'])
+                    self.stage_time_monotonic = monotonic() + float(self._racecontext.serverconfig.get_item('GENERAL', 'RACE_START_DELAY_EXTRA_SECS'))
                     self.start_time_monotonic = self.stage_time_monotonic + (staging_total_ms / 1000 )
 
                 self.start_time_epoch_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.start_time_monotonic)

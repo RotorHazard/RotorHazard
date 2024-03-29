@@ -284,8 +284,9 @@ def authenticate():
         {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
 def requires_auth(f):
-    if RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') != "" or \
-                            RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD') != "":
+    print('auth check')
+    if RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') or \
+        RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD'):
         @functools.wraps(f)
         def decorated_auth(*args, **kwargs):
             auth = request.authorization

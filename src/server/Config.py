@@ -191,11 +191,12 @@ class Config:
 
     def migrate_legacy_db_keys(self):
         for item in self.migrations:
-            self._racecontext.serverconfig.set_item(
-                item.section,
-                item.dest,
-                self._racecontext.rhdata.get_option(item.source)
-            )
+            if self._racecontext.rhdata.get_option(item.source):
+                self._racecontext.serverconfig.set_item(
+                    item.section,
+                    item.dest,
+                    self._racecontext.rhdata.get_option(item.source)
+                )
             self._racecontext.rhdata.delete_option(item.source)
 
         logger.info('Migrated legacy server config from event database')
