@@ -1420,17 +1420,22 @@ def on_delete_database_file(data):
 @catchLogExcWithDBWrapper
 def on_reset_database(data):
     '''Reset database.'''
+    with_archive = data.get('with_archive')
+    reset_type = data.get('reset_type')
+    logger.debug('Resetting database, with_archive={}, reset_type={}'.format(with_archive, reset_type))
     RaceContext.pagecache.set_valid(False)
 
     on_stop_race()
     on_discard_laps()
     RaceContext.rhdata.clear_lapSplits()
 
-    if data.get('with_archive'):
-        RaceContext.rhdata.backup_db_file(True, use_filename=RaceContext.rhdata.get_option('eventName'))
+    if with_archive:
+        # if this is not a secondary/split timer then try to use event name for backup filename
+        bkp_filename = RaceContext.rhdata.get_option('eventName') \
+                    if RaceContext.race.format is not RaceContext.serverstate.secondary_race_format else None
+        RaceContext.rhdata.backup_db_file(True, use_filename=bkp_filename)
         on_list_backups()
 
-    reset_type = data['reset_type']
     if reset_type == 'races':
         RaceContext.rhdata.clear_race_data()
         RaceContext.race.reset_current_laps()
@@ -1466,6 +1471,12 @@ def on_reset_database(data):
     RaceContext.rhui.emit_class_data()
     RaceContext.rhui.emit_current_laps()
     RaceContext.rhui.emit_result_data()
+
+    # if secondary/split timers connected then backup and clear their races
+    if RaceContext.cluster:
+        cl_data = { 'with_archive': True, 'reset_type': 'races' }
+        RaceContext.cluster.emitToSplits('reset_database', cl_data)
+
     emit('reset_confirm')
 
     Events.trigger(Evt.DATABASE_RESET)
