@@ -59,7 +59,6 @@ class TracksideConnector():
             pilots = arg["p"]
             for idx, pilotname in enumerate(pilots):
                 existing = False
-                logger.info(pilotname)
                 for localpilot in localpilots:
                     if localpilot.callsign == pilotname:
                         existing = True
