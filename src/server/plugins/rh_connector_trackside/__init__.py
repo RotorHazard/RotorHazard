@@ -53,6 +53,23 @@ class TracksideConnector():
         self.enabled = True
         frequency_set = self._rhapi.race.frequencyset
         self._rhapi.db.frequencyset_alter(frequency_set.id, frequencies=arg)
+        slot_ids = []
+        if "p" in arg:
+            localpilots = self._rhapi.db.pilots
+            pilots = arg["p"]
+            for idx, pilotname in enumerate(pilots):
+                existing = False
+                logger.info(pilotname)
+                for localpilot in localpilots:
+                    if localpilot.callsign == pilotname:
+                        existing = True
+                        slot_ids.append({"slot_id":idx+1,"pilot":localpilot.id})
+                if not existing:
+                    newPilot = self._rhapi.db.pilot_add(name=pilotname, callsign=pilotname)
+                    slot_ids.append({"slot_id":idx+1,"pilot":newPilot.id})
+        if len(self._rhapi.db.heats) == 0:
+            self._rhapi.db.heat_add()
+        self._rhapi.db.slots_alter_fast(slot_ids)
 
     def race_stage(self, arg=None):
         self.enabled = True
