@@ -269,8 +269,8 @@ class SecondaryNode:
             except Exception as ex:
                 if type(ex) is ValueError and "connected" in str(ex):  # if error was because already connected
                     if self.lastContactTime <= 0:  # if current tracked status is not connected
-                        logger.debug("Ignoring connect error from sio-already-connected on secondary {0}".\
-                                     format(self.id+1))
+                        logger.debug("Ignoring connect error from sio-already-connected on secondary {}: {}".\
+                                     format(self.id+1, ex))
                     else:
                         logger.info("Forcing 'disconnected' status after sio-already-connected error on" \
                                     " secondary {0}".format(self.id+1))

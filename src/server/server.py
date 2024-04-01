@@ -50,6 +50,7 @@ import subprocess
 import importlib
 # import copy
 import functools
+import signal
 
 from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
@@ -596,7 +597,7 @@ def stop_background_threads():
     try:
         stop_shutdown_button_thread()
         if RaceContext.cluster:
-            RaceContext.cluster.shutdown()
+            RaceContext.cluster.shutdown()  # shut down secondary-timer management threads in this server
         RaceContext.led_manager.clear()  # stop any LED effect in progress
         global BACKGROUND_THREADS_ENABLED
         BACKGROUND_THREADS_ENABLED = False
@@ -2303,6 +2304,22 @@ def set_vrx_node(data):
 # Program Functions
 #
 
+def do_kill_server_via_signal(signum, frame):
+    try:
+        sig_enum = signal.Signals(signum)
+        sig_name = sig_enum.name if sig_enum and hasattr(sig_enum, 'name') else str(signum)
+        logger.info("Killing RotorHazard server via signal ('{}')".format(sig_name))
+        stop_background_threads()
+        SOCKET_IO.stop()   # shut down flask http server
+    except Exception as ex:
+        print("Exception during 'kill_server_via_signal': {}".format(ex))
+        sys.exit(1)
+
+@catchLogExceptionsWrapper
+def kill_server_via_signal(signum, frame):
+    '''Shutdown this server via signal (like Ctrl-C or process terminate).'''
+    gevent.spawn(do_kill_server_via_signal, signum, frame)
+
 def heartbeat_thread_function():
     '''Emits current rssi data, etc'''
     gevent.sleep(0.010)  # allow time for connection handshake to terminate before emitting data
@@ -3349,4 +3366,6 @@ def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
 
 # Start HTTP server
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, kill_server_via_signal)   # handle Ctrl-C signal
+    signal.signal(signal.SIGTERM, kill_server_via_signal)  # handle kill-process signal
     start(argv_arr=sys.argv)
