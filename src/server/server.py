@@ -50,6 +50,7 @@ import subprocess
 import importlib
 # import copy
 import functools
+import signal
 
 from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
@@ -594,7 +595,7 @@ def stop_background_threads():
     try:
         stop_shutdown_button_thread()
         if RaceContext.cluster:
-            RaceContext.cluster.shutdown()
+            RaceContext.cluster.shutdown()  # shut down secondary-timer management threads in this server
         RaceContext.led_manager.clear()  # stop any LED effect in progress
         global BACKGROUND_THREADS_ENABLED
         BACKGROUND_THREADS_ENABLED = False
@@ -1418,17 +1419,22 @@ def on_delete_database_file(data):
 @catchLogExcWithDBWrapper
 def on_reset_database(data):
     '''Reset database.'''
+    with_archive = data.get('with_archive')
+    reset_type = data.get('reset_type')
+    logger.debug('Resetting database, with_archive={}, reset_type={}'.format(with_archive, reset_type))
     RaceContext.pagecache.set_valid(False)
 
     on_stop_race()
     on_discard_laps()
     RaceContext.rhdata.clear_lapSplits()
 
-    if data.get('with_archive'):
-        RaceContext.rhdata.backup_db_file(True, use_filename=RaceContext.rhdata.get_option('eventName'))
+    if with_archive:
+        # if this is not a secondary/split timer then try to use event name for backup filename
+        bkp_filename = RaceContext.rhdata.get_option('eventName') \
+                    if RaceContext.race.format is not RaceContext.serverstate.secondary_race_format else None
+        RaceContext.rhdata.backup_db_file(True, use_filename=bkp_filename)
         on_list_backups()
 
-    reset_type = data['reset_type']
     if reset_type == 'races':
         RaceContext.rhdata.clear_race_data()
         RaceContext.race.reset_current_laps()
@@ -1464,6 +1470,12 @@ def on_reset_database(data):
     RaceContext.rhui.emit_class_data()
     RaceContext.rhui.emit_current_laps()
     RaceContext.rhui.emit_result_data()
+
+    # if secondary/split timers connected then backup and clear their races
+    if RaceContext.cluster:
+        cl_data = { 'with_archive': True, 'reset_type': 'races' }
+        RaceContext.cluster.emitToSplits('reset_database', cl_data)
+
     emit('reset_confirm')
 
     Events.trigger(Evt.DATABASE_RESET)
@@ -1630,7 +1642,7 @@ def on_kill_server():
 @catchLogExceptionsWrapper
 def on_download_logs(data):
     '''Download logs (as .zip file).'''
-    zip_path_name = log.create_log_files_zip(logger, RaceContext.serverconfig.filename, DB_FILE_NAME)
+    zip_path_name = log.create_log_files_zip(logger, RaceContext.serverconfig.filename, DB_FILE_NAME, data)
     RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME)
     if zip_path_name:
         RHUtils.checkSetFileOwnerPi(zip_path_name)
@@ -2299,6 +2311,22 @@ def set_vrx_node(data):
 #
 # Program Functions
 #
+
+def do_kill_server_via_signal(signum, frame):
+    try:
+        sig_enum = signal.Signals(signum)
+        sig_name = sig_enum.name if sig_enum and hasattr(sig_enum, 'name') else str(signum)
+        logger.info("Killing RotorHazard server via signal ('{}')".format(sig_name))
+        stop_background_threads()
+        SOCKET_IO.stop()   # shut down flask http server
+    except Exception as ex:
+        print("Exception during 'kill_server_via_signal': {}".format(ex))
+        sys.exit(1)
+
+@catchLogExceptionsWrapper
+def kill_server_via_signal(signum, frame):
+    '''Shutdown this server via signal (like Ctrl-C or process terminate).'''
+    gevent.spawn(do_kill_server_via_signal, signum, frame)
 
 def heartbeat_thread_function():
     '''Emits current rssi data, etc'''
@@ -3347,4 +3375,6 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
 
 # Start HTTP server
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, kill_server_via_signal)   # handle Ctrl-C signal
+    signal.signal(signal.SIGTERM, kill_server_via_signal)  # handle kill-process signal
     start(argv_arr=sys.argv)

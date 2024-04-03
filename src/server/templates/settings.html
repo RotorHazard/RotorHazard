@@ -65,36 +65,56 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
-		$('#voice_callsign').val(rotorhazard.voice_callsign);
-		$('#voice_lap_count').val(rotorhazard.voice_lap_count);
-		$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
-		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
-		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
-		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
-		$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
-		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
-		$('#voice_race_leader').val(rotorhazard.voice_race_leader);
-		$().articulate('volume', rotorhazard.voice_volume);
-		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
-		$('#voice_volume_value').html($('#set_voice_volume').val());
-		$().articulate('rate', rotorhazard.voice_rate);
-		$('#voice_rate_value').html(rotorhazard.voice_rate.toFixed(2));
-		$('#set_voice_rate').val(rotorhazard.voice_rate);
-		$().articulate('pitch', rotorhazard.voice_pitch);
-		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
-		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
-		$('#set_tone_volume').val(volume_logsl.position(rotorhazard.tone_volume));
-		$('#tone_volume_value').html($('#set_tone_volume').val());
-		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
-		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
-		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
-		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
-		$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
-		$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
-		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
-		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
-		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
-		$('#indicator_volume_value').html($('#set_indicator_volume').val());
+		var populate_audio_settings = function() {
+			$('#voice_callsign').val(rotorhazard.voice_callsign);
+			$('#voice_lap_count').val(rotorhazard.voice_lap_count);
+			$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
+			$('#voice_lap_time').val(rotorhazard.voice_lap_time);
+			$('#voice_race_timer').val(rotorhazard.voice_race_timer);
+			$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+			$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
+			$('#voice_split_timer').val(rotorhazard.voice_split_timer);
+			$('#voice_race_leader').val(rotorhazard.voice_race_leader);
+			$().articulate('volume', rotorhazard.voice_volume);
+			$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
+			$('#voice_volume_value').html($('#set_voice_volume').val());
+			$().articulate('rate', rotorhazard.voice_rate);
+			$('#voice_rate_value').html(rotorhazard.voice_rate.toFixed(2));
+			$('#set_voice_rate').val(rotorhazard.voice_rate);
+			$().articulate('pitch', rotorhazard.voice_pitch);
+			$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
+			$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+			$('#set_tone_volume').val(volume_logsl.position(rotorhazard.tone_volume));
+			$('#tone_volume_value').html($('#set_tone_volume').val());
+			$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
+			$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
+			$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+			$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
+			$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
+			$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
+			$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
+			$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
+			$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
+			$('#indicator_volume_value').html($('#set_indicator_volume').val());
+			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
+			if (!rotorhazard.voice_language) {  // if no current default then select first English voice
+				rotorhazard.voice_language = get_default_articulate_voice();
+				rotorhazard.saveData();
+				if ($('#set_voice_language').children('option').length > 0) {
+					$('#set_voice_language').val(rotorhazard.voice_language);
+				}
+			} else {
+				if ($('#set_voice_language').children('option').length > 0) {
+					$('#set_voice_language').val(rotorhazard.voice_language);
+					if (!($('#set_voice_language').val())) {  // if no match then select first English voice
+						rotorhazard.voice_language = get_default_articulate_voice();
+						rotorhazard.saveData();
+						$('#set_voice_language').val(rotorhazard.voice_language);
+					}
+				}
+			}
+		};
+		populate_audio_settings();
 
 		if ('{{ getConfig('LED', 'ledBrightness') }}' != 'False') {
 			$('#set_led_brightness').val(brightness_logsl.position( {{ getConfig('LED', 'ledBrightness') }} ));
@@ -756,6 +776,11 @@
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
 		$('#set_voice_language').val(rotorhazard.voice_language);
+		if (!($('#set_voice_language').val())) {  // if no match then select first English voice
+			rotorhazard.voice_language = get_default_articulate_voice();
+			rotorhazard.saveData();
+			$('#set_voice_language').val(rotorhazard.voice_language);
+		}
 
 		$('#set_voice_string_language').change(function (event) {
 			rotorhazard.voice_string_language = $(this).val();
@@ -913,6 +938,35 @@
 		$("#voice_test_text").keyup(function(event) {
 			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
 				$("#play_voice_test").click();
+			}
+		});
+
+		$('button#export_audio_settings').click(function (event) {
+			var date = new Date();
+			var outData = rotorhazard.getAudioSettingsStr(date);
+			saveAs(new Blob([outData], {type: "text/plain;charset=utf-8"}),
+					"rhAudioSettings_" + rotorhazard.getCurDateTimeNumStr(date) + ".cfg");
+		});
+
+		$('button#default_audio_settings').click(function (event) {
+			$.magnificPopup.close();
+			if (rotorhazard.loadDefaultAudioSettings()) {
+				populate_audio_settings();
+			}
+		});
+
+		$('#select_audio_import_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#import_audio_settings').prop('disabled', false);
+			}
+		});
+
+		$('button#import_audio_settings').click(function (event) {
+			if ($('#select_audio_import_file').prop('files')[0]) {
+				$('#import_audio_settings').prop('disabled', true);
+				rotorhazard.importAudioSettingsFile(
+							$('#select_audio_import_file').prop('files')[0], populate_audio_settings);
+				$('#select_audio_import_file').val('');
 			}
 		});
 
@@ -1090,7 +1144,11 @@
 		});
 
 		$('button#download_logs').click(function (event) {
-			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
+			var audioSettingsData = rotorhazard.getAudioSettingsStr(new Date());
+			var outData = { 'emit_fn_name': 'settings_save_logs',
+							'audioSettingsData' : audioSettingsData,
+							'audioSettingsFName' : "rhAudioSettings.cfg" };
+			socket.emit('download_logs', outData);
 		});
 
 		socket.on('settings_save_logs', function (msg) {
@@ -2015,6 +2073,26 @@
 				<input type="range" id="set_indicator_volume" min="0" max="100">
 			</li>
 		</ol>
+		<br>
+		<div class="control-set">
+			<div>
+				<button class="button" id="export_audio_settings">{{ __('Export Audio Settings') }}</button> &nbsp;
+				<button data-mfp-src="#audio_settings_defaults_confirm" class="open-mfp-popup">{{ __('Set Audio Settings to Defaults') }}</button>
+			</div>
+			<div>
+				<label for="select_audio_import_file"><span style="font-weight:bold">{{ __('Select File to Import') }}: </span></label>
+				<input type="file" id="select_audio_import_file" accept=".cfg" />
+				<button id="import_audio_settings" class="btn-danger" disabled="disabled">{{ __('Import Audio Settings') }}</button>
+			</div>
+		</div>
+		<div id="audio_settings_defaults_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Confirm') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('This will overwrite all audio settings. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="default_audio_settings">{{ __('Set Defaults') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
 	</div>
 </div>
 
