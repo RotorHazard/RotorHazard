@@ -88,7 +88,7 @@ class Config:
         self.config['GENERAL']['startThreshLowerAmount'] = '0'
         self.config['GENERAL']['startThreshLowerDuration'] = '0'
         self.config['GENERAL']['voiceCallouts'] = ''
-        self.config['GENERAL']['actions'] = '{}'
+        self.config['GENERAL']['actions'] = '[]'
         self.config['GENERAL']['pilotSort'] = ''
         self.config['GENERAL']['calibrationMode'] = ''
 
@@ -138,7 +138,8 @@ class Config:
                 ExternalConfig = json.load(f)
 
             for key in ExternalConfig.keys():
-                self.config[key].update(ExternalConfig[key])
+                if key in self.config:
+                    self.config[key].update(ExternalConfig[key])
 
             self.config_file_status = 1
             self.InitResultStr = "Using configuration file '{0}'".format(self.filename)
