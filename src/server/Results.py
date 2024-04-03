@@ -970,7 +970,7 @@ def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
                 'ranking': ranking,
                 'meta': meta
             }
-        elif race_class.win_condition != '':
+        elif race_class.win_condition:
             logger.warning("{} uses unsupported ranking method: {}".format(race_class.display_name, race_class.win_condition))
 
     return False
