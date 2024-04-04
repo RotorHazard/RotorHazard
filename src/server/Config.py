@@ -90,7 +90,8 @@ class Config:
         self.config['GENERAL']['voiceCallouts'] = ''
         self.config['GENERAL']['actions'] = '[]'
         self.config['GENERAL']['pilotSort'] = ''
-        self.config['GENERAL']['calibrationMode'] = ''
+        self.config['GENERAL']['calibrationMode'] = '1'
+        self.config['GENERAL']['MinLapBehavior'] = '0'
 
         # logging defaults
         self.config['LOGGING']['CONSOLE_LEVEL'] = "INFO"

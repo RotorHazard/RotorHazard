@@ -30,7 +30,7 @@
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
 	if ('{{ getConfig('GENERAL', 'startThreshLowerAmount') }}' != 'False') {
-		start_thresh_lower_amount = {{ geConfig('GENERAL', 'startThreshLowerAmount') }};
+		start_thresh_lower_amount = {{ getConfig('GENERAL', 'startThreshLowerAmount') }};
 	}
 	if ('{{ getConfig('GENERAL', 'startThreshLowerDuration') }}' != 'False') {
 		start_thresh_lower_duration = {{ getConfig('GENERAL', 'startThreshLowerDuration') }};
