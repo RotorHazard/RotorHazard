@@ -53,25 +53,44 @@ class TracksideConnector():
         self.enabled = True
         frequency_set = self._rhapi.race.frequencyset
         self._rhapi.db.frequencyset_alter(frequency_set.id, frequencies=arg)
-        slot_ids = []
-        if "p" in arg:
-            localpilots = self._rhapi.db.pilots
-            pilots = arg["p"]
-            for idx, pilotname in enumerate(pilots):
-                existing = False
-                for localpilot in localpilots:
-                    if localpilot.callsign == pilotname:
-                        existing = True
-                        slot_ids.append({"slot_id":idx+1,"pilot":localpilot.id})
-                if not existing:
-                    newPilot = self._rhapi.db.pilot_add(name=pilotname, callsign=pilotname)
-                    slot_ids.append({"slot_id":idx+1,"pilot":newPilot.id})
-        if len(self._rhapi.db.heats) == 0:
-            self._rhapi.db.heat_add()
-        self._rhapi.db.slots_alter_fast(slot_ids)
 
     def race_stage(self, arg=None):
         self.enabled = True
+        if arg and arg.get('p'):
+            heat = self._rhapi.db.heat_add()
+            self._rhapi.db.heat_alter(heat.id, name="TrackSide Heat {}".format(heat.id))
+            slots = self._rhapi.db.slots_by_heat(heat.id)
+            slot_list = []
+
+            ts_pilot_callsigns = arg.get('p')
+            rh_pilots = self._rhapi.db.pilots
+            added_pilot = False
+            for idx, ts_pilot_callsign in enumerate(ts_pilot_callsigns):
+                for rh_pilot in rh_pilots:
+                    if rh_pilot.callsign == ts_pilot_callsign:
+                        pilot = rh_pilot
+                        break
+                else:
+                    new_pilot = self._rhapi.db.pilot_add(name=ts_pilot_callsign, callsign=ts_pilot_callsign)
+                    pilot = new_pilot
+                    added_pilot = True
+
+                for slot in slots:
+                    if slot.node_index == idx:
+                        slot_list.append({
+                            'slot_id': slot.id,
+                            'pilot': pilot.id
+                        })
+                        break
+
+            self._rhapi.db.slots_alter_fast(slot_list)
+            self._rhapi.race.heat = heat.id
+
+            if added_pilot:
+                self._rhapi.ui.broadcast_pilots()
+            self._rhapi.ui.broadcast_heats()
+            self._rhapi.ui.broadcast_current_heat()
+
         if self._rhapi.race.status != RaceStatus.READY:
             self._rhapi.race.stop(doSave=True)
 
