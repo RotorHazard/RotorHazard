@@ -56,6 +56,11 @@ class TracksideConnector():
 
     def race_stage(self, arg=None):
         self.enabled = True
+
+        if self._rhapi.race.status != RaceStatus.READY:
+            self._rhapi.race.stop() #doSave executes asynchronously, but we need it done now
+            self._rhapi.race.save()
+
         if arg and arg.get('p'):
             heat = self._rhapi.db.heat_add()
             self._rhapi.db.heat_alter(heat.id, name="TrackSide Heat {}".format(heat.id))
@@ -91,11 +96,9 @@ class TracksideConnector():
             self._rhapi.ui.broadcast_heats()
             self._rhapi.ui.broadcast_current_heat()
 
-        if self._rhapi.race.status != RaceStatus.READY:
-            self._rhapi.race.stop(doSave=True)
-
         start_race_args = {
             'secondary_format': True,
+            'ignore_secondary_heat': True,
         }
 
         if arg and arg.get('start_time_s'):
