@@ -29,6 +29,7 @@ APP.app_context().push()
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
     TEAM_NAMES_LIST = [str(chr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
+    data_processing_pool = None
 
     def __init__(self, Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME):
         self._Events = Events

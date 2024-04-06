@@ -13,7 +13,6 @@ from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import logging
 from time import monotonic
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
-import multiprocessing
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +177,7 @@ def build_atomic_results(rhDataObj, params):
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
-def bulk_process_leaderboard(this_race_format, pilotraces, selected_race_laps, race_results, pilot_list):
+def bulk_process_stats(this_race_format, pilotraces, selected_race_laps, race_results, pilot_list):
 
     pilots_race_stats = {}
 
@@ -414,20 +413,21 @@ def calc_leaderboard(rhDataObj, **params):
             else:
                 race_results.append(None)
 
-        pilot_list = [pilot.id for pilot in rhDataObj.get_pilots()]
+        pilot_ids = [pilot.id for pilot in rhDataObj.get_pilots()]
 
         num_races = len(selected_races)
-        race_data = zip(race_formats, pilotraces, [selected_race_laps] * num_races,
-                        race_results, [pilot_list] * num_races)
+        races_data = zip(race_formats, pilotraces, [selected_race_laps] * num_races,
+                        race_results, [pilot_ids] * num_races)
 
         # Replace processing loop with multiprocessing when server.py is completely __main__ guarded
-        if False:
-            with multiprocessing.Pool() as processor:
-                processed_race_results = processor.starmap(bulk_process_leaderboard, race_data)
+        if rhDataObj.data_processing_pool:
+            with rhDataObj.data_processing_pool as processor:
+                processed_race_results = processor.starmap(bulk_process_stats, races_data)
         else:
             processed_race_results = []
-            for item in race_data:
-                processed_race_results.append(bulk_process_leaderboard(item[0], item[1], item[2], item[3], item[4]))
+            for race_data in races_data:
+                processed_race_results.append(bulk_process_stats(race_data[0], race_data[1], race_data[2], 
+                                                                 race_data[3], race_data[4]))
         
         gevent.sleep()
         pilots_stats = {}
@@ -446,14 +446,14 @@ def calc_leaderboard(rhDataObj, **params):
             }
 
         for result in processed_race_results:
-            for pilot_id, result in result.items():
-                pilots_stats[pilot_id]['laps'] += result['laps']
-                pilots_stats[pilot_id]['holeshots'] += result['holeshots']
-                pilots_stats[pilot_id]['starts'] += result['starts']
-                pilots_stats[pilot_id]['node'] = result['node']
-                pilots_stats[pilot_id]['pilot_crossings'] += result['pilot_crossings']
-                pilots_stats[pilot_id]['pilot_laps'] += result['pilot_laps']
-                pilots_stats[pilot_id]['points'] += result['points']
+            for pilot_id, stats in result.items():
+                pilots_stats[pilot_id]['laps'] += stats['laps']
+                pilots_stats[pilot_id]['holeshots'] += stats['holeshots']
+                pilots_stats[pilot_id]['starts'] += stats['starts']
+                pilots_stats[pilot_id]['node'] = stats['node']
+                pilots_stats[pilot_id]['pilot_crossings'] += stats['pilot_crossings']
+                pilots_stats[pilot_id]['pilot_laps'] += stats['pilot_laps']
+                pilots_stats[pilot_id]['points'] += stats['points']
 
         for pilot_stats in pilots_stats.values():
             if pilot_stats['starts'] > 0:

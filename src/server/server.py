@@ -3366,6 +3366,10 @@ def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
 
 # Start HTTP server
 if __name__ == '__main__':
+    # import multiprocessing
+    # multiprocessing.set_start_method("spawn") # spawn instead of forking
+    # RaceContext.rhdata.data_processing_pool = multiprocessing.Pool() # size defaults to os.cpu_count()
+
     signal.signal(signal.SIGINT, kill_server_via_signal)   # handle Ctrl-C signal
     signal.signal(signal.SIGTERM, kill_server_via_signal)  # handle kill-process signal
     start(argv_arr=sys.argv)
