@@ -56,11 +56,49 @@ class TracksideConnector():
 
     def race_stage(self, arg=None):
         self.enabled = True
+
         if self._rhapi.race.status != RaceStatus.READY:
-            self._rhapi.race.stop(doSave=True)
+            self._rhapi.race.stop() #doSave executes asynchronously, but we need it done now
+            self._rhapi.race.save()
+
+        if arg and arg.get('p'):
+            heat = self._rhapi.db.heat_add()
+            self._rhapi.db.heat_alter(heat.id, name="TrackSide Heat {}".format(heat.id))
+            slots = self._rhapi.db.slots_by_heat(heat.id)
+            slot_list = []
+
+            ts_pilot_callsigns = arg.get('p')
+            rh_pilots = self._rhapi.db.pilots
+            added_pilot = False
+            for idx, ts_pilot_callsign in enumerate(ts_pilot_callsigns):
+                for rh_pilot in rh_pilots:
+                    if rh_pilot.callsign == ts_pilot_callsign:
+                        pilot = rh_pilot
+                        break
+                else:
+                    new_pilot = self._rhapi.db.pilot_add(name=ts_pilot_callsign, callsign=ts_pilot_callsign)
+                    pilot = new_pilot
+                    added_pilot = True
+
+                for slot in slots:
+                    if slot.node_index == idx:
+                        slot_list.append({
+                            'slot_id': slot.id,
+                            'pilot': pilot.id
+                        })
+                        break
+
+            self._rhapi.db.slots_alter_fast(slot_list)
+            self._rhapi.race.heat = heat.id
+
+            if added_pilot:
+                self._rhapi.ui.broadcast_pilots()
+            self._rhapi.ui.broadcast_heats()
+            self._rhapi.ui.broadcast_current_heat()
 
         start_race_args = {
             'secondary_format': True,
+            'ignore_secondary_heat': True,
         }
 
         if arg and arg.get('start_time_s'):

@@ -98,7 +98,9 @@ class RHRace():
             assigned_start = data.get('start_time_s', False) if data else None
 
             race_format = self.format
-            if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
+            if race_format is self._racecontext.serverstate.secondary_race_format and \
+                    not data.get('ignore_secondary_heat'):
+                # if running as secondary timer
                 self.check_create_sec_format_heat()
 
             self._racecontext.rhdata.clear_lapSplits()  # clear lap-splits from previous race
