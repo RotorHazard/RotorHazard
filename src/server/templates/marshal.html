@@ -25,15 +25,15 @@
 	var current_race_data = {};
 	var precalc_laps = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
-	var min_lap_behavior = {{ getConfig('GENERAL', 'MinLapBehavior') }};
+	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
 
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
-	if ('{{ getConfig('GENERAL', 'startThreshLowerAmount') }}' != 'False') {
-		start_thresh_lower_amount = {{ getConfig('GENERAL', 'startThreshLowerAmount') }};
+	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
+		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
 	}
-	if ('{{ getConfig('GENERAL', 'startThreshLowerDuration') }}' != 'False') {
-		start_thresh_lower_duration = {{ getConfig('GENERAL', 'startThreshLowerDuration') }};
+	if ('{{ getConfig('TIMING', 'startThreshLowerDuration') }}' != 'False') {
+		start_thresh_lower_duration = {{ getConfig('TIMING', 'startThreshLowerDuration') }};
 	}
 
 	$(document).ready(function () {
@@ -495,7 +495,7 @@
 
 					lapData.append('<td>' + lap_index + '</td>');
 					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('GENERAL', 'timeFormat')|tojson }}) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td>');
 					lap_index++;
 				} else {
 					deleted_lap_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);

@@ -526,7 +526,7 @@ def render_viewDocs():
 
         docPath = folderBase + docfile
 
-        language = RaceContext.serverconfig.get_item('GENERAL', 'currentLanguage')
+        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
         if language:
             translated_path = folderBase + language + '/' + docfile
             if os.path.isfile(translated_path):
@@ -556,7 +556,7 @@ def render_viewImg(imgfile):
 
     imgPath = folderBase + folderImg + imgfile
 
-    language = RaceContext.serverconfig.get_item('GENERAL', 'currentLanguage')
+    language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
     if language:
         translated_path = folderBase + language + '/' + folderImg + imgfile
         if os.path.isfile(translated_path):
@@ -990,7 +990,7 @@ def on_set_exit_at_level(data):
 @catchLogExcWithDBWrapper
 def on_set_start_thresh_lower_amount(data):
     start_thresh_lower_amount = data['start_thresh_lower_amount']
-    RaceContext.serverconfig.set_item('GENERAL', 'startThreshLowerAmount', start_thresh_lower_amount)
+    RaceContext.serverconfig.set_item('TIMING', 'startThreshLowerAmount', start_thresh_lower_amount)
     logger.info("set start_thresh_lower_amount to %s percent" % start_thresh_lower_amount)
     RaceContext.rhui.emit_start_thresh_lower_amount(noself=True)
 
@@ -998,7 +998,7 @@ def on_set_start_thresh_lower_amount(data):
 @catchLogExcWithDBWrapper
 def on_set_start_thresh_lower_duration(data):
     start_thresh_lower_duration = data['start_thresh_lower_duration']
-    RaceContext.serverconfig.set_item('GENERAL', 'startThreshLowerDuration', start_thresh_lower_duration)
+    RaceContext.serverconfig.set_item('TIMING', 'startThreshLowerDuration', start_thresh_lower_duration)
     logger.info("set start_thresh_lower_duration to %s seconds" % start_thresh_lower_duration)
     RaceContext.rhui.emit_start_thresh_lower_duration(noself=True)
 
@@ -1006,7 +1006,7 @@ def on_set_start_thresh_lower_duration(data):
 @catchLogExcWithDBWrapper
 def on_set_language(data):
     '''Set interface language.'''
-    RaceContext.serverconfig.set_item('GENERAL', 'currentLanguage', data['language'])
+    RaceContext.serverconfig.set_item('UI', 'currentLanguage', data['language'])
 
 @SOCKET_IO.on('cap_enter_at_btn')
 @catchLogExcWithDBWrapper
@@ -1678,7 +1678,7 @@ def on_set_min_lap(data):
 @catchLogExcWithDBWrapper
 def on_set_min_lap_behavior(data):
     min_lap_behavior = int(data['min_lap_behavior'])
-    RaceContext.serverconfig.set_item('GENERAL', 'MinLapBehavior', min_lap_behavior)
+    RaceContext.serverconfig.set_item('TIMING', 'MinLapBehavior', min_lap_behavior)
 
     Events.trigger(Evt.MIN_LAP_BEHAVIOR_SET, {
         'min_lap_behavior': min_lap_behavior,
@@ -1946,7 +1946,7 @@ def on_resave_laps(data):
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(lap['lap_time'], float):
-            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RaceContext.serverconfig.get_item('GENERAL', 'timeFormat'))
+            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RaceContext.serverconfig.get_item('UI', 'timeFormat'))
 
         new_racedata['laps'].append({
             'lap_time_stamp': lap['lap_time_stamp'],
@@ -1963,7 +1963,7 @@ def on_resave_laps(data):
     logger.info(message)
 
     # run adaptive calibration
-    if RaceContext.serverconfig.get_item_int('GENERAL', 'calibrationMode'):
+    if RaceContext.serverconfig.get_item_int('TIMING', 'calibrationMode'):
         RaceContext.calibration.auto_calibrate()
 
     # spawn thread for updating results caches
@@ -2121,7 +2121,7 @@ def get_race_elapsed():
 def save_callouts(data):
     # save callouts to Options
     callouts = json.dumps(data['callouts'])
-    RaceContext.serverconfig.set_item('GENERAL', 'voiceCallouts', callouts)
+    RaceContext.serverconfig.set_item('USER', 'voiceCallouts', callouts)
     logger.info('Set all voice callouts')
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 

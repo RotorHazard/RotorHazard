@@ -39,7 +39,7 @@ class Language():
     def __(self, text, domain=''):
         # return translated string
         if not domain:
-            lang = self._racecontext.serverconfig.get_item('GENERAL', 'currentLanguage')
+            lang = self._racecontext.serverconfig.get_item('UI', 'currentLanguage')
 
         if lang:
             if lang in self._Languages:

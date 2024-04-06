@@ -196,13 +196,13 @@
 												if (!lap.deleted) {
 													if (lap_index) {
 														if ('start_behavior' in round.leaderboard.meta && round.leaderboard.meta.start_behavior == 2) {
-															var timestamp = formatTimeMillis(lap.lap_time_stamp - node.laps[0].lap_time_stamp, {{ getOption('timeFormat')|tojson }}) + ' / ' + formatTimeMillis(lap.lap_time_stamp, {{ getConfig('GENERAL', 'timeFormat')|tojson }})
+															var timestamp = formatTimeMillis(lap.lap_time_stamp - node.laps[0].lap_time_stamp, {{ getOption('timeFormat')|tojson }}) + ' / ' + formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														} else {
-															var timestamp = formatTimeMillis(lap.lap_time_stamp, {{ getConfig('GENERAL', 'timeFormat')|tojson }})
+															var timestamp = formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														}
-														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('GENERAL', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
 													} else {
-														tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time, {{ getConfig('GENERAL', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
 													}
 													lap_index++;
 												}

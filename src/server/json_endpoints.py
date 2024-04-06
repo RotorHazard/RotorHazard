@@ -207,7 +207,7 @@ def createBlueprint(RaceContext, serverInfo):
         payload = {
             'start_time_formatted': race.start_time_formatted,
             'nodes': pilotraces,
-            'sort': RaceContext.serverconfig.get_item('GENERAL', 'pilotSort'),
+            'sort': RaceContext.serverconfig.get_item('UI', 'pilotSort'),
             'leaderboard': Results.calc_leaderboard(RaceContext, heat_id=heat_id, round_id=round_id)
         }
 

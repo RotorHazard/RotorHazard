@@ -854,14 +854,14 @@
 							else {
 								ts_val = lap.lap_time_stamp - curnode_data.laps[0].lap_time_stamp;
 							}
-							local_prepend.text(formatTimeMillis(ts_val, {{ getConfig('GENERAL', 'timeFormat')|tojson }}));
+							local_prepend.text(formatTimeMillis(ts_val, {{ getConfig('UI', 'timeFormat')|tojson }}));
 							if(rotorhazard.display_time_start){
 								local_prepend.append(" / ");
 							}
 						}
 
 						if(rotorhazard.display_time_start) {
-							local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getConfig('GENERAL', 'timeFormat')|tojson }}));
+							local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }}));
 						}
 
 						time_td.prepend(local_prepend);

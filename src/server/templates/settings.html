@@ -1105,7 +1105,7 @@
 			rotorhazard.actions.list.splice(idx, 1);
 			updateActionList();
 			socket.emit('set_config', {
-				section: 'GENERAL',
+				section: 'USER',
 				key: 'actions',
 				value: JSON.stringify(rotorhazard.actions.list)
 			});
@@ -1124,7 +1124,7 @@
 			}
 
 			socket.emit('set_config', {
-				section: 'GENERAL',
+				section: 'USER',
 				key: 'actions',
 				value: JSON.stringify(rotorhazard.actions.list)
 			});
@@ -1836,7 +1836,7 @@
 				<div class="label-block">
 					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
 				</div>
-				<select id="set_calibrationMode" class="set-config" data-section="GENERAL" data-key="calibrationMode">
+				<select id="set_calibrationMode" class="set-config" data-section="TIMING" data-key="calibrationMode">
 					<option value="0">{{ __('Manual') }}</option>
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
@@ -1885,7 +1885,7 @@
 				<div class="label-block">
 					{{ __('Voice Test') }}
 				</div>
-				<input type="text" id="voice_test_text" value="{{ getConfig('GENERAL', 'timerName') }}">
+				<input type="text" id="voice_test_text" value="{{ getConfig('UI', 'timerName') }}">
 				<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
 			</li>
 			<li>
@@ -2246,50 +2246,50 @@
 				<div class="label-block">
 					<label for="set_time_format">{{ __('Time Format') }}</label>
 				</div>
-				<input type="text" id="set_time_format" class="set-config" data-section="GENERAL" data-key="timeFormat" value="{{ getConfig('GENERAL', 'timeFormat') }}">
+				<input type="text" id="set_time_format" class="set-config" data-section="UI" data-key="timeFormat" value="{{ getConfig('UI', 'timeFormat') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_time_format_phonetic">{{ __('Phonetic Time Format') }}</label>
 				</div>
-				<input type="text" id="set_time_format_phonetic" class="set-config" data-section="GENERAL" data-key="timeFormatPhonetic" value="{{ getConfig('GENERAL', 'timeFormatPhonetic') }}">
+				<input type="text" id="set_time_format_phonetic" class="set-config" data-section="UI" data-key="timeFormatPhonetic" value="{{ getConfig('UI', 'timeFormatPhonetic') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_timer_name">{{ __('Timer Name') }}</label>
 				</div>
-				<input type="text" id="set_timer_name" class="set-config" data-section="GENERAL" data-key="timerName" value="{{ getConfig('GENERAL', 'timerName') }}">
+				<input type="text" id="set_timer_name" class="set-config" data-section="UI" data-key="timerName" value="{{ getConfig('UI', 'timerName') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_timer_logo">{{ __('Timer Logo') }}</label>
 					<p class="desc">{{ __('File path relative to RotorHazard/server/static/user') }}</p>
 				</div>
-				<input type="text" id="set_timer_logo" class="set-config" data-section="GENERAL" data-key="timerLogo" value="{{ getConfig('GENERAL', 'timerLogo') }}" placeholder="group-logo.png">
+				<input type="text" id="set_timer_logo" class="set-config" data-section="UI" data-key="timerLogo" value="{{ getConfig('UI', 'timerLogo') }}" placeholder="group-logo.png">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_primary" class="hue-control" data-section="GENERAL" data-key="hue_0" value="{{ getConfig('GENERAL', 'hue_0') }}" min="0" max="359">
+				<input type="range" id="set_hue_primary" class="hue-control" data-section="UI" data-key="hue_0" value="{{ getConfig('UI', 'hue_0') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_primary">{{ __('Primary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_primary" class="sat-control" data-section="GENERAL" data-key="sat_0" value="{{ getConfig('GENERAL', 'sat_0') }}" min="0" max="100">
+				<input type="range" id="set_sat_primary" class="sat-control" data-section="UI" data-key="sat_0" value="{{ getConfig('UI', 'sat_0') }}" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_secondary">{{ __('Secondary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_secondary" class="hue-control" data-section="GENERAL" data-key="hue_1" value="{{ getConfig('GENERAL', 'hue_1') }}" min="0" max="359">
+				<input type="range" id="set_hue_secondary" class="hue-control" data-section="UI" data-key="hue_1" value="{{ getConfig('UI', 'hue_1') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_secondary">{{ __('Secondary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_secondary" class="sat-control" data-section="GENERAL" data-key="sat_1" value="{{ getConfig('GENERAL', 'sat_1') }}" min="0" max="100">
+				<input type="range" id="set_sat_secondary" class="sat-control" data-section="UI" data-key="sat_1" value="{{ getConfig('UI', 'sat_1') }}" min="0" max="100">
 			</li>
 		</ol>
 

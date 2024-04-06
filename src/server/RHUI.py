@@ -532,7 +532,7 @@ class RHUI():
     def emit_start_thresh_lower_amount(self, **params):
         '''Emits current start_thresh_lower_amount.'''
         emit_payload = {
-            'start_thresh_lower_amount': self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerAmount'),
+            'start_thresh_lower_amount': self._racecontext.serverconfig.get_item_int('TIMING', 'startThreshLowerAmount'),
         }
         if ('nobroadcast' in params):
             emit('start_thresh_lower_amount', emit_payload)
@@ -542,7 +542,7 @@ class RHUI():
     def emit_start_thresh_lower_duration(self, **params):
         '''Emits current start_thresh_lower_duration.'''
         emit_payload = {
-            'start_thresh_lower_duration': self._racecontext.serverconfig.get_item_int('GENERAL', 'startThreshLowerDuration'),
+            'start_thresh_lower_duration': self._racecontext.serverconfig.get_item_int('TIMING', 'startThreshLowerDuration'),
         }
         if ('nobroadcast' in params):
             emit('start_thresh_lower_duration', emit_payload)
@@ -567,7 +567,7 @@ class RHUI():
     def emit_language(self, **params):
         '''Emits race status.'''
         emit_payload = {
-                'language': self._racecontext.serverconfig.get_item('GENERAL', 'currentLanguage'),
+                'language': self._racecontext.serverconfig.get_item('UI', 'currentLanguage'),
                 'languages': self._racecontext.language.getLanguages()
             }
         if ('nobroadcast' in params):
@@ -637,7 +637,7 @@ class RHUI():
     def emit_event_actions(self, **params):
         '''Emits event actions.'''
         emit_payload = {
-            'actions': self._racecontext.serverconfig.get_item('GENERAL', 'actions'),
+            'actions': self._racecontext.serverconfig.get_item('USER', 'actions'),
         }
         if ('nobroadcast' in params):
             emit('event_actions', emit_payload)
@@ -648,7 +648,7 @@ class RHUI():
         '''Emits current minimum lap.'''
         emit_payload = {
             'min_lap': self._racecontext.rhdata.get_optionInt('MinLapSec'),
-            'min_lap_behavior': self._racecontext.serverconfig.get_item_int('GENERAL', 'MinLapBehavior')
+            'min_lap_behavior': self._racecontext.serverconfig.get_item_int('TIMING', 'MinLapBehavior')
         }
         if ('nobroadcast' in params):
             emit('min_lap', emit_payload)
@@ -952,14 +952,14 @@ class RHUI():
 
             pilots_list.append(pilot_data)
 
-            if self._racecontext.serverconfig.get_item('GENERAL', 'pilotSort') == 'callsign':
+            if self._racecontext.serverconfig.get_item('UI', 'pilotSort') == 'callsign':
                 pilots_list.sort(key=lambda x: (x['callsign'].casefold(), x['name'].casefold()))
             else:
                 pilots_list.sort(key=lambda x: (x['name'].casefold(), x['callsign'].casefold()))
 
         emit_payload = {
             'pilots': pilots_list,
-            'pilotSort': self._racecontext.serverconfig.get_item('GENERAL', 'pilotSort'),
+            'pilotSort': self._racecontext.serverconfig.get_item('UI', 'pilotSort'),
             'attributes': attrs
         }
         if ('nobroadcast' in params):
@@ -1032,7 +1032,7 @@ class RHUI():
     def emit_phonetic_data(self, pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, node_index=None, **params):
         '''Emits phonetic data.'''
         raw_time = lap_time
-        phonetic_time = RHUtils.phonetictime_format(lap_time, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormatPhonetic'))
+        phonetic_time = RHUtils.phonetictime_format(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
 
         emit_payload = {
             'lap': lap_id,
@@ -1132,7 +1132,7 @@ class RHUI():
             pilot = self._racecontext.rhdata.get_pilot(split_data.get('pilot_id', RHUtils.PILOT_ID_NONE))
             phonetic_name = (pilot.phonetic or pilot.callsign) if name_callout_flag and pilot else ''
             split_time = split_data.get('split_time')
-            phonetic_time = RHUtils.phonetictime_format(split_time, self._racecontext.serverconfig.get_item('GENERAL', 'timeFormatPhonetic')) \
+            phonetic_time = RHUtils.phonetictime_format(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic')) \
                             if (time_callout_flag and split_time) else None
             split_speed = split_data.get('split_speed')
             phonetic_speed = "{:.1f}".format(split_speed) if  (speed_callout_flag and split_speed) else None
@@ -1210,7 +1210,7 @@ class RHUI():
             self._socket.emit('play_beep_tone', emit_payload)
 
     def emit_callouts(self):
-        callouts = self._racecontext.serverconfig.get_item('GENERAL', 'voiceCallouts')
+        callouts = self._racecontext.serverconfig.get_item('USER', 'voiceCallouts')
         if callouts:
             emit('callouts', json.loads(callouts))
 

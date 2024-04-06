@@ -3255,32 +3255,32 @@ def doReplace(rhapi, text, args, spoken_flag=False):
 
                     # %TOTAL_TIME%
                     text = text.replace('%TOTAL_TIME%', RHUtils.phonetictime_format( \
-                        result['total_time_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
+                        result['total_time_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['total_time'])
 
                     # %TOTAL_TIME_LAPS%
                     text = text.replace('%TOTAL_TIME_LAPS%', RHUtils.phonetictime_format( \
-                        result['total_time_laps_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
+                        result['total_time_laps_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['total_time_laps'])
 
                     # %LAST_LAP%
                     text = text.replace('%LAST_LAP%', RHUtils.phonetictime_format( \
-                        result['last_lap_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
+                        result['last_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['last_lap'])
 
                     # %AVERAGE_LAP%
                     text = text.replace('%AVERAGE_LAP%', RHUtils.phonetictime_format( \
-                        result['average_lap_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
+                        result['average_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['average_lap'])
 
                     # %FASTEST_LAP%
                     text = text.replace('%FASTEST_LAP%', RHUtils.phonetictime_format( \
-                        result['fastest_lap_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
+                        result['fastest_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['fastest_lap'])
 
                     if '%TIME_BEHIND' in text:
                         behind_str = RHUtils.phonetictime_format( \
-                            result['time_behind_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
+                            result['time_behind_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                             if spoken_flag else result['time_behind']
                         # %TIME_BEHIND% : Amount of time behind race leader
                         text = text.replace('%TIME_BEHIND%', behind_str)
@@ -3306,7 +3306,7 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                     # %CONSECUTIVE%
                     if result['consecutives_base'] == int(rhapi.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', RHUtils.phonetictime_format( \
-                            result['consecutives_raw'], rhapi.config.get_item('GENERAL', 'timeFormatPhonetic')) \
+                            result['consecutives_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                             if spoken_flag else result['consecutives'])
                     else:
                         text = text.replace('%CONSECUTIVE%', rhapi.__('None'))

@@ -187,7 +187,7 @@ def calc_leaderboard(racecontext, **params):
     USE_CLASS = None
 
     selected_race_laps = []
-    timeFormat = racecontext.serverconfig.get_item('GENERAL', 'timeFormat')
+    timeFormat = racecontext.serverconfig.get_item('UI', 'timeFormat')
     consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)
 
     if ('current_race' in params):
@@ -740,7 +740,7 @@ def calc_leaderboard(racecontext, **params):
         pilot = rhDataObj.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
         pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
         phonetic_time = RHUtils.phonetictime_format(
-                leaderboard_by_fastest_lap[0]['fastest_lap_raw'], racecontext.serverconfig.get_item('GENERAL', 'timeFormatPhonetic'))
+                leaderboard_by_fastest_lap[0]['fastest_lap_raw'], racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
         fastest_race_lap_data = {}
         fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
         fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
@@ -785,7 +785,7 @@ def calc_team_leaderboard(racecontext):
     '''Calculates and returns team-racing info.'''
     raceObj = raceObj.race
     rhDataObj = racecontext.rhdata
-    time_format = racecontext.serverconfig.get_item('GENERAL', 'timeFormat')
+    time_format = racecontext.serverconfig.get_item('UI', 'timeFormat')
     # Uses current results cache / requires calc_leaderboard to have been run prior
     race_format = raceObj.format
     consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)

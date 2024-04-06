@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="RotorHazard">
 	<meta name="google" content="notranslate">
-	<title>{% block title %}{% endblock %}: {{ getConfig('GENERAL', 'timerName') }}</title>
+	<title>{% block title %}{% endblock %}: {{ getConfig('UI', 'timerName') }}</title>
 
 	<!-- Icons -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/static/image/apple-touch-icon.png">
@@ -48,18 +48,18 @@
 
 	/* CSS variables for interface adjustments */
 	html {
-		--hue_0: {{ getConfig('GENERAL', "hue_0") }};
-		--sat_0: {{ getConfig('GENERAL', "sat_0") }}%;
-		--lum_0_low: {{ getConfig('GENERAL', "lum_0_low") }}%;
-		--lum_0_high: {{ getConfig('GENERAL', "lum_0_high") }}%;
-		--contrast_0_low: {{ getConfig('GENERAL', "contrast_0_low") }};
-		--contrast_0_high: {{ getConfig('GENERAL', "contrast_0_high") }};
-		--hue_1: {{ getConfig('GENERAL', "hue_1") }};
-		--sat_1: {{ getConfig('GENERAL', "sat_1") }}%;
-		--lum_1_low: {{ getConfig('GENERAL', "lum_1_low") }}%;
-		--lum_1_high: {{ getConfig('GENERAL', "lum_1_high") }}%;
-		--contrast_1_low: {{ getConfig('GENERAL', "contrast_1_low") }};
-		--contrast_1_high: {{ getConfig('GENERAL', "contrast_1_high") }};
+		--hue_0: {{ getConfig('UI', "hue_0") }};
+		--sat_0: {{ getConfig('UI', "sat_0") }}%;
+		--lum_0_low: {{ getConfig('UI', "lum_0_low") }}%;
+		--lum_0_high: {{ getConfig('UI', "lum_0_high") }}%;
+		--contrast_0_low: {{ getConfig('UI', "contrast_0_low") }};
+		--contrast_0_high: {{ getConfig('UI', "contrast_0_high") }};
+		--hue_1: {{ getConfig('UI', "hue_1") }};
+		--sat_1: {{ getConfig('UI', "sat_1") }}%;
+		--lum_1_low: {{ getConfig('UI', "lum_1_low") }}%;
+		--lum_1_high: {{ getConfig('UI', "lum_1_high") }}%;
+		--contrast_1_low: {{ getConfig('UI', "contrast_1_low") }};
+		--contrast_1_high: {{ getConfig('UI', "contrast_1_high") }};
 	}
 
 	</style>
@@ -72,7 +72,7 @@
 		<div class="message"></div>
 	</div>
 	<header>
-		<a href="/" id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> {{ getConfig('GENERAL', 'timerName') }}</a>
+		<a href="/" id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> {{ getConfig('UI', 'timerName') }}</a>
 		<nav id="nav-main">
 			<ul>
 				<li><a href="/event">{{ __("Event") }}</a></li>

@@ -45,18 +45,18 @@
 
 	/* CSS variables for interface adjustments */
 	html {
-		--hue_0: {{ getConfig('GENERAL', "hue_0") }};
-		--sat_0: {{ getConfig('GENERAL', "sat_0") }}%;
-		--lum_0_low: {{ getConfig('GENERAL', "lum_0_low") }}%;
-		--lum_0_high: {{ getConfig('GENERAL', "lum_0_high") }}%;
-		--contrast_0_low: {{ getConfig('GENERAL', "contrast_0_low") }};
-		--contrast_0_high: {{ getConfig('GENERAL', "contrast_0_high") }};
-		--hue_1: {{ getConfig('GENERAL', "hue_1") }};
-		--sat_1: {{ getConfig('GENERAL', "sat_1") }}%;
-		--lum_1_low: {{ getConfig('GENERAL', "lum_1_low") }}%;
-		--lum_1_high: {{ getConfig('GENERAL', "lum_1_high") }}%;
-		--contrast_1_low: {{ getConfig('GENERAL', "contrast_1_low") }};
-		--contrast_1_high: {{ getConfig('GENERAL', "contrast_1_high") }};
+		--hue_0: {{ getConfig('UI', "hue_0") }};
+		--sat_0: {{ getConfig('UI', "sat_0") }}%;
+		--lum_0_low: {{ getConfig('UI', "lum_0_low") }}%;
+		--lum_0_high: {{ getConfig('UI', "lum_0_high") }}%;
+		--contrast_0_low: {{ getConfig('UI', "contrast_0_low") }};
+		--contrast_0_high: {{ getConfig('UI', "contrast_0_high") }};
+		--hue_1: {{ getConfig('UI', "hue_1") }};
+		--sat_1: {{ getConfig('UI', "sat_1") }}%;
+		--lum_1_low: {{ getConfig('UI', "lum_1_low") }}%;
+		--lum_1_high: {{ getConfig('UI', "lum_1_high") }}%;
+		--contrast_1_low: {{ getConfig('UI', "contrast_1_low") }};
+		--contrast_1_high: {{ getConfig('UI', "contrast_1_high") }};
 	}
 
 	</style>
@@ -707,7 +707,7 @@
 		<button id="banner-dismiss" class="no-style">×<span class="screen-reader-text"> Close</span></button>
 	</div>
 	<header>
-		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getConfig('GENERAL', 'timerName') }}</a></div>
+		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getConfig('UI', 'timerName') }}</a></div>
 	</header>
 
 	<main class="page-settings">
@@ -984,7 +984,7 @@
 						<div class="label-block">
 							<label for="set_timer_name">{{ __('Timer Name') }}</label>
 						</div>
-						<input type="text" id="set_timer_name" class="set-config" data-section="GENERAL" data-key="timerName" value="{{ getConfig('GENERAL', timerName') }}">
+						<input type="text" id="set_timer_name" class="set-config" data-section="UI" data-key="timerName" value="{{ getConfig('UI', timerName') }}">
 					</li>
 				</ol>
 			</div>

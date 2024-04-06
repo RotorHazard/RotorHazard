@@ -16,6 +16,9 @@ class Config:
         self.config = {
             'SECRETS': {},
             'GENERAL': {},
+            'TIMING': {},
+            'UI': {},
+            'USER': {},
             'HARDWARE': {},
             'LED': {},
             'LOGGING': {},
@@ -42,6 +45,16 @@ class Config:
         self.config['LED']['ledColorNodes'] = ''
         self.config['LED']['ledColorFreqs'] = ''
         self.config['LED']['ledColorMode'] = ''
+        self.config['LED']['seatColors'] = [
+            "#0022ff",  # Blue
+            "#ff5500",  # Orange
+            "#00ff22",  # Green
+            "#ff0055",  # Magenta
+            "#ddff00",  # Yellow
+            "#7700ff",  # Purple
+            "#00ffdd",  # Teal
+            "#aaaaaa",  # White
+        ]
 
         # Legacy Video Receiver Configuration (DEPRECATED)
         self.config['VRX_CONTROL'] = {}
@@ -67,31 +80,35 @@ class Config:
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
         self.config['GENERAL']['SERIAL_PORTS'] = []
 
-        # timer UI options
-        self.config['GENERAL']['timerName'] = "RotorHazard"
-        self.config['GENERAL']['timerLogo'] = ''
-        self.config['GENERAL']['hue_0'] = '212'
-        self.config['GENERAL']['sat_0'] = '55'
-        self.config['GENERAL']['lum_0_low'] = '29.2'
-        self.config['GENERAL']['lum_0_high'] = '46.7'
-        self.config['GENERAL']['contrast_0_low'] = '#ffffff'
-        self.config['GENERAL']['contrast_0_high'] = '#ffffff'
-        self.config['GENERAL']['hue_1'] = '25'
-        self.config['GENERAL']['sat_1'] = '85.3'
-        self.config['GENERAL']['lum_1_low'] = '37.6'
-        self.config['GENERAL']['lum_1_high'] = '54.5'
-        self.config['GENERAL']['contrast_1_low'] = '#ffffff'
-        self.config['GENERAL']['contrast_1_high'] = '#000000'
-        self.config['GENERAL']['currentLanguage'] = ''
-        self.config['GENERAL']['timeFormat'] = '{m}:{s}.{d}'
-        self.config['GENERAL']['timeFormatPhonetic'] = '{m} {s}.{d}'
-        self.config['GENERAL']['startThreshLowerAmount'] = '0'
-        self.config['GENERAL']['startThreshLowerDuration'] = '0'
-        self.config['GENERAL']['voiceCallouts'] = ''
-        self.config['GENERAL']['actions'] = '[]'
-        self.config['GENERAL']['pilotSort'] = ''
-        self.config['GENERAL']['calibrationMode'] = '1'
-        self.config['GENERAL']['MinLapBehavior'] = '0'
+        # UI
+        self.config['UI']['timerName'] = "RotorHazard"
+        self.config['UI']['timerLogo'] = ''
+        self.config['UI']['hue_0'] = '212'
+        self.config['UI']['sat_0'] = '55'
+        self.config['UI']['lum_0_low'] = '29.2'
+        self.config['UI']['lum_0_high'] = '46.7'
+        self.config['UI']['contrast_0_low'] = '#ffffff'
+        self.config['UI']['contrast_0_high'] = '#ffffff'
+        self.config['UI']['hue_1'] = '25'
+        self.config['UI']['sat_1'] = '85.3'
+        self.config['UI']['lum_1_low'] = '37.6'
+        self.config['UI']['lum_1_high'] = '54.5'
+        self.config['UI']['contrast_1_low'] = '#ffffff'
+        self.config['UI']['contrast_1_high'] = '#000000'
+        self.config['UI']['currentLanguage'] = ''
+        self.config['UI']['timeFormat'] = '{m}:{s}.{d}'
+        self.config['UI']['timeFormatPhonetic'] = '{m} {s}.{d}'
+        self.config['UI']['pilotSort'] = 'name'
+
+        # timing
+        self.config['TIMING']['startThreshLowerAmount'] = '0'
+        self.config['TIMING']['startThreshLowerDuration'] = '0'
+        self.config['TIMING']['calibrationMode'] = 1
+        self.config['TIMING']['MinLapBehavior'] = 0
+
+        # user-specified behavior
+        self.config['USER']['voiceCallouts'] = ''
+        self.config['USER']['actions'] = '[]'
 
         # logging defaults
         self.config['LOGGING']['CONSOLE_LEVEL'] = "INFO"
@@ -104,33 +121,34 @@ class Config:
         self.InitResultLogLevel = logging.INFO
 
         self.migrations = [
-            migrateItem('timerName'),
-            migrateItem('timerLogo'),
-            migrateItem('hue_0'),
-            migrateItem('sat_0'),
-            migrateItem('lum_0_low'),
-            migrateItem('lum_0_high'),
-            migrateItem('contrast_0_low'),
-            migrateItem('contrast_0_high'),
-            migrateItem('hue_1'),
-            migrateItem('sat_1'),
-            migrateItem('lum_1_low'),
-            migrateItem('lum_1_high'),
-            migrateItem('contrast_1_low'),
-            migrateItem('contrast_1_high'),
-            migrateItem('currentLanguage'),
-            migrateItem('timeFormat'),
-            migrateItem('timeFormatPhonetic'),
+            migrateItem('timerName', 'UI'),
+            migrateItem('timerLogo', 'UI'),
+            migrateItem('hue_0', 'UI'),
+            migrateItem('sat_0', 'UI'),
+            migrateItem('lum_0_low', 'UI'),
+            migrateItem('lum_0_high', 'UI'),
+            migrateItem('contrast_0_low', 'UI'),
+            migrateItem('contrast_0_high', 'UI'),
+            migrateItem('hue_1', 'UI'),
+            migrateItem('sat_1', 'UI'),
+            migrateItem('lum_1_low', 'UI'),
+            migrateItem('lum_1_high', 'UI'),
+            migrateItem('contrast_1_low', 'UI'),
+            migrateItem('contrast_1_high', 'UI'),
+            migrateItem('currentLanguage', 'UI'),
+            migrateItem('timeFormat', 'UI'),
+            migrateItem('timeFormatPhonetic', 'UI'),
+            migrateItem('pilotSort', 'UI'),
             migrateItem('ledEffects', 'LED'),
             migrateItem('ledBrightness', 'LED'),
             migrateItem('ledColorNodes', 'LED'),
             migrateItem('ledColorFreqs', 'LED'),
-            migrateItem('startThreshLowerAmount'),
-            migrateItem('startThreshLowerDuration'),
-            migrateItem('voiceCallouts'),
-            migrateItem('actions'),
-            migrateItem('pilotSort'),
-            migrateItem('calibrationMode'),
+            migrateItem('startThreshLowerAmount', 'TIMING'),
+            migrateItem('startThreshLowerDuration', 'TIMING'),
+            migrateItem('calibrationMode', 'TIMING'),
+            migrateItem('MinLapBehavior', 'TIMING'),
+            migrateItem('voiceCallouts', 'USER'),
+            migrateItem('actions', 'USER'),
         ]
 
         # override defaults above with config from file
