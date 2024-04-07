@@ -3,8 +3,11 @@ Global configurations
 '''
 import copy
 import logging
-import random
 import json
+import shutil
+import time
+import os
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +82,7 @@ class Config:
         self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
         self.config['GENERAL']['SERIAL_PORTS'] = []
+        self.config['GENERAL']['LAST_MODIFIED_TIME'] = 0
 
         # UI
         self.config['UI']['timerName'] = "RotorHazard"
@@ -172,6 +176,7 @@ class Config:
             self.InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
             self.InitResultLogLevel = logging.ERROR
 
+        self.check_backup_config_file()
         self.migrate_legacy_config()
         self.save_config()
 
@@ -257,8 +262,24 @@ class Config:
         return True
 
     def save_config(self):
+        self.config['GENERAL']['LAST_MODIFIED_TIME'] = int(time.time())
         with open(self.filename, 'w') as f:
             f.write(json.dumps(self.config, indent=2))
+
+    # if config file does not contain 'LAST_MODIFIED_TIME' item or time
+    #  does not match file-modified timestamp then create backup of file
+    def check_backup_config_file(self):
+        try:
+            last_modified_time = self.get_item_int('GENERAL', 'LAST_MODIFIED_TIME')
+            file_modified_time = int(os.path.getmtime(self.filename))
+            if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
+                time_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d_%H%M%S')
+                (fname_str, fext_str) = os.path.splitext(self.filename)
+                bkp_file_name = "{}_bkp_{}{}".format(fname_str, time_str, fext_str)
+                logger.info("Making backup of configuration file, name: {}".format(bkp_file_name))
+                shutil.copy2(self.filename, bkp_file_name)
+        except Exception as ex:
+                logger.warning("Error in 'check_backup_config_file()':  {}".format(ex))
 
     def get_sharable_config(self):
         sharable_config = copy.deepcopy(self.config)
