@@ -499,9 +499,15 @@ class RHRace():
             heat = self._racecontext.rhdata.get_heat(self.current_heat)
 
             # Clear caches
-            self._racecontext.rhdata.clear_results_heat(self.current_heat)
-            self._racecontext.rhdata.clear_results_raceClass(heat.class_id)
-            self._racecontext.rhdata.clear_results_event()
+            heat_result = self._racecontext.rhdata.get_results_heat(self.current_heat)
+            if heat.class_id:
+                class_result = self._racecontext.rhdata.get_results_raceClass(heat.class_id)
+            event_result = self._racecontext.rhdata.get_results_event()
+
+            token = monotonic()
+            self._racecontext.rhdata.clear_results_heat(self.current_heat, token)
+            self._racecontext.rhdata.clear_results_raceClass(heat.class_id, token)
+            self._racecontext.rhdata.clear_results_event(token)
 
             # Get the last saved round for the current heat
             max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
@@ -555,6 +561,16 @@ class RHRace():
 
             logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
 
+            self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
+                Results.build_incremental(self._racecontext.rhdata, self, heat, heat_result))
+
+            if heat.class_id:
+                self._racecontext.rhdata.set_results_heat(heat, token,
+                    Results.build_incremental(self._racecontext.rhdata, self, heat, class_result))
+
+            self._racecontext.rhdata.set_results_event(token,
+                Results.build_incremental(self._racecontext.rhdata, self, heat, event_result))
+
             self.discard_laps(saved=True) # Also clear the current laps
 
             next_heat = self._racecontext.rhdata.get_next_heat_id(heat)
@@ -562,14 +578,13 @@ class RHRace():
                 self.set_heat(next_heat)
 
             # spawn thread for updating results caches
-            cache_params = {
-                'race_id': new_race.id,
-                'heat_id': new_race.heat_id,
-                'round_id': new_race.round_id,
-            }
-            gevent.spawn(self.build_atomic_result_caches, cache_params)
+            gevent.spawn(self.rebuild_page_cache)
 
             self._racecontext.rhui.emit_race_saved(new_race, race_data)
+
+    def rebuild_page_cache(self):
+        self._racecontext.pagecache.set_valid(False)
+        self._racecontext.rhui.emit_result_data()
 
     @catchLogExceptionsWrapper
     def build_atomic_result_caches(self, params):
