@@ -270,14 +270,15 @@ class Config:
     #  does not match file-modified timestamp then create backup of file
     def check_backup_config_file(self):
         try:
-            last_modified_time = self.get_item_int('GENERAL', 'LAST_MODIFIED_TIME')
-            file_modified_time = int(os.path.getmtime(self.filename))
-            if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
-                time_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d_%H%M%S')
-                (fname_str, fext_str) = os.path.splitext(self.filename)
-                bkp_file_name = "{}_bkp_{}{}".format(fname_str, time_str, fext_str)
-                logger.info("Making backup of configuration file, name: {}".format(bkp_file_name))
-                shutil.copy2(self.filename, bkp_file_name)
+            if os.path.exists(self.filename):
+                last_modified_time = self.get_item_int('GENERAL', 'LAST_MODIFIED_TIME')
+                file_modified_time = int(os.path.getmtime(self.filename))
+                if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
+                    time_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d_%H%M%S')
+                    (fname_str, fext_str) = os.path.splitext(self.filename)
+                    bkp_file_name = "{}_bkp_{}{}".format(fname_str, time_str, fext_str)
+                    logger.info("Making backup of configuration file, name: {}".format(bkp_file_name))
+                    shutil.copy2(self.filename, bkp_file_name)
         except Exception as ex:
                 logger.warning("Error in 'check_backup_config_file()':  {}".format(ex))
 
