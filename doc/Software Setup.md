@@ -150,14 +150,17 @@ cd ~/RotorHazard/src/server
 pip install -r requirements.txt
 ```
 
-### 8. Setup Config File
-In the "src/server" directory, use the following command to copy the *config-dist.json* file to *config.json*:
+### 8. Configuration File
+When the RotorHazard server is run for the first time, it will create (in the "src/server" directory) a "config.json" file.  The file will contain default values, including these:
 ```
-cp config-dist.json config.json
+"ADMIN_USERNAME": "admin",
+"ADMIN_PASSWORD": "rotorhazard"
 ```
-Enter the command `nano config.json` to edit the *config.json* file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. These are the login credentials you will need to enter (in the browser popup window) to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages). Then save and exit the editor (CTRL-X, Y, ENTER).
+These are the login credentials you will need to enter in (to the browser popup window) to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages).
 
-Note that the contents of the *config.json* file must in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+The "config.json" file may be edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running (otherwise the changes will be overwritten). When the server starts up, if it detects that the "config.json" has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
+
+Note that the contents of the "config.json" file must in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
 ----------------------------------------------------------------------------
 
@@ -247,7 +250,7 @@ The firmware for the RotorHazard nodes will need to be installed (or updated). T
 For Arduino-based node boards, see the '[src/node/readme_Arduino.md](../src/node/readme_Arduino.md)' file for more information and instructions for installing the node firmware code.
 
 For the S32_BPill board, the recommended method for installing the currently-released node firmware is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI.<br>
-The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file for the flash-update to succeed (see instructions above).<br>
+The "dtoverlay=miniuart-bt" line needs to have been added to the 'boot' _config.txt_ file for the flash-update to succeed (see instructions above).<br>
 Note that the flash-update steps described in '[src/node/readme_S32_BPill.md](../src/node/readme_S32_BPill.md)' are for developers who wish to build the S32_BPill node firmware from the source code.
 
 The node-code version may be viewed in the Server Log, and via the "About RotorHazard" item in the drop-down menu.
@@ -283,9 +286,7 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is among the libraries installed via the `pip install -r requirements.txt` command.
 
-The `LED_COUNT` value must be set in the `src/server/config.json` file; other LED configuration options will attempt to use reasonable defaults.
-
-See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings. The following items may be set:
+The `LED_COUNT` value must be set in the `src/server/config.json` file (which must only be edited while the RotorHazard server is not running). The following items may be configured:
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
 LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)

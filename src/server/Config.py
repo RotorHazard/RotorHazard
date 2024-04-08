@@ -70,6 +70,8 @@ class Config:
 
         # other default configurations
         self.config['GENERAL']['HTTP_PORT'] = 5000
+        self.config['GENERAL']['ADMIN_USERNAME'] = 'admin'
+        self.config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
         self.config['GENERAL']['SECONDARIES'] = []
         self.config['GENERAL']['SECONDARY_TIMEOUT'] = 300  # seconds
         self.config['GENERAL']['DEBUG'] = False
@@ -170,7 +172,7 @@ class Config:
         except IOError:
             self.config_file_status = 0
             self.InitResultStr = "No configuration file found, using defaults"
-            self.InitResultLogLevel = logging.WARN
+            self.InitResultLogLevel = logging.INFO
         except ValueError as ex:
             self.config_file_status = -1
             self.InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)

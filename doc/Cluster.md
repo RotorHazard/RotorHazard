@@ -42,6 +42,8 @@ Additional options may be configured, for example:
 * "recEventsFlag": Set 'true' to propogate timer events from primary (default 'false' for "split" timer, 'true' for "mirror" timer).
 * "SECONDARY_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
+*Note:* The `src/server/config.json` file must only be edited while the RotorHazard server is not running (otherwise the changes will be overwritten).
+
 On the secondary timer, no configuration changes are needed. It may be necessary to log in to the web interface on the secondary timer and perform tuning adjustments.
 
 To enable the announcement of split times, see the "*Secondary/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a secondary timer connects and disconnects, select the "*Secondary Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
