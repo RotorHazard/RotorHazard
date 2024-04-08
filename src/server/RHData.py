@@ -77,6 +77,7 @@ class RHData():
         # Creates tables from database classes/models
         try:
             Database.initialize()
+            Database.create_db_all()
             self.reset_all(nofill) # Fill with defaults
             return True
         except Exception as ex:

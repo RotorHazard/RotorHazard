@@ -413,6 +413,8 @@ def initialize(db_uri=None):
     DB_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, \
                                              bind=DB_engine, expire_on_commit=False))
     Base.query = DB_session.query_property()
+
+def create_db_all():
     Base.metadata.create_all(bind=DB_engine)
 
 def close_database():

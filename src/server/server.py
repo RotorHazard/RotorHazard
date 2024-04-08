@@ -3152,9 +3152,12 @@ with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connect
     db_inited_flag = False
     if not os.path.exists(DB_FILE_NAME):
         logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
+        Database.create_db_all()
         db_init()
         db_inited_flag = True
         RaceContext.rhdata.primeCache() # Ready the Options cache
+    else:
+        Database.create_db_all()
 
     # check if DB file owned by 'root' and change owner to 'pi' user if so
     if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
