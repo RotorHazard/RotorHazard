@@ -812,6 +812,10 @@ def build_incremental(rhDataObj, race, heat, source_result):
                             'points': item['points'] + lb_line['points'] if lb_line.get('points') else 0,
                         }
 
+                        # average lap
+                        if race_result_updates['laps']:
+                            race_result_updates['average_lap_raw'] = race_result_updates['total_time_laps_raw'] / race_result_updates['laps']
+
                         # fastest lap & source
                         if lb_line['fastest_lap_raw'] < item['fastest_lap_raw']:
                             race_result_updates['fastest_lap_raw'] = lb_line['fastest_lap_raw']
@@ -824,6 +828,7 @@ def build_incremental(rhDataObj, race, heat, source_result):
                         if lb_line['consecutives_base'] > item['consecutives_base'] or \
                             ( lb_line['consecutives_base'] == item['consecutives_base'] and
                             lb_line['consecutives_raw'] < item['consecutives_raw']):
+                            race_result_updates['consecutives_base'] = lb_line['consecutives_base']
                             race_result_updates['consecutives_raw'] = lb_line['consecutives_raw']
                             race_result_updates['consecutive_lap_start'] = lb_line['consecutive_lap_start']
                             race_result_updates['consecutives_source'] = {
