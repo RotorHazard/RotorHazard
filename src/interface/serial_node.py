@@ -229,7 +229,7 @@ class SerialNode(Node):
 
 def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     nodes = []
-    config_ser_ports = getattr(config, 'SERIAL_PORTS', [])
+    config_ser_ports = config.get_item('GENERAL', 'SERIAL_PORTS')
     if isS32BPillFlag and len(config_ser_ports) == 0:
         try:    # if "/dev/ttyAMA0" exist then use it, otherwise use "/dev/serial0"
             def_port = SYS_DEV_DIR_PATH + (DEF_S32BPILL_SERIAL_PORTS[0] \

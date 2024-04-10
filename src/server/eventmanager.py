@@ -97,6 +97,7 @@ class Evt:
     STARTUP = 'startup'
     SHUTDOWN = 'shutdown'
     OPTION_SET = 'optionSet'
+    CONFIG_SET = 'configSet'
     MESSAGE_STANDARD = 'messageStandard'
     MESSAGE_INTERRUPT = 'messageInterrupt'
     # Event setup

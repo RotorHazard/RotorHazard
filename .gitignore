@@ -15,7 +15,7 @@
 !/src/server/db_bkp/README.md
 
 # Local system configuration
-/src/server/config.json
+/src/server/config*.json
 
 # Run logs
 logs
