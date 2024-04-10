@@ -39,7 +39,7 @@
 
 		socket.on('result_data', function (msg) {
 			function order_boards(primary) {
-				var boards = ['by_race_time', 'by_fastest_lap', 'by_consecutives']
+				var boards = ['by_race_time', 'by_fastest_lap', 'by_fastest_3_laps', 'by_consecutives']
 				boards.sort(function(x,y){ return x == primary ? -1 : y == primary ? 1 : 0; });
 				return boards;
 			}
@@ -118,6 +118,9 @@
 								} else if (boards[i] == 'by_fastest_lap') {
 									class_leaderboard_content.append('<h4>' + __('Fastest Laps') + '</h4>');
 									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', current_class.leaderboard.meta, true));
+								} else if (boards[i] == 'by_fastest_3_laps') {
+									class_leaderboard_content.append('<h4>' + __('Average of the 3 best laps') + '</h4>');
+									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_3_laps, 'by_fastest_3_laps', current_class.leaderboard.meta, true));
 								} else if (boards[i] == 'by_consecutives') {
 									class_leaderboard_content.append('<h4>' + __('Fastest Consecutive Laps') + '</h4>');
 									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', current_class.leaderboard.meta, true));
@@ -243,6 +246,8 @@
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true));
 				event_leaderboard.append('<h3>' + __('Fastest Laps') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta));
+				event_leaderboard.append('<h3>' + __('Average of the 3 best laps') + '</h3>');
+				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_3_laps, 'by_fastest_3_laps', msg.event_leaderboard.meta));
 				event_leaderboard.append('<h3>' + __('Fastest Consecutive Laps') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta));
 				panel_content.append(event_leaderboard);

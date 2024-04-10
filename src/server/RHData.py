@@ -2507,6 +2507,21 @@ class RHData():
             'points_method': None
             })
         self.add_format({
+            'format_name': self.__("Average of the 3 best laps"),
+            'unlimited_time': 0,
+            'race_time_sec': 120,
+            'lap_grace_sec': 30,
+            "staging_fixed_tones": 3,
+            'start_delay_min_ms': 2000,
+            'start_delay_max_ms': 3000,
+            'staging_delay_tones': 0,
+            'number_laps_win': 0,
+            'win_condition': WinCondition.FASTEST_3_LAPS,
+            'team_racing_mode': False,
+            'start_behavior': 0,
+            'points_method': None
+            })
+        self.add_format({
             'format_name': self.__("Fastest Consecutive Laps Qualifier"),
             'unlimited_time': 0,
             'race_time_sec': 120,

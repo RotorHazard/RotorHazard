@@ -471,6 +471,7 @@ def calc_leaderboard(racecontext, **params):
         if result_pilot['laps'] == 0:
             result_pilot['fastest_lap'] = 0 # Add zero if no laps completed
             result_pilot['fastest_lap_source'] = None
+            result_pilot['fastest_3_laps'] = [0, 0, 0, 0] # Last value is average of 3 laps
         else:
             if USE_CURRENT:
                 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
@@ -481,16 +482,16 @@ def calc_leaderboard(racecontext, **params):
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 result_pilot['fastest_lap'] = fast_lap
                 result_pilot['fastest_lap_source'] = None
+                # We dont care about fastest_3_laps in current view
+                result_pilot['fastest_3_laps'] = [0, 0, 0, 0]
             else:
-                fast_lap = None
+                sorted_laps = sorted(result_pilot['pilot_laps'], key=lambda val : val.lap_time)
+                if len(sorted_laps) >= 1:
+                    fast_lap = sorted_laps[0]
+                else:
+                    fast_lap = None
 
-                for lap in result_pilot['pilot_laps']:
-                    if fast_lap:
-                        if lap.lap_time <= fast_lap.lap_time:
-                            fast_lap = lap
-                    else:
-                        fast_lap = lap
-
+                # Get where the best lap was done
                 for race in selected_races:
                     if race.id == fast_lap.race_id:
                         result_pilot['fastest_lap_source'] = {
@@ -501,6 +502,34 @@ def calc_leaderboard(racecontext, **params):
                         break
 
                 result_pilot['fastest_lap'] = fast_lap.lap_time
+
+                # Get the 3 best laps if possible
+                if len(sorted_laps) >= 3:
+                    average = (sorted_laps[0].lap_time + sorted_laps[1].lap_time
+                               + sorted_laps[2].lap_time) / 3
+                    fast_3_laps = [sorted_laps[0].lap_time,
+                                   sorted_laps[1].lap_time,
+                                   sorted_laps[2].lap_time,
+                                   average]
+                elif len(sorted_laps) == 2:
+                    # Only two laps
+                    average = (sorted_laps[0].lap_time +
+                               sorted_laps[1].lap_time) / 2
+                    fast_3_laps = [sorted_laps[0].lap_time,
+                                   sorted_laps[1].lap_time,
+                                   0,
+                                   average]
+                elif len(sorted_laps) == 1:
+                    # Only one lap
+                    average = sorted_laps[0].lap_time
+                    fast_3_laps = [sorted_laps[0].lap_time,
+                                   0,
+                                   0,
+                                   average]
+                else:
+                    # No lap at all
+                    fast_3_laps = [0, 0, 0, 0]
+                result_pilot['fastest_3_laps'] = fast_3_laps
 
         gevent.sleep()
         # Determine number of seconds behind leader
@@ -631,6 +660,9 @@ def calc_leaderboard(racecontext, **params):
         result_pilot['fastest_lap_raw'] = result_pilot['fastest_lap']
         result_pilot['fastest_lap'] = RHUtils.time_format(result_pilot['fastest_lap'], timeFormat)
 
+        result_pilot['fastest_3_laps_raw'] = result_pilot['fastest_3_laps']
+        result_pilot['fastest_3_laps'] = [RHUtils.time_format(lap, timeFormat) for lap in result_pilot['fastest_3_laps_raw']]
+
         result_pilot['time_behind_raw'] = result_pilot['time_behind']
         result_pilot['time_behind'] = RHUtils.time_format(result_pilot['time_behind'], timeFormat)
 
@@ -703,6 +735,30 @@ def calc_leaderboard(racecontext, **params):
         row['position'] = pos
 
     gevent.sleep()
+    # Sort by average of the 3 best times to perform a lap
+    # Ok, let's explain this sort for future generation (or future me :))
+    # We first sort by number of laps in fastest_3_laps_raw because we want to have first the pilots that have 3 laps.
+    # We then sort by average value
+    # And finally by total time
+    leaderboard_by_fastest_3_laps = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+        (4 - len([y for y in x['fastest_3_laps_raw'] if y != 0])) if x['fastest_3_laps_raw'] else float('inf'),
+        x['fastest_3_laps_raw'][3] if x['fastest_3_laps_raw'] and x['fastest_3_laps_raw'][3] > 0 else float('inf'),
+        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time
+    )))
+
+    # determine ranking
+    last_rank = None
+    last_rank_fastest_3_laps = 0
+    for i, row in enumerate(leaderboard_by_fastest_3_laps, start=1):
+        pos = i
+        if last_rank_fastest_3_laps == row['fastest_3_laps_raw']:
+            pos = last_rank
+        last_rank = pos
+        last_rank_fastest_3_laps = row['fastest_3_laps_raw']
+
+        row['position'] = pos
+
+    gevent.sleep()
     # Sort by consecutive laps
     leaderboard_by_consecutives = copy.deepcopy(sorted(leaderboard, key = lambda x: (
         -x['consecutives_base'] if x['consecutives_base'] else 0,
@@ -732,6 +788,7 @@ def calc_leaderboard(racecontext, **params):
     leaderboard_output = {
         'by_race_time': leaderboard_by_race_time,
         'by_fastest_lap': leaderboard_by_fastest_lap,
+        'by_fastest_3_laps': leaderboard_by_fastest_3_laps,
         'by_consecutives': leaderboard_by_consecutives
     }
 
@@ -753,6 +810,8 @@ def calc_leaderboard(racecontext, **params):
             primary_leaderboard = 'by_consecutives'
         elif race_format.win_condition == WinCondition.FASTEST_LAP:
             primary_leaderboard = 'by_fastest_lap'
+        elif race_format.win_condition == WinCondition.FASTEST_3_LAPS:
+            primary_leaderboard = 'by_fastest_3_laps'
         else:
             # WinCondition.NONE
             # WinCondition.MOST_LAPS
@@ -1218,6 +1277,8 @@ def check_win_condition_result(raceObj, rhDataObj, interfaceObj, **kwargs):
             elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
                 return check_win_first_to_x(raceObj, interfaceObj, **kwargs)
             elif race_format.win_condition == WinCondition.FASTEST_LAP:
+                return check_win_fastest_lap(raceObj, **kwargs)
+            elif race_format.win_condition == WinCondition.FASTEST_3_LAPS:
                 return check_win_fastest_lap(raceObj, **kwargs)
             elif race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
                 return check_win_fastest_consecutive(raceObj, consecutivesCount, **kwargs)

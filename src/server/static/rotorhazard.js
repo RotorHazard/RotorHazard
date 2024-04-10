@@ -1016,6 +1016,7 @@ var rotorhazard = {
 		6: 'Most Laps Only with Overtime',
 		2: 'First to X Laps',
 		3: 'Fastest Lap',
+		7: 'Average of the 3 best laps',
 		4: 'Fastest Consecutive Laps',
 		0: 'None',
 	},
@@ -1731,6 +1732,12 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			header_row.append('<th class="source">' + __('Source') + '</th>');
 		}
 	}
+	if (display_type == 'by_fastest_3_laps') {
+		header_row.append('<th class="fast">' + __('Fastest 1') + '</th>');
+		header_row.append('<th class="fast">' + __('Fastest 2') + '</th>');
+		header_row.append('<th class="fast">' + __('Fastest 3') + '</th>');
+		header_row.append('<th class="avg">' + __('Avg.') + '</th>');
+	}
 	if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
@@ -1817,6 +1824,15 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			if (display_type == 'by_fastest_lap') {
 				row.append('<td class="source">'+ source_text +'</td>');
 			}
+		}
+		if (display_type == 'by_fastest_3_laps') {
+			var laps = leaderboard[i].fastest_3_laps;
+                        for (let j = 0; j < 4; j++) {
+                            if (!laps[j] || laps[j] == '0:00.000')
+                                laps[j] = '&#8212;';
+                            el = $('<td class="fast">'+ laps[j] +'</td>');
+			    row.append(el);
+                        }
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
