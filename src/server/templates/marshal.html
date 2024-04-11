@@ -25,15 +25,15 @@
 	var current_race_data = {};
 	var precalc_laps = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
-	var min_lap_behavior = {{ getOption('MinLapBehavior') }};
+	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
 
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
-	if ('{{ getOption('startThreshLowerAmount') }}' != 'False') {
-		start_thresh_lower_amount = {{ getOption('startThreshLowerAmount') }};
+	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
+		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
 	}
-	if ('{{ getOption('startThreshLowerDuration') }}' != 'False') {
-		start_thresh_lower_duration = {{ getOption('startThreshLowerDuration') }};
+	if ('{{ getConfig('TIMING', 'startThreshLowerDuration') }}' != 'False') {
+		start_thresh_lower_duration = {{ getConfig('TIMING', 'startThreshLowerDuration') }};
 	}
 
 	$(document).ready(function () {
@@ -84,13 +84,23 @@
 
 		$(document).on('change', '.set_ui_option', function (event) {
 			var field = $(this).data('field');
+			var section = $(this).data('section');
 			var value = rhui.getFieldVal(this);
 
-			var data = {
-				option: field,
-				value: value
-			};
-			socket.emit('set_option', data);
+			if (section) {
+				var data = {
+					section: section,
+					key: field,
+					value: value
+				};
+				socket.emit('set_config', data);
+			} else {
+				var data = {
+					option: field,
+					value: value
+				};
+				socket.emit('set_option', data);
+			}
 		});
 
 		var graph_canvas = document.getElementById('race-graph');
@@ -485,7 +495,7 @@
 
 					lapData.append('<td>' + lap_index + '</td>');
 					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getOption('timeFormat')|tojson }}) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td>');
 					lap_index++;
 				} else {
 					deleted_lap_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);

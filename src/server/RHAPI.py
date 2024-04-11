@@ -7,8 +7,12 @@ API_VERSION_MINOR = 1
 
 import json
 import inspect
+import copy
+import logging
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
+
+logger = logging.getLogger(__name__)
 
 from FlaskAppObj import APP
 APP.app_context().push()
@@ -33,6 +37,7 @@ class RHAPI():
         self.race = RaceAPI(self._racecontext)
         self.language = LanguageAPI(self._racecontext)
         self.interface = HardwareInterfaceAPI(self._racecontext)
+        self.config = ServerConfigAPI(self._racecontext)
         self.sensors = SensorsAPI(self._racecontext)
         self.eventresults = EventResultsAPI(self._racecontext)
         self.events = EventsAPI(self._racecontext)
@@ -779,6 +784,26 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def option(self, name, default=False, as_int=False):
+        # Deprecation of options migrated to config
+        for item in self._racecontext.serverconfig.migrations:
+            if item.source == name:
+                logger.warning(
+                    "Deprecation: RHAPI.option called for migrated property; use config.get_item('{}', '{}')".format(
+                        item.section, name),
+                    stack_info=True)
+
+                if as_int:
+                    if default is not False:
+                        return self._racecontext.serverconfig.get_item_int(item.section, name, default)
+                    else:
+                        return self._racecontext.serverconfig.get_item_int(item.section, name)
+
+                if default is not False:
+                    return self._racecontext.serverconfig.get_item(item.section, name, default)
+                else:
+                    return self._racecontext.serverconfig.get_item(item.section, name)
+
+
         for setting in self._racecontext.rhui.general_settings:
             if setting.name == name:
                 field = setting.field
@@ -800,6 +825,15 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def option_set(self, name, value):
+        # Deprecation of options migrated to config
+        for item in self._racecontext.serverconfig.migrations:
+            if item.source == name:
+                logger.warning(
+                    "Deprecation: RHAPI.option_set called for migrated property; use config.set_item('{}', '{}')".format(
+                        item.section, name),
+                    stack_info=True)
+                return self._racecontext.serverconfig.set_item(item.section, name, value)
+
         return self._racecontext.rhdata.set_option(name, value)
 
     @callWithDatabaseWrapper
@@ -1138,6 +1172,28 @@ class HardwareInterfaceAPI():
     @property
     def seats(self):
         return self._racecontext.interface.nodes
+
+
+#
+# Server Config
+#
+class ServerConfigAPI():
+    def __init__(self, race_context):
+        self._racecontext = race_context
+
+    @property
+    def config(self):
+        return copy.deepcopy(self._racecontext.serverconfig.config)
+
+    def get_item(self, section, item, as_int=False):
+        if as_int:
+            return self._racecontext.serverconfig.get_item_int(section, item)
+        else:
+            return self._racecontext.serverconfig.get_item(section, item)
+
+
+    def set_item(self, section, item, value):
+        return self._racecontext.serverconfig.set_item(section, item, value)
 
 
 #

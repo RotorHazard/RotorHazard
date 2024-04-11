@@ -116,8 +116,8 @@
 		};
 		populate_audio_settings();
 
-		if ('{{ getOption('ledBrightness') }}' != 'False') {
-			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+		if ('{{ getConfig('LED', 'ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getConfig('LED', 'ledBrightness') }} ));
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
@@ -201,13 +201,23 @@
 
 		$(document).on('change', '.set_ui_option', function (event) {
 			var field = $(this).data('field');
+			var section = $(this).data('section');
 			var value = rhui.getFieldVal(this);
 
-			var data = {
-				option: field,
-				value: value
-			};
-			socket.emit('set_option', data);
+			if (section) {
+				var data = {
+					section: section,
+					key: field,
+					value: value
+				};
+				socket.emit('set_config', data);
+			} else {
+				var data = {
+					option: field,
+					value: value
+				};
+				socket.emit('set_option', data);
+			}
 		});
 
 		socket.on('heartbeat', function (msg) {
@@ -1094,8 +1104,9 @@
 			var idx = $(event.target).data('id');
 			rotorhazard.actions.list.splice(idx, 1);
 			updateActionList();
-			socket.emit('set_option', {
-				option: 'actions',
+			socket.emit('set_config', {
+				section: 'USER',
+				key: 'actions',
 				value: JSON.stringify(rotorhazard.actions.list)
 			});
 		});
@@ -1112,8 +1123,9 @@
 				updateActionList();
 			}
 
-			socket.emit('set_option', {
-				option: 'actions',
+			socket.emit('set_config', {
+				section: 'USER',
+				key: 'actions',
 				value: JSON.stringify(rotorhazard.actions.list)
 			});
 		});
@@ -1161,6 +1173,19 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
+		});
+
+		socket.on('set_config', function (msg) {
+			$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+		});
+
+		$(document).on('change', '.set-config', function (event) {
+			var data = {
+				section: $(this).data('section'),
+				key: $(this).data('key'),
+				value: $(this).val()
+			};
+			socket.emit('set_config', data);
 		});
 
 		$('#set_language').change(function (event) {
@@ -1250,71 +1275,81 @@
 		$.cssNumber.sat_1 = true;
 
 		$('.hue-control').on('input', function (event) {
-			var option = $(this).data('option');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value);
-			var option_index = option.split('_')[1];
-			calcContrasts(option_index);
+			$('html').css('--' + key, value);
+			var key_index = key.split('_')[1];
+			calcContrasts(key_index);
 		});
 
 		$('.hue-control').on('change', function (event) {
-			var option = $(this).data('option');
+			var section = $(this).data('section');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value);
-			var option_index = option.split('_')[1];
-			var contrasts = calcContrasts(option_index);
+
+			$('html').css('--' + key, value);
+			var key_index = key.split('_')[1];
+			var contrasts = calcContrasts(key_index);
 
 			var data = {
-				option: option,
+				section: section,
+				key: key,
 				value: value
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_low',
+				section: section,
+				key: 'contrast_' + key_index + '_low',
 				value: contrasts.low
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_high',
+				section: section,
+				key: 'contrast_' + key_index + '_high',
 				value: contrasts.high
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 		});
 
 		$('.sat-control').on('input', function (event) {
-			var option = $(this).data('option');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value + '%');
-			var option_index = option.split('_')[1];
-			calcContrasts(option_index);
+			$('html').css('--' + key, value + '%');
+			var key_index = key.split('_')[1];
+			calcContrasts(key_index);
 		});
 
 		$('.sat-control').on('change ', function (event) {
-			var option = $(this).data('option');
+			var section = $(this).data('section');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value + '%');
-			var option_index = option.split('_')[1];
-			var contrasts = calcContrasts(option_index);
+
+			$('html').css('--' + key, value + '%');
+			var key_index = key.split('_')[1];
+			var contrasts = calcContrasts(key_index);
 
 			var data = {
-				option: option,
+				section: section,
+				key: key,
 				value: value
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_low',
+				section: section,
+				key: 'contrast_' + key_index + '_low',
 				value: contrasts.low
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_high',
+				section: section,
+				key: 'contrast_' + key_index + '_high',
 				value: contrasts.high
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 		});
 
 		/* LED Controls */
@@ -1801,7 +1836,7 @@
 				<div class="label-block">
 					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
 				</div>
-				<select id="set_calibrationMode" class="set-option" data-option="calibrationMode">
+				<select id="set_calibrationMode" class="set-config" data-section="TIMING" data-key="calibrationMode">
 					<option value="0">{{ __('Manual') }}</option>
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
@@ -1850,7 +1885,7 @@
 				<div class="label-block">
 					{{ __('Voice Test') }}
 				</div>
-				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
+				<input type="text" id="voice_test_text" value="{{ getConfig('UI', 'timerName') }}">
 				<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
 			</li>
 			<li>
@@ -2211,50 +2246,50 @@
 				<div class="label-block">
 					<label for="set_time_format">{{ __('Time Format') }}</label>
 				</div>
-				<input type="text" id="set_time_format" class="set-option" data-option="timeFormat" value="{{ getOption('timeFormat') }}">
+				<input type="text" id="set_time_format" class="set-config" data-section="UI" data-key="timeFormat" value="{{ getConfig('UI', 'timeFormat') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_time_format_phonetic">{{ __('Phonetic Time Format') }}</label>
 				</div>
-				<input type="text" id="set_time_format_phonetic" class="set-option" data-option="timeFormatPhonetic" value="{{ getOption('timeFormatPhonetic') }}">
+				<input type="text" id="set_time_format_phonetic" class="set-config" data-section="UI" data-key="timeFormatPhonetic" value="{{ getConfig('UI', 'timeFormatPhonetic') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_timer_name">{{ __('Timer Name') }}</label>
 				</div>
-				<input type="text" id="set_timer_name" class="set-option" data-option="timerName" value="{{ getOption('timerName') }}">
+				<input type="text" id="set_timer_name" class="set-config" data-section="UI" data-key="timerName" value="{{ getConfig('UI', 'timerName') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_timer_logo">{{ __('Timer Logo') }}</label>
 					<p class="desc">{{ __('File path relative to RotorHazard/server/static/user') }}</p>
 				</div>
-				<input type="text" id="set_timer_logo" class="set-option" data-option="timerLogo" value="{{ getOption('timerLogo') }}" placeholder="group-logo.png">
+				<input type="text" id="set_timer_logo" class="set-config" data-section="UI" data-key="timerLogo" value="{{ getConfig('UI', 'timerLogo') }}" placeholder="group-logo.png">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_primary" class="hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
+				<input type="range" id="set_hue_primary" class="hue-control" data-section="UI" data-key="hue_0" value="{{ getConfig('UI', 'hue_0') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_primary">{{ __('Primary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_primary" class="sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
+				<input type="range" id="set_sat_primary" class="sat-control" data-section="UI" data-key="sat_0" value="{{ getConfig('UI', 'sat_0') }}" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_secondary">{{ __('Secondary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_secondary" class="hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
+				<input type="range" id="set_hue_secondary" class="hue-control" data-section="UI" data-key="hue_1" value="{{ getConfig('UI', 'hue_1') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_secondary">{{ __('Secondary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_secondary" class="sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
+				<input type="range" id="set_sat_secondary" class="sat-control" data-section="UI" data-key="sat_1" value="{{ getConfig('UI', 'sat_1') }}" min="0" max="100">
 			</li>
 		</ol>
 

@@ -4,7 +4,6 @@
 #   https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#led-panel-support
 
 import logging
-import Config
 from eventmanager import Evt
 from led_event_manager import LEDEffect, Color, ColorVal, effect_delay
 import gevent
@@ -64,17 +63,17 @@ def rssiGraph(args):
 
                 panel['draw'].rectangle((barWidth * node.index, point, (barWidth * node.index) + barWidth - 1, panel['height']), fill=color)
 
-        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
+        img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
         setPixels(strip, img)
         strip.show()
 
         gevent.idle()
 
 def getPanelImg(strip):
-    panel_w = Config.LED['LED_COUNT'] // Config.LED['LED_ROWS']
-    panel_h = Config.LED['LED_ROWS']
+    panel_w = args['RHAPI'].config.get_item('LED', 'LED_COUNT') // args['RHAPI'].config.get_itme('LED', 'LED_ROWS')
+    panel_h = args['RHAPI'].config.get_item('LED','LED_ROWS')
 
-    if Config.LED['PANEL_ROTATE'] % 2:
+    if args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE') % 2:
         width = panel_h
         height = panel_w
     else:
@@ -97,7 +96,7 @@ def setPixels(strip, img):
                 return
 
             c = col
-            if Config.LED['INVERTED_PANEL_ROWS']:
+            if args['RHAPI'].config.get_item('LED', 'INVERTED_PANEL_ROWS'):
                 if row % 2 == 0:
                     c = 15 - col
 

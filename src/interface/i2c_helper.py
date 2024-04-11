@@ -53,6 +53,6 @@ class I2CBus(object):
 
 
 def create(config):
-    bus = config.HARDWARE['I2C_BUS']
+    bus = config.get_item('HARDWARE', 'I2C_BUS')
     logger.debug('Starting I2C on bus {0}'.format(bus))
     return I2CBus(bus)

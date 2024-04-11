@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="RotorHazard">
 	<meta name="google" content="notranslate">
-	<title>{% block title %}{% endblock %}: {{ getOption("timerName") }}</title>
+	<title>{% block title %}{% endblock %}: {{ getConfig('UI', 'timerName') }}</title>
 
 	<!-- Icons -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/static/image/apple-touch-icon.png">
@@ -36,18 +36,18 @@
 
 	/* CSS variables for interface adjustments */
 	html {
-		--hue_0: {{ getOption("hue_0") }};
-		--sat_0: {{ getOption("sat_0") }}%;
-		--lum_0_low: {{ getOption("lum_0_low") }}%;
-		--lum_0_high: {{ getOption("lum_0_high") }}%;
-		--contrast_0_low: {{ getOption("contrast_0_low") }};
-		--contrast_0_high: {{ getOption("contrast_0_high") }};
-		--hue_1: {{ getOption("hue_1") }};
-		--sat_1: {{ getOption("sat_1") }}%;
-		--lum_1_low: {{ getOption("lum_1_low") }}%;
-		--lum_1_high: {{ getOption("lum_1_high") }}%;
-		--contrast_1_low: {{ getOption("contrast_1_low") }};
-		--contrast_1_high: {{ getOption("contrast_1_high") }};
+		--hue_0: {{ getConfig('UI', "hue_0") }};
+		--sat_0: {{ getConfig('UI', "sat_0") }}%;
+		--lum_0_low: {{ getConfig('UI', "lum_0_low") }}%;
+		--lum_0_high: {{ getConfig('UI', "lum_0_high") }}%;
+		--contrast_0_low: {{ getConfig('UI', "contrast_0_low") }};
+		--contrast_0_high: {{ getConfig('UI', "contrast_0_high") }};
+		--hue_1: {{ getConfig('UI', "hue_1") }};
+		--sat_1: {{ getConfig('UI', "sat_1") }}%;
+		--lum_1_low: {{ getConfig('UI', "lum_1_low") }}%;
+		--lum_1_high: {{ getConfig('UI', "lum_1_high") }}%;
+		--contrast_1_low: {{ getConfig('UI', "contrast_1_low") }};
+		--contrast_1_high: {{ getConfig('UI', "contrast_1_high") }};
 
 		--pilot_color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
 		--contrast_pilot_color: var(--contrast_0_low);

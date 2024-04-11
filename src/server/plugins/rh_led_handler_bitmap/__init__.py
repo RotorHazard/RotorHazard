@@ -4,7 +4,6 @@
 #   https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#led-panel-support
 
 import logging
-import Config
 from eventmanager import Evt
 from led_event_manager import LEDEffect, Color, effect_delay
 import gevent
@@ -31,7 +30,7 @@ def showBitmap(args):
                     return
 
                 c = col
-                if Config.LED['INVERTED_PANEL_ROWS']:
+                if args['RHAPI'].config.get_item('LED', 'INVERTED_PANEL_ROWS'):
                     if row % 2 == 0:
                         c = (panel_w - 1) - col
 
@@ -45,10 +44,10 @@ def showBitmap(args):
             img = Image.open(bitmap['image'])
             delay = bitmap['delay']
 
-            panel_w = Config.LED['LED_COUNT'] // Config.LED['LED_ROWS']
-            panel_h = Config.LED['LED_ROWS']
+            panel_w = args['RHAPI'].config.get_item('LED', 'LED_COUNT') // args['RHAPI'].config.get_item('LED', 'LED_ROWS')
+            panel_h = args['RHAPI'].config.get_item('LED', 'LED_ROWS')
 
-            if Config.LED['PANEL_ROTATE'] % 2:
+            if args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE') % 2:
                 output_w = panel_h
                 output_h = panel_w
             else:
@@ -69,7 +68,7 @@ def showBitmap(args):
             pad_left = int((output_w - size[0]) / 2) 
             pad_top = int((output_h - size[1]) / 2)
             output_img.paste(img, (pad_left, pad_top))
-            output_img = output_img.rotate(90 * Config.LED['PANEL_ROTATE'], expand=True)
+            output_img = output_img.rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
 
             setPixels(output_img, panel_w)
             strip.show()

@@ -36,7 +36,7 @@ class EventActions:
         return self.eventActionsList
 
     def loadActions(self, _args=None):
-        actionSetting = self._racecontext.rhdata.get_option('actions')
+        actionSetting = self._racecontext.serverconfig.get_item('USER', 'actions')
         if actionSetting:
             try:
                 self.eventActionsList = json.loads(actionSetting)
@@ -48,7 +48,7 @@ class EventActions:
     def addEventAction(self, event, effect, text):
         item = { 'event': event, 'effect': effect, 'text': text }
         self.eventActionsList.append(item)
-        self._racecontext.rhdata.set_option('actions', json.dumps(self.eventActionsList))
+        self._racecontext.serverconfig.set_item('USER', 'actions', json.dumps(self.eventActionsList))
 
     def containsAction(self, event):
         for item in self.eventActionsList:

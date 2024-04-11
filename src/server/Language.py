@@ -12,8 +12,8 @@ class Language():
 
     Languages = {}
 
-    def __init__(self, RHData):
-        self._RHData = RHData
+    def __init__(self, racecontext):
+        self._racecontext = racecontext
 
         self._InitResultStr = None
         self._InitResultLogLevel = logging.INFO
@@ -39,7 +39,7 @@ class Language():
     def __(self, text, domain=''):
         # return translated string
         if not domain:
-            lang = self._RHData.get_option('currentLanguage')
+            lang = self._racecontext.serverconfig.get_item('UI', 'currentLanguage')
 
         if lang:
             if lang in self._Languages:

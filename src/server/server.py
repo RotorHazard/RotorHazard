@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.1.0-dev.9" # Public release version code
-SERVER_API = 43 # Server API version
+SERVER_API = 44 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -73,8 +73,6 @@ import socket
 import random
 import string
 import json
-
-import Config
 
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
 
@@ -193,7 +191,7 @@ RaceContext.rhdata = RHData.RHData(Events, RaceContext, SERVER_API, DB_FILE_NAME
 
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
 
-RaceContext.language = Language.Language(RaceContext.rhdata) # initialize language
+RaceContext.language = Language.Language(RaceContext) # initialize language
 __ = RaceContext.language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
 
@@ -526,7 +524,7 @@ def render_viewDocs():
 
         docPath = folderBase + docfile
 
-        language = RaceContext.rhdata.get_option("currentLanguage")
+        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
         if language:
             translated_path = folderBase + language + '/' + docfile
             if os.path.isfile(translated_path):
@@ -537,7 +535,7 @@ def render_viewDocs():
 
         return templating.render_template('viewdocs.html',
             serverInfo=RaceContext.serverstate.template_info_dict,
-            getOption=RaceContext.rhdata.get_option,
+            getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item,
             __=__,
             doc=doc
             )
@@ -556,7 +554,7 @@ def render_viewImg(imgfile):
 
     imgPath = folderBase + folderImg + imgfile
 
-    language = RaceContext.rhdata.get_option("currentLanguage")
+    language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
     if language:
         translated_path = folderBase + language + '/' + folderImg + imgfile
         if os.path.isfile(translated_path):
@@ -990,7 +988,7 @@ def on_set_exit_at_level(data):
 @catchLogExcWithDBWrapper
 def on_set_start_thresh_lower_amount(data):
     start_thresh_lower_amount = data['start_thresh_lower_amount']
-    RaceContext.rhdata.set_option("startThreshLowerAmount", start_thresh_lower_amount)
+    RaceContext.serverconfig.set_item('TIMING', 'startThreshLowerAmount', start_thresh_lower_amount)
     logger.info("set start_thresh_lower_amount to %s percent" % start_thresh_lower_amount)
     RaceContext.rhui.emit_start_thresh_lower_amount(noself=True)
 
@@ -998,7 +996,7 @@ def on_set_start_thresh_lower_amount(data):
 @catchLogExcWithDBWrapper
 def on_set_start_thresh_lower_duration(data):
     start_thresh_lower_duration = data['start_thresh_lower_duration']
-    RaceContext.rhdata.set_option("startThreshLowerDuration", start_thresh_lower_duration)
+    RaceContext.serverconfig.set_item('TIMING', 'startThreshLowerDuration', start_thresh_lower_duration)
     logger.info("set start_thresh_lower_duration to %s seconds" % start_thresh_lower_duration)
     RaceContext.rhui.emit_start_thresh_lower_duration(noself=True)
 
@@ -1006,7 +1004,7 @@ def on_set_start_thresh_lower_duration(data):
 @catchLogExcWithDBWrapper
 def on_set_language(data):
     '''Set interface language.'''
-    RaceContext.rhdata.set_option('currentLanguage', data['language'])
+    RaceContext.serverconfig.set_item('UI', 'currentLanguage', data['language'])
 
 @SOCKET_IO.on('cap_enter_at_btn')
 @catchLogExcWithDBWrapper
@@ -1678,7 +1676,7 @@ def on_set_min_lap(data):
 @catchLogExcWithDBWrapper
 def on_set_min_lap_behavior(data):
     min_lap_behavior = int(data['min_lap_behavior'])
-    RaceContext.rhdata.set_option("MinLapBehavior", min_lap_behavior)
+    RaceContext.serverconfig.set_item('TIMING', 'MinLapBehavior', min_lap_behavior)
 
     Events.trigger(Evt.MIN_LAP_BEHAVIOR_SET, {
         'min_lap_behavior': min_lap_behavior,
@@ -1836,14 +1834,14 @@ def on_set_led_effect(data):
         if RaceContext.led_manager.isEnabled():
             RaceContext.led_manager.setEventEffect(data['event'], data['effect'])
 
-        effect_opt = RaceContext.rhdata.get_option('ledEffects')
+        effect_opt = RaceContext.serverconfig.get_item('LED', 'ledEffects')
         if effect_opt:
             effects = json.loads(effect_opt)
         else:
             effects = {}
 
         effects[data['event']] = data['effect']
-        RaceContext.rhdata.set_option('ledEffects', json.dumps(effects))
+        RaceContext.serverconfig.set_item('LED', 'ledEffects', json.dumps(effects))
 
         Events.trigger(Evt.LED_EFFECT_SET, {
             'effect': data['event'],
@@ -1946,7 +1944,7 @@ def on_resave_laps(data):
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(lap['lap_time'], float):
-            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RaceContext.rhdata.get_option('timeFormat'))
+            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RaceContext.serverconfig.get_item('UI', 'timeFormat'))
 
         new_racedata['laps'].append({
             'lap_time_stamp': lap['lap_time_stamp'],
@@ -1963,7 +1961,7 @@ def on_resave_laps(data):
     logger.info(message)
 
     # run adaptive calibration
-    if RaceContext.rhdata.get_optionInt('calibrationMode'):
+    if RaceContext.serverconfig.get_item_int('TIMING', 'calibrationMode'):
         RaceContext.calibration.auto_calibrate()
 
     # spawn thread for updating results caches
@@ -2072,7 +2070,7 @@ def on_LED_brightness(data):
     brightness = data['brightness']
     strip.setBrightness(brightness)
     strip.show()
-    RaceContext.rhdata.set_option("ledBrightness", brightness)
+    RaceContext.serverconfig.set_item('LED', 'ledBrightness', brightness)
     Events.trigger(Evt.LED_BRIGHTNESS_SET, {
         'level': brightness,
         })
@@ -2083,6 +2081,16 @@ def on_set_option(data):
     RaceContext.rhdata.set_option(data['option'], data['value'])
     Events.trigger(Evt.OPTION_SET, {
         'option': data['option'],
+        'value': data['value'],
+        })
+
+@SOCKET_IO.on('set_config')
+@catchLogExceptionsWrapper
+def on_set_config(data):
+    RaceContext.serverconfig.set_item(data['section'], data['key'], data['value'])
+    Events.trigger(Evt.CONFIG_SET, {
+        'section': data['section'],
+        'key': data['key'],
         'value': data['value'],
         })
 
@@ -2111,7 +2119,7 @@ def get_race_elapsed():
 def save_callouts(data):
     # save callouts to Options
     callouts = json.dumps(data['callouts'])
-    RaceContext.rhdata.set_option('voiceCallouts', callouts)
+    RaceContext.serverconfig.set_item('USER', 'voiceCallouts', callouts)
     logger.info('Set all voice callouts')
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 
@@ -2630,7 +2638,7 @@ def init_LED_effects():
         effects[Evt.RACE_STOP] = "bitmapRedX"
 
     # update with DB values (if any)
-    effect_opt = RaceContext.rhdata.get_option('ledEffects')
+    effect_opt = RaceContext.serverconfig.get_item('LED', 'ledEffects')
     if effect_opt:
         effects.update(json.loads(effect_opt))
     # set effects

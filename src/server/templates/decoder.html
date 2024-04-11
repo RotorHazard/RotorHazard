@@ -45,18 +45,18 @@
 
 	/* CSS variables for interface adjustments */
 	html {
-		--hue_0: {{ getOption("hue_0") }};
-		--sat_0: {{ getOption("sat_0") }}%;
-		--lum_0_low: {{ getOption("lum_0_low") }}%;
-		--lum_0_high: {{ getOption("lum_0_high") }}%;
-		--contrast_0_low: {{ getOption("contrast_0_low") }};
-		--contrast_0_high: {{ getOption("contrast_0_high") }};
-		--hue_1: {{ getOption("hue_1") }};
-		--sat_1: {{ getOption("sat_1") }}%;
-		--lum_1_low: {{ getOption("lum_1_low") }}%;
-		--lum_1_high: {{ getOption("lum_1_high") }}%;
-		--contrast_1_low: {{ getOption("contrast_1_low") }};
-		--contrast_1_high: {{ getOption("contrast_1_high") }};
+		--hue_0: {{ getConfig('UI', "hue_0") }};
+		--sat_0: {{ getConfig('UI', "sat_0") }}%;
+		--lum_0_low: {{ getConfig('UI', "lum_0_low") }}%;
+		--lum_0_high: {{ getConfig('UI', "lum_0_high") }}%;
+		--contrast_0_low: {{ getConfig('UI', "contrast_0_low") }};
+		--contrast_0_high: {{ getConfig('UI', "contrast_0_high") }};
+		--hue_1: {{ getConfig('UI', "hue_1") }};
+		--sat_1: {{ getConfig('UI', "sat_1") }}%;
+		--lum_1_low: {{ getConfig('UI', "lum_1_low") }}%;
+		--lum_1_high: {{ getConfig('UI', "lum_1_high") }}%;
+		--contrast_1_low: {{ getConfig('UI', "contrast_1_low") }};
+		--contrast_1_high: {{ getConfig('UI', "contrast_1_high") }};
 	}
 
 	</style>
@@ -115,8 +115,8 @@
 			$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 			$('#indicator_volume_value').html($('#set_indicator_volume').val());
 
-			if ('{{ getOption('ledBrightness') }}' != 'False') {
-				$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+			if ('{{ getConfig('LED', 'ledBrightness') }}' != 'False') {
+				$('#set_led_brightness').val(brightness_logsl.position( {{ getConfig('LED', 'ledBrightness') }} ));
 				$('#led_brightness_value').html($('#set_led_brightness').val());
 			}
 
@@ -539,6 +539,19 @@
 				return false;
 			});
 
+			socket.on('set_config', function (msg) {
+				$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			});
+
+			$(document).on('change', '.set-config', function (event) {
+				var data = {
+					section: $(this).data('section'),
+					key: $(this).data('key'),
+					value: $(this).val()
+				};
+				socket.emit('set_config', data);
+			});
+
 			$('#set_language').change(function (event) {
 				var data = {
 					language: $(this).val()
@@ -694,7 +707,7 @@
 		<button id="banner-dismiss" class="no-style">×<span class="screen-reader-text"> Close</span></button>
 	</div>
 	<header>
-		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getOption("timerName") }}</a></div>
+		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getConfig('UI', 'timerName') }}</a></div>
 	</header>
 
 	<main class="page-settings">
@@ -971,7 +984,7 @@
 						<div class="label-block">
 							<label for="set_timer_name">{{ __('Timer Name') }}</label>
 						</div>
-						<input type="text" id="set_timer_name" class="set-option" data-option="timerName" value="{{ getOption('timerName') }}">
+						<input type="text" id="set_timer_name" class="set-config" data-section="UI" data-key="timerName" value="{{ getConfig('UI', timerName') }}">
 					</li>
 				</ol>
 			</div>

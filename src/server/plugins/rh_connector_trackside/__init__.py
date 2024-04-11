@@ -31,16 +31,16 @@ class TracksideConnector():
     def server_info(self, _arg=None):
         self.enabled = True
         info = {
-            'name': self._rhapi.db.option('timerName'),
-            'logo': self._rhapi.db.option('timerLogo'),
-            'hue_primary': self._rhapi.db.option('hue_0'),
-            'sat_primary': self._rhapi.db.option('sat_0'),
-            'lum_primary': self._rhapi.db.option('lum_0_low'),
-            'contrast_primary': self._rhapi.db.option('contrast_0_low'),
-            'hue_secondary': self._rhapi.db.option('hue_1'),
-            'sat_secondary': self._rhapi.db.option('sat_1'),
-            'lum_secondmary': self._rhapi.db.option('lum_1_low'),
-            'contrast_secondmary': self._rhapi.db.option('contrast_1_low'),
+            'name': self._rhapi.config.get_item('UI', 'timerName'),
+            'logo': self._rhapi.config.get_item('UI', 'timerLogo'),
+            'hue_primary': self._rhapi.config.get_item('UI', 'hue_0'),
+            'sat_primary': self._rhapi.config.get_item('UI', 'sat_0'),
+            'lum_primary': self._rhapi.config.get_item('UI', 'lum_0_low'),
+            'contrast_primary': self._rhapi.config.get_item('UI', 'contrast_0_low'),
+            'hue_secondary': self._rhapi.config.get_item('UI', 'hue_1'),
+            'sat_secondary': self._rhapi.config.get_item('UI', 'sat_1'),
+            'lum_secondmary': self._rhapi.config.get_item('UI', 'lum_1_low'),
+            'contrast_secondmary': self._rhapi.config.get_item('UI', 'contrast_1_low'),
         }
         info.update(self._rhapi.server_info)
         return info
