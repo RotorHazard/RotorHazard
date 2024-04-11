@@ -499,9 +499,15 @@ class RHRace():
             heat = self._racecontext.rhdata.get_heat(self.current_heat)
 
             # Clear caches
-            self._racecontext.rhdata.clear_results_heat(self.current_heat)
-            self._racecontext.rhdata.clear_results_raceClass(heat.class_id)
-            self._racecontext.rhdata.clear_results_event()
+            heat_result = self._racecontext.rhdata.get_results_heat(self.current_heat)
+            if heat.class_id:
+                class_result = self._racecontext.rhdata.get_results_raceClass(heat.class_id)
+            event_result = self._racecontext.rhdata.get_results_event()
+
+            token = monotonic()
+            self._racecontext.rhdata.clear_results_heat(self.current_heat, token)
+            self._racecontext.rhdata.clear_results_raceClass(heat.class_id, token)
+            self._racecontext.rhdata.clear_results_event(token)
 
             # Get the last saved round for the current heat
             max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
@@ -555,6 +561,25 @@ class RHRace():
 
             logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
 
+            if heat_result:
+                self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
+                    Results.build_incremental(self._racecontext, self, heat, heat_result))
+            else:
+                self._racecontext.rhdata.get_results_heat(self.current_heat)
+
+            if heat.class_id:
+                if class_result:
+                    self._racecontext.rhdata.set_results_heat(heat, token,
+                        Results.build_incremental(self._racecontext, self, heat, class_result))
+                else:
+                    self._racecontext.rhdata.get_results_raceClass(heat.class_id)
+
+            if event_result:
+                self._racecontext.rhdata.set_results_event(token,
+                    Results.build_incremental(self._racecontext, self, heat, event_result))
+            else:
+                self._racecontext.rhdata.get_results_event()
+
             self.discard_laps(saved=True) # Also clear the current laps
 
             next_heat = self._racecontext.rhdata.get_next_heat_id(heat)
@@ -562,14 +587,13 @@ class RHRace():
                 self.set_heat(next_heat)
 
             # spawn thread for updating results caches
-            cache_params = {
-                'race_id': new_race.id,
-                'heat_id': new_race.heat_id,
-                'round_id': new_race.round_id,
-            }
-            gevent.spawn(self.build_atomic_result_caches, cache_params)
+            gevent.spawn(self.rebuild_page_cache)
 
             self._racecontext.rhui.emit_race_saved(new_race, race_data)
+
+    def rebuild_page_cache(self):
+        self._racecontext.pagecache.set_valid(False)
+        self._racecontext.rhui.emit_result_data()
 
     @catchLogExceptionsWrapper
     def build_atomic_result_caches(self, params):
@@ -1075,7 +1099,7 @@ class RHRace():
         del_lap_flag = 'deletedLap' in kwargs
 
         # if winner not yet declared or racer lap was deleted then check win condition
-        win_status_dict = Results.check_win_condition_result(self, self._racecontext.rhdata, self._racecontext.interface, **kwargs) \
+        win_status_dict = Results.check_win_condition_result(self._racecontext, **kwargs) \
                           if win_not_decl_flag or del_lap_flag else None
 
         if win_status_dict is not None:
