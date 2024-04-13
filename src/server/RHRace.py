@@ -562,14 +562,14 @@ class RHRace():
             logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
 
             if heat_result:
-                self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
+                self._racecontext.rhdata.set_results_heat(heat, token,
                     Results.build_incremental(self._racecontext, self, heat, heat_result))
             else:
                 self._racecontext.rhdata.get_results_heat(self.current_heat)
 
             if heat.class_id:
                 if class_result:
-                    self._racecontext.rhdata.set_results_heat(heat, token,
+                    self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
                         Results.build_incremental(self._racecontext, self, heat, class_result))
                 else:
                     self._racecontext.rhdata.get_results_raceClass(heat.class_id)
