@@ -27,7 +27,7 @@ class InvokeFuncQueue:
                     self.invokeInProgressFlag = True
                     funct(*args, **kwargs)
                     self.invokeInProgressFlag = False
-                    gevent.sleep()
+                    gevent.sleep(0.001)
                 except (KeyboardInterrupt, SystemExit):
                     self.invokeInProgressFlag = False
                     raise

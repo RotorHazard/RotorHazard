@@ -20,7 +20,7 @@ import FlaskAppObj
 FlaskAppObj.APP.app_context().push()
 
 class PageCache:
-    _CACHE_TIMEOUT = 10
+    _CACHE_TIMEOUT = 100
 
     def __init__(self, RaceContext, Events):
         self._racecontext = RaceContext
@@ -55,15 +55,16 @@ class PageCache:
 
     def check_buildToken(self, timing):
         if self.get_buildToken():
-            while True: # Pause this thread until calculations are completed
-                gevent.idle()
-                if self.get_buildToken() is False:
-                    break
-                elif monotonic() > self.get_buildToken() + self._CACHE_TIMEOUT:
-                    logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
-                    self.set_buildToken(False)
-                    break
-
+            gevent.sleep(0.001)
+            if self.get_buildToken() is True:
+                while True: # Pause this thread until calculations are completed
+                    gevent.sleep(0.25)
+                    if self.get_buildToken() is False:
+                        break
+                    elif monotonic() > self.get_buildToken() + self._CACHE_TIMEOUT:
+                        logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
+                        self.set_buildToken(False)
+                        break
 
     def update_cache(self):
         '''Builds any invalid atomic result caches and creates final output'''
@@ -91,7 +92,7 @@ class PageCache:
                     for race in self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id):    
                         pilotraces = []
                         for pilotrace in self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
-                            gevent.sleep()
+                            gevent.sleep(0.001)
                             laps = []
                             for lap in self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
                                 laps.append({
@@ -135,7 +136,7 @@ class PageCache:
             timing['round_results'] = monotonic()
             logger.debug('T%d: heat_round results assembled in %.3fs', timing['start'], timing['round_results'] - timing['build_start'])
 
-            gevent.sleep()
+            gevent.sleep(0.001)
             heats_by_class = {}
             heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in self._racecontext.rhdata.get_heats_by_class(RHUtils.CLASS_ID_NONE)]
             for race_class in self._racecontext.rhdata.get_raceClasses():
@@ -143,7 +144,7 @@ class PageCache:
 
             timing['by_class'] = monotonic()
 
-            gevent.sleep()
+            gevent.sleep(0.001)
             current_classes = {}
             for race_class in self._racecontext.rhdata.get_raceClasses():
                 results = self._racecontext.rhdata.get_results_raceClass(race_class)
@@ -160,7 +161,7 @@ class PageCache:
             timing['event'] = monotonic()
             logger.debug('T%d: results by class assembled in %.3fs', timing['start'], timing['event'] - timing['by_class'])
 
-            gevent.sleep()
+            gevent.sleep(0.001)
             results = self._racecontext.rhdata.get_results_event()
 
             timing['event_end'] = monotonic()
