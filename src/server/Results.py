@@ -396,20 +396,23 @@ def do_calc_leaderboard(racecontext, **params):
                         pilot_laps = []
                         if len(holeshot_laps):
                             for lap in selected_race_laps:
-                                if lap.pilot_id == pilot.id and \
-                                    lap.id not in holeshot_laps:
+                                if lap.pilot_id == pilot.id and lap.id not in holeshot_laps:
                                     pilot_laps.append(lap)
                         else:
                             pilot_laps = pilot_crossings
 
                     if not USE_ROUND:
-                        results = rhDataObj.get_results_savedRaceMeta(race)
-                        for line in results[results['meta']['primary_leaderboard']]:
-                            if line['pilot_id'] == pilot.id: 
-                                total_points += line['points']
-                                break
-                        if total_points:
-                            meta_points_flag = True 
+                        results = rhDataObj.get_results_savedRaceMeta(race, no_rebuild_flag=True)
+                        if results:
+                            for line in results[results['meta']['primary_leaderboard']]:
+                                if line['pilot_id'] == pilot.id:
+                                    total_points += line['points']
+                                    break
+                            if total_points:
+                                meta_points_flag = True
+                                logger.debug("Successfully completed points generation in 'calc_leaderboard()'")
+                        else:
+                            logger.warning("Cached results not available for points generation in 'calc_leaderboard()'")
 
                 if race_starts > 0:
                     leaderboard.append({
