@@ -3065,7 +3065,7 @@ with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connect
     hardwareHelpers = {}
     for helper in search_modules(suffix='helper'):
         try:
-            hardwareHelpers[helper.__name__] = helper.create(Config)
+            hardwareHelpers[helper.__name__] = helper.create(RaceContext.serverconfig)
         except Exception as ex:
             logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
