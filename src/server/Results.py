@@ -795,13 +795,56 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards, race_format):
 
     return all_leaderboards
 
-def build_incremental(racecontext, race, heat, source_result):
+def build_leaderboard_race(racecontext, heat_id, round_id):
+    return calc_leaderboard(racecontext, heat_id=heat_id, round_id=round_id)
+
+def build_leaderboard_heat(racecontext, heat):
+    leaderboard = {}
+    races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
+    for race in races:
+        race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
+        leaderboard = build_incremental(racecontext, race_result, leaderboard, transient=True)
+
+    leaderboard = format_leaderboard_times(racecontext, leaderboard)
+    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard, False)
+    return leaderboard
+
+def build_leaderboard_class(racecontext, race_class):
+    leaderboard = {}
+    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
+    for heat in heats:
+        heat_result = racecontext.rhdata.get_results_heat(heat)
+        leaderboard = build_incremental(racecontext, heat_result, leaderboard, transient=True)
+
+    leaderboard = format_leaderboard_times(racecontext, leaderboard)
+    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard, False)
+    return leaderboard
+
+def build_leaderboard_event(racecontext):
+    leaderboard = {}
+    all_classes = racecontext.rhdata.get_raceClasses()
+    for race_class in all_classes:
+        class_result = racecontext.rhdata.get_results_raceClass(race_class)
+        leaderboard = build_incremental(racecontext, class_result, leaderboard, transient=True)
+
+    unclassified_heats = racecontext.rhdata.get_heats_by_class(RHUtils.CLASS_ID_NONE)
+    for heat in unclassified_heats:
+        heat_result = racecontext.rhdata.get_results_heat(heat)
+        leaderboard = build_incremental(racecontext, heat_result, leaderboard, transient=True)
+
+    leaderboard = format_leaderboard_times(racecontext, leaderboard)
+    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard, False)
+    return leaderboard
+
+def build_incremental(racecontext, merge_result, source_result, transient=False):
+    if not source_result:
+        return merge_result
+
     output_result = {}
-    race_result = race.get_results()
     for key, value in source_result.items():
         output_result[key] = copy.deepcopy(value)
         if key != 'meta':
-            for lb_line in race_result[key]:
+            for lb_line in merge_result[key]:
                 for idx, item in enumerate(source_result[key]):
                     if item['pilot_id'] == lb_line['pilot_id']:
                         # simple incremental adds
@@ -820,11 +863,7 @@ def build_incremental(racecontext, race, heat, source_result):
                         # fastest lap & source
                         if lb_line['fastest_lap_raw'] < item['fastest_lap_raw']:
                             race_result_updates['fastest_lap_raw'] = lb_line['fastest_lap_raw']
-                            race_result_updates['fastest_lap_source'] = {
-                                'round': racecontext.rhdata.get_max_round(race.current_heat),
-                                'heat': race.current_heat,
-                                'displayname': heat.display_name
-                            }
+                            race_result_updates['fastest_lap_source'] = lb_line['fastest_lap_source']
                         # consecutives & source
                         if lb_line['consecutives_base'] > item['consecutives_base'] or \
                             ( lb_line['consecutives_base'] == item['consecutives_base'] and
@@ -832,11 +871,7 @@ def build_incremental(racecontext, race, heat, source_result):
                             race_result_updates['consecutives_base'] = lb_line['consecutives_base']
                             race_result_updates['consecutives_raw'] = lb_line['consecutives_raw']
                             race_result_updates['consecutive_lap_start'] = lb_line['consecutive_lap_start']
-                            race_result_updates['consecutives_source'] = {
-                                'round': racecontext.rhdata.get_max_round(race.current_heat),
-                                'heat': race.current_heat,
-                                'displayname': heat.display_name
-                            }
+                            race_result_updates['consecutives_source'] = lb_line['consecutives_source']
 
                         output_result[key][idx].update(race_result_updates)
                         break
@@ -844,9 +879,10 @@ def build_incremental(racecontext, race, heat, source_result):
                     # no match, make new line
                     output_result[key].append(lb_line)
 
-            #re-sort lbs
-    output_result = format_leaderboard_times(racecontext, output_result)
-    output_result = sort_and_rank_leaderboards(racecontext, output_result, race.format)
+    #re-sort lbs
+    if not transient:
+        output_result = format_leaderboard_times(racecontext, output_result)
+        output_result = sort_and_rank_leaderboards(racecontext, output_result, race.format)
     return output_result
 
 def calc_team_leaderboard(racecontext):
