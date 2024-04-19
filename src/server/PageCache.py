@@ -185,8 +185,6 @@ class PageCache:
                 self.set_valid(True)
                 self._Events.trigger(Evt.CACHE_READY)
 
-            logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
-
         timing['end'] = monotonic()
 
         logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
