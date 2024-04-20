@@ -353,14 +353,18 @@ def _do_calc_leaderboard(racecontext, **params):
         else:
             race_format = None
 
-        # Map laps to race
+        # Map laps to race and pilot
         race_laps_map = {}
         all_laps = rhDataObj.get_active_savedRaceLaps()
         for lap in all_laps:
             if lap.race_id in race_laps_map:
-                race_laps_map[lap.race_id].append(lap)
+                if lap.pilot_id in race_laps_map[lap.race_id]:
+                    race_laps_map[lap.race_id][lap.pilot_id].append(lap)
+                else:
+                    race_laps_map[lap.race_id][lap.pilot_id] = [lap]
             else:
-                race_laps_map[lap.race_id] = [lap]
+                race_laps_map[lap.race_id] = {}
+                race_laps_map[lap.race_id][lap.pilot_id] = [lap]
 
         for pilot in rhDataObj.get_pilots():
             # find hole shots
@@ -373,9 +377,10 @@ def _do_calc_leaderboard(racecontext, **params):
             total_points = 0
 
             for race in selected_races:
-                if race.id in race_laps_map:
-                    remaining_race_laps = copy.copy(race_laps_map[race.id])
-                else:
+                if race.id not in race_laps_map:
+                    continue
+
+                if pilot.id not in race_laps_map[race.id]:
                     continue
 
                 if race_format:
@@ -386,17 +391,17 @@ def _do_calc_leaderboard(racecontext, **params):
                 pilotraces = selected_pilotraces[race.id]
 
                 if len(pilotraces):
-                    pilot_race_crossings = []
-                    for lap in race_laps_map[race.id]:
-                        if lap.pilot_id == pilot.id:
-                            pilot_race_crossings.append(lap)
-                            remaining_race_laps.remove(lap)
+                    pilot_race_crossings = race_laps_map[race.id][pilot.id]
 
                     for pilotrace in pilotraces:
                         if pilotrace.pilot_id == pilot.id:
                             pilotnode = pilotrace.node_index
                             do_gevent_sleep(0)
 
+                            race_laps = []
+                            for lap in pilot_race_crossings:
+                                if lap.pilotrace_id == pilotrace.id:
+                                    race_laps.append(lap) 
                             race_laps = []
                             for lap in pilot_race_crossings:
                                 if lap.pilotrace_id == pilotrace.id:
@@ -423,7 +428,7 @@ def _do_calc_leaderboard(racecontext, **params):
                                 if lap.id not in holeshot_laps:
                                     pilot_race_laps.append(lap)
                         else:
-                            pilot_race_laps = pilot_crossings
+                            pilot_race_laps = pilot_race_crossings
 
                 if not USE_ROUND:
                     if results:
@@ -437,7 +442,6 @@ def _do_calc_leaderboard(racecontext, **params):
                     else:
                         logger.warning("Cached results not available for points generation in 'calc_leaderboard()'")
 
-                race_laps_map[race.id] = copy.copy(remaining_race_laps)
                 pilot_crossings += pilot_race_crossings
                 pilot_laps += pilot_race_laps
 
