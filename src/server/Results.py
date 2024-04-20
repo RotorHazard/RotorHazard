@@ -361,9 +361,6 @@ def _do_calc_leaderboard(racecontext, **params):
                 race_laps_map[lap.race_id].append(lap)
             else:
                 race_laps_map[lap.race_id] = [lap]
-        for race in selected_races:
-            if race.id not in race_laps_map:
-                race_laps_map[race.id] = []
 
         for pilot in rhDataObj.get_pilots():
             # find hole shots
@@ -376,7 +373,10 @@ def _do_calc_leaderboard(racecontext, **params):
             total_points = 0
 
             for race in selected_races:
-                remaining_race_laps = race_laps_map[race.id]
+                if race.id in race_laps_map:
+                    remaining_race_laps = copy.copy(race_laps_map[race.id])
+                else:
+                    continue
 
                 if race_format:
                     this_race_format = race_format
@@ -437,7 +437,7 @@ def _do_calc_leaderboard(racecontext, **params):
                     else:
                         logger.warning("Cached results not available for points generation in 'calc_leaderboard()'")
 
-                race_laps_map[race.id] = remaining_race_laps
+                race_laps_map[race.id] = copy.copy(remaining_race_laps)
                 pilot_crossings += pilot_race_crossings
                 pilot_laps += pilot_race_laps
 
