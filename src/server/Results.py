@@ -1,7 +1,6 @@
 #
 # Results generators and caching
 #
-
 from typing import List
 from RHUI import UIField
 from eventmanager import Evt
@@ -144,7 +143,7 @@ def build_atomic_results(rhDataObj, params):
 
     # rebuild race result
     if 'race_id' in params:
-        gevent.sleep(0.001)
+        do_gevent_sleep()
         rhDataObj.clear_results_event()
         timing['race'] = monotonic()
         rhDataObj.get_results_savedRaceMeta(race)
@@ -152,7 +151,7 @@ def build_atomic_results(rhDataObj, params):
 
     # rebuild heat summary
     if 'heat_id' in params:
-        gevent.sleep(0.001)
+        do_gevent_sleep()
         rhDataObj.clear_results_event()
         timing['heat'] = monotonic()
         rhDataObj.get_results_heat(heat)
@@ -160,19 +159,19 @@ def build_atomic_results(rhDataObj, params):
 
     # rebuild class summary
     if USE_CLASS:
-        gevent.sleep(0.001)
+        do_gevent_sleep()
         rhDataObj.clear_results_event()
         timing['class'] = monotonic()
         rhDataObj.get_results_raceClass(class_id)
         logger.debug('Class {} results built in {}s'.format(class_id, monotonic() - timing['class']))
 
-        gevent.sleep(0.001)
+        do_gevent_sleep()
         timing['class_rank'] = monotonic()
         rhDataObj.get_ranking_raceClass(class_id)
         logger.debug('Class {} ranking built in {}s'.format(class_id, monotonic() - timing['class_rank']))
 
     # rebuild event summary
-    gevent.sleep(0.001)
+    do_gevent_sleep()
     timing['event'] = monotonic()
     rhDataObj.get_results_event()
     logger.debug('Event results built in {}s'.format(monotonic() - timing['event']))
@@ -282,7 +281,7 @@ def do_calc_leaderboard(racecontext, **params):
             if lap.race_id in racelist:
                 selected_race_laps.append(lap)
 
-    gevent.sleep(0.001)
+    do_gevent_sleep()
 
     leaderboard = []
 
@@ -317,7 +316,7 @@ def do_calc_leaderboard(racecontext, **params):
                 })
     else:
         for pilot in rhDataObj.get_pilots():
-            gevent.sleep(0.001)
+            do_gevent_sleep(0)
             if USE_CURRENT:
                 found_pilot = False
                 node_index = 0
@@ -372,7 +371,7 @@ def do_calc_leaderboard(racecontext, **params):
                         for pilotrace in pilotraces:
                             if pilotrace.pilot_id == pilot.id:
                                 pilotnode = pilotrace.node_index
-                                gevent.sleep(0.001)
+                                do_gevent_sleep(0)
 
                                 race_laps = []
                                 for lap in pilot_crossings:
@@ -392,7 +391,7 @@ def do_calc_leaderboard(racecontext, **params):
                                             holeshot_laps.append(holeshot_lap.id)
                                             race_starts += 1
                                             total_laps -= 1
-
+                        do_gevent_sleep(0)
                         pilot_laps = []
                         if len(holeshot_laps):
                             for lap in selected_race_laps:
@@ -413,6 +412,7 @@ def do_calc_leaderboard(racecontext, **params):
                                 logger.debug("Successfully completed points generation in 'calc_leaderboard()'")
                         else:
                             logger.warning("Cached results not available for points generation in 'calc_leaderboard()'")
+                do_gevent_sleep(0)
 
                 if race_starts > 0:
                     leaderboard.append({
@@ -428,7 +428,7 @@ def do_calc_leaderboard(racecontext, **params):
                         'points': total_points
                     })
 
-    gevent.sleep(0.001)
+    do_gevent_sleep()
     # find leader for each lap in race
     leader_laps = {}
     for chk_pilot in leaderboard:
@@ -442,7 +442,9 @@ def do_calc_leaderboard(racecontext, **params):
                     leader_laps[lnum] = [ chk_pilot, chk_lap ]
 
     for result_pilot in leaderboard:
-        gevent.sleep(0.001)
+        if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+            logger.debug("Calculating leaderboard data for pilot_id {}".format(result_pilot.get('pilot_id', -1)))
+        do_gevent_sleep()
 
         # Get the total race time for each pilot
         if USE_CURRENT:
@@ -465,7 +467,7 @@ def do_calc_leaderboard(racecontext, **params):
             for lap in result_pilot['pilot_laps']:
                 result_pilot['total_time_laps'] += lap.lap_time
 
-        gevent.sleep(0.001)
+        do_gevent_sleep(0)
         # Get the last lap for each pilot (current race only)
         if result_pilot['laps'] == 0:
             result_pilot['last_lap'] = None # Add zero if no laps completed
@@ -475,7 +477,7 @@ def do_calc_leaderboard(racecontext, **params):
             else:
                 result_pilot['last_lap'] = None
 
-        gevent.sleep(0.001)
+        do_gevent_sleep(0)
         # Get the average lap time for each pilot
         if result_pilot['laps'] == 0:
             result_pilot['average_lap'] = 0 # Add zero if no laps completed
@@ -491,7 +493,7 @@ def do_calc_leaderboard(racecontext, **params):
 
             result_pilot['average_lap'] = avg_lap
 
-        gevent.sleep(0.001)
+        do_gevent_sleep(0)
         # Get the fastest lap time for each pilot
         if result_pilot['laps'] == 0:
             result_pilot['fastest_lap'] = 0 # Add zero if no laps completed
@@ -527,7 +529,7 @@ def do_calc_leaderboard(racecontext, **params):
 
                 result_pilot['fastest_lap'] = fast_lap.lap_time
 
-        gevent.sleep(0.001)
+        do_gevent_sleep(0)
         # Determine number of seconds behind leader
         result_pilot['time_behind'] = None
         if USE_CURRENT and result_pilot['laps'] > 0:
@@ -544,7 +546,7 @@ def do_calc_leaderboard(racecontext, **params):
                         if cur_lap_ts > ldr_lap_ts:
                             result_pilot['time_behind'] = (cur_lap_ts - ldr_lap_ts)
 
-        gevent.sleep(0.001)
+        do_gevent_sleep(0)
         # find best consecutive X laps
         all_consecutives = []
 
@@ -556,7 +558,7 @@ def do_calc_leaderboard(racecontext, **params):
 
             if len(thisrace) >= consecutivesCount:
                 for i in range(len(thisrace) - (consecutivesCount - 1)):
-                    gevent.sleep(0.001)
+                    do_gevent_sleep(0)
                     all_consecutives.append({
                         'laps': consecutivesCount,
                         'time': sum([data['lap_time'] for data in thisrace[i : i + consecutivesCount]]),
@@ -581,11 +583,11 @@ def do_calc_leaderboard(racecontext, **params):
                         race_laps[race.id].append(lap)
 
             for race in selected_races:
-                gevent.sleep(0.001)
+                do_gevent_sleep(0)
 
                 if len(race_laps[race.id]) >= consecutivesCount:
                     for i in range(len(race_laps[race.id]) - (consecutivesCount - 1)):
-                        gevent.sleep(0.001)
+                        do_gevent_sleep(0)
                         all_consecutives.append({
                             'laps': consecutivesCount,
                             'time': sum([data.lap_time for data in race_laps[race.id][i : i + consecutivesCount]]),
@@ -599,6 +601,7 @@ def do_calc_leaderboard(racecontext, **params):
                         'race_id': race.id,
                         'lap_index': None
                     })
+            do_gevent_sleep(0)
 
         # Get lowest not-none value (if any)
         if all_consecutives:
@@ -629,7 +632,7 @@ def do_calc_leaderboard(racecontext, **params):
             result_pilot['consecutive_lap_start'] = None
 
 
-    gevent.sleep(0.001)
+    do_gevent_sleep()
 
     # Combine leaderboard
     for result_pilot in leaderboard:
@@ -772,7 +775,7 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards, race_format):
             row['position'] = pos
             row['behind'] = all_leaderboards['by_race_time'][0]['laps'] - row['laps']
 
-    gevent.sleep(0.001)
+    do_gevent_sleep()
     # Sort by fastest laps
     all_leaderboards['by_fastest_lap'] = sorted(all_leaderboards['by_fastest_lap'], key=lambda x: (
         x['fastest_lap_raw'] if x['fastest_lap_raw'] and x['fastest_lap_raw'] > 0 else float('inf'),  # fastest lap
@@ -791,7 +794,7 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards, race_format):
 
         row['position'] = pos
 
-    gevent.sleep(0.001)
+    do_gevent_sleep()
     # Sort by consecutive laps
     all_leaderboards['by_consecutives'] = sorted(all_leaderboards['by_consecutives'], key=lambda x: (
         -x['consecutives_base'] if x['consecutives_base'] else 0,
@@ -2088,3 +2091,8 @@ def get_team_lap_totals_str(results):
     except Exception:
         logger.exception("Error in Results 'get_team_lap_totals_str()'")
     return ''
+
+def do_gevent_sleep(num_secs=0.001):
+    # if all the calls are 'gevent.sleep(0)' then other threads get choked off,
+    #  so some of the calls need to be with a parameter > 0
+    gevent.sleep(num_secs)
