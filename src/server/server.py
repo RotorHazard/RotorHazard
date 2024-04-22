@@ -2610,6 +2610,7 @@ def init_interface_state(startup=False):
     # Reset laps display
     RaceContext.race.reset_current_laps()
 
+@catchLogExceptionsWrapper
 def init_LED_effects():
     # start with defaults
     effects = {
@@ -3195,39 +3196,42 @@ with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connect
 
     # Create LED object with appropriate configuration
     strip = None
-    if RaceContext.serverconfig.get_item('LED', 'LED_COUNT') > 0:
-        led_type = os.environ.get('RH_LEDS', 'ws281x')
-        # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
-        #       otherwise it causes problems when run with no existing DB file
-        led_brightness = RaceContext.serverconfig.get_item('LED', 'ledBrightness')
-        if not RaceContext.serverconfig.get_item('LED', 'SERIAL_CTRLR_PORT'):
-            try:
-                ledModule = importlib.import_module(led_type + '_leds')
-                strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
-            except ImportError:
-                # No hardware LED handler, the OpenCV emulation
+    try:
+        if RaceContext.serverconfig.get_item('LED', 'LED_COUNT') > 0:
+            led_type = os.environ.get('RH_LEDS', 'ws281x')
+            # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
+            #       otherwise it causes problems when run with no existing DB file
+            led_brightness = RaceContext.serverconfig.get_item('LED', 'ledBrightness')
+            if not RaceContext.serverconfig.get_item('LED', 'SERIAL_CTRLR_PORT'):
                 try:
-                    ledModule = importlib.import_module('cv2_leds')
+                    ledModule = importlib.import_module(led_type + '_leds')
                     strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
                 except ImportError:
-                    # No OpenCV emulation, try console output
+                    # No hardware LED handler, the OpenCV emulation
                     try:
-                        ledModule = importlib.import_module('ANSI_leds')
+                        ledModule = importlib.import_module('cv2_leds')
                         strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
                     except ImportError:
-                        ledModule = None
-                        logger.info('LED: disabled (no modules available)')
+                        # No OpenCV emulation, try console output
+                        try:
+                            ledModule = importlib.import_module('ANSI_leds')
+                            strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                        except ImportError:
+                            ledModule = None
+                            logger.info('LED: disabled (no modules available)')
+            else:
+                try:
+                    ledModule = importlib.import_module('ledctrlr_leds')
+                    strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                except Exception as ex:
+                    if "FileNotFound" in str(ex):
+                        logger.error("Serial port not found for LED controller: {}".format(ex))
+                    else:
+                        logger.exception("Error initializing serial LED controller: {}".format(ex))
         else:
-            try:
-                ledModule = importlib.import_module('ledctrlr_leds')
-                strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
-            except Exception as ex:
-                if "FileNotFound" in str(ex):
-                    logger.error("Serial port not found for LED controller: {}".format(ex))
-                else:
-                    logger.exception("Error initializing serial LED controller: {}".format(ex))
-    else:
-        logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
+            logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
+    except:
+        logger.exception("Error configuring LED support")
     if strip:
         # Initialize the library (must be called once before other functions).
         try:
