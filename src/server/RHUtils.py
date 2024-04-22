@@ -161,6 +161,8 @@ def getOsBitSizeStr(prefixStr=None, suffixStr="-bit"):
                 _bitSizeStr = prefixStr + _bitSizeStr
             if suffixStr:
                 _bitSizeStr = _bitSizeStr + suffixStr
+    except FileNotFoundError:
+        logger.debug("Unable to determine bit size in 'getOsBitSizeStr': Invoking 'getconf' not supported")
     except Exception as ex:
         logger.debug("Error in 'getOsBitSizeStr': {}".format(ex))
     return _bitSizeStr
