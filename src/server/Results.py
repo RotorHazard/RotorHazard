@@ -409,7 +409,6 @@ def do_calc_leaderboard(racecontext, **params):
                                     break
                             if total_points:
                                 meta_points_flag = True
-                                logger.debug("Successfully completed points generation in 'calc_leaderboard()'")
                         else:
                             logger.warning("Cached results not available for points generation in 'calc_leaderboard()'")
                 do_gevent_sleep(0)
