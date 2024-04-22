@@ -28,6 +28,7 @@ class PageCache:
         self._cache = {} # Cache of complete results page
         self._buildToken = False # Time of result generation or false if no results are being calculated
         self._valid = False # Whether cache is valid
+        self._inUpdateCacheFlag = False
 
     def get_cache(self):
         if self.get_valid(): # Output existing calculated results
@@ -67,6 +68,33 @@ class PageCache:
                         break
 
     def update_cache(self):
+        dbg_trace_str = ""
+        if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+            dbg_trace_str = RHUtils.getFnTracebackMsgStr("update_cache")
+            logger.debug("Entered 'update_cache()', called from: {}".format(dbg_trace_str))
+            dbg_trace_str = " (called from: {})".format(dbg_trace_str)
+        if self._inUpdateCacheFlag:
+            logger.info("Waiting for previous invocation of 'update_cache()' to finish{}".format(dbg_trace_str))
+            wait_count = 0
+            while True:
+                gevent.sleep(0.05)
+                if not self._inUpdateCacheFlag:
+                    logger.info("Previous invocation of 'update_cache()' finished; continuing{}".format(dbg_trace_str))
+                    break
+                wait_count += 1
+                if wait_count > 6000:
+                    logger.error("Timeout waiting for previous invocation of 'update_cache()' to finish{}".format(dbg_trace_str))
+                    break
+        self._inUpdateCacheFlag = True
+        try:
+            uc_result = self._do_update_cache()
+        finally:
+            self._inUpdateCacheFlag = False
+        if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+            logger.debug("Exiting 'update_cache()'{}".format(dbg_trace_str))
+        return uc_result
+
+    def _do_update_cache(self):
         '''Builds any invalid atomic result caches and creates final output'''
         timing = {
             'start': monotonic()
@@ -189,4 +217,3 @@ class PageCache:
         timing['end'] = monotonic()
 
         logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
-

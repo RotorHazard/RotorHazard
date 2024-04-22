@@ -116,6 +116,11 @@ class RacePointsMethod():
 
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
+    dbg_trace_str = ""
+    if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+        dbg_trace_str = RHUtils.getFnTracebackMsgStr("build_atomic_results")
+        logger.debug("Entered 'build_atomic_results()', called from: {}".format(dbg_trace_str))
+        dbg_trace_str = " (called from: {})".format(dbg_trace_str)
     APP.app_context().push()
     token = monotonic()
     timing = {
@@ -174,32 +179,40 @@ def build_atomic_results(rhDataObj, params):
     do_gevent_sleep()
     timing['event'] = monotonic()
     rhDataObj.get_results_event()
-    logger.debug('Event results built in {}s'.format(monotonic() - timing['event']))
-
-    logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
+    if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+        logger.debug('Event results built in {}s'.format(monotonic() - timing['event']))
+        logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
+        logger.debug("Exiting 'build_atomic_results()'{}".format(dbg_trace_str))
 
 def calc_leaderboard(racecontext, **params):
+    dbg_trace_str = ""
+    if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+        dbg_trace_str = RHUtils.getFnTracebackMsgStr("calc_leaderboard")
+        logger.debug("Entered 'calc_leaderboard()', called from: {}".format(dbg_trace_str))
+        dbg_trace_str = " (called from: {})".format(dbg_trace_str)
     global in_calc_leaderboard_fn_flag
     if in_calc_leaderboard_fn_flag:
-        logger.info("Waiting for previous invocation of 'calc_leaderboard()' to finish")
+        logger.info("Waiting for previous invocation of 'calc_leaderboard()' to finish{}".format(dbg_trace_str))
         wait_count = 0
         while True:
             gevent.sleep(0.05)
             if not in_calc_leaderboard_fn_flag:
-                logger.info("Previous invocation of 'calc_leaderboard()' finished; continuing")
+                logger.info("Previous invocation of 'calc_leaderboard()' finished; continuing{}".format(dbg_trace_str))
                 break
             wait_count += 1
             if wait_count > 6000:
-                logger.error("Timeout waiting for previous invocation of 'calc_leaderboard()' to finish")
+                logger.error("Timeout waiting for previous invocation of 'calc_leaderboard()' to finish{}".format(dbg_trace_str))
                 break
     in_calc_leaderboard_fn_flag = True
     try:
-        lb_result = do_calc_leaderboard(racecontext, **params)
+        lb_result = _do_calc_leaderboard(racecontext, **params)
     finally:
         in_calc_leaderboard_fn_flag = False
+    if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+        logger.debug("Exiting 'calc_leaderboard()'{}".format(dbg_trace_str))
     return lb_result
 
-def do_calc_leaderboard(racecontext, **params):
+def _do_calc_leaderboard(racecontext, **params):
     rhDataObj = racecontext.rhdata
     ''' Generates leaderboards '''
     meta_points_flag = False
