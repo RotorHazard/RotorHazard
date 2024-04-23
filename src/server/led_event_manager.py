@@ -154,6 +154,7 @@ class LEDEventManager:
 
         if event and event in self.events:
             return (self.eventEffects[self.events[event]].handler_fn, self.idleArgs[event])
+        return None
 
 
 class NoLEDManager():
@@ -327,19 +328,25 @@ class LEDEffect():
 
     def effect_runner(self, args):
         try:
-            # run base effect
-            self.handler_fn(args)
+            try:
+                # run base effect
+                self.handler_fn(args)
 
-            # optional delay
-            time_val = args.get('time') or 0
-            gevent.sleep(time_val)
+                # optional delay
+                time_val = args.get('time') or 0
+                gevent.sleep(time_val)
 
-            # run idler
-            if not self.terminate and not args.get('preventIdle'):
-                idler_fn, idler_args = self.idler()
-                idler_fn({**idler_args, '_effect':self})
-        except LEDEffectExit:
-            pass
+                # run idler
+                if callable(self.idler) and not self.terminate and not args.get('preventIdle'):
+                    idler_vals = self.idler()
+                    if type(idler_vals) is tuple:
+                        idler_fn, idler_args = idler_vals
+                        if callable(idler_fn):
+                            idler_fn({**idler_args, '_effect':self})
+            except LEDEffectExit:
+                pass
+        except:
+            logger.exception("Error running LED effect (args: {})".format(args))
 
     def run_effect(self, args, idler):
         self.idler = idler
