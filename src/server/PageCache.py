@@ -20,7 +20,7 @@ import FlaskAppObj
 FlaskAppObj.APP.app_context().push()
 
 class PageCache:
-    _CACHE_TIMEOUT = 10
+    _CACHE_TIMEOUT = 100
 
     def __init__(self, RaceContext, Events):
         self._racecontext = RaceContext
@@ -28,6 +28,7 @@ class PageCache:
         self._cache = {} # Cache of complete results page
         self._buildToken = False # Time of result generation or false if no results are being calculated
         self._valid = False # Whether cache is valid
+        self._inUpdateCacheFlag = False
 
     def get_cache(self):
         if self.get_valid(): # Output existing calculated results
@@ -55,17 +56,45 @@ class PageCache:
 
     def check_buildToken(self, timing):
         if self.get_buildToken():
-            while True: # Pause this thread until calculations are completed
-                gevent.idle()
-                if self.get_buildToken() is False:
-                    break
-                elif monotonic() > self.get_buildToken() + self._CACHE_TIMEOUT:
-                    logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
-                    self.set_buildToken(False)
-                    break
-
+            gevent.sleep(0.001)
+            if self.get_buildToken() is True:
+                while True: # Pause this thread until calculations are completed
+                    gevent.sleep(0.25)
+                    if self.get_buildToken() is False:
+                        break
+                    elif monotonic() > self.get_buildToken() + self._CACHE_TIMEOUT:
+                        logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
+                        self.set_buildToken(False)
+                        break
 
     def update_cache(self):
+        dbg_trace_str = ""
+        if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+            dbg_trace_str = RHUtils.getFnTracebackMsgStr("update_cache")
+            logger.debug("Entered 'update_cache()', called from: {}".format(dbg_trace_str))
+            dbg_trace_str = " (called from: {})".format(dbg_trace_str)
+        if self._inUpdateCacheFlag:
+            logger.info("Waiting for previous invocation of 'update_cache()' to finish{}".format(dbg_trace_str))
+            wait_count = 0
+            while True:
+                gevent.sleep(0.05)
+                if not self._inUpdateCacheFlag:
+                    logger.info("Previous invocation of 'update_cache()' finished; continuing{}".format(dbg_trace_str))
+                    break
+                wait_count += 1
+                if wait_count > 6000:
+                    logger.error("Timeout waiting for previous invocation of 'update_cache()' to finish{}".format(dbg_trace_str))
+                    break
+        self._inUpdateCacheFlag = True
+        try:
+            uc_result = self._do_update_cache()
+        finally:
+            self._inUpdateCacheFlag = False
+        if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+            logger.debug("Exiting 'update_cache()'{}".format(dbg_trace_str))
+        return uc_result
+
+    def _do_update_cache(self):
         '''Builds any invalid atomic result caches and creates final output'''
         timing = {
             'start': monotonic()
@@ -91,7 +120,7 @@ class PageCache:
                     for race in self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id):    
                         pilotraces = []
                         for pilotrace in self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
-                            gevent.sleep()
+                            gevent.sleep(0.001)
                             laps = []
                             for lap in self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
                                 laps.append({
@@ -135,7 +164,7 @@ class PageCache:
             timing['round_results'] = monotonic()
             logger.debug('T%d: heat_round results assembled in %.3fs', timing['start'], timing['round_results'] - timing['build_start'])
 
-            gevent.sleep()
+            gevent.sleep(0.001)
             heats_by_class = {}
             heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in self._racecontext.rhdata.get_heats_by_class(RHUtils.CLASS_ID_NONE)]
             for race_class in self._racecontext.rhdata.get_raceClasses():
@@ -143,7 +172,7 @@ class PageCache:
 
             timing['by_class'] = monotonic()
 
-            gevent.sleep()
+            gevent.sleep(0.001)
             current_classes = {}
             for race_class in self._racecontext.rhdata.get_raceClasses():
                 results = self._racecontext.rhdata.get_results_raceClass(race_class)
@@ -160,7 +189,7 @@ class PageCache:
             timing['event'] = monotonic()
             logger.debug('T%d: results by class assembled in %.3fs', timing['start'], timing['event'] - timing['by_class'])
 
-            gevent.sleep()
+            gevent.sleep(0.001)
             results = self._racecontext.rhdata.get_results_event()
 
             timing['event_end'] = monotonic()
@@ -188,4 +217,3 @@ class PageCache:
         timing['end'] = monotonic()
 
         logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
-
