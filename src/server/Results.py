@@ -826,7 +826,23 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
     output_result = {}
     for key, value in source_result.items():
         output_result[key] = copy.deepcopy(value)
-        if key != 'meta':
+        if key == 'meta':
+            for meta_key, source_meta_value in output_result['meta'].items():
+                if merge_result['meta'][meta_key] != source_meta_value:
+                    if meta_key == 'primary_leaderboard':
+                        output_result['meta']['primary_leaderboard'] = 'by_race_time'
+                    elif meta_key == 'win_condition':
+                        output_result['meta']['win_condition'] = WinCondition.NONE
+                    elif meta_key == 'team_racing_mode':
+                        output_result['meta']['team_racing_mode'] = False
+                    elif meta_key == 'start_behavior':
+                        output_result['meta']['start_behavior'] = None
+                    elif meta_key == 'consecutives_count':
+                        output_result['meta']['consecutives_count'] = racecontext.rhdata.get_optionInt('consecutivesCount', 3)
+                    elif meta_key == 'primary_points':
+                        output_result['meta']['primary_points'] = False
+
+        else:
             for lb_line in merge_result[key]:
                 for idx, item in enumerate(source_result[key]):
                     if item['pilot_id'] == lb_line['pilot_id']:
