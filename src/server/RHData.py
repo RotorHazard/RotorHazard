@@ -2777,7 +2777,7 @@ class RHData():
 
         return race_meta, new_heat
 
-    def get_results_savedRaceMeta(self, savedRaceMeta_or_id):
+    def get_results_savedRaceMeta(self, savedRaceMeta_or_id, no_rebuild_flag=False):
         race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
         if race is False:
@@ -2801,6 +2801,9 @@ class RHData():
             logger.error('Race {} cache has invalid status'.format(race.id))
             token = monotonic()
             self.clear_results_savedRaceMeta(race, token)
+
+        if no_rebuild_flag:
+            return None
 
         # cache rebuild
         logger.debug('Building Race {} (Heat {} Round {}) results'.format(race.id, race.heat_id, race.round_id))

@@ -44,7 +44,7 @@ class Config:
 
         # LED effect configuration
         self.config['LED']['ledEffects'] = ''
-        self.config['LED']['ledBrightness'] = '32'
+        self.config['LED']['ledBrightness'] = 32
         self.config['LED']['ledColorNodes'] = ''
         self.config['LED']['ledColorFreqs'] = ''
         self.config['LED']['ledColorMode'] = ''
