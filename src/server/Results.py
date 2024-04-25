@@ -265,6 +265,7 @@ def _do_calc_leaderboard(racecontext, **params):
                     current_format = None
         else:
             selected_races = rhDataObj.get_savedRaceMetas()
+            logger.warning('No race format selected for generation', stack_info=True)
             current_format = None
 
         selected_races_keyed = {}
@@ -667,27 +668,14 @@ def _do_calc_leaderboard(racecontext, **params):
         result_pilot['consecutives_raw'] = result_pilot['consecutives']
         result_pilot['last_lap_raw'] = result_pilot['last_lap']
 
+        if race_format and (race_format.start_behavior == StartBehavior.STAGGERED):
+            result_pilot['total_time_raw'] = result_pilot['total_time_laps_raw']
+
     leaderboard_output = {
         'by_race_time': copy.deepcopy(leaderboard),
         'by_fastest_lap': copy.deepcopy(leaderboard),
         'by_consecutives': copy.deepcopy(leaderboard)
     }
-
-    leaderboard_output = sort_and_rank_leaderboards(racecontext, leaderboard_output, race_format)
-
-    # fetch pilot/time data for fastest lap in race
-    leaderboard_by_fastest_lap = leaderboard_output['by_fastest_lap']
-    if len(leaderboard_by_fastest_lap) > 0 and leaderboard_by_fastest_lap[0]['laps'] > 0:
-        pilot = rhDataObj.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
-        pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
-        phonetic_time = RHUtils.phonetictime_format(
-                leaderboard_by_fastest_lap[0]['fastest_lap_raw'], racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
-        fastest_race_lap_data = {}
-        fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
-        fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
-                                         leaderboard_by_fastest_lap[0]['fastest_lap']]
-    else:
-        fastest_race_lap_data = None
 
     if race_format:
         if race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
@@ -705,20 +693,39 @@ def _do_calc_leaderboard(racecontext, **params):
             'win_condition': race_format.win_condition,
             'team_racing_mode': race_format.team_racing_mode,
             'start_behavior': race_format.start_behavior,
-            'fastest_race_lap_data': fastest_race_lap_data,
+            'consecutives_count': consecutivesCount,
         }
     else:
+        logger.error('leaderboard has no meta')
         leaderboard_output['meta'] = {
             'primary_leaderboard': 'by_race_time',
             'win_condition': WinCondition.NONE,
             'team_racing_mode': False,
             'start_behavior': StartBehavior.HOLESHOT,
-            'fastest_race_lap_data': fastest_race_lap_data,
+            'consecutives_count': consecutivesCount,
         }
 
-    leaderboard_output['meta']['consecutives_count'] = consecutivesCount
     if meta_points_flag:
         leaderboard_output['meta']['primary_points'] = True
+
+    leaderboard_output = sort_and_rank_leaderboards(racecontext, leaderboard_output)
+
+    if USE_CURRENT:
+        # fetch pilot/time data for fastest lap in race
+        leaderboard_by_fastest_lap = leaderboard_output['by_fastest_lap']
+        if len(leaderboard_by_fastest_lap) > 0 and leaderboard_by_fastest_lap[0]['laps'] > 0:
+            pilot = rhDataObj.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
+            pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
+            phonetic_time = RHUtils.phonetictime_format(
+                    leaderboard_by_fastest_lap[0]['fastest_lap_raw'], racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
+            fastest_race_lap_data = {}
+            fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
+            fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
+                                             leaderboard_by_fastest_lap[0]['fastest_lap']]
+        else:
+            fastest_race_lap_data = None
+
+        leaderboard_output['meta']['fastest_race_lap_data'] = fastest_race_lap_data,
 
     leaderboard_output = format_leaderboard_times(racecontext, leaderboard_output)
 
@@ -739,53 +746,30 @@ def format_leaderboard_times(racecontext, all_leaderboards):
 
     return all_leaderboards
 
-def sort_and_rank_leaderboards(racecontext, all_leaderboards, race_format):
-    consecutivesCount = racecontext.rhdata.get_optionInt('consecutivesCount', 3)
+def sort_and_rank_leaderboards(racecontext, all_leaderboards):
+    consecutivesCount = all_leaderboards['meta']['consecutives_count']
 
-    if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
-        # Sort by laps time
-        all_leaderboards['by_race_time'] = sorted(all_leaderboards['by_race_time'], key=lambda x: (
-            -x['laps'],  # reverse lap count
-            x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf')
-        # total time ascending except 0
-        ))
+    # Sort by race time
+    all_leaderboards['by_race_time'] = sorted(all_leaderboards['by_race_time'], key=lambda x: (
+        -x['laps'],  # reverse lap count
+        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf')
+    # total time ascending except 0
+    ))
 
-        # determine ranking
-        last_rank = None
-        last_rank_laps = 0
-        last_rank_time = 0
-        for i, row in enumerate(all_leaderboards['by_race_time'], start=1):
-            pos = i
-            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
-                pos = last_rank
-            last_rank = pos
-            last_rank_laps = row['laps']
-            last_rank_time = row['total_time_laps_raw']
+    # determine ranking
+    last_rank = None
+    last_rank_laps = 0
+    last_rank_time = 0
+    for i, row in enumerate(all_leaderboards['by_race_time'], start=1):
+        pos = i
+        if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+            pos = last_rank
+        last_rank = pos
+        last_rank_laps = row['laps']
+        last_rank_time = row['total_time_raw']
 
-            row['position'] = pos
-            row['behind'] = all_leaderboards['by_race_time'][0]['laps'] - row['laps']
-    else:
-        # Sort by race time
-        all_leaderboards['by_race_time'] = sorted(all_leaderboards['by_race_time'], key=lambda x: (
-            -x['laps'],  # reverse lap count
-            x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf')
-        # total time ascending except 0
-        ))
-
-        # determine ranking
-        last_rank = None
-        last_rank_laps = 0
-        last_rank_time = 0
-        for i, row in enumerate(all_leaderboards['by_race_time'], start=1):
-            pos = i
-            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
-                pos = last_rank
-            last_rank = pos
-            last_rank_laps = row['laps']
-            last_rank_time = row['total_time_raw']
-
-            row['position'] = pos
-            row['behind'] = all_leaderboards['by_race_time'][0]['laps'] - row['laps']
+        row['position'] = pos
+        row['behind'] = all_leaderboards['by_race_time'][0]['laps'] - row['laps']
 
     do_gevent_sleep()
     # Sort by fastest laps
@@ -836,13 +820,73 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards, race_format):
 
     return all_leaderboards
 
-def build_incremental(racecontext, race, heat, source_result):
+def build_leaderboard_race(racecontext, heat_id, round_id):
+    return calc_leaderboard(racecontext, heat_id=heat_id, round_id=round_id)
+
+def build_leaderboard_heat(racecontext, heat):
+    leaderboard = {}
+    races = racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id)
+    for race in races:
+        race_result = racecontext.rhdata.get_results_savedRaceMeta(race)
+        leaderboard = build_incremental(racecontext, race_result, leaderboard, transient=True)
+
+    leaderboard = format_leaderboard_times(racecontext, leaderboard)
+    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+    return leaderboard
+
+def build_leaderboard_class(racecontext, race_class):
+    leaderboard = {}
+    heats = racecontext.rhdata.get_heats_by_class(race_class.id)
+    for heat in heats:
+        heat_result = racecontext.rhdata.get_results_heat(heat)
+        leaderboard = build_incremental(racecontext, heat_result, leaderboard, transient=True)
+
+    leaderboard = format_leaderboard_times(racecontext, leaderboard)
+    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+    return leaderboard
+
+def build_leaderboard_event(racecontext):
+    leaderboard = {}
+    all_classes = racecontext.rhdata.get_raceClasses()
+    for race_class in all_classes:
+        class_result = racecontext.rhdata.get_results_raceClass(race_class)
+        leaderboard = build_incremental(racecontext, class_result, leaderboard, transient=True)
+
+    unclassified_heats = racecontext.rhdata.get_heats_by_class(RHUtils.CLASS_ID_NONE)
+    for heat in unclassified_heats:
+        heat_result = racecontext.rhdata.get_results_heat(heat)
+        leaderboard = build_incremental(racecontext, heat_result, leaderboard, transient=True)
+
+    leaderboard = format_leaderboard_times(racecontext, leaderboard)
+    leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+    return leaderboard
+
+def build_incremental(racecontext, merge_result, source_result, transient=False):
+    if not source_result:
+        return merge_result
+
     output_result = {}
-    race_result = race.get_results()
     for key, value in source_result.items():
         output_result[key] = copy.deepcopy(value)
-        if key != 'meta':
-            for lb_line in race_result[key]:
+        if key == 'meta':
+            output_result['meta'].pop('fastest_race_lap_data', None)
+            for meta_key, source_meta_value in output_result['meta'].items():
+                if merge_result['meta'][meta_key] != source_meta_value:
+                    if meta_key == 'primary_leaderboard':
+                        output_result['meta']['primary_leaderboard'] = 'by_race_time'
+                    elif meta_key == 'win_condition':
+                        output_result['meta']['win_condition'] = WinCondition.NONE
+                    elif meta_key == 'team_racing_mode':
+                        output_result['meta']['team_racing_mode'] = False
+                    elif meta_key == 'start_behavior':
+                        output_result['meta']['start_behavior'] = None
+                    elif meta_key == 'consecutives_count':
+                        output_result['meta']['consecutives_count'] = racecontext.rhdata.get_optionInt('consecutivesCount', 3)
+                    elif meta_key == 'primary_points':
+                        output_result['meta']['primary_points'] = False
+
+        else:
+            for lb_line in merge_result[key]:
                 for idx, item in enumerate(source_result[key]):
                     if item['pilot_id'] == lb_line['pilot_id']:
                         # simple incremental adds
@@ -859,13 +903,10 @@ def build_incremental(racecontext, race, heat, source_result):
                             race_result_updates['average_lap_raw'] = race_result_updates['total_time_laps_raw'] / race_result_updates['laps']
 
                         # fastest lap & source
-                        if lb_line['fastest_lap_raw'] < item['fastest_lap_raw']:
+                        if lb_line['fastest_lap_raw'] and lb_line['fastest_lap_raw'] < item['fastest_lap_raw']:
                             race_result_updates['fastest_lap_raw'] = lb_line['fastest_lap_raw']
-                            race_result_updates['fastest_lap_source'] = {
-                                'round': racecontext.rhdata.get_max_round(race.current_heat),
-                                'heat': race.current_heat,
-                                'displayname': heat.display_name
-                            }
+                            race_result_updates['fastest_lap_source'] = lb_line['fastest_lap_source']
+
                         # consecutives & source
                         if lb_line['consecutives_base'] > item['consecutives_base'] or \
                             ( lb_line['consecutives_base'] == item['consecutives_base'] and
@@ -873,11 +914,7 @@ def build_incremental(racecontext, race, heat, source_result):
                             race_result_updates['consecutives_base'] = lb_line['consecutives_base']
                             race_result_updates['consecutives_raw'] = lb_line['consecutives_raw']
                             race_result_updates['consecutive_lap_start'] = lb_line['consecutive_lap_start']
-                            race_result_updates['consecutives_source'] = {
-                                'round': racecontext.rhdata.get_max_round(race.current_heat),
-                                'heat': race.current_heat,
-                                'displayname': heat.display_name
-                            }
+                            race_result_updates['consecutives_source'] = lb_line['consecutives_source']
 
                         output_result[key][idx].update(race_result_updates)
                         break
@@ -885,9 +922,10 @@ def build_incremental(racecontext, race, heat, source_result):
                     # no match, make new line
                     output_result[key].append(lb_line)
 
-            #re-sort lbs
-    output_result = format_leaderboard_times(racecontext, output_result)
-    output_result = sort_and_rank_leaderboards(racecontext, output_result, race.format)
+    #re-sort lbs
+    if not transient:
+        output_result = format_leaderboard_times(racecontext, output_result)
+        output_result = sort_and_rank_leaderboards(racecontext, output_result)
     return output_result
 
 def calc_team_leaderboard(racecontext):

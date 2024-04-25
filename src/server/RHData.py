@@ -1426,7 +1426,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Heat {} results'.format(heat.id))
-        build = Results.calc_leaderboard(self._racecontext, heat_id=heat.id)
+        build = Results.build_leaderboard_heat(self._racecontext, heat)
 
         self.set_results_heat(heat, token, build)
         return build
@@ -1851,7 +1851,7 @@ class RHData():
 
         # cache rebuild
         logger.info('Building Class {} results'.format(race_class.id))
-        build = Results.calc_leaderboard(self._racecontext, class_id=race_class.id)
+        build = Results.build_leaderboard_class(self._racecontext, race_class)
         self.set_results_raceClass(race_class, token, build)
         return build
 
@@ -2807,7 +2807,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Race {} (Heat {} Round {}) results'.format(race.id, race.heat_id, race.round_id))
-        build = Results.calc_leaderboard(self._racecontext, heat_id=race.heat_id, round_id=race.round_id)
+        build = Results.build_leaderboard_race(self._racecontext, heat_id=race.heat_id, round_id=race.round_id)
 
         # calc race points
         if race.format_id:
@@ -3159,7 +3159,7 @@ class RHData():
 
         # cache rebuild
         logger.debug('Building Event results')
-        build = Results.calc_leaderboard(self._racecontext)
+        build = Results.build_leaderboard_event(self._racecontext)
         self.set_results_event(token, build)
         return build
 
