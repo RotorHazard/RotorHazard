@@ -204,12 +204,12 @@ class Config:
             del self.config['LED']['LED_PIN']
 
         if 'ADMIN_USERNAME' in self.config['GENERAL']:
-            if not self.config['SECRETS'].get('ADMIN_USERNAME'):
+            if self.config['SECRETS'].get('ADMIN_USERNAME') is None:
                 self.config['SECRETS']['ADMIN_USERNAME'] = self.config['GENERAL']['ADMIN_USERNAME']
             del self.config['GENERAL']['ADMIN_USERNAME']
 
         if 'ADMIN_PASSWORD' in self.config['GENERAL']:
-            if not self.config['SECRETS'].get('ADMIN_PASSWORD'):
+            if self.config['SECRETS'].get('ADMIN_PASSWORD') is None:
                 self.config['SECRETS']['ADMIN_PASSWORD'] = self.config['GENERAL']['ADMIN_PASSWORD']
             del self.config['GENERAL']['ADMIN_PASSWORD']
 
