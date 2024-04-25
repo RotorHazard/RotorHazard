@@ -1398,7 +1398,7 @@ class RHData():
     def get_results_heat(self, heat_or_id):
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
-        if heat is False:
+        if not heat:
             return False
 
         if len(self.get_savedRaceMetas_by_heat(heat.id)) < 1:
@@ -1434,7 +1434,7 @@ class RHData():
     def set_results_heat(self, heat_or_id, token, results):
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
-        if heat is False:
+        if not heat:
             return False
 
         cacheStatus = json.loads(heat._cache_status)
@@ -1452,7 +1452,7 @@ class RHData():
     def clear_results_heat(self, heat_or_id, token=None):
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
 
-        if heat is False:
+        if not heat:
             return False
 
         if token is None:
@@ -1823,7 +1823,7 @@ class RHData():
     def get_results_raceClass(self, raceClass_or_id):
         race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
-        if race_class is False:
+        if not race_class:
             return False
 
         if len(self.get_savedRaceMetas_by_raceClass(race_class.id)) < 1:
@@ -1858,7 +1858,7 @@ class RHData():
     def get_ranking_raceClass(self, raceClass_or_id):
         race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
-        if race_class is False:
+        if not race_class:
             return False
 
         if len(self.get_savedRaceMetas_by_raceClass(race_class.id)) < 1:
@@ -1893,7 +1893,7 @@ class RHData():
     def set_results_raceClass(self, raceClass_or_id, token, results):
         race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
-        if race_class is False:
+        if not race_class:
             return False
 
         if race_class._cache_status:
@@ -1915,7 +1915,7 @@ class RHData():
     def set_ranking_raceClass(self, raceClass_or_id, token, results):
         race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
-        if race_class is False:
+        if not race_class:
             return False
 
         if race_class._rank_status:
@@ -1957,7 +1957,7 @@ class RHData():
     def clear_ranking_raceClass(self, raceClass_or_id, token=None):
         race_class = self.resolve_raceClass_from_raceClass_or_id(raceClass_or_id)
 
-        if race_class is False:
+        if not race_class:
             return False
 
         if token is None:
@@ -2780,7 +2780,7 @@ class RHData():
     def get_results_savedRaceMeta(self, savedRaceMeta_or_id, no_rebuild_flag=False):
         race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
-        if race is False:
+        if not race:
             return False
 
         cache_invalid = False
@@ -2829,7 +2829,7 @@ class RHData():
     def set_results_savedRaceMeta(self, savedRaceMeta_or_id, token, results):
         race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
-        if race is False:
+        if not race:
             return False
 
         if race._cache_status:
@@ -2851,7 +2851,7 @@ class RHData():
     def clear_results_savedRaceMeta(self, savedRaceMeta_or_id, token=None):
         race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
-        if race is False:
+        if not race:
             return False
 
         if token is None:
