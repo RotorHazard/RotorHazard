@@ -871,7 +871,7 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
         if key == 'meta':
             output_result['meta'].pop('fastest_race_lap_data', None)
             for meta_key, source_meta_value in output_result['meta'].items():
-                if merge_result['meta'][meta_key] != source_meta_value:
+                if merge_result['meta'].get(meta_key) and merge_result['meta'][meta_key] != source_meta_value:
                     if meta_key == 'primary_leaderboard':
                         output_result['meta']['primary_leaderboard'] = 'by_race_time'
                     elif meta_key == 'win_condition':
