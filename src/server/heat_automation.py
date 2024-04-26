@@ -76,9 +76,14 @@ class HeatAutomator:
             return result
 
         slots = self._racecontext.rhdata.get_heatNodes_by_heat(heat.id)
+        slot_alterations = []
         for slot in slots:
+            slot_alteration = {
+                'slot_id': slot.id
+            }
+
             if slot.method == ProgramMethod.NONE:
-                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                slot_alteration['pilot'] = RHUtils.PILOT_ID_NONE
 
             elif slot.method == ProgramMethod.HEAT_RESULT:
                 if slot.seed_id:
@@ -92,13 +97,13 @@ class HeatAutomator:
                             if output:
                                 results = output[output['meta']['primary_leaderboard']]
                                 if slot.seed_rank - 1 < len(results):
-                                    slot.pilot_id = results[slot.seed_rank - 1]['pilot_id']
+                                    slot_alteration['pilot'] = results[slot.seed_rank - 1]['pilot_id']
                                 else:
-                                    slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                    slot_alteration['pilot'] = RHUtils.PILOT_ID_NONE
                                     result['unassigned_slots'] += 1
                             else:
                                 logger.debug("Can't assign pilot from heat {}: Results not available".format(slot.seed_id))
-                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                slot_alteration['pilot'] = RHUtils.PILOT_ID_NONE
                                 result['unassigned_slots'] += 1
                         else:
                             result['calc_success'] = False
@@ -107,7 +112,7 @@ class HeatAutomator:
                         result['calc_success'] = False
                         logger.info("Can't seed from heat {}: rank is null".format(slot.seed_id))
                 else:
-                    slot.pilot_id = RHUtils.PILOT_ID_NONE
+                    slot_alteration['pilot'] = RHUtils.PILOT_ID_NONE
                     logger.debug("Ignoring null heat as seed source")
 
             elif slot.method == ProgramMethod.CLASS_RESULT:
@@ -130,13 +135,13 @@ class HeatAutomator:
 
                             if positions:
                                 if slot.seed_rank - 1 < len(positions):
-                                    slot.pilot_id = positions[slot.seed_rank - 1]['pilot_id']
+                                    slot_alteration['pilot'] = positions[slot.seed_rank - 1]['pilot_id']
                                 else:
-                                    slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                    slot_alteration['pilot'] = RHUtils.PILOT_ID_NONE
                                     result['unassigned_slots'] += 1
                             else:
                                 logger.debug("Can't assign pilot from class {}: Results not available".format(slot.seed_id))
-                                slot.pilot_id = RHUtils.PILOT_ID_NONE
+                                slot_alteration['pilot'] = RHUtils.PILOT_ID_NONE
                                 result['unassigned_slots'] += 1
                         else:
                             result['calc_success'] = False
@@ -145,12 +150,14 @@ class HeatAutomator:
                         result['calc_success'] = False
                         logger.info("Can't seed from class {}: rank is null".format(slot.seed_id))
                 else:
-                    slot.pilot_id = RHUtils.PILOT_ID_NONE
+                    slot_alteration['pilot'] = RHUtils.PILOT_ID_NONE
                     logger.debug("Ignoring null class as seed source")
+
+            slot_alterations.append(slot_alteration)
 
             logger.debug('Slot {} Pilot is {}'.format(slot.id, slot.pilot_id if slot.pilot_id else None))
 
-        self._racecontext.rhdata.commit()
+        self._racecontext.rhdata.alter_heatNodes_fast(slot_alterations)
         return result
 
     def run_auto_frequency(self, heat_or_id, current_frequencies, num_nodes, calc_fn):
