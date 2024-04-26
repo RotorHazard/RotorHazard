@@ -424,7 +424,7 @@ def _do_calc_leaderboard(racecontext, **params):
                                 if lap.id not in holeshot_laps:
                                     pilot_race_laps.append(lap)
                         else:
-                            pilot_laps = pilot_race_crossings
+                            pilot_race_laps = pilot_race_crossings
 
                     if not USE_ROUND:
                         results = rhDataObj.get_results_savedRaceMeta(race)
