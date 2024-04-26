@@ -865,6 +865,9 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
     if not source_result:
         return merge_result
 
+    if not merge_result:
+        return source_result
+
     output_result = {}
     for key, value in source_result.items():
         output_result[key] = copy.deepcopy(value)
