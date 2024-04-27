@@ -376,6 +376,7 @@ def _do_calc_leaderboard(racecontext, **params):
             race_starts = 0
             total_points = 0
 
+
             for race in selected_races:
                 if race.id not in race_laps_map:
                     continue
@@ -399,11 +400,7 @@ def _do_calc_leaderboard(racecontext, **params):
                             do_gevent_sleep(0)
 
                             race_laps = []
-                            for lap in pilot_race_crossings:
-                                if lap.pilotrace_id == pilotrace.id:
-                                    race_laps.append(lap) 
-                            race_laps = []
-                            for lap in pilot_race_crossings:
+                            for lap in pilot_crossings:
                                 if lap.pilotrace_id == pilotrace.id:
                                     race_laps.append(lap) 
 
