@@ -586,21 +586,21 @@
 			}
 		}
 
-		$('#enterat').on('input', function (event) {
-			validate_enter();
-		});
-
 		$('#enterat').change(function(){
 			validate_enter();
 		});
 
 		function validate_enter() {
-			var enter_el = $('#enterat');
-			var rssi = enter_el.val();
-
-			enter_el.val(Math.min(rssi, graph.options.maxValue));
-			enter_el.val(Math.max(rssi, graph.options.minValue));
-
+			var rssi = $('#enterat').val();
+			var chk_val = Math.min(rssi, graph.options.maxValue);
+			chk_val = Math.max(chk_val, graph.options.minValue);
+			if (chk_val != rssi) {
+				if (chk_val < current_race_data.exit_at)  {
+					chk_val = current_race_data.exit_at;
+				}
+				rssi = chk_val;
+				$('#enterat').val(rssi);
+			}
 			if (rssi < current_race_data.exit_at)  {
 				current_race_data.exit_at = rssi;
 				$('#exitat').val(rssi);
@@ -615,21 +615,21 @@
 			recalc_race();
 		}
 
-		$('#exitat').on('input', function (event) {
-			validate_exit();
-		});
-
 		$('#exitat').change(function(){
 			validate_exit()
 		});
 
 		function validate_exit() {
-			var exit_el = $('#exitat');
-			var rssi = exit_el.val();
-
-			exit_el.val(Math.min(rssi, graph.options.maxValue));
-			exit_el.val(Math.max(rssi, graph.options.minValue));
-
+			var rssi = $('#exitat').val();
+			var chk_val = Math.min(rssi, graph.options.maxValue);
+			chk_val = Math.max(chk_val, graph.options.minValue);
+			if (chk_val != rssi) {
+				if (chk_val > current_race_data.enter_at)  {
+					chk_val = current_race_data.enter_at;
+				}
+				rssi = chk_val;
+				$('#exitat').val(rssi);
+			}
 			if (rssi > current_race_data.enter_at)  {
 				current_race_data.enter_at = rssi
 				$('#enterat').val(rssi);
