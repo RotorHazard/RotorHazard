@@ -221,7 +221,6 @@ def _do_calc_leaderboard(racecontext, **params):
     USE_HEAT = None
     USE_CLASS = None
 
-    selected_race_laps = []
     consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)
 
     if ('current_race' in params):
@@ -268,33 +267,6 @@ def _do_calc_leaderboard(racecontext, **params):
             logger.warning('No race format selected for generation', stack_info=True)
             current_format = None
 
-        selected_races_keyed = {}
-        for race in selected_races:
-            selected_races_keyed[race.id] = race
-
-        selected_pilotraces = {}
-        racelist = []
-        for race in selected_races:
-            racelist.append(race.id)
-            selected_pilotraces[race.id] = rhDataObj.get_savedPilotRaces_by_savedRaceMeta(race.id)
-
-        # Generate heat list with key
-        heats_keyed = {}
-        all_heats = rhDataObj.get_heats()
-        for heat in all_heats:
-            heats_keyed[heat.id] = heat
-
-        if current_format:
-            race_format = rhDataObj.get_raceFormat(current_format)
-        else:
-            race_format = None
-
-        # filter laps
-        all_laps = rhDataObj.get_active_savedRaceLaps()
-        for lap in all_laps:
-            if lap.race_id in racelist:
-                selected_race_laps.append(lap)
-
     do_gevent_sleep()
 
     leaderboard = []
@@ -328,118 +300,160 @@ def _do_calc_leaderboard(racecontext, **params):
                     'node': node_index,
                     'current_laps': laps
                 })
-    else:
+    elif USE_CURRENT:
         for pilot in rhDataObj.get_pilots():
             do_gevent_sleep(0)
-            if USE_CURRENT:
-                found_pilot = False
-                node_index = 0
-                laps = []
-                for node_index in raceObj.node_pilots:
-                    if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
-                        laps = raceObj.get_active_laps()[node_index]
-                        found_pilot = True
-                        break
+            found_pilot = False
+            node_index = 0
+            laps = []
+            for node_index in raceObj.node_pilots:
+                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
+                    laps = raceObj.get_active_laps()[node_index]
+                    found_pilot = True
+                    break
 
-                if laps:
-                    if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
-                        total_laps = len(laps)
-                    else:
-                        total_laps = len(laps) - 1
+            if laps:
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    total_laps = len(laps)
                 else:
-                    total_laps = 0
-
-                if found_pilot and profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                    leaderboard.append({
-                        'pilot_id': pilot.id,
-                        'callsign': pilot.callsign,
-                        'team_name': pilot.team,
-                        'laps': total_laps,
-                        'holeshots': None,
-                        'starts': 1 if len(laps) > 0 else 0,
-                        'node': node_index,
-                        'current_laps': laps
-                    })
+                    total_laps = len(laps) - 1
             else:
-                # find hole shots
-                holeshot_laps = []
-                pilotnode = None
                 total_laps = 0
-                race_starts = 0
-                total_points = 0
 
-                for race in selected_races:
-                    if race_format:
-                        this_race_format = race_format
-                    else:
-                        this_race_format = rhDataObj.get_raceFormat(race.format_id)
+            if found_pilot and profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                leaderboard.append({
+                    'pilot_id': pilot.id,
+                    'callsign': pilot.callsign,
+                    'team_name': pilot.team,
+                    'laps': total_laps,
+                    'holeshots': None,
+                    'starts': 1 if len(laps) > 0 else 0,
+                    'node': node_index,
+                    'current_laps': laps
+                })
+    else:
+        selected_races_keyed = {}
+        for race in selected_races:
+            selected_races_keyed[race.id] = race
 
-                    pilotraces = selected_pilotraces[race.id]
+        selected_pilotraces = {}
+        racelist = []
+        for race in selected_races:
+            racelist.append(race.id)
+            selected_pilotraces[race.id] = rhDataObj.get_savedPilotRaces_by_savedRaceMeta(race.id)
 
-                    if len(pilotraces):
-                        pilot_crossings = []
-                        for lap in selected_race_laps:
-                            if lap.pilot_id == pilot.id:
-                                pilot_crossings.append(lap)
+        # Generate heat list with key
+        heats_keyed = {}
+        all_heats = rhDataObj.get_heats()
+        for heat in all_heats:
+            heats_keyed[heat.id] = heat
 
-                        for pilotrace in pilotraces:
-                            if pilotrace.pilot_id == pilot.id:
-                                pilotnode = pilotrace.node_index
-                                do_gevent_sleep(0)
+        if current_format:
+            race_format = rhDataObj.get_raceFormat(current_format)
+        else:
+            race_format = None
 
-                                race_laps = []
-                                for lap in pilot_crossings:
-                                    if lap.pilotrace_id == pilotrace.id:
-                                        race_laps.append(lap) 
+        # Map laps to race and pilot
+        race_laps_map = {}
+        all_laps = rhDataObj.get_active_savedRaceLaps()
+        for lap in all_laps:
+            if lap.race_id in race_laps_map:
+                if lap.pilot_id in race_laps_map[lap.race_id]:
+                    race_laps_map[lap.race_id][lap.pilot_id].append(lap)
+                else:
+                    race_laps_map[lap.race_id][lap.pilot_id] = [lap]
+            else:
+                race_laps_map[lap.race_id] = {}
+                race_laps_map[lap.race_id][lap.pilot_id] = [lap]
 
-                                total_laps += len(race_laps)
+        for pilot in rhDataObj.get_pilots():
+            # find hole shots
+            holeshot_laps = []
+            pilot_crossings = []
+            pilot_laps = []
+            pilotnode = None
+            total_laps = 0
+            race_starts = 0
+            total_points = 0
 
-                                if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
-                                    if len(race_laps):
+            for race in selected_races:
+                if race.id not in race_laps_map:
+                    continue
+
+                if pilot.id not in race_laps_map[race.id]:
+                    continue
+
+                if race_format:
+                    this_race_format = race_format
+                else:
+                    this_race_format = rhDataObj.get_raceFormat(race.format_id)
+
+                pilotraces = selected_pilotraces[race.id]
+
+                if len(pilotraces):
+                    pilot_race_crossings = race_laps_map[race.id][pilot.id]
+
+                    for pilotrace in pilotraces:
+                        if pilotrace.pilot_id == pilot.id:
+                            pilotnode = pilotrace.node_index
+                            gevent.sleep()
+
+                            race_laps = []
+                            for lap in pilot_race_crossings:
+                                if lap.pilotrace_id == pilotrace.id:
+                                    race_laps.append(lap) 
+
+                            total_laps += len(race_laps)
+
+                            if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
+                                if len(race_laps):
+                                    race_starts += 1
+                            else:
+                                if len(race_laps):
+                                    holeshot_lap = race_laps[0]
+
+                                    if holeshot_lap:
+                                        holeshot_laps.append(holeshot_lap.id)
                                         race_starts += 1
-                                else:
-                                    if len(race_laps):
-                                        holeshot_lap = race_laps[0]
+                                        total_laps -= 1
+                    do_gevent_sleep(0)
+                    pilot_race_laps = []
+                    if len(holeshot_laps):
+                        for lap in pilot_race_crossings:
+                            if lap.id not in holeshot_laps:
+                                pilot_race_laps.append(lap)
+                    else:
+                        pilot_race_laps = pilot_race_crossings
 
-                                        if holeshot_lap:
-                                            holeshot_laps.append(holeshot_lap.id)
-                                            race_starts += 1
-                                            total_laps -= 1
-                        do_gevent_sleep(0)
-                        pilot_laps = []
-                        if len(holeshot_laps):
-                            for lap in selected_race_laps:
-                                if lap.pilot_id == pilot.id and lap.id not in holeshot_laps:
-                                    pilot_laps.append(lap)
-                        else:
-                            pilot_laps = pilot_crossings
+                if not USE_ROUND:
+                    results = rhDataObj.get_results_savedRaceMeta(race, no_rebuild_flag=True)
+                    if results:
+                        for line in results[results['meta']['primary_leaderboard']]:
+                            if line['pilot_id'] == pilot.id: 
+                                total_points += line['points']
+                                break
+                        if total_points:
+                            meta_points_flag = True
+                    else:
+                        logger.warning("Cached results not available for points generation in 'calc_leaderboard()'")
 
-                    if not USE_ROUND:
-                        results = rhDataObj.get_results_savedRaceMeta(race, no_rebuild_flag=True)
-                        if results:
-                            for line in results[results['meta']['primary_leaderboard']]:
-                                if line['pilot_id'] == pilot.id:
-                                    total_points += line['points']
-                                    break
-                            if total_points:
-                                meta_points_flag = True
-                        else:
-                            logger.warning("Cached results not available for points generation in 'calc_leaderboard()'")
+                pilot_crossings += pilot_race_crossings
+                pilot_laps += pilot_race_laps
                 do_gevent_sleep(0)
 
-                if race_starts > 0:
-                    leaderboard.append({
-                        'pilot_id': pilot.id,
-                        'callsign': pilot.callsign,
-                        'team_name': pilot.team,
-                        'laps': total_laps,
-                        'holeshots': holeshot_laps,
-                        'starts': race_starts,
-                        'node': pilotnode,
-                        'pilot_crossings': pilot_crossings,
-                        'pilot_laps': pilot_laps,
-                        'points': total_points
-                    })
+            if race_starts > 0:
+                leaderboard.append({
+                    'pilot_id': pilot.id,
+                    'callsign': pilot.callsign,
+                    'team_name': pilot.team,
+                    'laps': total_laps,
+                    'holeshots': holeshot_laps,
+                    'starts': race_starts,
+                    'node': pilotnode,
+                    'pilot_crossings': pilot_crossings,
+                    'pilot_laps': pilot_laps,
+                    'points': total_points
+                })
 
     do_gevent_sleep()
     # find leader for each lap in race
