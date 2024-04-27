@@ -586,6 +586,12 @@
 			}
 		}
 
+		$('#enterat').on('input', function (event) {
+			if (Math.abs($('#enterat').val() - current_race_data.enter_at) == 1) {
+				validate_enter();  // handle long press of 'up' button on input widget
+			}
+		});
+
 		$('#enterat').change(function(){
 			validate_enter();
 		});
@@ -614,6 +620,12 @@
 
 			recalc_race();
 		}
+
+		$('#exitat').on('input', function (event) {
+			if (Math.abs($('#exitat').val() - current_race_data.exit_at) == 1) {
+				validate_exit();  // handle long press of 'down' button on input widget
+			}
+		});
 
 		$('#exitat').change(function(){
 			validate_exit()
