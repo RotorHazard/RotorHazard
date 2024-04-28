@@ -739,7 +739,7 @@ def _do_calc_leaderboard(racecontext, **params):
         else:
             fastest_race_lap_data = None
 
-        leaderboard_output['meta']['fastest_race_lap_data'] = fastest_race_lap_data,
+        leaderboard_output['meta']['fastest_race_lap_data'] = fastest_race_lap_data
 
     leaderboard_output = format_leaderboard_times(racecontext, leaderboard_output)
 
