@@ -121,7 +121,7 @@
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
-		if ('{{ getOption('calibrationMode') }}' == '1') {
+		if ('{{ getConfig('TIMING', 'calibrationMode') }}' == '1') {
 			$('#set_calibrationMode').val(1);
 		}
 

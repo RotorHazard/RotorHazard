@@ -37,7 +37,7 @@
 	}
 
 	$(document).ready(function () {
-		if ('{{ getOption('calibrationMode') }}' == '0') {
+		if ('{{ getConfig('TIMING', 'calibrationMode') }}' == '0') {
 			$('#load-transitions').prop('hidden', false);
 			$('#save-transitions').prop('hidden', false);
 		}
