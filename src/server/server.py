@@ -3224,7 +3224,8 @@ with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connect
                     ledModule = importlib.import_module('ledctrlr_leds')
                     strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
                 except Exception as ex:
-                    if "FileNotFound" in str(ex):
+                    if "FileNotFound" in str(ex) or "No such file or directory" in str(ex) or \
+                                                                  "could not open port" in str(ex):
                         logger.error("Serial port not found for LED controller: {}".format(ex))
                     else:
                         logger.exception("Error initializing serial LED controller: {}".format(ex))
