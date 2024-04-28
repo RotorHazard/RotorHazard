@@ -33,7 +33,7 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
     if millis is None:
         return ''
 
-    millis = int(round(millis, 0))
+    millis = int(round(millis, 0)) # round to nearest ms
     minutes = millis // 60000
     over = millis % 60000
     seconds = over // 1000
@@ -60,12 +60,12 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     if millis is None:
         return ''
 
-    millis = int(millis + 50)  # round to nearest tenth of a second
+    millis = int(millis) # strip fractional part
     minutes = millis // 60000
     over = millis % 60000
     seconds = over // 1000
     over = over % 1000
-    tenths = over // 100
+    tenths = over // 100 # floor at tenths
 
     if not timeformat:
         timeformat = '{m} {s}.{d}'
