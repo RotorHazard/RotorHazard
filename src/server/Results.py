@@ -723,25 +723,8 @@ def _do_calc_leaderboard(racecontext, **params):
         leaderboard_output['meta']['primary_points'] = True
 
     leaderboard_output = sort_and_rank_leaderboards(racecontext, leaderboard_output)
-
-    if USE_CURRENT:
-        # fetch pilot/time data for fastest lap in race
-        leaderboard_by_fastest_lap = leaderboard_output['by_fastest_lap']
-        if len(leaderboard_by_fastest_lap) > 0 and leaderboard_by_fastest_lap[0]['laps'] > 0:
-            pilot = rhDataObj.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
-            pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
-            phonetic_time = RHUtils.phonetictime_format(
-                    leaderboard_by_fastest_lap[0]['fastest_lap_raw'], racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
-            fastest_race_lap_data = {}
-            fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
-            fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
-                                             leaderboard_by_fastest_lap[0]['fastest_lap']]
-        else:
-            fastest_race_lap_data = None
-
-        leaderboard_output['meta']['fastest_race_lap_data'] = fastest_race_lap_data
-
     leaderboard_output = format_leaderboard_times(racecontext, leaderboard_output)
+    leaderboard_output = add_fastest_race_lap_meta(racecontext, leaderboard_output)
 
     return leaderboard_output
 
@@ -754,9 +737,11 @@ def format_leaderboard_times(racecontext, all_leaderboards):
                 result_pilot['total_time_laps'] = RHUtils.time_format(result_pilot['total_time_laps_raw'], time_format)
                 result_pilot['average_lap'] = RHUtils.time_format(result_pilot['average_lap_raw'], time_format)
                 result_pilot['fastest_lap'] = RHUtils.time_format(result_pilot['fastest_lap_raw'], time_format)
-                result_pilot['time_behind'] = RHUtils.time_format(result_pilot['time_behind_raw'], time_format)
+                if result_pilot.get('time_behind_raw'):
+                    result_pilot['time_behind'] = RHUtils.time_format(result_pilot['time_behind_raw'], time_format)
                 result_pilot['consecutives'] = RHUtils.time_format(result_pilot['consecutives_raw'], time_format)
-                result_pilot['last_lap'] = RHUtils.time_format(result_pilot['last_lap_raw'], time_format)
+                if result_pilot.get('last_lap_raw'):
+                    result_pilot['last_lap'] = RHUtils.time_format(result_pilot['last_lap_raw'], time_format)
 
     return all_leaderboards
 
@@ -834,6 +819,31 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards):
 
     return all_leaderboards
 
+def add_fastest_race_lap_meta(racecontext, all_leaderboards):
+    # fetch pilot/time data for fastest lap in race
+    leaderboard_by_fastest_lap = all_leaderboards['by_fastest_lap']
+    if len(leaderboard_by_fastest_lap) > 0 and leaderboard_by_fastest_lap[0]['laps'] > 0:
+        if all_leaderboards['meta'].get('fastest_race_lap_data'):
+            if all_leaderboards['meta']['fastest_race_lap_data']['text'][1] == [leaderboard_by_fastest_lap[0]['callsign'],
+                                                                                leaderboard_by_fastest_lap[0]['fastest_lap']]:
+                return all_leaderboards # no change
+        else:
+            pilot = racecontext.rhdata.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
+            pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
+            phonetic_time = RHUtils.phonetictime_format(
+                leaderboard_by_fastest_lap[0]['fastest_lap_raw'],
+                racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
+            fastest_race_lap_data = {}
+            fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
+            fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
+                                             leaderboard_by_fastest_lap[0]['fastest_lap']]
+    else:
+        fastest_race_lap_data = None
+
+    all_leaderboards['meta']['fastest_race_lap_data'] = fastest_race_lap_data
+
+    return all_leaderboards
+
 def build_leaderboard_race(racecontext, heat_id, round_id):
     return calc_leaderboard(racecontext, heat_id=heat_id, round_id=round_id)
 
@@ -846,6 +856,7 @@ def build_leaderboard_heat(racecontext, heat):
 
     leaderboard = format_leaderboard_times(racecontext, leaderboard)
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+    leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
     return leaderboard
 
 def build_leaderboard_class(racecontext, race_class):
@@ -857,6 +868,7 @@ def build_leaderboard_class(racecontext, race_class):
 
     leaderboard = format_leaderboard_times(racecontext, leaderboard)
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+    leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
     return leaderboard
 
 def build_leaderboard_event(racecontext):
@@ -873,6 +885,7 @@ def build_leaderboard_event(racecontext):
 
     leaderboard = format_leaderboard_times(racecontext, leaderboard)
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
+    leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
     return leaderboard
 
 def build_incremental(racecontext, merge_result, source_result, transient=False):
@@ -934,6 +947,8 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
                             race_result_updates['consecutives_source'] = lb_line['consecutives_source']
 
                         output_result[key][idx].update(race_result_updates)
+                        output_result[key][idx].pop('time_behind', None)
+                        output_result[key][idx].pop('time_behind_raw', None)
                         break
                 else:
                     # no match, make new line
@@ -943,6 +958,7 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
     if not transient:
         output_result = format_leaderboard_times(racecontext, output_result)
         output_result = sort_and_rank_leaderboards(racecontext, output_result)
+        output_result = add_fastest_race_lap_meta(racecontext, output_result)
     return output_result
 
 def calc_team_leaderboard(racecontext):
