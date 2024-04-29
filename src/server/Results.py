@@ -739,10 +739,15 @@ def format_leaderboard_times(racecontext, all_leaderboards):
                 result_pilot['fastest_lap'] = RHUtils.time_format(result_pilot['fastest_lap_raw'], time_format)
                 if result_pilot.get('time_behind_raw'):
                     result_pilot['time_behind'] = RHUtils.time_format(result_pilot['time_behind_raw'], time_format)
+                else:
+                    result_pilot.pop('time_behind', None)
+                    result_pilot.pop('time_behind_raw', None)
                 result_pilot['consecutives'] = RHUtils.time_format(result_pilot['consecutives_raw'], time_format)
                 if result_pilot.get('last_lap_raw'):
                     result_pilot['last_lap'] = RHUtils.time_format(result_pilot['last_lap_raw'], time_format)
-
+                else:
+                    result_pilot.pop('last_lap', None)
+                    result_pilot.pop('last_lap_raw', None)
     return all_leaderboards
 
 def sort_and_rank_leaderboards(racecontext, all_leaderboards):
