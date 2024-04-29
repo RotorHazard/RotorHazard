@@ -827,6 +827,7 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards):
 def add_fastest_race_lap_meta(racecontext, all_leaderboards):
     # fetch pilot/time data for fastest lap in race
     leaderboard_by_fastest_lap = all_leaderboards['by_fastest_lap']
+    fastest_race_lap_data = None
     if len(leaderboard_by_fastest_lap) > 0 and leaderboard_by_fastest_lap[0]['laps'] > 0:
         if all_leaderboards['meta'].get('fastest_race_lap_data'):
             if all_leaderboards['meta']['fastest_race_lap_data']['text'][1] == [leaderboard_by_fastest_lap[0]['callsign'],
@@ -842,8 +843,6 @@ def add_fastest_race_lap_meta(racecontext, all_leaderboards):
             fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
             fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
                                              leaderboard_by_fastest_lap[0]['fastest_lap']]
-    else:
-        fastest_race_lap_data = None
 
     all_leaderboards['meta']['fastest_race_lap_data'] = fastest_race_lap_data
 
