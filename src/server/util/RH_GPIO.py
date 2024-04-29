@@ -6,10 +6,15 @@ try:
     try:
         import lgpio
         import gpiozero
+        # if hardware is Raspberry Pi other than Pi 5 or later then use RPi.GPIO
+        with open("/proc/device-tree/model", 'r') as fileHnd:
+            _modelStr = fileHnd.read()
+        if _modelStr.startswith("Raspberry Pi ") and int(_modelStr[13:15]) < 5:
+            raise RuntimeError("Model is not Raspberry 5 or later")
         Real_GPIO_Zero_flag = True
         Real_RPi_GPIO_flag = False
         GPIO = {}
-    except ImportError:
+    except Exception:
         try:
             import RPi.GPIO as GPIO
             Real_GPIO_Zero_flag = False
