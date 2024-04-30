@@ -28,7 +28,7 @@ RHGPIO_S32ID_PIN = 25  # GPIO input is tied low on S32_BPill PCB
 Is_sys_raspberry_pi_flag = True  # set by 'idAndLogSystemInfo()'
 S32_BPill_board_flag = False  # set by 'idAndLogSystemInfo()'
 
-def time_format(millis, timeformat='{m}:{s}.{d}'):
+def format_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000'''
     if millis is None:
         return ''
@@ -45,17 +45,17 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
 
     return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
 
-def split_time_format(millis, timeformat='{m}:{s}.{d}'):
+def format_split_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000 with leading zeros removed'''
     if millis is None:
         return ''
-    s = time_format(millis, timeformat)
+    s = format_time_to_str(millis, timeformat)
     if len(s) > 3 and s.startswith("0:"):
         p = 3 if s[2] == '0' else 2
         s = s[p:]
     return s
 
-def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
+def format_phonetic_time_to_str(millis, timeformat='{m} {s}.{d}'):
     '''Convert milliseconds to phonetic'''
     if millis is None:
         return ''

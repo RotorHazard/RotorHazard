@@ -659,8 +659,8 @@ class RHRace():
                                 min_lap = self._racecontext.rhdata.get_optionInt("MinLapSec")
                                 min_lap_behavior = self._racecontext.serverconfig.get_item_int('TIMING', "MinLapBehavior")
 
-                            lap_time_fmtstr = RHUtils.time_format(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
-                            lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                            lap_time_fmtstr = RHUtils.format_time_to_str(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                            lap_ts_fmtstr = RHUtils.format_time_to_str(lap_time_stamp, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                             pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)
                             pilot_namestr = pilot_obj.callsign if pilot_obj else ""
 
@@ -896,10 +896,10 @@ class RHRace():
 
             if db_next and db_last:
                 db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
-                db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                db_next['lap_time_formatted'] = RHUtils.format_time_to_str(db_next['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
             elif db_next:
                 db_next['lap_time'] = db_next['lap_time_stamp']
-                db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                db_next['lap_time_formatted'] = RHUtils.format_time_to_str(db_next['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
 
             try:  # delete any split laps for deleted lap
                 lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_number)
@@ -956,7 +956,7 @@ class RHRace():
                     if idx >= lap_index:
                         lap['lap_number'] = lap_number
                         lap['lap_time'] = lap['lap_time_stamp'] - last_lap_ts
-                        lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                        lap['lap_time_formatted'] = RHUtils.format_time_to_str(lap['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                     last_lap_ts = lap['lap_time_stamp']
                     lap_number += 1
 
