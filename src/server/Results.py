@@ -241,6 +241,8 @@ def _do_calc_leaderboard(racecontext, **params):
         profile_freqs = json.loads(profile.frequencies)
         raceObj = params['current_race']
         race_format = raceObj.format
+        round = racecontext.rhdata.get_max_round(raceObj.current_heat) + 1
+        heat_displayname = racecontext.rhdata.get_heat(raceObj.current_heat).display_name
     else:
         if USE_CLASS:
             selected_races = rhDataObj.get_savedRaceMetas_by_raceClass(USE_CLASS)
@@ -401,7 +403,7 @@ def _do_calc_leaderboard(racecontext, **params):
                             race_laps = []
                             for lap in pilot_race_crossings:
                                 if lap.pilotrace_id == pilotrace.id:
-                                    race_laps.append(lap) 
+                                    race_laps.append(lap)
 
                             total_laps += len(race_laps)
 
@@ -429,7 +431,7 @@ def _do_calc_leaderboard(racecontext, **params):
                     results = rhDataObj.get_results_savedRaceMeta(race, no_rebuild_flag=True)
                     if results:
                         for line in results[results['meta']['primary_leaderboard']]:
-                            if line['pilot_id'] == pilot.id: 
+                            if line['pilot_id'] == pilot.id:
                                 total_points += line['points']
                                 break
                         if total_points:
@@ -534,7 +536,11 @@ def _do_calc_leaderboard(racecontext, **params):
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 result_pilot['fastest_lap'] = fast_lap
-                result_pilot['fastest_lap_source'] = None
+                result_pilot['fastest_lap_source'] = {
+                    'round': round,
+                    'heat': raceObj.current_heat,
+                    'displayname': heat_displayname,
+                }
             else:
                 fast_lap = None
 
@@ -631,7 +637,7 @@ def _do_calc_leaderboard(racecontext, **params):
             do_gevent_sleep(0)
 
         # Get lowest not-none value (if any)
-        if all_consecutives:
+        if all_consecutives and result_pilot['laps'] > 0:
             # Sort consecutives
             all_consecutives.sort(key = lambda x: (-x['laps'], not bool(x['time']), x['time']))
 
@@ -640,7 +646,11 @@ def _do_calc_leaderboard(racecontext, **params):
             result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
 
             if USE_CURRENT:
-                result_pilot['consecutives_source'] = None
+                result_pilot['consecutives_source'] = {
+                    'round': round,
+                    'heat': raceObj.current_heat,
+                    'displayname': heat_displayname,
+                }
             else:
                 source_race = selected_races_keyed[all_consecutives[0]['race_id']]
                 if source_race:
@@ -655,7 +665,7 @@ def _do_calc_leaderboard(racecontext, **params):
         else:
             result_pilot['consecutives'] = None
             result_pilot['consecutives_source'] = None
-            result_pilot['consecutives_base'] = None
+            result_pilot['consecutives_base'] = 0
             result_pilot['consecutive_lap_start'] = None
 
 
