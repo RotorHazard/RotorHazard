@@ -1,8 +1,8 @@
-# NuclearHazard Timer
+# NuclearHazard Core Timer
 
-NuclearHazard is a design system which allows simple access to RotorHazard timer hardware by allowing it to be populated directly by PCB manufacturers.
+NuclearHazard Core is a design which allows simple access to RotorHazard timer hardware by allowing it to be populated directly by PCB manufacturers.
 
-[NuclearHazard timer kits are available for purchase](https://www.etsy.com/listing/1428199972/nuclearhazard-rotorhazard-timer) from the board designer.
+[NuclearHazard timer kits are available for purchase](https://nuclearquads.etsy.com/listing/1428199972) from the board designer.
 
 ## Features
 
@@ -40,19 +40,17 @@ The 3.3V rail is used for the STM, VRXs, and various support components.
 
 ### LED plugs
 
-There are two plugs for connecting LEDs. The one labeled **LED1 is the main one that should be used.** It's connected to the Pi's **GPIO10** by default and uses a JST-XH connector (the same as a 2S balance connector).
+The LED plug is connected to the Pi's **GPIO10** by default and uses a JST-XH connector (the same as a 2S balance connector).
 
 <img src="img/led.jpg" alt="drawing" width="500"/>
-
-The LED2 plug is connected to the STM32's PA15 by default. Currently there is no code to support LED output from the STM, but it could be added. If for some reason you need to use a different GPIO output on the Pi for an LED strip, the LED2 plug can be switched to the Pi's GPIO18 with the solder jumper (see next paragraph). Make sure to change the software configuration to match. **However, currently using GPIO18 from the Pi with this board is not functional.**
 
 There are solder jumpers on the PCBs to switch the LED signal pins. For each plug there is a small trace between two of the pads to enable the default connection. If you want to change from the default connection, you'll have to cut the trace between the jumper pads, then add a solder blob from the middle pad to ONE of the outer pins. After making changes to the jumpers but before powering it up, use a multimeter to ensure only one of the outer pads have continuity to the middle pad.
 
 <img src="img/uncut.jpg" alt="drawing" height="250"/><img src="img/cut.jpg" alt="drawing" height="250"/><img src="img/blobbed.jpg" alt="drawing" height="250"/>
 
-### Fan connectors
+### Fan connector
 
-The fan connectors are JST-XH and supply 5V any time the Pi is commanding them on. To bypass the Pi control, solder the jumper and it'll always supply 5V. There are polarity markings next to the connectors. Make sure your fan matches these. **Pictures on amazon listings for fans should not be trusted.** If needed, repin the fan connector.
+The fan connector is a JST-XH and supply 5V any time the Pi is commanding it on. To bypass the Pi control, solder the jumper and it'll always supply 5V. There are polarity markings next to the connector. Make sure your fan matches these. **Pictures on amazon listings for fans should not be trusted.** If needed, repin the fan connector.
 
 ### Power connectors
 
