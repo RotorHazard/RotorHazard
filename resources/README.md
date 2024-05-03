@@ -13,16 +13,16 @@ Standard, current build using the STM32 "Blue Pill" in place of individual Ardui
 - Ease-of-use features: power switch, shutdown button
 
 ### Full-size
-[RotorHazard S32_BPill PCB](S32_BPill_PCB/README.md)<br />
-[RotorHazard S32_BPill Case](S32_BPill_case/README.md)
+[RotorHazard S32_BPill PCB](S32_BPill_PCB/)<br />
+[RotorHazard S32_BPill Case](S32_BPill_case/)
 
 ### Compact (supports up to 6 receivers)
-[RotorHazard 6 Node STM32](6_Node_BPill_PCB/README.md)<br />
-[RotorHazard 6 Node Case](6_node_BPill_case/readme.md)
+[RotorHazard 6 Node STM32](6_Node_BPill_PCB/)<br />
+[RotorHazard 6 Node Case](6_node_BPill_case/)
 
 <br />
 
-## NuclearHazard STM32
+## NuclearHazard Core
 
 Designed for PCB manufacturer to be able to populate components instead of ordering individually. Available for purchase from the board designer.
 
@@ -32,7 +32,13 @@ Designed for PCB manufacturer to be able to populate components instead of order
 - Smallest size
 - Simplest assembly
 
-[NuclearHazard (Prepopulated S32)](NuclearHazard/README.md)
+[NuclearHazard Core (Prepopulated S32)](NuclearHazardCore/)
+
+### NuclearHazard Atom
+
+A compact, 2-node version of the NuclearHazard
+
+[NuclearHazard Atom (2-node Prepopulated S32)](NuclearHazardAtom/)
 
 <br />
 
@@ -43,8 +49,8 @@ Uses the same basic hardware as the Delta 5, with improved features and ease of 
 - Supports up to 8 receivers when paired with second PCB (or more via USB)
 - Highest cost for required components
 
-[RotorHazard/Arduino PCB](PCB/README.md)<br />
-[3D Printed Enclosure for Arduino-based PCBs](enclosure/README.md)
+[RotorHazard/Arduino PCB](PCB/)<br />
+[3D Printed Enclosure for Arduino-based PCBs](enclosure/)
 
 <br />
 
