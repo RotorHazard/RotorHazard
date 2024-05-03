@@ -892,7 +892,7 @@ def build_leaderboard_event(racecontext):
 
 def build_incremental(racecontext, merge_result, source_result, transient=False):
     if not source_result:
-        return merge_result
+        return copy.deepcopy(merge_result)
 
     if not merge_result:
         return source_result
