@@ -3,29 +3,34 @@
 import time
 
 try:
+    Real_GPIO_Zero_flag = False
+    Real_RPi_GPIO_flag = False
     try:
         import lgpio
         import gpiozero
-        # if hardware is Raspberry Pi other than Pi 5 or later then use RPi.GPIO
-        with open("/proc/device-tree/model", 'r') as fileHnd:
-            _modelStr = fileHnd.read()
-        if _modelStr.startswith("Raspberry Pi ") and int(_modelStr[13:15]) < 5:
-            raise RuntimeError("Model is not Raspberry 5 or later")
         Real_GPIO_Zero_flag = True
+    except:
+        pass
+    try:
+        import RPi.GPIO as GPIO
+        Real_RPi_GPIO_flag = True
+    except:
+        pass
+    try:
+        if Real_GPIO_Zero_flag and Real_RPi_GPIO_flag:
+            with open("/proc/device-tree/model", 'r') as fileHnd:
+                _modelStr = fileHnd.read()
+            if _modelStr.startswith("Raspberry Pi ") and int(_modelStr[13:15]) < 5:
+                Real_GPIO_Zero_flag = False  # for Pi 3/4 prefer Rpi.GPIO (works better with shutdown button)
+            else:
+                Real_RPi_GPIO_flag = False
+    except:
         Real_RPi_GPIO_flag = False
-        GPIO = {}
-    except Exception:
-        try:
-            import RPi.GPIO as GPIO
-            Real_GPIO_Zero_flag = False
-            Real_RPi_GPIO_flag = True
-        except ImportError:
-            Real_GPIO_Zero_flag = False
-            Real_RPi_GPIO_flag = False
-            GPIO = {}
 except:  # if failure then assume no hardware GPIO available
     Real_GPIO_Zero_flag = False
     Real_RPi_GPIO_flag = False
+
+if not Real_RPi_GPIO_flag:
     GPIO = {}
 
 # setup these GPIO constants so they can be referenced using RH_GPIO

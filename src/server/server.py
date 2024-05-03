@@ -3020,7 +3020,7 @@ with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connect
         RHUtils.set_S32_BPill_boardFlag()
         logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
-    logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
+    logger.info("System info: isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
                                              RHUtils.get_GPIO_type_str(), RHUtils.is_S32_BPill_board()))
     if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
         logger.warning("Unable to access real GPIO on Pi; libraries may need to be installed")

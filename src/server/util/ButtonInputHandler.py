@@ -26,8 +26,12 @@ class ButtonInputHandler:
         self.errorLoggedCount = 0
         try:
             RH_GPIO.setup(gpioPinNum, RH_GPIO.IN, pull_up_down=RH_GPIO.PUD_UP)
-        except:
-            logger.exception("Exception error in ButtonInputHandler setup")
+        except Exception as ex:
+            if str(ex).find("GPIO busy") > 0:
+                logger.error("Unable to access GPIO pin {} in ButtonInputHandler setup; may need to remove line \"dtoverlay=gpio-shutdown,gpio_pin={}\" from 'boot' config file ".\
+                             format(gpioPinNum, gpioPinNum))
+            else:
+                logger.exception("Exception error in ButtonInputHandler setup")
 
     # function called on a periodic basis to poll the input and invoke callbacks
     # returns True if button currently pressed or long press detected
