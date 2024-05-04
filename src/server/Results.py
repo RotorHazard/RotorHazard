@@ -242,7 +242,10 @@ def _do_calc_leaderboard(racecontext, **params):
         raceObj = params['current_race']
         race_format = raceObj.format
         round = racecontext.rhdata.get_max_round(raceObj.current_heat) + 1
-        heat_displayname = racecontext.rhdata.get_heat(raceObj.current_heat).display_name
+        if raceObj.current_heat:
+            heat_displayname = racecontext.rhdata.get_heat(raceObj.current_heat).display_name
+        else:
+            heat_displayname = ''
     else:
         if USE_CLASS:
             selected_races = rhDataObj.get_savedRaceMetas_by_raceClass(USE_CLASS)
