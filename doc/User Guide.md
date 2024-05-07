@@ -235,7 +235,35 @@ For example, you might add the "Speak" effect to the "Pilot Done" event in order
 * _Message_ creates a standard text notification
 * _Alert_ creates a priority (pop-up) alert message
 
-For the above effects, you can use "%PILOT%" for a callsign when a pilot triggers the event.
+The variables listed below may be used for the  effects.
+
+| Variable | Description                                                             |
+|--------|-------------------------------------------------------------------------|
+| %PILOT% | Pilot callsign                                                          |
+| %HEAT% | Current heat name or ID value                                           |
+| %LAP_COUNT% | Current lap number                                                      |
+| %LAST_LAP% | Last lap time for pilot                                                 |
+| %AVERAGE_LAP% | Average lap time for pilot                                              |
+| %FASTEST_LAP% | Fastest lap time                                                        |
+| %TIME_BEHIND_CALL% | Amount of time behind race leader (with prompt)                         |
+| %TIME_BEHIND_FINPOS_CALL% | Pilot NAME finished at position X, MM:SS.SSS behind                     |
+| %FASTEST_SPEED% | Fastest speed for pilot                                                 |
+| %CONSECUTIVE% | Fastest consecutive laps for pilot                                      |
+| %TOTAL_TIME% | Total time since start of race for pilot                                |
+| %TOTAL_TIME_LAPS% | Total time since start of first lap for pilot |
+| %POSITION% | Race position for pilot                                                 |
+| %POSITION_CALL% | Race position for pilot (with prompt)                                   |
+| %FASTEST_RACE_LAP% | Pilot/time for fastest lap in race                                      |
+| %FASTEST_RACE_LAP_CALL% | Pilot/time for fastest lap in race (with prompt)                        |
+| %FASTEST_RACE_SPEED% | Pilot/speed for fastest speed in race                                   |
+| %FASTEST_RACE_SPEED_CALL% | Pilot/speed for fastest speed in race (with prompt)                     |
+| %WINNER% | Pilot callsign for winner of race                                       |
+| %WINNER_CALL% | Pilot callsign for winner of race (with prompt)                         |
+| %PILOTS% | List of pilot callsigns (read out slower)                               |
+| %LINEUP% | List of pilot callsigns (read out faster)                               |
+| %FREQS% | List of pilot callsigns and frequency assignments                       |
+| %LEADER% | Callsign of pilot currently leading race                                |
+| %LEADER_CALL% | Callsign of pilot currently leading race, in the form "NAME is leading" |
 
 #### LED Effects
 Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.
@@ -277,6 +305,8 @@ Once a race has concluded, you must choose "Save Laps" or "Discard Laps" before 
 (The spacebar can also be used as a hotkey for the Start, Stop and Save functions.)
 
 The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. _Audio Control_ and _LED Control_ are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
+
+The Callout panel may be used to configure voice callouts, which can be triggered by clicking on the "play" button or hitting the associated hot-key sequence.  (For instance, hitting Ctl+Alt+1 will trigger the first voice callout.)  Many of the variables listed under "Event Actions" may be used on these callouts.
 
 ### Marshal
 
