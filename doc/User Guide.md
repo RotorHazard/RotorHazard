@@ -241,6 +241,8 @@ The variables listed below may be used for the  effects.
 |--------|-------------------------------------------------------------------------|
 | %PILOT% | Pilot callsign                                                          |
 | %HEAT% | Current heat name or ID value                                           |
+| %ROUND% | Current round number                                           |
+| %ROUND_CALL% | Current round number (with prompt)                                           |
 | %LAP_COUNT% | Current lap number                                                      |
 | %LAST_LAP% | Last lap time for pilot                                                 |
 | %AVERAGE_LAP% | Average lap time for pilot                                              |

@@ -3230,7 +3230,7 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
 # Text replacer
 def doReplace(rhapi, text, args, spoken_flag=False):
     if '%' in text:
-        # %HEAT%
+        # %HEAT% : Current heat name or ID value
         if 'heat_id' in args:
             heat = rhapi.db.heat_by_id(args['heat_id'])
         else:
@@ -3254,30 +3254,30 @@ def doReplace(rhapi, text, args, spoken_flag=False):
 
             for result in leaderboard:
                 if result['node'] == args['node_index']:
-                    # %LAP_COUNT%
+                    # %LAP_COUNT% : Current lap number
                     text = text.replace('%LAP_COUNT%', str(result['laps']))
 
-                    # %TOTAL_TIME%
+                    # %TOTAL_TIME% : Total time since start of race for pilot
                     text = text.replace('%TOTAL_TIME%', RHUtils.phonetictime_format( \
                         result['total_time_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['total_time'])
 
-                    # %TOTAL_TIME_LAPS%
+                    # %TOTAL_TIME_LAPS%: Total time since start of first lap for pilot
                     text = text.replace('%TOTAL_TIME_LAPS%', RHUtils.phonetictime_format( \
                         result['total_time_laps_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['total_time_laps'])
 
-                    # %LAST_LAP%
+                    # %LAST_LAP% : Last lap time for pilot
                     text = text.replace('%LAST_LAP%', RHUtils.phonetictime_format( \
                         result['last_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['last_lap'])
 
-                    # %AVERAGE_LAP%
+                    # %AVERAGE_LAP% : Average lap time for pilot
                     text = text.replace('%AVERAGE_LAP%', RHUtils.phonetictime_format( \
                         result['average_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['average_lap'])
 
-                    # %FASTEST_LAP%
+                    # %FASTEST_LAP% : Fastest lap time
                     text = text.replace('%FASTEST_LAP%', RHUtils.phonetictime_format( \
                         result['fastest_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else result['fastest_lap'])
@@ -3303,11 +3303,11 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                         # %TIME_BEHIND_FINPOS_CALL% : Pilot NAME finished at position X, MM:SS.SSS behind
                         text = text.replace('%TIME_BEHIND_FINPOS_CALL%', pos_bhind_str)
 
-                    # %FASTEST_SPEED%
+                    # %FASTEST_SPEED% : Fastest speed for pilot
                     text = text.replace('%FASTEST_SPEED%', getFastestSpeedStr(rhapi, spoken_flag, \
                                                                               result.get('pilot_id')))
 
-                    # %CONSECUTIVE%
+                    # %CONSECUTIVE% : Fastest consecutive laps for pilot
                     if result['consecutives_base'] == int(rhapi.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', RHUtils.phonetictime_format( \
                             result['consecutives_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
@@ -3362,10 +3362,23 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                 winner_str = "{} {}".format(rhapi.__('Winner is'), winner_str)
             text = text.replace('%WINNER_CALL%', winner_str)
 
+        if '%ROUND' in text:
+            round_id = rhapi.race.round
+            if round_id:
+                round_str = str(round_id)
+                # %ROUND% : Current round number
+                text = text.replace('%ROUND%', round_str)
+                round_str = "{} {}".format(rhapi.__('Round'), round_str)
+                # %ROUND_CALL% : Current round number (with prompt)
+                text = text.replace('%ROUND_CALL%', round_str)
+
+        # %PILOTS% : List of pilot callsigns (read out slower)
         if '%PILOTS%' in text:
             text = text.replace('%PILOTS%', getPilotsListStr(rhapi, ' . ', spoken_flag))
+        # %LINEUP% : List of pilot callsigns (read out faster)
         if '%LINEUP%' in text:
             text = text.replace('%LINEUP%', getPilotsListStr(rhapi, ' , ', spoken_flag))
+        # %FREQS% : List of pilot callsigns and frequency assignments
         if '%FREQS%' in text:
             text = text.replace('%FREQS%', getPilotFreqsStr(rhapi, ' . ', spoken_flag))
 

@@ -1011,6 +1011,15 @@ class RaceAPI():
         return self._racecontext.race.set_heat(heat_id)
 
     @property
+    def round(self):
+        heat_id = self._racecontext.race.current_heat
+        if heat_id:
+            round_idx = self._racecontext.rhdata.get_max_round(heat_id)
+            if type(round_idx) is int:
+                return round_idx + 1
+        return 0
+
+    @property
     @callWithDatabaseWrapper
     def frequencyset(self):
         return self._racecontext.race.profile
