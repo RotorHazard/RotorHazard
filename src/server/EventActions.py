@@ -22,8 +22,8 @@ class EventActions:
             })
 
         self.loadActions()
-        self.Events.on(Evt.ALL, 'Actions', self.doActions, {}, 200, True)
-        self.Events.on(Evt.OPTION_SET, 'Actions', self.loadActions, {}, 200, True)
+        self.Events.on(Evt.ALL, 'actions', self.doActions, {}, 200, True)
+        self.Events.on(Evt.CONFIG_SET, 'actions', self.loadActions, {}, 200, True)
 
     def registerEffect(self, effect):
         self.effects[effect.name] = effect
