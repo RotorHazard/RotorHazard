@@ -1,8 +1,8 @@
-Auto API Test 
+RotorHazard API 
 ==============
 
 .. autosummary::
-   :toctree: generated
+   :toctree: _autosummary
    :recursive:
 
     RHAPI
