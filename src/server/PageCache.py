@@ -17,7 +17,8 @@ import gevent
 logger = logging.getLogger(__name__)
 
 import FlaskAppObj
-FlaskAppObj.APP.app_context().push()
+if FlaskAppObj.APP:
+    FlaskAppObj.APP.app_context().push()
 
 class PageCache:
     _CACHE_TIMEOUT = 100

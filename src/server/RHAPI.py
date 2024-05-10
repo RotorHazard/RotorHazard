@@ -15,7 +15,8 @@ from eventmanager import Evt
 logger = logging.getLogger(__name__)
 
 from FlaskAppObj import APP
-APP.app_context().push()
+if APP:
+    APP.app_context().push()
 
 class RHAPI():
     def __init__(self, race_context):

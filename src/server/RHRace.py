@@ -17,7 +17,8 @@ from RHUtils import catchLogExceptionsWrapper
 from led_event_manager import ColorVal
 
 from FlaskAppObj import APP
-APP.app_context().push()
+if APP:
+    APP.app_context().push()
 
 logger = logging.getLogger(__name__)
 

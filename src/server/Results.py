@@ -16,7 +16,8 @@ from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 logger = logging.getLogger(__name__)
 
 from FlaskAppObj import APP
-APP.app_context().push()
+if APP:
+    APP.app_context().push()
 
 NONE_NONE_PAIR = [None, None]
 
