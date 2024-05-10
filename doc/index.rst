@@ -17,7 +17,7 @@ Welcome to RotorHazard's documentation!
    Plugins.md
    Raspberry Pi Reference.md
    Real Time Clock.md
-   api
+   api.rst
    RHAPI.md
    Shielding and Course Position.md
    Shutdown Button.md
