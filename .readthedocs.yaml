@@ -22,5 +22,5 @@ formats:
 
 python:
   install:
-    - requirements: docs/requirements.txt
+    - requirements: doc/requirements.txt
     - requirements: src/server/reqsNonPi.txt
