@@ -10,7 +10,24 @@ Welcome to RotorHazard's documentation!
    :maxdepth: 1
    :caption: Contents:
 
-   *.md
+   Cluster.md
+   Development.md
+   Event Setup Guide.md
+   Frequency Reference.md
+   Plugins.md
+   Raspberry Pi Reference.md
+   Real Time Clock.md
+   api.rst
+   RHAPI.md
+   Shielding and Course Position.md
+   Shutdown Button.md
+   Software Setup.md
+   Technical Notes.md
+   Timer Build with Arduinos.md
+   Tuning Parameters.md
+   USB Nodes.md
+   User Guide.md
+   Video Receiver.md
 
 Indices and tables
 ==================
