@@ -61,6 +61,9 @@ class UIField():
 
 @dataclass
 class UIPanel():
+    """
+    Custom UI panels to RotorHazard's frontend pages
+    """
     name: str
     label: str
     page: str

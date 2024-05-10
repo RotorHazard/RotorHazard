@@ -52,4 +52,5 @@ html_theme_options = {
 extensions = [
     'myst_parser',
     'sphinx_copybutton',
+    'sphinx.ext.autodoc',
 ]

@@ -19,7 +19,17 @@ if APP:
     APP.app_context().push()
 
 class RHAPI():
+    """
+    An object providing a wide range of properties and methods across RotorHazard's internal systems
+
+    :param race_context: A handle to the :class:`RaceContext.RaceContext`
+    :type race_context: :class:`RaceContext.RaceContext`
+    """
+
     def __init__(self, race_context):
+        """
+        Constructor method
+        """
         self.API_VERSION_MAJOR = API_VERSION_MAJOR
         self.API_VERSION_MINOR = API_VERSION_MINOR
         self.server_info = None
@@ -59,12 +69,25 @@ def callWithDatabaseWrapper(func):
 # UI helpers
 #
 class UserInterfaceAPI():
+    """
+    Interact with RotorHazard's frontend user interface. These methods are accessed via :class:`RHAPI`.ui
+    """
+
     def __init__(self, race_context):
+        """
+        Constructor method
+        """ 
         self._racecontext = race_context
 
     # UI Panel
     @property
     def panels(self):
+        """
+        The list of registered panels
+
+        :return: A list of the discovered :class:`RHUI.UIPanel` objects
+        :rtype: List[RHUI.UIPanel]
+        """
         return self._racecontext.rhui.ui_panels
 
     def register_panel(self, name, label, page, order=0):

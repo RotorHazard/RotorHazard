@@ -7,7 +7,7 @@ Welcome to RotorHazard's documentation!
 =======================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    Cluster.md
@@ -17,6 +17,7 @@ Welcome to RotorHazard's documentation!
    Plugins.md
    Raspberry Pi Reference.md
    Real Time Clock.md
+   api
    RHAPI.md
    Shielding and Course Position.md
    Shutdown Button.md
