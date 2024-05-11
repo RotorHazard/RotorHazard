@@ -357,9 +357,15 @@ class HeatAdvanceType:
     :cvar NEXT_HEAT: Advance heat; if all rounds run advance race class
     :cvar NEXT_ROUND: Advance heat if rounds has been reached; advance race class after last heat in class
     """
-    NONE = 0
-    NEXT_HEAT = 1
-    NEXT_ROUND = 2
+    NONE:int = 0
+    """ Name test
+    """
+    NEXT_HEAT:int = 1
+    """ Another test
+    """
+    NEXT_ROUND:int = 2
+    """ Last test
+    """
 
 class RaceClassAttribute(Base):
     """Race Class Attributes are simple storage variables which persist to the database. Race Class Attribute values are unique to/stored individually for each race class.
