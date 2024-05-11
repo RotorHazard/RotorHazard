@@ -310,7 +310,7 @@ class FieldsAPI():
     # Pilot Attribute
     @property
     def pilot_attributes(self):
-        """Provides a list of registered PilotAttributes
+        """Provides a list of registered pilot attributes
 
         :return: List of PilotAttributes
         :rtype: List[UIField]
@@ -318,9 +318,9 @@ class FieldsAPI():
         return self._racecontext.rhui.pilot_attributes
 
     def register_pilot_attribute(self, field:UIField):
-        """Register an attribute to be displayed in the UI or otherwise made accessible to plugins.
+        """Register a pilot attribute to be displayed in the UI or otherwise made accessible to plugins.
 
-        :param field: Attribute to register
+        :param field: UIField to register
         :type field: UIField
         :return: List of Attributes
         :rtype: List[UIField]
@@ -330,17 +330,17 @@ class FieldsAPI():
     # Heat Attribute
     @property
     def heat_attributes(self):
-        """Provides a list of registered HeatAttributes.
+        """Provides a list of registered heat attributes.
 
-        :return: List of HeatAttributes
+        :return: List of heat attributes
         :rtype: List[UIField]
         """
         return self._racecontext.rhui.heat_attributes
 
     def register_heat_attribute(self, field:UIField):
-        """Register an attribute to be made accessible to plugins.
+        """Register a heat attribute to be made accessible to plugins.
 
-        :param field: Attribute to register
+        :param field: UIField to register
         :type field: UIField
         :return: List of Attributes
         :rtype: List[UIField]
@@ -350,38 +350,85 @@ class FieldsAPI():
     # Race Class Attribute
     @property
     def raceclass_attributes(self):
-        """_summary_
+        """Provides a list of registered race class attributes.
 
-        :return: _description_
-        :rtype: _type_
+        :return: List of race class attributes
+        :rtype: List[UIField]
         """
         return self._racecontext.rhui.raceclass_attributes
 
     def register_raceclass_attribute(self, field:UIField):
+        """Register a race class attribute to be made accessible to plugins.
+
+        :param field: UIField to register
+        :type field: UIField
+        :return: List of Attributes
+        :rtype: List[UIField]
+        """
         return self._racecontext.rhui.register_raceclass_attribute(field)
 
     # Race Attribute
     @property
     def race_attributes(self):
+        """Provides a list of registered race attributes.
+
+        :return: List of race attributes
+        :rtype: List[UIField]
+        """
         return self._racecontext.rhui.savedrace_attributes
 
     def register_race_attribute(self, field:UIField):
+        """Register a race attribute to be made accessible to plugins.
+
+        :param field: UIField to register
+        :type field: UIField
+        :return: List of Attributes
+        :rtype: List[UIField]
+        """
         return self._racecontext.rhui.register_savedrace_attribute(field)
 
     # Race Attribute
     @property
     def raceformat_attributes(self):
+        """Provides a list of registered race format attributes.
+
+        :return: List of race format attributes
+        :rtype: List[UIField]
+        """
         return self._racecontext.rhui.raceformat_attributes
 
     def register_raceformat_attribute(self, field:UIField):
+        """Register a race format attribute to be made accessible to plugins.
+
+        :param field: UIField to register
+        :type field: UIField
+        :return: List of Attributes
+        :rtype: List[UIField]
+        """
         return self._racecontext.rhui.register_raceformat_attribute(field)
 
     # General Setting
     @property
     def options(self):
+        """Provides a list of registered options.
+
+        :return: List of options
+        :rtype: List[UIField]
+        """
         return self._racecontext.rhui.general_settings
 
     def register_option(self, field:UIField, panel=None, order=0):
+        """Register a option to be made accessible to plugins.
+
+        :param field: UIField to register
+        :type field: UIField
+        :param panel: name of panel previously registered with ui.register_panel
+        :type panel: str
+        :param field: Attribute to register
+        :type field: int
+        :return: List of Attributes
+        :rtype: List[UIField]
+        """
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
 
