@@ -123,7 +123,7 @@ class UserInterfaceAPI():
         """The list of registered panels
 
         :return: A list of the discovered :class:`UIPanel` objects
-        :rtype: List[UIPanel]
+        :rtype: list[UIPanel]
         """
         return self._racecontext.rhui.ui_panels
 
@@ -140,7 +140,7 @@ class UserInterfaceAPI():
         :type order: int, optional
 
         :return: Returns all panels
-        :rtype: List[UIPanel]
+        :rtype: list[UIPanel]
         """
         return self._racecontext.rhui.register_ui_panel(name, label, page, order)
 
@@ -313,7 +313,7 @@ class FieldsAPI():
         """Provides a list of registered pilot attributes
 
         :return: List of pilot attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.pilot_attributes
 
@@ -323,7 +323,7 @@ class FieldsAPI():
         :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.register_pilot_attribute(field)
 
@@ -333,7 +333,7 @@ class FieldsAPI():
         """Provides a list of registered heat attributes.
 
         :return: List of heat attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.heat_attributes
 
@@ -343,7 +343,7 @@ class FieldsAPI():
         :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.register_heat_attribute(field)
 
@@ -353,7 +353,7 @@ class FieldsAPI():
         """Provides a list of registered race class attributes.
 
         :return: List of race class attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.raceclass_attributes
 
@@ -363,7 +363,7 @@ class FieldsAPI():
         :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.register_raceclass_attribute(field)
 
@@ -373,7 +373,7 @@ class FieldsAPI():
         """Provides a list of registered race attributes.
 
         :return: List of race attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.savedrace_attributes
 
@@ -383,7 +383,7 @@ class FieldsAPI():
         :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.register_savedrace_attribute(field)
 
@@ -393,7 +393,7 @@ class FieldsAPI():
         """Provides a list of registered race format attributes.
 
         :return: List of race format attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.raceformat_attributes
 
@@ -403,7 +403,7 @@ class FieldsAPI():
         :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.register_raceformat_attribute(field)
 
@@ -413,7 +413,7 @@ class FieldsAPI():
         """Provides a list of registered options.
 
         :return: List of options
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.general_settings
 
@@ -427,7 +427,7 @@ class FieldsAPI():
         :param field: Attribute to register
         :type field: int
         :return: List of Attributes
-        :rtype: List[UIField]
+        :rtype: list[UIField]
         """
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
@@ -463,7 +463,7 @@ class DatabaseAPI():
         """Gets all pilot records
 
         :return: Pilot records
-        :rtype: List[Pilot]
+        :rtype: list[Pilot]
         """
         return self._racecontext.rhdata.get_pilots()
 
@@ -491,6 +491,17 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def pilot_attribute_value(self, pilot_or_id, name, default_value=None):
+        """The value of a single custom attribute assigned to pilot
+
+        :param pilot_or_id: Either the pilot object or the ID of pilot
+        :type pilot_or_id: Pilot|int
+        :param name: Attribute to match
+        :type name: str
+        :param default_value: value to return if attribute is not registered (uses registered default if available), defaults to None
+        :type default_value: any, optional
+        :return: A :class:`PilotAttribute`
+        :rtype: PilotAttribute
+        """
         for field in self._racecontext.rhui.pilot_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_pilot_attribute_value(pilot_or_id, field.name, field.value)
@@ -499,10 +510,34 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def pilot_ids_by_attribute(self, name, value):
+        """ID of pilots with attribute matching the specified attribute/value combination
+
+        :param name: Attribute to match
+        :type name: str
+        :param value: Value to match
+        :type value: str
+        :return: Pilots' IDs
+        :rtype: list[int]
+        """
         return self._racecontext.rhdata.get_pilot_id_by_attribute(name, value)
 
     @callWithDatabaseWrapper
     def pilot_add(self, name=None, callsign=None, phonetic=None, team=None, color=None):
+        """Add a new pilot to the database.
+
+        :param name: Name for new pilot, defaults to None
+        :type name: str, optional
+        :param callsign: Callsign for new pilot, defaults to None
+        :type callsign: str, optional
+        :param phonetic: Phonetic spelling for new pilot callsign, defaults to None
+        :type phonetic: str, optional
+        :param team: Team for new pilot, defaults to None
+        :type team: str, optional
+        :param color: Color for new pilot, defaults to None
+        :type color: str, optional
+        :return: Created :class:`Pilot`
+        :rtype: Pilot
+        """
         #TODO: attribute support
         data = {}
 
@@ -520,6 +555,25 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def pilot_alter(self, pilot_id, name=None, callsign=None, phonetic=None, team=None, color=None, attributes=None):
+        """Alter pilot data
+
+        :param pilot_id: ID of pilot to alter
+        :type pilot_id: int
+        :param name: New name for pilot, defaults to None
+        :type name: str, optional
+        :param callsign: New callsign for pilot, defaults to None
+        :type callsign: str, optional
+        :param phonetic: New phonetic spelling of callsign for pilot, defaults to None
+        :type phonetic: str, optional
+        :param team: New team for pilot, defaults to None
+        :type team: str, optional
+        :param color: New color for pilot, defaults to None
+        :type color: str, optional
+        :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
+        :type attributes: dict, optional
+        :return: Altered :class:`Pilot`
+        :rtype: Pilot
+        """
         data = {}
 
         if isinstance(attributes, dict):
@@ -547,10 +601,22 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def pilot_delete(self, pilot_or_id):
+        """Delete pilot record. Fails if pilot is associated with saved race.
+
+        :param pilot_or_id: ID of pilot to delete
+        :type pilot_or_id: int
+        :return: Delete success status.
+        :rtype: bool
+        """
         return self._racecontext.rhdata.delete_pilot(pilot_or_id)
 
     @callWithDatabaseWrapper
     def pilots_reset(self):
+        """Delete all pilot records.
+
+        :return: Reset status
+        :rtype: bool
+        """
         return self._racecontext.rhdata.reset_pilots()
 
     # Heat
@@ -558,18 +624,48 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def heats(self):
+        """Gets all heat records.
+
+        :return: List of :class:`Heat`
+        :rtype: list[Heat]
+        """
         return self._racecontext.rhdata.get_heats()
 
     @callWithDatabaseWrapper
     def heat_by_id(self, heat_id):
+        """A single heat record.
+
+        :param heat_id: ID of heat record to retrieve
+        :type heat_id: int
+        :return: heat record
+        :rtype: Heat
+        """
         return self._racecontext.rhdata.get_heat(heat_id)
 
     @callWithDatabaseWrapper
     def heat_attributes(self, heat_or_id):
+        """All custom attributes assigned to heat.
+
+        :param heat_or_id: Either the heat object or the ID of heat
+        :type heat_or_id: Heat|int
+        :return: Heat's attributes
+        :rtype: list[HeatAttribute]
+        """
         return self._racecontext.rhdata.get_heat_attributes(heat_or_id)
 
     @callWithDatabaseWrapper
     def heat_attribute_value(self, heat_or_id, name, default_value=None):
+        """The value of a single custom attribute assigned to heat.
+
+        :param heat_or_id: Either the heat object or the ID of heat
+        :type heat_or_id: Heat|int
+        :param name: Attribute to retrieve
+        :type name: str
+        :param default_value: value to return if attribute is not registered (uses registered default if available), defaults to None
+        :type default_value: any, optional
+        :return: heat attribute value
+        :rtype: str
+        """
         for field in self._racecontext.rhui.heat_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_heat_attribute_value(heat_or_id, field.name, field.value)
@@ -578,22 +674,63 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def heat_ids_by_attribute(self, name, value):
+        """ID of heats with attribute matching the specified attribute/value combination.
+
+        :param name: Name for new heat
+        :type name: str, optional
+        :param value: Raceclass ID for new heat
+        :type value: int, optional
+        :return: List of heat IDs
+        :rtype: list[int]
+        """
         return self._racecontext.rhdata.get_heat_id_by_attribute(name, value)
 
     @callWithDatabaseWrapper
     def heats_by_class(self, raceclass_id):
+        """All heat records associated with a specific class.
+
+        :param raceclass_id: ID of raceclass used to retrieve heats
+        :type raceclass_id: int
+        :return: List of heats
+        :rtype: list[Heat]
+        """
         return self._racecontext.rhdata.get_heats_by_class(raceclass_id)
 
     @callWithDatabaseWrapper
     def heat_results(self, heat_or_id):
+        """The calculated summary result set for all races associated with this heat.
+
+        :param heat_or_id: Either the heat object or the ID of heat
+        :type heat_or_id: Heat|int
+        :return: heat results
+        :rtype: dict
+        """
         return self._racecontext.rhdata.get_results_heat(heat_or_id)
 
     @callWithDatabaseWrapper
     def heat_max_round(self, heat_id):
+        """The highest-numbered race round recorded for selected heat.
+
+        :param heat_id: ID of heat
+        :type heat_id: int
+        :return: Round number
+        :rtype: int
+        """
         return self._racecontext.rhdata.get_max_round(heat_id)
 
     @callWithDatabaseWrapper
     def heat_add(self, name=None, raceclass=None, auto_frequency=None):
+        """Add a new heat to the database.
+
+        :param name: Name for new heat, defaults to None
+        :type name: string, optional
+        :param raceclass: Raceclass ID for new heat, defaults to None
+        :type raceclass: int, optional
+        :param auto_frequency: Whether to enable auto-frequency, defaults to None
+        :type auto_frequency: bool, optional
+        :return: The new :class:`Heat`
+        :rtype: Heat
+        """
         data = {}
 
         for name, value in [
@@ -608,6 +745,15 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def heat_duplicate(self, source_heat_or_id, dest_class=None):
+        """Duplicate a heat record.
+
+        :param source_heat_or_id: Either the heat object or the ID of heat to copy from
+        :type source_heat_or_id: Heat|int
+        :param dest_class: Raceclass ID to copy heat into, defaults to None
+        :type dest_class: int, optional
+        :return: The new :class:`Heat`
+        :rtype: Heat
+        """
         if dest_class:
             return self._racecontext.rhdata.duplicate_heat(source_heat_or_id, dest_class=dest_class)
         else:
@@ -615,6 +761,23 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def heat_alter(self, heat_id, name=None, raceclass=None, auto_frequency=None, status=None, attributes=None):
+        """Alter heat data.
+
+        :param heat_id: ID of heat to alter
+        :type heat_id: int
+        :param name: New name for heat, defaults to None
+        :type name: str, optional
+        :param raceclass: New raceclass ID for heat, defaults to None
+        :type raceclass: int, optional
+        :param auto_frequency: New auto-frequency setting for heat, defaults to None
+        :type auto_frequency: bool, optional
+        :param status: New status for heat, defaults to None
+        :type status: HeatStatus, optional
+        :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
+        :type attributes: dict, optional
+        :return: Returns tuple of this Heat and affected races
+        :rtype: list[SavedRace]
+        """
         data = {}
 
         if isinstance(attributes, dict):
@@ -641,11 +804,20 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def heat_delete(self, heat_or_id):
+        """Delete heat. Fails if heat has saved races associated or if there is only one heat left in the database.
+
+        :param heat_or_id: ID of heat to delete
+        :type heat_or_id: Heat|int
+        :return: Success status
+        :rtype: bool
+        """
         return self._racecontext.rhdata.delete_heat(heat_or_id)
 
     @callWithDatabaseWrapper
     def heats_reset(self):
-        return self._racecontext.rhdata.reset_heats()
+        """Delete all heat records
+        """
+        self._racecontext.rhdata.reset_heats()
 
     # Heat -> Slots
 

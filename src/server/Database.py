@@ -35,6 +35,25 @@ def __(*args):
 # round 1-N heat
 
 class Pilot(Base):
+    """A pilot is an individual participant. In order to participate in races, pilots can be assigned to multiple heats.
+
+    :cvar id: Internal identifier
+    :vartype id: int
+    :cvar callsign : Callsign
+    :vartype callsign : str
+    :cvar team : Team designation
+    :vartype team : str
+    :cvar phonetic : Phonetically-spelled callsign, used for text-to-speech
+    :vartype phonetic : str
+    :cvar color: Hex-encoded color
+    :vartype color: str
+    :cvar used_frequencies: Serialized list of frequencies this pilot has been assigned when starting a race, ordered by recency
+    :vartype used_frequencies: str
+    :cvar active: Not yet implemented
+    :vartype active: bool
+
+    The sentinel value RHUtils.PILOT_ID_NONE should be used when no pilot is defined.
+    """
     __tablename__ = 'pilot'
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), nullable=False)
@@ -75,9 +94,7 @@ class Pilot(Base):
         return '<Pilot %r>' % self.id
 
 class PilotAttribute(Base):
-    """Pilot Attributes are simple storage variables which persist to the database 
-    and can be presented to users through frontend UI. Pilot Attribute values are 
-    unique to/stored individually for each pilot.
+    """Pilot Attributes are simple storage variables which persist to the database and can be presented to users through frontend UI. Pilot Attribute values are unique to/stored individually for each pilot.
 
     :cvar id: ID of pilot to which this attribute is assigned
     :vartype id: int
@@ -95,6 +112,30 @@ class PilotAttribute(Base):
     value = DB.Column(DB.String(), nullable=True)
 
 class Heat(Base):
+    """Heats are collections of pilots upon which races are run. A heat may first be represented by a heat plan which defines methods for assigning pilots. The plan must be seeded into pilot assignments in order for a race to be run.
+
+    :cvar id: Internal identifier
+    :vartype id: int
+    :cvar name: User-facing name
+    :vartype name: str
+    :cvar class_id: ID of associated race class
+    :vartype class_id: int
+    :cvar results: Internal use only; see below
+    :vartype results: dict|None
+    :cvar _cache_status: Internal use only
+    :cvar order: ID of pilot to which this attribute is assigned
+    :vartype order: int
+    :cvar status: ID of pilot to which this attribute is assigned
+    :vartype status: HeatStatus
+    :cvar auto_frequency: ID of pilot to which this attribute is assigned
+    :vartype auto_frequency: bool
+    :cvar active: ID of pilot to which this attribute is assigned
+    :vartype active: bool
+
+    The sentinel value RHUtils.HEAT_ID_NONE should be used when no heat is defined.
+
+    NOTE: Results should be accessed with the db.heat_results method and not by reading the results property directly. The results property is unreliable because results calulation is delayed to improve system performance. db.heat_results ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
+    """
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column('note', DB.String(80), nullable=True)
@@ -143,6 +184,15 @@ class HeatStatus:
     CONFIRMED = 2
 
 class HeatAttribute(Base):
+    """Heat Attributes are simple storage variables which persist to the database. Heat Attribute values are unique to/stored individually for each heat.
+
+    :cvar id: ID of heat to which this attribute is assigned
+    :vartype id: int
+    :cvar name: Name of attribute
+    :vartype name: str
+    :cvar value: Value of attribute
+    :vartype value: str
+    """
     __tablename__ = 'heat_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
