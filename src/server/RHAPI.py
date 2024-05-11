@@ -24,25 +24,44 @@ class RHAPI():
     :param race_context: A handle to the :class:`RaceContext.RaceContext`
     :type race_context: :class:`RaceContext.RaceContext`
 
-    :ivar API_VERSION_MAJOR: API major version`
-    :ivar API_VERSION_MINOR: API minor version`
+    :ivar API_VERSION_MAJOR: API major version
+    :vartype API_VERSION_MAJOR: int
+    :ivar API_VERSION_MINOR: API minor version
+    :vartype API_VERSION_MINOR: int
     :ivar ui: Access to :class:`RHAPI.UserInterfaceAPI`
+    :vartype ui: :class:`RHAPI.UserInterfaceAPI`
     :ivar fields: Access to :class:`RHAPI.FieldsAPI`
+    :vartype fields: :class:`RHAPI.FieldsAPI`
     :ivar db: Access to :class:`RHAPI.DatabaseAPI`
+    :vartype db: :class:`RHAPI.DatabaseAPI`
     :ivar io: Access to :class:`RHAPI.IOAPI`
+    :vartype io: :class:`RHAPI.IOAPI`
     :ivar heatgen: Access to :class:`RHAPI.HeatGenerateAPI`
+    :vartype heatgen: :class:`RHAPI.HeatGenerateAPI`
     :ivar classrank: Access to :class:`RHAPI.ClassRankAPI`
+    :vartype classrank: :class:`RHAPI.ClassRankAPI`
     :ivar points: Access to :class:`RHAPI.PointsAPI`
+    :vartype points: :class:`RHAPI.PointsAPI`
     :ivar led: Access to :class:`RHAPI.LEDAPI`
+    :vartype led: :class:`RHAPI.LEDAPI`
     :ivar vrxcontrol: Access to :class:`RHAPI.VRxControlAPI`
+    :vartype vrxcontrol: :class:`RHAPI.VRxControlAPI`
     :ivar race: Access to :class:`RHAPI.RaceAPI`
+    :vartype race: :class:`RHAPI.RaceAPI`
     :ivar language: Access to :class:`RHAPI.LanguageAPI`
+    :vartype language: :class:`RHAPI.LanguageAPI`
     :ivar interface: Access to :class:`RHAPI.HardwareInterfaceAPI`
+    :vartype interface: :class:`RHAPI.HardwareInterfaceAPI`
     :ivar config: Access to :class:`RHAPI.ServerConfigAPI`
+    :vartype config: :class:`RHAPI.ServerConfigAPI`
     :ivar sensors: Access to :class:`RHAPI.SensorsAPI`
+    :vartype sensors: :class:`RHAPI.SensorsAPI`
     :ivar eventresults: Access to :class:`RHAPI.EventResultsAPI`
+    :vartype eventresults: :class:`RHAPI.EventResultsAPI`
     :ivar events: Access to :class:`RHAPI.EventsAPI`
-    :ivar __: Access to :meth:`RHAPI.LanguageAPI.__`
+    :vartype events: :class:`RHAPI.EventsAPI`
+    :ivar __: Shortcut access to :meth:`RHAPI.LanguageAPI.__`
+    :vartype __: function
     """
 
     def __init__(self, race_context):
