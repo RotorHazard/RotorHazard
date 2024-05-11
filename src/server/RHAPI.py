@@ -24,6 +24,24 @@ class RHAPI():
 
     :param race_context: A handle to the :class:`RaceContext.RaceContext`
     :type race_context: :class:`RaceContext.RaceContext`
+
+    :ivar ui: Access to :class:`RHAPI.UserInterfaceAPI`
+    :ivar fields: Access to :class:`RHAPI.FieldsAPI`
+    :ivar db: Access to :class:`RHAPI.DatabaseAPI`
+    :ivar io: Access to :class:`RHAPI.IOAPI`
+    :ivar heatgen: Access to :class:`RHAPI.HeatGenerateAPI`
+    :ivar classrank: Access to :class:`RHAPI.ClassRankAPI`
+    :ivar points: Access to :class:`RHAPI.PointsAPI`
+    :ivar led: Access to :class:`RHAPI.LEDAPI`
+    :ivar vrxcontrol: Access to :class:`RHAPI.VRxControlAPI`
+    :ivar race: Access to :class:`RHAPI.RaceAPI`
+    :ivar language: Access to :class:`RHAPI.LanguageAPI`
+    :ivar interface: Access to :class:`RHAPI.HardwareInterfaceAPI`
+    :ivar config: Access to :class:`RHAPI.ServerConfigAPI`
+    :ivar sensors: Access to :class:`RHAPI.SensorsAPI`
+    :ivar eventresults: Access to :class:`RHAPI.EventResultsAPI`
+    :ivar events: Access to :class:`RHAPI.EventsAPI`
+    :ivar __: Access to :class:`RHAPI.LanguageAPI`
     """
 
     def __init__(self, race_context):
