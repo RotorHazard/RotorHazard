@@ -19,8 +19,7 @@ if APP:
     APP.app_context().push()
 
 class RHAPI():
-    """
-    An object providing a wide range of properties and methods across RotorHazard's internal systems
+    """An object providing a wide range of properties and methods across RotorHazard's internal systems
 
     :param race_context: A handle to the :class:`RaceContext.RaceContext`
     :type race_context: :class:`RaceContext.RaceContext`
@@ -47,8 +46,7 @@ class RHAPI():
     """
 
     def __init__(self, race_context):
-        """
-        Constructor method
+        """Constructor method
         """
         self.API_VERSION_MAJOR = API_VERSION_MAJOR
         self.API_VERSION_MINOR = API_VERSION_MINOR
@@ -89,21 +87,21 @@ def callWithDatabaseWrapper(func):
 # UI helpers
 #
 class UserInterfaceAPI():
-    """
-    Interact with RotorHazard's frontend user interface. These methods are accessed via :attr:`RHAPI.RHAPI.ui`
+    """Interact with RotorHazard's frontend user interface. These methods are accessed via :attr:`RHAPI.RHAPI.ui`
     """
 
     def __init__(self, race_context):
-        """
-        Constructor method
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext.RaceContext`
         """ 
         self._racecontext = race_context
 
     # UI Panel
     @property
     def panels(self):
-        """
-        The list of registered panels
+        """The list of registered panels
 
         :return: A list of the discovered :class:`RHUI.UIPanel` objects
         :rtype: List[RHUI.UIPanel]
@@ -111,8 +109,7 @@ class UserInterfaceAPI():
         return self._racecontext.rhui.ui_panels
 
     def register_panel(self, name, label, page, order=0):
-        """
-        The list of registered panels
+        """The list of registered panels
 
         :param name: Internal identifier for this panel
         :type name: str
@@ -130,8 +127,7 @@ class UserInterfaceAPI():
 
     # Quick button
     def register_quickbutton(self, panel, name, label, function, args=None):
-        """
-        Provides a simple interface to add a UI button and bind it to a function. Quickbuttons appear on assigned UI panels.
+        """Provides a simple interface to add a UI button and bind it to a function. Quickbuttons appear on assigned UI panels.
 
         :param panel: name of panel where button will appear
         :type panel: str
@@ -140,9 +136,9 @@ class UserInterfaceAPI():
         :param label: Text used for visible button label
         :type label: str
         :param function: Function to run when button is pressed
-        :type function: callable
+        :type function: _type_
         :param args: Argument passed to function when called, defaults to None
-        :type args: any, optional
+        :type args: _type_, optional
 
         :return: _description_
         :rtype: _type_
@@ -151,29 +147,74 @@ class UserInterfaceAPI():
 
     # Blueprint
     def blueprint_add(self, blueprint):
+        """_summary_
+
+        :param blueprint: _description_
+        :type blueprint: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.rhui.add_blueprint(blueprint)
 
     # Messaging
     def message_speak(self, message):
+        """_summary_
+
+        :param message: _description_
+        :type message: string
+        """
         self._racecontext.rhui.emit_phonetic_text(message)
 
     def message_notify(self, message):
+        """_summary_
+
+        :param message: _description_
+        :type message: _type_
+        """
         self._racecontext.rhui.emit_priority_message(message, False)
 
     def message_alert(self, message):
+        """_summary_
+
+        :param message: _description_
+        :type message: _type_
+        """
         self._racecontext.rhui.emit_priority_message(message, True)
 
     def clear_messages(self):
+        """_summary_
+        """
         self._racecontext.rhui.emit_clear_priority_messages()
 
     # Socket
     def socket_listen(self, message, handler):
+        """_summary_
+
+        :param message: _description_
+        :type message: _type_
+        :param handler: _description_
+        :type handler: _type_
+        """
         self._racecontext.rhui.socket_listen(message, handler)
 
     def socket_send(self, message, data):
+        """_summary_
+
+        :param message: _description_
+        :type message: _type_
+        :param data: _description_
+        :type data: _type_
+        """
         self._racecontext.rhui.socket_send(message, data)
 
     def socket_broadcast(self, message, data):
+        """_summary_
+
+        :param message: _description_
+        :type message: _type_
+        :param data: _description_
+        :type data: _type_
+        """
         self._racecontext.rhui.socket_broadcast(message, data)
 
     # Broadcasts
