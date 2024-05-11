@@ -37,6 +37,39 @@ class UIFieldSelectOption():
 
 @dataclass
 class UIField():
+    """Defines a frontend user interface for collecting data. 
+
+    If field_type is TEXT
+        placeholder optional (string): Text displayed when no value is present
+
+    If field_type is BASIC_INT
+        placeholder optional (string): Text displayed when no value is present
+
+    If field_type is CHECKBOX
+        value is boolean and no longer optional
+
+    If field_type is SELECT
+        options (list[UIFieldSelectOption]): a list of UIFieldSelectOption objects with the following properties:
+            value (string): internal identifier used when this option is selected
+            label (string): user-facing text that appears in the RotorHazard frontend interface
+        value is no longer optional and must match the value of an item in options.
+
+    :cvar name: Internal identifier for this parameter
+    :vartype name: str
+    :cvar label: Text that appears in the RotorHazard frontend interface
+    :vartype label: str
+    :cvar field_type: One of :class:`RHUI.UIFieldType`
+    :vartype field_type: :class:`RHUI.UIFieldType`
+    :cvar value: Default value for field
+    :vartype value: any
+    :cvar desc: Additional user-facing text that appears in the RotorHazard frontend interface describing notes 
+    or special instructions for use
+    :vartype desc: str, optional
+    :cvar options: A list of :class:`RHUI.UIFieldSelectOption`
+    :vartype options: List[:class:`RHUI.UIFieldSelectOption`], defaults to None
+    :cvar private: Prevent automatically generated UI
+    :vartype private: bool, optional
+    """
     name: str
     label: str
     field_type: str = UIFieldType.TEXT
