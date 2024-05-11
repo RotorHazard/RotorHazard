@@ -25,6 +25,8 @@ class RHAPI():
     :param race_context: A handle to the :class:`RaceContext.RaceContext`
     :type race_context: :class:`RaceContext.RaceContext`
 
+    :ivar API_VERSION_MAJOR: API major version`
+    :ivar API_VERSION_MINOR: API minor version`
     :ivar ui: Access to :class:`RHAPI.UserInterfaceAPI`
     :ivar fields: Access to :class:`RHAPI.FieldsAPI`
     :ivar db: Access to :class:`RHAPI.DatabaseAPI`
@@ -41,7 +43,7 @@ class RHAPI():
     :ivar sensors: Access to :class:`RHAPI.SensorsAPI`
     :ivar eventresults: Access to :class:`RHAPI.EventResultsAPI`
     :ivar events: Access to :class:`RHAPI.EventsAPI`
-    :ivar __: Access to :class:`RHAPI.LanguageAPI`
+    :ivar __: Access to :meth:`RHAPI.LanguageAPI.__`
     """
 
     def __init__(self, race_context):
@@ -109,10 +111,42 @@ class UserInterfaceAPI():
         return self._racecontext.rhui.ui_panels
 
     def register_panel(self, name, label, page, order=0):
+        """
+        The list of registered panels
+
+        :param name: Internal identifier for this panel
+        :type name: str
+        :param label: Text used as visible panel header
+        :type label: str
+        :param page: Page to add panel to; one of "format", "settings"
+        :type page: str
+        :param order: Not yet implemented, defaults to 0
+        :type order: int, optional
+
+        :return: Returns all panels
+        :rtype: List[RHUI.UIPanel]
+        """
         return self._racecontext.rhui.register_ui_panel(name, label, page, order)
 
     # Quick button
     def register_quickbutton(self, panel, name, label, function, args=None):
+        """
+        Provides a simple interface to add a UI button and bind it to a function. Quickbuttons appear on assigned UI panels.
+
+        :param panel: name of panel where button will appear
+        :type panel: str
+        :param name: Internal identifier for this quickbutton
+        :type name: str
+        :param label: Text used for visible button label
+        :type label: str
+        :param function: Function to run when button is pressed
+        :type function: callable
+        :param args: Argument passed to function when called, defaults to None
+        :type args: any, optional
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args)
 
     # Blueprint
