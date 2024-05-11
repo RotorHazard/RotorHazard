@@ -312,7 +312,7 @@ class FieldsAPI():
     def pilot_attributes(self):
         """Provides a list of registered pilot attributes
 
-        :return: List of PilotAttributes
+        :return: List of pilot attributes
         :rtype: List[UIField]
         """
         return self._racecontext.rhui.pilot_attributes
@@ -320,7 +320,7 @@ class FieldsAPI():
     def register_pilot_attribute(self, field:UIField):
         """Register a pilot attribute to be displayed in the UI or otherwise made accessible to plugins.
 
-        :param field: UIField to register
+        :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: List[UIField]
@@ -340,7 +340,7 @@ class FieldsAPI():
     def register_heat_attribute(self, field:UIField):
         """Register a heat attribute to be made accessible to plugins.
 
-        :param field: UIField to register
+        :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: List[UIField]
@@ -360,7 +360,7 @@ class FieldsAPI():
     def register_raceclass_attribute(self, field:UIField):
         """Register a race class attribute to be made accessible to plugins.
 
-        :param field: UIField to register
+        :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: List[UIField]
@@ -380,7 +380,7 @@ class FieldsAPI():
     def register_race_attribute(self, field:UIField):
         """Register a race attribute to be made accessible to plugins.
 
-        :param field: UIField to register
+        :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: List[UIField]
@@ -400,7 +400,7 @@ class FieldsAPI():
     def register_raceformat_attribute(self, field:UIField):
         """Register a race format attribute to be made accessible to plugins.
 
-        :param field: UIField to register
+        :param field: :class:`UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: List[UIField]
@@ -420,7 +420,7 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         """Register a option to be made accessible to plugins.
 
-        :param field: UIField to register
+        :param field: :class:`UIField` to register
         :type field: UIField
         :param panel: name of panel previously registered with ui.register_panel
         :type panel: str
