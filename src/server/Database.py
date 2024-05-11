@@ -39,12 +39,12 @@ class Pilot(Base):
 
     :cvar id: Internal identifier
     :vartype id: int
-    :cvar callsign : Callsign
-    :vartype callsign : str
-    :cvar team : Team designation
-    :vartype team : str
-    :cvar phonetic : Phonetically-spelled callsign, used for text-to-speech
-    :vartype phonetic : str
+    :cvar callsign: Callsign
+    :vartype callsign: str
+    :cvar team: Team designation
+    :vartype team: str
+    :cvar phonetic: Phonetically-spelled callsign, used for text-to-speech
+    :vartype phonetic: str
     :cvar color: Hex-encoded color
     :vartype color: str
     :cvar used_frequencies: Serialized list of frequencies this pilot has been assigned when starting a race, ordered by recency
