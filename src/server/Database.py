@@ -178,7 +178,8 @@ class Heat(Base):
     def __repr__(self):
         return '<Heat %r>' % self.id
 
-class HeatStatus:
+import enum
+class HeatStatus(enum.Enum):
     PLANNED = 0
     PROJECTED = 1
     CONFIRMED = 2
