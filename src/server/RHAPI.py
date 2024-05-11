@@ -88,7 +88,7 @@ def callWithDatabaseWrapper(func):
 #
 class UserInterfaceAPI():
     """
-    Interact with RotorHazard's frontend user interface. These methods are accessed via :ivar:`RHAPI.RHAPI.ui'
+    Interact with RotorHazard's frontend user interface. These methods are accessed via :var:`RHAPI.RHAPI.ui'
     """
 
     def __init__(self, race_context):
