@@ -437,12 +437,22 @@ class FieldsAPI():
 #
 class DatabaseAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     # Global
 
     @callWithDatabaseWrapper
     def reset_all(self):
+        """Resets database to default state.
+
+        :return: Database successfully reset 
+        :rtype: bool
+        """
         return self._racecontext.rhdata.reset_all()
 
     # Pilot
@@ -450,14 +460,33 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def pilots(self):
+        """Gets all pilot records
+
+        :return: Pilot records
+        :rtype: List[Pilot]
+        """
         return self._racecontext.rhdata.get_pilots()
 
     @callWithDatabaseWrapper
     def pilot_by_id(self, pilot_id):
+        """A single pilot record. Does not include custom attributes.
+
+        :param pilot_id: ID of pilot record to retrieve
+        :type pilot_id: int
+        :return: created pilot record
+        :rtype: Pilot
+        """
         return self._racecontext.rhdata.get_pilot(pilot_id)
 
     @callWithDatabaseWrapper
     def pilot_attributes(self, pilot_or_id):
+        """All custom attributes assigned to pilot.
+
+        :param pilot_or_id: Either the pilot object or the ID of pilot
+        :type pilot_or_id: Pilot|int
+        :return: A pilot's attributes
+        :rtype: list[PilotAttribute]
+        """
         return self._racecontext.rhdata.get_pilot_attributes(pilot_or_id)
 
     @callWithDatabaseWrapper
@@ -1090,6 +1119,11 @@ class DatabaseAPI():
 #
 class EventResultsAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1102,6 +1136,11 @@ class EventResultsAPI():
 #
 class IOAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1124,6 +1163,11 @@ class IOAPI():
 #
 class HeatGenerateAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1140,6 +1184,11 @@ class HeatGenerateAPI():
 #
 class ClassRankAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1152,6 +1201,11 @@ class ClassRankAPI():
 #
 class PointsAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1164,6 +1218,11 @@ class PointsAPI():
 #
 class LEDAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1195,6 +1254,11 @@ class LEDAPI():
 #
 class VRxControlAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1221,6 +1285,11 @@ class VRxControlAPI():
 #
 class RaceAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1395,6 +1464,11 @@ class RaceAPI():
 #
 class LanguageAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1414,6 +1488,11 @@ class LanguageAPI():
 #
 class HardwareInterfaceAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1426,6 +1505,11 @@ class HardwareInterfaceAPI():
 #
 class ServerConfigAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1448,6 +1532,11 @@ class ServerConfigAPI():
 #
 class SensorsAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     @property
@@ -1471,6 +1560,11 @@ class SensorsAPI():
 #
 class EventsAPI():
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
+        """
         self._racecontext = race_context
 
     def on(self, event, handler_fn, default_args=None, priority=None, unique=False, name=None):
