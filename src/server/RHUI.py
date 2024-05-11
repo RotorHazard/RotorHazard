@@ -58,15 +58,14 @@ class UIField():
     :vartype name: str
     :cvar label: Text that appears in the RotorHazard frontend interface
     :vartype label: str
-    :cvar field_type: One of :class:`RHUI.UIFieldType`
-    :vartype field_type: :class:`RHUI.UIFieldType`
+    :cvar field_type: One of :class:`UIFieldType`
+    :vartype field_type: :class:`UIFieldType`
     :cvar value: Default value for field
     :vartype value: any
-    :cvar desc: Additional user-facing text that appears in the RotorHazard frontend interface describing notes 
-    or special instructions for use
+    :cvar desc: Additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
     :vartype desc: str, optional
-    :cvar options: A list of :class:`RHUI.UIFieldSelectOption`
-    :vartype options: List[:class:`RHUI.UIFieldSelectOption`], defaults to None
+    :cvar options: A list of :class:`UIFieldSelectOption`
+    :vartype options: List[:class:`UIFieldSelectOption`], defaults to None
     :cvar private: Prevent automatically generated UI
     :vartype private: bool, optional
     """

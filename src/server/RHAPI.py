@@ -21,46 +21,46 @@ if APP:
 class RHAPI():
     """An object providing a wide range of properties and methods across RotorHazard's internal systems
 
-    :param race_context: A handle to the :class:`RaceContext.RaceContext`
-    :type race_context: :class:`RaceContext.RaceContext`
+    :param race_context: A handle to the :class:`RaceContext`
+    :type race_context: :class:`RaceContext`
 
     :ivar API_VERSION_MAJOR: API major version
     :vartype API_VERSION_MAJOR: int
     :ivar API_VERSION_MINOR: API minor version
     :vartype API_VERSION_MINOR: int
-    :ivar ui: Access to :class:`RHAPI.UserInterfaceAPI`
-    :vartype ui: :class:`RHAPI.UserInterfaceAPI`
-    :ivar fields: Access to :class:`RHAPI.FieldsAPI`
-    :vartype fields: :class:`RHAPI.FieldsAPI`
-    :ivar db: Access to :class:`RHAPI.DatabaseAPI`
-    :vartype db: :class:`RHAPI.DatabaseAPI`
-    :ivar io: Access to :class:`RHAPI.IOAPI`
-    :vartype io: :class:`RHAPI.IOAPI`
-    :ivar heatgen: Access to :class:`RHAPI.HeatGenerateAPI`
-    :vartype heatgen: :class:`RHAPI.HeatGenerateAPI`
-    :ivar classrank: Access to :class:`RHAPI.ClassRankAPI`
-    :vartype classrank: :class:`RHAPI.ClassRankAPI`
-    :ivar points: Access to :class:`RHAPI.PointsAPI`
-    :vartype points: :class:`RHAPI.PointsAPI`
-    :ivar led: Access to :class:`RHAPI.LEDAPI`
-    :vartype led: :class:`RHAPI.LEDAPI`
-    :ivar vrxcontrol: Access to :class:`RHAPI.VRxControlAPI`
-    :vartype vrxcontrol: :class:`RHAPI.VRxControlAPI`
-    :ivar race: Access to :class:`RHAPI.RaceAPI`
-    :vartype race: :class:`RHAPI.RaceAPI`
-    :ivar language: Access to :class:`RHAPI.LanguageAPI`
-    :vartype language: :class:`RHAPI.LanguageAPI`
-    :ivar interface: Access to :class:`RHAPI.HardwareInterfaceAPI`
-    :vartype interface: :class:`RHAPI.HardwareInterfaceAPI`
-    :ivar config: Access to :class:`RHAPI.ServerConfigAPI`
-    :vartype config: :class:`RHAPI.ServerConfigAPI`
-    :ivar sensors: Access to :class:`RHAPI.SensorsAPI`
-    :vartype sensors: :class:`RHAPI.SensorsAPI`
-    :ivar eventresults: Access to :class:`RHAPI.EventResultsAPI`
-    :vartype eventresults: :class:`RHAPI.EventResultsAPI`
-    :ivar events: Access to :class:`RHAPI.EventsAPI`
-    :vartype events: :class:`RHAPI.EventsAPI`
-    :ivar __: Shortcut access to :meth:`RHAPI.LanguageAPI.__`
+    :ivar ui: Access to :class:`UserInterfaceAPI`
+    :vartype ui: :class:`UserInterfaceAPI`
+    :ivar fields: Access to :class:`FieldsAPI`
+    :vartype fields: :class:`FieldsAPI`
+    :ivar db: Access to :class:`DatabaseAPI`
+    :vartype db: :class:`DatabaseAPI`
+    :ivar io: Access to :class:`IOAPI`
+    :vartype io: :class:`IOAPI`
+    :ivar heatgen: Access to :class:`HeatGenerateAPI`
+    :vartype heatgen: :class:`HeatGenerateAPI`
+    :ivar classrank: Access to :class:`ClassRankAPI`
+    :vartype classrank: :class:`ClassRankAPI`
+    :ivar points: Access to :class:`PointsAPI`
+    :vartype points: :class:`PointsAPI`
+    :ivar led: Access to :class:`LEDAPI`
+    :vartype led: :class:`LEDAPI`
+    :ivar vrxcontrol: Access to :class:`VRxControlAPI`
+    :vartype vrxcontrol: :class:`VRxControlAPI`
+    :ivar race: Access to :class:`RaceAPI`
+    :vartype race: :class:`RaceAPI`
+    :ivar language: Access to :class:`LanguageAPI`
+    :vartype language: :class:`LanguageAPI`
+    :ivar interface: Access to :class:`HardwareInterfaceAPI`
+    :vartype interface: :class:`HardwareInterfaceAPI`
+    :ivar config: Access to :class:`ServerConfigAPI`
+    :vartype config: :class:`ServerConfigAPI`
+    :ivar sensors: Access to :class:`SensorsAPI`
+    :vartype sensors: :class:`SensorsAPI`
+    :ivar eventresults: Access to :class:`EventResultsAPI`
+    :vartype eventresults: :class:`EventResultsAPI`
+    :ivar events: Access to :class:`EventsAPI`
+    :vartype events: :class:`EventsAPI`
+    :ivar __: Shortcut access to :meth:`LanguageAPI.__`
     :vartype __: function
     """
 
@@ -112,8 +112,8 @@ class UserInterfaceAPI():
     def __init__(self, race_context):
         """Constructor method
 
-        :param race_context: A handle to the :class:`RaceContext.RaceContext`
-        :type race_context: :class:`RaceContext.RaceContext`
+        :param race_context: A handle to the :class:`RaceContext`
+        :type race_context: :class:`RaceContext`
         """ 
         self._racecontext = race_context
 
@@ -122,8 +122,8 @@ class UserInterfaceAPI():
     def panels(self):
         """The list of registered panels
 
-        :return: A list of the discovered :class:`RHUI.UIPanel` objects
-        :rtype: List[RHUI.UIPanel]
+        :return: A list of the discovered :class:`UIPanel` objects
+        :rtype: List[UIPanel]
         """
         return self._racecontext.rhui.ui_panels
 
@@ -140,7 +140,7 @@ class UserInterfaceAPI():
         :type order: int, optional
 
         :return: Returns all panels
-        :rtype: List[RHUI.UIPanel]
+        :rtype: List[UIPanel]
         """
         return self._racecontext.rhui.register_ui_panel(name, label, page, order)
 
@@ -169,7 +169,7 @@ class UserInterfaceAPI():
         """Add custom pages to RotorHazard's frontend with Flask Blueprints.
 
         :param blueprint: _description_
-        :type blueprint: flask.Blueprint
+        :type blueprint: Blueprint
         """
         self._racecontext.rhui.add_blueprint(blueprint)
 
@@ -303,7 +303,7 @@ class FieldsAPI():
         """Constructor method
 
         :param race_context: A handle to the :class:`RaceContext.RaceContext`
-        :type race_context: :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext`
         """
         self._racecontext = race_context
 
@@ -313,7 +313,7 @@ class FieldsAPI():
         """Provides a list of registered PilotAttributes
 
         :return: List of PilotAttributes
-        :rtype: List[RHUI.UIField]
+        :rtype: List[UIField]
         """
         return self._racecontext.rhui.pilot_attributes
 
@@ -321,9 +321,9 @@ class FieldsAPI():
         """Register an attribute to be displayed in the UI or otherwise made accessible to plugins.
 
         :param field: Attribute to register
-        :type field: RHUI.UIField
+        :type field: UIField
         :return: List of Attributes
-        :rtype: List[RHUI.UIField]
+        :rtype: List[UIField]
         """
         return self._racecontext.rhui.register_pilot_attribute(field)
 
@@ -333,7 +333,7 @@ class FieldsAPI():
         """Provides a list of registered HeatAttributes.
 
         :return: List of HeatAttributes
-        :rtype: List[RHUI.UIField]
+        :rtype: List[UIField]
         """
         return self._racecontext.rhui.heat_attributes
 
@@ -343,7 +343,7 @@ class FieldsAPI():
         :param field: Attribute to register
         :type field: UIField
         :return: List of Attributes
-        :rtype: List[RHUI.UIField]
+        :rtype: List[UIField]
         """
         return self._racecontext.rhui.register_heat_attribute(field)
 
