@@ -65,32 +65,34 @@ class RHAPI():
     """
 
     def __init__(self, race_context):
-        """Constructor method
-        """
-        self.API_VERSION_MAJOR = API_VERSION_MAJOR
-        self.API_VERSION_MINOR = API_VERSION_MINOR
+        """Constructor method"""
+        self.API_VERSION_MAJOR:int = API_VERSION_MAJOR
+        """API major version"""
+        self.API_VERSION_MINOR:int = API_VERSION_MINOR
+        """API minor version"""
         self.server_info = None
 
         self._racecontext = race_context
 
-        self.ui = UserInterfaceAPI(self._racecontext)
-        self.fields = FieldsAPI(self._racecontext)
-        self.db = DatabaseAPI(self._racecontext)
-        self.io = IOAPI(self._racecontext)
-        self.heatgen = HeatGenerateAPI(self._racecontext)
-        self.classrank = ClassRankAPI(self._racecontext)
-        self.points = PointsAPI(self._racecontext)
-        self.led = LEDAPI(self._racecontext)
-        self.vrxcontrol = VRxControlAPI(self._racecontext)
-        self.race = RaceAPI(self._racecontext)
-        self.language = LanguageAPI(self._racecontext)
-        self.interface = HardwareInterfaceAPI(self._racecontext)
-        self.config = ServerConfigAPI(self._racecontext)
-        self.sensors = SensorsAPI(self._racecontext)
-        self.eventresults = EventResultsAPI(self._racecontext)
-        self.events = EventsAPI(self._racecontext)
+        self.ui:UserInterfaceAPI = UserInterfaceAPI(self._racecontext)
+        """A handle for :class:`UserInterfaceAPI`"""
+        self.fields:FieldsAPI = FieldsAPI(self._racecontext)
+        self.db:DatabaseAPI = DatabaseAPI(self._racecontext)
+        self.io:IOAPI = IOAPI(self._racecontext)
+        self.heatgen:HeatGenerateAPI = HeatGenerateAPI(self._racecontext)
+        self.classrank:ClassRankAPI = ClassRankAPI(self._racecontext)
+        self.points:PointsAPI = PointsAPI(self._racecontext)
+        self.led:LEDAPI = LEDAPI(self._racecontext)
+        self.vrxcontrol:VRxControlAPI = VRxControlAPI(self._racecontext)
+        self.race:RaceAPI = RaceAPI(self._racecontext)
+        self.language:LanguageAPI = LanguageAPI(self._racecontext)
+        self.interface:HardwareInterfaceAPI = HardwareInterfaceAPI(self._racecontext)
+        self.config:ServerConfigAPI = ServerConfigAPI(self._racecontext)
+        self.sensors:SensorsAPI = SensorsAPI(self._racecontext)
+        self.eventresults:EventResultsAPI = EventResultsAPI(self._racecontext)
+        self.events:EventsAPI = EventsAPI(self._racecontext)
 
-        self.__ = self.language.__ # shortcut access
+        self.__:function = self.language.__ # shortcut access
 
 # Wrapper to be used as a decorator on API functions that do database calls,
 #  so the database session is cleaned up on exit (prevents DB-file handles left open).

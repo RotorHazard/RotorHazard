@@ -256,57 +256,52 @@ class ProgramMethod:
     HEAT_RESULT = 1
     CLASS_RESULT = 2
 
+class HeatAdvanceType:
+    """Defines how the UI will automatically advance heats after a race is finished."""
+
+    NONE:int = 0
+    """Do nothing"""
+    NEXT_HEAT:int = 1
+    """Advance heat; if all rounds run advance race class"""
+    NEXT_ROUND:int = 2
+    """Advance heat if rounds has been reached; advance race class after last heat in class"""
+
 class RaceClass(Base):
     """Race classes are groups of related heats. Classes may be used by the race organizer in many different ways, such as splitting sport and pro pilots, practice/qualifying/mains, primary/consolation bracket, etc.
-
-    :cvar seed_id: Internal identifier
-    :vartype seed_id: int
-    :cvar name: User-facing name
-    :vartype name: str
-    :cvar description: User-facing long description, accepts markdown
-    :vartype description: str
-    :cvar format_id: ID for class-wide required race format definition
-    :vartype format_id: int
-    :cvar win_condition: Ranking algorithm
-    :vartype win_condition: str
-    :cvar results: Internal use only; see below
-    :vartype results: dict|None
-    :cvar _cache_status: Internal use only
-    :cvar ranking: Calculated race class ranking
-    :vartype ranking: dict|None
-    :cvar rank_settings: JSON-serialized arguments for ranking algorithm
-    :vartype rank_settings: str
-    :cvar _rank_status: Internal use only
-    :cvar rounds: Number of expected/planned rounds each heat will be run
-    :vartype rounds: int
-    :cvar heat_advance_type: Method used for automatic heat advance
-    :vartype heat_advance_type: HeatAdvanceType
-    :cvar order: Not yet implemented
-    :vartype order: int
-    :cvar active: Not yet implemented
-    :vartype active: bool
 
     The sentinel value RHUtils.CLASS_ID_NONE should be used when no race class is defined.
 
     NOTE: Results should be accessed with the db.raceclass_results method and not by reading the results property directly. The results property is unreliable because results calculation is delayed to improve system performance. db.raceclass_results ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
-
-    :class:`HeatAdvanceType` defines how the UI will automatically advance heats after a race is finished.
     """
     __tablename__ = 'race_class'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=True)
-    description = DB.Column(DB.String(256), nullable=True)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
-    win_condition = DB.Column(DB.String, nullable=False)
-    results = DB.Column(DB.PickleType, nullable=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    name:str = DB.Column(DB.String(80), nullable=True)
+    """User-facing name"""
+    description:str = DB.Column(DB.String(256), nullable=True)
+    """User-facing long description, accepts markdown"""
+    format_id:int = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    """ID for class-wide required race format definition"""
+    win_condition:str = DB.Column(DB.String, nullable=False)
+    """Ranking algorithm"""
+    results:dict|None = DB.Column(DB.PickleType, nullable=True)
+    """Internal use only; see below"""
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
-    ranking = DB.Column(DB.PickleType, nullable=True)
-    rank_settings = DB.Column(DB.String(), nullable=True)
+    """Internal use only"""
+    ranking:dict|None = DB.Column(DB.PickleType, nullable=True)
+    """Calculated race class ranking"""
+    rank_settings:str = DB.Column(DB.String(), nullable=True)
+    """JSON-serialized arguments for ranking algorithm"""
     _rank_status = DB.Column('rankStatus', DB.String(16), nullable=False)
-    rounds = DB.Column(DB.Integer, nullable=False)
-    heat_advance_type = DB.Column('heatAdvanceType', DB.Integer, nullable=False)
-    order = DB.Column(DB.Integer, nullable=True)
-    active = DB.Column(DB.Boolean, nullable=False, default=True)
+    """Internal use only"""
+    rounds:int = DB.Column(DB.Integer, nullable=False)
+    """Number of expected/planned rounds each heat will be run"""
+    heat_advance_type:HeatAdvanceType = DB.Column('heatAdvanceType', DB.Integer, nullable=False)
+    """Method used for automatic heat advance"""
+    order:int = DB.Column(DB.Integer, nullable=True)
+    """Not yet implemented"""
+    active:bool = DB.Column(DB.Boolean, nullable=False, default=True)
+    """Not yet implemented"""
 
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
@@ -350,33 +345,18 @@ class RaceClass(Base):
     def __repr__(self):
         return '<RaceClass %r>' % self.id
 
-class HeatAdvanceType:
-    "Defines how the UI will automatically advance heats after a race is finished."
-
-    NONE:int = 0
-    """Do nothing"""
-    NEXT_HEAT:int = 1
-    """Advance heat; if all rounds run advance race class"""
-    NEXT_ROUND:int = 2
-    """Advance heat if rounds has been reached; advance race class after last heat in class"""
-
 class RaceClassAttribute(Base):
-    """Race Class Attributes are simple storage variables which persist to the database. Race Class Attribute values are unique to/stored individually for each race class.
-
-    :cvar id: ID of race class to which this attribute is assigned
-    :vartype id: int
-    :cvar name: Name of attribute
-    :vartype name: str
-    :cvar value: Value of attribute
-    :vartype value: str
-    """
+    """Race Class Attributes are simple storage variables which persist to the database. Race Class Attribute values are unique to/stored individually for each race class."""
     __tablename__ = 'race_class_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
     )
-    id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False, primary_key=True)
-    value = DB.Column(DB.String(), nullable=True)
+    id:int = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False, primary_key=True)
+    """ID of race class to which this attribute is assigned"""
+    name:str = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    """Name of attribute"""
+    value:str = DB.Column(DB.String(), nullable=True)
+    """Value of attribute"""
 
 class LapSplit(Base):
     __tablename__ = 'lap_split'
