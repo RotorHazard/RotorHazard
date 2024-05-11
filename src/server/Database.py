@@ -351,21 +351,14 @@ class RaceClass(Base):
         return '<RaceClass %r>' % self.id
 
 class HeatAdvanceType:
-    """Defines how the UI will automatically advance heats after a race is finished.
+    "Defines how the UI will automatically advance heats after a race is finished."
 
-    :cvar NONE: Do nothing
-    :cvar NEXT_HEAT: Advance heat; if all rounds run advance race class
-    :cvar NEXT_ROUND: Advance heat if rounds has been reached; advance race class after last heat in class
-    """
     NONE:int = 0
-    """ Name test
-    """
+    """Do nothing"""
     NEXT_HEAT:int = 1
-    """ Another test
-    """
+    """Advance heat; if all rounds run advance race class"""
     NEXT_ROUND:int = 2
-    """ Last test
-    """
+    """Advance heat if rounds has been reached; advance race class after last heat in class"""
 
 class RaceClassAttribute(Base):
     """Race Class Attributes are simple storage variables which persist to the database. Race Class Attribute values are unique to/stored individually for each race class.
