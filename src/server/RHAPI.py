@@ -136,9 +136,9 @@ class UserInterfaceAPI():
         :param label: Text used for visible button label
         :type label: str
         :param function: Function to run when button is pressed
-        :type function: _type_
+        :type function: function
         :param args: Argument passed to function when called, defaults to None
-        :type args: _type_, optional
+        :type args: any, optional
 
         :return: _description_
         :rtype: _type_
@@ -147,37 +147,35 @@ class UserInterfaceAPI():
 
     # Blueprint
     def blueprint_add(self, blueprint):
-        """_summary_
+        """Add custom pages to RotorHazard's frontend with Flask Blueprints.
 
         :param blueprint: _description_
-        :type blueprint: _type_
-        :return: _description_
-        :rtype: _type_
+        :type blueprint: flask.Blueprint
         """
-        return self._racecontext.rhui.add_blueprint(blueprint)
+        self._racecontext.rhui.add_blueprint(blueprint)
 
     # Messaging
     def message_speak(self, message):
-        """_summary_
+        """Send a message which is parsed by the text-to-speech synthesizer.
 
-        :param message: _description_
-        :type message: string
+        :param message: Text of message to be spoken
+        :type message: str
         """
         self._racecontext.rhui.emit_phonetic_text(message)
 
     def message_notify(self, message):
-        """_summary_
+        """Send a message which appears in the message center and notification bar.
 
-        :param message: _description_
-        :type message: _type_
+        :param message: Text of message to display
+        :type message: str
         """
         self._racecontext.rhui.emit_priority_message(message, False)
 
     def message_alert(self, message):
-        """_summary_
+        """Send a message which appears as a pop-up alert.
 
-        :param message: _description_
-        :type message: _type_
+        :param message: Text of message to display
+        :type message: str
         """
         self._racecontext.rhui.emit_priority_message(message, True)
 
@@ -188,12 +186,12 @@ class UserInterfaceAPI():
 
     # Socket
     def socket_listen(self, message, handler):
-        """_summary_
+        """Calls function when a socket event is received.
 
-        :param message: _description_
-        :type message: _type_
-        :param handler: _description_
-        :type handler: _type_
+        :param message: Socket event name
+        :type message: str
+        :param handler: Function to call
+        :type handler: function
         """
         self._racecontext.rhui.socket_listen(message, handler)
 
@@ -220,38 +218,59 @@ class UserInterfaceAPI():
     # Broadcasts
     @callWithDatabaseWrapper
     def broadcast_ui(self, page):
+        """Broadcast UI panel setup to all connected clients.
+
+        :param page: Page to update
+        :type page: str
+        """
         self._racecontext.rhui.emit_ui(page)
 
     @callWithDatabaseWrapper
     def broadcast_frequencies(self):
+        """Broadcast seat frequencies to all connected clients.
+        """
         self._racecontext.rhui.emit_frequency_data()
 
     @callWithDatabaseWrapper
     def broadcast_pilots(self):
+        """Broadcast pilot data to all connected clients.
+        """
         self._racecontext.rhui.emit_pilot_data()
 
     @callWithDatabaseWrapper
     def broadcast_heats(self):
+        """Broadcast heat data to all connected clients.
+        """
         self._racecontext.rhui.emit_heat_data()
 
     @callWithDatabaseWrapper
     def broadcast_raceclasses(self):
+        """Broadcast race class data to all connected clients.
+        """
         self._racecontext.rhui.emit_class_data()
 
     @callWithDatabaseWrapper
     def broadcast_raceformats(self):
+        """Broadcast race format data to all connected clients.
+        """
         self._racecontext.rhui.emit_format_data()
 
     @callWithDatabaseWrapper
     def broadcast_current_heat(self):
+        """Broadcast current heat selection to all connected clients.
+        """
         self._racecontext.rhui.emit_current_heat()
 
     @callWithDatabaseWrapper
     def broadcast_frequencyset(self):
+        """Broadcast frequency set data to all connected clients.
+        """
         self._racecontext.rhui.emit_node_tuning()
 
     @callWithDatabaseWrapper
     def broadcast_race_status(self):
+        """Broadcast race setup and status to all connected clients.
+        """
         self._racecontext.rhui.emit_race_status()
 
 
@@ -259,28 +278,64 @@ class UserInterfaceAPI():
 # Data structures
 #
 class FieldsAPI():
+    """Create and access new data structures. These methods are accessed via :attr:`RHAPI.RHAPI.fields`
+    """
     def __init__(self, race_context):
+        """Constructor method
+
+        :param race_context: A handle to the :class:`RaceContext.RaceContext`
+        :type race_context: :class:`RaceContext.RaceContext`
+        """
         self._racecontext = race_context
 
     # Pilot Attribute
     @property
     def pilot_attributes(self):
+        """Provides a list of registered PilotAttributes
+
+        :return: List of PilotAttributes
+        :rtype: List[RHUI.UIField]
+        """
         return self._racecontext.rhui.pilot_attributes
 
     def register_pilot_attribute(self, field:UIField):
+        """Register an attribute to be displayed in the UI or otherwise made accessible to plugins.
+
+        :param field: Attribute to register
+        :type field: RHUI.UIField
+        :return: List of Attributes
+        :rtype: List[RHUI.UIField]
+        """
         return self._racecontext.rhui.register_pilot_attribute(field)
 
     # Heat Attribute
     @property
     def heat_attributes(self):
+        """Provides a list of registered HeatAttributes.
+
+        :return: List of HeatAttributes
+        :rtype: List[RHUI.UIField]
+        """
         return self._racecontext.rhui.heat_attributes
 
     def register_heat_attribute(self, field:UIField):
+        """Register an attribute to be made accessible to plugins.
+
+        :param field: Attribute to register
+        :type field: UIField
+        :return: List of Attributes
+        :rtype: List[RHUI.UIField]
+        """
         return self._racecontext.rhui.register_heat_attribute(field)
 
     # Race Class Attribute
     @property
     def raceclass_attributes(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.rhui.raceclass_attributes
 
     def register_raceclass_attribute(self, field:UIField):

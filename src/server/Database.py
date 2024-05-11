@@ -75,6 +75,17 @@ class Pilot(Base):
         return '<Pilot %r>' % self.id
 
 class PilotAttribute(Base):
+    """Pilot Attributes are simple storage variables which persist to the database 
+    and can be presented to users through frontend UI. Pilot Attribute values are 
+    unique to/stored individually for each pilot.
+
+    :cvar id: ID of pilot to which this attribute is assigned
+    :vartype id: int
+    :cvar name: Name of attribute
+    :vartype name: str
+    :cvar value: Value of attribute
+    :vartype value: str
+    """
     __tablename__ = 'pilot_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),

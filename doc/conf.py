@@ -62,3 +62,6 @@ autodoc_typehints = "description"
 autodoc_typehints_description_target = "documented"
 autodoc_typehints_format = "short"
 autosummary_generate = True
+
+import flask
+from flask import Blueprint
