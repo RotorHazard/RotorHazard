@@ -23,45 +23,6 @@ class RHAPI():
 
     :param race_context: A handle to the :class:`RaceContext`
     :type race_context: RaceContext
-
-    :ivar API_VERSION_MAJOR: API major version
-    :vartype API_VERSION_MAJOR: int
-    :ivar API_VERSION_MINOR: API minor version
-    :vartype API_VERSION_MINOR: int
-    :ivar ui: A handle for :class:`UserInterfaceAPI`
-    :vartype ui: UserInterfaceAPI
-    :ivar fields: A handle for :class:`FieldsAPI`
-    :vartype fields: FieldsAPI
-    :ivar db: A handle for :class:`DatabaseAPI`
-    :vartype db: DatabaseAPI
-    :ivar io: A handle for :class:`IOAPI`
-    :vartype io: IOAPI
-    :ivar heatgen: A handle for :class:`HeatGenerateAPI`
-    :vartype heatgen: HeatGenerateAPI
-    :ivar classrank: A handle for :class:`ClassRankAPI`
-    :vartype classrank: ClassRankAPI
-    :ivar points: A handle for :class:`PointsAPI`
-    :vartype points: PointsAPI
-    :ivar led: A handle for :class:`LEDAPI`
-    :vartype led: LEDAPI
-    :ivar vrxcontrol: A handle for :class:`VRxControlAPI`
-    :vartype vrxcontrol: VRxControlAPI
-    :ivar race: A handle for :class:`RaceAPI`
-    :vartype race: RaceAPI
-    :ivar language: A handle for :class:`LanguageAPI`
-    :vartype language: LanguageAPI
-    :ivar interface: A handle for :class:`HardwareInterfaceAPI`
-    :vartype interface: HardwareInterfaceAPI
-    :ivar config: A handle for :class:`ServerConfigAPI`
-    :vartype config: ServerConfigAPI
-    :ivar sensors: A handle for :class:`SensorsAPI`
-    :vartype sensors: SensorsAPI
-    :ivar eventresults: A handle for :class:`EventResultsAPI`
-    :vartype eventresults: EventResultsAPI
-    :ivar events: A handle for :class:`EventsAPI`
-    :vartype events: EventsAPI
-    :ivar __: A shortcut handle for :meth:`LanguageAPI.__`
-    :vartype __: function
     """
 
     def __init__(self, race_context):
@@ -75,24 +36,39 @@ class RHAPI():
         self._racecontext = race_context
 
         self.ui:UserInterfaceAPI = UserInterfaceAPI(self._racecontext)
-        """A handle for :class:`UserInterfaceAPI`"""
+        """A handle for an instance of :class:`UserInterfaceAPI`"""
         self.fields:FieldsAPI = FieldsAPI(self._racecontext)
+        """A handle for an instance of :class:`FieldsAPI`"""
         self.db:DatabaseAPI = DatabaseAPI(self._racecontext)
+        """A handle for an instance of :class:`DatabaseAPI`"""
         self.io:IOAPI = IOAPI(self._racecontext)
+        """A handle for an instance of :class:`IOAPI`"""
         self.heatgen:HeatGenerateAPI = HeatGenerateAPI(self._racecontext)
+        """A handle for an instance of :class:`HeatGenerateAPI`"""
         self.classrank:ClassRankAPI = ClassRankAPI(self._racecontext)
+        """A handle for an instance of :class:`ClassRankAPI`"""
         self.points:PointsAPI = PointsAPI(self._racecontext)
+        """A handle for an instance of :class:`PointsAPI`"""
         self.led:LEDAPI = LEDAPI(self._racecontext)
+        """A handle for an instance of :class:`LEDAPI`"""
         self.vrxcontrol:VRxControlAPI = VRxControlAPI(self._racecontext)
+        """A handle for an instance of :class:`VRxControlAPI`"""
         self.race:RaceAPI = RaceAPI(self._racecontext)
+        """A handle for an instance of :class:`RaceAPI`"""
         self.language:LanguageAPI = LanguageAPI(self._racecontext)
+        """A handle for an instance of :class:`LanguageAPI`"""
         self.interface:HardwareInterfaceAPI = HardwareInterfaceAPI(self._racecontext)
+        """A handle for an instance of :class:`HardwareInterfaceAPI`"""
         self.config:ServerConfigAPI = ServerConfigAPI(self._racecontext)
+        """A handle for an instance of :class:`ServerConfigAPI`"""
         self.sensors:SensorsAPI = SensorsAPI(self._racecontext)
+        """A handle for an instance of :class:`SensorsAPI`"""
         self.eventresults:EventResultsAPI = EventResultsAPI(self._racecontext)
+        """A handle for an instance of :class:`EventResultsAPI`"""
         self.events:EventsAPI = EventsAPI(self._racecontext)
-
+        """A handle for an instance of :class:`EventsAPI`"""
         self.__:function = self.language.__ # shortcut access
+        """A shortcut handle for :meth:`LanguageAPI.__`"""
 
 # Wrapper to be used as a decorator on API functions that do database calls,
 #  so the database session is cleaned up on exit (prevents DB-file handles left open).
