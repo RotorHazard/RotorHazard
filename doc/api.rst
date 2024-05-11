@@ -1,5 +1,7 @@
-RotorHazard API 
+Plugin API 
 ==============
+
+RotorHazard makes use of externally loaded plugins to extend its functionality and behavior.
 
 .. autosummary::
    :toctree: 
