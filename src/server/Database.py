@@ -179,6 +179,12 @@ class Heat(Base):
         return '<Heat %r>' % self.id
 
 class HeatStatus():
+    """_summary_
+
+    :cvar PLANNED: _description_
+    :cvar PROJECTED: _description_
+    :cvar CONFIRMED: _description_
+    """
     PLANNED = 0
     PROJECTED = 1
     CONFIRMED = 2
@@ -239,6 +245,11 @@ class HeatNode(Base):
 
 class ProgramMethod:
     """Defines the method used when a heat plan is converted to assignments
+
+    :cvar NONE: No assignment made
+    :cvar ASSIGN: Use pilot already defined in pilot_id
+    :cvar HEAT_RESULT: Assign using seed_id as a heat designation
+    :cvar CLASS_RESULT: Assign using seed_id as a race class designation
     """
     NONE = -1
     ASSIGN = 0
@@ -246,6 +257,41 @@ class ProgramMethod:
     CLASS_RESULT = 2
 
 class RaceClass(Base):
+    """Race classes are groups of related heats. Classes may be used by the race organizer in many different ways, such as splitting sport and pro pilots, practice/qualifying/mains, primary/consolation bracket, etc.
+
+    :cvar seed_id: Internal identifier
+    :vartype seed_id: int
+    :cvar name: User-facing name
+    :vartype name: str
+    :cvar description: User-facing long description, accepts markdown
+    :vartype description: str
+    :cvar format_id: ID for class-wide required race format definition
+    :vartype format_id: int
+    :cvar win_condition: Ranking algorithm
+    :vartype win_condition: str
+    :cvar results: Internal use only; see below
+    :vartype results: dict|None
+    :cvar _cache_status: Internal use only
+    :cvar ranking: Calculated race class ranking
+    :vartype ranking: dict|None
+    :cvar rank_settings: JSON-serialized arguments for ranking algorithm
+    :vartype rank_settings: str
+    :cvar _rank_status: Internal use only
+    :cvar rounds: Number of expected/planned rounds each heat will be run
+    :vartype rounds: int
+    :cvar heat_advance_type: Method used for automatic heat advance
+    :vartype heat_advance_type: HeatAdvanceType
+    :cvar order: Not yet implemented
+    :vartype order: int
+    :cvar active: Not yet implemented
+    :vartype active: bool
+
+    The sentinel value RHUtils.CLASS_ID_NONE should be used when no race class is defined.
+
+    NOTE: Results should be accessed with the db.raceclass_results method and not by reading the results property directly. The results property is unreliable because results calculation is delayed to improve system performance. db.raceclass_results ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
+
+    :class:`HeatAdvanceType` defines how the UI will automatically advance heats after a race is finished.
+    """
     __tablename__ = 'race_class'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
@@ -305,11 +351,26 @@ class RaceClass(Base):
         return '<RaceClass %r>' % self.id
 
 class HeatAdvanceType:
+    """Defines how the UI will automatically advance heats after a race is finished.
+
+    :cvar NONE: Do nothing
+    :cvar NEXT_HEAT: Advance heat; if all rounds run advance race class
+    :cvar NEXT_ROUND: Advance heat if rounds has been reached; advance race class after last heat in class
+    """
     NONE = 0
     NEXT_HEAT = 1
     NEXT_ROUND = 2
 
 class RaceClassAttribute(Base):
+    """Race Class Attributes are simple storage variables which persist to the database. Race Class Attribute values are unique to/stored individually for each race class.
+
+    :cvar id: ID of race class to which this attribute is assigned
+    :vartype id: int
+    :cvar name: Name of attribute
+    :vartype name: str
+    :cvar value: Value of attribute
+    :vartype value: str
+    """
     __tablename__ = 'race_class_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
@@ -428,6 +489,79 @@ class Profiles(Base):
     f_ratio = DB.Column(DB.Integer, nullable=True)
 
 class RaceFormat(Base):
+    """Race formats are profiles of properties used to define parameters of individual races. Every race has an assigned format. A race formats may be assigned to a race class, which forces RotorHazard to switch to that formatwhen running races within the class.
+
+    :cvar id: Internal identifier
+    :vartype id: int
+    :cvar name: User-facing name
+    :vartype name: str
+    :cvar unlimited_time: True(1) if race clock counts up, False(0) if race clock counts down
+    :vartype unlimited_time: int
+    :cvar race_time_sec: Race clock duration in seconds, unused if unlimited_time is True(1)
+    :vartype race_time_sec: int
+    :cvar lap_grace_sec: Grace period duration in seconds, -1 for unlimited, unused if unlimited_time is True(1)
+    :vartype lap_grace_sec: int
+    :cvar staging_fixed_tones: Number of staging tones always played regardless of random delay
+    :vartype staging_fixed_tones: int
+    :cvar start_delay_min_ms: Minimum period for random phase of staging delay in milliseconds
+    :vartype start_delay_min_ms: int
+    :cvar start_delay_max_ms: Maximum duration of random phase of staging delay in milliseconds
+    :vartype start_delay_max_ms: int
+    :cvar staging_delay_tones: Whether to play staging tones each second during random delay phase
+    :vartype staging_delay_tones: int
+    :cvar number_laps_win: Number of laps used to declare race winner, if > 0
+    :vartype number_laps_win: int
+    :cvar win_condition: Condition used to determine race winner and race ranking
+    :vartype win_condition: int
+    :cvar team_racing_mode: Whether local simultaneous team racing mode will be used
+    :vartype team_racing_mode: bool
+    :cvar start_behavior: Handling of first crossing
+    :vartype start_behavior: int
+    :cvar points_method: JSON-serialized arguments for points algorithm
+    :vartype points_method: str
+    
+    The sentinel value RHUtils.FORMAT_ID_NONE should be used when no race format is defined.
+
+    The following values are valid for staging_delay_tones.
+
+        0: None
+
+        2: Each Second
+
+    The following values are valid for win_condition.
+
+        0: None
+
+        1: Most Laps in Fastest Time
+
+        2: First to X Laps
+
+        3: Fastest Lap
+
+        4: Fastest Consecutive Laps
+
+        5: Most Laps Only
+
+        6: Most Laps Only with Overtime
+
+    The following values are valid for start_behavior.
+
+        0: Hole Shot
+
+        1: First Lap
+
+        2: Staggered Start
+
+    Notice: The race format specification is expected to be modified in future versions. Please consider this while developing plugins.
+
+        The type for staging_delay_tones may change to boolean.
+
+        The type for unlimited_time may change to boolean.
+
+        The type for win_condition may change to a members of dedicated class or become string-based for extensibility.
+
+        The type for start_behavior may change to a members of dedicated class.
+    """
     __tablename__ = 'race_format'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)

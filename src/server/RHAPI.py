@@ -901,18 +901,48 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def raceclasses(self):
+        """All race class records.
+
+        :return: System race classes
+        :rtype: list[RaceClass]
+        """
         return self._racecontext.rhdata.get_raceClasses()
 
     @callWithDatabaseWrapper
     def raceclass_by_id(self, raceclass_id):
+        """A single race class record.
+
+        :param raceclass_id: ID of race class record to retrieve
+        :type raceclass_id: int
+        :return: The race class
+        :rtype: RaceClass
+        """
         return self._racecontext.rhdata.get_raceClass(raceclass_id)
 
     @callWithDatabaseWrapper
     def raceclass_attributes(self, raceclass_or_id):
+        """All custom attributes assigned to race class.
+
+        :param raceclass_or_id: Either the race class object or the ID of race class
+        :type raceclass_or_id: Raceclass|int
+        :return: The class's race class attributes
+        :rtype: list[RaceClassAttribute]
+        """
         return self._racecontext.rhdata.get_raceclass_attributes(raceclass_or_id)
 
     @callWithDatabaseWrapper
     def raceclass_attribute_value(self, raceclass_or_id, name, default_value=None):
+        """The value of a single custom attribute assigned to race class.
+
+        :param raceclass_or_id: Either the race class object or the ID of race class
+        :type raceclass_or_id: Raceclass|int
+        :param name: Attribute to retrieve
+        :type name: str
+        :param default_value: Value to return if attribute is not registered (uses registered default if available), defaults to None
+        :type default_value: any, optional
+        :return: Attribute value as a string
+        :rtype: str
+        """
         for field in self._racecontext.rhui.raceclass_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_raceclass_attribute_value(raceclass_or_id, field.name, field.value)
@@ -921,10 +951,36 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def raceclass_ids_by_attribute(self, name, value):
+        """ID of race classes with attribute matching the specified attribute/value combination.
+
+        :param name: Attribute to match
+        :type name: str
+        :param value: Value to match
+        :type value: str
+        :return: List of pilots
+        :rtype: list[int]
+        """
         return self._racecontext.rhdata.get_raceclass_id_by_attribute(name, value)
 
     @callWithDatabaseWrapper
     def raceclass_add(self, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None):
+        """Add a new race class to the database.
+
+        :param name: Name for new race class, defaults to None
+        :type name: str, optional
+        :param description: Description for new race class, defaults to None
+        :type description: str, optional
+        :param raceformat: ID of format to assign, defaults to None
+        :type raceformat: int, optional
+        :param win_condition: Class ranking identifier to assign, defaults to None
+        :type win_condition: str, optional
+        :param rounds: Number of rounds to assign to race class, defaults to None
+        :type rounds: int, optional
+        :param heat_advance_type: Advancement method to assign to race class, defaults to None
+        :type heat_advance_type: HeatAdvanceType, optional
+        :return: The created :class:`RaceClass`
+        :rtype: RaceClass
+        """
         #TODO add rank settings
         data = {}
 
@@ -944,10 +1000,40 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def raceclass_duplicate(self, source_class_or_id):
+        """Duplicate a race class.
+
+        :param source_class_or_id: Either a race class object or the ID of a race class
+        :type source_class_or_id: RaceClass|int
+        :return: The created :class:`RaceClass`
+        :rtype: RaceClass
+        """
         return self._racecontext.rhdata.duplicate_raceClass(source_class_or_id)
 
     @callWithDatabaseWrapper
     def raceclass_alter(self, raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, rank_settings=None, attributes=None):
+        """Alter race class data.
+
+        :param raceclass_id: ID of race class to alter
+        :type raceclass_id: int
+        :param name: Name for new race class, defaults to None
+        :type name: str, optional
+        :param description: Description for new race class, defaults to None
+        :type description: str, optional
+        :param raceformat: ID of format to assign, defaults to None
+        :type raceformat: int, optional
+        :param win_condition: Class ranking identifier to assign, defaults to None
+        :type win_condition: str, optional
+        :param rounds: Number of rounds to assign to race class, defaults to None
+        :type rounds: int, optional
+        :param heat_advance_type: Advancement method to assign to race class, defaults to None
+        :type heat_advance_type: HeatAdvanceType, optional
+        :param rank_settings: Arguments to pass to class ranking, defaults to None
+        :type rank_settings: dict, optional
+        :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
+        :type attributes: dict, optional
+        :return: Returns tuple of this :class:`RaceClass` and affected races
+        :rtype: list[SavedRace]
+        """
         data = {}
 
         if isinstance(attributes, dict):
@@ -977,33 +1063,99 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def raceclass_results(self, raceclass_or_id):
+        """The calculated summary result set for all races associated with this race class.
+
+        :param raceclass_or_id: Either the race class object or the ID of race class
+        :type raceclass_or_id: RaceClass|int
+        :return: Results for race class
+        :rtype: dict
+        """
         return self._racecontext.rhdata.get_results_raceClass(raceclass_or_id)
 
     @callWithDatabaseWrapper
     def raceclass_ranking(self, raceclass_or_id):
+        """The calculated ranking associated with this race class.
+
+        :param raceclass_or_id: Either the race class object or the ID of race class
+        :type raceclass_or_id: RaceClass
+        :return: Rankings for race class
+        :rtype: dict
+        """
         return self._racecontext.rhdata.get_ranking_raceClass(raceclass_or_id)
 
     @callWithDatabaseWrapper
     def raceclass_delete(self, raceclass_or_id):
+        """Delete race class. Fails if race class has saved races associated.
+
+        :param raceclass_or_id: Either the race class object or the ID of race class
+        :type raceclass_or_id: RaceClass|int
+        :return: Success status
+        :rtype: bool
+        """
         return self._racecontext.rhdata.delete_raceClass(raceclass_or_id)
 
     @callWithDatabaseWrapper
     def raceclasses_reset(self):
-        return self._racecontext.rhdata.reset_raceClasses()
+        """Delete all race classes.
+        """
+        self._racecontext.rhdata.reset_raceClasses()
 
     # Race Format
 
     @property
     @callWithDatabaseWrapper
     def raceformats(self):
+        """All race formats.
+
+        :return: System race formats
+        :rtype: list[RaceFormat]
+        """
         return self._racecontext.rhdata.get_raceFormats()
 
     @callWithDatabaseWrapper
     def raceformat_by_id(self, format_id):
+        """A single race format record.
+
+        :param format_id: ID of race format record to retrieve
+        :type format_id: int
+        :return: The race format
+        :rtype: RaceFormat
+        """
         return self._racecontext.rhdata.get_raceFormat(format_id)
 
     @callWithDatabaseWrapper
     def raceformat_add(self, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None):
+        """Add a new race format to the database.
+
+        :param name: Name for new race format, defaults to None
+        :type name: str, optional
+        :param unlimited_time: Unlimited Time setting for new race format, defaults to None
+        :type unlimited_time: int, optional
+        :param race_time_sec: Race duration for new race format, defaults to None
+        :type race_time_sec: int, optional
+        :param lap_grace_sec: Grace period for new race format, defaults to None
+        :type lap_grace_sec: int, optional
+        :param staging_fixed_tones: Fixed tones for new race forma, defaults to None
+        :type staging_fixed_tones: int, optional
+        :param staging_delay_tones: Delay tones setting for new race format, defaults to None
+        :type staging_delay_tones: int, optional
+        :param start_delay_min_ms: Delay minimum for new race format, defaults to None
+        :type start_delay_min_ms: int, optional
+        :param start_delay_max_ms: Maximum delay duration for new race format, defaults to None
+        :type start_delay_max_ms: int, optional
+        :param start_behavior: First crossing behavior for new race format, defaults to None
+        :type start_behavior: int, optional
+        :param win_condition: Win condition for new race format, defaults to None
+        :type win_condition: int, optional
+        :param number_laps_win: Lap count setting for new race format, defaults to None
+        :type number_laps_win: int, optional
+        :param team_racing_mode: Team racing setting for new race format, defaults to None
+        :type team_racing_mode: bool, optional
+        :param points_method: JSON-serialized arguments for new race format, defaults to None
+        :type points_method: str, optional
+        :return: The created :class:`RaceFormat`
+        :rtype: RaceFormat
+        """
         data = {}
 
         for name, value in [
@@ -1028,10 +1180,28 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def raceformat_attributes(self, raceformat_or_id):
+        """All custom attributes assigned to race format.
+
+        :param raceformat_or_id: Either the race format object or the ID of race format
+        :type raceformat_or_id: int
+        :return: List of :class:`RaceFormatAttribute`
+        :rtype: list[RaceFormatAttribute]
+        """
         return self._racecontext.rhdata.get_raceformat_attributes(raceformat_or_id)
 
     @callWithDatabaseWrapper
     def raceformat_attribute_value(self, raceformat_or_id, name, default_value=None):
+        """The value of a single custom attribute assigned to race format.
+
+        :param raceformat_or_id: Either the race format object or the ID of race format
+        :type raceformat_or_id: RaceFormat|int
+        :param name: Attribute to retrieve
+        :type name: str
+        :param default_value: Value to return if attribute is not registered (uses registered default if available), defaults to None
+        :type default_value: any, optional
+        :return: Returns string regardless of registered field type, or default value.
+        :rtype: str
+        """
         for field in self._racecontext.rhui.raceformat_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_raceformat_attribute_value(raceformat_or_id, field.name, field.value)
@@ -1040,14 +1210,67 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def raceformat_ids_by_attribute(self, name, value):
+        """ID of race formats with attribute matching the specified attribute/value combination.
+
+        :param name: Attribute to match
+        :type name: str
+        :param value: Value to match
+        :type value: str
+        :return: List of race format IDs
+        :rtype: list[int]
+        """
         return self._racecontext.rhdata.get_raceformat_id_by_attribute(name, value)
 
     @callWithDatabaseWrapper
     def raceformat_duplicate(self, source_format_or_id):
+        """Duplicate a race format.
+
+        :param source_format_or_id: Either a race format object or the ID of a race format
+        :type source_format_or_id: RaceFormat|int
+        :return: The created :class:`RaceFormat`
+        :rtype: RaceFormat
+        """
         return self._racecontext.rhdata.duplicate_raceFormat(source_format_or_id)
 
     @callWithDatabaseWrapper
     def raceformat_alter(self, raceformat_id, name=None, unlimited_time=None, race_time_sec=None, lap_grace_sec=None, staging_fixed_tones=None, staging_delay_tones=None, start_delay_min_ms=None, start_delay_max_ms=None, start_behavior=None, win_condition=None, number_laps_win=None, team_racing_mode=None, points_method=None, points_settings=None, attributes=None):
+        """Alter race format data.
+
+        :param raceformat_id: ID of race format to alter
+        :type raceformat_id: int
+        :param name: Name for new race format, defaults to None
+        :type name: str, optional
+        :param unlimited_time: Unlimited Time setting for new race format, defaults to None
+        :type unlimited_time: int, optional
+        :param race_time_sec: Race duration for new race format, defaults to None
+        :type race_time_sec: int, optional
+        :param lap_grace_sec: Grace period for new race format, defaults to None
+        :type lap_grace_sec: int, optional
+        :param staging_fixed_tones: Fixed tones for new race format, defaults to None
+        :type staging_fixed_tones: int, optional
+        :param staging_delay_tones: Delay tones setting for new race format, defaults to None
+        :type staging_delay_tones: int, optional
+        :param start_delay_min_ms: Delay minimum for new race format, defaults to None
+        :type start_delay_min_ms: int, optional
+        :param start_delay_max_ms: Maximum delay duration for new race format, defaults to None
+        :type start_delay_max_ms: int, optional
+        :param start_behavior: First crossing behavior for new race format, defaults to None
+        :type start_behavior: int, optional
+        :param win_condition: Win condition for new race format, defaults to None
+        :type win_condition: int, optional
+        :param number_laps_win: Lap count setting for new race format, defaults to None
+        :type number_laps_win: int, optional
+        :param team_racing_mode: Team racing setting for new race format, defaults to None
+        :type team_racing_mode: bool, optional
+        :param points_method: JSON-serialized arguments for new race format, defaults to None
+        :type points_method: str, optional
+        :param points_settings: Arguments to pass to class ranking, defaults to None
+        :type points_settings: dict, optional
+        :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
+        :type attributes: dict, optional
+        :return: Returns tuple of this :class:`RaceFormat` and affected races
+        :rtype: list[SavedRace]
+        """
         data = {}
 
         if isinstance(attributes, dict):
@@ -1084,11 +1307,20 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def raceformat_delete(self, raceformat_id):
+        """Delete race format. Fails if race class has saved races associated, is assigned to the active race, or is the last format in database.
+
+        :param raceformat_id: ID of race format to delete
+        :type raceformat_id: int
+        :return: Success status
+        :rtype: bool
+        """
         return self._racecontext.rhdata.delete_raceFormat(raceformat_id)
 
     @callWithDatabaseWrapper
     def raceformats_reset(self):
-        return self._racecontext.rhdata.reset_raceFormats()
+        """Resets race formats to default.
+        """
+        self._racecontext.rhdata.reset_raceFormats()
 
     # Frequency Sets (Profiles)
 
