@@ -22,45 +22,45 @@ class RHAPI():
     """An object providing a wide range of properties and methods across RotorHazard's internal systems
 
     :param race_context: A handle to the :class:`RaceContext`
-    :type race_context: :class:`RaceContext`
+    :type race_context: RaceContext
 
     :ivar API_VERSION_MAJOR: API major version
     :vartype API_VERSION_MAJOR: int
     :ivar API_VERSION_MINOR: API minor version
     :vartype API_VERSION_MINOR: int
-    :ivar ui: Access to :class:`UserInterfaceAPI`
-    :vartype ui: :class:`UserInterfaceAPI`
-    :ivar fields: Access to :class:`FieldsAPI`
-    :vartype fields: :class:`FieldsAPI`
-    :ivar db: Access to :class:`DatabaseAPI`
-    :vartype db: :class:`DatabaseAPI`
-    :ivar io: Access to :class:`IOAPI`
-    :vartype io: :class:`IOAPI`
-    :ivar heatgen: Access to :class:`HeatGenerateAPI`
-    :vartype heatgen: :class:`HeatGenerateAPI`
-    :ivar classrank: Access to :class:`ClassRankAPI`
-    :vartype classrank: :class:`ClassRankAPI`
-    :ivar points: Access to :class:`PointsAPI`
-    :vartype points: :class:`PointsAPI`
-    :ivar led: Access to :class:`LEDAPI`
-    :vartype led: :class:`LEDAPI`
-    :ivar vrxcontrol: Access to :class:`VRxControlAPI`
-    :vartype vrxcontrol: :class:`VRxControlAPI`
-    :ivar race: Access to :class:`RaceAPI`
-    :vartype race: :class:`RaceAPI`
-    :ivar language: Access to :class:`LanguageAPI`
-    :vartype language: :class:`LanguageAPI`
-    :ivar interface: Access to :class:`HardwareInterfaceAPI`
-    :vartype interface: :class:`HardwareInterfaceAPI`
-    :ivar config: Access to :class:`ServerConfigAPI`
-    :vartype config: :class:`ServerConfigAPI`
-    :ivar sensors: Access to :class:`SensorsAPI`
-    :vartype sensors: :class:`SensorsAPI`
-    :ivar eventresults: Access to :class:`EventResultsAPI`
-    :vartype eventresults: :class:`EventResultsAPI`
-    :ivar events: Access to :class:`EventsAPI`
-    :vartype events: :class:`EventsAPI`
-    :ivar __: Shortcut access to :meth:`LanguageAPI.__`
+    :ivar ui: A handle for :class:`UserInterfaceAPI`
+    :vartype ui: UserInterfaceAPI
+    :ivar fields: A handle for :class:`FieldsAPI`
+    :vartype fields: FieldsAPI
+    :ivar db: A handle for :class:`DatabaseAPI`
+    :vartype db: DatabaseAPI
+    :ivar io: A handle for :class:`IOAPI`
+    :vartype io: IOAPI
+    :ivar heatgen: A handle for :class:`HeatGenerateAPI`
+    :vartype heatgen: HeatGenerateAPI
+    :ivar classrank: A handle for :class:`ClassRankAPI`
+    :vartype classrank: ClassRankAPI
+    :ivar points: A handle for :class:`PointsAPI`
+    :vartype points: PointsAPI
+    :ivar led: A handle for :class:`LEDAPI`
+    :vartype led: LEDAPI
+    :ivar vrxcontrol: A handle for :class:`VRxControlAPI`
+    :vartype vrxcontrol: VRxControlAPI
+    :ivar race: A handle for :class:`RaceAPI`
+    :vartype race: RaceAPI
+    :ivar language: A handle for :class:`LanguageAPI`
+    :vartype language: LanguageAPI
+    :ivar interface: A handle for :class:`HardwareInterfaceAPI`
+    :vartype interface: HardwareInterfaceAPI
+    :ivar config: A handle for :class:`ServerConfigAPI`
+    :vartype config: ServerConfigAPI
+    :ivar sensors: A handle for :class:`SensorsAPI`
+    :vartype sensors: SensorsAPI
+    :ivar eventresults: A handle for :class:`EventResultsAPI`
+    :vartype eventresults: EventResultsAPI
+    :ivar events: A handle for :class:`EventsAPI`
+    :vartype events: EventsAPI
+    :ivar __: A shortcut handle for :meth:`LanguageAPI.__`
     :vartype __: function
     """
 
@@ -824,14 +824,45 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def slots(self):
+        """All slot records.
+
+        :return: List of HeatNode
+        :rtype: list[HeatNode]
+        """
         return self._racecontext.rhdata.get_heatNodes()
 
     @callWithDatabaseWrapper
     def slots_by_heat(self, heat_id):
+        """Slot records associated with a specific heat.
+
+        :param heat_id: ID of heat used to retrieve slots
+        :type heat_id: int
+        :return: List of HeatNode
+        :rtype: list[HeatNode]
+        """
         return self._racecontext.rhdata.get_heatNodes_by_heat(heat_id)
 
     @callWithDatabaseWrapper
     def slot_alter(self, slot_id, method=None, pilot=None, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None):
+        """Alter slot data.
+
+        :param slot_id: ID of slot to alter
+        :type slot_id: int
+        :param method: New seeding method for slot, defaults to None
+        :type method: ProgramMethod, optional
+        :param pilot: New ID of pilot assigned to slot, defaults to None
+        :type pilot: int, optional
+        :param seed_heat_id: New heat ID to use for seeding, defaults to None
+        :type seed_heat_id: int, optional
+        :param seed_raceclass_id: New raceclass ID to use for seeding, defaults to None
+        :type seed_raceclass_id: int, optional
+        :param seed_rank: New rank value to use for seeding, defaults to None
+        :type seed_rank: int, optional
+        :return: Affected races
+        :rtype: list[SavedRace]
+
+        With method set to ProgramMethod.NONE, most other fields are ignored. Only use seed_heat_id with ProgramMethod.HEAT_RESULT, and seed_raceclass_id with ProgramMethod.CLASS_RESULT, otherwise the assignment is ignored.
+        """
         data = {}
 
         for name, value in [
@@ -855,8 +886,15 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def slots_alter_fast(self, slot_list):
+        """Make many alterations to slots in a single database transaction as quickly as possible. Use with caution. May accept invalid input. Does not trigger events, clear associated results, or update cached data. These operations must be done manually if required.
+
+        Input dict parameters match the parameters used in :meth:`DatabaseAPI.slot_alter` 
+
+        :param slot_list: List of dicts containing parameters for each slot
+        :type slot_list: list[dict]
+        """
         # !! Unsafe for general use !!
-        return self._racecontext.rhdata.alter_heatNodes_fast(slot_list)
+        self._racecontext.rhdata.alter_heatNodes_fast(slot_list)
 
     # Race Class
 

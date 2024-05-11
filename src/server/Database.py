@@ -202,6 +202,25 @@ class HeatAttribute(Base):
     value = DB.Column(DB.String(), nullable=True)
 
 class HeatNode(Base):
+    """Slots are data structures containing a pilot assignment or assignment method. Heats contain one or more Slots corresponding to pilots who may participate in the Heat. When a heat is calculated, the method is used to reserve a slot for a given pilot. Afterward, pilot contains the ID for which the space is reserved. A Slot assignment is only a reservation, it does not mean the pilot has raced regardless of heat status.
+
+    :cvar id: Internal identifier
+    :vartype id: int
+    :cvar heat_id: ID of heat to which this slot is assigned
+    :vartype heat_id: int
+    :cvar node_index: slot number
+    :vartype node_index: int
+    :cvar pilot_id: ID of pilot assigned to this slot
+    :vartype pilot_id: int|None
+    :cvar color: hexadecimal color assigned to this slot
+    :vartype color: str
+    :cvar method: Method used to implement heat plan
+    :vartype method: ProgramMethod
+    :cvar seed_rank: Rank value used when implementing heat plan
+    :vartype seed_rank: int
+    :cvar seed_id: ID of heat or class used when implementing heat plan
+    :vartype seed_id: int
+    """
     __tablename__ = 'heat_node'
     __table_args__ = (
         DB.UniqueConstraint('heat_id', 'node_index'),
@@ -219,6 +238,8 @@ class HeatNode(Base):
         return '<HeatNode %r>' % self.id
 
 class ProgramMethod:
+    """Defines the method used when a heat plan is converted to assignments
+    """
     NONE = -1
     ASSIGN = 0
     HEAT_RESULT = 1
