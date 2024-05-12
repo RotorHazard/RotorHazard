@@ -122,7 +122,7 @@ class QuickButton():
     """Internal identifier for this quickbutton"""
     label: str
     """Text used for visible button label"""
-    fn: function
+    fn: callable
     """Function to run when button is pressed"""
     args: dict
     """Argument passed to function when called"""
