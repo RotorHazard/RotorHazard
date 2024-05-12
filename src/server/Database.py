@@ -7,7 +7,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 import RHUtils
 import logging
-from RHRace import WinCondition, StartBehavior, StagingTones
 logger = logging.getLogger(__name__)
 
 DB_engine = None
@@ -542,16 +541,16 @@ class RaceFormat(Base):
     """Minimum period for random phase of staging delay in milliseconds"""
     start_delay_max_ms:int = DB.Column(DB.Integer, nullable=False)
     """Maximum duration of random phase of staging delay in milliseconds"""
-    staging_delay_tones:StagingTones = DB.Column('staging_tones', DB.Integer, nullable=False)
-    """Whether to play staging tones each second during random delay phase"""
+    staging_delay_tones = DB.Column('staging_tones', DB.Integer, nullable=False)
+    """Whether to play :class:`StagingTones` each second during random delay phase"""
     number_laps_win:int = DB.Column(DB.Integer, nullable=False)
     """Number of laps used to declare race winner, if > 0"""
-    win_condition:WinCondition = DB.Column(DB.Integer, nullable=False)
-    """Condition used to determine race winner and race ranking"""
+    win_condition = DB.Column(DB.Integer, nullable=False)
+    """:class:`WinCondition` used to determine race winner and race ranking"""
     team_racing_mode:bool = DB.Column(DB.Boolean, nullable=False)
     """Whether local simultaneous team racing mode will be used"""
-    start_behavior:StartBehavior = DB.Column(DB.Integer, nullable=False)
-    """Handling of first crossing"""
+    start_behavior = DB.Column(DB.Integer, nullable=False)
+    """Handling :class:`StartBehavior` of first crossing"""
     points_method = DB.Column(DB.String, nullable=True)
     """JSON-serialized arguments for points algorithm"""
 
