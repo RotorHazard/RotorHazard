@@ -2206,7 +2206,7 @@ class RaceAPI():
 
     @property
     def end_time_internal(self):
-        """Internal (monotonic) timestamp of race end time. Invalid unless :meth:`RaceAPI.status` is :attr:`RaceStatus.DONE`
+        """Internal (monotonic) timestamp of race end time. Invalid unless :meth:`RaceAPI.status` is :attr:`RHRace.RaceStatus.DONE`
 
         :return: timestamp
         :rtype: int
@@ -2358,7 +2358,7 @@ class RaceAPI():
         return self._racecontext.race.race_leader_pilot_id
     
     def schedule(self, sec_or_none, minutes=0):
-        """Schedule race with a relative future time offset. Fails if :meth:`RaceAPI.status` is not :attr:`RaceStatus.READY`. Cancels existing schedule if both values are false.
+        """Schedule race with a relative future time offset. Fails if :meth:`RaceAPI.status` is not :attr:`RHRace.RaceStatus.READY`. Cancels existing schedule if both values are false.
 
         :param sec_or_none: Seconds ahead to schedule race
         :type sec_or_none: int|None
@@ -2382,7 +2382,7 @@ class RaceAPI():
             return None
 
     def stage(self, args=None):
-        """Begin race staging sequence. May fail if :meth:`RaceAPI.status` is not :attr:`RaceStatus.READY`.
+        """Begin race staging sequence. May fail if :meth:`RaceAPI.status` is not :attr:`RHRace.RaceStatus.READY`.
 
         :param args: _description_, defaults to None
         :type args: _type_, optional
@@ -2402,7 +2402,7 @@ class RaceAPI():
         self._racecontext.race.save()
 
     def clear(self):
-        """Clear laps and reset :meth:`RaceAPI.status` to :attr:`RaceStatus.READY`. Fails if race.status is :attr:`RaceStatus.STAGING` or :attr:`RaceStatus.RACING` — stop race before using."""
+        """Clear laps and reset :meth:`RaceAPI.status` to :attr:`RHRace.RaceStatus.READY`. Fails if race.status is :attr:`RHRace.RaceStatus.STAGING` or :attr:`RHRace.RaceStatus.RACING` — stop race before using."""
         self._racecontext.race.discard_laps()
 
 
