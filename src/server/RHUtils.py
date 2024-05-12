@@ -30,7 +30,7 @@ S32_BPill_board_flag = False  # set by 'idAndLogSystemInfo()'
 
 def time_format(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000'''
-    if millis is None:
+    if not isinstance(millis, (int, float)):
         return ''
 
     millis = int(round(millis, 0)) # round to nearest ms
@@ -47,7 +47,7 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
 
 def split_time_format(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000 with leading zeros removed'''
-    if millis is None:
+    if not isinstance(millis, (int, float)):
         return ''
     s = time_format(millis, timeformat)
     if len(s) > 3 and s.startswith("0:"):
@@ -57,7 +57,7 @@ def split_time_format(millis, timeformat='{m}:{s}.{d}'):
 
 def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     '''Convert milliseconds to phonetic'''
-    if millis is None:
+    if not isinstance(millis, (int, float)):
         return ''
 
     millis = int(millis) # strip fractional part

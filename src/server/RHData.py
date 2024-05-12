@@ -3253,51 +3253,52 @@ def doReplace(rhapi, text, args, spoken_flag=False):
             leaderboard = race_results.get(lboard_name, [])
 
             for result in leaderboard:
-                if result['node'] == args['node_index']:
+                if result.get('node') == args['node_index']:
                     # %LAP_COUNT% : Current lap number
-                    text = text.replace('%LAP_COUNT%', str(result['laps']))
+                    text = text.replace('%LAP_COUNT%', str(result.get('laps')))
 
                     # %TOTAL_TIME% : Total time since start of race for pilot
                     text = text.replace('%TOTAL_TIME%', RHUtils.phonetictime_format( \
-                        result['total_time_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else result['total_time'])
+                        result.get('total_time_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                        if spoken_flag else result.get('total_time', ''))
 
                     # %TOTAL_TIME_LAPS%: Total time since start of first lap for pilot
                     text = text.replace('%TOTAL_TIME_LAPS%', RHUtils.phonetictime_format( \
-                        result['total_time_laps_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else result['total_time_laps'])
+                        result.get('total_time_laps_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                        if spoken_flag else result.get('total_time_laps', ''))
 
                     # %LAST_LAP% : Last lap time for pilot
                     text = text.replace('%LAST_LAP%', RHUtils.phonetictime_format( \
-                        result['last_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else result['last_lap'])
+                        result.get('last_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                        if spoken_flag else result.get('last_lap', ''))
 
                     # %AVERAGE_LAP% : Average lap time for pilot
                     text = text.replace('%AVERAGE_LAP%', RHUtils.phonetictime_format( \
-                        result['average_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else result['average_lap'])
+                        result.get('average_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                        if spoken_flag else result.get('average_lap', ''))
 
                     # %FASTEST_LAP% : Fastest lap time
                     text = text.replace('%FASTEST_LAP%', RHUtils.phonetictime_format( \
-                        result['fastest_lap_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else result['fastest_lap'])
+                        result.get('fastest_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                        if spoken_flag else result.get('fastest_lap', ''))
 
                     if '%TIME_BEHIND' in text:
                         behind_str = RHUtils.phonetictime_format( \
-                            result['time_behind_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                            if spoken_flag else result['time_behind']
-                        # %TIME_BEHIND% : Amount of time behind race leader
-                        text = text.replace('%TIME_BEHIND%', behind_str)
+                            result.get('time_behind_raw', ''), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                            if spoken_flag else result.get('time_behind', '')
                         pos_bhind_str = ''
-                        if len(behind_str) > 0:
-                            behind_str = "{} {}".format(behind_str, rhapi.__('behind'))
-                            pos_bhind_str = str(result.get('position', ''))
-                            if pos_bhind_str == '1':  # only do %TIME_BEHIND_POS_CALL% if not first
-                                pos_bhind_str = ''
-                            if len(pos_bhind_str) > 0:
-                                pos_bhind_str = "{} {} {} {}, {}".format(rhapi.__('Pilot'), \
-                                                                         pilot_name_str, rhapi.__('finished at position'), \
-                                                                         pos_bhind_str, behind_str)
+                        if behind_str:
+                            # %TIME_BEHIND% : Amount of time behind race leader
+                            text = text.replace('%TIME_BEHIND%', behind_str)
+                            if len(behind_str) > 0:
+                                behind_str = "{} {}".format(behind_str, rhapi.__('behind'))
+                                pos_bhind_str = str(result.get('position', ''))
+                                if pos_bhind_str == '1':  # only do %TIME_BEHIND_POS_CALL% if not first
+                                    pos_bhind_str = ''
+                                if len(pos_bhind_str) > 0:
+                                    pos_bhind_str = "{} {} {} {}, {}".format(rhapi.__('Pilot'), \
+                                                                             pilot_name_str, rhapi.__('finished at position'), \
+                                                                             pos_bhind_str, behind_str)
                         # %TIME_BEHIND_CALL% : Amount of time behind race leader (with prompt)
                         text = text.replace('%TIME_BEHIND_CALL%', behind_str)
                         # %TIME_BEHIND_FINPOS_CALL% : Pilot NAME finished at position X, MM:SS.SSS behind
@@ -3308,10 +3309,10 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                                                                               result.get('pilot_id')))
 
                     # %CONSECUTIVE% : Fastest consecutive laps for pilot
-                    if result['consecutives_base'] == int(rhapi.db.option('consecutivesCount', 3)):
+                    if result.get('consecutives_base') == int(rhapi.db.option('consecutivesCount', 3)):
                         text = text.replace('%CONSECUTIVE%', RHUtils.phonetictime_format( \
-                            result['consecutives_raw'], rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                            if spoken_flag else result['consecutives'])
+                            result.get('consecutives_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                            if spoken_flag else result.get('consecutives', ''))
                     else:
                         text = text.replace('%CONSECUTIVE%', rhapi.__('None'))
 
