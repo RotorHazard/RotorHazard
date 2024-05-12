@@ -29,7 +29,15 @@ Is_sys_raspberry_pi_flag = True  # set by 'idAndLogSystemInfo()'
 S32_BPill_board_flag = False  # set by 'idAndLogSystemInfo()'
 
 def time_format(millis, timeformat='{m}:{s}.{d}'):
-    '''Convert milliseconds to 00:00.000'''
+    """Convert milliseconds to 00:00.000
+
+    :param millis: time
+    :type millis: int
+    :param timeformat: configured datatime format, defaults to '{m}:{s}.{d}'
+    :type timeformat: str, optional
+    :return: formated string
+    :rtype: str
+    """
     if millis is None:
         return ''
 
@@ -46,7 +54,15 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
     return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
 
 def split_time_format(millis, timeformat='{m}:{s}.{d}'):
-    '''Convert milliseconds to 00:00.000 with leading zeros removed'''
+    """Convert milliseconds to 00:00.000 with leading zeros removed
+
+    :param millis: time
+    :type millis: int
+    :param timeformat: configured datatime format, defaults to '{m}:{s}.{d}'
+    :type timeformat: str, optional
+    :return: formated string
+    :rtype: str
+    """
     if millis is None:
         return ''
     s = time_format(millis, timeformat)
@@ -56,7 +72,15 @@ def split_time_format(millis, timeformat='{m}:{s}.{d}'):
     return s
 
 def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
-    '''Convert milliseconds to phonetic'''
+    """Convert milliseconds to phonetic
+
+    :param millis: time
+    :type millis: int
+    :param timeformat: configured datatime format, defaults to '{m} {s}.{d}'
+    :type timeformat: str, optional
+    :return: formated string
+    :rtype: str
+    """
     if millis is None:
         return ''
 
