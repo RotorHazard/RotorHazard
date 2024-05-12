@@ -99,15 +99,14 @@ class PilotAttribute(Base):
     """Value of attribute"""
 
 class HeatStatus():
-    """_summary_
+    """_summary_"""
 
-    :cvar PLANNED: _description_
-    :cvar PROJECTED: _description_
-    :cvar CONFIRMED: _description_
-    """
     PLANNED = 0
+    """_description_"""
     PROJECTED = 1
+    """_description_"""
     CONFIRMED = 2
+    """_description_"""
 
 class Heat(Base):
     """Heats are collections of pilots upon which races are run. A heat may first be represented by a heat plan which defines methods for assigning pilots. The plan must be seeded into pilot assignments in order for a race to be run.
@@ -124,7 +123,7 @@ class Heat(Base):
     class_id:int = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     """ID of associated race class"""
     results:dict|None = DB.Column(DB.PickleType, nullable=True)
-    """ Internal use only"""
+    """Internal use only"""
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
     """Internal use only"""
     order:int = DB.Column(DB.Integer, nullable=True)
@@ -168,71 +167,55 @@ class Heat(Base):
         return '<Heat %r>' % self.id
 
 class HeatAttribute(Base):
-    """Heat Attributes are simple storage variables which persist to the database. Heat Attribute values are unique to/stored individually for each heat.
-
-    :cvar id: ID of heat to which this attribute is assigned
-    :vartype id: int
-    :cvar name: Name of attribute
-    :vartype name: str
-    :cvar value: Value of attribute
-    :vartype value: str
-    """
+    """Heat Attributes are simple storage variables which persist to the database. Heat Attribute values are unique to/stored individually for each heat."""
     __tablename__ = 'heat_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
     )
-    id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False, primary_key=True)
-    value = DB.Column(DB.String(), nullable=True)
+    id:int = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False, primary_key=True)
+    """ID of heat to which this attribute is assigned"""
+    name:str = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    """Name of attribute"""
+    value:str = DB.Column(DB.String(), nullable=True)
+    """Value of attribute"""
+
+class ProgramMethod:
+    """Defines the method used when a heat plan is converted to assignments"""
+
+    NONE = -1
+    """No assignment made"""
+    ASSIGN = 0
+    """Use pilot already defined in pilot_id"""
+    HEAT_RESULT = 1
+    """Assign using seed_id as a heat designation"""
+    CLASS_RESULT = 2
+    """Assign using seed_id as a race class designation"""
 
 class HeatNode(Base):
-    """Slots are data structures containing a pilot assignment or assignment method. Heats contain one or more Slots corresponding to pilots who may participate in the Heat. When a heat is calculated, the method is used to reserve a slot for a given pilot. Afterward, pilot contains the ID for which the space is reserved. A Slot assignment is only a reservation, it does not mean the pilot has raced regardless of heat status.
-
-    :cvar id: Internal identifier
-    :vartype id: int
-    :cvar heat_id: ID of heat to which this slot is assigned
-    :vartype heat_id: int
-    :cvar node_index: slot number
-    :vartype node_index: int
-    :cvar pilot_id: ID of pilot assigned to this slot
-    :vartype pilot_id: int|None
-    :cvar color: hexadecimal color assigned to this slot
-    :vartype color: str
-    :cvar method: Method used to implement heat plan
-    :vartype method: ProgramMethod
-    :cvar seed_rank: Rank value used when implementing heat plan
-    :vartype seed_rank: int
-    :cvar seed_id: ID of heat or class used when implementing heat plan
-    :vartype seed_id: int
-    """
+    """Slots are data structures containing a pilot assignment or assignment method. Heats contain one or more Slots corresponding to pilots who may participate in the Heat. When a heat is calculated, the method is used to reserve a slot for a given pilot. Afterward, pilot contains the ID for which the space is reserved. A Slot assignment is only a reservation, it does not mean the pilot has raced regardless of heat status."""
     __tablename__ = 'heat_node'
     __table_args__ = (
         DB.UniqueConstraint('heat_id', 'node_index'),
     )
-    id = DB.Column(DB.Integer, primary_key=True)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=True)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    color = DB.Column(DB.String(6), nullable=True)
-    method = DB.Column(DB.Integer, nullable=False)
-    seed_rank = DB.Column(DB.Integer, nullable=True)
-    seed_id = DB.Column(DB.Integer, nullable=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    heat_id:int = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
+    """ID of heat to which this slot is assigned"""
+    node_index:int = DB.Column(DB.Integer, nullable=True)
+    """slot number"""
+    pilot_id:int = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    """ID of pilot assigned to this slot"""
+    color:str = DB.Column(DB.String(6), nullable=True)
+    """hexadecimal color assigned to this slot"""
+    method:ProgramMethod = DB.Column(DB.Integer, nullable=False)
+    """Method used to implement heat plan"""
+    seed_rank:int = DB.Column(DB.Integer, nullable=True)
+    """Rank value used when implementing heat plan"""
+    seed_id:int = DB.Column(DB.Integer, nullable=True)
+    """ID of heat or class used when implementing heat plan"""
 
     def __repr__(self):
         return '<HeatNode %r>' % self.id
-
-class ProgramMethod:
-    """Defines the method used when a heat plan is converted to assignments
-
-    :cvar NONE: No assignment made
-    :cvar ASSIGN: Use pilot already defined in pilot_id
-    :cvar HEAT_RESULT: Assign using seed_id as a heat designation
-    :cvar CLASS_RESULT: Assign using seed_id as a race class designation
-    """
-    NONE = -1
-    ASSIGN = 0
-    HEAT_RESULT = 1
-    CLASS_RESULT = 2
 
 class HeatAdvanceType:
     """Defines how the UI will automatically advance heats after a race is finished."""
@@ -355,19 +338,32 @@ class LapSplit(Base):
         return '<LapSplit %r>' % self.pilot_id
 
 class SavedRaceMeta(Base):
+    """Saved races are sets of stored information about race history. The Saved race object stores results and metadata. For a complete picture of a saved race, it is necessary to fetch associated Pilot Runs and Laps.
+    
+    NOTE: Results should be accessed with the db.race_results method and not by reading the results property directly. The results property is unreliable because results calulation is delayed to improve system performance. db.race_results ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
+    """
     __tablename__ = 'saved_race_meta'
     __table_args__ = (
         DB.UniqueConstraint('round_id', 'heat_id'),
     )
-    id = DB.Column(DB.Integer, primary_key=True)
-    round_id = DB.Column(DB.Integer, nullable=False)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
-    start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
-    start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
-    results = DB.Column(DB.PickleType, nullable=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    round_id:int = DB.Column(DB.Integer, nullable=False)
+    """Round Number"""
+    heat_id:int = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
+    """ID of the associated heat"""
+    class_id:int = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
+    """ID of associated race class, or CLASS_ID_NONE"""
+    format_id:int = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    """ID of associated race format"""
+    start_time:int = DB.Column(DB.Integer, nullable=False) # internal monotonic time
+    """Internal (monotonic) time value of race start"""
+    start_time_formatted:str = DB.Column(DB.String, nullable=False) # local human-readable time
+    """Human-readable time of race start"""
+    results:dict|None = DB.Column(DB.PickleType, nullable=True)
+    """Internal use only; see below"""
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
+    """Internal use only"""
 
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
@@ -384,98 +380,112 @@ class SavedRaceMeta(Base):
         return '<SavedRaceMeta %r>' % self.id
 
 class SavedRaceMetaAttribute(Base):
+    """Saved race attributes are simple storage variables which persist to the database. Saved race attribute values are unique to/stored individually for each saved race."""
     __tablename__ = 'saved_race_meta_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
     )
-    id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False, primary_key=True)
+    id:int = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False, primary_key=True)
+    """ID of saved race to which this attribute is assigned"""
     name = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    """Name of attribute"""
     value = DB.Column(DB.String(), nullable=True)
+    """Value of attribute"""
 
 class SavedPilotRace(Base):
+    """Pilot Runs store data related to individual pilots in each race, except lap crossings. Each saved race has one or more pilot runs associated with it."""
     __tablename__ = 'saved_pilot_race'
     __table_args__ = (
         DB.UniqueConstraint('race_id', 'node_index'),
     )
-    id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    history_values = DB.Column(DB.String, nullable=True)
-    history_times = DB.Column(DB.String, nullable=True)
-    penalty_time = DB.Column(DB.Integer, nullable=False)
-    penalty_desc = DB.Column(DB.String, nullable=True)
-    enter_at = DB.Column(DB.Integer, nullable=False)
-    exit_at = DB.Column(DB.Integer, nullable=False)
-    frequency = DB.Column(DB.Integer, nullable=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    race_id:int = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
+    """ID of associated saved race"""
+    node_index:int = DB.Column(DB.Integer, nullable=False)
+    """Seat number"""
+    pilot_id:int = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    """ID of associated pilot"""
+    history_values:str = DB.Column(DB.String, nullable=True)
+    """JSON-serialized raw RSSI data"""
+    history_times:str = DB.Column(DB.String, nullable=True)
+    """JSON-serialized timestamps for raw RSSI data"""
+    penalty_time:int = DB.Column(DB.Integer, nullable=False)
+    """Not implemented"""
+    penalty_desc:int = DB.Column(DB.String, nullable=True)
+    """Not implemented"""
+    enter_at:int = DB.Column(DB.Integer, nullable=False)
+    """Gate enter calibration point"""
+    exit_at:int = DB.Column(DB.Integer, nullable=False)
+    """Gate exit calibration point"""
+    frequency:int = DB.Column(DB.Integer, nullable=True)
+    """Active frequency for this seat at race time"""
 
     def __repr__(self):
         return '<SavedPilotRace %r>' % self.id
 
+class LapSource:
+    """Describes the method used to enter a lap into the database"""
+    
+    REALTIME = 0
+    """Lap added by (hardware) interface in real time"""
+    MANUAL = 1
+    """Lap added manually by user in UI"""
+    RECALC = 2
+    """Lap added after recalculation (marshaling) or RSSI data"""
+    AUTOMATIC = 3
+    """Lap added by other automatic process"""
+    API = 4
+    """Lap added by API (plugin)"""
+
 class SavedRaceLap(Base):
+    """Laps store data related to start gate crossings. Each pilot run may have one or more laps associated with it. When displaying laps, be sure to reference the associated race format."""
+    
     __tablename__ = 'saved_race_lap'
-    id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
-    pilotrace_id = DB.Column(DB.Integer, DB.ForeignKey("saved_pilot_race.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    lap_time_stamp = DB.Column(DB.Float, nullable=False)
-    lap_time = DB.Column(DB.Float, nullable=False)
-    lap_time_formatted = DB.Column(DB.String, nullable=False)
-    source = DB.Column(DB.Integer, nullable=False)
-    deleted = DB.Column(DB.Boolean, nullable=False)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    race_id:int = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
+    """ID of associated saved race"""
+    pilotrace_id:int = DB.Column(DB.Integer, DB.ForeignKey("saved_pilot_race.id"), nullable=False)
+    """ID of associated pilot run"""
+    node_index:int = DB.Column(DB.Integer, nullable=False)
+    """Seat number"""
+    pilot_id:int = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    """ID of associated pilot"""
+    lap_time_stamp:int = DB.Column(DB.Float, nullable=False)
+    """Milliseconds since race start time"""
+    lap_time:int = DB.Column(DB.Float, nullable=False)
+    """Milliseconds since previous counted lap"""
+    lap_time_formatted:str = DB.Column(DB.String, nullable=False)
+    """Formatted user-facing text"""
+    source:LapSource = DB.Column(DB.Integer, nullable=False)
+    """Lap source type"""
+    deleted:bool = DB.Column(DB.Boolean, nullable=False)
+    """True if record should not be counted in results calculations"""
 
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id
 
-class LapSource:
-    REALTIME = 0
-    MANUAL = 1
-    RECALC = 2
-    AUTOMATIC = 3
-    API = 4
-
 class Profiles(Base):
+    """Frequency sets contain a mapping of band/channel/frequency values to seats. They also store enter and exit values."""
     __tablename__ = 'profiles'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False)
-    description = DB.Column(DB.String(256), nullable=True)
-    frequencies = DB.Column(DB.String(80), nullable=False)
-    enter_ats = DB.Column(DB.String(80), nullable=True)
-    exit_ats = DB.Column(DB.String(80), nullable=True)
-    f_ratio = DB.Column(DB.Integer, nullable=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    name:str = DB.Column(DB.String(80), nullable=False)
+    """User-facing name"""
+    description:str = DB.Column(DB.String(256), nullable=True)
+    """User-facing long description"""
+    frequencies:str = DB.Column(DB.String(80), nullable=False)
+    """JSON-serialized frequency objects per seat"""
+    enter_ats:str = DB.Column(DB.String(80), nullable=True)
+    """JSON-serialized enter-at points per seat"""
+    exit_ats:str = DB.Column(DB.String(80), nullable=True)
+    """JSON-serialized exit-at points per seat"""
+    f_ratio:int = DB.Column(DB.Integer, nullable=True)
+    """Unused legacy value"""
 
 class RaceFormat(Base):
     """Race formats are profiles of properties used to define parameters of individual races. Every race has an assigned format. A race formats may be assigned to a race class, which forces RotorHazard to switch to that formatwhen running races within the class.
-
-    :cvar id: Internal identifier
-    :vartype id: int
-    :cvar name: User-facing name
-    :vartype name: str
-    :cvar unlimited_time: True(1) if race clock counts up, False(0) if race clock counts down
-    :vartype unlimited_time: int
-    :cvar race_time_sec: Race clock duration in seconds, unused if unlimited_time is True(1)
-    :vartype race_time_sec: int
-    :cvar lap_grace_sec: Grace period duration in seconds, -1 for unlimited, unused if unlimited_time is True(1)
-    :vartype lap_grace_sec: int
-    :cvar staging_fixed_tones: Number of staging tones always played regardless of random delay
-    :vartype staging_fixed_tones: int
-    :cvar start_delay_min_ms: Minimum period for random phase of staging delay in milliseconds
-    :vartype start_delay_min_ms: int
-    :cvar start_delay_max_ms: Maximum duration of random phase of staging delay in milliseconds
-    :vartype start_delay_max_ms: int
-    :cvar staging_delay_tones: Whether to play staging tones each second during random delay phase
-    :vartype staging_delay_tones: int
-    :cvar number_laps_win: Number of laps used to declare race winner, if > 0
-    :vartype number_laps_win: int
-    :cvar win_condition: Condition used to determine race winner and race ranking
-    :vartype win_condition: int
-    :cvar team_racing_mode: Whether local simultaneous team racing mode will be used
-    :vartype team_racing_mode: bool
-    :cvar start_behavior: Handling of first crossing
-    :vartype start_behavior: int
-    :cvar points_method: JSON-serialized arguments for points algorithm
-    :vartype points_method: str
     
     The sentinel value RHUtils.FORMAT_ID_NONE should be used when no race format is defined.
 
@@ -520,20 +530,34 @@ class RaceFormat(Base):
         The type for start_behavior may change to a members of dedicated class.
     """
     __tablename__ = 'race_format'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False)
-    unlimited_time = DB.Column('race_mode', DB.Integer, nullable=False)
-    race_time_sec = DB.Column(DB.Integer, nullable=False)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    name:str = DB.Column(DB.String(80), nullable=False)
+    """User-facing name"""
+    unlimited_time:int = DB.Column('race_mode', DB.Integer, nullable=False)
+    """True(1) if race clock counts up, False(0) if race clock counts down"""
+    race_time_sec:int = DB.Column(DB.Integer, nullable=False)
+    """Race clock duration in seconds, unused if unlimited_time is True(1)"""
     lap_grace_sec = DB.Column(DB.Integer, nullable=False, default=-1)
+    """Grace period duration in seconds, -1 for unlimited, unused if unlimited_time is True(1)"""
     staging_fixed_tones = DB.Column(DB.Integer, nullable=False)
+    """Number of staging tones always played regardless of random delay"""
     start_delay_min_ms = DB.Column(DB.Integer, nullable=False)
+    """Minimum period for random phase of staging delay in milliseconds"""
     start_delay_max_ms = DB.Column(DB.Integer, nullable=False)
+    """Maximum duration of random phase of staging delay in milliseconds"""
     staging_delay_tones = DB.Column('staging_tones', DB.Integer, nullable=False)
+    """Whether to play staging tones each second during random delay phase"""
     number_laps_win = DB.Column(DB.Integer, nullable=False)
+    """Number of laps used to declare race winner, if > 0"""
     win_condition = DB.Column(DB.Integer, nullable=False)
+    """Condition used to determine race winner and race ranking"""
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
+    """Whether local simultaneous team racing mode will be used"""
     start_behavior = DB.Column(DB.Integer, nullable=False)
+    """Handling of first crossing"""
     points_method = DB.Column(DB.String, nullable=True)
+    """JSON-serialized arguments for points algorithm"""
 
     # DEPRECATED: compatibility for 'race_mode' property / renamed to 'unlimited_time'
     @property
@@ -558,19 +582,28 @@ class RaceFormat(Base):
         self.staging_delay_tones = value
 
 class RaceFormatAttribute(Base):
+    """Race Format Attributes are simple storage variables which persist to the database. Race Format Attribute values are unique to/stored individually for each race format."""
     __tablename__ = 'race_format_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
     )
-    id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False, primary_key=True)
-    value = DB.Column(DB.String(), nullable=True)
+    id:int = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False, primary_key=True)
+    """ID of race format to which this attribute is assigned"""
+    name:str = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    """Name of attribute"""
+    value:str = DB.Column(DB.String(), nullable=True)
+    """Value of attribute"""
 
 class GlobalSettings(Base):
+    """Options are settings that apply to a server globally."""
+    
     __tablename__ = 'global_settings'
-    id = DB.Column(DB.Integer, primary_key=True)
-    option_name = DB.Column(DB.String(40), nullable=False)
-    option_value = DB.Column(DB.String, nullable=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    option_name:str = DB.Column(DB.String(40), nullable=False)
+    """Name of option"""
+    option_value:str = DB.Column(DB.String, nullable=True)
+    """Value of option"""
 
     def __repr__(self):
         return '<GlobalSetting %r>' % self.id

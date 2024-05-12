@@ -84,7 +84,7 @@ def callWithDatabaseWrapper(func):
 # UI helpers
 #
 class UserInterfaceAPI():
-    """Interact with RotorHazard's frontend user interface. These methods are accessed via :attr:`RHAPI.RHAPI.ui`
+    """Interact with RotorHazard's frontend user interface. These methods are accessed via :attr:`RHAPI.ui`
     """
 
     def __init__(self, race_context):
@@ -275,7 +275,7 @@ class UserInterfaceAPI():
 # Data structures
 #
 class FieldsAPI():
-    """Create and access new data structures. These methods are accessed via :attr:`RHAPI.RHAPI.fields`
+    """Create and access new data structures. These methods are accessed via :attr:`RHAPI.fields`
     """
     def __init__(self, race_context):
         """Constructor method
