@@ -467,7 +467,32 @@ class SavedRaceLap(Base):
         return '<SavedRaceLap %r>' % self.id
 
 class Profiles(Base):
-    """Frequency sets contain a mapping of band/channel/frequency values to seats. They also store enter and exit values."""
+    """Frequency sets contain a mapping of band/channel/frequency values to seats. They also store enter and exit values.
+    
+    frequencies can be JSON-unserialized (json.loads) to a dict:
+
+        b: list of band designations, ordered by seat number; values may string be null
+
+        c: list of band-channel designations, ordered by seat number; values may int be null
+
+        f: list of frequencies, ordered by seat number; values are int
+
+    enter_ats and exit_ats can be JSON-unserialized (json.loads) to a dict:
+
+            v: list of enter/exit values, ordered by seat number; values are int
+
+    The length of lists stored in frequencies, enter_ats, and exit_ats may not match the number of seats. In these cases values are either not yet available (if too few) or no longer used (if too many) for higher-index seats.
+
+    The sentinel value RHUtils.FREQUENCY_ID_NONE should be used when no frequency is defined.
+
+    Notice: The frequency set specification is expected to be modified in future versions. Please consider this while developing plugins.
+
+        Rename class
+
+        Siimplify serialization for enter_ats, exit_ats
+
+        Remove of unused f_ratio
+    """
     __tablename__ = 'profiles'
     id:int = DB.Column(DB.Integer, primary_key=True)
     """Internal identifier"""

@@ -1305,14 +1305,41 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def frequencysets(self):
+        """All frequency set records.
+
+        :return: List of :class:`Profiles`
+        :rtype: list[Profiles]
+        """
         return self._racecontext.rhdata.get_profiles()
 
     @callWithDatabaseWrapper
     def frequencyset_by_id(self, set_id):
+        """A single frequency set record.
+
+        :param set_id: ID of frequency set record to retrieve
+        :type set_id: int
+        :return: The frequency :class:`Profiles`
+        :rtype: Profiles
+        """
         return self._racecontext.rhdata.get_profile(set_id)
 
     @callWithDatabaseWrapper
     def frequencyset_add(self, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None):
+        """Add a new frequency set to the database.
+
+        :param name: Name for new frequency set, defaults to None
+        :type name: str, optional
+        :param description: Description for new frequency set, defaults to None
+        :type description: str, optional
+        :param frequencies: Frequency, band, and channel information for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
+        :type frequencies: str|dict, optional
+        :param enter_ats: Enter-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
+        :type enter_ats: string|dict, optional
+        :param exit_ats: Exit-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
+        :type exit_ats: string|dict, optional
+        :return: The created :class:`Profiles`
+        :rtype: Profiles
+        """
         data = {}
 
         source_profile = self._racecontext.race.profile
@@ -1336,10 +1363,34 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def frequencyset_duplicate(self, source_set_or_id):
+        """Duplicate a frequency set.
+
+        :param source_set_or_id: Either a frequency set object or the ID of a frequency set
+        :type source_set_or_id: Profiles|int
+        :return: The created :class:`Profiles`
+        :rtype: Profiles
+        """
         return self._racecontext.rhdata.duplicate_profile(source_set_or_id)
 
     @callWithDatabaseWrapper
     def frequencyset_alter(self, set_id, name=None, description=None, frequencies=None, enter_ats=None, exit_ats=None):
+        """Alter frequency set data.
+
+        :param set_id: ID of frequency set to alter
+        :type set_id: int
+        :param name: Name for new frequency set, defaults to None
+        :type name: str, optional
+        :param description: Description for new frequency set, defaults to None
+        :type description: str, optional
+        :param frequencies: Frequency, band, and channel information for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
+        :type frequencies: str|dict, optional
+        :param enter_ats: Enter-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
+        :type enter_ats: str|dict, optional
+        :param exit_ats: Exit-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
+        :type exit_ats: str|dict, optional
+        :return: The altered :class:`Profiles` object
+        :rtype: Profiles
+        """
         data = {}
 
         for name, value in [
@@ -1368,11 +1419,19 @@ class DatabaseAPI():
     @callWithDatabaseWrapper
     @callWithDatabaseWrapper
     def frequencyset_delete(self, set_or_id):
+        """Delete frequency set. Fails if frequency set is last remaining.
+
+        :param set_or_id: Either a frequency set object or the ID of a frequency set
+        :type set_or_id: Profiles|int
+        :return: Success status
+        :rtype: bool
+        """
         return self._racecontext.rhdata.delete_profile(set_or_id)
 
     @callWithDatabaseWrapper
     def frequencysets_reset(self):
-        return self._racecontext.rhdata.reset_profiles()
+        """Resets frequency sets to default."""
+        self._racecontext.rhdata.reset_profiles()
 
     # Saved Race
 
