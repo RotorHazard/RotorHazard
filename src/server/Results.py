@@ -62,24 +62,42 @@ class RaceClassRankMethod():
     Class Ranking Methods must be registered to be available in the UI. Access to registration is provided though the register_fn argument of the :attr:`eventmanager.Evt.CLASS_RANK_INITIALIZE` event. Pass a RaceClassRankMethod object to this method to register it.
     """
     def __init__(self, label, rank_fn, default_args=None, settings:List[UIField]=None, name=None):
+        """Constructor method
 
-        self.name:str
-        """Internal identifier (auto-generated from label if not provided)"""
+        :param label: User-facing text that appears in the RotorHazard frontend interface
+        :type label: string
+        :param rank_fn: Function to run when class leaderboards are calculated
+        :type rank_fn: callable
+        :param default_args: Arguments passed to the :attr:`rank_fn` when run, unless overridden by local arguments, defaults to None
+        :type default_args: dict, optional
+        :param settings: A list of paramters to provide to the user, defaults to None
+        :type settings: List[UIField], optional
+        :param name: Internal identifier (auto-generated from :attr:`label` if not provided), defaults to None
+        :type name: str, optional
+        """
+        
         if name is None:
             self.name = cleanVarName(label)
         else:
             self.name = name
 
         self.label:str = label
-        """User-facing text that appears in the RotorHazard frontend interface"""
         self.rank_fn:callable = rank_fn
-        """Function to run when class leaderboards are calculated"""
         self.default_args:dict = default_args
-        """Arguments passed to the :attr:`rank_fn` when run, unless overridden by local arguments"""
         self.settings:list[UIField] = settings
-        """A list of paramters to provide to the user"""
 
     def rank(self, rhapi, race_class, localArgs):
+        """_summary_
+
+        :param rhapi: The RHAPI class
+        :type rhapi: RHAPI
+        :param race_class: Current :class:`Database.RaceClass` object
+        :type race_class: RaceClass
+        :param localArgs:collated default and locally-provided arguments
+        :type localArgs: dict
+        :return: returned value of :attr:`rank_fn`
+        :rtype: any
+        """
         return self.rank_fn(rhapi, race_class, {**(self.default_args if self.default_args else {}), **(localArgs if localArgs else {})})
 
 class RacePointsManager():

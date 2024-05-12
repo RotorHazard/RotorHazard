@@ -161,15 +161,29 @@ class HeatGeneratorManager():
 
 class HeatGenerator():
     def __init__(self, label, generator_fn, default_args=None, settings:List[UIField]=None, name=None):
+        """_summary_
+
+        :param label: _description_
+        :type label: _type_
+        :param generator_fn: _description_
+        :type generator_fn: _type_
+        :param default_args: _description_, defaults to None
+        :type default_args: _type_, optional
+        :param settings: _description_, defaults to None
+        :type settings: List[UIField], optional
+        :param name: _description_, defaults to None
+        :type name: _type_, optional
+        """
+
         if name is None:
             self.name = cleanVarName(label)
         else:
             self.name = name
 
-        self.label = label
-        self._generator = generator_fn
-        self.default_args = default_args
-        self.settings = settings
+        self.label:str = label
+        self._generator:callable = generator_fn
+        self.default_args:dict = default_args
+        self.settings:list[UIField] = settings
 
     def generate(self, rhapi, generate_args=None):
         generate_args = {**(self.default_args if self.default_args else {}), **(generate_args if generate_args else {})}
