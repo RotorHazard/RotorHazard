@@ -1073,12 +1073,14 @@
 
 		$('button#discard_laps').click(function (event) {
 			if(!$(this).prop('disabled')) {
-				$('button#start_race').prop('disabled', true);
-				$('button#stop_race').prop('disabled', true);
-				$('button#save_laps').prop('disabled', true);
-				$('button#discard_laps').prop('disabled', true);
-				$('.time-display').html('--:--');
-				socket.emit('discard_laps');
+				if (confirm(__('Do you want to discard laps?'))) {
+					$('button#start_race').prop('disabled', true);
+					$('button#stop_race').prop('disabled', true);
+					$('button#save_laps').prop('disabled', true);
+					$('button#discard_laps').prop('disabled', true);
+					$('.time-display').html('--:--');
+					socket.emit('discard_laps');
+				}
 			}
 		});
 
