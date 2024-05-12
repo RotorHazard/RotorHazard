@@ -37,32 +37,24 @@ def __(*args):
 class Pilot(Base):
     """A pilot is an individual participant. In order to participate in races, pilots can be assigned to multiple heats.
 
-    :cvar id: Internal identifier
-    :vartype id: int
-    :cvar callsign: Callsign
-    :vartype callsign: str
-    :cvar team: Team designation
-    :vartype team: str
-    :cvar phonetic: Phonetically-spelled callsign, used for text-to-speech
-    :vartype phonetic: str
-    :cvar color: Hex-encoded color
-    :vartype color: str
-    :cvar used_frequencies: Serialized list of frequencies this pilot has been assigned when starting a race, ordered by recency
-    :vartype used_frequencies: str
-    :cvar active: Not yet implemented
-    :vartype active: bool
-
-    The sentinel value RHUtils.PILOT_ID_NONE should be used when no pilot is defined.
-    """
+    The sentinel value RHUtils.PILOT_ID_NONE should be used when no pilot is defined."""
     __tablename__ = 'pilot'
-    id = DB.Column(DB.Integer, primary_key=True)
-    callsign = DB.Column(DB.String(80), nullable=False)
-    team = DB.Column(DB.String(80), nullable=False, default=RHUtils.DEF_TEAM_NAME)
-    phonetic = DB.Column(DB.String(80), nullable=False)
-    name = DB.Column(DB.String(120), nullable=False)
-    color = DB.Column(DB.String(7), nullable=True)
-    used_frequencies = DB.Column(DB.String, nullable=True)
-    active = DB.Column(DB.Boolean, nullable=False, default=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    callsign:str = DB.Column(DB.String(80), nullable=False)
+    """Callsign"""
+    team:str = DB.Column(DB.String(80), nullable=False, default=RHUtils.DEF_TEAM_NAME)
+    """Team designation"""
+    phonetic:str = DB.Column(DB.String(80), nullable=False)
+    """Phonetically-spelled callsign, used for text-to-speech"""
+    name:str = DB.Column(DB.String(120), nullable=False)
+    """Pilot name"""
+    color:str = DB.Column(DB.String(7), nullable=True)
+    """Hex-encoded color"""
+    used_frequencies:str = DB.Column(DB.String, nullable=True)
+    """Serialized list of frequencies this pilot has been assigned when starting a race, ordered by recency"""
+    active:bool = DB.Column(DB.Boolean, nullable=False, default=True)
+    """Not yet implemented"""
 
     @property
     def display_callsign(self):
@@ -94,58 +86,55 @@ class Pilot(Base):
         return '<Pilot %r>' % self.id
 
 class PilotAttribute(Base):
-    """Pilot Attributes are simple storage variables which persist to the database and can be presented to users through frontend UI. Pilot Attribute values are unique to/stored individually for each pilot.
-
-    :cvar id: ID of pilot to which this attribute is assigned
-    :vartype id: int
-    :cvar name: Name of attribute
-    :vartype name: str
-    :cvar value: Value of attribute
-    :vartype value: str
-    """
+    """Pilot Attributes are simple storage variables which persist to the database and can be presented to users through frontend UI. Pilot Attribute values are unique to/stored individually for each pilot."""
     __tablename__ = 'pilot_attribute'
     __table_args__ = (
         DB.UniqueConstraint('id', 'name'),
     )
-    id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    id:int = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False, primary_key=True)
+    """ID of pilot to which this attribute is assigned"""
+    name:str = DB.Column(DB.String(80), nullable=False, primary_key=True)
+    """Name of attribute"""
     value = DB.Column(DB.String(), nullable=True)
+    """Value of attribute"""
+
+class HeatStatus():
+    """_summary_
+
+    :cvar PLANNED: _description_
+    :cvar PROJECTED: _description_
+    :cvar CONFIRMED: _description_
+    """
+    PLANNED = 0
+    PROJECTED = 1
+    CONFIRMED = 2
 
 class Heat(Base):
     """Heats are collections of pilots upon which races are run. A heat may first be represented by a heat plan which defines methods for assigning pilots. The plan must be seeded into pilot assignments in order for a race to be run.
-
-    :cvar id: Internal identifier
-    :vartype id: int
-    :cvar name: User-facing name
-    :vartype name: str
-    :cvar class_id: ID of associated race class
-    :vartype class_id: int
-    :cvar results: Internal use only; see below
-    :vartype results: dict|None
-    :cvar _cache_status: Internal use only
-    :cvar order: ID of pilot to which this attribute is assigned
-    :vartype order: int
-    :cvar status: ID of pilot to which this attribute is assigned
-    :vartype status: HeatStatus
-    :cvar auto_frequency: ID of pilot to which this attribute is assigned
-    :vartype auto_frequency: bool
-    :cvar active: ID of pilot to which this attribute is assigned
-    :vartype active: bool
 
     The sentinel value RHUtils.HEAT_ID_NONE should be used when no heat is defined.
 
     NOTE: Results should be accessed with the db.heat_results method and not by reading the results property directly. The results property is unreliable because results calulation is delayed to improve system performance. db.heat_results ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
     """
     __tablename__ = 'heat'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column('note', DB.String(80), nullable=True)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-    results = DB.Column(DB.PickleType, nullable=True)
+    id:int = DB.Column(DB.Integer, primary_key=True)
+    """Internal identifier"""
+    name:str = DB.Column('note', DB.String(80), nullable=True)
+    """User-facing name"""
+    class_id:int = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
+    """ID of associated race class"""
+    results:dict|None = DB.Column(DB.PickleType, nullable=True)
+    """ Internal use only"""
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
-    order = DB.Column(DB.Integer, nullable=True)
-    status = DB.Column(DB.Integer, nullable=False)
-    auto_frequency = DB.Column(DB.Boolean, nullable=False)
-    active = DB.Column(DB.Boolean, nullable=False, default=True)
+    """Internal use only"""
+    order:int = DB.Column(DB.Integer, nullable=True)
+    """Not yet implemented"""
+    status:HeatStatus = DB.Column(DB.Integer, nullable=False)
+    """Current status of heat as :attr:`HeatStatus.PLANNED` or :attr:`HeatStatus.CONFIRMED`"""
+    auto_frequency:bool = DB.Column(DB.Boolean, nullable=False)
+    """True to assign pilot seats automatically, False for direct assignment"""
+    active:bool = DB.Column(DB.Boolean, nullable=False, default=True)
+    """Not yet implemented"""
 
     # DEPRECATED: compatibility for 'note' property / renamed to 'name'
     @property
@@ -177,17 +166,6 @@ class Heat(Base):
 
     def __repr__(self):
         return '<Heat %r>' % self.id
-
-class HeatStatus():
-    """_summary_
-
-    :cvar PLANNED: _description_
-    :cvar PROJECTED: _description_
-    :cvar CONFIRMED: _description_
-    """
-    PLANNED = 0
-    PROJECTED = 1
-    CONFIRMED = 2
 
 class HeatAttribute(Base):
     """Heat Attributes are simple storage variables which persist to the database. Heat Attribute values are unique to/stored individually for each heat.
