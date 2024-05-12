@@ -513,7 +513,7 @@ class DatabaseAPI():
         :type team: str, optional
         :param color: Color for new pilot, defaults to None
         :type color: str, optional
-        :return: Created :class:`Pilot`
+        :return: Created :class:`Database.Pilot`
         :rtype: Pilot
         """
         #TODO: attribute support
@@ -549,7 +549,7 @@ class DatabaseAPI():
         :type color: str, optional
         :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
         :type attributes: dict, optional
-        :return: Altered :class:`Pilot`
+        :return: Altered :class:`Database.Pilot`
         :rtype: Pilot
         """
         data = {}
@@ -839,7 +839,7 @@ class DatabaseAPI():
         :return: Affected races
         :rtype: list[SavedRaceMeta]
 
-        With method set to :atts:`Database.ProgramMethod.NONE`, most other fields are ignored. Only use seed_heat_id with :atts:`Database.ProgramMethod.HEAT_RESULT`, and seed_raceclass_id with :atts:`Database.ProgramMethod.CLASS_RESULT`, otherwise the assignment is ignored.
+        With method set to :attr:`Database.ProgramMethod.NONE`, most other fields are ignored. Only use seed_heat_id with :attr:`Database.ProgramMethod.HEAT_RESULT`, and seed_raceclass_id with :attr:`Database.ProgramMethod.CLASS_RESULT`, otherwise the assignment is ignored.
         """
         data = {}
 
@@ -1831,7 +1831,7 @@ class HeatGenerateAPI():
     def generators(self):
         """`Read Only` All registered generators.
 
-        :return: A list of :class:`HeatGenerator`
+        :return: A list of :class:`HeatGenerator.HeatGenerator`
         :rtype: list[HeatGenerator]
         """
         return self._racecontext.heat_generate_manager.generators
@@ -2063,7 +2063,7 @@ class RaceAPI():
 
     @property
     def teams(self):
-        """`Read Only` Team of each pilot, indexed by seat. To change teams, adjust the corresponding pilot (identified by matching seat index in :meth:`RaceAPI.pilots`)
+        """`Read Only` Team of each pilot, indexed by seat. To change teams, adjust the corresponding pilot (identified by matching seat index in :attr:`RaceAPI.pilots`)
 
         :return: List of teams
         :rtype: list[string]
@@ -2206,7 +2206,7 @@ class RaceAPI():
 
     @property
     def end_time_internal(self):
-        """`Read Only` Internal (monotonic) timestamp of race end time. Invalid unless :meth:`RaceAPI.status` is :attr:`RHRace.RaceStatus.DONE`
+        """`Read Only` Internal (monotonic) timestamp of race end time. Invalid unless :attr:`RaceAPI.status` is :attr:`RHRace.RaceStatus.DONE`
 
         :return: timestamp
         :rtype: int
@@ -2358,7 +2358,7 @@ class RaceAPI():
         return self._racecontext.race.race_leader_pilot_id
     
     def schedule(self, sec_or_none, minutes=0):
-        """Schedule race with a relative future time offset. Fails if :meth:`RaceAPI.status` is not :attr:`RHRace.RaceStatus.READY`. Cancels existing schedule if both values are false.
+        """Schedule race with a relative future time offset. Fails if :attr:`RaceAPI.status` is not :attr:`RHRace.RaceStatus.READY`. Cancels existing schedule if both values are false.
 
         :param sec_or_none: Seconds ahead to schedule race
         :type sec_or_none: int|None
@@ -2382,7 +2382,7 @@ class RaceAPI():
             return None
 
     def stage(self, args=None):
-        """Begin race staging sequence. May fail if :meth:`RaceAPI.status` is not :attr:`RHRace.RaceStatus.READY`.
+        """Begin race staging sequence. May fail if :attr:`RaceAPI.status` is not :attr:`RHRace.RaceStatus.READY`.
 
         :param args: _description_, defaults to None
         :type args: _type_, optional
@@ -2402,7 +2402,7 @@ class RaceAPI():
         self._racecontext.race.save()
 
     def clear(self):
-        """Clear laps and reset :meth:`RaceAPI.status` to :attr:`RHRace.RaceStatus.READY`. Fails if race.status is :attr:`RHRace.RaceStatus.STAGING` or :attr:`RHRace.RaceStatus.RACING` — stop race before using."""
+        """Clear laps and reset :attr:`RaceAPI.status` to :attr:`RHRace.RaceStatus.READY`. Fails if :attr:`RaceAPI.status` is :attr:`RHRace.RaceStatus.STAGING` or :attr:`RHRace.RaceStatus.RACING` — stop race before using."""
         self._racecontext.race.discard_laps()
 
 
