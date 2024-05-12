@@ -101,18 +101,40 @@ class RacePointsManager():
         return self.methods[method_id].assign(self._rhapi, leaderboard, args)
 
 class RacePointsMethod():
+    """Provides metadata and function linkage for points methods.
+    
+    :attr:`assign_fn` must return a modified leaderboard dict where the “primary leaderboard” includes a points key with appropriate values assigned. The “primary leaderboard” is a dict at the root level of the full leaderboard, and will be identified in the meta dict with the primary_leaderboard key.
+    """
     def __init__(self, label, assign_fn, default_args=None, settings:List[UIField]=None, name=None):
+
+        self.name:str
+        """Internal identifier (auto-generated from label if not provided)"""
         if name is None:
             self.name = cleanVarName(label)
         else:
             self.name = name
 
-        self.label = label
-        self.assignFn = assign_fn
-        self.default_args = default_args
-        self.settings = settings
+        self.label:str = label
+        """User-facing text that appears in the RotorHazard frontend interface"""
+        self.assignFn:callable = assign_fn
+        """Function to run when points are calculated for a race"""
+        self.default_args:dict = default_args
+        """Arguments passed to the assign_fn when run, unless overridden by local arguments"""
+        self.settings:list[UIField] = settings
+        """A list of paramters to provide to the user"""
 
     def assign(self, rhapi, leaderboard, localArgs):
+        """_summary_
+
+        :param rhapi: the RHAPI class
+        :type rhapi: RHAPI
+        :param leaderboard: Full race leaderboard
+        :type leaderboard: dict
+        :param localArgs: collated default and locally-provided arguments
+        :type localArgs: dict
+        :return: Results of :attr:`assignFn`
+        :rtype: any
+        """
         return self.assignFn(rhapi, leaderboard, {**(self.default_args if self.default_args else {}), **(localArgs if localArgs else {})})
 
 @catchLogExceptionsWrapper

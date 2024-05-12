@@ -100,7 +100,7 @@ class UserInterfaceAPI():
     def panels(self):
         """The list of registered panels
 
-        :return: A list of the discovered :class:`UIPanel` objects
+        :return: A list of the discovered :class:`RHUI.UIPanel` objects
         :rtype: list[UIPanel]
         """
         return self._racecontext.rhui.ui_panels
@@ -1878,7 +1878,7 @@ class ClassRankAPI():
 # Points
 #
 class PointsAPI():
-    """View registered RacePointsMethods. These methods are accessed via :attr:`RHAPI.points`"""
+    """View registered :class:`Results.RacePointsMethod`s. These methods are accessed via :attr:`RHAPI.points`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1891,7 +1891,7 @@ class PointsAPI():
     def methods(self):
         """All registered class ranking methods.
 
-        :return: A dictionary with the format {name : :class:`RacePointsMethod`}
+        :return: A dictionary with the format {name : :class:`Results.RacePointsMethod`}
         :rtype: dict
         """
         return self._racecontext.race_points_manager.methods
@@ -2021,7 +2021,7 @@ class VRxControlAPI():
     def devices(self):
         """Returns list of attached VRx control devices.
 
-        :return: List of :class:`VRxController`
+        :return: List of :class:`VRxControl.VRxController`
         :rtype: list[VRxController]
         """
         return self._racecontext.vrx_manager.getDevices()
