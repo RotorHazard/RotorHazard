@@ -304,6 +304,15 @@ class LEDEffectExit(BaseException):
     pass
 
 def effect_delay(ms, args):
+    """Delay execution of LED effect code, similar to time.sleep(). Works asynchronously so main processes continue and provides for clean effect termination when new LED effects are run.
+
+    :param ms: Number of milliseconds to delay
+    :type ms: int|float
+    :param args: Args passed to the LEDEffect
+    :type args: dict
+    :raises LEDEffectExit: _description_
+    :raises LEDEffectExit: _description_
+    """
     effect_obj = args.get('_effect')
     if not hasattr(effect_obj, 'terminate') or effect_obj.terminate:
         raise LEDEffectExit
@@ -313,7 +322,36 @@ def effect_delay(ms, args):
             raise LEDEffectExit
 
 class LEDEffect():
+    """Provides metadata and function linkage for LED effects.
+
+    Often, color will be passed through as an argument, which is an RGB hexadecimal code that can be used to modify the effect's output as appropriate. For example, during the :attr:`eventmanager.Evt.RACE_LAP_RECORDED` event, color is often determined by the pilot that completed the lap.
+    
+    By default, an LED effect will be available to all events that can produce LED output except LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING, and LEDEvent.IDLE_READY. This can be modified with valid_events. It should contain a dict with the following optional keys. Each value should be a list of event identifiers.
+
+        exclude (list): this effect will never be available for events specified here. As a special case, Evt.ALL will remove this effect from all events except those specifically included.
+
+        include (list): this effect will always be available for events specified here unless specifically excluded.
+
+        recommended (list): effects in this list will receive priority ordering and visibility in the effect selection UI, at the top of the list, with an asterisk. Evt.ALL may be used here.
+
+    Normally when an LED effect’s handler function completes, the display system will look for a time argument and wait this many seconds before switching to an appropriate idle state. You can prevent switching to idle with the preventIdle argument, but usually it is more appropriate to set a reasonable time.
+
+    A list of standard and LED-specific events that will accept and trigger effects can be found in src/server/led_event_manager.py
+    """
     def __init__(self, label, handler_fn, valid_events, default_args=None, name=None):
+        """Constructor method
+
+        :param label: User-facing text that appears in the RotorHazard frontend interface
+        :type label: str
+        :param handler_fn: Function to run when this effect is triggered
+        :type handler_fn: callable
+        :param valid_events: controls whether events can be assigned to various events
+        :type valid_events: list
+        :param default_args: Provides default arguments for the handler. These arguments will be overwritten if the Event provides arguments with the same keys., defaults to None
+        :type default_args: dict, optional
+        :param name: Internal identifier (auto-generated from label if not provided), defaults to None
+        :type name: str, optional
+        """
         if name is None:
             name = cleanVarName(label)
 

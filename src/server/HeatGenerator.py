@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 class SeedMethod(Enum):
     INPUT = 0
+    """The slot is seeded from the seed_rank position in the input class ranking"""
     HEAT_INDEX = 1
+    """The slot is seeded from the seed_rank position in the heat specified by seed_index"""
 
 @dataclass
 class HeatPlanSlot():

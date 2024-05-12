@@ -1901,7 +1901,7 @@ class PointsAPI():
 # LED
 #
 class LEDAPI():
-    """Activate and manage connected LED displays via registered :class:`LEDEffects`. These methods are accessed via :attr:`RHAPI.led`"""
+    """Activate and manage connected LED displays via registered :class:`led_event_manager.LEDEffect`. These methods are accessed via :attr:`RHAPI.led`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1923,7 +1923,7 @@ class LEDAPI():
     def effects(self):
         """`Read Only` All registered LED effects.
 
-        :return: List of :class:`LEDEffects`
+        :return: List of :class:`led_event_manager.LEDEffects`
         :rtype: list[LEDEffects]
         """
         return self._racecontext.led_manager.getRegisteredEffects()
@@ -1933,7 +1933,7 @@ class LEDAPI():
 
         :param event: Event to retrieve effect from
         :type event: str
-        :return: Returns :class:`LEDEffect` or None if event does not exist
+        :return: Returns :class:`led_event_manager.LEDEffect` or None if event does not exist
         :rtype: LEDEffect|None
         """
         return self._racecontext.led_manager.getEventEffect(event)
