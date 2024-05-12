@@ -7,6 +7,7 @@
    :show-inheritance:
    :inherited-members:
 
+   {% block methods %}
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 
