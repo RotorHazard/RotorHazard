@@ -138,22 +138,26 @@ class Heat(Base):
     # DEPRECATED: compatibility for 'note' property / renamed to 'name'
     @property
     def note(self):
+        """Use of deprecated note attribute, use 'name'"""
         logger.warning("Use of deprecated note attribute, use 'name'", stack_info=True)
         return self.name
 
     @note.setter
     def note(self, value):
+        """Use of deprecated note attribute, use 'name'"""
         logger.warning("Use of deprecated note attribute, use 'name'", stack_info=True)
         self.name = value
 
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
     def cacheStatus(self):
+        """Use of deprecated cacheStatus attribute, use '_cache_status'"""
         logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         return self._cache_status
 
     @cacheStatus.setter
     def cacheStatus(self, value):
+        """Use of deprecated cacheStatus attribute, use '_cache_status'"""
         logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         self._cache_status = value
 
@@ -267,33 +271,39 @@ class RaceClass(Base):
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
     def cacheStatus(self):
+        """Use of deprecated cacheStatus attribute, use '_cache_status'"""
         logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         return self._cache_status
 
     @cacheStatus.setter
     def cacheStatus(self, value):
+        """Use of deprecated cacheStatus attribute, use '_cache_status'"""
         logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         self._cache_status = value
 
     # DEPRECATED: compatibility for 'rankStatus' property / renamed to '_rank_status'
     @property
     def rankStatus(self):
+        """Use of deprecated rankStatus attribute, use '_rank_status'"""
         logger.warning("Use of deprecated rankStatus attribute, use '_rank_status'", stack_info=True)
         return self._rank_status
 
     @rankStatus.setter
     def rankStatus(self, value):
+        """Use of deprecated rankStatus attribute, use '_rank_status'"""
         logger.warning("Use of deprecated rankStatus attribute, use '_rank_status'", stack_info=True)
         self._rank_status = value
 
     # DEPRECATED: compatibility for 'heatAdvanceType' property / renamed to 'heat_advance_type'
     @property
     def heatAdvanceType(self):
+        """Use of deprecated heatAdvanceType attribute, use 'heat_advance_type'"""
         logger.warning("Use of deprecated heatAdvanceType attribute, use 'heat_advance_type'", stack_info=True)
         return self.heat_advance_type
 
     @heatAdvanceType.setter
     def heatAdvanceType(self, value):
+        """Use of deprecated heatAdvanceType attribute, use 'heat_advance_type'"""
         logger.warning("Use of deprecated heatAdvanceType attribute, use 'heat_advance_type'", stack_info=True)
         self.heat_advance_type = value
 
@@ -368,11 +378,13 @@ class SavedRaceMeta(Base):
     # DEPRECATED: compatibility for 'cacheStatus' property / renamed to '_cache_status'
     @property
     def cacheStatus(self):
+        """Use of deprecated cacheStatus attribute, use '_cache_status'"""
         logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         return self._cache_status
 
     @cacheStatus.setter
     def cacheStatus(self, value):
+        """Use of deprecated cacheStatus attribute, use '_cache_status'"""
         logger.warning("Use of deprecated cacheStatus attribute, use '_cache_status'", stack_info=True)
         self._cache_status = value
 
@@ -557,22 +569,26 @@ class RaceFormat(Base):
     # DEPRECATED: compatibility for 'race_mode' property / renamed to 'unlimited_time'
     @property
     def race_mode(self):
+        """Use of deprecated race_mode attribute, use 'unlimited_time'"""
         logger.warning("Use of deprecated race_mode attribute, use 'unlimited_time'", stack_info=True)
         return self.unlimited_time
 
     @race_mode.setter
     def race_mode(self, value):
+        """Use of deprecated race_mode attribute, use 'unlimited_time'"""
         logger.warning("Use of deprecated race_mode attribute, use 'unlimited_time'", stack_info=True)
         self.unlimited_time = value
 
     # DEPRECATED: compatibility for 'staging_tones' property / renamed to 'staging_delay_tones'
     @property
     def staging_tones(self):
+        """Use of deprecated staging_tones attribute, use 'staging_delay_tones'"""
         logger.warning("Use of deprecated staging_tones attribute, use 'staging_delay_tones'", stack_info=True)
         return self.staging_delay_tones
 
     @staging_tones.setter
     def staging_tones(self, value):
+        """Use of deprecated staging_tones attribute, use 'staging_delay_tones'"""
         logger.warning("Use of deprecated staging_tones attribute, use 'staging_delay_tones'", stack_info=True)
         self.staging_delay_tones = value
 
