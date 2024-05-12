@@ -1681,23 +1681,35 @@ class RHRaceFormat():
 
 class StagingTones():
     TONES_NONE = 0
+    """None"""
     TONES_ONE = 1
     TONES_ALL = 2
+    """Each Second"""
     # TONES_3_2_1 = 3
 
 class StartBehavior():
     HOLESHOT = 0
+    """Hole Shot"""
     FIRST_LAP = 1
+    """First Lap"""
     STAGGERED = 2
+    """Staggered Start"""
 
 class WinCondition():
     NONE = 0
+    """None"""
     MOST_PROGRESS = 1 # most laps in fastest time
+    """Most Laps in Fastest Time"""
     FIRST_TO_LAP_X = 2
+    """First to X Laps"""
     FASTEST_LAP = 3
+    """Fastest Lap"""
     FASTEST_CONSECUTIVE = 4
+    """Fastest Consecutive Laps"""
     MOST_LAPS = 5 # lap count only
+    """Most Laps Only"""
     MOST_LAPS_OVERTIME = 6 # lap count only, laps and time after T=0
+    """Most Laps Only with Overtime"""
 
 class WinStatus():
     NONE = 0
@@ -1707,8 +1719,13 @@ class WinStatus():
     OVERTIME = 4
 
 class RaceStatus():
+    """Current status of system."""
     READY = 0
+    """Ready to start a new race, no race running"""
     STAGING = 3
+    """System is staging, race begins imminently"""
     RACING = 1
+    """Racing is underway"""
     DONE = 2
+    """System no longer listening for lap crossings, race results must be saved or discarded"""
 

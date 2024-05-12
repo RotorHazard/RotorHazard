@@ -1878,7 +1878,7 @@ class ClassRankAPI():
 # Points
 #
 class PointsAPI():
-    """View registered RacePointsMethods. These methods are accessed via :atts:`RHAPI.points`"""
+    """View registered RacePointsMethods. These methods are accessed via :attr:`RHAPI.points`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1979,6 +1979,10 @@ class LEDAPI():
 # VRx Control
 #
 class VRxControlAPI():
+    """View and manage connected Video Receiver devices. These methods are accessed via attr:`RHAPI.vrxcontrol`
+
+    Notice: The vrx control specification is expected to be modified in future versions. Please consider this while developing plugins.
+    """
     def __init__(self, race_context):
         """Constructor method
 
@@ -1989,20 +1993,49 @@ class VRxControlAPI():
 
     @property
     def enabled(self):
+        """Returns True if VRx control system is enabled
+
+        :return: Control system is enabled
+        :rtype: bool
+        """
         return self._racecontext.vrx_manager.isEnabled()
 
     def kill(self):
+        """Shuts down VRx control system.
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.vrx_manager.kill()
 
     @property
     def status(self):
+        """Returns status of VRx control system.
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.vrx_manager.getControllerStatus()
 
     @property
     def devices(self):
+        """Returns list of attached VRx control devices.
+
+        :return: List of :class:`VRxController`
+        :rtype: list[VRxController]
+        """
         return self._racecontext.vrx_manager.getDevices()
 
     def devices_by_pilot(self, seat, pilot_id):
+        """List VRx control deviced connected with a specific pilot.
+
+        :param seat: Seat number
+        :type seat: int
+        :param pilot_id: ID of pilot
+        :type pilot_id: int
+        :return: Control deviced
+        :rtype: VRxController
+        """
         return self._racecontext.vrx_manager.getActiveDevices(seat, pilot_id)
 
 
@@ -2010,6 +2043,7 @@ class VRxControlAPI():
 # Active Race
 #
 class RaceAPI():
+    """View and manage the currently active race. These methods are accessed via :attr:`RHAPI.race`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -2020,31 +2054,66 @@ class RaceAPI():
 
     @property
     def pilots(self):
+        """Pilot IDs, indexed by seat. To change pilots, adjust the corresponding heat 
+
+        :return: List of pilot IDs
+        :rtype: list[int]
+        """
         return self._racecontext.race.node_pilots
 
     @property
     def teams(self):
+        """Team of each pilot, indexed by seat. To change teams, adjust the corresponding pilot (identified by matching seat index in :meth:`RaceAPI.pilots`)
+
+        :return: List of teams
+        :rtype: list[string]
+        """
         return self._racecontext.race.node_teams
 
     @property
     def slots(self):
+        """Total number of seats/slots.
+
+        :return: Number of slots
+        :rtype: int
+        """
         return self._racecontext.race.num_nodes
 
     @property
     def seat_colors(self):
+        """Active color for each seat, indexed by seat.
+
+        :return: List of :class:`Color`
+        :rtype: list[Color]
+        """
         return self._racecontext.race.seat_colors
 
     @property
     def heat(self):
+        """ID of assigned heat. None is practice mode. To change active heat options, adjust the assigned heat.
+
+        :return: Heat ID or None
+        :rtype: int|None
+        """
         return self._racecontext.race.current_heat
 
     @heat.setter
     @callWithDatabaseWrapper
     def heat(self, heat_id):
+        """ID of assigned heat. None is practice mode. To change active heat options, adjust the assigned heat.
+
+        :param heat_id: Heat ID or None
+        :type heat_id: int
+        """
         return self._racecontext.race.set_heat(heat_id)
 
     @property
     def round(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         heat_id = self._racecontext.race.current_heat
         if heat_id:
             round_idx = self._racecontext.rhdata.get_max_round(heat_id)
@@ -2055,11 +2124,21 @@ class RaceAPI():
     @property
     @callWithDatabaseWrapper
     def frequencyset(self):
+        """ID of current frequency set. To change active frequency set options, adjust the assigned frequency set.
+
+        :return: Frequency set ID
+        :rtype: int
+        """
         return self._racecontext.race.profile
 
     @frequencyset.setter
     @callWithDatabaseWrapper
     def frequencyset(self, set_id):
+        """ID of current frequency set. To change active frequency set options, adjust the assigned frequency set.
+
+        :param set_id: Frequency set ID
+        :type set_id: int
+        """
         self._frequencyset_set({'profile': set_id})
 
     @callWithDatabaseWrapper
@@ -2069,11 +2148,21 @@ class RaceAPI():
     @property
     @callWithDatabaseWrapper
     def raceformat(self):
+        """Active race format object. Returns None if timer is in secondary mode. To change active format options, adjust the assigned race format.
+
+        :return: RaceFormat or None
+        :rtype: RaceFormat|None
+        """
         return self._racecontext.race.format
 
     @raceformat.setter
     @callWithDatabaseWrapper
     def raceformat(self, format_id):
+        """Active race format object. Returns None if timer is in secondary mode. To change active format options, adjust the assigned race format.
+
+        :param format_id: RaceFormat or None
+        :type format_id: RaceFormat|None
+        """
         self._raceformat_set({'race_format': format_id})
 
     def _raceformat_set(self, data):
@@ -2081,114 +2170,247 @@ class RaceAPI():
 
     @property
     def status(self):
+        """Current status of system.
+
+        :return: Status of system
+        :rtype: RaceStatus
+        """
         return self._racecontext.race.race_status
 
     @property
     def stage_time_internal(self):
+        """Internal (monotonic) timestamp of race staging start time.
+
+        :return: timestamp
+        :rtype: int
+        """
         return self._racecontext.race.stage_time_monotonic
 
     @property
     def start_time(self):
+        """System timestamp of race start time. 
+
+        :return :class:`datetime.datetime` of race start
+        :rtype: datetime.datetime
+        """
         return self._racecontext.race.start_time
 
     @property
     def start_time_internal(self):
+        """Internal (monotonic) timestamp of race start time. Is a future time during staging.
+
+        :return: timestamp
+        :rtype: int
+        """
         return self._racecontext.race.start_time_monotonic
 
     @property
     def end_time_internal(self):
+        """Internal (monotonic) timestamp of race end time. Invalid unless :meth:`RaceAPI.status` is :attr:`RaceStatus.DONE`
+
+        :return: timestamp
+        :rtype: int
+        """
         return self._racecontext.race.end_time
 
     @property
     def seats_finished(self):
+        """Flag indicating whether pilot in a seat has completed all laps.
+
+        :return: Returns dict with the format {id(int) : value(boolean)}
+        :rtype: dict
+        """
         return self._racecontext.race.node_has_finished
 
     @property
     @callWithDatabaseWrapper
     def laps(self):
+        """Calculated lap results.
+
+        :return: Results
+        :rtype: dict
+        """
         return self._racecontext.race.get_lap_results()
 
     @property
     def any_laps_recorded(self):
+        """Whether any laps have been recorded for this race. 
+
+        :return: bool of laps recorded
+        :rtype: bool
+        """
         return self._racecontext.race.any_laps_recorded()
 
     @property
     def laps_raw(self):
+        """All lap data.
+
+        :return: All lap data
+        :rtype: list[dict]
+        """
         return self._racecontext.race.node_laps
 
     @property
     def laps_active_raw(self, filter_late_laps=False):
+        """All lap data, removing deleted laps.
+
+        :param filter_late_laps:  Set True to also remove laps flagged as late, defaults to False
+        :type filter_late_laps: bool, optional
+        :return: Lap data
+        :rtype: list[dict]
+        """
         return self._racecontext.race.get_active_laps(filter_late_laps)
 
     def lap_add(self, seat_index, timestamp):
+        """_summary_
+
+        :param seat_index: _description_
+        :type seat_index: _type_
+        :param timestamp: _description_
+        :type timestamp: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         seat = self._racecontext.interface.nodes[seat_index]
         return self._racecontext.race.add_lap(seat, timestamp, LapSource.API)
 
     @property
     @callWithDatabaseWrapper
     def results(self):
+        """Calculated race results.
+
+        :return: Race results
+        :rtype: dict
+        """
         return self._racecontext.race.get_results()
 
     @property
     @callWithDatabaseWrapper
     def team_results(self):
+        """Calculated race team results.
+
+        :return: dict, or None if not in team mode.
+        :rtype: dict|None
+        """
         return self._racecontext.race.get_team_results()
 
     @property
     def win_status(self):
+        """Internal (monotonic) timestamp of scheduled race staging start time.
+
+        :return: Returns int, or None if race is not scheduled.
+        :rtype: int|None
+        """
         return self._racecontext.race.win_status
 
     @property
     def race_winner_name(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.race.race_winner_name
 
     @property
     def race_winner_phonetic(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.race.race_winner_phonetic
 
     @property
     def race_winner_lap_id(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.race.race_winner_lap_id
 
     @property
     def race_winner_pilot_id(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.race.race_winner_pilot_id
 
     @property
     def race_leader_lap(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.race.race_leader_lap
 
     @property
     def race_leader_pilot_id(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.race.race_leader_pilot_id
     
     def schedule(self, sec_or_none, minutes=0):
+        """Schedule race with a relative future time offset. Fails if :meth:`RaceAPI.status` is not :attr:`RaceStatus.READY`. Cancels existing schedule if both values are false.
+
+        :param sec_or_none: Seconds ahead to schedule race
+        :type sec_or_none: int|None
+        :param minutes: Minutes ahead to schedule race, defaults to 0
+        :type minutes: int, optional
+        :return: Success value
+        :rtype: bool
+        """
         return self._racecontext.race.schedule(sec_or_none, minutes)
 
     @property
     def scheduled(self):
+        """Internal (monotonic) timestamp of scheduled race staging start time.
+
+        :return: Returns int, or None if race is not scheduled.
+        :rtype: int|None
+        """
         if self._racecontext.race.scheduled:
             return self._racecontext.race.scheduled_time
         else:
             return None
 
     def stage(self, args=None):
-        return self._racecontext.race.stage(args)
+        """Begin race staging sequence. May fail if :meth:`RaceAPI.status` is not :attr:`RaceStatus.READY`.
+
+        :param args: _description_, defaults to None
+        :type args: _type_, optional
+        """
+        self._racecontext.race.stage(args)
 
     def stop(self, doSave=False):
-        return self._racecontext.race.stop(doSave)
+        """Stop race.
+
+        :param doSave: Run race data save routines immediately after stopping, defaults to False
+        :type doSave: bool, optional
+        """
+        self._racecontext.race.stop(doSave)
 
     def save(self):
-        return self._racecontext.race.save()
+        """Save laps and clear race data. May activate heat advance and other procedures."""
+        self._racecontext.race.save()
 
     def clear(self):
-        return self._racecontext.race.discard_laps()
+        """Clear laps and reset :meth:`RaceAPI.status` to :attr:`RaceStatus.READY`. Fails if race.status is :attr:`RaceStatus.STAGING` or :attr:`RaceStatus.RACING` — stop race before using."""
+        self._racecontext.race.discard_laps()
 
 
 #
 # Language
 #
 class LanguageAPI():
+    """View and retrieve loaded translation strings. These methods are accessed via :attr:`RHAPI.language`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -2199,13 +2421,32 @@ class LanguageAPI():
 
     @property
     def languages(self):
+        """List of available languages.
+
+        :return: list of languages
+        :rtype: list[string]
+        """
         return self._racecontext.language.getLanguages()
 
     @property
     def dictionary(self):
+        """Full translation dictionary of all loaded languages.
+
+        :return: Translation dict
+        :rtype: dict
+        """
         return self._racecontext.language.getAllLanguages()
 
     def __(self, text, domain=''):
+        """Translate text.
+
+        :param text: Input to translate
+        :type text: str
+        :param domain: Language to use, overriding system setting, defaults to ''
+        :type domain: str, optional
+        :return: Returns translated string, or text if not possible.
+        :rtype: str
+        """
         return self._racecontext.language.__(text, domain)
 
 
@@ -2213,6 +2454,7 @@ class LanguageAPI():
 # Hardware Interface
 #
 class HardwareInterfaceAPI():
+    """View information provided by the harware interface layer. These methods are accessed via :attr:`RHAPI.interface`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -2223,6 +2465,12 @@ class HardwareInterfaceAPI():
 
     @property
     def seats(self):
+        """Hardware interface information.
+
+
+        :return: List of interface information
+        :rtype: list[Node]
+        """
         return self._racecontext.interface.nodes
 
 
@@ -2257,6 +2505,7 @@ class ServerConfigAPI():
 # Sensors
 #
 class SensorsAPI():
+    """View data collected by environmental sensors such as temperature, voltage, and current. These methods are accessed via :attr:`RHAPI.sensors`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -2267,17 +2516,39 @@ class SensorsAPI():
 
     @property
     def sensors_dict(self):
+        """All sensor names and data.
+
+        :return: dict of {name(string) : Sensor}
+        :rtype: dict
+        """
         return self._racecontext.sensors.sensors_dict
 
     @property
     def sensor_names(self):
+        """List of available sensors. 
+
+        :return: List of sensors
+        :rtype: list[string]
+        """
         return list(self._racecontext.sensors.sensors_dict.keys())
 
     @property
     def sensor_objs(self):
+        """List of sensor data.
+
+        :return: List of Sensor
+        :rtype: list[Sensor]
+        """
         return list(self._racecontext.sensors.sensors_dict.values())
 
     def sensor_obj(self, name):
+        """Individual sensor data.
+
+        :param name: Name of sensor to retrieve
+        :type name: str
+        :return: Sensor data
+        :rtype: Sensor
+        """
         return self._racecontext.sensors.sensors_dict[name]
 
 
@@ -2294,6 +2565,21 @@ class EventsAPI():
         self._racecontext = race_context
 
     def on(self, event, handler_fn, default_args=None, priority=None, unique=False, name=None):
+        """_summary_
+
+        :param event: _description_
+        :type event: _type_
+        :param handler_fn: _description_
+        :type handler_fn: _type_
+        :param default_args: _description_, defaults to None
+        :type default_args: _type_, optional
+        :param priority: _description_, defaults to None
+        :type priority: _type_, optional
+        :param unique: _description_, defaults to False
+        :type unique: bool, optional
+        :param name: _description_, defaults to None
+        :type name: _type_, optional
+        """
         if not priority:
             if event in [
                     Evt.ACTIONS_INITIALIZE,
@@ -2315,8 +2601,22 @@ class EventsAPI():
         self._racecontext.events.on(event, name, handler_fn, default_args, priority, unique)
 
     def off(self, event, name):
+        """_summary_
+
+        :param event: _description_
+        :type event: _type_
+        :param name: _description_
+        :type name: _type_
+        """
         self._racecontext.events.off(event, name)
 
     def trigger(self, event, args):
+        """_summary_
+
+        :param event: _description_
+        :type event: _type_
+        :param args: _description_
+        :type args: _type_
+        """
         self._racecontext.events.trigger(event, args)
 

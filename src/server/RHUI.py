@@ -25,15 +25,23 @@ if APP:
 
 class UIFieldType(Enum):
     TEXT = "text"
+    """Creates a field for storing strings"""
     BASIC_INT = "basic_int"
+    """Creates a field for storing int values up to 999"""
     SELECT = "select"
+    """Creates a field for selecting from a group of values"""
     CHECKBOX = "checkbox"
+    """Creates a field for storing bool values"""
     PASSWORD = "password"
+    """Creates a field for storing strings discreetly"""
 
 @dataclass
 class UIFieldSelectOption():
+    """Dataclass to use with :attr:`UIFieldType.SELECT`"""
     value: str
+    """Internal identifier used when this option is selected"""
     label: str
+    """User-facing text that appears in the RotorHazard frontend interface"""
 
 @dataclass
 class UIField():
@@ -53,31 +61,24 @@ class UIField():
             value (string): internal identifier used when this option is selected
             label (string): user-facing text that appears in the RotorHazard frontend interface
         value is no longer optional and must match the value of an item in options.
-
-    :cvar name: Internal identifier for this parameter
-    :vartype name: str
-    :cvar label: Text that appears in the RotorHazard frontend interface
-    :vartype label: str
-    :cvar field_type: One of :class:`UIFieldType`
-    :vartype field_type: UIFieldType
-    :cvar value: Default value for field
-    :vartype value: any
-    :cvar desc: Additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
-    :vartype desc: str, optional
-    :cvar options: A list of :class:`UIFieldSelectOption`, defaults to None
-    :vartype options: List[UIFieldSelectOption]
-    :cvar private: Prevent automatically generated UI
-    :vartype private: bool, optional
     """
     name: str
+    """Internal identifier for this parameter"""
     label: str
+    """Text that appears in the RotorHazard frontend interface"""
     field_type: str = UIFieldType.TEXT
+    """One of :class:`UIFieldType`"""
     value: Any = None
+    """Default value for field, defaults to None"""
     desc: str = None
+    """Additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use, defaults to None"""
     placeholder: str = None
     options: List[UIFieldSelectOption] = None
+    """A list of :class:`UIFieldSelectOption`, defaults to None"""
     order: int = 0 # not implemented
+    """Not yet implemented"""
     private: bool = False
+    """Prevent automatically generated UI"""
 
     def frontend_repr(self):
         return {
@@ -94,12 +95,16 @@ class UIField():
 @dataclass
 class UIPanel():
     """
-    Custom UI panels to RotorHazard's frontend pages
+    Custom UI panels to RotorHazard's frontend pages.  Panels may contain Options and Quickbuttons.
     """
     name: str
+    """Internal identifier for this panel"""
     label: str
+    """Text used as visible panel header"""
     page: str
+    """Page to add panel to"""
     order: int = 0
+    """Not yet implemented"""
 
 @dataclass
 class GeneralSetting():
@@ -110,11 +115,17 @@ class GeneralSetting():
 
 @dataclass
 class QuickButton():
+    """Provides a simple interface to add a UI button and bind it to a function. Quickbuttons appear on assigned UI panels."""
     panel: str
+    """Name of panel where button will appear"""
     name: str
+    """Internal identifier for this quickbutton"""
     label: str
-    fn: callable
+    """Text used for visible button label"""
+    fn: function
+    """Function to run when button is pressed"""
     args: dict
+    """Argument passed to function when called"""
 
 class RHUI():
     # Language placeholder (Overwritten after module init)

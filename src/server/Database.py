@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 import RHUtils
 import logging
+from RHRace import WinCondition, StartBehavior, StagingTones
 logger = logging.getLogger(__name__)
 
 DB_engine = None
@@ -514,36 +515,6 @@ class RaceFormat(Base):
     
     The sentinel value RHUtils.FORMAT_ID_NONE should be used when no race format is defined.
 
-    The following values are valid for staging_delay_tones.
-
-        0: None
-
-        2: Each Second
-
-    The following values are valid for win_condition.
-
-        0: None
-
-        1: Most Laps in Fastest Time
-
-        2: First to X Laps
-
-        3: Fastest Lap
-
-        4: Fastest Consecutive Laps
-
-        5: Most Laps Only
-
-        6: Most Laps Only with Overtime
-
-    The following values are valid for start_behavior.
-
-        0: Hole Shot
-
-        1: First Lap
-
-        2: Staggered Start
-
     Notice: The race format specification is expected to be modified in future versions. Please consider this while developing plugins.
 
         The type for staging_delay_tones may change to boolean.
@@ -563,23 +534,23 @@ class RaceFormat(Base):
     """True(1) if race clock counts up, False(0) if race clock counts down"""
     race_time_sec:int = DB.Column(DB.Integer, nullable=False)
     """Race clock duration in seconds, unused if unlimited_time is True(1)"""
-    lap_grace_sec = DB.Column(DB.Integer, nullable=False, default=-1)
+    lap_grace_sec:int = DB.Column(DB.Integer, nullable=False, default=-1)
     """Grace period duration in seconds, -1 for unlimited, unused if unlimited_time is True(1)"""
-    staging_fixed_tones = DB.Column(DB.Integer, nullable=False)
+    staging_fixed_tones:int = DB.Column(DB.Integer, nullable=False)
     """Number of staging tones always played regardless of random delay"""
-    start_delay_min_ms = DB.Column(DB.Integer, nullable=False)
+    start_delay_min_ms:int = DB.Column(DB.Integer, nullable=False)
     """Minimum period for random phase of staging delay in milliseconds"""
-    start_delay_max_ms = DB.Column(DB.Integer, nullable=False)
+    start_delay_max_ms:int = DB.Column(DB.Integer, nullable=False)
     """Maximum duration of random phase of staging delay in milliseconds"""
-    staging_delay_tones = DB.Column('staging_tones', DB.Integer, nullable=False)
+    staging_delay_tones:StagingTones = DB.Column('staging_tones', DB.Integer, nullable=False)
     """Whether to play staging tones each second during random delay phase"""
-    number_laps_win = DB.Column(DB.Integer, nullable=False)
+    number_laps_win:int = DB.Column(DB.Integer, nullable=False)
     """Number of laps used to declare race winner, if > 0"""
-    win_condition = DB.Column(DB.Integer, nullable=False)
+    win_condition:WinCondition = DB.Column(DB.Integer, nullable=False)
     """Condition used to determine race winner and race ranking"""
-    team_racing_mode = DB.Column(DB.Boolean, nullable=False)
+    team_racing_mode:bool = DB.Column(DB.Boolean, nullable=False)
     """Whether local simultaneous team racing mode will be used"""
-    start_behavior = DB.Column(DB.Integer, nullable=False)
+    start_behavior:StartBehavior = DB.Column(DB.Integer, nullable=False)
     """Handling of first crossing"""
     points_method = DB.Column(DB.String, nullable=True)
     """JSON-serialized arguments for points algorithm"""
