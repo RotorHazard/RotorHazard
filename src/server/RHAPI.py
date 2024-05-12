@@ -21,7 +21,7 @@ if APP:
 class RHAPI():
     """An object providing a wide range of properties and methods across RotorHazard's internal systems
 
-    :param race_context: A handle to the :class:`RaceContext`
+    :param race_context: A handle to :class:`RaceContext/RaceContext`
     :type race_context: RaceContext
     """
 
@@ -98,7 +98,7 @@ class UserInterfaceAPI():
     # UI Panel
     @property
     def panels(self):
-        """The list of registered panels
+        """`Read Only` The list of registered panels
 
         :return: A list of the discovered :class:`RHUI.UIPanel` objects
         :rtype: list[UIPanel]
@@ -288,7 +288,7 @@ class FieldsAPI():
     # Pilot Attribute
     @property
     def pilot_attributes(self):
-        """Provides a list of registered pilot attributes
+        """`Read Only` Provides a list of registered pilot attributes
 
         :return: List of pilot attributes
         :rtype: list[UIField]
@@ -308,7 +308,7 @@ class FieldsAPI():
     # Heat Attribute
     @property
     def heat_attributes(self):
-        """Provides a list of registered heat attributes.
+        """`Read Only` Provides a list of registered heat attributes.
 
         :return: List of heat attributes
         :rtype: list[UIField]
@@ -328,7 +328,7 @@ class FieldsAPI():
     # Race Class Attribute
     @property
     def raceclass_attributes(self):
-        """Provides a list of registered race class attributes.
+        """`Read Only` Provides a list of registered race class attributes.
 
         :return: List of race class attributes
         :rtype: list[UIField]
@@ -348,7 +348,7 @@ class FieldsAPI():
     # Race Attribute
     @property
     def race_attributes(self):
-        """Provides a list of registered race attributes.
+        """`Read Only` Provides a list of registered race attributes.
 
         :return: List of race attributes
         :rtype: list[UIField]
@@ -368,7 +368,7 @@ class FieldsAPI():
     # Race Attribute
     @property
     def raceformat_attributes(self):
-        """Provides a list of registered race format attributes.
+        """`Read Only` Provides a list of registered race format attributes.
 
         :return: List of race format attributes
         :rtype: list[UIField]
@@ -388,7 +388,7 @@ class FieldsAPI():
     # General Setting
     @property
     def options(self):
-        """Provides a list of registered options.
+        """`Read Only` Provides a list of registered options.
 
         :return: List of options
         :rtype: list[UIField]
@@ -438,7 +438,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def pilots(self):
-        """Gets all pilot records
+        """`Read Only` Gets all pilot records
 
         :return: Pilot records
         :rtype: list[Pilot]
@@ -602,7 +602,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def heats(self):
-        """Gets all heat records.
+        """`Read Only` Gets all heat records.
 
         :return: List of :class:`Heat`
         :rtype: list[Heat]
@@ -802,7 +802,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def slots(self):
-        """All slot records.
+        """`Read Only` All slot records.
 
         :return: List of HeatNode
         :rtype: list[HeatNode]
@@ -879,7 +879,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def raceclasses(self):
-        """All race class records.
+        """`Read Only` All race class records.
 
         :return: System race classes
         :rtype: list[RaceClass]
@@ -1083,7 +1083,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def raceformats(self):
-        """All race formats.
+        """`Read Only` All race formats.
 
         :return: System race formats
         :rtype: list[RaceFormat]
@@ -1305,7 +1305,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def frequencysets(self):
-        """All frequency set records.
+        """`Read Only` All frequency set records.
 
         :return: List of :class:`Profiles`
         :rtype: list[Profiles]
@@ -1438,7 +1438,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def races(self):
-        """All saved race records.
+        """`Read Only` All saved race records.
 
         :return: The system's saved race records
         :rtype: list[SavedRaceMeta]
@@ -1573,7 +1573,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def pilotruns(self):
-        """All pilot run records.
+        """`Read Only` All pilot run records.
 
         :return: List of :class:`SavedPilotRace`
         :rtype: list[SavedPilotRace]
@@ -1607,7 +1607,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def laps(self):
-        """All lap records.
+        """`Read Only` All lap records.
 
         :return: A list of :class:`SavedRaceLap`
         :rtype: list[SavedRaceLap]
@@ -1639,7 +1639,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def options(self):
-        """All options.
+        """`Read Only` All options.
 
         :return: A list of :class:`GlobalSettings`
         :rtype: list[GlobalSettings]
@@ -1750,7 +1750,7 @@ class EventResultsAPI():
 
     @property
     def results(self):
-        """Calculated cumulative results.
+        """`Read Only` Calculated cumulative results.
 
         :return: Cumulative results
         :rtype: dict
@@ -1773,7 +1773,7 @@ class IOAPI():
 
     @property
     def exporters(self):
-        """All registered exporters.
+        """`Read Only` All registered exporters.
 
         :return: A list of :class:`DataExporter`
         :rtype: list[DataExporter]
@@ -1792,7 +1792,7 @@ class IOAPI():
 
     @property
     def importers(self):
-        """All registered importers.
+        """`Read Only` All registered importers.
 
         :return: A list of :class:`DataImporter`
         :rtype: list[DataImporter]
@@ -1818,7 +1818,7 @@ class IOAPI():
 # Heat Generation
 #
 class HeatGenerateAPI():
-    """View and Generate heats via registered :class:`HeatGenerator`. These methods are accessed via :attr:`RHAPI.heatgen`"""
+    """View and Generate heats via registered :class:`HeatGenerator.HeatGenerator`. These methods are accessed via :attr:`RHAPI.heatgen`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1829,7 +1829,7 @@ class HeatGenerateAPI():
 
     @property
     def generators(self):
-        """All registered generators.
+        """`Read Only` All registered generators.
 
         :return: A list of :class:`HeatGenerator`
         :rtype: list[HeatGenerator]
@@ -1866,7 +1866,7 @@ class ClassRankAPI():
 
     @property
     def methods(self):
-        """All registered class ranking methods.
+        """`Read Only` All registered class ranking methods.
 
         :return: A dictionary with the format {name : :class:`RaceClassRankMethod`}
         :rtype: dict
@@ -1889,7 +1889,7 @@ class PointsAPI():
 
     @property
     def methods(self):
-        """All registered class ranking methods.
+        """`Read Only` All registered class ranking methods.
 
         :return: A dictionary with the format {name : :class:`Results.RacePointsMethod`}
         :rtype: dict
@@ -1912,7 +1912,7 @@ class LEDAPI():
 
     @property
     def enabled(self):
-        """Returns True if LED system is enabled.
+        """`Read Only` Returns True if LED system is enabled.
 
         :return: System is enabled
         :rtype: bool
@@ -1921,7 +1921,7 @@ class LEDAPI():
 
     @property
     def effects(self):
-        """All registered LED effects.
+        """`Read Only` All registered LED effects.
 
         :return: List of :class:`LEDEffects`
         :rtype: list[LEDEffects]
@@ -1993,7 +1993,7 @@ class VRxControlAPI():
 
     @property
     def enabled(self):
-        """Returns True if VRx control system is enabled
+        """`Read Only` Returns True if VRx control system is enabled
 
         :return: Control system is enabled
         :rtype: bool
@@ -2010,7 +2010,7 @@ class VRxControlAPI():
 
     @property
     def status(self):
-        """Returns status of VRx control system.
+        """`Read Only` Returns status of VRx control system.
 
         :return: _description_
         :rtype: _type_
@@ -2019,7 +2019,7 @@ class VRxControlAPI():
 
     @property
     def devices(self):
-        """Returns list of attached VRx control devices.
+        """`Read Only` Returns list of attached VRx control devices.
 
         :return: List of :class:`VRxControl.VRxController`
         :rtype: list[VRxController]
@@ -2054,7 +2054,7 @@ class RaceAPI():
 
     @property
     def pilots(self):
-        """Pilot IDs, indexed by seat. To change pilots, adjust the corresponding heat 
+        """`Read Only` Pilot IDs, indexed by seat. To change pilots, adjust the corresponding heat 
 
         :return: List of pilot IDs
         :rtype: list[int]
@@ -2063,7 +2063,7 @@ class RaceAPI():
 
     @property
     def teams(self):
-        """Team of each pilot, indexed by seat. To change teams, adjust the corresponding pilot (identified by matching seat index in :meth:`RaceAPI.pilots`)
+        """`Read Only` Team of each pilot, indexed by seat. To change teams, adjust the corresponding pilot (identified by matching seat index in :meth:`RaceAPI.pilots`)
 
         :return: List of teams
         :rtype: list[string]
@@ -2072,7 +2072,7 @@ class RaceAPI():
 
     @property
     def slots(self):
-        """Total number of seats/slots.
+        """`Read Only` Total number of seats/slots.
 
         :return: Number of slots
         :rtype: int
@@ -2081,7 +2081,7 @@ class RaceAPI():
 
     @property
     def seat_colors(self):
-        """Active color for each seat, indexed by seat.
+        """`Read Only` Active color for each seat, indexed by seat.
 
         :return: List of :class:`Color`
         :rtype: list[Color]
@@ -2090,7 +2090,7 @@ class RaceAPI():
 
     @property
     def heat(self):
-        """ID of assigned heat. None is practice mode. To change active heat options, adjust the assigned heat.
+        """`Read Only` ID of assigned heat. None is practice mode. To change active heat options, adjust the assigned heat.
 
         :return: Heat ID or None
         :rtype: int|None
@@ -2109,7 +2109,7 @@ class RaceAPI():
 
     @property
     def round(self):
-        """_summary_
+        """`Read Only` _summary_
 
         :return: _description_
         :rtype: _type_
@@ -2124,7 +2124,7 @@ class RaceAPI():
     @property
     @callWithDatabaseWrapper
     def frequencyset(self):
-        """ID of current frequency set. To change active frequency set options, adjust the assigned frequency set.
+        """`Read Only` ID of current frequency set. To change active frequency set options, adjust the assigned frequency set.
 
         :return: Frequency set ID
         :rtype: int
@@ -2148,7 +2148,7 @@ class RaceAPI():
     @property
     @callWithDatabaseWrapper
     def raceformat(self):
-        """Active race format object. Returns None if timer is in secondary mode. To change active format options, adjust the assigned race format.
+        """`Read Only` Active race format object. Returns None if timer is in secondary mode. To change active format options, adjust the assigned race format.
 
         :return: RaceFormat or None
         :rtype: RaceFormat|None
@@ -2170,7 +2170,7 @@ class RaceAPI():
 
     @property
     def status(self):
-        """Current status of system.
+        """`Read Only` Current status of system.
 
         :return: Status of system
         :rtype: RaceStatus
@@ -2179,7 +2179,7 @@ class RaceAPI():
 
     @property
     def stage_time_internal(self):
-        """Internal (monotonic) timestamp of race staging start time.
+        """`Read Only` Internal (monotonic) timestamp of race staging start time.
 
         :return: timestamp
         :rtype: int
@@ -2188,7 +2188,7 @@ class RaceAPI():
 
     @property
     def start_time(self):
-        """System timestamp of race start time. 
+        """`Read Only` System timestamp of race start time. 
 
         :return :class:`datetime.datetime` of race start
         :rtype: datetime.datetime
@@ -2197,7 +2197,7 @@ class RaceAPI():
 
     @property
     def start_time_internal(self):
-        """Internal (monotonic) timestamp of race start time. Is a future time during staging.
+        """`Read Only` Internal (monotonic) timestamp of race start time. Is a future time during staging.
 
         :return: timestamp
         :rtype: int
@@ -2206,7 +2206,7 @@ class RaceAPI():
 
     @property
     def end_time_internal(self):
-        """Internal (monotonic) timestamp of race end time. Invalid unless :meth:`RaceAPI.status` is :attr:`RHRace.RaceStatus.DONE`
+        """`Read Only` Internal (monotonic) timestamp of race end time. Invalid unless :meth:`RaceAPI.status` is :attr:`RHRace.RaceStatus.DONE`
 
         :return: timestamp
         :rtype: int
@@ -2215,7 +2215,7 @@ class RaceAPI():
 
     @property
     def seats_finished(self):
-        """Flag indicating whether pilot in a seat has completed all laps.
+        """`Read Only` Flag indicating whether pilot in a seat has completed all laps.
 
         :return: Returns dict with the format {id(int) : value(boolean)}
         :rtype: dict
@@ -2225,7 +2225,7 @@ class RaceAPI():
     @property
     @callWithDatabaseWrapper
     def laps(self):
-        """Calculated lap results.
+        """`Read Only` Calculated lap results.
 
         :return: Results
         :rtype: dict
@@ -2234,7 +2234,7 @@ class RaceAPI():
 
     @property
     def any_laps_recorded(self):
-        """Whether any laps have been recorded for this race. 
+        """`Read Only` Whether any laps have been recorded for this race. 
 
         :return: bool of laps recorded
         :rtype: bool
@@ -2243,7 +2243,7 @@ class RaceAPI():
 
     @property
     def laps_raw(self):
-        """All lap data.
+        """`Read Only` All lap data.
 
         :return: All lap data
         :rtype: list[dict]
@@ -2252,7 +2252,7 @@ class RaceAPI():
 
     @property
     def laps_active_raw(self, filter_late_laps=False):
-        """All lap data, removing deleted laps.
+        """`Read Only` All lap data, removing deleted laps.
 
         :param filter_late_laps:  Set True to also remove laps flagged as late, defaults to False
         :type filter_late_laps: bool, optional
@@ -2277,7 +2277,7 @@ class RaceAPI():
     @property
     @callWithDatabaseWrapper
     def results(self):
-        """Calculated race results.
+        """`Read Only` Calculated race results.
 
         :return: Race results
         :rtype: dict
@@ -2287,7 +2287,7 @@ class RaceAPI():
     @property
     @callWithDatabaseWrapper
     def team_results(self):
-        """Calculated race team results.
+        """`Read Only` Calculated race team results.
 
         :return: dict, or None if not in team mode.
         :rtype: dict|None
@@ -2296,7 +2296,7 @@ class RaceAPI():
 
     @property
     def win_status(self):
-        """Internal (monotonic) timestamp of scheduled race staging start time.
+        """`Read Only` Internal (monotonic) timestamp of scheduled race staging start time.
 
         :return: Returns int, or None if race is not scheduled.
         :rtype: int|None
@@ -2305,7 +2305,7 @@ class RaceAPI():
 
     @property
     def race_winner_name(self):
-        """_summary_
+        """`Read Only` _summary_
 
         :return: _description_
         :rtype: _type_
@@ -2314,7 +2314,7 @@ class RaceAPI():
 
     @property
     def race_winner_phonetic(self):
-        """_summary_
+        """`Read Only` _summary_
 
         :return: _description_
         :rtype: _type_
@@ -2323,7 +2323,7 @@ class RaceAPI():
 
     @property
     def race_winner_lap_id(self):
-        """_summary_
+        """`Read Only` _summary_
 
         :return: _description_
         :rtype: _type_
@@ -2332,7 +2332,7 @@ class RaceAPI():
 
     @property
     def race_winner_pilot_id(self):
-        """_summary_
+        """`Read Only` _summary_
 
         :return: _description_
         :rtype: _type_
@@ -2341,7 +2341,7 @@ class RaceAPI():
 
     @property
     def race_leader_lap(self):
-        """_summary_
+        """`Read Only` _summary_
 
         :return: _description_
         :rtype: _type_
@@ -2350,7 +2350,7 @@ class RaceAPI():
 
     @property
     def race_leader_pilot_id(self):
-        """_summary_
+        """`Read Only` _summary_
 
         :return: _description_
         :rtype: _type_
@@ -2371,7 +2371,7 @@ class RaceAPI():
 
     @property
     def scheduled(self):
-        """Internal (monotonic) timestamp of scheduled race staging start time.
+        """`Read Only` Internal (monotonic) timestamp of scheduled race staging start time.
 
         :return: Returns int, or None if race is not scheduled.
         :rtype: int|None
@@ -2421,7 +2421,7 @@ class LanguageAPI():
 
     @property
     def languages(self):
-        """List of available languages.
+        """`Read Only` List of available languages.
 
         :return: list of languages
         :rtype: list[string]
@@ -2430,7 +2430,7 @@ class LanguageAPI():
 
     @property
     def dictionary(self):
-        """Full translation dictionary of all loaded languages.
+        """`Read Only` Full translation dictionary of all loaded languages.
 
         :return: Translation dict
         :rtype: dict
@@ -2465,7 +2465,7 @@ class HardwareInterfaceAPI():
 
     @property
     def seats(self):
-        """Hardware interface information.
+        """`Read Only` Hardware interface information.
 
 
         :return: List of interface information
@@ -2488,9 +2488,25 @@ class ServerConfigAPI():
 
     @property
     def config(self):
+        """`Read Only` _summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return copy.deepcopy(self._racecontext.serverconfig.config)
 
     def get_item(self, section, item, as_int=False):
+        """_summary_
+
+        :param section: _description_
+        :type section: _type_
+        :param item: _description_
+        :type item: _type_
+        :param as_int: _description_, defaults to False
+        :type as_int: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """
         if as_int:
             return self._racecontext.serverconfig.get_item_int(section, item)
         else:
@@ -2498,6 +2514,17 @@ class ServerConfigAPI():
 
 
     def set_item(self, section, item, value):
+        """_summary_
+
+        :param section: _description_
+        :type section: _type_
+        :param item: _description_
+        :type item: _type_
+        :param value: _description_
+        :type value: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.serverconfig.set_item(section, item, value)
 
 
@@ -2516,7 +2543,7 @@ class SensorsAPI():
 
     @property
     def sensors_dict(self):
-        """All sensor names and data.
+        """`Read Only` All sensor names and data.
 
         :return: dict of {name(string) : Sensor}
         :rtype: dict
@@ -2525,7 +2552,7 @@ class SensorsAPI():
 
     @property
     def sensor_names(self):
-        """List of available sensors. 
+        """`Read Only` List of available sensors. 
 
         :return: List of sensors
         :rtype: list[string]
@@ -2534,7 +2561,7 @@ class SensorsAPI():
 
     @property
     def sensor_objs(self):
-        """List of sensor data.
+        """`Read Only` List of sensor data.
 
         :return: List of Sensor
         :rtype: list[Sensor]
