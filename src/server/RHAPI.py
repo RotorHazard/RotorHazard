@@ -298,7 +298,7 @@ class FieldsAPI():
     def register_pilot_attribute(self, field:UIField):
         """Register a pilot attribute to be displayed in the UI or otherwise made accessible to plugins.
 
-        :param field: :class:`UIField` to register
+        :param field: :class:`RHUI.UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: list[UIField]
@@ -318,7 +318,7 @@ class FieldsAPI():
     def register_heat_attribute(self, field:UIField):
         """Register a heat attribute to be made accessible to plugins.
 
-        :param field: :class:`UIField` to register
+        :param field: :class:`RHUI.UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: list[UIField]
@@ -338,7 +338,7 @@ class FieldsAPI():
     def register_raceclass_attribute(self, field:UIField):
         """Register a race class attribute to be made accessible to plugins.
 
-        :param field: :class:`UIField` to register
+        :param field: :class:`RHUI.UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: list[UIField]
@@ -358,7 +358,7 @@ class FieldsAPI():
     def register_race_attribute(self, field:UIField):
         """Register a race attribute to be made accessible to plugins.
 
-        :param field: :class:`UIField` to register
+        :param field: :class:`RHUI.UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: list[UIField]
@@ -378,7 +378,7 @@ class FieldsAPI():
     def register_raceformat_attribute(self, field:UIField):
         """Register a race format attribute to be made accessible to plugins.
 
-        :param field: :class:`UIField` to register
+        :param field: :class:`RHUI.UIField` to register
         :type field: UIField
         :return: List of Attributes
         :rtype: list[UIField]
@@ -398,7 +398,7 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         """Register a option to be made accessible to plugins.
 
-        :param field: :class:`UIField` to register
+        :param field: :class:`RHUI.UIField` to register
         :type field: UIField
         :param panel: name of panel previously registered with ui.register_panel
         :type panel: str
@@ -1762,7 +1762,7 @@ class EventResultsAPI():
 # Data input/output
 #
 class IOAPI():
-    """View and import/export data from the database via registered :class:`DataImporter` and :class:`DataExporter`. These methods are accessed via :attr:`RHAPI.io`"""
+    """View and import/export data from the database via registered :class:`data_import.DataImporter` and :class:`data_export.DataExporter`. These methods are accessed via :attr:`RHAPI.io`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1775,7 +1775,7 @@ class IOAPI():
     def exporters(self):
         """`Read Only` All registered exporters.
 
-        :return: A list of :class:`DataExporter`
+        :return: A list of :class:`data_export.DataExporter`
         :rtype: list[DataExporter]
         """
         return self._racecontext.export_manager.exporters
@@ -1794,7 +1794,7 @@ class IOAPI():
     def importers(self):
         """`Read Only` All registered importers.
 
-        :return: A list of :class:`DataImporter`
+        :return: A list of :class:`data_import.DataImporter`
         :rtype: list[DataImporter]
         """
         return self._racecontext.import_manager.importers
@@ -1854,7 +1854,7 @@ class HeatGenerateAPI():
 # Class Ranking
 #
 class ClassRankAPI():
-    """View registered :class:`RaceClassRankMethods`. These methods are accessed via :attr:`RHAPI.classrank`"""
+    """View registered :class:`Results.RaceClassRankMethod`. These methods are accessed via :attr:`RHAPI.classrank`"""
 
     def __init__(self, race_context):
         """Constructor method
@@ -1868,7 +1868,7 @@ class ClassRankAPI():
     def methods(self):
         """`Read Only` All registered class ranking methods.
 
-        :return: A dictionary with the format {name : :class:`RaceClassRankMethod`}
+        :return: A dictionary with the format {name : :class:`Results.RaceClassRankMethod`}
         :rtype: dict
         """
         return self._racecontext.raceclass_rank_manager.methods

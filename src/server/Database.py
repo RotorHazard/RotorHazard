@@ -554,15 +554,15 @@ class RaceFormat(Base):
     start_delay_max_ms:int = DB.Column(DB.Integer, nullable=False)
     """Maximum duration of random phase of staging delay in milliseconds"""
     staging_delay_tones = DB.Column('staging_tones', DB.Integer, nullable=False)
-    """Whether to play :class:`StagingTones` each second during random delay phase"""
+    """Whether to play :class:`RHRace.StagingTones` each second during random delay phase"""
     number_laps_win:int = DB.Column(DB.Integer, nullable=False)
     """Number of laps used to declare race winner, if > 0"""
     win_condition = DB.Column(DB.Integer, nullable=False)
-    """:class:`WinCondition` used to determine race winner and race ranking"""
+    """:class:`RHRace.WinCondition` used to determine race winner and race ranking"""
     team_racing_mode:bool = DB.Column(DB.Boolean, nullable=False)
     """Whether local simultaneous team racing mode will be used"""
     start_behavior = DB.Column(DB.Integer, nullable=False)
-    """Handling :class:`StartBehavior` of first crossing"""
+    """Handling :class:`RHRace.StartBehavior` of first crossing"""
     points_method = DB.Column(DB.String, nullable=True)
     """JSON-serialized arguments for points algorithm"""
 

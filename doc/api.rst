@@ -11,6 +11,7 @@ RotorHazard makes use of externally loaded plugins to extend its functionality a
     RHAPI
     Database
     data_export
+    data_import
     EventActions
     eventmanager
     HeatGenerator

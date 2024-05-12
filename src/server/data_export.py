@@ -43,7 +43,24 @@ class DataExportManager():
         return result
 
 class DataExporter():
+    """Provides metadata and function linkage for exporters.
+
+    Exporters are run in two stages. First, the assembler pulls the data needed, then passes it to the formatter. In this way, a variety of assemblers can share a formatter, such as assembling pilot data, heat data, or race data and then passing it to be formatted as CSV or JSON.
+    """ 
     def __init__(self, label, formatter_fn, assembler_fn, name=None):
+        """Constructor method
+
+        :param label: User-facing text that appears in the RotorHazard frontend interface
+        :type label: str
+        :param formatter_fn: Function to run for formatting stage
+        :type formatter_fn: callable
+        :param assembler_fn: Function to run for assembly stage
+        :type assembler_fn: callable
+        :param name: Internal identifier (auto-generated from label if not provided), defaults to None
+        :type name: str, optional
+
+        The formatter_fn receives the output of the assembler_fn.
+        """
         if name is None:
             self.name = cleanVarName(label)
         else:
@@ -54,6 +71,13 @@ class DataExporter():
         self.assembler = assembler_fn
 
     def export(self, rhapi):
+        """Export method
+
+        :param rhapi: Receives :class:`RHAPI.RHAPI` as an argument so that it may access and prepare timer data as needed.
+        :type rhapi: RHAPI
+        :return: _description_
+        :rtype: _type_
+        """
         data = self.assembler(rhapi)
         return self.formatter(data)
 
