@@ -1,3 +1,0 @@
-import Database
-
-print("hello")

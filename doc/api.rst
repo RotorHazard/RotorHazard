@@ -20,3 +20,4 @@ RotorHazard makes use of externally loaded plugins to extend its functionality a
     RHUI
     RHUtils
     VRxControl
+    sensor
