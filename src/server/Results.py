@@ -93,7 +93,7 @@ class RaceClassRankMethod():
         :type rhapi: RHAPI
         :param race_class: Current :class:`Database.RaceClass` object
         :type race_class: RaceClass
-        :param localArgs:collated default and locally-provided arguments
+        :param localArgs: collated default and locally-provided arguments
         :type localArgs: dict
         :return: returned value of :attr:`rank_fn`
         :rtype: any
