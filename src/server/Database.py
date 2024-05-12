@@ -37,7 +37,7 @@ def __(*args):
 class Pilot(Base):
     """A pilot is an individual participant. In order to participate in races, pilots can be assigned to multiple heats.
 
-    The sentinel value RHUtils.PILOT_ID_NONE should be used when no pilot is defined."""
+    The sentinel value :atts:`RHUtils.PILOT_ID_NONE` should be used when no pilot is defined."""
     __tablename__ = 'pilot'
     id:int = DB.Column(DB.Integer, primary_key=True)
     """Internal identifier"""
@@ -111,7 +111,7 @@ class HeatStatus():
 class Heat(Base):
     """Heats are collections of pilots upon which races are run. A heat may first be represented by a heat plan which defines methods for assigning pilots. The plan must be seeded into pilot assignments in order for a race to be run.
 
-    The sentinel value RHUtils.HEAT_ID_NONE should be used when no heat is defined.
+    The sentinel value :attr:`RHUtils.HEAT_ID_NONE` should be used when no heat is defined.
 
     NOTE: Results should be accessed with the db.heat_results method and not by reading the results property directly. The results property is unreliable because results calulation is delayed to improve system performance. db.heat_results ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
     """
@@ -234,7 +234,7 @@ class HeatAdvanceType:
 class RaceClass(Base):
     """Race classes are groups of related heats. Classes may be used by the race organizer in many different ways, such as splitting sport and pro pilots, practice/qualifying/mains, primary/consolation bracket, etc.
 
-    The sentinel value RHUtils.CLASS_ID_NONE should be used when no race class is defined.
+    The sentinel value :attr:`RHUtils.CLASS_ID_NONE` should be used when no race class is defined.
 
     NOTE: Results should be accessed with the db.raceclass_results method and not by reading the results property directly. The results property is unreliable because results calculation is delayed to improve system performance. db.raceclass_results ensures the calculation is current, will return quickly from cache if possible, or will build it if necessary.
     """
@@ -363,7 +363,7 @@ class SavedRaceMeta(Base):
     heat_id:int = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
     """ID of the associated heat"""
     class_id:int = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-    """ID of associated race class, or CLASS_ID_NONE"""
+    """ID of associated race class, or :attr:`RHUtils.CLASS_ID_NONE`"""
     format_id:int = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
     """ID of associated race format"""
     start_time:int = DB.Column(DB.Integer, nullable=False) # internal monotonic time
@@ -495,7 +495,7 @@ class Profiles(Base):
 
     The length of lists stored in frequencies, enter_ats, and exit_ats may not match the number of seats. In these cases values are either not yet available (if too few) or no longer used (if too many) for higher-index seats.
 
-    The sentinel value RHUtils.FREQUENCY_ID_NONE should be used when no frequency is defined.
+    The sentinel value :attr:`RHUtils.FREQUENCY_ID_NONE` should be used when no frequency is defined.
 
     Notice: The frequency set specification is expected to be modified in future versions. Please consider this while developing plugins.
 
@@ -524,7 +524,7 @@ class Profiles(Base):
 class RaceFormat(Base):
     """Race formats are profiles of properties used to define parameters of individual races. Every race has an assigned format. A race formats may be assigned to a race class, which forces RotorHazard to switch to that formatwhen running races within the class.
     
-    The sentinel value RHUtils.FORMAT_ID_NONE should be used when no race format is defined.
+    The sentinel value :attr:`RHUtils.FORMAT_ID_NONE` should be used when no race format is defined.
 
     Notice: The race format specification is expected to be modified in future versions. Please consider this while developing plugins.
 
