@@ -18,15 +18,15 @@ logger = logging.getLogger(__name__)
 
 DEF_TEAM_NAME = 'A'  # default team
 PILOT_ID_NONE = 0  # indicator value for no pilot configured
-"""indicator value for no pilot configured"""
+"""Indicator value for no pilot configured"""
 HEAT_ID_NONE = 0  # indicator value for practice heat
-"""indicator value for practice heat"""
+"""Indicator value for practice heat"""
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
-"""indicator value for unclassified heat"""
+"""Indicator value for unclassified heat"""
 FORMAT_ID_NONE = 0  # indicator value for unformatted class
-"""indicator value for unformatted class"""
+"""Indicator value for unformatted class"""
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
-"""indicator value for node disabled"""
+"""Indicator value for node disabled"""
 
 RHGPIO_S32ID_PIN = 25  # GPIO input is tied low on S32_BPill PCB
 

@@ -135,22 +135,26 @@ class RacePointsMethod():
     :attr:`assignFn` must return a modified leaderboard dict where the “primary leaderboard” includes a points key with appropriate values assigned. The “primary leaderboard” is a dict at the root level of the full leaderboard, and will be identified in the meta dict with the primary_leaderboard key.
     """
     def __init__(self, label, assign_fn, default_args=None, settings:List[UIField]=None, name=None):
+        """Internal identifier (auto-generated from label if not provided)
 
-        self.name:str
-        """Internal identifier (auto-generated from label if not provided)"""
+        :param label: User-facing text that appears in the RotorHazard frontend interface
+        :type label: str
+        :param assignFn: Function to run when points are calculated for a race
+        :type assignFn: callable
+        :param default_args: Arguments passed to the assign_fn when run, unless overridden by local arguments
+        :type default_args: dict
+        :param settings: A list of paramters to provide to the user
+        :type settings: list[UIField]
+        """
         if name is None:
             self.name = cleanVarName(label)
         else:
             self.name = name
 
         self.label:str = label
-        """User-facing text that appears in the RotorHazard frontend interface"""
         self.assignFn:callable = assign_fn
-        """Function to run when points are calculated for a race"""
         self.default_args:dict = default_args
-        """Arguments passed to the assign_fn when run, unless overridden by local arguments"""
         self.settings:list[UIField] = settings
-        """A list of paramters to provide to the user"""
 
     def assign(self, rhapi, leaderboard, localArgs):
         """_summary_
