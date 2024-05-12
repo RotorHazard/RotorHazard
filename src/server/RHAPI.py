@@ -21,7 +21,7 @@ if APP:
 class RHAPI():
     """An object providing a wide range of properties and methods across RotorHazard's internal systems
 
-    :param race_context: A handle to :class:`RaceContext/RaceContext`
+    :param race_context: A handle to :class:`RaceContext.RaceContext`
     :type race_context: RaceContext
     """
 
@@ -438,7 +438,7 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def pilots(self):
-        """`Read Only` Gets all pilot records
+        """`Read Only` All pilot records
 
         :return: Pilot records
         :rtype: list[Pilot]
@@ -477,7 +477,7 @@ class DatabaseAPI():
         :type name: str
         :param default_value: value to return if attribute is not registered (uses registered default if available), defaults to None
         :type default_value: any, optional
-        :return: A :class:`PilotAttribute`
+        :return: A :class:`Database.PilotAttribute`
         :rtype: PilotAttribute
         """
         for field in self._racecontext.rhui.pilot_attributes:
@@ -602,9 +602,9 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def heats(self):
-        """`Read Only` Gets all heat records.
+        """`Read Only` All heat records.
 
-        :return: List of :class:`Heat`
+        :return: List of :class:`Database.Heat`
         :rtype: list[Heat]
         """
         return self._racecontext.rhdata.get_heats()
@@ -706,7 +706,7 @@ class DatabaseAPI():
         :type raceclass: int, optional
         :param auto_frequency: Whether to enable auto-frequency, defaults to None
         :type auto_frequency: bool, optional
-        :return: The new :class:`Heat`
+        :return: The new :class:`Database.Heat`
         :rtype: Heat
         """
         data = {}
@@ -729,7 +729,7 @@ class DatabaseAPI():
         :type source_heat_or_id: Heat|int
         :param dest_class: Raceclass ID to copy heat into, defaults to None
         :type dest_class: int, optional
-        :return: The new :class:`Heat`
+        :return: The new :class:`Database.Heat`
         :rtype: Heat
         """
         if dest_class:
@@ -754,7 +754,7 @@ class DatabaseAPI():
         :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
         :type attributes: dict, optional
         :return: Returns tuple of this Heat and affected races
-        :rtype: list[SavedRace]
+        :rtype: list[SavedRaceMeta]
         """
         data = {}
 
@@ -837,9 +837,9 @@ class DatabaseAPI():
         :param seed_rank: New rank value to use for seeding, defaults to None
         :type seed_rank: int, optional
         :return: Affected races
-        :rtype: list[SavedRace]
+        :rtype: list[SavedRaceMeta]
 
-        With method set to ProgramMethod.NONE, most other fields are ignored. Only use seed_heat_id with ProgramMethod.HEAT_RESULT, and seed_raceclass_id with ProgramMethod.CLASS_RESULT, otherwise the assignment is ignored.
+        With method set to :atts:`Database.ProgramMethod.NONE`, most other fields are ignored. Only use seed_heat_id with :atts:`Database.ProgramMethod.HEAT_RESULT`, and seed_raceclass_id with :atts:`Database.ProgramMethod.CLASS_RESULT`, otherwise the assignment is ignored.
         """
         data = {}
 
@@ -956,7 +956,7 @@ class DatabaseAPI():
         :type rounds: int, optional
         :param heat_advance_type: Advancement method to assign to race class, defaults to None
         :type heat_advance_type: HeatAdvanceType, optional
-        :return: The created :class:`RaceClass`
+        :return: The created :class:`Database.RaceClass`
         :rtype: RaceClass
         """
         #TODO add rank settings
@@ -982,7 +982,7 @@ class DatabaseAPI():
 
         :param source_class_or_id: Either a race class object or the ID of a race class
         :type source_class_or_id: RaceClass|int
-        :return: The created :class:`RaceClass`
+        :return: The created :class:`Database.RaceClass`
         :rtype: RaceClass
         """
         return self._racecontext.rhdata.duplicate_raceClass(source_class_or_id)
@@ -1009,8 +1009,8 @@ class DatabaseAPI():
         :type rank_settings: dict, optional
         :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
         :type attributes: dict, optional
-        :return: Returns tuple of this :class:`RaceClass` and affected races
-        :rtype: list[SavedRace]
+        :return: Returns tuple of this :class:`Database.RaceClass` and affected races
+        :rtype: list[SavedRaceMeta]
         """
         data = {}
 
@@ -1131,7 +1131,7 @@ class DatabaseAPI():
         :type team_racing_mode: bool, optional
         :param points_method: JSON-serialized arguments for new race format, defaults to None
         :type points_method: str, optional
-        :return: The created :class:`RaceFormat`
+        :return: The created :class:`Database.RaceFormat`
         :rtype: RaceFormat
         """
         data = {}
@@ -1162,7 +1162,7 @@ class DatabaseAPI():
 
         :param raceformat_or_id: Either the race format object or the ID of race format
         :type raceformat_or_id: int
-        :return: List of :class:`RaceFormatAttribute`
+        :return: List of :class:`Database.RaceFormatAttribute`
         :rtype: list[RaceFormatAttribute]
         """
         return self._racecontext.rhdata.get_raceformat_attributes(raceformat_or_id)
@@ -1205,7 +1205,7 @@ class DatabaseAPI():
 
         :param source_format_or_id: Either a race format object or the ID of a race format
         :type source_format_or_id: RaceFormat|int
-        :return: The created :class:`RaceFormat`
+        :return: The created :class:`Database.RaceFormat`
         :rtype: RaceFormat
         """
         return self._racecontext.rhdata.duplicate_raceFormat(source_format_or_id)
@@ -1246,8 +1246,8 @@ class DatabaseAPI():
         :type points_settings: dict, optional
         :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
         :type attributes: dict, optional
-        :return: Returns tuple of this :class:`RaceFormat` and affected races
-        :rtype: list[SavedRace]
+        :return: Returns tuple of this :class:`Database.RaceFormat` and affected races
+        :rtype: list[SavedRaceMeta]
         """
         data = {}
 
@@ -1307,7 +1307,7 @@ class DatabaseAPI():
     def frequencysets(self):
         """`Read Only` All frequency set records.
 
-        :return: List of :class:`Profiles`
+        :return: List of :class:`Database.Profiles`
         :rtype: list[Profiles]
         """
         return self._racecontext.rhdata.get_profiles()
@@ -1318,7 +1318,7 @@ class DatabaseAPI():
 
         :param set_id: ID of frequency set record to retrieve
         :type set_id: int
-        :return: The frequency :class:`Profiles`
+        :return: The frequency :class:`Database.Profiles`
         :rtype: Profiles
         """
         return self._racecontext.rhdata.get_profile(set_id)
@@ -1337,7 +1337,7 @@ class DatabaseAPI():
         :type enter_ats: string|dict, optional
         :param exit_ats: Exit-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
         :type exit_ats: string|dict, optional
-        :return: The created :class:`Profiles`
+        :return: The created :class:`Database.Profiles`
         :rtype: Profiles
         """
         data = {}
@@ -1367,7 +1367,7 @@ class DatabaseAPI():
 
         :param source_set_or_id: Either a frequency set object or the ID of a frequency set
         :type source_set_or_id: Profiles|int
-        :return: The created :class:`Profiles`
+        :return: The created :class:`Database.Profiles`
         :rtype: Profiles
         """
         return self._racecontext.rhdata.duplicate_profile(source_set_or_id)
@@ -1388,7 +1388,7 @@ class DatabaseAPI():
         :type enter_ats: str|dict, optional
         :param exit_ats: Exit-at points for new frequency set, as described above in serialized JSON (string) or unserialized (dict) form, defaults to None
         :type exit_ats: str|dict, optional
-        :return: The altered :class:`Profiles` object
+        :return: The altered :class:`Database.Profiles` object
         :rtype: Profiles
         """
         data = {}
@@ -1507,7 +1507,7 @@ class DatabaseAPI():
         :type heat_id: int
         :param round_number: Round number used to retrieve saved race
         :type round_number: int
-        :return: The selected :class:`SavedRaceMeta`
+        :return: The selected :class:`Database.SavedRaceMeta`
         :rtype: SavedRaceMeta
         """
         return self._racecontext.rhdata.get_savedRaceMeta_by_heat_round(heat_id, round_number)
@@ -1575,7 +1575,7 @@ class DatabaseAPI():
     def pilotruns(self):
         """`Read Only` All pilot run records.
 
-        :return: List of :class:`SavedPilotRace`
+        :return: List of :class:`Database.SavedPilotRace`
         :rtype: list[SavedPilotRace]
         """
         return self._racecontext.rhdata.get_savedPilotRaces()
@@ -1586,7 +1586,7 @@ class DatabaseAPI():
 
         :param run_id: ID of pilot run record to retrieve
         :type run_id: int
-        :return: The :class:`SavedPilotRace`
+        :return: The :class:`Database.SavedPilotRace`
         :rtype: SavedPilotRace
         """
         return self._racecontext.rhdata.get_savedPilotRace(run_id)
@@ -1597,7 +1597,7 @@ class DatabaseAPI():
 
         :param race_id: ID of saved race used to retrieve pilot runs
         :type race_id: int
-        :return: A list of :class:`SavedPilotRace`
+        :return: A list of :class:`Database.SavedPilotRace`
         :rtype: list[SavedPilotRace]
         """
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
@@ -1609,7 +1609,7 @@ class DatabaseAPI():
     def laps(self):
         """`Read Only` All lap records.
 
-        :return: A list of :class:`SavedRaceLap`
+        :return: A list of :class:`Database.SavedRaceLap`
         :rtype: list[SavedRaceLap]
         """
         return self._racecontext.rhdata.get_savedRaceLaps()
@@ -1620,7 +1620,7 @@ class DatabaseAPI():
 
         :param run_id: ID of pilot run used to retrieve laps
         :type run_id: int
-        :return: A list of :class:`SavedRaceLap`
+        :return: A list of :class:`Database.SavedRaceLap`
         :rtype: list[SavedRaceLap]
         """
         return self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(run_id)
@@ -1641,7 +1641,7 @@ class DatabaseAPI():
     def options(self):
         """`Read Only` All options.
 
-        :return: A list of :class:`GlobalSettings`
+        :return: A list of :class:`Database.GlobalSettings`
         :rtype: list[GlobalSettings]
         """
         return self._racecontext.rhdata.get_options()
@@ -1878,7 +1878,7 @@ class ClassRankAPI():
 # Points
 #
 class PointsAPI():
-    """View registered :class:`Results.RacePointsMethod`s. These methods are accessed via :attr:`RHAPI.points`"""
+    """View registered :class:`Results.RacePointsMethod`. These methods are accessed via :attr:`RHAPI.points`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -2190,7 +2190,7 @@ class RaceAPI():
     def start_time(self):
         """`Read Only` System timestamp of race start time. 
 
-        :return :class:`datetime.datetime` of race start
+        :return: :class:`datetime.datetime` of race start
         :rtype: datetime.datetime
         """
         return self._racecontext.race.start_time
