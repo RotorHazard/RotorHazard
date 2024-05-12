@@ -26,7 +26,6 @@ class RHAPI():
     """
 
     def __init__(self, race_context):
-        """Constructor method"""
         self.API_VERSION_MAJOR:int = API_VERSION_MAJOR
         """API major version"""
         self.API_VERSION_MINOR:int = API_VERSION_MINOR
