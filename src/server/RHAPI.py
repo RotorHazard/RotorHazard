@@ -1438,18 +1438,48 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def races(self):
+        """All saved race records.
+
+        :return: The system's saved race records
+        :rtype: list[SavedRaceMeta]
+        """
         return self._racecontext.rhdata.get_savedRaceMetas()
 
     @callWithDatabaseWrapper
     def race_by_id(self, race_id):
+        """A single saved race record, retrieved by ID.
+
+        :param race_id: ID of saved race record to retrieve
+        :type race_id: int
+        :return: The race record
+        :rtype: SavedRaceMeta
+        """
         return self._racecontext.rhdata.get_savedRaceMeta(race_id)
 
     @callWithDatabaseWrapper
     def race_attributes(self, race_or_id):
+        """All custom attributes assigned to race.
+
+        :param race_or_id: Either the race object or the ID of race
+        :type race_or_id: SavedRaceMeta|int
+        :return: The race attributes
+        :rtype: list[SavedRaceMetaAttribute]
+        """
         return self._racecontext.rhdata.get_savedrace_attributes(race_or_id)
 
     @callWithDatabaseWrapper
     def race_attribute_value(self, race_or_id, name, default_value=None):
+        """The value of a single custom attribute assigned to race.
+
+        :param race_or_id: Either the race object or the ID of race
+        :type race_or_id: SavedRaceMeta|int
+        :param name: Attribute to retrieve
+        :type name: str
+        :param default_value: Value to return if attribute is not registered (uses registered default if available), defaults to None
+        :type default_value: any, optional
+        :return: Returns string regardless of registered field type, or default value.
+        :rtype: str
+        """
         for field in self._racecontext.rhui.savedrace_attributes:
             if field.name == name:
                 return self._racecontext.rhdata.get_savedrace_attribute_value(race_or_id, field.name, field.value)
@@ -1458,22 +1488,61 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def race_ids_by_attribute(self, name, value):
+        """ID of races with attribute matching the specified attribute/value combination.
+
+        :param name: Attribute to match
+        :type name: str
+        :param value:  Value to match
+        :type value: str
+        :return: List of race IDs
+        :rtype: list[int]
+        """
         return self._racecontext.rhdata.get_savedrace_id_by_attribute(name, value)
 
     @callWithDatabaseWrapper
     def race_by_heat_round(self, heat_id, round_number):
+        """A single saved race record, retrieved by heat and round.
+
+        :param heat_id: ID of heat used to retrieve saved race
+        :type heat_id: int
+        :param round_number: Round number used to retrieve saved race
+        :type round_number: int
+        :return: The selected :class:`SavedRaceMeta`
+        :rtype: SavedRaceMeta
+        """
         return self._racecontext.rhdata.get_savedRaceMeta_by_heat_round(heat_id, round_number)
 
     @callWithDatabaseWrapper
     def races_by_heat(self, heat_id):
+        """Saved race records matching the provided heat ID.
+
+        :param heat_id: ID of heat used to retrieve saved race
+        :type heat_id: heat_id
+        :return: List of race records
+        :rtype: list[SavedRaceMeta]
+        """
         return self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat_id)
 
     @callWithDatabaseWrapper
     def races_by_raceclass(self, raceclass_id):
+        """Saved race records matching the provided race class ID.
+
+        :param raceclass_id: Saved race records matching the provided race class ID.
+        :type raceclass_id: int
+        :return: List of race records
+        :rtype: list[SavedRaceMeta]
+        """
         return self._racecontext.rhdata.get_savedRaceMetas_by_raceClass(raceclass_id)
 
     @callWithDatabaseWrapper
     def race_alter(self, race_id, attributes=None):
+        """Alter race data. Supports only custom attributes.
+
+        :param race_id: ID of race to alter
+        :type race_id: int
+        :param attributes: Attributes to alter, attribute values assigned to respective keys, defaults to None
+        :type attributes: list[dict], optional
+        """
         data = {}
 
         if isinstance(attributes, dict):
@@ -1485,25 +1554,52 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def race_results(self, race_or_id):
+        """Calculated result set for saved race.
+
+        :param race_or_id: Either the saved race object or the ID of saved race
+        :type race_or_id: SavedRaceMeta|int
+        :return: Results of race
+        :rtype: dict
+        """
         return self._racecontext.rhdata.get_results_savedRaceMeta(race_or_id)
 
     @callWithDatabaseWrapper
     def races_clear(self):
-        return self._racecontext.rhdata.clear_race_data()
+        """Delete all saved races."""
+        self._racecontext.rhdata.clear_race_data()
 
     # Race -> Pilot Run
 
     @property
     @callWithDatabaseWrapper
     def pilotruns(self):
+        """All pilot run records.
+
+        :return: List of :class:`SavedPilotRace`
+        :rtype: list[SavedPilotRace]
+        """
         return self._racecontext.rhdata.get_savedPilotRaces()
 
     @callWithDatabaseWrapper
     def pilotrun_by_id(self, run_id):
+        """A single pilot run record, retrieved by ID.
+
+        :param run_id: ID of pilot run record to retrieve
+        :type run_id: int
+        :return: The :class:`SavedPilotRace`
+        :rtype: SavedPilotRace
+        """
         return self._racecontext.rhdata.get_savedPilotRace(run_id)
 
     @callWithDatabaseWrapper
     def pilotruns_by_race(self, race_id):
+        """Pilot run records matching the provided saved race ID.
+
+        :param race_id: ID of saved race used to retrieve pilot runs
+        :type race_id: int
+        :return: A list of :class:`SavedPilotRace`
+        :rtype: list[SavedPilotRace]
+        """
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
 
     # Race -> Pilot Run -> Laps
@@ -1511,14 +1607,31 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def laps(self):
+        """All lap records.
+
+        :return: A list of :class:`SavedRaceLap`
+        :rtype: list[SavedRaceLap]
+        """
         return self._racecontext.rhdata.get_savedRaceLaps()
 
     @callWithDatabaseWrapper
     def laps_by_pilotrun(self, run_id):
+        """Lap records matching the provided pilot run ID.
+
+        :param run_id: ID of pilot run used to retrieve laps
+        :type run_id: int
+        :return: A list of :class:`SavedRaceLap`
+        :rtype: list[SavedRaceLap]
+        """
         return self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(run_id)
 
     @callWithDatabaseWrapper
     def lap_splits(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._racecontext.rhdata.get_lapSplits()
 
     # Options
@@ -1526,10 +1639,26 @@ class DatabaseAPI():
     @property
     @callWithDatabaseWrapper
     def options(self):
+        """All options.
+
+        :return: A list of :class:`GlobalSettings`
+        :rtype: list[GlobalSettings]
+        """
         return self._racecontext.rhdata.get_options()
 
     @callWithDatabaseWrapper
     def option(self, name, default=False, as_int=False):
+        """Value of option with the provided name.
+
+        :param name: Name of option to retrieve
+        :type name: str
+        :param default: Value to return if option does not exist, defaults to False
+        :type default: str, optional
+        :param as_int: Return value as integer instead of string, defaults to False
+        :type as_int: bool, optional
+        :return: The option value
+        :rtype: str
+        """
         # Deprecation of options migrated to config
         for item in self._racecontext.serverconfig.migrations:
             if item.source == name:
@@ -1571,6 +1700,13 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def option_set(self, name, value):
+        """Set value for the option with provided name.
+
+        :param name: Name of option to alter
+        :type name: str
+        :param value: New value for option
+        :type value: str
+        """
         # Deprecation of options migrated to config
         for item in self._racecontext.serverconfig.migrations:
             if item.source == name:
@@ -1584,12 +1720,18 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def options_reset(self):
-        return self._racecontext.rhdata.reset_options()
+        """Delete all options."""
+        self._racecontext.rhdata.reset_options()
 
     # Event
 
     @callWithDatabaseWrapper
     def event_results(self):
+        """Returns cumulative totals for all saved races
+
+        :return: Event results
+        :rtype: dict
+        """
         return self._racecontext.rhdata.get_results_event()
 
 
@@ -1597,6 +1739,7 @@ class DatabaseAPI():
 # Event Results
 #
 class EventResultsAPI():
+    """View result data for all races, heats, classes, and event totals. These methods are accessed via :attr:`RHAPI.eventresults`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1607,6 +1750,11 @@ class EventResultsAPI():
 
     @property
     def results(self):
+        """Calculated cumulative results.
+
+        :return: Cumulative results
+        :rtype: dict
+        """
         return self._racecontext.pagecache.get_cache()
 
 
@@ -1614,6 +1762,7 @@ class EventResultsAPI():
 # Data input/output
 #
 class IOAPI():
+    """View and import/export data from the database via registered :class:`DataImporter` and :class:`DataExporter`. These methods are accessed via :attr:`RHAPI.io`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1624,16 +1773,44 @@ class IOAPI():
 
     @property
     def exporters(self):
+        """All registered exporters.
+
+        :return: A list of :class:`DataExporter`
+        :rtype: list[DataExporter]
+        """
         return self._racecontext.export_manager.exporters
 
     def run_export(self, exporter_id):
+        """Run selected exporter.
+
+        :param exporter_id: Identifier of exporter to run
+        :type exporter_id: str
+        :return: Returns output of exporter or False if error.
+        :rtype: str|bool
+        """
         return self._racecontext.export_manager.export(exporter_id)
 
     @property
     def importers(self):
+        """All registered importers.
+
+        :return: A list of :class:`DataImporter`
+        :rtype: list[DataImporter]
+        """
         return self._racecontext.import_manager.importers
 
     def run_import(self, importer_id, data, import_args=None):
+        """_summary_
+
+        :param importer_id: Identifier of importer to run
+        :type importer_id: str
+        :param data: Data to import
+        :type data: any
+        :param import_args: Arguments passed to the importer, overrides defaults, defaults to None
+        :type import_args: any, optional
+        :return: Returns output of importer or False if error.
+        :rtype: dict|bool
+        """
         return self._racecontext.import_manager.run_import(importer_id, data, import_args)
 
 
@@ -1641,6 +1818,7 @@ class IOAPI():
 # Heat Generation
 #
 class HeatGenerateAPI():
+    """View and Generate heats via registered :class:`HeatGenerator`. These methods are accessed via :attr:`RHAPI.heatgen`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1651,10 +1829,24 @@ class HeatGenerateAPI():
 
     @property
     def generators(self):
+        """All registered generators.
+
+        :return: A list of :class:`HeatGenerator`
+        :rtype: list[HeatGenerator]
+        """
         return self._racecontext.heat_generate_manager.generators
 
     @callWithDatabaseWrapper
     def generate(self, generator_id, generate_args):
+        """Run selected generator, creating heats and race classes as needed.
+
+        :param generator_id: Identifier of generator to run
+        :type generator_id: str
+        :param generate_args: Arguments passed to the generator, overrides defaults
+        :type generate_args: dict
+        :return: Returns output of generator or False if error.
+        :rtype: str|bool
+        """
         return self._racecontext.heat_generate_manager.generate(generator_id, generate_args)
 
 
@@ -1662,6 +1854,8 @@ class HeatGenerateAPI():
 # Class Ranking
 #
 class ClassRankAPI():
+    """View registered :class:`RaceClassRankMethods`. These methods are accessed via :attr:`RHAPI.classrank`"""
+
     def __init__(self, race_context):
         """Constructor method
 
@@ -1672,6 +1866,11 @@ class ClassRankAPI():
 
     @property
     def methods(self):
+        """All registered class ranking methods.
+
+        :return: A dictionary with the format {name : :class:`RaceClassRankMethod`}
+        :rtype: dict
+        """
         return self._racecontext.raceclass_rank_manager.methods
 
 
@@ -1679,6 +1878,7 @@ class ClassRankAPI():
 # Points
 #
 class PointsAPI():
+    """View registered RacePointsMethods. These methods are accessed via :atts:`RHAPI.points`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1689,6 +1889,11 @@ class PointsAPI():
 
     @property
     def methods(self):
+        """All registered class ranking methods.
+
+        :return: A dictionary with the format {name : :class:`RacePointsMethod`}
+        :rtype: dict
+        """
         return self._racecontext.race_points_manager.methods
 
 
@@ -1696,6 +1901,7 @@ class PointsAPI():
 # LED
 #
 class LEDAPI():
+    """Activate and manage connected LED displays via registered :class:`LEDEffects`. These methods are accessed via :attr:`RHAPI.led`"""
     def __init__(self, race_context):
         """Constructor method
 
@@ -1706,26 +1912,67 @@ class LEDAPI():
 
     @property
     def enabled(self):
+        """Returns True if LED system is enabled.
+
+        :return: System is enabled
+        :rtype: bool
+        """
         return self._racecontext.led_manager.isEnabled()
 
     @property
     def effects(self):
+        """All registered LED effects.
+
+        :return: List of :class:`LEDEffects`
+        :rtype: list[LEDEffects]
+        """
         return self._racecontext.led_manager.getRegisteredEffects()
 
     def effect_by_event(self, event):
+        """LED effect assigned to event. 
+
+        :param event: Event to retrieve effect from
+        :type event: str
+        :return: Returns :class:`LEDEffect` or None if event does not exist
+        :rtype: LEDEffect|None
+        """
         return self._racecontext.led_manager.getEventEffect(event)
 
     def effect_set(self, event, name):
+        """Assign effect to event.
+
+        :param event: Event to assign
+        :type event: str
+        :param name: Effect to assign to event
+        :type name: str
+        :return: Success value
+        :rtype: bool
+        """
         return self._racecontext.led_manager.setEventEffect(event, name)
 
     def clear(self):
-        return self._racecontext.led_manager.clear()
+        """Clears LEDs."""
+        self._racecontext.led_manager.clear()
 
     def display_color(self, seat_index, from_result=False):
+        """Color of seat in active race. 
+
+        :param seat_index: Seat number
+        :type seat_index: int
+        :param from_result: True to use previously active (cached) race data, defaults to False
+        :type from_result: bool, optional
+        :return: :class:`Color` assigned to seat
+        :rtype: Color
+        """
         return self._racecontext.led_manager.getDisplayColor(seat_index, from_result)
 
     def activate_effect(self, args):
-        return self._racecontext.led_manager.activateEffect(args)
+        """Immediately activate an LED effect. Should usually be called asynchronously with :meth:`gevent.spawn`.
+
+        :param args: Must include `handler_fn` to activate; other arguments are passed to handler
+        :type args: dict
+        """
+        self._racecontext.led_manager.activateEffect(args)
 
 
 #
