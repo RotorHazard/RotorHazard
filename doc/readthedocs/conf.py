@@ -48,7 +48,7 @@ extensions = [
 
 html_theme = 'sphinx_book_theme'
 html_static_path = ['_static']
-html_logo = "../src/server/static/image/RotorHazard Logo.svg"
+html_logo = "../../src/server/static/image/RotorHazard Logo.svg"
 html_title = "RotorHazard Documentation"
 
 html_theme_options = {
