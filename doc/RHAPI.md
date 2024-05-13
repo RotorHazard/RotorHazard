@@ -1,4 +1,4 @@
-# old_RHAPI
+# RHAPI
 
 - [Introduction](#introduction)
 - [Standard Events](#standard-events)

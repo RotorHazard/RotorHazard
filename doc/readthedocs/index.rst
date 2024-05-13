@@ -18,7 +18,6 @@ Welcome to RotorHazard's documentation!
    Raspberry Pi Reference.md
    Real Time Clock.md
    api.rst
-   old_RHAPI.md
    Shielding and Course Position.md
    Shutdown Button.md
    Software Setup.md
