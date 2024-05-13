@@ -9,8 +9,8 @@
 import os
 import sys
 
-docdir = os.path.split(os.path.split(__file__)[0])[0]
-topdir = os.path.split(os.path.split(docdir)[0])[0]
+topdir = os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0]
+
 sys.path.insert(0, os.path.join(topdir, "src/server"))
 sys.path.insert(0, os.path.join(topdir, "src/server/util"))
 sys.path.insert(0, os.path.join(topdir, "src/interface"))
