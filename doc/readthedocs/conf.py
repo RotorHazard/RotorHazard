@@ -35,6 +35,13 @@ source_suffix = {
     '.md': 'markdown',
 }
 
+extensions = [
+    'myst_parser',
+    'sphinx_copybutton',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+]
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
@@ -49,13 +56,6 @@ html_theme_options = {
     "use_edit_page_button": True,
     "use_issues_button": True,
 }
-
-extensions = [
-    'myst_parser',
-    'sphinx_copybutton',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-]
 
 # -- Options for autodoc / autosummary ---------------------------------------
 

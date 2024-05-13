@@ -13,14 +13,13 @@ build:
 
 # Build documentation in the "docs/" directory with Sphinx
 sphinx:
-  configuration: doc/conf.py
+  configuration: doc/readthedocs/conf.py
 
 # Optionally build your docs in additional formats such as PDF and ePub
 formats:
    - pdf
-   - epub
 
 python:
   install:
-    - requirements: doc/requirements.txt
+    - requirements: doc/readthedocs/requirements.txt
     - requirements: src/server/reqsNonPi.txt

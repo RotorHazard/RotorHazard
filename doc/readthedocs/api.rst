@@ -3,10 +3,14 @@ Plugin API
 
 RotorHazard makes use of externally loaded plugins to extend its functionality and behavior.
 
+.. comment
+
+    The following determines what modules from this repo will be documented
+
 .. autosummary::
-   :template: custom-mod-template.rst
-   :toctree: _autosummary
-   :recursive:
+    :template: custom-mod-template.rst
+    :toctree: _autosummary
+    :recursive:
 
     RHAPI
     Database
