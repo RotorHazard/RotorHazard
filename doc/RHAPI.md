@@ -98,6 +98,7 @@ Panels are represented with the `UIPanel` class, which has the following propert
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to
+- `open` (boolean): Whether panel is open or closed
 - `order` (int): Not yet implemented
 
 
@@ -111,6 +112,7 @@ Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to; one of "format", "settings"
+- `open` _optional_ (boolean): Whether panel is open or closed (default: `False`)
 - `order` _optional_ (int): Not yet implemented 
 
 ### Quickbuttons
