@@ -53,7 +53,15 @@
 					var panel_header_el = $('<div class="panel-header">');
 					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
 					var panel_content_el = $('<div class="panel-content">');
-					panel_content_el.hide();
+
+					// panel open/close
+					if (panel.panel.open) {
+						panel_el.addClass('open');
+						panel_content_el.show();
+					} else {
+						panel_el.removeClass('open');
+						panel_content_el.hide();
+					}
 
 					var form_el = $('<ol class="form">');
 
