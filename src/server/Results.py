@@ -948,7 +948,7 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
                             race_result_updates['average_lap_raw'] = race_result_updates['total_time_laps_raw'] / race_result_updates['laps']
 
                         # fastest lap & source
-                        if lb_line['fastest_lap_raw'] and lb_line['fastest_lap_raw'] < item['fastest_lap_raw']:
+                        if not item['fastest_lap_raw'] or lb_line['fastest_lap_raw'] < item['fastest_lap_raw']:
                             race_result_updates['fastest_lap_raw'] = lb_line['fastest_lap_raw']
                             race_result_updates['fastest_lap_source'] = lb_line['fastest_lap_source']
 
