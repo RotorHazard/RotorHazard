@@ -135,6 +135,22 @@ Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list
 - `function` (callable): Function to run when button is pressed
 - `args` (any): Argument passed to `function` when called
 
+### Links
+
+Provides a simple interface to add a UI link. Links appear on assigned UI panels in a list and will always be opened in a new tab.
+
+Links are represented with the `Link` class, which has the following properties:
+- `panel` (string): `name` of panel where link will appear
+- `name` (string): Text used for visible link label
+- `url` (string): URL to navigate to when link is clicked
+
+#### ui.register_link(panel, name, url)
+
+Register a Link and assign it to a UI panel. Returns all links as `list[Link]`.
+
+- `panel` (string): `name` of panel previously registered with `ui.register_panel`
+- `name` (string): Text used for visible link label
+- `url` (string): URL to navigate to when link is clicked
 
 ### Pages
 
