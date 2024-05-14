@@ -22,6 +22,7 @@ logs
 
 # Specific folders
 venv
+.venv
 
 # User files, except the README
 /src/server/static/user/*
