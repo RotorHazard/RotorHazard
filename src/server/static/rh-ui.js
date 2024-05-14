@@ -126,6 +126,20 @@ var rhui = {
 		}
 		return btn_list_el
 	},
+	buildLinks: function(link_list) {
+		var link_list_el = $('<ul>');
+		for (var idx in link_list) {
+			link_el = $('<li>')
+				.append($('<a>')
+					.attr('href', link_list[idx].url)
+					.attr('target', '_blank')
+					.text(link_list[idx].name)
+				)
+
+			link_list_el.append(link_el)
+		}
+		return link_list_el
+	},
 	getFieldVal: function(element) {
 		var el = $(element);
 		var field = el.data('field');

@@ -80,6 +80,12 @@ class QuickButton():
     fn: callable
     args: dict
 
+@dataclass
+class Link():
+    panel: str
+    name: str
+    url: str
+
 class RHUI():
     # Language placeholder (Overwritten after module init)
     def __(self, *args):
@@ -99,6 +105,7 @@ class RHUI():
         self._ui_panels = []
         self._general_settings = []
         self._quickbuttons = []
+        self._links = []
 
     # Pilot Attributes
     def register_pilot_attribute(self, field:UIField):
@@ -239,6 +246,25 @@ class RHUI():
                     btn.fn(btn.args)
                     return
 
+    # link
+    def register_link(self, panel, name, url):
+        for idx, link in enumerate(self._links):
+            if link.name == name:
+                self._links[idx] = Link(panel, name, url)
+                logger.debug(F'Redefining link "{name}"')
+                break
+        else:
+            self._links.append(Link(panel, name, url))
+        return self._links
+
+    def get_panel_links(self, name):
+        payload = []
+        for link in self._links:
+            if link.panel == name:
+                payload.append(link)
+
+        return payload
+
     # Blueprints
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
@@ -288,6 +314,13 @@ class RHUI():
                         'label': button.label,
                     })
 
+                links = []
+                for link in self.get_panel_links(panel.name):
+                    links.append({
+                        'name': link.name,
+                        'url': link.url,
+                    })
+
                 emit_payload['panels'].append({
                     'panel': {
                         'name': panel.name,
@@ -295,7 +328,8 @@ class RHUI():
                         'order': panel.order,
                     },
                     'settings': settings,
-                    'quickbuttons': buttons
+                    'quickbuttons': buttons,
+                    'links': links
                 })
 
         if ('nobroadcast' in params):

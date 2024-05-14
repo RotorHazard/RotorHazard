@@ -73,6 +73,10 @@ class UserInterfaceAPI():
     def register_quickbutton(self, panel, name, label, function, args=None):
         return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args)
 
+    # Link
+    def register_link(self, panel, name, url):
+        return self._racecontext.rhui.register_link(panel, name, url)
+
     # Blueprint
     def blueprint_add(self, blueprint):
         return self._racecontext.rhui.add_blueprint(blueprint)
