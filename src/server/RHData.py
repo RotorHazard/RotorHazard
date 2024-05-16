@@ -433,7 +433,7 @@ class RHData():
 
             # Carry over registered plugin options
             for field in self._racecontext.rhui.general_settings:
-                carryoverOpts.extend(field.name)
+                carryoverOpts.append(field.name)
 
             # RSSI reduced by half for 2.0.0
             if migrate_db_api < 23:
