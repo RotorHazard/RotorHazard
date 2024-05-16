@@ -10,7 +10,7 @@ class ButtonInputHandler:
     def __init__(self, gpioPinNum, logger, buttonPressedCallbackFn=None, \
                  buttonReleasedCallbackFn=None, buttonLongPressCallbackFn=None, \
                  buttonLongPressDelayMs=3000, startEnabledFlag=True):
-        self.gpioPinNum = gpioPinNum
+        self.gpioPinNum = int(gpioPinNum)
         self.logger = logger
         self.buttonPressedCallbackFn = buttonPressedCallbackFn if buttonPressedCallbackFn \
                                                                else self.noop
@@ -18,18 +18,18 @@ class ButtonInputHandler:
                                                                  else self.noop
         self.buttonLongPressCallbackFn = buttonLongPressCallbackFn if buttonLongPressCallbackFn \
                                                                    else self.noop
-        self.buttonLongPressDelayMs = buttonLongPressDelayMs
+        self.buttonLongPressDelayMs = int(buttonLongPressDelayMs)
         self.longPressReachedFlag = False
         self.lastInputLevel = RH_GPIO.UNKNOWN
         self.pressedStartTimeSecs = 0
         self.enabledFlag = startEnabledFlag
         self.errorLoggedCount = 0
         try:
-            RH_GPIO.setup(gpioPinNum, RH_GPIO.IN, pull_up_down=RH_GPIO.PUD_UP)
+            RH_GPIO.setup(self.gpioPinNum, RH_GPIO.IN, pull_up_down=RH_GPIO.PUD_UP)
         except Exception as ex:
             if str(ex).find("GPIO busy") > 0:
                 logger.error("Unable to access GPIO pin {} in ButtonInputHandler setup; may need to remove line \"dtoverlay=gpio-shutdown,gpio_pin={}\" from 'boot' config file ".\
-                             format(gpioPinNum, gpioPinNum))
+                             format(self.gpioPinNum, self.gpioPinNum))
             else:
                 logger.exception("Exception error in ButtonInputHandler setup")
 
