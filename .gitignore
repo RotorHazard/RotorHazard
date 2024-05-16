@@ -16,6 +16,7 @@
 
 # Local system configuration
 /src/server/config*.json
+/src/tests/config*.json
 
 # Run logs
 logs
