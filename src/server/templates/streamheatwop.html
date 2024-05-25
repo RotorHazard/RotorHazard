@@ -101,7 +101,7 @@
 
                             $('#pilot_'+j).find('.pilot-name-container').find('.pilot-name').html(callsign);
 
-                            if(photo === undefined || photo == undefined || photo === null || photo == null)
+                            if(photo === undefined || photo == undefined || photo === null || photo == null || photo == "")
                                 $('#pilot_'+j).find('.photo_container').append('<img src="/static/pilot-photos/default.png" style="height:300px; width:300px; object-fit:cover; opacity:90%;"/>');
                             else
                                 $('#pilot_'+j).find('.photo_container').append('<img src="'+photo+'" style="height:300px; width:300px; object-fit:cover; opacity:90%;"/>');
