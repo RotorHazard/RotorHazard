@@ -883,6 +883,9 @@
 				slot_id: slot_id,
 				pilot: pilot_id
 			};
+			if (pilot_id) {
+				data.method = 0;  // if pilot not 'None' then always set method to 'assign'
+			}
 
 			// switch none to pilot if needed
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
