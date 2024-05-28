@@ -883,16 +883,16 @@
 				slot_id: slot_id,
 				pilot: pilot_id
 			};
+			if (pilot_id) {
+				data.method = 0;  // always set method to 'assign'
+			}
 
-			// switch none to pilot if needed
+			// update local data
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			var slot = heat.slots.find(obj => {return obj.id == slot_id});
 			if (heat && slot) {
 				slot.pilot_id = pilot_id;
-				if (slot.method == -1) {
-					slot.method = 0;
-					data.method = 0;
-				}
+				slot.method = 0;
 			}
 
 			socket.emit('alter_heat', data);
