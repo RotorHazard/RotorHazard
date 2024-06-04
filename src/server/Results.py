@@ -835,6 +835,21 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards):
 
     return all_leaderboards
 
+def refresh_source_displayname(racecontext, result, heat_id):
+    for key, leaderboard in result.items():
+        if key != 'meta':
+            for result_pilot in leaderboard:
+                if result_pilot['fastest_lap_source']['heat'] == heat_id:
+                    fl_heat = result_pilot['fastest_lap_source']['heat']
+                    fl_name = racecontext.rhdata.get_heat(fl_heat).display_name
+                    result_pilot['fastest_lap_source']['displayname'] = fl_name
+
+                if result_pilot['consecutives_source']['heat'] == heat_id:
+                    cons_heat = result_pilot['consecutives_source']['heat']
+                    cons_name = racecontext.rhdata.get_heat(cons_heat).display_name
+                    result_pilot['consecutives_source']['displayname'] = cons_name
+    return result
+
 def add_fastest_race_lap_meta(racecontext, all_leaderboards):
     # fetch pilot/time data for fastest lap in race
     leaderboard_by_fastest_lap = all_leaderboards['by_fastest_lap']
