@@ -1174,6 +1174,14 @@ class RHData():
             heat.status = data['status']
 
         # update source names:
+        if 'name' in data:
+            if heat.results:
+                self._racecontext.pagecache.set_valid(False)
+                new_result = Results.refresh_source_displayname(self._racecontext, heat.results, heat.id)
+                heat.results = None
+                Database.DB_session.flush()
+                heat.results = new_result
+
         if 'name' in data and not 'class' in data:
             if heat.class_id != RHUtils.CLASS_ID_NONE:
                 race_class = Database.RaceClass.query.get(heat.class_id)
