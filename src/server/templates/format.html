@@ -65,8 +65,8 @@
 			$('#set_pilotSort').val('callsign');
 		}
 
-		if (parseInt('{{ getOption('ledColorMode') }}')) {
-			$('#set_ledColorMode').val('{{ getOption('ledColorMode') }}');
+		if (parseInt('{{ getConfig('LED', 'ledColorMode') }}')) {
+			$('#set_ledColorMode').val('{{ getConfig('LED', 'ledColorMode') }}');
 		}
 
 		$('#unlock_race_format_button').html(svg_asset.lock);
@@ -2147,6 +2147,19 @@
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
+		});
+
+		socket.on('set_config', function (msg) {
+			$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+		});
+
+		$(document).on('change', '.set-config', function (event) {
+			var data = {
+				section: $(this).data('section'),
+				key: $(this).data('key'),
+				value: $(this).val()
+			};
+			socket.emit('set_config', data);
 		});
 
 		$(document).on('change', '#set_pilotSort', function (event) {
