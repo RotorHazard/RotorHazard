@@ -1173,6 +1173,32 @@ class RHData():
         if 'status' in data:
             heat.status = data['status']
 
+        # update source names:
+        if 'name' in data:
+            if heat.results:
+                self._racecontext.pagecache.set_valid(False)
+                new_result = Results.refresh_source_displayname(self._racecontext, heat.results, heat.id)
+                heat.results = None
+                Database.DB_session.flush()
+                heat.results = new_result
+
+        if 'name' in data and not 'class' in data:
+            if heat.class_id != RHUtils.CLASS_ID_NONE:
+                race_class = Database.RaceClass.query.get(heat.class_id)
+                if race_class.results:
+                    self._racecontext.pagecache.set_valid(False)
+                    new_result = Results.refresh_source_displayname(self._racecontext, race_class.results, heat.id)
+                    race_class.results = None
+                    Database.DB_session.flush()
+                    race_class.results = new_result
+
+        if 'name' in data and not ('pilot' in data or 'class' in data):
+            event_results = json.loads(self.get_option("eventResults"))
+            if event_results:
+                self._racecontext.pagecache.set_valid(False)
+                event_results = Results.refresh_source_displayname(self._racecontext, event_results, heat.id)
+                self.set_option("eventResults", json.dumps(event_results))
+
         # alter existing saved races:
         race_list = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
 
