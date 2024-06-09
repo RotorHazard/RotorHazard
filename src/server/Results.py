@@ -839,12 +839,12 @@ def refresh_source_displayname(racecontext, result, heat_id):
     for key, leaderboard in result.items():
         if key != 'meta':
             for result_pilot in leaderboard:
-                if result_pilot['fastest_lap_source']['heat'] == heat_id:
+                if result_pilot['fastest_lap_source'] and result_pilot['fastest_lap_source']['heat'] == heat_id:
                     fl_heat = result_pilot['fastest_lap_source']['heat']
                     fl_name = racecontext.rhdata.get_heat(fl_heat).display_name
                     result_pilot['fastest_lap_source']['displayname'] = fl_name
 
-                if result_pilot['consecutives_source']['heat'] == heat_id:
+                if result_pilot['consecutives_source'] and result_pilot['consecutives_source']['heat'] == heat_id:
                     cons_heat = result_pilot['consecutives_source']['heat']
                     cons_name = racecontext.rhdata.get_heat(cons_heat).display_name
                     result_pilot['consecutives_source']['displayname'] = cons_name
@@ -955,7 +955,7 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
                             'starts': item['starts'] + lb_line['starts'],
                             'total_time_raw': item['total_time_raw'] + lb_line['total_time_raw'],
                             'total_time_laps_raw': item['total_time_laps_raw'] + lb_line['total_time_laps_raw'],
-                            'points': item['points'] + lb_line['points'] if lb_line.get('points') else 0,
+                            'points': (item['points'] if 'points' in item else 0) + (lb_line['points'] if 'points' in lb_line else 0)
                         }
 
                         # average lap
