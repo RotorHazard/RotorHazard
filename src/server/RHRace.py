@@ -6,7 +6,6 @@ import RHUtils
 import RHTimeFns
 import Results
 import gevent
-import Config
 import random
 from datetime import datetime
 from flask import request, copy_current_request_context
@@ -47,7 +46,9 @@ class RHRace():
         self.start_time_monotonic = 0
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
         self.node_laps = {} # current race lap objects, by node
-        self.node_has_finished = {}
+        self.node_has_finished = {}     # True if pilot for node has finished race
+        self.node_finished_effect = {}  # True if effect for pilot-finished for node has been triggered
+        self.node_fin_effect_wait_count = 0  # number of finished effects waiting for all crossings completed
         self.any_races_started = False
         # concluded
         self.end_time = 0 # Monotonic, updated when race is stopped
@@ -699,9 +700,7 @@ class RHRace():
                                 # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
                                 if (race_format.unlimited_time == 0 and lap_time_stamp > race_format.race_time_sec * 1000) or \
                                     (self.format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
-                                    self.set_node_finished_flag(node.index)
                                     if not node_finished_flag:
-                                        logger.info('Pilot {} done'.format(pilot_obj.callsign if pilot_obj else node.index))
                                         pilot_done_flag = True
 
                                 if node_finished_flag:
@@ -768,14 +767,6 @@ class RHRace():
                                     'pilot_done_flag': pilot_done_flag,
                                     })
 
-                                if pilot_done_flag:
-                                    self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
-                                        'pilot_id': pilot_id,
-                                        'node_index': node.index,
-                                        'color': self.seat_colors[node.index],
-                                        'results': self.get_results(),
-                                        })
-
                                 self._racecontext.rhui.emit_current_laps() # update all laps on the race page
                                 self._racecontext.rhui.emit_current_leaderboard() # generate and update leaderboard
 
@@ -822,8 +813,10 @@ class RHRace():
                                             else:
                                                 logger.info('Pilot {} is leading'.format(pilot_namestr))
 
-                                    # check for and announce possible winner (but wait until pass-record processing(s) is finished)
-                                    self.pass_invoke_func_queue_obj.put(self.check_win_condition, emit_leaderboard_on_win=True)
+                                    # check for and announce possible winner and trigger possible pilot-done events
+                                    #  (but wait until pass-record processings are finished)
+                                    self.pass_invoke_func_queue_obj.put(self.finish_add_lap_processing, \
+                                                    pilot_done_flag, pilot_id, pilot_obj, node, emit_leaderboard_on_win=True)
 
                             else:
                                 # record lap as 'invalid'
@@ -845,6 +838,44 @@ class RHRace():
             else:
                 logger.debug('Pass record dismissed: Node {}, Frequency not defined (abs_ts={:.3f}, source={})' \
                     .format(node.index+1, lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source)))
+
+    # check for and announce possible winner and trigger possible pilot-done events
+    @catchLogExceptionsWrapper
+    def finish_add_lap_processing(self, pilot_done_flag, done_pilot_id, done_pilot_obj, done_node_obj, **kwargs):
+        prev_node_finished_flag = self.get_node_finished_flag(done_node_obj.index)
+        if pilot_done_flag and not prev_node_finished_flag:
+            self.set_node_finished_flag(done_node_obj.index)
+        self.check_win_condition(**kwargs)  # check for and announce possible winner
+        if self.win_status != WinStatus.PENDING_CROSSING:  # if not waiting for crossings to finish
+            if pilot_done_flag and not prev_node_finished_flag:  # if pilot just finished race
+                logger.info('Pilot {} done'.format(done_pilot_obj.callsign if done_pilot_obj else done_node_obj.index))
+                self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
+                    'pilot_id': done_pilot_id,
+                    'node_index': done_node_obj.index,
+                    'color': self.seat_colors[done_node_obj.index],
+                    'results': self.get_results(),
+                })
+                self.set_node_finished_effect_flag(done_node_obj.index)  # indicate pilot-finished event was triggered
+            # check if any pilot-finished events were waiting for crossings to finish, and trigger them now if so
+            if self.win_status == WinStatus.DECLARED and self.node_fin_effect_wait_count > 0:
+                for chk_node in self._racecontext.interface.nodes:
+                    if chk_node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
+                                    self.get_node_finished_flag(chk_node.index) and \
+                                    not self.get_node_finished_effect_flag(chk_node.index):
+                        chk_pilot_obj = self._racecontext.rhdata.get_pilot(chk_node.current_pilot_id)
+                        logger.info('Pilot {} done (after all crossings completed)'.format(chk_pilot_obj.callsign if chk_pilot_obj else chk_node.index))
+                        self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
+                            'pilot_id': chk_node.current_pilot_id,
+                            'node_index': chk_node.index,
+                            'color': self.seat_colors[chk_node.index],
+                            'results': self.get_results(),
+                        })
+                        self.set_node_finished_effect_flag(chk_node.index)  # indicate pilot-finished event was triggered
+                        self.node_fin_effect_wait_count -= 1
+        elif pilot_done_flag and not prev_node_finished_flag:  # if pilot just finished race
+            self.node_fin_effect_wait_count += 1
+            logger.debug('Waiting to process node {} done until all crossings completed'.format(done_node_obj.index+1))
+
 
     @catchLogExceptionsWrapper
     def delete_lap(self, data):
@@ -1084,6 +1115,8 @@ class RHRace():
                     self.node_has_finished[heatNode.node_index] = False
                 else:
                     self.node_has_finished[heatNode.node_index] = None
+                self.node_finished_effect[heatNode.node_index] = False
+                self.node_fin_effect_wait_count = 0
 
     def set_node_finished_flag(self, node_index, value=True):
         self.node_has_finished[node_index] = value
@@ -1094,16 +1127,25 @@ class RHRace():
     def check_all_nodes_finished(self):
         return False not in self.node_has_finished.values()
 
+    def set_node_finished_effect_flag(self, node_index, value=True):
+        self.node_finished_effect[node_index] = value
+
+    def get_node_finished_effect_flag(self, node_index):
+        return self.node_finished_effect.get(node_index)
+
     def check_win_condition(self, **kwargs):
         previous_win_status = self.win_status
         win_not_decl_flag = self.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING, WinStatus.OVERTIME]
         del_lap_flag = 'deletedLap' in kwargs
+        logger.debug("Entered 'check_win_condition()', win_status={}, win_not_decl_flag={}, del_lap_flag={}".\
+                     format(self.win_status, win_not_decl_flag, del_lap_flag))
 
         # if winner not yet declared or racer lap was deleted then check win condition
         win_status_dict = Results.check_win_condition_result(self._racecontext, **kwargs) \
                           if win_not_decl_flag or del_lap_flag else None
 
         if win_status_dict is not None:
+            logger.debug("In 'check_win_condition()', win_status_dict: {}".format(win_status_dict))
             race_format = self.format
             self.win_status = win_status_dict['status']
 
