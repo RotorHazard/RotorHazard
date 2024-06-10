@@ -240,38 +240,48 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
         except:
             pass
     if config_ser_ports:
+        node_serial_obj = None
         for index, comm in enumerate(config_ser_ports):
             rev_val = None
             baud_idx = 0
-            while rev_val == None and baud_idx < len(SERIAL_BAUD_RATES):
-                node_serial_obj = serial.Serial(port=None, baudrate=SERIAL_BAUD_RATES[baud_idx], timeout=0.25)
-                node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
-                node_serial_obj.setRTS(0)
-                node_serial_obj.setPort(comm)
-                node_serial_obj.open()  # open port (now that DTR is configured for no change)
-                if baud_idx > 0:
-                    gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
-                node = SerialNode(index+idxOffset, node_serial_obj)
-                multi_count = 1
-                try:               # handle serial multi-node processor
-                    # read NODE_API_LEVEL and verification value:
-                    data = node.read_block(None, READ_REVISION_CODE, 2, 2, False)
-                    rev_val = unpack_16(data) if data != None else None
-                    if rev_val and (rev_val >> 8) == 0x25:
-                        if (rev_val & 0xFF) >= 32:  # check node API level
-                            data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False)
-                            multi_count = unpack_8(data) if data != None else None
-                        if multi_count is None or multi_count < 0 or multi_count > 32:
-                            logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
-                            multi_count = 1
-                        elif multi_count == 0:
-                            logger.debug('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
-                            multi_count = 0
-                except Exception:
+            while (not rev_val) and baud_idx < len(SERIAL_BAUD_RATES):
+                attempt_delay_secs = 0.0625
+                # if opening port fails then do retries; with exponential delay, but less than 1 second
+                while (not rev_val) and attempt_delay_secs < 0.9:
+                    attempt_delay_secs *= 2
+                    node_serial_obj = serial.Serial(port=None, baudrate=SERIAL_BAUD_RATES[baud_idx], timeout=0.25)
+                    node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
+                    node_serial_obj.setRTS(0)
+                    node_serial_obj.setPort(comm)
+                    node_serial_obj.open()  # open port (now that DTR is configured for no change)
+                    if baud_idx > 0 and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
+                        gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
+                    else:
+                        logger.debug("Delaying {} secs before attempting connection to serial node".format(attempt_delay_secs))
+                        gevent.sleep(attempt_delay_secs)
+                    node = SerialNode(index+idxOffset, node_serial_obj)
                     multi_count = 1
-                    logger.exception('Error fetching READ_MULTINODE_COUNT for serial node')
-                if rev_val == None:
-                    node_serial_obj.close()
+                    try:               # handle serial multi-node processor
+                        # read NODE_API_LEVEL and verification value:
+                        data = node.read_block(None, READ_REVISION_CODE, 2, 2, False)
+                        rev_val = unpack_16(data) if data != None else None
+                        if rev_val and (rev_val >> 8) == 0x25:
+                            if (rev_val & 0xFF) >= 32:  # check node API level
+                                data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False)
+                                multi_count = unpack_8(data) if data != None else None
+                            if multi_count is None or multi_count < 0 or multi_count > 32:
+                                logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
+                                multi_count = 1
+                            elif multi_count == 0:
+                                logger.debug('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
+                                multi_count = 0
+                    except Exception:
+                        multi_count = 1
+                        logger.exception('Error fetching READ_MULTINODE_COUNT for serial node')
+                    if (not rev_val) and node_serial_obj:
+                        node_serial_obj.close()
+                        node_serial_obj = None
+                if (not rev_val):  # if connection attempt failed then retry with alternate baud rate
                     baud_idx += 1
             if rev_val:
                 api_level = rev_val & 0xFF
