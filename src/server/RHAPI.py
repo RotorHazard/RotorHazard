@@ -73,6 +73,10 @@ class UserInterfaceAPI():
     def register_quickbutton(self, panel, name, label, function, args=None):
         return self._racecontext.rhui.register_quickbutton(panel, name, label, function, args)
 
+    # Markdown
+    def register_markdown(self, panel, name, desc):
+        return self._racecontext.rhui.register_markdown(panel, name, desc)
+
     # Blueprint
     def blueprint_add(self, blueprint):
         return self._racecontext.rhui.add_blueprint(blueprint)

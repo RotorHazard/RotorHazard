@@ -80,6 +80,12 @@ class QuickButton():
     fn: callable
     args: dict
 
+@dataclass
+class Markdown():
+    panel: str
+    name: str
+    desc: str
+
 class RHUI():
     # Language placeholder (Overwritten after module init)
     def __(self, *args):
@@ -99,6 +105,7 @@ class RHUI():
         self._ui_panels = []
         self._general_settings = []
         self._quickbuttons = []
+        self._markdowns = []
 
     # Pilot Attributes
     def register_pilot_attribute(self, field:UIField):
@@ -239,6 +246,29 @@ class RHUI():
                     btn.fn(btn.args)
                     return
 
+    # Markdown
+    def register_markdown(self, panel, name, desc):
+        for idx, markdown in enumerate(self._markdowns):
+            if markdown.name == name:
+                self._markdowns[idx] = Markdown(panel, name, desc)
+                logger.debug(F'Redefining markdown "{name}"')
+                break
+        else:
+            self._markdowns.append(Markdown(panel, name, desc))
+        return self._markdowns
+
+    def get_panel_markdowns(self, name):
+        payload = []
+        for md in self.markdowns:
+            if md.panel == name:
+                payload.append(md)
+
+        return payload
+
+    @property
+    def markdowns(self):
+        return self._markdowns
+
     # Blueprints
     def add_blueprint(self, blueprint):
         self._app.register_blueprint(blueprint)
@@ -288,6 +318,13 @@ class RHUI():
                         'label': button.label,
                     })
 
+                markdowns = []
+                for md in self.get_panel_markdowns(panel.name):
+                    markdowns.append({
+                        'name': md.name,
+                        'desc': md.desc,
+                    })
+
                 emit_payload['panels'].append({
                     'panel': {
                         'name': panel.name,
@@ -295,7 +332,8 @@ class RHUI():
                         'order': panel.order,
                     },
                     'settings': settings,
-                    'quickbuttons': buttons
+                    'quickbuttons': buttons,
+                    'markdowns': markdowns
                 })
 
         if ('nobroadcast' in params):

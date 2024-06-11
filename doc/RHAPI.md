@@ -135,6 +135,22 @@ Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list
 - `function` (callable): Function to run when button is pressed
 - `args` (any): Argument passed to `function` when called
 
+### Markdown
+
+Provides a simple interface to add a UI Markdown block to a panel.
+
+Markdow blocks are represented with the `Markdown` class, which has the following properties:
+- `panel` (string): `name` of panel where markdown will appear
+- `name` (string): Internal identifier for this markdown block
+- `desc` (string): Markdown-formatted text to display
+
+#### ui.register_markdown(panel, name, desc)
+
+Register a Markdown block and assign it to a UI panel.
+
+- `panel` (string): `name` of panel previously registered with `ui.register_panel`
+- `name` (string): Internal identifier for this markdown block
+- `desc` (string): Markdown-formatted text to display
 
 ### Pages
 
