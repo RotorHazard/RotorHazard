@@ -202,7 +202,7 @@ A `HeatPlan` object uses the following format:
 A `HeatPlanSlot` object uses the following format:
     - `method` (SeedMethod): Method used for seeding
     - `seed_rank` (int): Rank to seed from
-    - `seed_index` _optional_ (int): Index of heat within the plan list to seed from, when `method` is `HEAT_INDEX`
+    - `seed_index` _optional_ (int): Index of heat within the plan list to seed from, when `method` is `HEAT_INDEX` or `CLASS_INDEX`
 
 ##### Seeding methods
 Heat slots can be seeded either directly from
@@ -210,6 +210,7 @@ Heat slots can be seeded either directly from
 
 - `INPUT`: The slot is seeded from the `seed_rank` position in the input class ranking
 - `HEAT_INDEX`: The slot is seeded from the `seed_rank` position in the heat specified by `seed_index`
+- `CLASS_INDEX`: The slot is seeded from the `seed_rank` position in the class specified by `seed_index`
 
 The following heat plan is a double-advance ladder. Pilots ranked 3rd through 6th from the input class are seeded into the first heat. Then, the 1st and 2nd place from that heat advance to the second heat where they join the 1st and 2nd place from the input class.
 ```

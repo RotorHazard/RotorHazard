@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class SeedMethod(Enum):
     INPUT = 0
     HEAT_INDEX = 1
+    CLASS_INDEX = 2
 
 @dataclass
 class HeatPlanSlot():
@@ -146,6 +147,11 @@ class HeatGeneratorManager():
                     elif seed_slot.method == SeedMethod.HEAT_INDEX:
                         data['method'] = ProgramMethod.HEAT_RESULT
                         data['seed_heat_id'] = heat_id_mapping[seed_slot.seed_index]
+
+                    elif seed_slot.method == SeedMethod.CLASS_INDEX:
+                        data['method'] = ProgramMethod.CLASS_RESULT
+                        data['seed_class_id'] = seed_slot.seed_index
+
                     else:
                         logger.error("Not a supported seed method: {}".format(seed_slot.method))
                         return False
