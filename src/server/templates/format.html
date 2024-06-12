@@ -104,8 +104,8 @@
 					for (var md_idx in panel.markdowns) {
 						md_content = panel.markdowns[md_idx].desc;
 						md_output = panel_converter.makeHtml(md_content);
-						panel_content_el.append('<div class="ui-md-el">')
-							.html(md_output);
+						md_element = $('<div class="ui-md-el">').html(md_output);
+						panel_content_el.append(md_element);
 					}
 
 					var form_el = $('<ol class="form">');
