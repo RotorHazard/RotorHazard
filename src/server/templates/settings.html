@@ -1,7 +1,7 @@
 {% extends "layout.html" %} {% block title %}{{ __('Settings') }}{% endblock %} {% block head %}
 <script type="text/javascript" src="./static/Blob.js"></script>
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
-<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='showdown-1.9.1/showdown.min.js') }}"></script>
 
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
@@ -168,6 +168,7 @@
 					var panel_content_el = $('<div class="panel-content">');
 					panel_content_el.hide();
 
+					// add markdown content
 					for (var md_idx in panel.markdowns) {
 						md_content = panel.markdowns[md_idx].desc;
 						md_output = panel_converter.makeHtml(md_content);
