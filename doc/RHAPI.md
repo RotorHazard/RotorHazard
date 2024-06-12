@@ -140,6 +140,7 @@ Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list
 Provides a simple interface to add a UI Markdown block to a panel.
 
 Markdow blocks are represented with the `Markdown` class, which has the following properties:
+
 - `panel` (string): `name` of panel where markdown will appear
 - `name` (string): Internal identifier for this markdown block
 - `desc` (string): Markdown-formatted text to display
