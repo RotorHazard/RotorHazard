@@ -1,6 +1,7 @@
 {% extends "layout.html" %} {% block title %}{{ __('Settings') }}{% endblock %} {% block head %}
 <script type="text/javascript" src="./static/Blob.js"></script>
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='showdown-1.9.1/showdown.min.js') }}"></script>
 
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
@@ -144,6 +145,15 @@
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
 
+		// set up markdown converter
+		var panel_converter = new showdown.Converter({
+			ghCodeBlocks: true,
+			ghCompatibleHeaderId: true,
+			literalMidWordUnderscores: true,
+			simpleLineBreaks: true,
+			headerLevelStart: 3
+		});
+
 		socket.on('ui', function (msg) {
 			if (msg.page == 'settings') {
 				$('#custom-ui').empty();
@@ -157,6 +167,14 @@
 					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
 					var panel_content_el = $('<div class="panel-content">');
 					panel_content_el.hide();
+
+					// add markdown content
+					for (var md_idx in panel.markdowns) {
+						md_content = panel.markdowns[md_idx].desc;
+						md_output = panel_converter.makeHtml(md_content);
+						md_element = $('<div class="ui-md-el">').html(md_output);
+						panel_content_el.append(md_element);
+					}
 
 					var form_el = $('<ol class="form">');
 
