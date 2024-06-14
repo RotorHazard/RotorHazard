@@ -11,7 +11,6 @@ from time import monotonic
 logger = logging.getLogger(__name__)
 
 class EventManager:
-    processEventObj = gevent.event.Event()
 
     events = {}
     eventOrder = {}
@@ -19,6 +18,7 @@ class EventManager:
 
     def __init__(self, rhapi):
         self._rhapi = rhapi
+        self.processEventObj = gevent.event.Event()
 
     def on(self, event, name, handler_fn, default_args=None, priority=200, unique=False):
         if default_args == None:

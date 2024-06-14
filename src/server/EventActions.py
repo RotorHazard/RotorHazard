@@ -6,7 +6,8 @@ from typing import List
 from RHUI import UIField
 
 from FlaskAppObj import APP
-APP.app_context().push()
+if APP:
+    APP.app_context().push()
 
 class EventActions:
     eventActionsList = []

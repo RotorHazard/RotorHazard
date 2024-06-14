@@ -20,7 +20,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 from FlaskAppObj import APP
-APP.app_context().push()
+if APP:
+    APP.app_context().push()
 
 class UIFieldType(Enum):
     TEXT = "text"

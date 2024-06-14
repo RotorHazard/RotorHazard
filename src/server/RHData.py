@@ -24,7 +24,8 @@ from RHRace import RaceStatus, WinCondition, StagingTones
 from Database import ProgramMethod, HeatAdvanceType, HeatStatus
 
 from FlaskAppObj import APP
-APP.app_context().push()
+if APP:
+    APP.app_context().push()
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
