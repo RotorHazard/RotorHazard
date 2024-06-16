@@ -91,7 +91,7 @@ import RHData
 import RHUI
 import calibration
 import heat_automation
-import RHAPI
+import rhapi
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.ButtonInputHandler import ButtonInputHandler
@@ -117,8 +117,8 @@ from HeatGenerator import HeatGeneratorManager
 
 # Create shared context
 RaceContext = RaceContext.RaceContext()
-RHAPI = RHAPI.RHAPI(RaceContext)
-
+rhapi._setup_RHAPI(RaceContext)
+RHAPI = rhapi._RHAPI()
 
 if __name__ == "__main__":
     RaceContext.serverstate.program_start_epoch_time = _program_start_epoch_time

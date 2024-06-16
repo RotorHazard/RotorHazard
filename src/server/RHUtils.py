@@ -442,3 +442,18 @@ def getFnTracebackMsgStr(fnNameStr):
         return "Unable to find given function name in traceback"
     except Exception as ex:
         return "Error parsing traceback in 'getFnTracebackMsgStr()':  {}".format(ex)
+    
+def callWithDatabaseWrapper(func):
+    """Wrapper to be used as a decorator on API functions that do database calls,
+    so the database session is cleaned up on exit (prevents DB-file handles left open).
+
+    :param func: function to call
+    :type func: callable
+    :return: wrapped function
+    :rtype: callable
+    """
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            return func(self, *args, **kwargs)
+    return wrapper

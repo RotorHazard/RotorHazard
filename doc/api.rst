@@ -12,7 +12,7 @@ RotorHazard makes use of externally loaded plugins to extend its functionality a
     :toctree: _autosummary
     :recursive:
 
-    RHAPI
+    rhapi
     Database
     data_export
     data_import
