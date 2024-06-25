@@ -26,6 +26,7 @@ class RaceContext():
         self.language = None
 
         self.events = None
+        self.filters = None
         self.rhui = None
 
         self.led_manager = NoLEDManager()
