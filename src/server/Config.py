@@ -163,6 +163,7 @@ class Config:
                 ExternalConfig = json.load(f)
 
             for key in ExternalConfig.keys():
+                self.migrate_legacy_config_early(key, ExternalConfig[key])
                 if key in self.config:
                     self.config[key].update(ExternalConfig[key])
 
@@ -182,12 +183,12 @@ class Config:
         self.migrate_legacy_config()
         self.save_config()
 
-    def migrate_legacy_config(self):
-        if 'SERIAL_PORTS' in self.config:
+    def migrate_legacy_config_early(self, key, value):
+        if key == 'SERIAL_PORTS':
             if not self.config['GENERAL'].get('SERIAL_PORTS'):
-                self.config['GENERAL']['SERIAL_PORTS'] = self.config['SERIAL_PORTS']
-            del self.config['SERIAL_PORTS']
+                self.config['GENERAL']['SERIAL_PORTS'] = value
 
+    def migrate_legacy_config(self):
         if 'SLAVES' in self.config['GENERAL']:
             if self.config['GENERAL']['SLAVES'] and not self.config['GENERAL'].get('SECONDARIES'):
                 self.config['GENERAL']['SECONDARIES'] = self.config['GENERAL']['SLAVES']
