@@ -62,7 +62,7 @@
 		rotorhazard.saveData();
 		$('nav li').removeClass('admin-hide');
 
-		if ('{{ getOption('pilotSort') }}' == 'callsign') {
+		if ('{{ getConfig("UI", "pilotSort") }}' == 'callsign') {
 			$('#set_pilotSort').val('callsign');
 		}
 
