@@ -2337,6 +2337,10 @@ def heartbeat_thread_function():
             SOCKET_IO.emit('heartbeat', node_data)
             heartbeat_thread_function.iter_tracker += 1
 
+            Events.trigger(Evt.HEARTBEAT, {
+                'count': heartbeat_thread_function.iter_tracker
+            })
+
             # update displayed IMD rating after freqs changed:
             if heartbeat_thread_function.imdtabler_flag and \
                     (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:

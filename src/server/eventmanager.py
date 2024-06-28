@@ -92,6 +92,7 @@ class EventManager:
 class Evt:
     # Special
     ALL = 'all'
+    HEARTBEAT = 'heartbeat'
     UI_DISPATCH = 'dispatch'
     # Program
     STARTUP = 'startup'
