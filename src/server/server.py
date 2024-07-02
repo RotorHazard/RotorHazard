@@ -118,7 +118,7 @@ RaceContext.serverstate.program_start_mtonic = _program_start_mtonic
 RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - \
                                                         1000.0*RaceContext.serverstate.program_start_mtonic
 
-Events = EventManager(RHAPI)
+Events = EventManager(RaceContext)
 RaceContext.events = Events
 EventActionsObj = None
 

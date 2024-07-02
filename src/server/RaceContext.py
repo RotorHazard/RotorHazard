@@ -260,6 +260,10 @@ class ServerState:
     def monotonic_to_epoch_millis(self, secs):
         return 1000.0*secs + self.mtonic_to_epoch_millis_offset
 
+    # SERVER GLOBALS
+
     # race format used in secondary mode (must be initialized after database)
     secondary_race_format = None
 
+    # enable processing of Evt.ALL events when Evt.HEARTBEAT is triggered
+    process_all_on_heartbeat = False
