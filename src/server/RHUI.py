@@ -64,6 +64,7 @@ class UIPanel():
     label: str
     page: str
     order: int = 0
+    open: bool = False
 
 @dataclass
 class GeneralSetting():
@@ -183,14 +184,14 @@ class RHUI():
         return self._raceformat_attributes
 
     # UI Panels
-    def register_ui_panel(self, name, label, page, order=0):
+    def register_ui_panel(self, name, label, page, order=0, open = False,):
         for idx, panel in enumerate(self._ui_panels):
             if panel.name == name:
-                self._ui_panels[idx] = UIPanel(name, label, page, order)
+                self._ui_panels[idx] = UIPanel(name, label, page, order, open)
                 logger.debug(F'Redefining panel "{name}"')
                 break
         else:
-            self._ui_panels.append(UIPanel(name, label, page, order))
+            self._ui_panels.append(UIPanel(name, label, page, order, open))
         return self.ui_panels
 
     @property
@@ -330,6 +331,7 @@ class RHUI():
                         'name': panel.name,
                         'label': panel.label,
                         'order': panel.order,
+                        'open': panel.open,
                     },
                     'settings': settings,
                     'quickbuttons': buttons,

@@ -95,10 +95,12 @@ These methods are accessed via `RHAPI.ui`
 Add custom UI panels to RotorHazard's frontend pages. Panels may contain Options and Quickbuttons.
 
 Panels are represented with the `UIPanel` class, which has the following properties:
+
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to
 - `order` (int): Not yet implemented
+- `open` (boolean): Whether panel is open or closed
 
 
 #### ui.panels
@@ -106,12 +108,14 @@ _Read only_
 The list of registered panels. Returns `List[UIPanel]`.
 
 #### ui.register_panel(name, label, page, order=0)
+
 Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel]`.
 
 - `name` (string): Internal identifier for this panel
 - `label` (string): Text used as visible panel header
 - `page` (string): Page to add panel to; one of "format", "settings"
-- `order` _optional_ (int): Not yet implemented 
+- `order` _optional_ (int): Not yet implemented
+- `open` _optional_ (boolean): Whether panel is open or closed (default: `False`)
 
 ### Quickbuttons
 
