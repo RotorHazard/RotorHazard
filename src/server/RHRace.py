@@ -893,7 +893,6 @@ class RHRace():
                 logger.error("update_leaderboard_after_done: Timeout waiting for invocation of 'calc_leaderboard()' to finish{}")
                 break
         self.clear_results()
-        self.get_results()  # update leaderboard
         self._racecontext.rhui.emit_current_laps() # update all laps on the race page
         self._racecontext.rhui.emit_current_leaderboard() # generate and update leaderboard
 
