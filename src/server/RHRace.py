@@ -847,6 +847,7 @@ class RHRace():
             self.set_node_finished_flag(done_node_obj.index)
         self.check_win_condition(**kwargs)  # check for and announce possible winner
         if self.win_status != WinStatus.PENDING_CROSSING:  # if not waiting for crossings to finish
+            any_done_flag = False
             if pilot_done_flag and not prev_node_finished_flag:  # if pilot just finished race
                 logger.info('Pilot {} done'.format(done_pilot_obj.callsign if done_pilot_obj else done_node_obj.index))
                 self._racecontext.events.trigger(Evt.RACE_PILOT_DONE, {
@@ -856,6 +857,7 @@ class RHRace():
                     'results': self.get_results(),
                 })
                 self.set_node_finished_effect_flag(done_node_obj.index)  # indicate pilot-finished event was triggered
+                any_done_flag = True
             # check if any pilot-finished events were waiting for crossings to finish, and trigger them now if so
             if self.win_status == WinStatus.DECLARED and self.node_fin_effect_wait_count > 0:
                 for chk_node in self._racecontext.interface.nodes:
@@ -872,10 +874,28 @@ class RHRace():
                         })
                         self.set_node_finished_effect_flag(chk_node.index)  # indicate pilot-finished event was triggered
                         self.node_fin_effect_wait_count -= 1
+                        any_done_flag = True
+            if any_done_flag:
+                gevent.spawn(self.update_leaderboard_after_done)
         elif pilot_done_flag and not prev_node_finished_flag:  # if pilot just finished race
             self.node_fin_effect_wait_count += 1
             logger.debug('Waiting to process node {} done until all crossings completed'.format(done_node_obj.index+1))
 
+    # update leaderboard to reflect pilot just finished (done)
+    @catchLogExceptionsWrapper
+    def update_leaderboard_after_done(self):
+        gevent.sleep(0.001)
+        wait_count = 0  # if 'calc_leaderboard_fn' in progress then let it finish
+        while Results.is_in_calc_leaderboard_fn():
+            gevent.sleep(0.01)
+            wait_count += 1
+            if wait_count > 1000:  # timeout after 10 seconds
+                logger.error("update_leaderboard_after_done: Timeout waiting for invocation of 'calc_leaderboard()' to finish{}")
+                break
+        self.clear_results()
+        self.get_results()  # update leaderboard
+        self._racecontext.rhui.emit_current_laps() # update all laps on the race page
+        self._racecontext.rhui.emit_current_leaderboard() # generate and update leaderboard
 
     @catchLogExceptionsWrapper
     def delete_lap(self, data):
