@@ -1274,6 +1274,6 @@ class ServerAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
-    def enable_process_all_on_heartbeat(self):
-        self._racecontext.serverstate.process_all_on_heartbeat = True
+    def enable_heartbeat_event(self):
+        self._racecontext.serverstate.enable_heartbeat_event = True
 

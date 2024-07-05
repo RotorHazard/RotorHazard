@@ -266,4 +266,4 @@ class ServerState:
     secondary_race_format = None
 
     # enable processing of Evt.ALL events when Evt.HEARTBEAT is triggered
-    process_all_on_heartbeat = False
+    enable_heartbeat_event = False

@@ -57,10 +57,9 @@ class EventManager:
         if event in self.eventOrder:
             for name in self.eventOrder[event]:
                 evt_list.append([event, name])
-        if event != Evt.HEARTBEAT or self._racecontext.serverstate.process_all_on_heartbeat:
-            if Evt.ALL in self.eventOrder:
-                for name in self.eventOrder[Evt.ALL]:
-                    evt_list.append([Evt.ALL, name])
+        if event != Evt.HEARTBEAT and Evt.ALL in self.eventOrder:
+            for name in self.eventOrder[Evt.ALL]:
+                evt_list.append([Evt.ALL, name])
 
         if len(evt_list):
             for ev, name in evt_list:
