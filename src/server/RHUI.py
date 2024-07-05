@@ -1011,6 +1011,32 @@ class RHUI():
 
         self.emit_heat_data()
 
+    def emit_seat_data(self, **params):
+        """Emits seat data."""
+        seat_list = []
+
+        seatColorOpt = self._racecontext.serverconfig.get_item('LED', 'seatColors')
+        if seatColorOpt:
+            seatColors = seatColorOpt
+        else:
+            seatColors = self._racecontext.serverstate.seat_color_defaults
+
+        for seat in range(self._racecontext.race.num_nodes):
+            seat_list.append({
+                'seat_id': seat,
+                'color': seatColors[seat % len(seatColors)]
+            })
+
+        emit_payload = {
+            'seats': seat_list,
+        }
+        if ('nobroadcast' in params):
+            emit('seat_data', emit_payload)
+        elif ('noself' in params):
+            emit('seat_data', emit_payload, broadcast=True, include_self=False)
+        else:
+            self._socket.emit('seat_data', emit_payload)
+
     def emit_current_heat(self, **params):
         '''Emits the current heat.'''
         heat_data = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat)

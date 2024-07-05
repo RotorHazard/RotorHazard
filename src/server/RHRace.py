@@ -1466,20 +1466,11 @@ class RHRace():
             practice_flag = False
 
         if mode == 0:
-            seatColorOpt = self._racecontext.serverconfig.get_item_int('LED', 'seatColors', False)
+            seatColorOpt = self._racecontext.serverconfig.get_item('LED', 'seatColors')
             if seatColorOpt:
-                seatColors = json.loads(seatColorOpt)
+                seatColors = seatColorOpt
             else:
-                seatColors = [
-                    "#0022ff", # Blue
-                    "#ff5500", # Orange
-                    "#00ff22", # Green
-                    "#ff0055", # Magenta
-                    "#ddff00", # Yellow
-                    "#7700ff", # Purple
-                    "#00ffdd", # Teal
-                    "#aaaaaa", # White
-                ]
+                seatColors = self._racecontext.serverstate.seat_color_defaults
         elif mode == 2:
             profile_freqs = json.loads(self.profile.frequencies)
 
