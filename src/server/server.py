@@ -118,7 +118,7 @@ RaceContext.serverstate.program_start_mtonic = _program_start_mtonic
 RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - \
                                                         1000.0*RaceContext.serverstate.program_start_mtonic
 
-Events = EventManager(RHAPI)
+Events = EventManager(RaceContext)
 RaceContext.events = Events
 EventActionsObj = None
 
@@ -2379,6 +2379,11 @@ def heartbeat_thread_function():
 
             SOCKET_IO.emit('heartbeat', node_data)
             heartbeat_thread_function.iter_tracker += 1
+
+            if RaceContext.serverstate.enable_heartbeat_event:
+                Events.trigger(Evt.HEARTBEAT, {
+                    'count': heartbeat_thread_function.iter_tracker
+                })
 
             # update displayed IMD rating after freqs changed:
             if heartbeat_thread_function.imdtabler_flag and \

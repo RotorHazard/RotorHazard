@@ -41,6 +41,7 @@ class RHAPI():
         self.sensors = SensorsAPI(self._racecontext)
         self.eventresults = EventResultsAPI(self._racecontext)
         self.events = EventsAPI(self._racecontext)
+        self.server = ServerAPI(self._racecontext)
 
         self.__ = self.language.__ # shortcut access
 
@@ -1265,4 +1266,14 @@ class EventsAPI():
 
     def trigger(self, event, args):
         self._racecontext.events.trigger(event, args)
+
+#
+# Server
+#
+class ServerAPI():
+    def __init__(self, race_context):
+        self._racecontext = race_context
+
+    def enable_heartbeat_event(self):
+        self._racecontext.serverstate.enable_heartbeat_event = True
 
