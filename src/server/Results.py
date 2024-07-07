@@ -184,6 +184,9 @@ def build_atomic_results(rhDataObj, params):
         logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
         logger.debug("Exiting 'build_atomic_results()'{}".format(dbg_trace_str))
 
+def is_in_calc_leaderboard_fn():
+    return in_calc_leaderboard_fn_flag
+
 def calc_leaderboard(racecontext, **params):
     dbg_trace_str = ""
     if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
