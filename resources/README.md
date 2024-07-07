@@ -74,4 +74,4 @@ Receivers may be connected to servers via USB insterface.
 - Very low cost
 - Does not contain server hardware; must connect to an existing server (for example, one of the above builds or installed directly onto a laptop)
 
-[USB Nodes](doc/USB%20Nodes.md)
+[USB Nodes](../doc/USB%20Nodes.md)
