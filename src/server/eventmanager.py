@@ -17,8 +17,8 @@ class EventManager:
     eventOrder = {}
     eventThreads = {}
 
-    def __init__(self, rhapi):
-        self._rhapi = rhapi
+    def __init__(self, racecontext):
+        self._racecontext = racecontext
 
     def on(self, event, name, handler_fn, default_args=None, priority=200, unique=False):
         if default_args == None:
@@ -57,7 +57,7 @@ class EventManager:
         if event in self.eventOrder:
             for name in self.eventOrder[event]:
                 evt_list.append([event, name])
-        if Evt.ALL in self.eventOrder:
+        if event != Evt.HEARTBEAT and Evt.ALL in self.eventOrder:
             for name in self.eventOrder[Evt.ALL]:
                 evt_list.append([Evt.ALL, name])
 
@@ -92,6 +92,7 @@ class EventManager:
 class Evt:
     # Special
     ALL = 'all'
+    HEARTBEAT = 'heartbeat'
     UI_DISPATCH = 'dispatch'
     # Program
     STARTUP = 'startup'
