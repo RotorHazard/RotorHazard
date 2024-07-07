@@ -1833,8 +1833,7 @@
 		$(document).on("click", '#set_led_color', function (event) {
 			src_hexcolor = rgbtoHex($(event.target).css('background-color'));
 
-			color_picker(src_hexcolor, function(h, s, l){
-				hexcolor = hslToHex(h, s, l);
+			color_picker(src_hexcolor, function(hexcolor){
 				$(event.target).css('background-color', hexcolor);
 			})
 		})

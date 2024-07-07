@@ -749,6 +749,8 @@ def on_load_data(data):
                 heartbeat_thread_function.imdtabler_flag = True
         elif load_type == 'heat_data':
             RaceContext.rhui.emit_heat_data(nobroadcast=True)
+        elif load_type == 'seat_data':
+            RaceContext.rhui.emit_seat_data(nobroadcast=True)
         elif load_type == 'class_data':
             RaceContext.rhui.emit_class_data(nobroadcast=True)
         elif load_type == 'format_data':
@@ -1161,6 +1163,47 @@ def on_delete_pilot(data):
     if result:
         RaceContext.rhui.emit_pilot_data()
         RaceContext.rhui.emit_heat_data()
+
+@SOCKET_IO.on('set_seat_color')
+@catchLogExcWithDBWrapper
+def on_set_seat_color(data):
+    '''Update seat color.'''
+    seat_id = data['seat_id']
+    color = data['color']
+
+    seat_color_opt = RaceContext.serverconfig.get_item('LED', 'seatColors')
+    if seat_color_opt:
+        seat_colors = seat_color_opt
+    else:
+        seat_colors = RaceContext.serverstate.seat_color_defaults
+
+    seat_colors[seat_id] = color
+
+    RaceContext.serverconfig.set_item('LED', 'seatColors', seat_colors)
+    RaceContext.race.updateSeatColors()
+    RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_seat_data()
+
+    Events.trigger(Evt.CONFIG_SET, {
+        'section': 'LED',
+        'key': 'seatColors',
+        'value': seat_colors,
+        })
+
+@SOCKET_IO.on('reset_seat_color')
+@catchLogExcWithDBWrapper
+def on_reset_seat_color():
+    '''Update seat color.'''
+    RaceContext.serverconfig.set_item('LED', 'seatColors', [])
+    RaceContext.race.updateSeatColors()
+    RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_seat_data()
+
+    Events.trigger(Evt.CONFIG_SET, {
+        'section': 'LED',
+        'key': 'seatColors',
+        'value': [],
+        })
 
 @SOCKET_IO.on('add_profile')
 @catchLogExcWithDBWrapper

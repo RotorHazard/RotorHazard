@@ -1,5 +1,6 @@
 '''Primary Race management class'''
 
+import copy
 import Config
 import RHRace
 import RHTimeFns
@@ -264,6 +265,21 @@ class ServerState:
 
     # race format used in secondary mode (must be initialized after database)
     secondary_race_format = None
+
+    _seat_color_defaults = [
+        "#0022ff",  # Blue
+        "#ff5500",  # Orange
+        "#00ff22",  # Green
+        "#ff0055",  # Magenta
+        "#ddff00",  # Yellow
+        "#7700ff",  # Purple
+        "#00ffdd",  # Teal
+        "#aaaaaa",  # White
+    ]
+
+    @property
+    def seat_color_defaults(self):
+        return copy.copy(self._seat_color_defaults)
 
     # enable processing of Evt.ALL events when Evt.HEARTBEAT is triggered
     enable_heartbeat_event = False

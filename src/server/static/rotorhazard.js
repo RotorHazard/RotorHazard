@@ -138,7 +138,9 @@ function hslToHex(h, s, l) {
 }
 
 function hexToHsl(hex) {
-	var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+	regex = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i
+	var result = regex.exec(hex);
+	if (result) {
 		r = parseInt(result[1], 16);
 		g = parseInt(result[2], 16);
 		b = parseInt(result[3], 16);
@@ -157,6 +159,11 @@ function hexToHsl(hex) {
 			}
 			h /= 6;
 		}
+	} else {
+		h = 0;
+		s = 0;
+		l = 0.5;
+	}
 	var HSL = new Object();
 	HSL['h']=h * 360;
 	HSL['s']=s * 100;
@@ -2224,6 +2231,7 @@ color_picker_el.append('<div id="color-picker-swatch">');
 color_picker_el.append('<input type="range" id="color-picker-hue" min="0" max="359">');
 color_picker_el.append('<input type="range" id="color-picker-sat" min="0" max="100">');
 color_picker_el.append('<input type="range" id="color-picker-lum" min="25" max="100">');
+color_picker_el.append('<input type="text" id="color-picker-hex" maxlength="7">');
 color_picker_el.append('<button id="color-picker-confirm">' + __('Select') + '</button>');
 
 function color_picker(loadColor=false, callback=false) {
@@ -2238,6 +2246,7 @@ function color_picker(loadColor=false, callback=false) {
 		callbacks: {
 			open: function() {
 				if (loadColor) {
+					$('#color-picker-hex').val(loadColor)
 					hslObj = hexToHsl(loadColor)
 					$('#color-picker-hue').val(hslObj.h)
 					$('#color-picker-sat').val(hslObj.s)
@@ -2252,11 +2261,9 @@ function color_picker(loadColor=false, callback=false) {
 				$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
 			},
 			beforeClose: function() {
-				var hue = $('#color-picker-hue').val()
-				var sat = $('#color-picker-sat').val()
-				var lum = $('#color-picker-lum').val()
+				var hex = $('#color-picker-hex').val();
 				if (typeof callback === 'function') {
-					callback(hue, sat, lum);
+					callback(hex);
 				}
 			}
 		}
@@ -2265,13 +2272,48 @@ function color_picker(loadColor=false, callback=false) {
 
 $(document).on('input', '#color-picker-hue', function (event) {
 	$('html').css('--color-picker-hue', $('#color-picker-hue').val());
+	var hue = $('#color-picker-hue').val();
+	var sat = $('#color-picker-sat').val();
+	var lum = $('#color-picker-lum').val();
+	$('#color-picker-hex').val(hslToHex(hue, sat, lum));
 });
 
 $(document).on('input', '#color-picker-sat', function (event) {
 	$('html').css('--color-picker-sat', $('#color-picker-sat').val() + '%');
+	var hue = $('#color-picker-hue').val();
+	var sat = $('#color-picker-sat').val();
+	var lum = $('#color-picker-lum').val();
+	$('#color-picker-hex').val(hslToHex(hue, sat, lum));
 });
 
 $(document).on('input', '#color-picker-lum', function (event) {
+	$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
+	var hue = $('#color-picker-hue').val();
+	var sat = $('#color-picker-sat').val();
+	var lum = $('#color-picker-lum').val();
+	$('#color-picker-hex').val(hslToHex(hue, sat, lum));
+});
+
+$(document).on('change', '#color-picker-hex', function (event) {
+	var regex = /^(#?)([0-9A-F]{6})$/i;
+	var input = $('#color-picker-hex').val()
+	if (regex.test(input)) {
+		var loadColor = input.match(regex)[2];
+		hslObj = hexToHsl(loadColor)
+		$('#color-picker-hue').val(hslObj.h)
+		$('#color-picker-sat').val(hslObj.s)
+		$('#color-picker-lum').val(hslObj.l)
+		if (!input.match(regex)[1]) {
+			$('#color-picker-hex').val('#' + input);
+		}
+	} else {
+		$('#color-picker-hue').val(0);
+		$('#color-picker-sat').val(0);
+		$('#color-picker-lum').val(50);
+		$('#color-picker-hex').val('');
+	}
+	$('html').css('--color-picker-hue', $('#color-picker-hue').val());
+	$('html').css('--color-picker-sat', $('#color-picker-sat').val() + '%');
 	$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
 });
 

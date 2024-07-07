@@ -16,6 +16,7 @@
 		},
 		'frequency_data',
 		'pilot_data',
+		'seat_data',
 		'heat_data',
 		'class_data',
 		'format_data',
@@ -68,6 +69,7 @@
 
 		if (parseInt('{{ getConfig('LED', 'ledColorMode') }}')) {
 			$('#set_ledColorMode').val('{{ getConfig('LED', 'ledColorMode') }}');
+			display_seat_color_ui();
 		}
 
 		$('#unlock_race_format_button').html(svg_asset.lock);
@@ -1335,8 +1337,7 @@
 			pilot_id = parseInt($(event.target).data('pilot_id'));
 			src_hexcolor = $(event.target).data('color');
 
-			color_picker(src_hexcolor, function(h, s, l){
-				hexcolor = hslToHex(h, s, l)
+			color_picker(src_hexcolor, function(hexcolor){
 				var data = {
 					pilot_id: pilot_id,
 					color: hexcolor
@@ -1405,6 +1406,52 @@
 				pilot: parseInt($(this).data('id')),
 			};
 			socket.emit('delete_pilot', data);
+		});
+
+		/* Color */
+
+		function display_seat_color_ui() {
+			mode = $('#set_ledColorMode').val()
+			$('#seat-colors').prop('hidden', mode != 0);
+		}
+
+		$(document).on("click", '#set_ledColorMode', function (event) {
+			display_seat_color_ui();
+		});
+
+		socket.on('seat_data', function (msg) {
+			rotorhazard.event.seats = msg.seats;
+			display_seat_colors();
+		});
+
+		function display_seat_colors() {
+			if (rotorhazard.event.seats) {
+				var seat_color_el = $('#seat-colors');
+				seat_color_el.empty();
+				for (var i = 0; i < rotorhazard.event.seats.length; i++) {
+					var seat = rotorhazard.event.seats[i];
+					seat_color_el.append('<button class="set_seat_color color-picker" id="seatcolor_' + seat.seat_id + '" data-seat_id="' + seat.seat_id + '" data-color="' + seat.color + '" style="background-color:' + seat.color + '">');
+				}
+				seat_color_el.append('<button id="reset-seat-color">' + __('Reset') + '</button>');
+			}
+		}
+
+		$(document).on("click", '.set_seat_color', function (event) {
+			seat_id = parseInt($(event.target).data('seat_id'));
+			src_hexcolor = $(event.target).data('color');
+
+			color_picker(src_hexcolor, function(hexcolor){
+				var data = {
+					seat_id: seat_id,
+					color: hexcolor
+				};
+				socket.emit('set_seat_color', data);
+				$('#seatcolor_' + seat_id).data('color', hexcolor).css('background-color', hexcolor);
+			})
+		});
+
+		$(document).on("click", '#reset-seat-color', function (event) {
+			socket.emit('reset_seat_color');
 		});
 
 		/* Race Format */
@@ -2404,6 +2451,8 @@
 				</select>
 			</li>
 		</ol>
+
+		<div class="control-set" id="seat-colors"></div>
 
 		<ul class="pilots">
 			<li>{{ __('Loading...') }}</li>

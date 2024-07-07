@@ -2526,6 +2526,13 @@ button.color-picker {
 
 #color-picker {
 	padding: 0.5em;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+}
+
+#color-picker > * {
+	flex-basis: 100%;
 }
 
 #color-picker-swatch {
@@ -2533,6 +2540,15 @@ button.color-picker {
 	height: 2em;
 	background: hsl(var(--color-picker-hue), var(--color-picker-sat), var(--color-picker-lum));
 	margin: 0.5em 0;
+}
+
+#color-picker-hex {
+	width: 5em;
+}
+
+#color-picker-confirm,
+#color-picker-hex {
+	flex-basis: auto;
 }
 
 .heat-plan-result {
