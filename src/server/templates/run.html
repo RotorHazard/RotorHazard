@@ -952,12 +952,14 @@
 			$('.race_status_message').html(race.status_msg);
 		});
 
-		function callout_current_leader(pilot_phonetic, play_tone_flag) {
+		function callout_current_leader(pilot_phonetic, separate_call_flag) {
 			if (!rotorhazard.winner_declared_flag) {
-				if (play_tone_flag && rotorhazard.beep_race_leader_lap) {
-					speak(LEADER_FLAG_CHAR);
+				speak(('<div class="speech">' + pilot_phonetic + " " + __l('is leading') + '</div>'),
+						separate_call_flag);
+				// do 'speak()' for leader tone second because "priority=true" reverses order
+				if (separate_call_flag && rotorhazard.beep_race_leader_lap) {
+					speak(LEADER_FLAG_CHAR, separate_call_flag);
 				}
-				speak('<div class="speech">' + pilot_phonetic + " " + __l('is leading') + '</div>');
 			}
 		}
 
