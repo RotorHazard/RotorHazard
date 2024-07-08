@@ -13,8 +13,13 @@ class TracksideConnector():
     def __init__(self, rhapi):
         self._rhapi = rhapi
         self.enabled = False
+        self._trackside_race_id = None
 
         self._rhapi.events.on(Evt.RACE_LAP_RECORDED, self.race_lap_recorded)
+        self._rhapi.events.on(Evt.LAPS_SAVE, self.laps_save)
+        self._rhapi.events.on(Evt.LAPS_CLEAR, self.laps_clear)
+        self._rhapi.events.on(Evt.LAPS_RESAVE, self.laps_resave)
+
 
     def initialize(self, _args):
         logger.info('Initializing Trackside connector')
@@ -25,6 +30,7 @@ class TracksideConnector():
         self._rhapi.ui.socket_listen('ts_race_stage', self.race_stage)
         self._rhapi.ui.socket_listen('ts_race_stop', self.race_stop)
 
+        self._rhapi.fields.register_race_attribute(UIField('trackside_race_ID', "FPVTrackSide Race ID", UIFieldType.TEXT, private=True))
         # self._rhapi.fields.register_pilot_attribute(UIField('trackside_ID', "Trackside user ID", UIFieldType.BASIC_INT)) # , private=True
         # logger.debug(self._rhapi.db.pilot_ids_by_attribute('trackside_ID', '123'))
 
@@ -55,13 +61,16 @@ class TracksideConnector():
         self._rhapi.db.frequencyset_alter(frequency_set.id, frequencies=arg)
 
     def race_stage(self, arg=None):
+        if not arg:
+            return None
+
         self.enabled = True
 
         if self._rhapi.race.status != RaceStatus.READY:
             self._rhapi.race.stop() #doSave executes asynchronously, but we need it done now
             self._rhapi.race.save()
 
-        if arg and arg.get('p'):
+        if arg.get('p'):
             heat = self._rhapi.db.heat_add()
             self._rhapi.db.heat_alter(heat.id, name="TrackSide Heat {}".format(heat.id))
             slots = self._rhapi.db.slots_by_heat(heat.id)
@@ -101,8 +110,10 @@ class TracksideConnector():
             'ignore_secondary_heat': True,
         }
 
-        if arg and arg.get('start_time_s'):
+        if arg.get('start_time_s'):
             start_race_args['start_time_s'] = arg['start_time_s']
+
+        self._trackside_race_id = arg.get('race_id')
 
         self._rhapi.race.stage(start_race_args)
 
@@ -118,6 +129,48 @@ class TracksideConnector():
 
     def race_stop(self, arg=None):
         self._rhapi.race.stop()
+
+    def laps_save(self, args):
+        race_id = args.get('race_id')
+        if race_id and self._trackside_race_id:
+            self._rhapi.db.race_alter(race_id, attributes = {
+                'trackside_race_ID': self._trackside_race_id
+            })
+
+    def laps_clear(self, args):
+        self._trackside_race_id = None
+
+    def laps_resave(self, args):
+        if args and args.get('race_id'):
+            race_id = args.get('race_id')
+            for run in self._rhapi.db.pilotruns_by_race(race_id):
+                if run.pilot_id == args.get('pilot_id'):
+                    laps_raw = self._rhapi.db.laps_by_pilotrun(run.id)
+                    laps = []
+                    for lap in laps_raw:
+                        if not lap.deleted:
+                            laps.append({
+                                'lap_time': lap.lap_time,
+                                'lap_time_formatted': lap.lap_time_formatted,
+                                'lap_time_stamp': lap.lap_time_stamp,
+                            })
+                    laps = json.dumps(laps)
+                    break
+            else:
+                return False
+
+            ts_race_id = self._rhapi.db.race_attribute_value(race_id, 'trackside_race_ID')
+
+            pilot_id = args.get('pilot_id')
+            callsign = self._rhapi.db.pilot_by_id(pilot_id).callsign
+
+            payload = {
+                'race_id': ts_race_id,
+                'callsign': callsign,
+                'laps': laps
+            }
+            self._rhapi.ui.socket_broadcast('ts_race_marshal', payload)
+
 
 def initialize(rhapi):
     connector = TracksideConnector(rhapi)
