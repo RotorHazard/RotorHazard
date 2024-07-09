@@ -31,8 +31,7 @@ class TracksideConnector():
         self._rhapi.ui.socket_listen('ts_race_stop', self.race_stop)
 
         self._rhapi.fields.register_race_attribute(UIField('trackside_race_ID', "FPVTrackSide Race ID", UIFieldType.TEXT, private=True))
-        # self._rhapi.fields.register_pilot_attribute(UIField('trackside_ID', "Trackside user ID", UIFieldType.BASIC_INT)) # , private=True
-        # logger.debug(self._rhapi.db.pilot_ids_by_attribute('trackside_ID', '123'))
+        self._rhapi.fields.register_pilot_attribute(UIField('trackside_pilot_ID', "Trackside Pilot ID", UIFieldType.TEXT, private=True))
 
     def server_info(self, _arg=None):
         self.enabled = True
@@ -77,15 +76,25 @@ class TracksideConnector():
             slot_list = []
 
             ts_pilot_callsigns = arg.get('p')
+            ts_pilot_ids = arg.get('p_id')
             rh_pilots = self._rhapi.db.pilots
             added_pilot = False
             for idx, ts_pilot_callsign in enumerate(ts_pilot_callsigns):
+                ts_id = ts_pilot_ids[idx] if idx < len(ts_pilot_ids) else None
                 for rh_pilot in rh_pilots:
-                    if rh_pilot.callsign == ts_pilot_callsign:
+                    rh_pilot_ts_id = self._rhapi.db.pilot_attribute_value(rh_pilot.id, 'trackside_pilot_ID', None)
+                    if ts_id and rh_pilot_ts_id == ts_id:
                         pilot = rh_pilot
                         break
+                    else:
+                        if rh_pilot.callsign == ts_pilot_callsign:
+                            pilot = rh_pilot
+                            break
                 else:
                     new_pilot = self._rhapi.db.pilot_add(name=ts_pilot_callsign, callsign=ts_pilot_callsign)
+                    self._rhapi.db.pilot_alter(new_pilot.id, attributes={
+                        'trackside_pilot_ID': ts_id
+                    })
                     pilot = new_pilot
                     added_pilot = True
 
@@ -148,12 +157,12 @@ class TracksideConnector():
                     laps_raw = self._rhapi.db.laps_by_pilotrun(run.id)
                     laps = []
                     for lap in laps_raw:
-                        if not lap.deleted:
-                            laps.append({
-                                'lap_time': lap.lap_time,
-                                'lap_time_formatted': lap.lap_time_formatted,
-                                'lap_time_stamp': lap.lap_time_stamp,
-                            })
+                        laps.append({
+                            'deleted': lap.deleted,
+                            'lap_time': lap.lap_time,
+                            'lap_time_formatted': lap.lap_time_formatted,
+                            'lap_time_stamp': lap.lap_time_stamp,
+                        })
                     laps = json.dumps(laps)
                     break
             else:
@@ -163,10 +172,12 @@ class TracksideConnector():
 
             pilot_id = args.get('pilot_id')
             callsign = self._rhapi.db.pilot_by_id(pilot_id).callsign
+            ts_pilot_id = self._rhapi.db.pilot_attribute_value(pilot_id, 'trackside_pilot_ID', None)
 
             payload = {
                 'race_id': ts_race_id,
                 'callsign': callsign,
+                'ts_pilot_id': ts_pilot_id,
                 'laps': laps
             }
             self._rhapi.ui.socket_broadcast('ts_race_marshal', payload)
