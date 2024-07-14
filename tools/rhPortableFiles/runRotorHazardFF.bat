@@ -5,9 +5,9 @@ if exist %ffprog% goto cont
 SET ffprog=
 :cont
 if "%1"=="" goto noparam
-start ..\..\python38\python server.py --viewdb "%1" results %ffprog%
+start ..\..\python39\python server.py --viewdb "%1" results %ffprog%
 goto ex
 :noparam
-start ..\..\python38\python server.py --launchb results %ffprog%
+start ..\..\python39\python server.py --launchb results %ffprog%
 :ex
 popd
