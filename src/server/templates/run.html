@@ -557,12 +557,14 @@
 				var single_class = true;
 				for (var h in rotorhazard.event.heats) {
 					var heat = rotorhazard.event.heats[h];
-					if (!(heat.class_id in heats_by_class)) {
-						heats_by_class[heat.class_id] = [];
-					}
-					heats_by_class[heat.class_id].push(heat)
-					if (heat.class_id != 0) {
-						single_class = false;
+					if (heat.active) {
+						if (!(heat.class_id in heats_by_class)) {
+							heats_by_class[heat.class_id] = [];
+						}
+						heats_by_class[heat.class_id].push(heat)
+						if (heat.class_id != 0) {
+							single_class = false;
+						}
 					}
 				}
 

@@ -1172,6 +1172,8 @@ class RHData():
             slot.seed_rank = data['seed_rank']
         if 'status' in data:
             heat.status = data['status']
+        if 'active' in data:
+            heat.active = data['active']
 
         # update source names:
         if 'name' in data:

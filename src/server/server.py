@@ -1059,6 +1059,24 @@ def on_duplicate_heat(data):
     RaceContext.rhdata.duplicate_heat(data['heat'])
     RaceContext.rhui.emit_heat_data()
 
+@SOCKET_IO.on('deactivate_heat')
+@catchLogExcWithDBWrapper
+def on_duplicate_heat(data):
+    RaceContext.rhdata.alter_heat({
+        'heat': data['heat'],
+        'active': False
+    })
+    RaceContext.rhui.emit_heat_data()
+
+@SOCKET_IO.on('activate_heat')
+@catchLogExcWithDBWrapper
+def on_duplicate_heat(data):
+    RaceContext.rhdata.alter_heat({
+        'heat': data['heat'],
+        'active': True
+    })
+    RaceContext.rhui.emit_heat_data()
+
 @SOCKET_IO.on('alter_heat')
 @catchLogExcWithDBWrapper
 def on_alter_heat(data):

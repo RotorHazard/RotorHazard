@@ -838,6 +838,7 @@ class RHUI():
             current_heat['order'] = heat.order
             current_heat['status'] = heat.status
             current_heat['auto_frequency'] = heat.auto_frequency
+            current_heat['active'] = heat.active
             current_heat['next_round'] = self._racecontext.rhdata.get_max_round(heat.id)
 
             current_heat['slots'] = []
