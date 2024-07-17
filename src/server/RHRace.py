@@ -1627,6 +1627,10 @@ class RHRace():
         if force:
             self.finalize_heat_set(new_heat_id)
 
+        heat = self._racecontext.rhdata.get_heat(new_heat_id)
+        if heat and not heat.active:
+            self.finalize_heat_set(RHUtils.HEAT_ID_NONE)
+
         result = self._racecontext.heatautomator.calc_heat(new_heat_id, silent)
 
         if result == 'safe':
