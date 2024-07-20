@@ -217,3 +217,4 @@ class PageCache:
         timing['end'] = monotonic()
 
         logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
+        return not error_flag
