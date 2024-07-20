@@ -5,6 +5,7 @@ import Config
 import RHRace
 import RHTimeFns
 import logging
+from led_event_manager import NoLEDManager
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class RaceContext():
         self.events = None
         self.rhui = None
 
-        self.led_manager = None
+        self.led_manager = NoLEDManager()
         self.vrx_manager = None
         self.export_manager = None
         self.import_manager = None
