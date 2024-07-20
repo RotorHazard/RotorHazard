@@ -2295,7 +2295,7 @@ def set_vrx_node(data):
     vrx_id = data['vrx_id']
     node = data['node']
 
-    if RaceContext.vrx_manager.isEnabled():
+    if RaceContext.vrx_manager and RaceContext.vrx_manager.isEnabled():
         # TODO: RaceContext.vrx_manager.setDeviceMethod(device_id, method)
         # TODO: RaceContext.vrx_manager.setDevicePilot(device_id, pilot_id)
 
@@ -2353,12 +2353,12 @@ def heartbeat_thread_function():
 
             # collect vrx lock status
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
-                if RaceContext.vrx_manager.isEnabled():
+                if RaceContext.vrx_manager and RaceContext.vrx_manager.isEnabled():
                     RaceContext.vrx_manager.updateStatus()
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
                 # emit display status with offset
-                if RaceContext.vrx_manager.isEnabled():
+                if RaceContext.vrx_manager and RaceContext.vrx_manager.isEnabled():
                     RaceContext.rhui.emit_vrx_list()
 
             # emit environment data less often:
