@@ -100,6 +100,9 @@ Print the case with support for only the pi/power hole, sd card cutout, and led 
 
 **RXs won't change channel**: An early batch of RX carrier cards misprinted the alignment dot. Try inserting the carrier cards backwards.
 
+**Shutdown button not working**: For the NuclearHazard PCB, the [shutdown button](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Shutdown%20Button.md) needs to be configured in the "_src/server/config.json_" file for GPIO19, like this:  
+`"SHUTDOWN_BUTTON_GPIOPIN": 19,`
+
 ## Schematic
 
 [Schematic](https://github.com/SpencerGraffunder/RotorHazard/blob/NuclearHazardHardware/resources/NuclearHazard/pcb/img/Schematic_NuclearHazard.pdf)
