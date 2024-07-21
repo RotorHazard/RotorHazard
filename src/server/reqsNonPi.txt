@@ -22,4 +22,4 @@ cffi==1.15.*
 
 # Other
 pyserial==3.4.*
-requests==2.31.*
+requests==2.32.*
