@@ -267,10 +267,12 @@ The variables listed below may be used for the  effects.
 | %FREQS%                   | List of pilot callsigns and frequency assignments                       |
 | %LEADER%                  | Callsign of pilot currently leading race                                |
 | %LEADER_CALL%             | Callsign of pilot currently leading race, in the form "NAME is leading" |
-| %CURRENT_TIME_AP%         | Current time (12-hour clock)                       |
-| %CURRENT_TIME_24%         | Current time (24-hour clock)                       |
-| %CURRENT_TIME_SECS_AP%    | Current time, with seconds (12-hour clock)         |
-| %CURRENT_TIME_SECS_24%    | Current time, with seconds (24-hour clock)         |
+| %SPLIT_TIME%              | Split time for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)  |
+| %SPLIT_SPEED%             | Split speed for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc) |
+| %CURRENT_TIME_AP%         | Current time (12-hour clock)                                            |
+| %CURRENT_TIME_24%         | Current time (24-hour clock)                                            |
+| %CURRENT_TIME_SECS_AP%    | Current time, with seconds (12-hour clock)                              |
+| %CURRENT_TIME_SECS_24%    | Current time, with seconds (24-hour clock)                              |
 
 #### LED Effects
 Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.
