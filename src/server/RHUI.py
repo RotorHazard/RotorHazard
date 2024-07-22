@@ -97,6 +97,7 @@ class RHUI():
         self._socket = SOCKET_IO
         self._racecontext = RaceContext
         self._events = Events
+        self._filters = RaceContext.filters
 
         self._pilot_attributes = []
         self._heat_attributes = []
@@ -338,6 +339,8 @@ class RHUI():
                     'markdowns': markdowns
                 })
 
+        emit_payload = self._filters.run_filters('emit_ui', emit_payload)
+
         if ('nobroadcast' in params):
             emit('ui', emit_payload)
         else:
@@ -405,6 +408,8 @@ class RHUI():
             'plugins': plugin_data
         }
 
+        emit_payload = self._filters.run_filters('emit_plugin_list', emit_payload)
+
         if ('nobroadcast' in params):
             emit('plugin_list', emit_payload)
         else:
@@ -447,6 +452,8 @@ class RHUI():
             'calc_result': calc_result
         }
 
+        emit_payload = self._filters.run_filters('emit_heat_plan_result', emit_payload)
+
         self._socket.emit('heat_plan_result', emit_payload)
 
     def emit_race_stage(self, payload):
@@ -487,6 +494,7 @@ class RHUI():
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
                 'next_round': self._racecontext.rhdata.get_max_round(heat_id) + 1
             }
+
         if ('nobroadcast' in params):
             emit('race_status', emit_payload)
         else:
@@ -540,6 +548,8 @@ class RHUI():
         emit_payload = []
         for sensor in self._racecontext.sensors:
             emit_payload.append({sensor.name: sensor.getReadings()})
+
+        emit_payload = self._filters.run_filters('emit_environmental_data', emit_payload)
 
         if ('nobroadcast' in params):
             emit('environmental_data', emit_payload)
@@ -754,6 +764,8 @@ class RHUI():
             # 'classes': current_classes,
         }
 
+        emit_payload = self._filters.run_filters('emit_race_list', emit_payload)
+
         if ('nobroadcast' in params):
             emit('race_list', emit_payload)
         else:
@@ -872,6 +884,9 @@ class RHUI():
         emit_payload = {
             'heats': heats,
         }
+
+        emit_payload = self._filters.run_filters('emit_heat_data', emit_payload)
+
         if ('nobroadcast' in params):
             emit('heat_data', emit_payload)
         elif ('noself' in params):
@@ -903,6 +918,9 @@ class RHUI():
         emit_payload = {
             'classes': current_classes,
         }
+
+        emit_payload = self._filters.run_filters('emit_raceclass_data', emit_payload)
+
         if ('nobroadcast' in params):
             emit('class_data', emit_payload)
         elif ('noself' in params):
@@ -945,6 +963,9 @@ class RHUI():
         emit_payload = {
             'formats': formats,
         }
+
+        emit_payload = self._filters.run_filters('emit_format_data', emit_payload)
+
         if ('nobroadcast' in params):
             emit('format_data', emit_payload)
         elif ('noself' in params):
@@ -1002,6 +1023,9 @@ class RHUI():
             'pilotSort': self._racecontext.serverconfig.get_item('UI', 'pilotSort'),
             'attributes': attrs
         }
+
+        emit_payload = self._filters.run_filters('emit_pilot_data', emit_payload)
+
         if ('nobroadcast' in params):
             emit('pilot_data', emit_payload)
         elif ('noself' in params):
@@ -1030,6 +1054,9 @@ class RHUI():
         emit_payload = {
             'seats': seat_list,
         }
+
+        emit_payload = self._filters.run_filters('emit_seat_data', emit_payload)
+
         if ('nobroadcast' in params):
             emit('seat_data', emit_payload)
         elif ('noself' in params):
@@ -1131,6 +1158,8 @@ class RHUI():
             emit_payload['callsign'] = None
             emit_payload['pilot_id'] = None
 
+        emit_payload = self._filters.run_filters('emit_phonetic_data', emit_payload)
+
         if ('nobroadcast' in params):
             emit('phonetic_data', emit_payload)
         else:
@@ -1144,6 +1173,9 @@ class RHUI():
             emit_payload['pilot'] = pilot.phonetic
             emit_payload['callsign'] = pilot.callsign
             emit_payload['pilot_id'] = pilot.id
+
+        emit_payload = self._filters.run_filters('emit_phonetic_leader', emit_payload)
+
         if ('nobroadcast' in params):
             emit('phonetic_leader', emit_payload)
         else:
@@ -1184,6 +1216,9 @@ class RHUI():
             'domain': domain,
             'winner_flag': winner_flag
         }
+
+        emit_payload = self._filters.run_filters('emit_phonetic_text', emit_payload)
+
         if ('nobroadcast' in params):
             emit('phonetic_text', emit_payload)
         else:
@@ -1209,6 +1244,9 @@ class RHUI():
                 'split_time': phonetic_time,
                 'split_speed': phonetic_speed
             }
+
+            emit_payload = self._filters.run_filters('emit_phonetic_split', emit_payload)
+
             if ('nobroadcast' in params):
                 emit('phonetic_split_call', emit_payload)
             else:

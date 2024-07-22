@@ -25,6 +25,7 @@ class RHRace():
     def __init__(self, racecontext):
         # internal references
         self._racecontext = racecontext
+        self._filters = racecontext.filters
         self.__ = self._racecontext.language.__
         # setup/options
         self.num_nodes = 0
@@ -90,6 +91,7 @@ class RHRace():
 
     @catchLogExceptionsWrapper
     def stage(self, data=None):
+        data = self._filters.run_filters('race_stage', data)
 
         with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
@@ -1404,18 +1406,21 @@ class RHRace():
         return build
 
     def set_lap_results(self, token, lap_results):
+        lap_results = self._filters.run_filters('race_laps', lap_results)
         if self.lap_cacheStatus['data_ver'] == token:
             self.lap_cacheStatus['build_ver'] = token
             self.lap_results = lap_results
         return True
 
     def set_results(self, token, results):
+        results = self._filters.run_filters('race_results', results)
         if self.cacheStatus['data_ver'] == token:
             self.cacheStatus['build_ver'] = token
             self.results = results
         return True
 
     def set_team_results(self, token, results):
+        results = self._filters.run_filters('race_team_results', results)
         if self.team_cacheStatus['data_ver'] == token:
             self.team_cacheStatus['build_ver'] = token
             self.team_results = results
@@ -1622,6 +1627,8 @@ class RHRace():
             logger.exception("Error checking/creating heat for secondary format")
 
     def set_heat(self, new_heat_id, silent=False, force=False): #set_current_heat_data
+        new_heat_id = self._filters.run_filters('heat_set_id', new_heat_id)
+
         logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
 
         if force:
