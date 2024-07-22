@@ -3399,6 +3399,14 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                 # %ROUND_CALL% : Current round number (with prompt)
                 text = text.replace('%ROUND_CALL%', round_str)
 
+        # %RACE_FORMAT%: Current race format
+        if '%RACE_FORMAT%' in text:
+            format_obj = rhapi.race.raceformat
+            if format_obj:
+                text = text.replace('%RACE_FORMAT%', format_obj.name)
+                text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
+                text = text.replace('/', ' ')
+
         # %PILOTS% : List of pilot callsigns (read out slower)
         if '%PILOTS%' in text:
             text = text.replace('%PILOTS%', getPilotsListStr(rhapi, ' . ', spoken_flag))
@@ -3425,6 +3433,17 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                 name_str = "{} {}".format(name_str, rhapi.__('is leading'))
             # %LEADER_CALL% : Callsign of pilot currently leading race, in the form "NAME is leading"
             text = text.replace('%LEADER_CALL%', name_str)
+
+        if '%CURRENT_TIME' in text:
+            now_obj = datetime.now()
+            # %CURRENT_TIME_AP%: Current time (12-hour clock)
+            text = text.replace('%CURRENT_TIME_AP%', now_obj.strftime("%I:%M %p"))
+            # %CURRENT_TIME_24%: Current time (24-hour clock)
+            text = text.replace('%CURRENT_TIME_24%', now_obj.strftime("%H:%M"))
+            # %CURRENT_TIME_SECS_AP%: Current time, with seconds (12-hour clock)
+            text = text.replace('%CURRENT_TIME_SECS_AP%', now_obj.strftime("%I:%M:%S %p"))
+            # %CURRENT_TIME_SECS_24%: Current time, with seconds (24-hour clock)
+            text = text.replace('%CURRENT_TIME_SECS_24%', now_obj.strftime("%H:%M:%S"))
 
     return text
 
