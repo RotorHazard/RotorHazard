@@ -1292,3 +1292,5 @@ class FilterAPI():
     def remove(self, type, name):
         self._racecontext.filters.remove_filter(type, name)
 
+    def run(self, type, data):
+        return self._racecontext.filters.run_filters(type, data)
