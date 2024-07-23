@@ -48,11 +48,32 @@ On the secondary timer, no configuration changes are needed. It may be necessary
 
 To enable the announcement of split times, see the "*Secondary/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a secondary timer connects and disconnects, select the "*Secondary Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
 
-To configure a secondary timer to announce speed values, set the "distance" item to a value representing the distance from the previous split timer (or the primary timer). This value will be divided by the number of seconds elapsed since the pass on the previous timer. To have the speed units be announced in miles per hour, measure the distance in feet, divide it by 1.466 and set that as the "distance" value. For instance, if the timers are separated by 100 feet, set the "distance" value to 68.21 (for callouts in MPH). The type of value that is announced (time vs. speed) may be adjusted using the "callout" item.
+To configure a secondary timer to announce speed values, set the "distance" item to a value representing the distance from the previous split timer (or the primary timer). This value will be divided by the number of seconds elapsed since the pass on the previous timer. To have the speed units be announced in miles per hour, measure the distance in feet, divide it by 1.466 and set that as the "distance" value. For instance, if the timers are separated by 100 feet, set the "distance" value to 68.21 (for callouts in MPH). For metric values, setting the "distance" item to the number of meters * 3.6 should result in KM/H values.
 
-The "tone..." options described under Action Mode below may also be configured for split-mode timers.
+The type of value that is announced (time vs. speed) may be adjusted using the "callout" item.
 
 The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'primary' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
+
+A secondary timer may also be configured to play a tone, and to trigger events, for example:
+```
+	"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "split", "event": "Split time Pass",
+			"effect": "speak", "text": "%PILOT% split time is %SPLIT_TIME%"",
+		 	"toneDuration": 50, "toneFrequency": 400, "toneVolume": 100, "toneType": "square"}],
+```
+
+The name specified by the "event" parameter will appear as an item in the 'Event Actions' section on the 'Settings' page in the RotorHazard web GUI. If a matching event/action does not already exist then it will be created and populated with the values specified by the "event" and "effect" parameters (these values may be modified in the RotorHazard web GUI).
+* "event": The name of the event/action to be triggered
+* "effect": "speak" (the default), "message", "alert", or "none" (to have no action associated with the event)
+* "text": The text value for the effect (it may include substitution values like "%PILOT%")
+
+See the '[Event Actions](../doc/User%20Guide.md#event-actions)' section in the [User Guide](../doc/User%20Guide.md) for the list of substitution values that may be specified.
+
+A tone may be configured to be played after each lap pass on the secondary timer:
+* "toneDuration": The length of the tone, in milliseconds (or 0 for no tone, the default)
+* "toneFrequency": The frequency of the tone, in hertz (or 0 for no tone, the default)
+* "toneVolume": The volume of the tone, from 0 to 100 (the default is 100)
+* "toneType": The sound type of the tone, one of: "square" (the default), "sine", "sawtooth", or "triangle"
+
 
 ### Action Mode
 
@@ -66,17 +87,9 @@ Additional options may be configured:
 			"effect": "speak", "text": "%PILOT% did action gate", "minRepeatSecs": 10,
 		 	"toneDuration": 50, "toneFrequency": 400, "toneVolume": 100, "toneType": "square"}],
 ```
-The name specified by the "event" parameter will appear as an item in the 'Event Actions' section on the 'Settings' page in the RotorHazard web GUI. If a matching event/action does not already exist then it will be created and populated with the values specified by the "event" and "effect" parameters (these values may be modified in the RotorHazard web GUI).
-* "event": The name of the event/action to be triggered
-* "effect": "speak" (the default), "message", "alert", or "none" (to have no action associated with the event)
-* "text": The text value for the effect (it may include substitution values like "%PILOT%")
-* "minRepeatSecs": The minimum number of seconds allowed between repeated triggerings of the event/action (default is 10)
+The event/effect/text and "tone..." options described above may also be configured for action-mode timers.
 
-A tone may be configured to be played after each lap pass on the timer:
-* "toneDuration": The length of the tone, in milliseconds (or 0 for no tone, the default)
-* "toneFrequency": The frequency of the tone, in hertz (or 0 for no tone, the default)
-* "toneVolume": The volume of the tone, from 0 to 100 (the default is 100)
-* "toneType": The sound type of the tone, one of: "square" (the default), "sine", "sawtooth", or "triangle"
+* "minRepeatSecs": The minimum number of seconds allowed between repeated triggerings of the event/action (default is 10)
 
 <br/>
 

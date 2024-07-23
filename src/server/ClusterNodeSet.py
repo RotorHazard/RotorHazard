@@ -465,6 +465,8 @@ class SecondaryNode:
                                 split_time = round(split_ts - last_split_ts, 3)
                                 split_speed = round(self.distance / float(split_time), 2) if self.distance > 0.0 else None
                                 split_time_str = RHUtils.split_time_format(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                                eventStr = self.info.get('event', 'runSplitEffect')
+                                effectStr = self.info.get('effect', None)
                                 logger.info('Split pass record: Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
                                     .format(node_index+1, callsign, lap_count+1, split_id+1, split_time_str, split_ts_epoch_str, \
                                             ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
@@ -485,6 +487,11 @@ class SecondaryNode:
 
                                 self._racecontext.rhdata.add_lapSplit(split_data)
                                 self._racecontext.rhui.emit_split_pass_info(split_data)
+                                if effectStr and len(effectStr) > 0:
+                                    if self.parentNodeSet and self.parentNodeSet.Events:
+                                        self.parentNodeSet.Events.trigger(eventStr, split_data)
+                                    else:
+                                        logger.warning("Secondary 'split' timer pass record without 'parentNodeSet' configured")
 
                             # if usual tracking (above) does not generate speed value, see about using saved timestamp from
                             #  previous split timer (to allow for speed callouts on practice runs between the split timers)
@@ -494,6 +501,8 @@ class SecondaryNode:
                                     split_time = round(split_ts - last_split_ts, 3)
                                     split_speed = round(self.distance / float(split_time), 2)
                                     split_time_str = RHUtils.split_time_format(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                                    eventStr = self.info.get('event', 'runSplitEffect')
+                                    effectStr = self.info.get('effect', None)
                                     logger.info('Split pass record (for speed): Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
                                             .format(node_index+1, callsign, lap_count+1, split_id+1, split_time_str, split_ts_epoch_str, \
                                                     ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
@@ -518,6 +527,11 @@ class SecondaryNode:
                                         'name_callout_flag': self.nameCalloutFlag
                                     }
                                     self._racecontext.rhui.emit_phonetic_split(split_data)
+                                    if effectStr and len(effectStr) > 0:
+                                        if self.parentNodeSet and self.parentNodeSet.Events:
+                                            self.parentNodeSet.Events.trigger(eventStr, split_data)
+                                        else:
+                                            logger.warning("Secondary 'split' timer (for speed) pass record without 'parentNodeSet' configured")
 
                             if self.nextSecObj:  # if next timer needs it then save timestamp in its object
                                 self.nextSecObj.prevSecPassTStamps[node_index] = split_ts
@@ -532,7 +546,7 @@ class SecondaryNode:
                             minRepeatSecs = self.info.get('minRepeatSecs', 10)
                             if now_secs - self.actionPassTimes.get(node_index, 0) >= minRepeatSecs:
                                 self.actionPassTimes[node_index] = now_secs
-                                eventStr = self.info.get('event', 'runEffect')
+                                eventStr = self.info.get('event', 'runActionEffect')
                                 effectStr = self.info.get('effect', None)
                                 logger.info("Secondary 'action' timer pass record: Node {}, pilot_id {}, callsign {}, time {}, event='{}', effect={}".\
                                             format(node_index+1, pilot_id, callsign, split_ts_epoch_str, eventStr, effectStr))
@@ -545,7 +559,7 @@ class SecondaryNode:
                                         self._racecontext.rhui.emit_play_beep_tone(duration, frequency, volume, toneType)
                                 if effectStr and len(effectStr) > 0:
                                     if self.parentNodeSet and self.parentNodeSet.Events:
-                                        self.parentNodeSet.Events.trigger(eventStr, {'pilot_id': pilot_id})
+                                        self.parentNodeSet.Events.trigger(eventStr, {'node_index': node_index, 'pilot_id': pilot_id})
                                     else:
                                         logger.warning("Secondary 'action' timer pass record without 'parentNodeSet' configured")
                             else:
@@ -662,7 +676,7 @@ class ClusterNodeSet:
         self.eventActionsObj = eventActionsObj
         # add event-effects configured for action timers (if not already present)
         for secondary in self.splitSecondaries:
-            if secondary.isActionMode:
+            if secondary.isActionMode or secondary.isSplitMode:
                 event = secondary.info.get('event')
                 effect = secondary.info.get('effect', 'speak')
                 if event and (not eventActionsObj.containsAction(event)) and str(effect).lower() != 'none':
