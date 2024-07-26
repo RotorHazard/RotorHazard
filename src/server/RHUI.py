@@ -409,7 +409,7 @@ class RHUI():
             'plugins': plugin_data
         }
 
-        emit_payload = self._filters.run_filters(FLT.EMIT_PLUGIN_LIST, emit_payload)
+        emit_payload = self._filters.run_filters(Flt.EMIT_PLUGIN_LIST, emit_payload)
 
         if ('nobroadcast' in params):
             emit('plugin_list', emit_payload)
