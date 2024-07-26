@@ -3008,19 +3008,6 @@ def load_plugin(plugin):
     except:
         logger.info('No plugin metadata found for {}'.format(plugin.name))
 
-    try:
-        plugin.module = importlib.import_module('plugins.' + plugin.name)
-        if not plugin.module.__file__:
-            plugin.load_issue = "unable to load file"
-            return False
-    except ModuleNotFoundError as ex1:
-        plugin.load_issue = str(ex1)
-        return False
-    except Exception as ex2:
-        plugin.load_issue = "not supported or may require additional dependencies"
-        plugin.load_issue_detail = ex2
-        return False
-
     version_major = 1
     version_minor = 0
 
@@ -3038,6 +3025,19 @@ def load_plugin(plugin):
 
     if version_major == RHAPI.API_VERSION_MAJOR and version_minor > RHAPI.API_VERSION_MINOR:
         plugin.load_issue = "required RHAPI version is newer than this server"
+        return False
+
+    try:
+        plugin.module = importlib.import_module('plugins.' + plugin.name)
+        if not plugin.module.__file__:
+            plugin.load_issue = "unable to load file"
+            return False
+    except ModuleNotFoundError as ex1:
+        plugin.load_issue = str(ex1)
+        return False
+    except Exception as ex2:
+        plugin.load_issue = "not supported or may require additional dependencies"
+        plugin.load_issue_detail = ex2
         return False
 
     if 'initialize' not in dir(plugin.module) or not callable(getattr(plugin.module, 'initialize')):
