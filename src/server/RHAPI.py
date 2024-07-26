@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 1
+API_VERSION_MINOR = 2
 
 import json
 import inspect
