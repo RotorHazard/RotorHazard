@@ -63,8 +63,11 @@
 		rotorhazard.saveData();
 		$('nav li').removeClass('admin-hide');
 
+		// Set pilot sort order for select box
 		if ('{{ getConfig("UI", "pilotSort") }}' == 'callsign') {
 			$('#set_pilotSort').val('callsign');
+		} else if ('{{ getConfig("UI", "pilotSort") }}' == 'id') {
+			$('#set_pilotSort').val('id');
 		}
 
 		if (parseInt('{{ getConfig('LED', 'ledColorMode') }}')) {
@@ -1226,6 +1229,8 @@
 
 			if (rotorhazard.options.pilotSort == 'callsign') {
 				rotorhazard.event.pilots.sort((a, b) => a.callsign.localeCompare(b.callsign, undefined, {sensitivity: 'base'}));
+			} else if (rotorhazard.options.pilotSort == 'id') {
+				rotorhazard.event.pilots.sort((a, b) => a.pilot_id - b.pilot_id);
 			} else {
 				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 			}
@@ -2239,6 +2244,8 @@
 			rotorhazard.options.pilotSort = $(this).val();
 			if (rotorhazard.options.pilotSort == 'callsign') {
 				rotorhazard.event.pilots.sort((a, b) => a.callsign.localeCompare(b.callsign, undefined, {sensitivity: 'base'}));
+			} else if (rotorhazard.options.pilotSort == 'id') {
+				rotorhazard.event.pilots.sort((a, b) => a.pilot_id - b.pilot_id);
 			} else {
 				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 			}
@@ -2438,6 +2445,7 @@
 				<select id="set_pilotSort" class="set-config" data-section="UI" data-key="pilotSort">
 					<option value="name">{{ __('Name') }}</option>
 					<option value="callsign">{{ __('Callsign') }}</option>
+					<option value="id">{{ __('ID') }}</option>
 				</select>
 			</li>
 			<li>
