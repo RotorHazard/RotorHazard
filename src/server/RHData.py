@@ -20,6 +20,7 @@ import Database
 import Results
 from time import monotonic
 from eventmanager import Evt
+from filtermanager import Flt
 from RHRace import RaceStatus, WinCondition, StagingTones
 from Database import ProgramMethod, HeatAdvanceType, HeatStatus
 
@@ -36,6 +37,7 @@ class RHData():
         self._SERVER_API = SERVER_API
         self._DB_FILE_NAME = DB_FILE_NAME
         self._DB_BKP_DIR_NAME = DB_BKP_DIR_NAME
+        self._filters = RaceContext.filters
 
     def __(self, *args, **kwargs):
         return self._racecontext.language.__(*args, **kwargs)
@@ -837,6 +839,8 @@ class RHData():
             if 'color' in init:
                 new_pilot.color = init['color']
 
+        new_pilot = self._filters.run_filters(Flt.PILOT_ADD, new_pilot)
+
         self.commit()
 
         # ensure clean attributes on creation
@@ -873,6 +877,8 @@ class RHData():
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.PilotAttribute(id=pilot_id, name=data['pilot_attr'], value=data['value']))
+
+        pilot = self._filters.run_filters(Flt.PILOT_ALTER, pilot)
 
         self.commit()
 
@@ -1064,6 +1070,8 @@ class RHData():
 
             Database.DB_session.add(new_heatNode)
 
+        new_heat = self._filters.run_filters(Flt.HEAT_ADD, new_heat)
+
         self.commit()
 
         # ensure clean attributes on creation
@@ -1120,6 +1128,8 @@ class RHData():
                 seed_id=source_heatnode.seed_id
                 )
             Database.DB_session.add(new_heatnode)
+
+        new_heat = self._filters.run_filters(Flt.HEAT_DUPLICATE, new_heat)
 
         self.commit()
 
@@ -1240,6 +1250,8 @@ class RHData():
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.HeatAttribute(id=heat_id, name=data['heat_attr'], value=data['value']))
+
+        heat = self._filters.run_filters(Flt.HEAT_ALTER, heat)
 
         self.commit()
 
@@ -1691,6 +1703,8 @@ class RHData():
             if 'order' in init:
                 new_race_class.order = init['order']
 
+        new_race_class = self._filters.run_filters(Flt.CLASS_ADD, new_race_class)
+
         self.commit()
 
         # ensure clean attributes on creation
@@ -1740,6 +1754,8 @@ class RHData():
 
         for heat in Database.Heat.query.filter_by(class_id=source_class.id).all():
             self.duplicate_heat(heat, dest_class=new_class.id)
+
+        new_class = self._filters.run_filters(Flt.CLASS_DUPLICATE, new_class)
 
         self.commit()
 
@@ -1814,6 +1830,8 @@ class RHData():
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.RaceClassAttribute(id=race_class_id, name=data['class_attr'], value=data['value']))
+
+        race_class = self._filters.run_filters(Flt.CLASS_ALTER, race_class)
 
         self.commit()
 
@@ -2095,6 +2113,9 @@ class RHData():
                 new_profile.exit_ats = init['exit_ats'] if isinstance(init['exit_ats'], str) else json.dumps(init['exit_ats'])
 
         Database.DB_session.add(new_profile)
+
+        new_profile = self._filters.run_filters(Flt.PROFILE_ADD, new_profile)
+
         self.commit()
 
         return new_profile
@@ -2117,6 +2138,9 @@ class RHData():
             exit_ats = source_profile.exit_ats,
             f_ratio = 100)
         Database.DB_session.add(new_profile)
+
+        new_profile = self._filters.run_filters(Flt.PROFILE_DUPLICATE, new_profile)
+
         self.commit()
 
         self._Events.trigger(Evt.PROFILE_ADD, {
@@ -2138,6 +2162,8 @@ class RHData():
             profile.enter_ats = data['enter_ats'] if isinstance(data['enter_ats'], str) else json.dumps(data['enter_ats'])
         if 'exit_ats' in data:
             profile.exit_ats = data['exit_ats'] if isinstance(data['exit_ats'], str) else json.dumps(data['exit_ats'])
+
+        profile = self._filters.run_filters(Flt.PROFILE_ALTER, profile)
 
         self.commit()
 
@@ -2267,6 +2293,9 @@ class RHData():
                 race_format.points_method = init['points_method']
 
         Database.DB_session.add(race_format)
+
+        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ADD, race_format)
+
         self.commit()
 
         # ensure clean attributes on creation
@@ -2302,6 +2331,9 @@ class RHData():
             start_behavior=source_format.start_behavior,
             points_method=source_format.points_method)
         Database.DB_session.add(new_format)
+
+        new_format = self._filters.run_filters(Flt.RACE_FORMAT_DUPLICATE, new_format)
+
         self.commit()
 
         self._Events.trigger(Evt.RACE_FORMAT_ADD, {
@@ -2369,6 +2401,8 @@ class RHData():
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.RaceFormatAttribute(id=data['format_id'], name=data['format_attr'], value=data['value']))
+
+        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ALTER, race_format)
 
         self.commit()
 
@@ -3108,13 +3142,17 @@ class RHData():
         try:
             val = self._OptionsCache[option]
             if val or val == "":
-                return val
+                output = val
             else:
-                return default_value
+                output = default_value
         except:
-            return default_value
+            output = default_value
+
+        return self._filters.run_filters(Flt.OPTION_GET, output)
 
     def set_option(self, option, value):
+        value = self._filters.run_filters(Flt.OPTION_SET, value)
+
         if isinstance(value, bool):
             value = '1' if value else '0'
 
@@ -3131,11 +3169,13 @@ class RHData():
         try:
             val = self._OptionsCache[option]
             if val:
-                return int(val)
+                output = int(val)
             else:
-                return default_value
+                output = default_value
         except:
-            return default_value
+            output = default_value
+
+        return self._filters.run_filters(Flt.OPTION_GET_INT, output)
 
     def delete_option(self, option):
         Database.GlobalSettings.query.filter_by(option_name=option).delete()

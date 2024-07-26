@@ -4,6 +4,7 @@
 from typing import List
 from RHUI import UIField
 from eventmanager import Evt
+from filtermanager import Flt
 import copy
 import json
 import gevent
@@ -836,7 +837,7 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards):
 
         row['position'] = pos
 
-    return all_leaderboards
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_SORT_AND_RANK, all_leaderboards)
 
 def refresh_source_displayname(racecontext, result, heat_id):
     for key, leaderboard in result.items():
@@ -878,7 +879,8 @@ def add_fastest_race_lap_meta(racecontext, all_leaderboards):
     return all_leaderboards
 
 def build_leaderboard_race(racecontext, heat_id, round_id):
-    return calc_leaderboard(racecontext, heat_id=heat_id, round_id=round_id)
+    result = calc_leaderboard(racecontext, heat_id=heat_id, round_id=round_id)
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_RACE, result)
 
 def build_leaderboard_heat(racecontext, heat):
     leaderboard = {}
@@ -890,7 +892,8 @@ def build_leaderboard_heat(racecontext, heat):
     leaderboard = format_leaderboard_times(racecontext, leaderboard)
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
     leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
-    return leaderboard
+
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_HEAT, leaderboard)
 
 def build_leaderboard_class(racecontext, race_class):
     leaderboard = {}
@@ -902,7 +905,8 @@ def build_leaderboard_class(racecontext, race_class):
     leaderboard = format_leaderboard_times(racecontext, leaderboard)
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
     leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
-    return leaderboard
+
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_CLASS, leaderboard)
 
 def build_leaderboard_event(racecontext):
     leaderboard = {}
@@ -919,7 +923,8 @@ def build_leaderboard_event(racecontext):
     leaderboard = format_leaderboard_times(racecontext, leaderboard)
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
     leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
-    return leaderboard
+
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_EVENT, leaderboard)
 
 def build_incremental(racecontext, merge_result, source_result, transient=False):
     if not source_result:
@@ -994,7 +999,9 @@ def build_incremental(racecontext, merge_result, source_result, transient=False)
         output_result = format_leaderboard_times(racecontext, output_result)
         output_result = sort_and_rank_leaderboards(racecontext, output_result)
         output_result = add_fastest_race_lap_meta(racecontext, output_result)
-    return output_result
+
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_INCREMENTAL, output_result)
+
 
 def calc_team_leaderboard(racecontext):
     '''Calculates and returns team-racing info.'''
@@ -1253,22 +1260,22 @@ class LapInfo():
     def __repr__(self):
         return json.dumps(self.toJSON())
 
-def get_gap_info(RaceContext, seat_index):
+def get_gap_info(racecontext, seat_index):
     ''' Assembles current lap information for OSD '''
 
     # select correct results
-    win_condition = RaceContext.race.format.win_condition
-    consecutivesCount = RaceContext.rhdata.get_optionInt('consecutivesCount', 3)
+    win_condition = racecontext.race.format.win_condition
+    consecutivesCount = racecontext.rhdata.get_optionInt('consecutivesCount', 3)
 
     if win_condition == WinCondition.FASTEST_CONSECUTIVE:
-        leaderboard = RaceContext.race.results['by_consecutives']
+        leaderboard = racecontext.race.results['by_consecutives']
     elif win_condition == WinCondition.FASTEST_LAP:
-        leaderboard = RaceContext.race.results['by_fastest_lap']
+        leaderboard = racecontext.race.results['by_fastest_lap']
     else:
         # WinCondition.MOST_LAPS
         # WinCondition.FIRST_TO_LAP_X
         # WinCondition.NONE
-        leaderboard = RaceContext.race.results['by_race_time']
+        leaderboard = racecontext.race.results['by_race_time']
 
     # get this seat's results
     result = None
@@ -1343,7 +1350,7 @@ def get_gap_info(RaceContext, seat_index):
     #TODO pass_info.race.split_count = None
 
     # Current pilot
-    pass_info.current.lap_list = RaceContext.race.get_lap_results()['node_index'][seat_index]
+    pass_info.current.lap_list = racecontext.race.get_lap_results()['node_index'][seat_index]
 
     pass_info.current.pilot_id = result['pilot_id']
     pass_info.current.seat = int(seat_index)
@@ -1406,7 +1413,7 @@ def get_gap_info(RaceContext, seat_index):
             else:
                 pass_info.first_rank.last_lap_time = int(round(first_rank_split_result['last_lap_raw'], 0))
 
-    return pass_info
+    return racecontext.filters.run_filters(Flt.GAP_INFO, pass_info)
 
 def check_win_condition_result(racecontext, **kwargs):
     raceObj = racecontext.race
@@ -1543,7 +1550,7 @@ def check_win_most_laps(raceObj, interfaceObj, **kwargs):
                         else:
                             # lower results no longer need checked
                             break
-    
+
                 # check for tie
                 if leaderboard[1]['laps'] == lead_lap:
                     logger.info('Race tied at %d laps', leaderboard[1]['laps'])

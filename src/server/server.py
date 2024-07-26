@@ -94,6 +94,9 @@ import util.stm32loader as stm32loader
 # Events manager
 from eventmanager import Evt, EventManager
 
+# Filter manager
+from filtermanager import Flt, FilterManager
+
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern
 
@@ -120,6 +123,8 @@ RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.
 
 Events = EventManager(RaceContext)
 RaceContext.events = Events
+Filters = FilterManager(RHAPI)
+RaceContext.filters = Filters
 EventActionsObj = None
 
 HEARTBEAT_THREAD = None

@@ -42,6 +42,7 @@ class RHAPI():
         self.eventresults = EventResultsAPI(self._racecontext)
         self.events = EventsAPI(self._racecontext)
         self.server = ServerAPI(self._racecontext)
+        self.filters = FilterAPI(self._racecontext)
 
         self.__ = self.language.__ # shortcut access
 
@@ -1277,3 +1278,19 @@ class ServerAPI():
     def enable_heartbeat_event(self):
         self._racecontext.serverstate.enable_heartbeat_event = True
 
+
+#
+# Filters
+#
+class FilterAPI():
+    def __init__(self, race_context):
+        self._racecontext = race_context
+
+    def add(self, type, name, fn, priority=200):
+        self._racecontext.filters.add_filter(type, name, fn, priority)
+
+    def remove(self, type, name):
+        self._racecontext.filters.remove_filter(type, name)
+
+    def run(self, type, data):
+        return self._racecontext.filters.run_filters(type, data)
