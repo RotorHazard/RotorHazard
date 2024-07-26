@@ -316,9 +316,9 @@
 						el.append(header);
 
 						var locked = race_class.locked;
-						var active = false;
+						var active_race = false;
 						if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_class_id == race_class.id) {
-							active = true;
+							active_race = true;
 							locked = true;
 						}
 
@@ -329,7 +329,7 @@
 						var actions = $('<div class="actions">');
 						actions.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class.displayname + '">+</button>');
 						if (locked) {
-							if (!active) {
+							if (!active_race) {
 								actions.append('<button class="btn-warning open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class.displayname + '">' + svg_asset.lock + '</button>');
 							}
 						} else {
@@ -663,9 +663,9 @@
 			}
 
 			var locked = heat.locked;
-			var active = false
+			var active_race = false
 			if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_heat_id == heat.id) {
-				active = true;
+				active_race = true;
 				locked = true;
 			}
 
@@ -679,7 +679,13 @@
 			var actions = $('<div class="actions">');
 			actions.append('<button class="duplicate_heat" data-id="' + heat.id + '" title="' + __('Duplicate Heat') + ': ' + heat.displayname + '">+</button>');
 			if (locked) {
-				if (!active) {
+				if (heat.active) {
+					actions.prepend('<button class="deactivate_heat eye-icon" data-id="' + heat.id + '" title="' + __('Deactivate Heat') + ': ' + heat.displayname + '">' + svg_asset.eye_visible + '</button>');
+				} else {
+					actions.prepend('<button class="activate_heat eye-icon" data-id="' + heat.id + '" title="' + __('Activate Heat') + ': ' + heat.displayname + '">' + svg_asset.eye_invisible + '</button>');
+				}
+
+				if (!active_race) {
 					actions.append('<button class="btn-warning open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heat.id + '" title="' + __('Force Modify Heat') + ': ' + heat.displayname + '">' + svg_asset.lock + '</button>');
 				}
 			} else {
@@ -1219,6 +1225,20 @@
 				heat: parseInt($(this).data('id')),
 			};
 			socket.emit('duplicate_heat', data);
+		});
+
+		$(document).on("click", '.deactivate_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('deactivate_heat', data);
+		});
+
+		$(document).on("click", '.activate_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('activate_heat', data);
 		});
 
 		/* Pilots */

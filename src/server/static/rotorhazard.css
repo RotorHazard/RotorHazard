@@ -1258,6 +1258,16 @@ main.page-home {
 	height: 1em;
 }
 
+.eye-icon {
+	background: none;
+	border: none;
+	color: var(--contrast_1_high);
+}
+
+.eye-icon svg {
+	height: 1em;
+}
+
 .item-blocks .duplicate {
 	flex: 0 0 auto;
 }
@@ -1357,7 +1367,7 @@ main.page-home {
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: calc(100% - 4.25rem);
+	width: calc(100% - 6.5rem);
 	background: transparent;
 	border: transparent;
 	color: var(--contrast_1_high);

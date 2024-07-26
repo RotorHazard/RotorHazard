@@ -1172,6 +1172,8 @@ class RHData():
             slot.seed_rank = data['seed_rank']
         if 'status' in data:
             heat.status = data['status']
+        if 'active' in data:
+            heat.active = data['active']
 
         # update source names:
         if 'name' in data:
@@ -1247,16 +1249,19 @@ class RHData():
 
         # update current race
         if heat_id == self._racecontext.race.current_heat:
-            self._racecontext.race.node_pilots = {}
-            self._racecontext.race.node_teams = {}
-            for heatNode in self.get_heatNodes_by_heat(heat_id):
-                self._racecontext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
+            if not heat.active:
+                self._racecontext.race.set_heat(RHUtils.HEAT_ID_NONE)
+            else:
+                self._racecontext.race.node_pilots = {}
+                self._racecontext.race.node_teams = {}
+                for heatNode in self.get_heatNodes_by_heat(heat_id):
+                    self._racecontext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
-                if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                    self._racecontext.race.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
-                else:
-                    self._racecontext.race.node_teams[heatNode.node_index] = None
-            self._racecontext.race.clear_results() # refresh leaderboard
+                    if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
+                        self._racecontext.race.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
+                    else:
+                        self._racecontext.race.node_teams[heatNode.node_index] = None
+                self._racecontext.race.clear_results() # refresh leaderboard
 
         logger.info('Heat {0} altered with {1}'.format(heat_id, data))
 
@@ -1320,26 +1325,27 @@ class RHData():
         sav_heat_id = self.get_optionInt('currentHeat', RHUtils.HEAT_ID_NONE)
         if sav_heat_id != RHUtils.HEAT_ID_NONE:
             for heat in heats:
-                if heat.id == sav_heat_id:
+                if heat.id == sav_heat_id and heat.active:
                     return sav_heat_id
 
         # find and return ID of first "safe" heat
         cur_heat_id = RHUtils.HEAT_ID_NONE
         for heat in heats:
-            if heat.status == HeatStatus.CONFIRMED:
-                cur_heat_id = heat.id
-                break
-
-            if not heat.auto_frequency:
-                slots = self.get_heatNodes_by_heat(heat.id)
-                is_dynamic = False
-                for slot in slots:
-                    if slot.method == ProgramMethod.HEAT_RESULT or slot.method == ProgramMethod.CLASS_RESULT:
-                        is_dynamic = True
-
-                if not is_dynamic:
+            if heat.active:
+                if heat.status == HeatStatus.CONFIRMED:
                     cur_heat_id = heat.id
                     break
+
+                if not heat.auto_frequency:
+                    slots = self.get_heatNodes_by_heat(heat.id)
+                    is_dynamic = False
+                    for slot in slots:
+                        if slot.method == ProgramMethod.HEAT_RESULT or slot.method == ProgramMethod.CLASS_RESULT:
+                            is_dynamic = True
+
+                    if not is_dynamic:
+                        cur_heat_id = heat.id
+                        break
 
         if cur_heat_id != sav_heat_id:
             self.set_option('currentHeat', cur_heat_id)
