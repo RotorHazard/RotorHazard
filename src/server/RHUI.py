@@ -849,6 +849,7 @@ class RHUI():
             current_heat['name'] = heat.name
             current_heat['displayname'] = heat.display_name
             current_heat['class_id'] = heat.class_id
+            current_heat['group_id'] = heat.group_id
             current_heat['order'] = heat.order
             current_heat['status'] = heat.status
             current_heat['auto_frequency'] = heat.auto_frequency
@@ -911,6 +912,7 @@ class RHUI():
             current_class['ranksettings'] = json.loads(race_class.rank_settings) if race_class.rank_settings else None
             current_class['rounds'] = race_class.rounds
             current_class['heat_advance_type'] = race_class.heat_advance_type
+            current_class['round_type'] = race_class.round_type
             current_class['order'] = race_class.order
             current_class['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceClass(race_class.id)
             current_classes.append(current_class)

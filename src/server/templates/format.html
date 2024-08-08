@@ -388,6 +388,15 @@
 						field.append(settingsbtn)
 						el.append(field);
 
+						var field = $('<div class="field field-round-type">');
+						field.append('<label for="class_round_type_' + race_class.id + '">' + __('Round Type') + '</label>');
+						var selectbox = $('<select class="set_race_class_round_type" id="class_round_type_' + race_class.id + '" data-class_id="' + race_class.id + '">')
+						selectbox.append('<option value="0">' + __('Races per heat') + '</option>');
+						selectbox.append('<option value="1">' + __('Fixed Groups') + '</option>');
+						selectbox.val(race_class.round_type);
+						field.append(selectbox);
+						el.append(field);
+
 						var field = $('<div class="field field-rounds">');
 						field.append('<label for="race_class_rounds-' + race_class.id + '">' + __('Rounds') + '</label>');
 						var input = $('<input type="number" id="race_class_rounds-' + race_class.id + '" class="set_race_class_rounds" data-class_id="' + race_class.id + '" step="1" min="0">');
@@ -562,6 +571,19 @@
 				} else {
 					settingsbtn.prop('hidden', true);
 				}
+			}
+		});
+
+		$(document).on("change", '.set_race_class_round_type', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				round_type: parseInt($(this).val()),
+			};
+			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.round_type = data.round_type;
 			}
 		});
 

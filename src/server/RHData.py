@@ -22,7 +22,7 @@ from time import monotonic
 from eventmanager import Evt
 from filtermanager import Flt
 from RHRace import RaceStatus, WinCondition, StagingTones
-from Database import ProgramMethod, HeatAdvanceType, HeatStatus
+from Database import ProgramMethod, HeatAdvanceType, RoundType, HeatStatus
 
 from FlaskAppObj import APP
 APP.app_context().push()
@@ -551,6 +551,7 @@ class RHData():
                                 }),
                                 'order': None,
                                 'status': 0,
+                                'group_id': 0,
                                 'auto_frequency': False
                             })
                         self.restore_table(Database.HeatNode, heatNode_query_data, defaults={
@@ -657,6 +658,7 @@ class RHData():
                         'win_condition': 0,
                         'rounds': 0,
                         'heat_advance_type': 1,
+                        'round_type': 0,
                         'order': None,
                     })
 
@@ -1045,6 +1047,8 @@ class RHData():
                 new_heat.name = init['name']
             if 'auto_frequency' in init:
                 new_heat.auto_frequency = init['auto_frequency']
+            if 'group_id' in init:
+                new_heat.class_id = init['group_id']
 
             defaultMethod = init['defaultMethod'] if 'defaultMethod' in init else ProgramMethod.ASSIGN
         else:
@@ -1092,7 +1096,9 @@ class RHData():
         # Add new heat by duplicating an existing one
         source_heat = self.resolve_heat_from_heat_or_id(source_heat_or_id)
 
-        if source_heat.name:
+        if 'new_heat_name' in kwargs:
+            new_heat_name = kwargs['new_heat_name']
+        elif source_heat.name:
             all_heat_names = [heat.name for heat in self.get_heats()]
             new_heat_name = RHUtils.uniqueName(source_heat.name, all_heat_names)
         else:
@@ -1103,9 +1109,15 @@ class RHData():
         else:
             new_class = source_heat.class_id
 
+        if 'group_id' in kwargs:
+            new_group = kwargs['group_id']
+        else:
+            new_group = source_heat.group_id
+
         new_heat = Database.Heat(
             name=new_heat_name,
             class_id=new_class,
+            group_id=new_group,
             results=None,
             _cache_status=json.dumps({
                 'data_ver': monotonic(),
@@ -1160,7 +1172,8 @@ class RHData():
             heat.auto_frequency = data['auto_frequency']
             if not heat.auto_frequency:
                 self.resolve_slot_unset_nodes(heat)
-
+        if 'group_id' in data:
+            heat.group_id = data['group_id']
         if 'pilot' in data:
             slot.pilot_id = data['pilot']
             if slot.method == ProgramMethod.ASSIGN and data['pilot'] == RHUtils.PILOT_ID_NONE:
@@ -1205,11 +1218,13 @@ class RHData():
                     race_class.results = new_result
 
         if 'name' in data and not ('pilot' in data or 'class' in data):
-            event_results = json.loads(self.get_option("eventResults"))
-            if event_results:
+            try:
+                event_results = json.loads(self.get_option("eventResults"))
                 self._racecontext.pagecache.set_valid(False)
                 event_results = Results.refresh_source_displayname(self._racecontext, event_results, heat.id)
                 self.set_option("eventResults", json.dumps(event_results))
+            except:
+                pass
 
         # alter existing saved races:
         race_list = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
@@ -1367,15 +1382,17 @@ class RHData():
         current_heat = self.resolve_heat_from_heat_or_id(current_heat_or_id)
         if current_heat.class_id:
             current_class = self.get_raceClass(current_heat.class_id)
-            heats = self.get_heats_by_class(current_heat.class_id)
 
-            if current_class.heat_advance_type == HeatAdvanceType.NONE:
-                return current_heat.id
-
-            if current_class.heat_advance_type == HeatAdvanceType.NEXT_ROUND:
-                max_round = self.get_max_round(current_heat.id)
-                if max_round < current_class.rounds:
+            if current_class.round_type != RoundType.GROUPED:
+                if current_class.heat_advance_type == HeatAdvanceType.NONE:
                     return current_heat.id
+
+                if current_class.heat_advance_type == HeatAdvanceType.NEXT_ROUND:
+                    max_round = self.get_max_round(current_heat.id)
+                    if max_round < current_class.rounds:
+                        return current_heat.id
+
+            heats = self.get_heats_by_class(current_heat.class_id)
 
             def orderSorter(x):
                 if not x.order:
@@ -1682,6 +1699,7 @@ class RHData():
             rank_settings=None,
             rounds=0,
             heat_advance_type=HeatAdvanceType.NEXT_HEAT,
+            round_type=RoundType.RACES_PER_HEAT,
             order=None
             )
         Database.DB_session.add(new_race_class)
@@ -1700,6 +1718,8 @@ class RHData():
                 new_race_class.rounds = init['rounds']
             if 'heat_advance_type' in init:
                 new_race_class.heat_advance_type = init['heat_advance_type']
+            if 'round_type' in init:
+                new_race_class.round_type = init['round_type']
             if 'order' in init:
                 new_race_class.order = init['order']
 
@@ -1745,6 +1765,7 @@ class RHData():
             win_condition=source_class.win_condition,
             rounds=source_class.rounds,
             heat_advance_type=source_class.heat_advance_type,
+            round_type=source_class.round_type,
             order=None
             )
 
@@ -1797,6 +1818,8 @@ class RHData():
             race_class.rounds = data['rounds']
         if 'heat_advance_type' in data:
             race_class.heat_advance_type = data['heat_advance_type']
+        if 'round_type' in data:
+            race_class.round_type = data['round_type']
         if 'order' in data:
             race_class.order = data['order']
 

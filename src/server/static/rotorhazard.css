@@ -1658,7 +1658,7 @@ main.page-home {
 
 	.race_classes .set_race_class_description {
 		grid-column: 1;
-		grid-row: 2 / span 4;
+		grid-row: 2 / span 5;
 		height: 100%;
 	}
 
@@ -1670,6 +1670,11 @@ main.page-home {
 	.race_classes .field-ranking {
 		grid-column: 2;
 		grid-row: 3;
+	}
+
+	.race_classes .field-round-type {
+		grid-column: 2;
+		grid-row: 4;
 	}
 
 	.race_classes .field {
@@ -1691,17 +1696,17 @@ main.page-home {
 
 	.race_classes .field-rounds {
 		grid-column: 2;
-		grid-row: 4;
+		grid-row: 5;
 	}
 
 	.race_classes .field-advance {
 		grid-column: 2;
-		grid-row: 5;
+		grid-row: 6;
 	}
 
 	.race_classes .heats {
 		grid-column: 1 / -1;
-		grid-row: 6;
+		grid-row: 7;
 	}
 }
 

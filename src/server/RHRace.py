@@ -15,6 +15,7 @@ from filtermanager import Flt
 from util.InvokeFuncQueue import InvokeFuncQueue
 from RHUtils import catchLogExceptionsWrapper
 from led_event_manager import ColorVal
+from Database import RoundType
 
 from FlaskAppObj import APP
 APP.app_context().push()
@@ -95,11 +96,19 @@ class RHRace():
             deleted
         '''
 
+
+
     @catchLogExceptionsWrapper
     def stage(self, data=None):
+        # need to show alert via spawn in case a clear-messages event was just triggered
+        @catchLogExceptionsWrapper
+        @copy_current_request_context
+        def emit_alert_msg(self, msg_text):
+            self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
+
         data = self._filters.run_filters(Flt.RACE_STAGE, data)
 
-        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+        with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
 
             if data and data.get('secondary_format'):
                 self.format = self._racecontext.serverstate.secondary_race_format
@@ -118,6 +127,22 @@ class RHRace():
 
             if heat_data:
                 heatNodes = self._racecontext.rhdata.get_heatNodes_by_heat(self.current_heat)
+
+                if not heat_data.active:
+                    logger.info("Canceling staging: Current heat is not active")
+                    gevent.spawn(emit_alert_msg, self, \
+                                 self._racecontext.language.__('Current heat is not active'))
+                    return False
+
+                saved_races = self._racecontext.rhdata.get_savedRaceMetas_by_heat(self.current_heat)
+                if saved_races and heat_data.class_id:
+                    raceclass = self._racecontext.rhdata.get_raceClass(heat_data.class_id)
+                    if raceclass.round_type == RoundType.GROUPED:
+                        logger.info("Canceling staging: Current heat has saved race and round type is groups")
+                        gevent.spawn(emit_alert_msg, self, \
+                                     self._racecontext.language.__('Current heat has saved race'))
+                        return False
+
                 pilot_names_list = []
                 for heatNode in heatNodes:
                     if heatNode.node_index is not None and heatNode.node_index < self.num_nodes:
@@ -127,12 +152,7 @@ class RHRace():
                                 pilot_names_list.append(pilot_obj.callsign)
 
                 if request and len(pilot_names_list) <= 0:
-                    # need to show alert via spawn in case a clear-messages event was just triggered
-                    @catchLogExceptionsWrapper
-                    @copy_current_request_context
-                    def emit_alert_np_msg(self, msg_text):
-                        self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
-                    gevent.spawn(emit_alert_np_msg, self, \
+                    gevent.spawn(emit_alert_msg, self, \
                                  self._racecontext.language.__('No valid pilots in race'))
 
                 logger.info("Staging new race, format: {}".format(getattr(race_format, "name", "????")))
@@ -258,10 +278,6 @@ class RHRace():
                     logger.warning("Current race format '{}' specifies an invalid combination of RaceClockMode=FixedTime and TimeDuration=0".\
                                    format(race_format.name))
                     # need to show alert via spawn in case a clear-messages event was just triggered
-                    @catchLogExceptionsWrapper
-                    @copy_current_request_context
-                    def emit_alert_msg(self, msg_text):
-                        self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
                     gevent.spawn(emit_alert_msg, self, \
                                  self._racecontext.language.__('Current race format specifies fixed time with zero duration'))
 
@@ -498,7 +514,7 @@ class RHRace():
     @catchLogExceptionsWrapper
     def do_save_actions(self):
         '''Save current laps data to the database.'''
-        with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+        with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
             if self.current_heat == RHUtils.HEAT_ID_NONE:
                 self.discard_laps(saved=True)
                 return False
@@ -597,6 +613,20 @@ class RHRace():
                 self._racecontext.rhdata.get_results_event()
 
             self.discard_laps(saved=True) # Also clear the current laps
+
+            if heat.class_id:
+                raceclass = self._racecontext.rhdata.get_raceClass(heat.class_id)
+                if raceclass.round_type == RoundType.GROUPED:
+                    # Regenerate to new heat + group
+                    self._racecontext.rhdata.duplicate_heat(heat, new_heat_name=heat.name, group_id=heat.group_id + 1)
+
+                    # Deactivate current heat
+                    self._racecontext.rhdata.alter_heat({
+                        'heat': heat.id,
+                        'active': False
+                    })
+
+                    self._racecontext.rhui.emit_heat_data()
 
             next_heat = self._racecontext.rhdata.get_next_heat_id(heat)
             if next_heat is not heat.id:

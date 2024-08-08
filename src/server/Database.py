@@ -93,6 +93,7 @@ class Heat(Base):
     order = DB.Column(DB.Integer, nullable=True)
     status = DB.Column(DB.Integer, nullable=False)
     auto_frequency = DB.Column(DB.Boolean, nullable=False)
+    group_id = DB.Column(DB.Integer, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
     # DEPRECATED: compatibility for 'note' property / renamed to 'name'
@@ -177,6 +178,7 @@ class RaceClass(Base):
     _rank_status = DB.Column('rankStatus', DB.String(16), nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
     heat_advance_type = DB.Column('heatAdvanceType', DB.Integer, nullable=False)
+    round_type = DB.Column('roundType', DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
@@ -226,6 +228,10 @@ class HeatAdvanceType:
     NONE = 0
     NEXT_HEAT = 1
     NEXT_ROUND = 2
+
+class RoundType:
+    RACES_PER_HEAT = 0
+    GROUPED = 1
 
 class RaceClassAttribute(Base):
     __tablename__ = 'race_class_attribute'
