@@ -7,6 +7,15 @@ JSON_API = 3 # JSON API version
 MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.8)
 MIN_PYTHON_MINOR_VERSION = 8
 
+# command-line arguments:
+CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
+CMDARG_VERSION_SHORT_STR = '-v'          # show program version and exit
+CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
+CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
+CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
+CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
+CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
+
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
 # because there is a lot of code run through imports, and
@@ -127,6 +136,11 @@ Filters = FilterManager(RHAPI)
 RaceContext.filters = Filters
 EventActionsObj = None
 LedStripObj = None
+Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+Server_ipaddress_str = None
+ShutdownButtonInputHandler = None
+Server_secondary_mode = None
+UI_server_messages = {}
 
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
@@ -140,15 +154,6 @@ NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 # check if 'log' directory owned by 'root' and change owner to 'pi' user if so
 if RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME):
     logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOG_DIR_NAME))
-
-# command-line arguments:
-CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
-CMDARG_VERSION_SHORT_STR = '-v'          # show program version and exit
-CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
-CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
-CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
-CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
-CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
 
 if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
@@ -188,28 +193,17 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 
 RaceContext.sensors = Sensors()
 RaceContext.cluster = None
-Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
-server_ipaddress_str = None
-ShutdownButtonInputHandler = None
-Server_secondary_mode = None
-
 RaceContext.rhdata = RHData.RHData(Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
-
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
-
 RaceContext.language = Language.Language(RaceContext) # initialize language
 __ = RaceContext.language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
-
 RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
-
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
-
 RaceContext.calibration = calibration.Calibration(RaceContext)
 RaceContext.heatautomator = heat_automation.HeatAutomator(RaceContext)
 
-ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
     item = {}
     item['message'] = message
@@ -217,7 +211,7 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
         item['header'] = __(header)
     if subclass:
         item['subclass'] = subclass
-    ui_server_messages[mainclass] = item
+    UI_server_messages[mainclass] = item
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
@@ -397,8 +391,8 @@ def render_format():
 def render_settings():
     '''Route to settings page.'''
     server_messages_formatted = ''
-    if len(ui_server_messages):
-        for key, item in ui_server_messages.items():
+    if len(UI_server_messages):
+        for key, item in UI_server_messages.items():
             message = '<li class="' + key
             if 'subclass' in item and item['subclass']:
                 message += ' ' + key + '-' + item['subclass']
@@ -2342,7 +2336,7 @@ def do_bpillfw_update(data):
     stm32loader.set_console_output_fn(None)
     gevent.sleep(0.2)
     logger.info("Reinitializing RH interface")
-    ui_server_messages.clear()
+    UI_server_messages.clear()
     initialize_rh_interface()
     if RaceContext.race.num_nodes <= 0:
         SOCKET_IO.emit('upd_messages_append', "\nWarning: No receiver nodes found")
@@ -2720,15 +2714,15 @@ def init_LED_effects():
 def determineHostAddress(maxRetrySecs=10):
     ''' Determines local host IP address.  Will wait and retry to get valid IP, in
         case system is starting up and needs time to connect to network and DHCP. '''
-    global server_ipaddress_str
-    if server_ipaddress_str:
-        return server_ipaddress_str  # if previously determined then return value
+    global Server_ipaddress_str
+    if Server_ipaddress_str:
+        return Server_ipaddress_str  # if previously determined then return value
     sTime = monotonic()
     while True:
         try:
             ipAddrStr = RHUtils.getLocalIPAddress()
             if ipAddrStr and ipAddrStr != "127.0.0.1":  # don't accept default-localhost IP
-                server_ipaddress_str = ipAddrStr
+                Server_ipaddress_str = ipAddrStr
                 break
             logger.debug("Querying of host IP address returned " + ipAddrStr)
         except Exception as ex:
