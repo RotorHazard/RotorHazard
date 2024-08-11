@@ -7,6 +7,15 @@ JSON_API = 3 # JSON API version
 MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.8)
 MIN_PYTHON_MINOR_VERSION = 8
 
+# command-line arguments:
+CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
+CMDARG_VERSION_SHORT_STR = '-v'          # show program version and exit
+CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
+CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
+CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
+CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
+CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
+
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
 # because there is a lot of code run through imports, and
@@ -126,6 +135,12 @@ RaceContext.events = Events
 Filters = FilterManager(RHAPI)
 RaceContext.filters = Filters
 EventActionsObj = None
+LedStripObj = None
+Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+Server_ipaddress_str = None
+ShutdownButtonInputHandler = None
+Server_secondary_mode = None
+UI_server_messages = {}
 
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
@@ -139,15 +154,6 @@ NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 # check if 'log' directory owned by 'root' and change owner to 'pi' user if so
 if RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME):
     logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOG_DIR_NAME))
-
-# command-line arguments:
-CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
-CMDARG_VERSION_SHORT_STR = '-v'          # show program version and exit
-CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
-CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
-CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
-CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
-CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
 
 if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
@@ -187,28 +193,17 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 
 RaceContext.sensors = Sensors()
 RaceContext.cluster = None
-Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
-server_ipaddress_str = None
-ShutdownButtonInputHandler = None
-Server_secondary_mode = None
-
 RaceContext.rhdata = RHData.RHData(Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
-
 RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing page cache
-
 RaceContext.language = Language.Language(RaceContext) # initialize language
 __ = RaceContext.language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
-
 RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
-
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
-
 RaceContext.calibration = calibration.Calibration(RaceContext)
 RaceContext.heatautomator = heat_automation.HeatAutomator(RaceContext)
 
-ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
     item = {}
     item['message'] = message
@@ -216,7 +211,7 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
         item['header'] = __(header)
     if subclass:
         item['subclass'] = subclass
-    ui_server_messages[mainclass] = item
+    UI_server_messages[mainclass] = item
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
@@ -396,8 +391,8 @@ def render_format():
 def render_settings():
     '''Route to settings page.'''
     server_messages_formatted = ''
-    if len(ui_server_messages):
-        for key, item in ui_server_messages.items():
+    if len(UI_server_messages):
+        for key, item in UI_server_messages.items():
             message = '<li class="' + key
             if 'subclass' in item and item['subclass']:
                 message += ' ' + key + '-' + item['subclass']
@@ -1334,8 +1329,6 @@ def on_set_profile(data, emit_vals=True):
     else:
         logger.warning('Invalid set_profile value: ' + str(profile_val))
 
-RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
-
 @SOCKET_IO.on('alter_race')
 @catchLogExcWithDBWrapper
 def on_alter_race(data):
@@ -1774,8 +1767,6 @@ def on_set_race_format(data):
             RaceContext.rhui.emit_race_status()
         logger.info("Format change prevented by active race")
 
-RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions
-
 @SOCKET_IO.on('add_race_format')
 @catchLogExcWithDBWrapper
 def on_add_race_format(data):
@@ -2134,8 +2125,9 @@ def on_LED_solid(data):
 def on_LED_brightness(data):
     '''Change LED Brightness'''
     brightness = data['brightness']
-    strip.setBrightness(brightness)
-    strip.show()
+    if LedStripObj:
+        LedStripObj.setBrightness(brightness)
+        LedStripObj.show()
     RaceContext.serverconfig.set_item('LED', 'ledBrightness', brightness)
     Events.trigger(Evt.LED_BRIGHTNESS_SET, {
         'level': brightness,
@@ -2344,7 +2336,7 @@ def do_bpillfw_update(data):
     stm32loader.set_console_output_fn(None)
     gevent.sleep(0.2)
     logger.info("Reinitializing RH interface")
-    ui_server_messages.clear()
+    UI_server_messages.clear()
     initialize_rh_interface()
     if RaceContext.race.num_nodes <= 0:
         SOCKET_IO.emit('upd_messages_append', "\nWarning: No receiver nodes found")
@@ -2722,15 +2714,15 @@ def init_LED_effects():
 def determineHostAddress(maxRetrySecs=10):
     ''' Determines local host IP address.  Will wait and retry to get valid IP, in
         case system is starting up and needs time to connect to network and DHCP. '''
-    global server_ipaddress_str
-    if server_ipaddress_str:
-        return server_ipaddress_str  # if previously determined then return value
+    global Server_ipaddress_str
+    if Server_ipaddress_str:
+        return Server_ipaddress_str  # if previously determined then return value
     sTime = monotonic()
     while True:
         try:
             ipAddrStr = RHUtils.getLocalIPAddress()
             if ipAddrStr and ipAddrStr != "127.0.0.1":  # don't accept default-localhost IP
-                server_ipaddress_str = ipAddrStr
+                Server_ipaddress_str = ipAddrStr
                 break
             logger.debug("Querying of host IP address returned " + ipAddrStr)
         except Exception as ex:
@@ -2805,7 +2797,7 @@ def shutdown_button_long_press():
     logger.info("Detected shutdown button long press; performing shutdown now")
     on_shutdown_pi()
 
-def _do_init_rh_interface():
+def _do_init_rh_interface(hardwareHelpers):
     try:
         rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
         try:
@@ -2883,8 +2875,8 @@ def _do_init_rh_interface():
         logger.exception("Error initializing RH interface")
         return False
 
-def initialize_rh_interface():
-    if not _do_init_rh_interface():
+def initialize_rh_interface(hardwareHelpers):
+    if not _do_init_rh_interface(hardwareHelpers):
         return False
     if RaceContext.race.num_nodes == 0:
         logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
@@ -2984,7 +2976,7 @@ def check_requirements():
     except:
         logger.exception("Error checking package requirements")
 
-class plugin():
+class plugin_class():
     def __init__(self, name):
         self.name = name
         self.module = None
@@ -3047,349 +3039,6 @@ def load_plugin(plugin):
     plugin.module.initialize(RHAPI)
     return True
 
-#
-# Program Initialize
-#
-
-with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
-
-    logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(\
-                RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-    logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time, \
-                                RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
-    RHUtils.idAndLogSystemInfo()
-
-    check_requirements()
-
-    determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
-
-    # RotorHazard events dispatch
-    Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
-
-    # Plugin handling
-    plugin_modules = []
-    if os.path.isdir('./plugins'):
-        dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
-        for name in dirs:
-            plugin_modules.append(plugin(name))
-    else:
-        logger.warning('No plugins directory found.')
-
-    for plugin in plugin_modules:
-        if load_plugin(plugin):
-            logger.info("Loaded plugin '{}'".format(plugin.name))
-            plugin.loaded = True
-        else:
-            if plugin.load_issue_detail:
-                logger.info("Plugin '{}' not loaded ({}; Ex: {})".format(plugin.name, plugin.load_issue, plugin.load_issue_detail))
-            else:
-                logger.info("Plugin '{}' not loaded ({})".format(plugin.name, plugin.load_issue))
-
-    RaceContext.serverstate.plugins = plugin_modules
-
-    if (not RHUtils.is_S32_BPill_board()) and RaceContext.serverconfig.get_item('GENERAL', 'FORCE_S32_BPILL_FLAG'):
-        RHUtils.set_S32_BPill_boardFlag()
-        logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
-
-    logger.info("System info: isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
-                                             RHUtils.get_GPIO_type_str(), RHUtils.is_S32_BPill_board()))
-    if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
-        logger.warning("Unable to access real GPIO on Pi; libraries may need to be installed")
-        set_ui_message(
-            'gpio',
-            __("Unable to access real GPIO on Pi libraries may need to be installed"),
-            header='Warning',
-            subclass='no-access'
-            )
-
-    # log results of module initializations
-    RaceContext.serverconfig.logInitResultMessage()
-    RaceContext.language.logInitResultMessage()
-
-    # check if current log file owned by 'root' and change owner to 'pi' user if so
-    if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
-        logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
-        RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME)  # also make sure 'log' dir not owned by 'root'
-
-    logger.info("Using log file: {0}".format(Current_log_path_name))
-
-    if RHUtils.is_sys_raspberry_pi() and RHUtils.is_S32_BPill_board():
-        try:
-            if RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'):
-                logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
-                             RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'), \
-                             RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS')))
-                ShutdownButtonInputHandler = ButtonInputHandler(
-                                RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'), logger, \
-                                shutdown_button_pressed, shutdown_button_released, \
-                                shutdown_button_long_press,
-                                RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS'), False)
-                start_shutdown_button_thread()
-        except Exception:
-            logger.exception("Error setting up shutdown-button handler")
-
-        logger.debug("Resetting S32_BPill processor")
-        s32logger = logging.getLogger("stm32loader")
-        stm32loader.set_console_output_fn(s32logger.info)
-        stm32loader.reset_to_run()
-        stm32loader.set_console_output_fn(None)
-
-    hardwareHelpers = {}
-    for helper in search_modules(suffix='helper'):
-        try:
-            hardwareHelpers[helper.__name__] = helper.create(RaceContext.serverconfig)
-        except Exception as ex:
-            logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
-
-    initRhResultFlag = initialize_rh_interface()
-    if not initRhResultFlag:
-        log.wait_for_queue_empty()
-        sys.exit(1)
-
-    if len(sys.argv) > 0:
-        if CMDARG_JUMP_TO_BL_STR in sys.argv:
-            stop_background_threads()
-            jump_to_node_bootloader()
-            if CMDARG_FLASH_BPILL_STR in sys.argv:
-                bootJumpArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-                bootJumpPortStr = RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0] if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') and \
-                                                    len(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) > 0 else None
-                bootJumpSrcStr = sys.argv[bootJumpArgIdx] if bootJumpArgIdx < len(sys.argv) else None
-                if bootJumpSrcStr and bootJumpSrcStr.startswith("--"):  # use next arg as src file (optional)
-                    bootJumpSrcStr = None                       #  unless arg is switch param
-                bootJumpSuccessFlag = stm32loader.flash_file_to_stm32(bootJumpPortStr, bootJumpSrcStr)
-                sys.exit(0 if bootJumpSuccessFlag else 1)
-            sys.exit(0)
-        if CMDARG_VIEW_DB_STR in sys.argv:
-            try:
-                viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
-                RaceContext.rhdata.backup_db_file(True)
-                logger.info("Loading given database file: {}".format(sys.argv[viewdbArgIdx]))
-                restoreDbResultFlag = restore_database_file(sys.argv[viewdbArgIdx])
-            except Exception as ex:
-                logger.error("Error loading database file: {}".format(ex))
-                restoreDbResultFlag = False
-            if not restoreDbResultFlag:
-                sys.exit(1)
-
-    RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
-    hasMirrors = False
-    secondary = None
-    try:
-        for sec_idx, secondary_info in enumerate(RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')):
-            if isinstance(secondary_info, str):
-                secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
-            if 'address' not in secondary_info:
-                raise RuntimeError("Secondary 'address' item not specified")
-            # substitute asterisks in given address with values from host IP address
-            secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
-                                                                    secondary_info['address'])
-            if 'timeout' not in secondary_info:
-                secondary_info['timeout'] = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARY_TIMEOUT')
-            if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
-                hasMirrors = True
-            elif hasMirrors:
-                logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
-                set_ui_message(
-                    'secondary',
-                    __("Mirror secondaries must be last; ignoring part of secondary configuration"),
-                    header='Notice',
-                    subclass='mirror'
-                    )
-                break
-            secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, RaceContext.serverstate.monotonic_to_epoch_millis,
-                                      RELEASE_VERSION, secondary)
-            RaceContext.cluster.addSecondary(secondary)
-    except:
-        logger.exception("Error adding secondary to cluster")
-        set_ui_message(
-            'secondary',
-            __('Secondary configuration is invalid.'),
-            header='Error',
-            subclass='error'
-            )
-
-    if RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
-        RaceContext.cluster.init_repeater()
-
-    if RaceContext.race.num_nodes > 0:
-        logger.info('Number of nodes found: {0}'.format(RaceContext.race.num_nodes))
-        # if I2C nodes then only report comm errors if > 1.0%
-        if hasattr(RaceContext.interface.nodes[0], 'i2c_addr'):
-            RaceContext.interface.set_intf_error_report_percent_limit(1.0)
-
-    # Delay to get I2C addresses through interface class initialization
-    gevent.sleep(0.500)
-
-    try:
-        RaceContext.sensors.discover(config=RaceContext.serverconfig.get_section('SENSORS'), **hardwareHelpers)
-    except Exception:
-        logger.exception("Exception while discovering sensors")
-
-    # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
-    db_inited_flag = False
-    if not os.path.exists(DB_FILE_NAME):
-        logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
-        Database.create_db_all()
-        db_init()
-        db_inited_flag = True
-        RaceContext.rhdata.primeCache() # Ready the Options cache
-    else:
-        Database.create_db_all()
-
-    # check if DB file owned by 'root' and change owner to 'pi' user if so
-    if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
-        logger.debug("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
-
-    # check if directories owned by 'root' and change owner to 'pi' user if so
-    if RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME):
-        logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(DB_BKP_DIR_NAME))
-    if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
-        logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOGZIP_DIR_NAME))
-
-    # collect server info for About panel, etc
-    buildServerInfo()
-    reportServerInfo()
-    RHAPI.server_info = RaceContext.serverstate.info_dict
-
-    # Do data consistency checks
-    if not db_inited_flag:
-        try:
-            RaceContext.rhdata.primeCache() # Ready the Options cache
-
-            if not RaceContext.rhdata.check_integrity():
-                RaceContext.rhdata.recover_database(DB_FILE_NAME, startup=True)
-                clean_results_cache()
-
-        except Exception as ex:
-            logger.warning('Clearing all data after recovery failure:  ' + str(ex))
-            db_reset()
-
-    # Create LED object with appropriate configuration
-    strip = None
-    try:
-        if RaceContext.serverconfig.get_item('LED', 'LED_COUNT') > 0:
-            led_type = os.environ.get('RH_LEDS', 'ws281x')
-            # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
-            #       otherwise it causes problems when run with no existing DB file
-            led_brightness = RaceContext.serverconfig.get_item('LED', 'ledBrightness')
-            if not RaceContext.serverconfig.get_item('LED', 'SERIAL_CTRLR_PORT'):
-                try:
-                    ledModule = importlib.import_module(led_type + '_leds')
-                    strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
-                except ImportError:
-                    # No hardware LED handler, the OpenCV emulation
-                    try:
-                        ledModule = importlib.import_module('cv2_leds')
-                        strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
-                    except ImportError:
-                        # No OpenCV emulation, try console output
-                        try:
-                            ledModule = importlib.import_module('ANSI_leds')
-                            strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
-                        except ImportError:
-                            ledModule = None
-                            logger.info('LED: disabled (no modules available)')
-            else:
-                try:
-                    ledModule = importlib.import_module('ledctrlr_leds')
-                    strip = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
-                except Exception as ex:
-                    if "FileNotFound" in str(ex) or "No such file or directory" in str(ex) or \
-                                                                  "could not open port" in str(ex):
-                        logger.error("Serial port not found for LED controller: {}".format(ex))
-                    else:
-                        logger.exception("Error initializing serial LED controller: {}".format(ex))
-        else:
-            logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
-    except:
-        logger.exception("Error configuring LED support")
-    if strip:
-        # Initialize the library (must be called once before other functions).
-        try:
-            strip.begin()
-            RaceContext.led_manager = LEDEventManager(Events, strip, RaceContext, RHAPI)
-            init_LED_effects()
-        except:
-            logger.exception("Error initializing LED support")
-            RaceContext.led_manager = NoLEDManager()
-    elif RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
-        RaceContext.led_manager = ClusterLEDManager(Events)
-        init_LED_effects()
-    else:
-        RaceContext.led_manager = NoLEDManager()
-
-    # leaderboard ranking managers
-    RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
-    RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RHAPI, Events)
-
-    # Initialize internal state with database
-    # DB session commit needed to prevent 'application context' errors
-    try:
-        init_race_state()
-    except Exception:
-        logger.exception("Exception in 'init_race_state()'")
-        log.wait_for_queue_empty()
-        sys.exit(1)
-
-    # internal secondary race format for LiveTime (needs to be created after initial DB setup)
-    RaceContext.serverstate.secondary_race_format = RHRace.RHRaceFormat(name=__("Secondary"),
-                             unlimited_time=1,
-                             race_time_sec=0,
-                             lap_grace_sec=-1,
-                             staging_fixed_tones=0,
-                             start_delay_min_ms=0,
-                             start_delay_max_ms=0,
-                             staging_delay_tones=0,
-                             number_laps_win=0,
-                             win_condition=WinCondition.NONE,
-                             team_racing_mode=False,
-                             start_behavior=0,
-                             points_method=None)
-
-    # Import IMDTabler
-    if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
-        try:
-            java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True).decode("utf-8")
-            logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
-        except:
-            java_ver = None
-            logger.info('Unable to find java; for IMDTabler functionality try:')
-            logger.info('sudo apt install default-jdk-headless')
-        if java_ver:
-            try:
-                chk_imdtabler_ver = subprocess.check_output( \
-                            'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
-                            stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
-                Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-                logger.debug('Found installed: ' + chk_imdtabler_ver)
-            except Exception:
-                logger.exception('Error checking IMDTabler:  ')
-    else:
-        logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
-    # VRx Controllers
-    RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=RaceContext.serverconfig.get_section('VRX_CONTROL'))
-    Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
-
-    # data exporters
-    RaceContext.export_manager = DataExportManager(RHAPI, Events)
-    RaceContext.import_manager = DataImportManager(RHAPI, RaceContext, Events)
-
-    # heat generators
-    RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
-
-    gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
-
-    # register endpoints
-    APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
-
-    #register event actions
-    EventActionsObj = EventActions.EventActions(Events, RaceContext)
-
-    # make event actions available to cluster/secondary timers
-    RaceContext.cluster.setEventActionsObj(EventActionsObj)
-
 @catchLogExceptionsWrapper
 def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), argv_arr=None):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
@@ -3450,8 +3099,353 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
     gevent.sleep(2)  # allow system shutdown command to run before program exit
     log.close_logging()
 
+@catchLogExceptionsWrapper
+def rh_program_initialize():
+    with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+
+        logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format( \
+            RELEASE_VERSION, SERVER_API, NODE_API_BEST))
+        logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time, \
+                                                                 RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
+        RHUtils.idAndLogSystemInfo()
+
+        check_requirements()
+
+        determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+        # RotorHazard events dispatch
+        Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
+
+        # Plugin handling
+        plugin_modules = []
+        if os.path.isdir('./plugins'):
+            dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
+            for name in dirs:
+                plugin_modules.append(plugin_class(name))
+        else:
+            logger.warning('No plugins directory found.')
+
+        for plugin in plugin_modules:
+            if load_plugin(plugin):
+                logger.info("Loaded plugin '{}'".format(plugin.name))
+                plugin.loaded = True
+            else:
+                if plugin.load_issue_detail:
+                    logger.info("Plugin '{}' not loaded ({}; Ex: {})".format(plugin.name, plugin.load_issue, plugin.load_issue_detail))
+                else:
+                    logger.info("Plugin '{}' not loaded ({})".format(plugin.name, plugin.load_issue))
+
+        RaceContext.serverstate.plugins = plugin_modules
+
+        if (not RHUtils.is_S32_BPill_board()) and RaceContext.serverconfig.get_item('GENERAL', 'FORCE_S32_BPILL_FLAG'):
+            RHUtils.set_S32_BPill_boardFlag()
+            logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
+
+        logger.info("System info: isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.is_sys_raspberry_pi(), \
+                                                                                 RHUtils.get_GPIO_type_str(), RHUtils.is_S32_BPill_board()))
+        if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
+            logger.warning("Unable to access real GPIO on Pi; libraries may need to be installed")
+            set_ui_message(
+                'gpio',
+                __("Unable to access real GPIO on Pi libraries may need to be installed"),
+                header='Warning',
+                subclass='no-access'
+            )
+
+        # log results of module initializations
+        RaceContext.serverconfig.logInitResultMessage()
+        RaceContext.language.logInitResultMessage()
+
+        # check if current log file owned by 'root' and change owner to 'pi' user if so
+        if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
+            logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+            RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME)  # also make sure 'log' dir not owned by 'root'
+
+        logger.info("Using log file: {0}".format(Current_log_path_name))
+
+        if RHUtils.is_sys_raspberry_pi() and RHUtils.is_S32_BPill_board():
+            try:
+                if RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'):
+                    logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
+                        RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'), \
+                        RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS')))
+                    ShutdownButtonInputHandler = ButtonInputHandler(
+                        RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'), logger, \
+                        shutdown_button_pressed, shutdown_button_released, \
+                        shutdown_button_long_press,
+                        RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS'), False)
+                    start_shutdown_button_thread()
+            except Exception:
+                logger.exception("Error setting up shutdown-button handler")
+
+            logger.debug("Resetting S32_BPill processor")
+            s32logger = logging.getLogger("stm32loader")
+            stm32loader.set_console_output_fn(s32logger.info)
+            stm32loader.reset_to_run()
+            stm32loader.set_console_output_fn(None)
+
+        hardwareHelpers = {}
+        for helper in search_modules(suffix='helper'):
+            try:
+                hardwareHelpers[helper.__name__] = helper.create(RaceContext.serverconfig)
+            except Exception as ex:
+                logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
+
+        initRhResultFlag = initialize_rh_interface(hardwareHelpers)
+        if not initRhResultFlag:
+            log.wait_for_queue_empty()
+            sys.exit(1)
+
+        if len(sys.argv) > 0:
+            if CMDARG_JUMP_TO_BL_STR in sys.argv:
+                stop_background_threads()
+                jump_to_node_bootloader()
+                if CMDARG_FLASH_BPILL_STR in sys.argv:
+                    bootJumpArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+                    bootJumpPortStr = RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0] if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS') and \
+                                                                                                         len(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) > 0 else None
+                    bootJumpSrcStr = sys.argv[bootJumpArgIdx] if bootJumpArgIdx < len(sys.argv) else None
+                    if bootJumpSrcStr and bootJumpSrcStr.startswith("--"):  # use next arg as src file (optional)
+                        bootJumpSrcStr = None                       #  unless arg is switch param
+                    bootJumpSuccessFlag = stm32loader.flash_file_to_stm32(bootJumpPortStr, bootJumpSrcStr)
+                    sys.exit(0 if bootJumpSuccessFlag else 1)
+                sys.exit(0)
+            if CMDARG_VIEW_DB_STR in sys.argv:
+                try:
+                    viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
+                    RaceContext.rhdata.backup_db_file(True)
+                    logger.info("Loading given database file: {}".format(sys.argv[viewdbArgIdx]))
+                    restoreDbResultFlag = restore_database_file(sys.argv[viewdbArgIdx])
+                except Exception as ex:
+                    logger.error("Error loading database file: {}".format(ex))
+                    restoreDbResultFlag = False
+                if not restoreDbResultFlag:
+                    sys.exit(1)
+
+        RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
+        hasMirrors = False
+        secondary = None
+        try:
+            for sec_idx, secondary_info in enumerate(RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')):
+                if isinstance(secondary_info, str):
+                    secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
+                if 'address' not in secondary_info:
+                    raise RuntimeError("Secondary 'address' item not specified")
+                # substitute asterisks in given address with values from host IP address
+                secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
+                                                                            secondary_info['address'])
+                if 'timeout' not in secondary_info:
+                    secondary_info['timeout'] = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARY_TIMEOUT')
+                if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
+                    hasMirrors = True
+                elif hasMirrors:
+                    logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
+                    set_ui_message(
+                        'secondary',
+                        __("Mirror secondaries must be last; ignoring part of secondary configuration"),
+                        header='Notice',
+                        subclass='mirror'
+                    )
+                    break
+                secondary = SecondaryNode(sec_idx, secondary_info, RaceContext, RaceContext.serverstate.monotonic_to_epoch_millis,
+                                          RELEASE_VERSION, secondary)
+                RaceContext.cluster.addSecondary(secondary)
+        except:
+            logger.exception("Error adding secondary to cluster")
+            set_ui_message(
+                'secondary',
+                __('Secondary configuration is invalid.'),
+                header='Error',
+                subclass='error'
+            )
+
+        if RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
+            RaceContext.cluster.init_repeater()
+
+        if RaceContext.race.num_nodes > 0:
+            logger.info('Number of nodes found: {0}'.format(RaceContext.race.num_nodes))
+            # if I2C nodes then only report comm errors if > 1.0%
+            if hasattr(RaceContext.interface.nodes[0], 'i2c_addr'):
+                RaceContext.interface.set_intf_error_report_percent_limit(1.0)
+
+        # Delay to get I2C addresses through interface class initialization
+        gevent.sleep(0.500)
+
+        try:
+            RaceContext.sensors.discover(config=RaceContext.serverconfig.get_section('SENSORS'), **hardwareHelpers)
+        except Exception:
+            logger.exception("Exception while discovering sensors")
+
+        # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
+        db_inited_flag = False
+        if not os.path.exists(DB_FILE_NAME):
+            logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
+            Database.create_db_all()
+            db_init()
+            db_inited_flag = True
+            RaceContext.rhdata.primeCache() # Ready the Options cache
+        else:
+            Database.create_db_all()
+
+        # check if DB file owned by 'root' and change owner to 'pi' user if so
+        if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
+            logger.debug("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
+
+        # check if directories owned by 'root' and change owner to 'pi' user if so
+        if RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME):
+            logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(DB_BKP_DIR_NAME))
+        if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
+            logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOGZIP_DIR_NAME))
+
+        # collect server info for About panel, etc
+        buildServerInfo()
+        reportServerInfo()
+        RHAPI.server_info = RaceContext.serverstate.info_dict
+
+        # Do data consistency checks
+        if not db_inited_flag:
+            try:
+                RaceContext.rhdata.primeCache() # Ready the Options cache
+
+                if not RaceContext.rhdata.check_integrity():
+                    RaceContext.rhdata.recover_database(DB_FILE_NAME, startup=True)
+                    clean_results_cache()
+
+            except Exception as ex:
+                logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+                db_reset()
+
+        # Create LED object with appropriate configuration
+        global LedStripObj
+        try:
+            if RaceContext.serverconfig.get_item('LED', 'LED_COUNT') > 0:
+                led_type = os.environ.get('RH_LEDS', 'ws281x')
+                # note: any calls to 'RaceContext.rhdata.get_option()' need to happen after the DB initialization,
+                #       otherwise it causes problems when run with no existing DB file
+                led_brightness = RaceContext.serverconfig.get_item('LED', 'ledBrightness')
+                if not RaceContext.serverconfig.get_item('LED', 'SERIAL_CTRLR_PORT'):
+                    try:
+                        ledModule = importlib.import_module(led_type + '_leds')
+                        LedStripObj = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                    except ImportError:
+                        # No hardware LED handler, the OpenCV emulation
+                        try:
+                            ledModule = importlib.import_module('cv2_leds')
+                            LedStripObj = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                        except ImportError:
+                            # No OpenCV emulation, try console output
+                            try:
+                                ledModule = importlib.import_module('ANSI_leds')
+                                LedStripObj = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                            except ImportError:
+                                ledModule = None
+                                logger.info('LED: disabled (no modules available)')
+                else:
+                    try:
+                        ledModule = importlib.import_module('ledctrlr_leds')
+                        LedStripObj = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                    except Exception as ex:
+                        if "FileNotFound" in str(ex) or "No such file or directory" in str(ex) or \
+                                "could not open port" in str(ex):
+                            logger.error("Serial port not found for LED controller: {}".format(ex))
+                        else:
+                            logger.exception("Error initializing serial LED controller: {}".format(ex))
+            else:
+                logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
+        except:
+            logger.exception("Error configuring LED support")
+        if LedStripObj:
+            # Initialize the library (must be called once before other functions).
+            try:
+                LedStripObj.begin()
+                RaceContext.led_manager = LEDEventManager(Events, LedStripObj, RaceContext, RHAPI)
+                init_LED_effects()
+            except:
+                logger.exception("Error initializing LED support")
+                RaceContext.led_manager = NoLEDManager()
+        elif RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries():
+            RaceContext.led_manager = ClusterLEDManager(Events)
+            init_LED_effects()
+        else:
+            RaceContext.led_manager = NoLEDManager()
+
+        # leaderboard ranking managers
+        RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)
+        RaceContext.raceclass_rank_manager = Results.RaceClassRankManager(RHAPI, Events)
+
+        # Initialize internal state with database
+        # DB session commit needed to prevent 'application context' errors
+        try:
+            init_race_state()
+        except Exception:
+            logger.exception("Exception in 'init_race_state()'")
+            log.wait_for_queue_empty()
+            sys.exit(1)
+
+        # internal secondary race format for LiveTime (needs to be created after initial DB setup)
+        RaceContext.serverstate.secondary_race_format = RHRace.RHRaceFormat(name=__("Secondary"),
+                                                                            unlimited_time=1,
+                                                                            race_time_sec=0,
+                                                                            lap_grace_sec=-1,
+                                                                            staging_fixed_tones=0,
+                                                                            start_delay_min_ms=0,
+                                                                            start_delay_max_ms=0,
+                                                                            staging_delay_tones=0,
+                                                                            number_laps_win=0,
+                                                                            win_condition=WinCondition.NONE,
+                                                                            team_racing_mode=False,
+                                                                            start_behavior=0,
+                                                                            points_method=None)
+
+        # Import IMDTabler
+        if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
+            try:
+                java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True).decode("utf-8")
+                logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
+            except:
+                java_ver = None
+                logger.info('Unable to find java; for IMDTabler functionality try:')
+                logger.info('sudo apt install default-jdk-headless')
+            if java_ver:
+                try:
+                    chk_imdtabler_ver = subprocess.check_output( \
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
+                        stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
+                    Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
+                    logger.debug('Found installed: ' + chk_imdtabler_ver)
+                except Exception:
+                    logger.exception('Error checking IMDTabler:  ')
+        else:
+            logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+
+        # VRx Controllers
+        RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=RaceContext.serverconfig.get_section('VRX_CONTROL'))
+        Events.on(Evt.CLUSTER_JOIN, 'VRx', RaceContext.vrx_manager.kill)
+
+        # data exporters
+        RaceContext.export_manager = DataExportManager(RHAPI, Events)
+        RaceContext.import_manager = DataImportManager(RHAPI, RaceContext, Events)
+
+        # heat generators
+        RaceContext.heat_generate_manager = HeatGeneratorManager(RaceContext, RHAPI, Events)
+
+        gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
+
+        # register endpoints
+        APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
+
+        #register event actions
+        EventActionsObj = EventActions.EventActions(Events, RaceContext)
+
+        # make event actions available to cluster/secondary timers
+        RaceContext.cluster.setEventActionsObj(EventActionsObj)
+
+RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
+RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions
+
 # Start HTTP server
 if __name__ == '__main__':
+    rh_program_initialize()
     signal.signal(signal.SIGINT, kill_server_via_signal)   # handle Ctrl-C signal
     signal.signal(signal.SIGTERM, kill_server_via_signal)  # handle kill-process signal
     start(argv_arr=sys.argv)
