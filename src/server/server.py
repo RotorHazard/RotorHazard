@@ -1049,7 +1049,12 @@ def on_set_scan(data):
 def on_add_heat(data=None):
     '''Adds the next available heat number to the database.'''
     if data and 'class' in data:
-        RaceContext.rhdata.add_heat(init={'class_id': data['class']})
+        init = {
+            'class_id': data['class']
+        }
+        if 'group' in data:
+            init['group_id'] = data['group']
+        RaceContext.rhdata.add_heat(init=init)
     else:
         RaceContext.rhdata.add_heat()
     RaceContext.rhui.emit_heat_data()

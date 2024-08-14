@@ -1704,7 +1704,8 @@ main.page-home {
 		grid-row: 6;
 	}
 
-	.race_classes .heats {
+	.race_classes .heats,
+	.race_classes .groups {
 		grid-column: 1 / -1;
 		grid-row: 7;
 	}

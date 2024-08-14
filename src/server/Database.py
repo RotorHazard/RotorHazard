@@ -93,7 +93,7 @@ class Heat(Base):
     order = DB.Column(DB.Integer, nullable=True)
     status = DB.Column(DB.Integer, nullable=False)
     auto_frequency = DB.Column(DB.Boolean, nullable=False)
-    group_id = DB.Column(DB.Integer, nullable=True)
+    group_id = DB.Column(DB.Integer, nullable=False)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
     # DEPRECATED: compatibility for 'note' property / renamed to 'name'

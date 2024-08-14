@@ -1037,6 +1037,7 @@ class RHData():
             }),
             order=None,
             status=HeatStatus.PLANNED,
+            group_id=0,
             auto_frequency=False
             )
 
@@ -1048,7 +1049,7 @@ class RHData():
             if 'auto_frequency' in init:
                 new_heat.auto_frequency = init['auto_frequency']
             if 'group_id' in init:
-                new_heat.class_id = init['group_id']
+                new_heat.group_id = init['group_id']
 
             defaultMethod = init['defaultMethod'] if 'defaultMethod' in init else ProgramMethod.ASSIGN
         else:
