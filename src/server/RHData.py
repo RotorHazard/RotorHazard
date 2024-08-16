@@ -1826,6 +1826,16 @@ class RHData():
 
         race_list = Database.SavedRaceMeta.query.filter_by(class_id=race_class_id).all()
 
+        # if switching to groups, split races into individual heats
+        if 'round_type' in data:
+            if race_class.round_type == RoundType.GROUPED:
+                self.raceclass_expand_heat_rounds(race_class, prime=True)
+            else:
+                self.raceclass_strip_groups(race_class)
+
+        if 'rounds' in data:
+            self.raceclass_prime_groups(race_class.id)
+
         if 'class_name' in data:
             if len(race_list):
                 self._racecontext.pagecache.set_valid(False)
@@ -2093,6 +2103,46 @@ class RHData():
     def get_raceclass_id_by_attribute(self, name, value):
         attrs = Database.RaceClassAttribute.query.filter_by(name=name, value=value).all()
         return [attr.id for attr in attrs]
+
+    def raceclass_expand_heat_rounds(self, race_class_or_id, prime=False):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(race_class_or_id)
+        if race_class.round_type == RoundType.GROUPED:
+            heats = self.get_heats_by_class(race_class.id)
+            for heat in heats:
+                races = self.get_savedRaceMetas_by_heat(heat.id)
+                if len(races) > 1:
+                    for group, race in enumerate(races):
+                        if group > 0:
+                            new_heat = self.duplicate_heat(heat, new_heat_name=heat.name, group_id=group)
+                            self.reassign_savedRaceMeta_heat(race, new_heat.id)
+                    if prime:
+                        self.duplicate_heat(heat, new_heat_name=heat.name, group_id=len(races))
+
+    def raceclass_prime_groups(self, race_class_or_id):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(race_class_or_id)
+        if race_class.round_type == RoundType.GROUPED:
+            heats = self.get_heats_by_class(race_class.id)
+            group_heats = []
+            for heat in heats:
+                while len(group_heats) <= heat.group_id:
+                    group_heats.append([])
+                group_heats[heat.group_id].append(heat)
+
+            if len(group_heats) < race_class.rounds:
+                next_round = len(group_heats) + 1
+                for heat in group_heats[-1]:
+                    races = self.get_savedRaceMetas_by_heat(heat.id)
+                    if len(races):
+                        self.duplicate_heat(heat, {'group_id': next_round})
+
+    def raceclass_strip_groups(self, race_class_or_id):
+        race_class = self.resolve_raceClass_from_raceClass_or_id(race_class_or_id)
+        heats = self.get_heats_by_class(race_class.id)
+        for heat in heats:
+            self.alter_heat({
+                'heat': heat.id,
+                'group_id': 0,
+            })
 
     # Profiles
     def resolve_profile_from_profile_or_id(self, profile_or_id):

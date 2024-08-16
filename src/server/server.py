@@ -1134,13 +1134,14 @@ def on_alter_race_class(data):
     if ('class_format' in data or \
         'class_name' in data or \
         'win_condition' in data or \
+        'round_type' in data or \
         'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_class_data(noself=True)
-    if 'class_name' in data:
+    if 'class_name' in data or 'round_type' in data:
         RaceContext.rhui.emit_heat_data() # Update class names in heat displays
     if 'class_format' in data:
         RaceContext.rhui.emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
