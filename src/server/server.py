@@ -3435,6 +3435,7 @@ def rh_program_initialize():
         APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
 
         #register event actions
+        global EventActionsObj
         EventActionsObj = EventActions.EventActions(Events, RaceContext)
 
         # make event actions available to cluster/secondary timers
