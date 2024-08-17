@@ -140,6 +140,7 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 Server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
+HardwareHelpers = {}
 UI_server_messages = {}
 
 HEARTBEAT_THREAD = None
@@ -2797,14 +2798,14 @@ def shutdown_button_long_press():
     logger.info("Detected shutdown button long press; performing shutdown now")
     on_shutdown_pi()
 
-def _do_init_rh_interface(hardwareHelpers):
+def _do_init_rh_interface():
     try:
         rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
             RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, \
-                            isS32BPillFlag=RHUtils.is_S32_BPill_board(), **hardwareHelpers)
+                                            isS32BPillFlag=RHUtils.is_S32_BPill_board(), **HardwareHelpers)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
             if RaceContext.interface and ((not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0) and \
@@ -2832,7 +2833,7 @@ def _do_init_rh_interface(hardwareHelpers):
         if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
             if (not RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) or len(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) <= 0:
                 interfaceModule = importlib.import_module('MockInterface')
-                RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **hardwareHelpers)
+                RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **HardwareHelpers)
                 for node in RaceContext.interface.nodes:  # put mock nodes at latest API level
                     node.api_level = NODE_API_BEST
                 set_ui_message(
@@ -2875,8 +2876,8 @@ def _do_init_rh_interface(hardwareHelpers):
         logger.exception("Error initializing RH interface")
         return False
 
-def initialize_rh_interface(hardwareHelpers):
-    if not _do_init_rh_interface(hardwareHelpers):
+def initialize_rh_interface():
+    if not _do_init_rh_interface():
         return False
     if RaceContext.race.num_nodes == 0:
         logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
@@ -3185,14 +3186,13 @@ def rh_program_initialize():
             stm32loader.reset_to_run()
             stm32loader.set_console_output_fn(None)
 
-        hardwareHelpers = {}
         for helper in search_modules(suffix='helper'):
             try:
-                hardwareHelpers[helper.__name__] = helper.create(RaceContext.serverconfig)
+                HardwareHelpers[helper.__name__] = helper.create(RaceContext.serverconfig)
             except Exception as ex:
                 logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
-        initRhResultFlag = initialize_rh_interface(hardwareHelpers)
+        initRhResultFlag = initialize_rh_interface()
         if not initRhResultFlag:
             log.wait_for_queue_empty()
             sys.exit(1)
@@ -3273,7 +3273,7 @@ def rh_program_initialize():
         gevent.sleep(0.500)
 
         try:
-            RaceContext.sensors.discover(config=RaceContext.serverconfig.get_section('SENSORS'), **hardwareHelpers)
+            RaceContext.sensors.discover(config=RaceContext.serverconfig.get_section('SENSORS'), **HardwareHelpers)
         except Exception:
             logger.exception("Exception while discovering sensors")
 
