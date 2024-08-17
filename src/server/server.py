@@ -3169,6 +3169,7 @@ def rh_program_initialize():
                     logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
                         RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'), \
                         RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS')))
+                    global ShutdownButtonInputHandler
                     ShutdownButtonInputHandler = ButtonInputHandler(
                         RaceContext.serverconfig.get_item('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN'), logger, \
                         shutdown_button_pressed, shutdown_button_released, \
