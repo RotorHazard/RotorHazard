@@ -160,6 +160,7 @@ class Evt:
     RACE_PILOT_DONE = 'racePilotDone'
     CROSSING_ENTER = 'crossingEnter'
     CROSSING_EXIT = 'crossingExit'
+    RACE_INITIAL_PASS = 'raceInitialPass'
     # Race management
     LAPS_SAVE = 'lapsSave'
     LAPS_DISCARD = 'lapsDiscard'

@@ -1,6 +1,7 @@
 ''' builtin Actions '''
 
 import RHData
+import gevent
 from eventmanager import Evt
 from EventActions import ActionEffect
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
@@ -14,8 +15,12 @@ class ActionsBuiltin():
 
     def speakEffect(self, action, args):
         if 'text' in action:
-            text = RHData.doReplace(self._rhapi, action['text'], args, True)
-            self._rhapi.ui.message_speak(text)
+            delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" provided
+            text = RHData.doReplace(self._rhapi, action['text'], args, True, delay_sec_holder)
+            if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
+                self._rhapi.ui.message_speak(text)
+            else:
+                gevent.spawn_later(delay_sec_holder[0], self._rhapi.ui.message_speak, text)
 
     def messageEffect(self, action, args):
         if 'text' in action:

@@ -1128,6 +1128,18 @@ class RaceAPI():
         return self._racecontext.race.race_winner_pilot_id
 
     @property
+    def prev_race_winner_name(self):
+        return self._racecontext.race.prev_race_winner_name
+
+    @property
+    def prev_race_winner_phonetic(self):
+        return self._racecontext.race.prev_race_winner_phonetic
+
+    @property
+    def prev_race_winner_pilot_id(self):
+        return self._racecontext.race.prev_race_winner_pilot_id
+
+    @property
     def race_leader_lap(self):
         return self._racecontext.race.race_leader_lap
 

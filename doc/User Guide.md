@@ -262,6 +262,8 @@ The variables listed below may be used for the  effects.
 | %FASTEST_RACE_SPEED_CALL% | Pilot/speed for fastest speed in race (with prompt)                     |
 | %WINNER%                  | Pilot callsign for winner of race                                       |
 | %WINNER_CALL%             | Pilot callsign for winner of race (with prompt)                         |
+| %PREVIOUS_WINNER%         | Pilot callsign for winner of previous race                              |
+| %PREVIOUS_WINNER_CALL%    | Pilot callsign for winner of previous race (with prompt)                |
 | %PILOTS%                  | List of pilot callsigns (read out slower)                               |
 | %LINEUP%                  | List of pilot callsigns (read out faster)                               |
 | %FREQS%                   | List of pilot callsigns and frequency assignments                       |
@@ -273,6 +275,7 @@ The variables listed below may be used for the  effects.
 | %CURRENT_TIME_24%         | Current time (24-hour clock)                                            |
 | %CURRENT_TIME_SECS_AP%    | Current time, with seconds (12-hour clock)                              |
 | %CURRENT_TIME_SECS_24%    | Current time, with seconds (24-hour clock)                              |
+| %DELAY_#_SECS%            | Delay voice callout by given number of seconds                          |
 
 #### LED Effects
 Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.
