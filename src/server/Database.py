@@ -25,6 +25,9 @@ DB_MAX_OVERFLOW=100
 def __(*args):
     return args
 
+# Context placeholder (Overwritten after module init)
+racecontext = None
+
 #
 # Database Models
 #
@@ -120,9 +123,27 @@ class Heat(Base):
 
     @property
     def display_name(self):
+        if self.class_id:
+            # get class, check class.group_id
+            race_class = racecontext.rhdata.get_raceClass(self.class_id)
+
         if self.name:
-            return self.name
-        return "{} {}".format(__('Heat'), str(self.id))
+            output = self.name
+            if self.class_id and race_class.round_type == RoundType.GROUPED:
+                output = "{}: {} {}".format(output, __('Round'), (self.group_id + 1))
+
+        else:
+            if self.class_id:
+                output = RHUtils.uniqueName(race_class.display_name, [rc.name for rc in racecontext.rhdata.get_heats()])
+                racecontext.rhdata.alter_heat({
+                    'heat': self.id,
+                    'name': output
+                })
+                return self.display_name
+            else:
+                output = "{} {}".format(__('Heat'), str(self.id))
+
+        return output
 
     def __repr__(self):
         return '<Heat %r>' % self.id

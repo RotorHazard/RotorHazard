@@ -199,6 +199,8 @@ RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing p
 RaceContext.language = Language.Language(RaceContext) # initialize language
 __ = RaceContext.language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
+Database.racecontext = RaceContext # Pass racecontext to Database module
+
 RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
