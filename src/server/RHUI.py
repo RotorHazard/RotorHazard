@@ -753,7 +753,6 @@ class RHUI():
                         })
                     rounds[race.round_id] = {
                         'race_id': race.id,
-                        'class_id': race.class_id,
                         'format_id': race.format_id,
                         'start_time': race.start_time,
                         'start_time_formatted': race.start_time_formatted,
@@ -761,9 +760,13 @@ class RHUI():
                     }
                 heats[heat.id] = {
                     'heat_id': heat.id,
+                    'class_id': heat.class_id,
                     'displayname': heat.display_name,
                     'rounds': rounds,
                 }
+                if heat.class_id:
+                    race_class = self._racecontext.rhdata.get_raceClass(heat.class_id)
+                    heats[heat.id]['round_type'] = race_class.round_type
 
         emit_payload = {
             'heats': heats,

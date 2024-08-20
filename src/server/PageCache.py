@@ -114,7 +114,13 @@ class PageCache:
             self.set_buildToken(monotonic())
 
             heats = {}
-            for heat in self._racecontext.rhdata.get_heats():
+            all_heats = self._racecontext.rhdata.get_heats()
+            all_heats = sorted(all_heats, key = lambda h: (
+                h.class_id,
+                h.group_id,
+                h.order,
+            ))
+            for heat in all_heats:
                 if self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id):
                     rounds = []
                     for race in self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id):    
@@ -166,9 +172,18 @@ class PageCache:
 
             gevent.sleep(0.001)
             heats_by_class = {}
-            heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in self._racecontext.rhdata.get_heats_by_class(RHUtils.CLASS_ID_NONE)]
+            heats_by_class[RHUtils.CLASS_ID_NONE] = self._racecontext.rhdata.get_heats_by_class(RHUtils.CLASS_ID_NONE)
             for race_class in self._racecontext.rhdata.get_raceClasses():
-                heats_by_class[race_class.id] = [heat.id for heat in self._racecontext.rhdata.get_heats_by_class(race_class.id)]
+                heats_by_class[race_class.id] = self._racecontext.rhdata.get_heats_by_class(race_class.id)
+
+            heat_ids_by_class = {}
+            for idx, race_class in heats_by_class.items():
+                race_class = sorted(race_class, key=lambda h: (
+                    h.class_id,
+                    h.group_id,
+                    h.order,
+                ))
+                heat_ids_by_class[idx] = [heat.id for heat in race_class]
 
             timing['by_class'] = monotonic()
 
@@ -197,7 +212,7 @@ class PageCache:
 
             payload = {
                 'heats': heats,
-                'heats_by_class': heats_by_class,
+                'heats_by_class': heat_ids_by_class,
                 'classes': current_classes,
                 'event_leaderboard': results,
                 'consecutives_count': self._racecontext.rhdata.get_optionInt('consecutivesCount', 3)

@@ -2885,12 +2885,24 @@ class RHData():
             race.round_id = round_counter
             round_counter += 1
 
+        if old_heat_races and old_class:
+            if old_class.round_type == RoundType.GROUPED:
+                old_heat.active = False
+            else:
+                old_heat.active = True
+
         new_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id) \
             .order_by(Database.SavedRaceMeta.start_time_formatted).all()
         round_counter = 1
         for race in new_heat_races:
             race.round_id = round_counter
             round_counter += 1
+
+        if new_heat_races and new_class:
+            if new_class.round_type == RoundType.GROUPED:
+                new_heat.active = False
+            else:
+                new_heat.active = True
 
         self.commit()
 
