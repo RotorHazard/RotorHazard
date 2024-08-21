@@ -71,8 +71,13 @@ class RHRace():
         self.race_winner_lap_id = 0
         self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
 
+        self.prev_race_winner_name = ''
+        self.prev_race_winner_phonetic = ''
+        self.prev_race_winner_pilot_id = RHUtils.PILOT_ID_NONE
+
         self.race_leader_lap = 0  # current race leader
         self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
+        self.race_initial_pass_flag = False  # set True after first gate pass of any pilot
 
         self._seat_colors = []
         self.external_flag = False # is race data controlled externally (from cluster)
@@ -188,6 +193,7 @@ class RHRace():
                 self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
                 self.race_leader_lap = 0  # clear current race leader
                 self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
+                self.race_initial_pass_flag = False
                 self.status_message = ''
                 self.any_races_started = True
 
@@ -497,6 +503,11 @@ class RHRace():
                 self.discard_laps(saved=True)
                 return False
 
+            if self.race_winner_pilot_id != RHUtils.PILOT_ID_NONE:
+                self.prev_race_winner_name = self.race_winner_name
+                self.prev_race_winner_phonetic = self.race_winner_phonetic
+                self.prev_race_winner_pilot_id = self.race_winner_pilot_id
+
             if self._racecontext.cluster:
                 self._racecontext.cluster.emitToSplits('save_laps')
 
@@ -775,6 +786,9 @@ class RHRace():
 
                                 if lap_number == 0:
                                     self._racecontext.rhui.emit_first_pass_registered(node.index) # play first-pass sound
+                                    if not self.race_initial_pass_flag:
+                                        self.race_initial_pass_flag = True
+                                        self._racecontext.events.trigger(Evt.RACE_INITIAL_PASS)
 
                                 if race_format.start_behavior == StartBehavior.FIRST_LAP:
                                     lap_number += 1
@@ -1054,6 +1068,7 @@ class RHRace():
             self.race_winner_pilot_id = RHUtils.PILOT_ID_NONE
             self.race_leader_lap = 0  # clear current race leader
             self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
+            self.race_initial_pass_flag = False
             self.status_message = ''
             self._racecontext.rhui.emit_current_laps() # Race page, blank laps to the web client
             self._racecontext.rhui.emit_current_leaderboard() # Race page, blank leaderboard to the web client

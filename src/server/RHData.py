@@ -3300,7 +3300,7 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
     return fastest_str
 
 # Text replacer
-def doReplace(rhapi, text, args, spoken_flag=False):
+def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
     if '%' in text:
         race_results = rhapi.race.results
 
@@ -3355,6 +3355,15 @@ def doReplace(rhapi, text, args, spoken_flag=False):
             if len(winner_str) > 0:
                 winner_str = "{} {}".format(rhapi.__('Winner is'), winner_str)
             text = text.replace('%WINNER_CALL%', winner_str)
+
+        if '%PREVIOUS_WINNER' in text:
+            prev_winner_str = rhapi.race.prev_race_winner_phonetic if spoken_flag else rhapi.race.prev_race_winner_name
+            # %PREVIOUS_WINNER% : Pilot callsign for winner of previous race
+            text = text.replace('%PREVIOUS_WINNER%', prev_winner_str)
+            # %PREVIOUS_WINNER_CALL% : Pilot callsign for winner of previous race (with prompt)
+            if len(prev_winner_str) > 0:
+                prev_winner_str = "{} {}".format(rhapi.__('Previous race winner was'), prev_winner_str)
+            text = text.replace('%PREVIOUS_WINNER_CALL%', prev_winner_str)
 
         if '%ROUND' in text:
             round_id = rhapi.race.round
@@ -3504,6 +3513,22 @@ def doReplace(rhapi, text, args, spoken_flag=False):
                 name_str = "{} {}".format(name_str, rhapi.__('is leading'))
             # %LEADER_CALL% : Callsign of pilot currently leading race, in the form "NAME is leading"
             text = text.replace('%LEADER_CALL%', name_str)
+
+        # %DELAY_#_SECS% : Delay callout by given number of seconds
+        if '%DELAY_' in text:
+            num_str = text[7:]
+            pos = num_str.find('_SECS%')
+            vlen = 13
+            if pos < 0:
+                pos = num_str.find('_SEC%')
+                vlen -= 1
+            if pos > 0:
+                num_str = num_str[:pos]
+                if num_str.replace('.','',1).isdigit():
+                    if isinstance(delay_sec_holder, list):
+                        delay_sec_holder.clear()
+                        delay_sec_holder.append(float(num_str))
+                    text = text[(len(num_str)+vlen):].strip()
 
     return text
 
