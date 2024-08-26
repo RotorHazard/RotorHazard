@@ -177,7 +177,7 @@ _Win Condition_ determines how the timer calls out the winner of the race, the i
 * __First to X Laps__: The race continues until one pilot reaches the desired lap count. In this mode, the _Number of Laps to Win_ parameter is used. Typically used with the _No Time Limit_ race mode.
 * __Fastest Lap__: Ignores the race progress and considers only each pilot's single fastest lap.
 * __Fastest 3 Consecutive Laps__: Considers all laps a pilot has completed and uses the three consecutive laps with the fastest combined time.
-* __None__: Does not declare a winner under any circumstance. Heats generated from a class with this condition will be assigned randomly.
+* __None__: Does not declare a winner under any circumstance.
 
 _Team Racing Mode_ activates alternate scoring for additional race formats. Win conditions in team racing mode differ somewhat:
 * __Most Laps in Fastest Time__: Teams are judged on combined lap count of all members and how long it took to complete those laps.
