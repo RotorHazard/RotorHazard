@@ -572,9 +572,11 @@
 				if (single_class) {
 					for (var h in rotorhazard.event.heats) {
 						var heat = rotorhazard.event.heats[h];
-						var opt = $('<option value="' + heat.id + '" data-class="' + heat.class_id + '">');
-						opt.html(heat.displayname);
-						$('#set_current_heat').append(opt);
+						if (heat.active) {
+							var opt = $('<option value="' + heat.id + '" data-class="' + heat.class_id + '">');
+							opt.html(heat.displayname);
+							$('#set_current_heat').append(opt);
+						}
 					}
 				} else {
 					for (var c in heats_by_class) {

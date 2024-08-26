@@ -1379,64 +1379,111 @@ class RHData():
             self.set_option('currentHeat', cur_heat_id)
         return cur_heat_id
 
-    def get_next_heat_id(self, current_heat_or_id):
+    def get_next_class_heat_id(self, race_class_id):
+        def orderSorter(x):
+            if not x.order:
+                return 0
+            return x.order
+
+        race_classes = self.get_raceClasses()
+        race_classes.sort(key=orderSorter)
+
+        found_class = False
+        for idx, race_class in enumerate(race_classes):
+            if found_class:
+                heat_id = self.get_initial_heat_in_class(race_class)
+                if heat_id != RHUtils.HEAT_ID_NONE:
+                    return heat_id
+            if race_class.id == race_class_id:
+                found_class = True
+
+        logger.debug('No next class, shifting to practice mode')
+        return RHUtils.HEAT_ID_NONE
+
+    def get_initial_heat_in_class(self, race_class_or_id):
+        race_class_id = self.resolve_id_from_raceClass_or_id(race_class_or_id)
+        heats = self.get_heats_by_class(race_class_id)
+        first_heat_id = RHUtils.HEAT_ID_NONE
+        for heat in heats:
+            if heat.active:
+                first_heat_id = heat.id
+                break
+
+        return first_heat_id
+
+    def get_next_heat_id(self, current_heat_or_id, regen_heat):
+        def orderSorter(x):
+            if not x.order:
+                return 0
+            return x.order
+
+        def groupedOrderSorter(x):
+            if not x.order:
+                return x.group_id, 0
+            return x.group_id, x.order
+
         current_heat = self.resolve_heat_from_heat_or_id(current_heat_or_id)
-        if current_heat.class_id:
-            current_class = self.get_raceClass(current_heat.class_id)
+        if not current_heat.class_id:
+            return current_heat.id
 
-            if current_class.round_type != RoundType.GROUPED:
-                if current_class.heat_advance_type == HeatAdvanceType.NONE:
-                    return current_heat.id
+        current_class = self.get_raceClass(current_heat.class_id)
 
-                if current_class.heat_advance_type == HeatAdvanceType.NEXT_ROUND:
-                    max_round = self.get_max_round(current_heat.id)
-                    if max_round < current_class.rounds:
-                        return current_heat.id
+        if current_class.round_type == RoundType.GROUPED:
+            if current_class.heat_advance_type == HeatAdvanceType.NONE:
+                return RHUtils.HEAT_ID_NONE
+
+            if current_class.heat_advance_type == HeatAdvanceType.NEXT_ROUND:
+                if regen_heat:
+                    return regen_heat
 
             heats = self.get_heats_by_class(current_heat.class_id)
-
-            def orderSorter(x):
-                if not x.order:
-                    return 0
-                return x.order
-            heats.sort(key=orderSorter)
+            heats = [h for h in heats if h.active]
+            heats.sort(key=groupedOrderSorter)
 
             if len(heats):
-                next_heat_id = None
                 if heats[-1].id == current_heat.id:
-                    next_heat_id = heats[0].id
-                    if current_class.rounds:
-                        max_round = self.get_max_round(current_heat.id)
-                        if max_round >= current_class.rounds:
-                            self._Events.trigger(Evt.ROUNDS_COMPLETE, {'class_id': current_class.id})
-
-                            race_classes = self.get_raceClasses()
-                            race_classes.sort(key=orderSorter)
-                            if race_classes[-1].id == current_heat.class_id:
-                                next_class_id = RHUtils.HEAT_ID_NONE
-                                logger.debug('Completed last heat of last class, shifting to practice mode')
-                            else:
-                                for idx, race_class in enumerate(race_classes):
-                                    if race_class.id == current_heat.class_id:
-                                        next_class_id = race_classes[idx + 1].id
-                                        break
-
-                            if next_class_id:
-                                next_heats = self.get_heats_by_class(next_class_id)
-                                next_heat_id = next_heats[0].id
-                            else:
-                                next_heat_id = RHUtils.HEAT_ID_NONE
-                                logger.debug('No next class, shifting to practice mode')
-
+                    self._Events.trigger(Evt.ROUNDS_COMPLETE, {'class_id': current_class.id})
+                    return self.get_next_class_heat_id(current_class.id)
                 else:
-                    for idx, heat in enumerate(heats):
-                        if heat.id == current_heat.id:
-                            next_heat_id = heats[idx + 1].id
-                            break
+                    return heats[0].id
+            else:
+                logger.debug('No active heats, checking next class')
+                return self.get_next_class_heat_id(current_class.id)
 
-            return next_heat_id
+        if current_class.heat_advance_type == HeatAdvanceType.NONE:
+            return current_heat.id
 
-        return current_heat.id
+        if current_class.heat_advance_type == HeatAdvanceType.NEXT_ROUND:
+            max_round = self.get_max_round(current_heat.id)
+            if max_round < current_class.rounds:
+                return current_heat.id
+
+        heats = self.get_heats_by_class(current_heat.class_id)
+        heats = [h for h in heats if h.active]
+        heats.sort(key=orderSorter)
+
+        if len(heats):
+            if heats[-1].id == current_heat.id:
+                if current_class.rounds:
+                    max_round = self.get_max_round(current_heat.id)
+                    if max_round >= current_class.rounds:
+                        self._Events.trigger(Evt.ROUNDS_COMPLETE, {'class_id': current_class.id})
+                        return self.get_next_class_heat_id(current_class.id)
+                    else:
+                        return heats[0].id
+                else:
+                    return heats[0].id
+            else:
+                next_heat_id = RHUtils.HEAT_ID_NONE
+                for idx, heat in enumerate(heats):
+                    if heat.id == current_heat.id:
+                        next_heat_id = heats[idx + 1].id
+                        break
+                return next_heat_id
+        else:
+            logger.debug('No active heats, checking next class')
+            return self.get_next_class_heat_id(current_class.id)
+
 
     def resolve_slot_unset_nodes(self, heat_or_id):
         heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
@@ -1830,6 +1877,8 @@ class RHData():
         if 'round_type' in data:
             if race_class.round_type == RoundType.GROUPED:
                 self.raceclass_expand_heat_rounds(race_class, prime=True)
+                if race_class.heat_advance_type == HeatAdvanceType.NONE:
+                    race_class.heat_advance_type = HeatAdvanceType.NEXT_HEAT
             else:
                 self.raceclass_strip_groups(race_class)
 
@@ -2129,11 +2178,11 @@ class RHData():
                 group_heats[heat.group_id].append(heat)
 
             if len(group_heats) < race_class.rounds:
-                next_round = len(group_heats) + 1
+                next_round = len(group_heats)
                 for heat in group_heats[-1]:
                     races = self.get_savedRaceMetas_by_heat(heat.id)
                     if len(races):
-                        self.duplicate_heat(heat, {'group_id': next_round})
+                        self.duplicate_heat(heat, new_heat_name=heat.name, group_id=next_round)
 
     def raceclass_strip_groups(self, race_class_or_id):
         race_class = self.resolve_raceClass_from_raceClass_or_id(race_class_or_id)
@@ -3154,6 +3203,8 @@ class RHData():
         Database.DB_session.query(Database.SavedPilotRace).delete()
         Database.DB_session.query(Database.SavedRaceLap).delete()
         Database.DB_session.query(Database.LapSplit).delete()
+        for heat in self.get_heats():
+            heat.active = True
         self.commit()
         self.reset_pilot_used_frequencies()
         self.reset_heat_plans()

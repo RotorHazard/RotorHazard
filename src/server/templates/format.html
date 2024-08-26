@@ -410,7 +410,9 @@
 						var selectbox = $('<select class="set_race_class_heat_advance" id="class_heat_advance_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 						selectbox.append('<option value="1">' + __('Always') + '</option>');
 						selectbox.append('<option value="2">' + __('After All Rounds') + '</option>');
-						selectbox.append('<option value="0">' + __('Never') + '</option>');
+						if (race_class.round_type != 1) {
+							selectbox.append('<option value="0">' + __('Never') + '</option>');
+						}
 
 						selectbox.val(race_class.heat_advance_type);
 						field.append(selectbox);
@@ -444,6 +446,13 @@
 								heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '" data-group="' + i + '">' + __('Add Heat') + '</button></li>');
 								groups_el.append(heats_el);
 							}
+							if (!heats_by_group.length) {
+								groups_el.append('<p>' + __('Round') + ' 1</p>');
+								var heats_el = $('<ol class="heats">');
+								heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '" data-group="0">' + __('Add Heat') + '</button></li>');
+								groups_el.append(heats_el);
+							}
+
 							el.append(groups_el);
 
 						} else {

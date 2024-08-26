@@ -614,12 +614,13 @@ class RHRace():
 
             self.discard_laps(saved=True) # Also clear the current laps
 
+            regen_heat = False
             if heat.class_id:
                 raceclass = self._racecontext.rhdata.get_raceClass(heat.class_id)
                 if raceclass.round_type == RoundType.GROUPED:
                     if heat.group_id + 1 < raceclass.rounds:
                         # Regenerate to new heat + group
-                        self._racecontext.rhdata.duplicate_heat(heat, new_heat_name=heat.name, group_id=heat.group_id + 1)
+                        regen_heat = self._racecontext.rhdata.duplicate_heat(heat, new_heat_name=heat.name, group_id=heat.group_id + 1)
 
                     # Deactivate current heat
                     self._racecontext.rhdata.alter_heat({
@@ -629,7 +630,8 @@ class RHRace():
 
                     self._racecontext.rhui.emit_heat_data()
 
-            next_heat = self._racecontext.rhdata.get_next_heat_id(heat)
+            next_heat = self._racecontext.rhdata.get_next_heat_id(heat, regen_heat)
+
             if next_heat is not heat.id:
                 self.set_heat(next_heat)
 

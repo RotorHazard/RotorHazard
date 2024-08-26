@@ -130,18 +130,18 @@ class Heat(Base):
         if self.name:
             output = self.name
             if self.class_id and race_class.round_type == RoundType.GROUPED:
-                output = "{}: {} {}".format(output, __('Round'), (self.group_id + 1))
+                output = f"{__('Round')} {self.group_id + 1}: {output}"
 
         else:
-            if self.class_id:
+            if self.class_id and race_class.name:
                 output = RHUtils.uniqueName(race_class.display_name, [rc.name for rc in racecontext.rhdata.get_heats()])
                 racecontext.rhdata.alter_heat({
                     'heat': self.id,
                     'name': output
                 })
                 return self.display_name
-            else:
-                output = "{} {}".format(__('Heat'), str(self.id))
+
+            output = "{} {}".format(__('Heat'), str(self.id))
 
         return output
 
