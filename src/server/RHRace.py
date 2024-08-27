@@ -618,7 +618,7 @@ class RHRace():
             if heat.class_id:
                 raceclass = self._racecontext.rhdata.get_raceClass(heat.class_id)
                 if raceclass.round_type == RoundType.GROUPED:
-                    if heat.group_id + 1 < raceclass.rounds:
+                    if raceclass.rounds == 0 or heat.group_id + 1 < raceclass.rounds:
                         # Regenerate to new heat + group
                         regen_heat = self._racecontext.rhdata.duplicate_heat(heat, new_heat_name=heat.name, group_id=heat.group_id + 1)
 
