@@ -219,7 +219,7 @@ class HeatAutomator:
                             for slot_idx, slot_match in enumerate(available_node['matches']):
                                 if slot_match['slot'] == m_slot:
                                     available_node['matches'][slot_idx] = None
-                                available_node['matches'] = [x for x in available_node['matches'] if x is not None]
+                            available_node['matches'] = [x for x in available_node['matches'] if x is not None]
                     else:
                         # calc function didn't make an assignment
                         random.shuffle(available_seats)
