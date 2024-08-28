@@ -560,9 +560,12 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards):
     last_rank_laps = 0
     last_rank_time = 0
     for i, row in enumerate(all_leaderboards['by_race_time'], start=1):
-        pos = i
-        if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
-            pos = last_rank
+        if not row['total_time_raw']:
+            pos = None
+        else:
+            pos = i
+            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                pos = last_rank
         last_rank = pos
         last_rank_laps = row['laps']
         last_rank_time = row['total_time_raw']
@@ -581,9 +584,12 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards):
     last_rank = None
     last_rank_fastest_lap = 0
     for i, row in enumerate(all_leaderboards['by_fastest_lap'], start=1):
-        pos = i
-        if last_rank_fastest_lap == row['fastest_lap_raw']:
-            pos = last_rank
+        if not row['total_time_raw']:
+            pos = None
+        else:
+            pos = i
+            if last_rank_fastest_lap == row['fastest_lap_raw']:
+                pos = last_rank
         last_rank = pos
         last_rank_fastest_lap = row['fastest_lap_raw']
 
@@ -593,24 +599,27 @@ def sort_and_rank_leaderboards(racecontext, all_leaderboards):
     # Sort by consecutive laps
     all_leaderboards['by_consecutives'] = sorted(all_leaderboards['by_consecutives'], key=lambda x: (
         -x['consecutives_base'] if x['consecutives_base'] else 0,
-        x['consecutives_raw'] if x['consecutives_raw'] and x['consecutives_raw'] > 0 else float('inf'),
-    # fastest consecutives
+        x['consecutives_raw'] if x['consecutives_raw'] and x['consecutives_raw'] > 0 else float('inf'),  # fastest consecutives
+        -x['laps'],  # reverse lap count
+        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf')
     ))
 
     # determine ranking
     last_rank = None
     last_rank_laps = 0
     last_rank_time = 0
-    last_rank_consecutive = 0
     last_rank_consecutive = None
     for i, row in enumerate(all_leaderboards['by_consecutives'], start=1):
-        pos = i
-        if last_rank_consecutive == row['consecutives_raw']:
-            if row['laps'] < consecutivesCount:
-                if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+        if not row['total_time_raw']:
+            pos = None
+        else:
+            pos = i
+            if last_rank_consecutive == row['consecutives_raw']:
+                if row['laps'] < consecutivesCount:
+                    if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                        pos = last_rank
+                else:
                     pos = last_rank
-            else:
-                pos = last_rank
         last_rank = pos
         last_rank_laps = row['laps']
         last_rank_time = row['total_time_raw']
@@ -707,16 +716,19 @@ def build_leaderboard_event(racecontext):
 
     return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_EVENT, leaderboard)
 
-def build_incremental(racecontext, merge_result, source_result, transient=False):
+def build_incremental(racecontext, merge_input, source_input, transient=False):
+    merge_result = copy.deepcopy(merge_input)
+    source_result = copy.deepcopy(source_input)
+
     if not source_result:
-        return copy.deepcopy(merge_result)
+        return merge_result
 
     if not merge_result:
         return source_result
 
     output_result = {}
     for key, value in source_result.items():
-        output_result[key] = copy.deepcopy(value)
+        output_result[key] = value
         if key == 'meta':
             output_result['meta'].pop('fastest_race_lap_data', None)
             for meta_key, source_meta_value in output_result['meta'].items():
