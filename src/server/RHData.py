@@ -3142,6 +3142,9 @@ class RHData():
     def get_active_savedRaceLaps(self):
         return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1).all()
 
+    def get_active_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
+        return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1, Database.SavedRaceLap.pilotrace_id == pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
+
     # Race general
     def replace_savedRaceLaps(self, data):
         Database.SavedRaceLap.query.filter_by(pilotrace_id=data['pilotrace_id']).delete()

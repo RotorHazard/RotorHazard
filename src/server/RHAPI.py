@@ -5,6 +5,7 @@ from Database import LapSource
 API_VERSION_MAJOR = 1
 API_VERSION_MINOR = 2
 
+import dataclasses
 import json
 import inspect
 import copy
@@ -1087,7 +1088,7 @@ class RaceAPI():
 
     @property
     def laps_raw(self):
-        return self._racecontext.race.node_laps
+        return dataclasses.asdict(self._racecontext.race.node_laps)
 
     @property
     def laps_active_raw(self, filter_late_laps=False):
