@@ -808,7 +808,7 @@ class RHRace():
                                 lap_data.lap_time_stamp = lap_time_stamp
                                 lap_data.lap_time = lap_time
                                 lap_data.lap_time_formatted = lap_time_fmtstr
-                                lap_data.source = source,
+                                lap_data.source = source
                                 lap_data.deleted = lap_late_flag  # delete if lap pass is after race winner declared
                                 lap_data.late_lap = lap_late_flag
 
@@ -889,7 +889,7 @@ class RHRace():
                                 lap_data.lap_time_stamp = lap_time_stamp
                                 lap_data.lap_time = lap_time
                                 lap_data.lap_time_formatted = lap_time_fmtstr
-                                lap_data.source = source,
+                                lap_data.source = source
                                 lap_data.deleted = lap_late_flag  # delete if lap pass is after race winner declared
                                 lap_data.invalid = True
 

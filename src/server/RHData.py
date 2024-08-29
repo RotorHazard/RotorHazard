@@ -3190,11 +3190,11 @@ class RHData():
                     pilotrace_id=new_pilotrace.id,
                     node_index=node_index,
                     pilot_id=node_data['pilot_id'],
-                    lap_time_stamp=lap['lap_time_stamp'],
-                    lap_time=lap['lap_time'],
-                    lap_time_formatted=lap['lap_time_formatted'],
-                    source=lap['source'],
-                    deleted=lap['deleted']
+                    lap_time_stamp=lap.lap_time_stamp,
+                    lap_time=lap.lap_time,
+                    lap_time_formatted=lap.lap_time_formatted,
+                    source=lap.source,
+                    deleted=lap.deleted
                 ))
 
         self.commit()

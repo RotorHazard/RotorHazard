@@ -1801,7 +1801,11 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			if (leaderboard[i].fastest_lap_source) {
 				var source = leaderboard[i].fastest_lap_source;
-				var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
+				if (source.round) {
+					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
+				} else {
+					var source_text = source.displayname;
+				}
 			} else {
 				var source_text = 'None';
 			}
@@ -1840,7 +1844,11 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			if (leaderboard[i].consecutives_source) {
 				var source = leaderboard[i].consecutives_source;
-				var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
+				if (source.round) {
+					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
+				} else {
+					var source_text = source.displayname;
+				}
 			} else {
 				var source_text = 'None';
 			}
