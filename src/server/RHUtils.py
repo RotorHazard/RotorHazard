@@ -289,7 +289,6 @@ def catchLogExceptionsWrapper(func):
 # guaranteed to be unique within supplied list of selections
 def uniqueName(desiredName, otherNames):
     if desiredName in otherNames:
-        newName = desiredName
         match = re.match('^(.*) ([0-9]+)$', desiredName)
         if match:
             nextInt = int(match.group(2))
@@ -301,6 +300,10 @@ def uniqueName(desiredName, otherNames):
         return newName
     else:
         return desiredName
+
+def unique_name_from_base(base_name, other_names):
+    desired_name = base_name + " 1"
+    return uniqueName(desired_name, other_names)
 
 # Appends the given string to the "base" part of the given filename.
 def appendToBaseFilename(fileNameStr, addStr):
