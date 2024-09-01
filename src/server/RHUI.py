@@ -856,6 +856,7 @@ class RHUI():
             current_heat['id'] = heat.id
             current_heat['displayname'] = heat.display_name
             current_heat['name'] = heat.name
+            current_heat['auto_name'] = heat.auto_name
             current_heat['class_id'] = heat.class_id
             current_heat['group_id'] = heat.group_id
             current_heat['order'] = heat.order
