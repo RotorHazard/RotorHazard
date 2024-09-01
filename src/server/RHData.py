@@ -1460,7 +1460,7 @@ class RHData():
 
             if current_class.heat_advance_type == HeatAdvanceType.NEXT_ROUND:
                 if regen_heat:
-                    return regen_heat
+                    return regen_heat.id
 
             heats = self.get_heats_by_class(current_heat.class_id)
             heats = [h for h in heats if h.active]
