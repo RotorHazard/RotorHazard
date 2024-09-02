@@ -1,4 +1,5 @@
 # JSON API
+import dataclasses
 import json
 import Results
 from sqlalchemy.ext.declarative import DeclarativeMeta
@@ -97,7 +98,7 @@ def createBlueprint(RaceContext, serverInfo):
 
         payload = {
             'setup': heat,
-            'leaderboard': Results.calc_leaderboard(RaceContext, heat_id=heat_id)
+            'leaderboard': RaceContext.rhdata.get_results_heat(heat_id)
         }
 
         return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -149,11 +150,9 @@ def createBlueprint(RaceContext, serverInfo):
 
     @APP.route('/api/race/current')
     def api_race_current():
-        results = RaceContext.race.get_results()
-
         payload = {
-            "raw_laps": RaceContext.race.node_laps,
-            "leaderboard": results
+            "raw_laps": dataclasses.asdict(RaceContext.race.node_laps),
+            "leaderboard": RaceContext.race.get_results()
         }
 
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -170,7 +169,7 @@ def createBlueprint(RaceContext, serverInfo):
 
         payload = {
             "heats": heats,
-            "leaderboard": Results.calc_leaderboard(RaceContext)
+            "leaderboard": RaceContext.rhdata.get_results_event()
         }
 
         return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -208,7 +207,7 @@ def createBlueprint(RaceContext, serverInfo):
             'start_time_formatted': race.start_time_formatted,
             'nodes': pilotraces,
             'sort': RaceContext.serverconfig.get_item('UI', 'pilotSort'),
-            'leaderboard': Results.calc_leaderboard(RaceContext, heat_id=heat_id, round_id=round_id)
+            'leaderboard': RaceContext.rhdata.get_results_savedRaceMeta(race.id)
         }
 
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}

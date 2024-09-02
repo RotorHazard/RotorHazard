@@ -7,6 +7,7 @@ import RHTimeFns
 import Results
 import gevent
 import random
+from dataclasses import dataclass
 from datetime import datetime
 from flask import request, copy_current_request_context
 from time import monotonic
@@ -21,6 +22,19 @@ from FlaskAppObj import APP
 APP.app_context().push()
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class Crossing():
+    node_index: int = None
+    pilot_id: int = None
+    lap_number: int = 0
+    lap_time_stamp: int = None
+    lap_time: int = None
+    lap_time_formatted: str = None
+    source: str = None
+    deleted: bool = False
+    late_lap: bool = False
+    invalid: bool = False
 
 class RHRace():
     '''Class to hold race management variables.'''
@@ -690,7 +704,7 @@ class RHRace():
 
                             if lap_number: # This is a normal completed lap
                                 # Find the time stamp of the last lap completed (including "late" laps for timing)
-                                last_lap_time_stamp = self.get_active_laps(True)[node.index][-1]['lap_time_stamp']
+                                last_lap_time_stamp = self.get_active_laps(True)[node.index][-1].lap_time_stamp
 
                                 # New lap time is the difference between the current time stamp and the last
                                 lap_time = lap_time_stamp - last_lap_time_stamp
@@ -789,15 +803,15 @@ class RHRace():
                                 self._racecontext.rhui.emit_pass_record(node, lap_time_stamp)
 
                                 # Add the new lap to the database
-                                lap_data = {
-                                    'lap_number': lap_number,
-                                    'lap_time_stamp': lap_time_stamp,
-                                    'lap_time': lap_time,
-                                    'lap_time_formatted': lap_time_fmtstr,
-                                    'source': source,
-                                    'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
-                                    'late_lap': lap_late_flag
-                                }
+                                lap_data = Crossing()
+                                lap_data.lap_number = lap_number
+                                lap_data.lap_time_stamp = lap_time_stamp
+                                lap_data.lap_time = lap_time
+                                lap_data.lap_time_formatted = lap_time_fmtstr
+                                lap_data.source = source
+                                lap_data.deleted = lap_late_flag  # delete if lap pass is after race winner declared
+                                lap_data.late_lap = lap_late_flag
+
                                 self.node_laps[node.index].append(lap_data)
 
                                 self.clear_results()
@@ -870,15 +884,16 @@ class RHRace():
 
                             else:
                                 # record lap as 'invalid'
-                                self.node_laps[node.index].append({
-                                    'lap_number': lap_number,
-                                    'lap_time_stamp': lap_time_stamp,
-                                    'lap_time': lap_time,
-                                    'lap_time_formatted': lap_time_fmtstr,
-                                    'source': source,
-                                    'deleted': True,
-                                    'invalid': True
-                                })
+                                lap_data = Crossing()
+                                lap_data.lap_number = lap_number
+                                lap_data.lap_time_stamp = lap_time_stamp
+                                lap_data.lap_time = lap_time
+                                lap_data.lap_time_formatted = lap_time_fmtstr
+                                lap_data.source = source
+                                lap_data.deleted = lap_late_flag  # delete if lap pass is after race winner declared
+                                lap_data.invalid = True
+
+                                self.node_laps[node.index].append(lap_data)
                         else:
                             logger.debug('Pass record dismissed: Node {}, Race not started (abs_ts={:.3f}, source={})' \
                                 .format(node.index+1, lap_timestamp_absolute, self._racecontext.interface.get_lap_source_str(source)))
@@ -959,27 +974,27 @@ class RHRace():
                 logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
                 return
 
-            self.node_laps[node_index][lap_index]['invalid'] = True
+            self.node_laps[node_index][lap_index].invalid = True
 
-            time = self.node_laps[node_index][lap_index]['lap_time_stamp']
+            time = self.node_laps[node_index][lap_index].lap_time_stamp
 
             race_format = self.format
             self.set_node_finished_flag(node_index, False)
             lap_number = 0
             for lap in self.node_laps[node_index]:
-                lap['deleted'] = False
+                lap.deleted = False
                 if self.get_node_finished_flag(node_index):
-                    lap['late_lap'] = True
-                    lap['deleted'] = True
+                    lap.late_lap = True
+                    lap.deleted = True
                 else:
-                    lap['late_lap'] = False
+                    lap.late_lap = False
 
-                if lap.get('invalid', False):
-                    lap['lap_number'] = None
-                    lap['deleted'] = True
+                if lap.invalid:
+                    lap.lap_number = None
+                    lap.deleted = True
                 else:
-                    lap['lap_number'] = lap_number
-                    if race_format.unlimited_time == 0 and lap['lap_time_stamp'] > (race_format.race_time_sec * 1000) or \
+                    lap.lap_number = lap_number
+                    if race_format.unlimited_time == 0 and lap.lap_time_stamp > (race_format.race_time_sec * 1000) or \
                         (race_format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
                         self.set_node_finished_flag(node_index)
                     lap_number += 1
@@ -987,19 +1002,19 @@ class RHRace():
             db_last = False
             db_next = False
             for lap in self.node_laps[node_index]:
-                if not lap.get('invalid', False) and ((not lap['deleted']) or lap.get('late_lap', False)):
-                    if lap['lap_time_stamp'] < time:
+                if not lap.invalid and ((not lap.deleted) or lap.late_lap):
+                    if lap.lap_time_stamp < time:
                         db_last = lap
-                    if lap['lap_time_stamp'] > time:
+                    if lap.lap_time_stamp > time:
                         db_next = lap
                         break
 
             if db_next and db_last:
-                db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
-                db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                db_next.lap_time = db_next.lap_time_stamp - db_last.lap_time_stamp
+                db_next.lap_time_formatted = RHUtils.time_format(db_next.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
             elif db_next:
-                db_next['lap_time'] = db_next['lap_time_stamp']
-                db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                db_next.lap_time = db_next.lap_time_stamp
+                db_next.lap_time_formatted = RHUtils.time_format(db_next.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
 
             try:  # delete any split laps for deleted lap
                 lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_number)
@@ -1046,18 +1061,18 @@ class RHRace():
 
             lap_obj = self.node_laps[node_index][lap_index]
 
-            lap_obj['deleted'] = False
-            lap_obj['late_lap'] = False
+            lap_obj.deleted = False
+            lap_obj.late_lap = False
 
             lap_number = 0  # adjust lap numbers and times as needed
             last_lap_ts = 0
             for idx, lap in enumerate(self.node_laps[node_index]):
-                if not lap['deleted']:
+                if not lap.deleted:
                     if idx >= lap_index:
-                        lap['lap_number'] = lap_number
-                        lap['lap_time'] = lap['lap_time_stamp'] - last_lap_ts
-                        lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
-                    last_lap_ts = lap['lap_time_stamp']
+                        lap.lap_number = lap_number
+                        lap.lap_time = lap.lap_time_stamp - last_lap_ts
+                        lap.lap_time_formatted = RHUtils.time_format(lap.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                    last_lap_ts = lap.lap_time_stamp
                     lap_number += 1
 
             self._racecontext.events.trigger(Evt.LAP_RESTORE_DELETED, {
@@ -1312,11 +1327,11 @@ class RHRace():
         filtered = {}
         if not late_lap_flag:
             for node_index in self.node_laps:
-                filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
+                filtered[node_index] = list(filter(lambda lap : lap.deleted == False, self.node_laps[node_index]))
         else:
             for node_index in self.node_laps:
                 filtered[node_index] = list(filter(lambda lap : \
-                                (lap['deleted'] == False or lap.get('late_lap', False)), self.node_laps[node_index]))
+                                (lap.deleted == False or lap.late_lap), self.node_laps[node_index]))
         return filtered
 
     def any_laps_recorded(self):
@@ -1333,15 +1348,15 @@ class RHRace():
             fastest_lap_index = None
             last_lap_id = -1
             for idx, lap in enumerate(self.node_laps[node_idx]):
-                if (not lap.get('invalid', False)) and \
-                    ((not lap['deleted']) or lap.get('late_lap', False)):
-                    if not lap.get('late_lap', False):
-                        last_lap_id = lap_number = lap['lap_number']
+                if (not lap.invalid) and \
+                    ((not lap.deleted) or lap.late_lap):
+                    if not lap.late_lap:
+                        last_lap_id = lap_number = lap.lap_number
                         if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
                             lap_number += 1
                         splits = self.get_splits(node_idx, last_lap_id)
-                        if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
-                            fastest_lap_time = lap['lap_time']
+                        if lap.lap_time > 0 and idx > 0 and lap.lap_time < fastest_lap_time:
+                            fastest_lap_time = lap.lap_time
                             fastest_lap_index = idx
                     else:
                         lap_number = -1
@@ -1351,11 +1366,11 @@ class RHRace():
                     node_laps.append({
                         'lap_index': idx,
                         'lap_number': lap_number,
-                        'lap_raw': lap['lap_time'],
-                        'lap_time': lap['lap_time_formatted'],
-                        'lap_time_stamp': lap['lap_time_stamp'],
+                        'lap_raw': lap.lap_time,
+                        'lap_time': lap.lap_time_formatted,
+                        'lap_time_stamp': lap.lap_time_stamp,
                         'splits': splits,
-                        'late_lap': lap.get('late_lap', False)
+                        'late_lap': lap.late_lap
                     })
 
             pilot_data = None

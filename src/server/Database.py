@@ -90,6 +90,7 @@ class Heat(Base):
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column('note', DB.String(80), nullable=True)
+    auto_name = DB.Column(DB.String(80), nullable=True)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
@@ -123,25 +124,19 @@ class Heat(Base):
 
     @property
     def display_name(self):
+        output = ''
         if self.class_id:
             # get class, check class.group_id
             race_class = racecontext.rhdata.get_raceClass(self.class_id)
+            if self.class_id and race_class.round_type == RoundType.GROUPED:
+                output = f"{__('Round')} {self.group_id + 1} / "
 
         if self.name:
-            output = self.name
-            if self.class_id and race_class.round_type == RoundType.GROUPED:
-                output = f"{__('Round')} {self.group_id + 1}: {output}"
-
+            output += self.name
+        elif self.auto_name:
+            output += self.auto_name
         else:
-            if self.class_id and race_class.name:
-                output = RHUtils.uniqueName(race_class.display_name, [rc.name for rc in racecontext.rhdata.get_heats()])
-                racecontext.rhdata.alter_heat({
-                    'heat': self.id,
-                    'name': output
-                })
-                return self.display_name
-
-            output = "{} {}".format(__('Heat'), str(self.id))
+            output = f"{__('Heat')} {str(self.id)}"
 
         return output
 

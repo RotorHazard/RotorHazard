@@ -1027,6 +1027,26 @@ class RHData():
     def get_first_heat(self):
         return Database.Heat.query.first()
 
+    def get_heat_auto_name(self, heat):
+        if heat.class_id:
+            race_class = self.get_raceClass(heat.class_id)
+
+            if race_class:
+                class_heats = self.get_heats_by_class(heat.class_id)
+                class_heats = [h for h in class_heats if h.id != heat.id]
+
+                if race_class.round_type == RoundType.GROUPED:
+                    class_heats = [h for h in class_heats if h.group_id == heat.group_id]
+
+                return RHUtils.unique_name_from_base(race_class.display_name,
+                    [rc.auto_name for rc in class_heats])
+        return None
+
+    def regen_heat_auto_name(self, heat_or_id):
+        heat = self.resolve_heat_from_heat_or_id(heat_or_id)
+        heat.auto_name = self.get_heat_auto_name(heat)
+        self.commit()
+
     def add_heat(self, init=None, initPilots=None):
         # Add new heat
         new_heat = Database.Heat(
@@ -1058,6 +1078,8 @@ class RHData():
         Database.DB_session.add(new_heat)
         Database.DB_session.flush()
         Database.DB_session.refresh(new_heat)
+
+        new_heat.auto_name = self.get_heat_auto_name(new_heat)
 
         # Add heatnodes
         for node_index in range(self._racecontext.race.num_nodes):
@@ -1132,6 +1154,8 @@ class RHData():
         Database.DB_session.flush()
         Database.DB_session.refresh(new_heat)
 
+        new_heat.auto_name = self.get_heat_auto_name(new_heat)
+
         for source_heatnode in self.get_heatNodes_by_heat(source_heat.id):
             new_heatnode = Database.HeatNode(heat_id=new_heat.id,
                 node_index=source_heatnode.node_index,
@@ -1198,6 +1222,8 @@ class RHData():
             heat.status = data['status']
         if 'active' in data:
             heat.active = data['active']
+
+        heat.auto_name = self.get_heat_auto_name(heat)
 
         # update source names:
         if 'name' in data:
@@ -1917,6 +1943,9 @@ class RHData():
         race_class = self._filters.run_filters(Flt.CLASS_ALTER, race_class)
 
         self.commit()
+
+        heats = self.get_heats_by_class(race_class.id)
+        [self.regen_heat_auto_name(heat.id) for heat in heats]
 
         self._Events.trigger(Evt.CLASS_ALTER, {
             'class_id': race_class_id,
@@ -3142,6 +3171,9 @@ class RHData():
     def get_active_savedRaceLaps(self):
         return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1).all()
 
+    def get_active_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
+        return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1, Database.SavedRaceLap.pilotrace_id == pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
+
     # Race general
     def replace_savedRaceLaps(self, data):
         Database.SavedRaceLap.query.filter_by(pilotrace_id=data['pilotrace_id']).delete()
@@ -3187,11 +3219,11 @@ class RHData():
                     pilotrace_id=new_pilotrace.id,
                     node_index=node_index,
                     pilot_id=node_data['pilot_id'],
-                    lap_time_stamp=lap['lap_time_stamp'],
-                    lap_time=lap['lap_time'],
-                    lap_time_formatted=lap['lap_time_formatted'],
-                    source=lap['source'],
-                    deleted=lap['deleted']
+                    lap_time_stamp=lap.lap_time_stamp,
+                    lap_time=lap.lap_time,
+                    lap_time_formatted=lap.lap_time_formatted,
+                    source=lap.source,
+                    deleted=lap.deleted
                 ))
 
         self.commit()
