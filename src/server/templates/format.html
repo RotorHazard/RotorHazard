@@ -737,7 +737,8 @@
 			var header = $('<h4>Heat ' + heat.id + '</h4>');
 			el.append(header);
 
-			var input = $('<input type="text" id="heat-name-' + heat.id + '" class="set_heat_name" data-heat="' + heat.id + '" placeholder="' + __('Name') + ' (' + heat.auto_name + ')" maxlength="80">');
+			var placeholder_name = heat.auto_name ? heat.auto_name : heat.displayname;
+			var input = $('<input type="text" id="heat-name-' + heat.id + '" class="set_heat_name" data-heat="' + heat.id + '" placeholder="' + __('Name') + ' (' + placeholder_name + ')" maxlength="80">');
 			input.val(heat.name);
 			el.append(input);
 
