@@ -308,11 +308,18 @@
 
 			var heat = parseInt($(this).val());
 
-			for (var round_i in race_list.heats[heat].rounds) {
-				$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
+			if (1 in race_list.heats[heat].rounds && !(2 in race_list.heats[heat].rounds) ) {
+				$('#selected_round').append('<option value="1">-</option>');
+				$('#selected_round').val(1);
+				$('#selected_round').prop('hidden', true);
+			} else {
+				for (var round_i in race_list.heats[heat].rounds) {
+					$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
+				}
+				$('#selected_round').val(round_i);
+				$('#selected_round').prop('hidden', false);
 			}
 
-			$('#selected_round').val(round_i);
 			$('#selected_round option').each(function(){
 				if (this.value == prev_round) {
 					$('#selected_round').val(prev_round);
@@ -394,7 +401,7 @@
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;
 			current_race_data.race_id = race_list.heats[heat].rounds[round].race_id;
-			current_race_data.class_id = race_list.heats[heat].rounds[round].class_id;
+			current_race_data.class_id = race_list.heats[heat].class_id;
 			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
 			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
 			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;

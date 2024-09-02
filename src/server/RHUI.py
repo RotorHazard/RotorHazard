@@ -15,7 +15,7 @@ from collections import OrderedDict
 import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
-from Database import ProgramMethod
+from Database import ProgramMethod, RoundType
 from filtermanager import Flt
 import logging
 logger = logging.getLogger(__name__)
@@ -479,6 +479,7 @@ class RHUI():
         if heat_id:
             heat = self._racecontext.rhdata.get_heat(heat_id)
             class_id = heat.class_id
+            race_class = self._racecontext.rhdata.get_raceClass(class_id)
         else:
             class_id = None
 
@@ -493,8 +494,12 @@ class RHUI():
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
-                'next_round': self._racecontext.rhdata.get_max_round(heat_id) + 1
+
             }
+        if class_id and race_class.round_type == RoundType.GROUPED:
+            emit_payload['next_round'] = heat.group_id + 1
+        else:
+            emit_payload['next_round'] = self._racecontext.rhdata.get_max_round(heat_id) + 1
 
         if ('nobroadcast' in params):
             emit('race_status', emit_payload)
@@ -748,7 +753,6 @@ class RHUI():
                         })
                     rounds[race.round_id] = {
                         'race_id': race.id,
-                        'class_id': race.class_id,
                         'format_id': race.format_id,
                         'start_time': race.start_time,
                         'start_time_formatted': race.start_time_formatted,
@@ -756,9 +760,13 @@ class RHUI():
                     }
                 heats[heat.id] = {
                     'heat_id': heat.id,
+                    'class_id': heat.class_id,
                     'displayname': heat.display_name,
                     'rounds': rounds,
                 }
+                if heat.class_id:
+                    race_class = self._racecontext.rhdata.get_raceClass(heat.class_id)
+                    heats[heat.id]['round_type'] = race_class.round_type
 
         emit_payload = {
             'heats': heats,
@@ -846,9 +854,10 @@ class RHUI():
         for heat in self._racecontext.rhdata.get_heats():
             current_heat = {}
             current_heat['id'] = heat.id
-            current_heat['name'] = heat.name
             current_heat['displayname'] = heat.display_name
+            current_heat['name'] = heat.name
             current_heat['class_id'] = heat.class_id
+            current_heat['group_id'] = heat.group_id
             current_heat['order'] = heat.order
             current_heat['status'] = heat.status
             current_heat['auto_frequency'] = heat.auto_frequency
@@ -911,6 +920,7 @@ class RHUI():
             current_class['ranksettings'] = json.loads(race_class.rank_settings) if race_class.rank_settings else None
             current_class['rounds'] = race_class.rounds
             current_class['heat_advance_type'] = race_class.heat_advance_type
+            current_class['round_type'] = race_class.round_type
             current_class['order'] = race_class.order
             current_class['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceClass(race_class.id)
             current_classes.append(current_class)
@@ -1083,7 +1093,7 @@ class RHUI():
 
         heat_format = None
 
-        if (heat_data):
+        if heat_data:
             heat_class = heat_data.class_id
 
             for heatNode in self._racecontext.rhdata.get_heatNodes_by_heat(self._racecontext.race.current_heat):
@@ -1118,8 +1128,19 @@ class RHUI():
             'heatNodes': heatNode_data,
             'heat_format': heat_format,
             'heat_class': heat_class,
-            'next_round': self._racecontext.rhdata.get_max_round(self._racecontext.race.current_heat) + 1 if self._racecontext.race.current_heat else None,
         }
+        if self._racecontext.race.current_heat:
+            if heat_class:
+                race_class = self._racecontext.rhdata.get_raceClass(heat_class)
+                if race_class.round_type == RoundType.GROUPED:
+                    emit_payload['next_round'] = heat_data.group_id + 1
+                else:
+                    emit_payload['next_round'] = self._racecontext.rhdata.get_max_round(heat_data.id) + 1
+            else:
+                emit_payload['next_round'] = self._racecontext.rhdata.get_max_round(heat_data.id) + 1
+        else:
+            emit_payload['next_round'] = None
+
         if ('nobroadcast' in params):
             emit('current_heat', emit_payload)
         else:

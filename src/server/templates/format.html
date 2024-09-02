@@ -388,6 +388,16 @@
 						field.append(settingsbtn)
 						el.append(field);
 
+						var field = $('<div class="field field-round-type">');
+						field.append('<label for="class_round_type_' + race_class.id + '">' + __('Round Type') + '</label>');
+						var selectbox = $('<select class="set_race_class_round_type" id="class_round_type_' + race_class.id + '" data-class_id="' + race_class.id + '">')
+						selectbox.append('<option value="0">' + __('Count races per heat') + '</option>');
+						selectbox.append('<option value="1">' + __('Generate heat groups') + '</option>');
+						selectbox.val(race_class.round_type);
+						selectbox.prop('disabled', locked);
+						field.append(selectbox);
+						el.append(field);
+
 						var field = $('<div class="field field-rounds">');
 						field.append('<label for="race_class_rounds-' + race_class.id + '">' + __('Rounds') + '</label>');
 						var input = $('<input type="number" id="race_class_rounds-' + race_class.id + '" class="set_race_class_rounds" data-class_id="' + race_class.id + '" step="1" min="0">');
@@ -400,7 +410,9 @@
 						var selectbox = $('<select class="set_race_class_heat_advance" id="class_heat_advance_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 						selectbox.append('<option value="1">' + __('Always') + '</option>');
 						selectbox.append('<option value="2">' + __('After All Rounds') + '</option>');
-						selectbox.append('<option value="0">' + __('Never') + '</option>');
+						if (race_class.round_type != 1) {
+							selectbox.append('<option value="0">' + __('Never') + '</option>');
+						}
 
 						selectbox.val(race_class.heat_advance_type);
 						field.append(selectbox);
@@ -410,15 +422,51 @@
 						input.val(race_class.order);
 						el.append(input);
 
-						var heats_el = $('<ol class="heats">');
-						for (var i in rotorhazard.event.heats) {
-							var heat = rotorhazard.event.heats[i];
-							if (heat.class_id == race_class.id) {
-								heats_el.append(create_heat_ui(heat));
+						if (race_class.round_type == 1) {
+							var groups_el = $('<div class="groups">');
+							var heats_by_group = [];
+							for (var i in rotorhazard.event.heats) {
+								heat = rotorhazard.event.heats[i];
+								if (heat.class_id == race_class.id) {
+									var group = heat.group_id == null ? -1 : heat.group_id;
+									if (!heats_by_group[group]) {
+										heats_by_group[group] = []
+									};
+									heats_by_group[group].push(heat);
+								}
 							}
+							for (var i in heats_by_group) {
+								groups_el.append('<p>' + __('Round') + ' ' + (parseInt(i)+1) + '</p>');
+
+								var heats_el = $('<ol class="heats">');
+								for (var j in heats_by_group[i]) {
+									var heat = heats_by_group[i][j];
+									heats_el.append(create_heat_ui(heat));
+								}
+								heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '" data-group="' + i + '">' + __('Add Heat') + '</button></li>');
+								groups_el.append(heats_el);
+							}
+							if (!heats_by_group.length) {
+								groups_el.append('<p>' + __('Round') + ' 1</p>');
+								var heats_el = $('<ol class="heats">');
+								heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '" data-group="0">' + __('Add Heat') + '</button></li>');
+								groups_el.append(heats_el);
+							}
+
+							el.append(groups_el);
+
+						} else {
+							var heats_el = $('<ol class="heats">');
+							for (var i in rotorhazard.event.heats) {
+								var heat = rotorhazard.event.heats[i];
+								if (heat.class_id == race_class.id) {
+									heats_el.append(create_heat_ui(heat, race_class));
+								}
+							}
+							heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button></li>');
+							el.append(heats_el);
+
 						}
-						heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button></li>');
-						el.append(heats_el);
 
 						el.appendTo(classlist);
 					}
@@ -565,6 +613,20 @@
 			}
 		});
 
+		$(document).on("change", '.set_race_class_round_type', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				round_type: parseInt($(this).val()),
+			};
+			socket.emit('alter_race_class', data);
+
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == data.class_id});
+			if (race_class) {
+				race_class.round_type = data.round_type;
+			}
+			display_classes();
+		});
+
 		$(document).on("change", '.set_race_class_rounds', function (event) {
 			var data = {
 				class_id: parseInt($(this).data('class_id')),
@@ -636,6 +698,9 @@
 			var data = {
 				class: parseInt($(this).data('id')),
 			};
+			if (typeof $(this).data('group') !== 'undefined') {
+				data.group = $(this).data('group')
+			}
 			socket.emit('add_heat', data);
 		});
 
@@ -655,7 +720,7 @@
 			$('#generating-message').prop('hidden', true);
 		});
 
-		function create_heat_ui(heat) {
+		function create_heat_ui(heat, race_class=null) {
 			var el = $('<li class="rh-heat" data-heat="' + heat.id + '">');
 
 			if (heat.status == 2) {
@@ -672,7 +737,7 @@
 			var header = $('<h4>Heat ' + heat.id + '</h4>');
 			el.append(header);
 
-			var input = $('<input type="text" id="heat-name-' + heat.id + '" class="set_heat_name" data-heat="' + heat.id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heat.id + ')" maxlength="80">');
+			var input = $('<input type="text" id="heat-name-' + heat.id + '" class="set_heat_name" data-heat="' + heat.id + '" placeholder="' + __('Name') + ' (' + heat.displayname + ')" maxlength="80">');
 			input.val(heat.name);
 			el.append(input);
 
@@ -681,7 +746,7 @@
 			if (locked) {
 				if (heat.active) {
 					actions.prepend('<button class="deactivate_heat eye-icon" data-id="' + heat.id + '" title="' + __('Deactivate Heat') + ': ' + heat.displayname + '">' + svg_asset.eye_visible + '</button>');
-				} else {
+				} else if (race_class && !race_class.round_type) {
 					actions.prepend('<button class="activate_heat eye-icon" data-id="' + heat.id + '" title="' + __('Activate Heat') + ': ' + heat.displayname + '">' + svg_asset.eye_invisible + '</button>');
 				}
 

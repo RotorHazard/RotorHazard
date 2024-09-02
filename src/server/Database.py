@@ -25,6 +25,9 @@ DB_MAX_OVERFLOW=100
 def __(*args):
     return args
 
+# Context placeholder (Overwritten after module init)
+racecontext = None
+
 #
 # Database Models
 #
@@ -93,6 +96,7 @@ class Heat(Base):
     order = DB.Column(DB.Integer, nullable=True)
     status = DB.Column(DB.Integer, nullable=False)
     auto_frequency = DB.Column(DB.Boolean, nullable=False)
+    group_id = DB.Column(DB.Integer, nullable=False)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
     # DEPRECATED: compatibility for 'note' property / renamed to 'name'
@@ -119,9 +123,27 @@ class Heat(Base):
 
     @property
     def display_name(self):
+        if self.class_id:
+            # get class, check class.group_id
+            race_class = racecontext.rhdata.get_raceClass(self.class_id)
+
         if self.name:
-            return self.name
-        return "{} {}".format(__('Heat'), str(self.id))
+            output = self.name
+            if self.class_id and race_class.round_type == RoundType.GROUPED:
+                output = f"{__('Round')} {self.group_id + 1}: {output}"
+
+        else:
+            if self.class_id and race_class.name:
+                output = RHUtils.uniqueName(race_class.display_name, [rc.name for rc in racecontext.rhdata.get_heats()])
+                racecontext.rhdata.alter_heat({
+                    'heat': self.id,
+                    'name': output
+                })
+                return self.display_name
+
+            output = "{} {}".format(__('Heat'), str(self.id))
+
+        return output
 
     def __repr__(self):
         return '<Heat %r>' % self.id
@@ -177,6 +199,7 @@ class RaceClass(Base):
     _rank_status = DB.Column('rankStatus', DB.String(16), nullable=False)
     rounds = DB.Column(DB.Integer, nullable=False)
     heat_advance_type = DB.Column('heatAdvanceType', DB.Integer, nullable=False)
+    round_type = DB.Column('roundType', DB.Integer, nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
 
@@ -226,6 +249,10 @@ class HeatAdvanceType:
     NONE = 0
     NEXT_HEAT = 1
     NEXT_ROUND = 2
+
+class RoundType:
+    RACES_PER_HEAT = 0
+    GROUPED = 1
 
 class RaceClassAttribute(Base):
     __tablename__ = 'race_class_attribute'

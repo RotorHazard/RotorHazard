@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.2.0-dev.1" # Public release version code
-SERVER_API = 44 # Server API version
+SERVER_API = 45 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -199,6 +199,8 @@ RaceContext.pagecache = PageCache.PageCache(RaceContext, Events) # For storing p
 RaceContext.language = Language.Language(RaceContext) # initialize language
 __ = RaceContext.language.__ # Shortcut to translation function
 Database.__ = __ # Pass language to Database module
+Database.racecontext = RaceContext # Pass racecontext to Database module
+
 RaceContext.race = RHRace.RHRace(RaceContext) # Current race variables
 RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interface Manager
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
@@ -1049,7 +1051,12 @@ def on_set_scan(data):
 def on_add_heat(data=None):
     '''Adds the next available heat number to the database.'''
     if data and 'class' in data:
-        RaceContext.rhdata.add_heat(init={'class_id': data['class']})
+        init = {
+            'class_id': data['class']
+        }
+        if 'group' in data:
+            init['group_id'] = data['group']
+        RaceContext.rhdata.add_heat(init=init)
     else:
         RaceContext.rhdata.add_heat()
     RaceContext.rhui.emit_heat_data()
@@ -1129,13 +1136,14 @@ def on_alter_race_class(data):
     if ('class_format' in data or \
         'class_name' in data or \
         'win_condition' in data or \
+        'round_type' in data or \
         'rank_settings' in data) and len(altered_race_list):
         RaceContext.rhui.emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
     RaceContext.rhui.emit_class_data(noself=True)
-    if 'class_name' in data:
+    if 'class_name' in data or 'round_type' in data or 'rounds' in data:
         RaceContext.rhui.emit_heat_data() # Update class names in heat displays
     if 'class_format' in data:
         RaceContext.rhui.emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
