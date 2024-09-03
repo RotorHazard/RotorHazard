@@ -1279,6 +1279,7 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.stop = function(timer){
+	$('.timing-clock .warning').hide();
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
@@ -1369,6 +1370,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.race.callbacks.stop = function(timer){
+	$('.timing-clock .warning').hide();
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
