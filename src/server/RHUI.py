@@ -493,13 +493,12 @@ class RHUI():
                 'staging_tones': 0,
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
-                'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
-
+                'pi_staging_at_s': self._racecontext.race.stage_time_monotonic
             }
         if class_id and race_class.round_type == RoundType.GROUPED:
             emit_payload['next_round'] = heat.group_id + 1
         else:
-            emit_payload['next_round'] = self._racecontext.rhdata.get_max_round(heat_id) + 1
+            emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_id)
 
         if ('nobroadcast' in params):
             emit('race_status', emit_payload)
@@ -815,6 +814,8 @@ class RHUI():
                 emit_payload['current']['displayname'] = heat.display_name
 
         emit_payload['current']['heat'] = self._racecontext.race.current_heat
+        emit_payload['current']['round'] = self._racecontext.rhdata.get_round_num_for_heat( \
+                                                       self._racecontext.race.current_heat)
         emit_payload['current']['status_msg'] = self._racecontext.race.status_message
 
         emit_payload['current']['leaderboard'] = self._racecontext.race.get_results()
@@ -823,18 +824,19 @@ class RHUI():
             emit_payload['current']['team_leaderboard'] = self._racecontext.race.get_team_results()
 
         # cache
-        if self._racecontext.last_race is not None:
+        if self._racecontext.last_race:
             emit_payload['last_race'] = {}
 
             if self._racecontext.last_race.current_heat is RHUtils.HEAT_ID_NONE:
                 emit_payload['last_race']['displayname'] = self.__("Practice")
             else:
-                if (self._racecontext.last_race):
-                    heat = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat)
-                    if heat:
-                        emit_payload['last_race']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat).display_name
+                heat = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat)
+                if heat:
+                    emit_payload['last_race']['displayname'] = self._racecontext.rhdata.get_heat(self._racecontext.last_race.current_heat).display_name
 
             emit_payload['last_race']['heat'] = self._racecontext.last_race.current_heat
+            emit_payload['last_race']['round'] = self._racecontext.rhdata.get_max_round( \
+                                                        self._racecontext.last_race.current_heat)
             emit_payload['last_race']['status_msg'] = self._racecontext.last_race.status_message
 
             emit_payload['last_race']['leaderboard'] = self._racecontext.last_race.get_results()
@@ -1136,9 +1138,9 @@ class RHUI():
                 if race_class.round_type == RoundType.GROUPED:
                     emit_payload['next_round'] = heat_data.group_id + 1
                 else:
-                    emit_payload['next_round'] = self._racecontext.rhdata.get_max_round(heat_data.id) + 1
+                    emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_data.id)
             else:
-                emit_payload['next_round'] = self._racecontext.rhdata.get_max_round(heat_data.id) + 1
+                emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_data.id)
         else:
             emit_payload['next_round'] = None
 

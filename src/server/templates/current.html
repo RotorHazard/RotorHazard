@@ -414,7 +414,11 @@
 		socket.on('leaderboard', function (msg) {
 			if (msg && 'last_race' in msg) {
 				var race = msg.last_race;
-				$('.current-heat').html(msg.current.displayname);
+				if (msg.current.round) {
+					$('.current-heat').html(msg.current.displayname + ' : ' + __("Round") + " " + msg.current.round);
+				} else {
+					$('.current-heat').html(msg.current.displayname);
+				}
 
 				$('#next-race').slideDown();
 			} else {
@@ -422,7 +426,11 @@
 				$('#next-race').slideUp();
 			}
 
-			$('.recent_heat').html(race.displayname);
+			if (race.round) {
+				$('.recent_heat').html(race.displayname + ' : ' + __("Round") + " " + race.round);
+			} else {
+				$('.recent_heat').html(race.displayname);
+			}
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();

@@ -242,12 +242,12 @@ def _do_calc_leaderboard(racecontext, **params):
         if raceObj.current_heat:
             heat_displayname = current_heat.display_name
             if current_class and current_class.round_type == RoundType.GROUPED:
-                round = 0
+                round_num = 0
             else:
-                round = racecontext.rhdata.get_max_round(current_heat.id) + 1
+                round_num = racecontext.rhdata.get_round_num_for_heat(current_heat.id)
         else:
             heat_displayname = ''
-            round = 0
+            round_num = 0
 
     elif ('round_id' in params and 'heat_id' in params):
         USE_ROUND = params['round_id']
@@ -260,9 +260,9 @@ def _do_calc_leaderboard(racecontext, **params):
         heat_displayname = current_heat.display_name
 
         if current_class and current_class.round_type == RoundType.GROUPED:
-            round = 0
+            round_num = 0
         else:
-            round = raceObj.round_id
+            round_num = raceObj.round_id
 
     else:
         logger.error("Invalid call to calc_leaderboard", stack_info=True)
@@ -409,7 +409,7 @@ def _do_calc_leaderboard(racecontext, **params):
             result_pilot['fastest_lap'] = sorted(result_pilot['pilot_laps'], key=lambda val: val.lap_time)[0].lap_time
             # Set lap source info
             source = {
-                'round': round,
+                'round': round_num,
                 'heat': current_heat.id,
                 'displayname': heat_displayname,
             }
