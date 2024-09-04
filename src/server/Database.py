@@ -415,6 +415,9 @@ class RaceFormatAttribute(Base):
     name = DB.Column(DB.String(80), nullable=False, primary_key=True)
     value = DB.Column(DB.String(), nullable=True)
 
+    def __repr__(self):
+        return '<RaceFormatAttribute %r %s>' % (self.id, self.name)
+
 class GlobalSettings(Base):
     __tablename__ = 'global_settings'
     id = DB.Column(DB.Integer, primary_key=True)

@@ -2012,7 +2012,7 @@ class RHData():
             self.clear_results_raceClass(race_class, token)
 
         # cache rebuild
-        logger.info('Building Class {} results'.format(race_class.id))
+        logger.info('Building Class {} (id: {}) results'.format(race_class.display_name, race_class.id))
         build = Results.build_leaderboard_class(self._racecontext, race_class)
         self.set_results_raceClass(race_class, token, build)
         return build
