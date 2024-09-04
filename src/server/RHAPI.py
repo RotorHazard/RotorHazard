@@ -1019,12 +1019,7 @@ class RaceAPI():
 
     @property
     def round(self):
-        heat_id = self._racecontext.race.current_heat
-        if heat_id:
-            round_idx = self._racecontext.rhdata.get_max_round(heat_id)
-            if type(round_idx) is int:
-                return round_idx + 1
-        return 0
+        return self._racecontext.rhdata.get_round_num_for_heat(self._racecontext.race.current_heat)
 
     @property
     @callWithDatabaseWrapper
