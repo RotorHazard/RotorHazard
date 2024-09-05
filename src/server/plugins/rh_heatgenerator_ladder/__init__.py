@@ -34,13 +34,13 @@ def generateLadder(rhapi, generate_args=None):
     available_seats = generate_args.get('available_seats')
     suffix = rhapi.__(generate_args.get('suffix', 'Main'))
 
-    if generate_args.get('qualifiers_per_heat') and generate_args.get('advances_per_heat'):
+    if generate_args.get('qualifiers_per_heat') is not None and generate_args.get('advances_per_heat') is not None:
         qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
         advances_per_heat = int(generate_args['advances_per_heat'])
-    elif generate_args.get('advances_per_heat'):
+    elif generate_args.get('advances_per_heat') is not None:
         advances_per_heat = int(generate_args['advances_per_heat'])
         qualifiers_per_heat = available_seats - advances_per_heat
-    elif generate_args.get('qualifiers_per_heat'):
+    elif generate_args.get('qualifiers_per_heat') is not None:
         qualifiers_per_heat = int(generate_args['qualifiers_per_heat'])
         advances_per_heat = available_seats - qualifiers_per_heat
     else:

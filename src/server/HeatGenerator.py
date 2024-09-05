@@ -12,6 +12,7 @@ import logging
 import random
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper, cleanVarName
+from RHData import WinCondition
 from Database import ProgramMethod
 
 logger = logging.getLogger(__name__)
@@ -126,8 +127,32 @@ class HeatGeneratorManager():
                         }
                     if seed_slot.method == SeedMethod.INPUT:
                         if input_class:
-                            data['method'] = ProgramMethod.CLASS_RESULT
-                            data['seed_class_id'] = input_class
+                            win_condition = None
+                            race_class = self._racecontext.rhdata.get_raceClass(input_class)
+                            race_format = self._racecontext.rhdata.get_raceFormat(race_class.format_id)
+                            if race_format:
+                                win_condition = race_format.win_condition
+
+                            if win_condition:
+                                data['method'] = ProgramMethod.CLASS_RESULT
+                                data['seed_class_id'] = input_class
+                            else:
+                                # randomly seed
+                                if filled_pool == False:
+                                    class_result = self._racecontext.rhdata.get_results_raceClass(input_class)
+                                    for lb_line in class_result['by_race_time']:
+                                        pilot_pool.append(lb_line['pilot_id'])
+
+                                    random.shuffle(pilot_pool)
+                                    filled_pool = True
+
+                                if len(pilot_pool):
+                                    data['method'] = ProgramMethod.ASSIGN
+                                    data['pilot'] = pilot_pool.pop()
+                                else:
+                                    logger.info("Unable to seed pilot: no available pilots left to seed")
+                                    data['method'] = ProgramMethod.NONE
+
                         else:
                             # randomly seed 
                             if filled_pool == False:
