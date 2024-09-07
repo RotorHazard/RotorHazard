@@ -222,8 +222,6 @@ def _do_calc_leaderboard(racecontext, **params):
     ''' Generates leaderboards '''
     meta_points_flag = False
     USE_CURRENT = False
-    USE_ROUND = None
-    USE_HEAT = None
 
     consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)
     current_heat = None
@@ -231,7 +229,8 @@ def _do_calc_leaderboard(racecontext, **params):
 
     if ('current_race' in params):
         USE_CURRENT = True
-        current_heat = racecontext.rhdata.get_heat(params['current_race'].current_heat)
+        current_heat_id = params['current_race'].current_heat
+        current_heat = racecontext.rhdata.get_heat(current_heat_id)
         if current_heat and current_heat.class_id:
             current_class = racecontext.rhdata.get_raceClass(current_heat.class_id)
         profile = params['current_profile']
@@ -250,12 +249,12 @@ def _do_calc_leaderboard(racecontext, **params):
             round_num = 0
 
     elif ('round_id' in params and 'heat_id' in params):
-        USE_ROUND = params['round_id']
-        USE_HEAT = params['heat_id']
-        current_heat = racecontext.rhdata.get_heat(USE_HEAT)
+        round_id = params['round_id']
+        current_heat_id = params['heat_id']
+        current_heat = racecontext.rhdata.get_heat(current_heat_id)
         if current_heat.class_id:
             current_class = racecontext.rhdata.get_raceClass(current_heat.class_id)
-        raceObj = rhDataObj.get_savedRaceMeta_by_heat_round(USE_HEAT, USE_ROUND)
+        raceObj = rhDataObj.get_savedRaceMeta_by_heat_round(current_heat_id, round_id)
         race_format = rhDataObj.get_raceFormat(raceObj.format_id)
         heat_displayname = current_heat.display_name
 
@@ -410,7 +409,7 @@ def _do_calc_leaderboard(racecontext, **params):
             # Set lap source info
             source = {
                 'round': round_num,
-                'heat': current_heat.id,
+                'heat': current_heat_id,
                 'displayname': heat_displayname,
             }
 

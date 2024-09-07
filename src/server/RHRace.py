@@ -727,7 +727,13 @@ class RHRace():
                             lap_time_fmtstr = RHUtils.time_format(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                             lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                             pilot_obj = self._racecontext.rhdata.get_pilot(pilot_id)
-                            pilot_namestr = pilot_obj.callsign if pilot_obj else ""
+                            if pilot_obj:
+                                pilot_namestr = pilot_obj.callsign
+                            else:
+                                if (profile_freqs["b"][node.index] and profile_freqs["c"][node.index]):
+                                    pilot_namestr = profile_freqs["b"][node.index] + str(profile_freqs["c"][node.index])
+                                else:
+                                    pilot_namestr = str(profile_freqs["f"][node.index])
 
                             lap_ok_flag = True
                             lap_late_flag = False
