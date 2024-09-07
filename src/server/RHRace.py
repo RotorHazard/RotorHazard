@@ -115,10 +115,11 @@ class RHRace():
     @catchLogExceptionsWrapper
     def stage(self, data=None):
         # need to show alert via spawn in case a clear-messages event was just triggered
-        @catchLogExceptionsWrapper
-        @copy_current_request_context
-        def emit_alert_msg(self, msg_text):
-            self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
+        if request:
+            @catchLogExceptionsWrapper
+            @copy_current_request_context
+            def emit_alert_msg(self, msg_text):
+                self._racecontext.rhui.emit_priority_message(msg_text, True, nobroadcast=True)
 
         data = self._filters.run_filters(Flt.RACE_STAGE, data)
 
@@ -144,7 +145,8 @@ class RHRace():
 
                 if not heat_data.active:
                     logger.info("Canceling staging: Current heat is not active")
-                    gevent.spawn(emit_alert_msg, self, \
+                    if request:
+                        gevent.spawn(emit_alert_msg, self, \
                                  self._racecontext.language.__('Current heat is not active'))
                     return False
 
@@ -153,7 +155,8 @@ class RHRace():
                     raceclass = self._racecontext.rhdata.get_raceClass(heat_data.class_id)
                     if raceclass.round_type == RoundType.GROUPED:
                         logger.info("Canceling staging: Current heat has saved race and round type is groups")
-                        gevent.spawn(emit_alert_msg, self, \
+                        if request:
+                            gevent.spawn(emit_alert_msg, self, \
                                      self._racecontext.language.__('Current heat has saved race'))
                         return False
 
