@@ -94,6 +94,7 @@ class RHRace():
         self.race_leader_pilot_id = RHUtils.PILOT_ID_NONE
         self.race_initial_pass_flag = False  # set True after first gate pass of any pilot
 
+        self.db_id = None
         self._seat_colors = []
         self.external_flag = False # is race data controlled externally (from cluster)
         self.pass_invoke_func_queue_obj = InvokeFuncQueue(logger)
@@ -576,6 +577,7 @@ class RHRace():
                 }
 
             new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
+            self.db_id = new_race.id
 
             race_data = {}
 
@@ -1145,6 +1147,7 @@ class RHRace():
     def clear_laps(self):
         '''Clear the current laps table.'''
         self._racecontext.branch_race_obj()
+        self.db_id = None
         self.reset_current_laps() # Clear out the current laps table
         logger.info('Current laps cleared')
 
