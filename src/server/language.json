@@ -2587,7 +2587,7 @@
 			"Crossing Exited": "穿越退出",
 			"Crossing": "穿越",
 			"Pilot CSV Importer": "飞手 CSV 导入器",
-			"CSV file MUST contain [name], [callsign], [group] and [heat] fields. Recommend to place the CSV file here": "CSV 文件必须包含 [name]、[callsign] 和 [heat] 字段. 推荐将 CSV 文件放在这里",
+			"CSV file MUST contain [name], [callsign] and [heat] fields. Recommend to place the CSV file here": "CSV 文件必须包含 [name], [callsign] 和 [heat] 字段. 推荐将 CSV 文件放在这里",
 			"CSV File Path": "CSV 文件路径",
 			"CSV (Friendly) / All": "CSV (简明) / 全部",
 			"CSV (Friendly) / Classes": "CSV (简明) / 赛程",
