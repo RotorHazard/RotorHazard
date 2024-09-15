@@ -424,7 +424,7 @@ class SecondaryNode:
 
                             # get timestamp for last lap pass (including lap 0)
                             if len(act_laps_list) > 0:
-                                last_lap_ts = act_laps_list[-1]['lap_time_stamp']
+                                last_lap_ts = act_laps_list[-1].lap_time_stamp
                                 lap_split = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_count)
 
                                 if len(lap_split) <= 0: # first split for this lap
