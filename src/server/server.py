@@ -3420,6 +3420,7 @@ def rh_program_initialize():
                     chk_imdtabler_ver = subprocess.check_output( \
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
                         stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
+                    global Use_imdtabler_jar_flag
                     Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
                     logger.debug('Found installed: ' + chk_imdtabler_ver)
                 except Exception:
