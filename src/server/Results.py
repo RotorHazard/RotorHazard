@@ -529,18 +529,18 @@ def format_leaderboard_times(racecontext, all_leaderboards):
     for key, leaderboard in all_leaderboards.items():
         if key != 'meta':
             for result_pilot in leaderboard:
-                result_pilot['total_time'] = RHUtils.time_format(result_pilot['total_time_raw'], time_format)
-                result_pilot['total_time_laps'] = RHUtils.time_format(result_pilot['total_time_laps_raw'], time_format)
-                result_pilot['average_lap'] = RHUtils.time_format(result_pilot['average_lap_raw'], time_format)
-                result_pilot['fastest_lap'] = RHUtils.time_format(result_pilot['fastest_lap_raw'], time_format)
+                result_pilot['total_time'] = RHUtils.format_time_to_str(result_pilot['total_time_raw'], time_format)
+                result_pilot['total_time_laps'] = RHUtils.format_time_to_str(result_pilot['total_time_laps_raw'], time_format)
+                result_pilot['average_lap'] = RHUtils.format_time_to_str(result_pilot['average_lap_raw'], time_format)
+                result_pilot['fastest_lap'] = RHUtils.format_time_to_str(result_pilot['fastest_lap_raw'], time_format)
                 if result_pilot.get('time_behind_raw'):
-                    result_pilot['time_behind'] = RHUtils.time_format(result_pilot['time_behind_raw'], time_format)
+                    result_pilot['time_behind'] = RHUtils.format_time_to_str(result_pilot['time_behind_raw'], time_format)
                 else:
                     result_pilot.pop('time_behind', None)
                     result_pilot.pop('time_behind_raw', None)
-                result_pilot['consecutives'] = RHUtils.time_format(result_pilot['consecutives_raw'], time_format)
+                result_pilot['consecutives'] = RHUtils.format_time_to_str(result_pilot['consecutives_raw'], time_format)
                 if result_pilot.get('last_lap_raw'):
-                    result_pilot['last_lap'] = RHUtils.time_format(result_pilot['last_lap_raw'], time_format)
+                    result_pilot['last_lap'] = RHUtils.format_time_to_str(result_pilot['last_lap_raw'], time_format)
 
     return all_leaderboards
 
@@ -655,7 +655,7 @@ def add_fastest_race_lap_meta(racecontext, all_leaderboards):
         else:
             pilot = racecontext.rhdata.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
             pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
-            phonetic_time = RHUtils.phonetictime_format(
+            phonetic_time = RHUtils.format_phonetic_time_to_str(
                 leaderboard_by_fastest_lap[0]['fastest_lap_raw'],
                 racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
             fastest_race_lap_data = {}
@@ -871,10 +871,10 @@ def calc_team_leaderboard(racecontext):
                 'average_lap_raw': average_lap_raw,
                 'average_fastest_lap_raw': average_fastest_lap_raw,
                 'average_consecutives_raw': average_consecutives_raw,
-                'total_time': RHUtils.time_format(teams[team]['total_time_raw'], time_format),
-                'average_lap': RHUtils.time_format(average_lap_raw, time_format),
-                'average_fastest_lap': RHUtils.time_format(average_fastest_lap_raw, time_format),
-                'average_consecutives': RHUtils.time_format(average_consecutives_raw, time_format),
+                'total_time': RHUtils.format_time_to_str(teams[team]['total_time_raw'], time_format),
+                'average_lap': RHUtils.format_time_to_str(average_lap_raw, time_format),
+                'average_fastest_lap': RHUtils.format_time_to_str(average_fastest_lap_raw, time_format),
+                'average_consecutives': RHUtils.format_time_to_str(average_consecutives_raw, time_format),
             })
 
         # sort race_time

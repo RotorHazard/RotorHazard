@@ -2010,7 +2010,7 @@ def on_resave_laps(data):
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(lap['lap_time'], float):
-            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RaceContext.serverconfig.get_item('UI', 'timeFormat'))
+            tmp_lap_time_formatted = RHUtils.format_time_to_str(lap['lap_time'], RaceContext.serverconfig.get_item('UI', 'timeFormat'))
 
         new_racedata['laps'].append({
             'lap_time_stamp': lap['lap_time_stamp'],
