@@ -28,7 +28,7 @@ RHGPIO_S32ID_PIN = 25  # GPIO input is tied low on S32_BPill PCB
 Is_sys_raspberry_pi_flag = True  # set by 'idAndLogSystemInfo()'
 S32_BPill_board_flag = False  # set by 'idAndLogSystemInfo()'
 
-def time_format(millis, timeformat='{m}:{s}.{d}'):
+def format_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000'''
     if not isinstance(millis, (int, float)):
         return ''
@@ -45,7 +45,7 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
 
     return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
 
-def split_time_format(millis, timeformat='{m}:{s}.{d}'):
+def format_split_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000 with leading zeros removed'''
     if not isinstance(millis, (int, float)):
         return ''
@@ -55,8 +55,8 @@ def split_time_format(millis, timeformat='{m}:{s}.{d}'):
         s = s[p:]
     return s
 
-def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
-    '''Convert milliseconds to phonetic'''
+def format_phonetic_time_to_str(millis, timeformat='{m} {s}.{d}'):
+    '''Convert milliseconds to phonetic callout string'''
     if not isinstance(millis, (int, float)):
         return ''
 
@@ -74,6 +74,22 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
         return timeformat.format(m='', s=str(seconds), d=str(tenths))
     else:
         return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
+
+
+# Previous (now deprecated) versions of time-formatting functions:
+
+def time_format(millis, *args, **kwargs):
+    logger.warning("Deprecated function 'RHUtils.time_format()' function invoked; should use 'rhapi.utils.format_time_to_str()' instead")
+    return format_time_to_str(millis, *args, **kwargs)
+
+def split_time_format(millis, *args, **kwargs):
+    logger.warning("Deprecated function 'RHUtils.split_time_format()' function invoked; should use 'rhapi.utils.format_split_time_to_str()' instead")
+    return format_split_time_to_str(millis, *args, **kwargs)
+
+def phonetictime_format(millis, *args, **kwargs):
+    logger.warning("Deprecated function 'RHUtils.phonetictime_format()' function invoked; should use 'rhapi.utils.format_phonetic_time_to_str()' instead")
+    return format_phonetic_time_to_str(millis, *args, **kwargs)
+
 
 def getPythonVersionStr():
     return sys.version.split()[0]

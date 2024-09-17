@@ -1152,7 +1152,7 @@ class RHUI():
     def emit_phonetic_data(self, pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, node_index=None, **params):
         '''Emits phonetic data.'''
         raw_time = lap_time
-        phonetic_time = RHUtils.phonetictime_format(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
+        phonetic_time = RHUtils.format_phonetic_time_to_str(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
 
         emit_payload = {
             'lap': lap_id,
@@ -1260,7 +1260,7 @@ class RHUI():
             pilot = self._racecontext.rhdata.get_pilot(split_data.get('pilot_id', RHUtils.PILOT_ID_NONE))
             phonetic_name = (pilot.phonetic or pilot.callsign) if name_callout_flag and pilot else ''
             split_time = split_data.get('split_time')
-            phonetic_time = RHUtils.phonetictime_format(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic')) \
+            phonetic_time = RHUtils.format_phonetic_time_to_str(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic')) \
                             if (time_callout_flag and split_time) else None
             split_speed = split_data.get('split_speed')
             phonetic_speed = "{:.1f}".format(split_speed) if  (speed_callout_flag and split_speed) else None

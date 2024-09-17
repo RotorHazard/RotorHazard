@@ -10,6 +10,7 @@ import json
 import inspect
 import copy
 import logging
+import RHUtils
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
 
@@ -44,6 +45,7 @@ class RHAPI():
         self.events = EventsAPI(self._racecontext)
         self.server = ServerAPI(self._racecontext)
         self.filters = FilterAPI(self._racecontext)
+        self.utils = UtilsAPI()
 
         self.__ = self.language.__ # shortcut access
 
@@ -1302,3 +1304,20 @@ class FilterAPI():
 
     def run(self, type, data):
         return self._racecontext.filters.run_filters(type, data)
+
+
+#
+# Utility Functions
+#
+class UtilsAPI():
+    # Convert milliseconds to 00:00.000
+    def format_time_to_str(self, millis, *args, **kwargs):
+        return RHUtils.format_time_to_str(millis, *args, **kwargs)
+
+    # Convert milliseconds to 00:00.000 with leading zeros removed
+    def format_split_time_to_str(self, millis, *args, **kwargs):
+        return RHUtils.format_time_to_str(millis, *args, **kwargs)
+
+    # Convert milliseconds to phonetic callout string
+    def format_phonetic_time_to_str(self, millis, *args, **kwargs):
+        return RHUtils.format_phonetic_time_to_str(millis, *args, **kwargs)

@@ -464,7 +464,7 @@ class SecondaryNode:
 
                                 split_time = round(split_ts - last_split_ts, 3)
                                 split_speed = round(self.distance / float(split_time), 2) if self.distance > 0.0 else None
-                                split_time_str = RHUtils.split_time_format(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                                split_time_str = RHUtils.format_split_time_to_str(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                                 eventStr = self.info.get('event', 'runSplitEffect')
                                 effectStr = self.info.get('effect', None)
                                 logger.info('Split pass record: Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
@@ -500,7 +500,7 @@ class SecondaryNode:
                                 if last_split_ts and last_split_ts > 0.0:
                                     split_time = round(split_ts - last_split_ts, 3)
                                     split_speed = round(self.distance / float(split_time), 2)
-                                    split_time_str = RHUtils.split_time_format(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                                    split_time_str = RHUtils.format_split_time_to_str(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                                     eventStr = self.info.get('event', 'runSplitEffect')
                                     effectStr = self.info.get('effect', None)
                                     logger.info('Split pass record (for speed): Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
