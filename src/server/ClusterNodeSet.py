@@ -788,7 +788,7 @@ class ClusterNodeSet:
             totalUpSecs = secondary.totalUpTimeSecs + upTimeSecs
             totalDownSecs = secondary.totalDownTimeSecs + downTimeSecs
             if secondary.lastContactTime >= 0:
-                lastContactStr = str(int(nowTime-secondary.lastContactTime))
+                lastContactStr = str(int(nowTime-secondary.lastContactTime)) + "s"
             else:
                 if secondary.numDisconnects > 0:
                     lastContactStr = self.__("connection lost")
@@ -800,7 +800,7 @@ class ClusterNodeSet:
                                 str(secondary.id) + "\">" + self.__("Not found - click to retry") + "</button>"
             payload.append(
                 {'address': secondary.address, \
-                 'modeIndicator': (('M' if secondary.isMirrorMode else 'S') if not secondary.isActionMode else 'A'), \
+                 'modeIndicator': ((self.__('Mirror') if secondary.isMirrorMode else self.__('Split')) if not secondary.isActionMode else self.__('Action')), \
                  'minLatencyMs':  secondary.latencyAveragerObj.minVal, \
                  'avgLatencyMs': secondary.latencyAveragerObj.getIntAvgVal(), \
                  'maxLatencyMs': secondary.latencyAveragerObj.maxVal, \

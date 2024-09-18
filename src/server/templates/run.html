@@ -2397,7 +2397,7 @@
 					<div class="rssi-graph page" data-node="{{ node.index }}"><canvas id="rssi-graph-{{ node.index }}"></div>
 				</a>
 				<h4 class="callsign_{{ node.index }}">
-					Loading...
+					{{ __('Loading...') }}
 				</h4>
 				<div class="crossing crossing_flag_{{ node.index }}"><span>{{ __('Clear') }}</span></div>
 				<table class="laps" id="current_laps_{{ node.index }}">
@@ -2844,11 +2844,11 @@
 	<div class="panel-content">
 		<h3>{{ __('Cluster Status') }}</h3>
 		<div id="cluster-status" class="control-set">
-			<p>No cluster status available.</p>
+			<p>{{ __('No cluster status available.') }}</p>
 		</div>
 		<h3>{{ __('Environment Status') }}</h3>
 		<div id="env-data-table" class="control-set">
-			<p>No environment status available.</p>
+			<p>{{ __('No environment status available.') }}</p>
 		</div>
 	</div>
 </div>
@@ -2856,6 +2856,6 @@
 <!-- Custom UI -->
 <div id="custom-ui"></div>
 
-<button id="audio-unlock">Enable Audio</button>
+<button id="audio-unlock">{{ __('Enable Audio') }}</button>
 </main>
 {% endblock %}

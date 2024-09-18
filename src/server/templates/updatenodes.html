@@ -66,14 +66,14 @@
 <main class="page-updatenodes">
 <h2>{{ __('Update Node Firmware') }}</h2>
 <div id="top_text">
-The processor on the RotorHazard S32_BPill board will be flash-updated using the firmware file below:
+	{{ __('The processor on the RotorHazard S32_BPill board will be flash-updated using the firmware file below') }}:
 </div>
 <br />
 <input type="text" id="src_file_str" value="{{ fw_src_str }}" />
 <br />
 <br />
 <div id="info_text">
-Checking firmware file...<br><br><br><br>
+	{{ __('Checking firmware file') }}...<br><br><br><br>
 </div>
 <br />
 <a href="/settings" class="debug button-like">{{ __('Cancel') }}</a>&nbsp;
