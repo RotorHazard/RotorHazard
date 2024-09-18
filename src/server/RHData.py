@@ -2044,12 +2044,12 @@ class RHData():
         if cache_invalid:
             logger.error('Class {} ranking has invalid status'.format(race_class.id))
             token = monotonic()
-            self.clear_ranking_raceClass(race_class, token)
+            self.clear_ranking_raceClass(race_class.id, token)
 
         # cache rebuild
         logger.debug('Building Class {} ranking'.format(race_class.id))
         build = Results.calc_class_ranking_leaderboard(self._racecontext, class_id=race_class.id)
-        self.set_ranking_raceClass(race_class, token, build)
+        self.set_ranking_raceClass(race_class.id, token, build)
         return build
 
     def set_results_raceClass(self, raceClass_or_id, token, results):
