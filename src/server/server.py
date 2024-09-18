@@ -2009,7 +2009,7 @@ def on_resave_laps(data):
 
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
-        if isinstance(lap['lap_time'], float):
+        if isinstance(lap['lap_time'], float) or isinstance(lap['lap_time'], int):
             tmp_lap_time_formatted = RHUtils.format_time_to_str(lap['lap_time'], RaceContext.serverconfig.get_item('UI', 'timeFormat'))
 
         new_racedata['laps'].append({
@@ -2029,6 +2029,30 @@ def on_resave_laps(data):
     # run adaptive calibration
     if RaceContext.serverconfig.get_item_int('TIMING', 'calibrationMode'):
         RaceContext.calibration.auto_calibrate()
+
+    if RaceContext.last_race.db_id == race_id:
+        RaceContext.last_race.results = RaceContext.rhdata.get_results_savedRaceMeta(race_id)
+
+        RaceContext.last_race.clear_lap_results()
+        lap_objs = []
+        lap_number = 0
+        for lap in new_racedata['laps']:
+            lap_data = RHRace.Crossing()
+            lap_data.lap_number = lap_number
+            lap_data.lap_time_stamp = lap['lap_time_stamp']
+            lap_data.lap_time = lap['lap_time']
+            lap_data.lap_time_formatted = lap['lap_time_formatted']
+            lap_data.source = lap['source']
+            lap_data.deleted = lap['deleted']
+            if not lap_data.deleted:
+                lap_number += 1
+            lap_objs.append(lap_data)
+
+        RaceContext.last_race.node_laps[node] = lap_objs
+
+        RaceContext.rhui.emit_current_leaderboard()
+        RaceContext.rhui.emit_current_laps()
+
 
     # spawn thread for updating results caches
     params = {

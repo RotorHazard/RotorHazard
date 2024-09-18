@@ -73,6 +73,8 @@ class RaceContext():
         self.last_race.team_cacheStatus = self.race.team_cacheStatus
         self.last_race.win_status = self.race.win_status
 
+        self.last_race.db_id = self.race.db_id
+
 class ServerState:
     def __init__(self, racecontext):
         self._racecontext = racecontext
