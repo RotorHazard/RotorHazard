@@ -2297,7 +2297,7 @@ def check_bpillfw_file(data):
     try:  # find version, processor-type and build-timestamp strings in firmware '.bin' file
         rStr = RHUtils.findPrefixedSubstring(dataStr, RaceContext.interface.FW_VERSION_PREFIXSTR, \
                                              RaceContext.interface.FW_TEXT_BLOCK_SIZE)
-        fwVerStr = rStr if rStr else "(unknown)"
+        fwVerStr = rStr if rStr else __("(unknown)")
         fwRTypStr = RHUtils.findPrefixedSubstring(dataStr, RaceContext.interface.FW_PROCTYPE_PREFIXSTR, \
                                              RaceContext.interface.FW_TEXT_BLOCK_SIZE)
         fwTypStr = (fwRTypStr + ", ") if fwRTypStr else ""
@@ -2310,12 +2310,12 @@ def check_bpillfw_file(data):
             if rStr:
                 fwTimStr += " " + rStr
         else:
-            fwTimStr = "unknown"
+            fwTimStr = __("unknown")
         fileSize = len(dataStr)
         logger.debug("Node update firmware file size={}, version={}, {}build timestamp: {}".\
                      format(fileSize, fwVerStr, fwTypStr, fwTimStr))
-        infoStr = "Firmware update file size = {}<br>".format(fileSize) + \
-                  "Firmware update version: {} ({}Build timestamp: {})<br><br>".\
+        infoStr = __("Firmware update file size = {} bytes<br>").format(fileSize) + \
+                  __("Firmware update version: {} ({}Build timestamp: {})<br><br>").\
                   format(fwVerStr, fwTypStr, fwTimStr)
         info_node = RaceContext.interface.get_info_node_obj()
         curNodeStr = info_node.firmware_version_str if info_node else None
@@ -2324,13 +2324,13 @@ def check_bpillfw_file(data):
             if tsStr:
                 curRTypStr = info_node.firmware_proctype_str
                 ptStr = (curRTypStr + ", ") if curRTypStr else ""
-                curNodeStr += " ({}Build timestamp: {})".format(ptStr, tsStr)
+                curNodeStr += __(" ({}Build timestamp: {})").format(ptStr, tsStr)
         else:
             curRTypStr = None
-            curNodeStr = "(unknown)"
-        infoStr += "Current firmware version: " + curNodeStr
+            curNodeStr = __("(unknown)")
+        infoStr += __("Current firmware version: ") + curNodeStr
         if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
-            infoStr += "<br><br><b>Warning</b>: Firmware file processor type ({}) does not match current ({})".\
+            infoStr += __("<br><br><b>Warning</b>: Firmware file processor type ({}) does not match current ({})").\
                         format(fwRTypStr, curRTypStr)
         SOCKET_IO.emit('upd_set_info_text', infoStr)
         SOCKET_IO.emit('upd_enable_update_button')
@@ -2343,7 +2343,7 @@ def check_bpillfw_file(data):
 def do_bpillfw_update(data):
     srcStr = data['src_file_str']
     portStr = RaceContext.interface.get_fwupd_serial_name()
-    msgStr = "Performing S32_BPill update, port='{}', file: {}".format(portStr, srcStr)
+    msgStr = __("Performing S32_BPill update, port='{}', file: {}").format(portStr, srcStr)
     logger.info(msgStr)
     SOCKET_IO.emit('upd_messages_init', (msgStr + "\n"))
     stop_background_threads()
@@ -2360,8 +2360,8 @@ def do_bpillfw_update(data):
             log.wait_for_queue_empty()
         stm32loader.set_console_output_fn(doS32Log)
         successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-        msgStr = "Node update " + ("succeeded; restarting interface" \
-                                   if successFlag else "failed")
+        msgStr = __("Node update ") + (__("succeeded; restarting interface") \
+                                   if successFlag else __("failed"))
         logger.info(msgStr)
         SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
     except:
