@@ -901,7 +901,7 @@ class RHRace():
                                 lap_data.lap_time = lap_time
                                 lap_data.lap_time_formatted = lap_time_fmtstr
                                 lap_data.source = source
-                                lap_data.deleted = lap_late_flag  # delete if lap pass is after race winner declared
+                                lap_data.deleted = True
                                 lap_data.invalid = True
 
                                 self.node_laps[node.index].append(lap_data)
