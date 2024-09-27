@@ -132,7 +132,7 @@ class RHRace():
             assigned_start_epoch = data.get('start_time_epoch_ms', False) if data else None
             if assigned_start_epoch:
                 if data.get('correction_ms'):
-                    assigned_start_epoch = assigned_start_epoch - data['correction_ms']
+                    assigned_start_epoch = assigned_start_epoch + data['correction_ms']
 
                 assigned_start = self._racecontext.serverstate.epoch_millis_to_monotonic(
                     assigned_start_epoch)
