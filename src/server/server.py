@@ -705,6 +705,7 @@ def on_cluster_event_trigger(data):
             start_race_args = {
                 'secondary_format': True,
                 'start_time_epoch_ms': evtArgs['server_start_epoch_ms'],
+                'correction_ms': data['correction_ms'] if 'correction_ms' in data else 0,
             }
             RaceContext.race.stage(start_race_args)
 
