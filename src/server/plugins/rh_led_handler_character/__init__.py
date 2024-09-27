@@ -4,9 +4,11 @@
 #   https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#led-panel-support
 
 import logging
+from dataclasses import asdict
 from eventmanager import Evt
 from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, effect_delay
-from RHRace import RaceStatus
+from RHRace import RaceStatus, Crossing
+
 import gevent
 from time import monotonic
 
@@ -20,6 +22,9 @@ except ModuleNotFoundError as ex:
 
 def dataHandler(args):
     if 'data' in args:
+        if 'lap' in args and isinstance(args['lap'], Crossing):
+            args['lap'] = asdict(args['lap'])
+
         if args['data'] == 'staging':
             args['time'] = 0
             if not args['hide_stage_timer']:
@@ -41,13 +46,13 @@ def dataHandler(args):
 
         # standard methods
         elif args['data'] == 'lap_number':
-            if args['lap'].lap_number > 0:
-                args['text'] = args['lap'].lap_number
+            if args['lap']['lap_number'] > 0:
+                args['text'] = args['lap']['lap_number']
             else:
                 return False
 
         elif args['data'] == 'lap_time':
-            args['text'] = '{0:.1f}'.format(args['lap'].lap_time / 1000)
+            args['text'] = '{0:.1f}'.format(args['lap']['lap_time'] / 1000)
 
         elif args['data'] == 'position':
             if 'results' in args and args['results']:
@@ -126,7 +131,10 @@ def scrollText(args):
     if args['data'] == 'message':
         text = str(args['message'])
     elif args['data'] == 'lap_time':
-        text = str(args['lap'].lap_time_formatted)
+        if 'lap' in args and isinstance(args['lap'], Crossing):
+            args['lap'] = asdict(args['lap'])
+
+        text = str(args['lap']['lap_time_formatted'])
     else:
         return False
 
