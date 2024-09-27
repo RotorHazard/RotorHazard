@@ -1502,7 +1502,7 @@ def check_win_fastest_lap(raceObj, **kwargs):
 
                 for node in raceObj.node_laps:
                     if len(raceObj.node_laps[node]) > 0:
-                        most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
+                        most_recent_lap = raceObj.node_laps[node][-1].lap_time_stamp
                         time_to_complete = fast_lap - ((race_format.race_time_sec * 1000) - most_recent_lap)
                         max_ttc = max(max_ttc, time_to_complete)
 
@@ -1545,7 +1545,7 @@ def check_win_fastest_consecutive(raceObj, consecutivesCount, **kwargs):
                 for node in raceObj.node_laps:
                     laps = raceObj.node_laps[node]
                     if len(laps) >= (consecutivesCount - 1):
-                        last_laps = sum([data['lap_time'] for data in laps[-consecutivesCount:]])
+                        last_laps = sum([data.lap_time for data in laps[-consecutivesCount:]])
                         max_node_consideration = max(max_node_consideration, (fast_consecutives - last_laps))
 
                 return {
@@ -1863,7 +1863,7 @@ def check_win_team_fastest_lap(racecontext, **kwargs):
                         if len(raceObj.node_laps[node]) > 0:
                             team = raceObj.node_teams[node]
                             if team is not None:
-                                most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
+                                most_recent_lap = raceObj.node_laps[node][-1].lap_time_stamp
                                 spent_time = ((race_format.race_time_sec * 1000) - most_recent_lap)
                                 team_laps[team]['spent_time'] += spent_time
 
@@ -1925,7 +1925,7 @@ def check_win_team_fastest_consecutive(racecontext, consecutivesCount, **kwargs)
                     if team is not None:
                         laps = raceObj.node_laps[node]
                         if len(laps) >= 2:
-                            last_laps = sum([data['lap_time'] for data in laps[-consecutivesCount:]])
+                            last_laps = sum([data.lap_time for data in laps[-consecutivesCount:]])
                             team_laps[team]['time'] += last_laps
 
                 max_consideration = 0

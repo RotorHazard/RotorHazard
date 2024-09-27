@@ -108,7 +108,7 @@ class LEDEventManager:
         if seat_index is None:
             return RHUtils.hexToColor('#000000')
 
-        if from_result and self._racecontext.serverconfig.get_item('LED', 'ledColorMode', 0) == 1:
+        if from_result and self._racecontext.serverconfig.get_item_int('LED', 'ledColorMode', 0) == 1:
             last_results = self._racecontext.last_race.get_results()
             results = self._racecontext.race.get_results()
 

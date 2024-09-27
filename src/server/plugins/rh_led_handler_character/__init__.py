@@ -41,13 +41,13 @@ def dataHandler(args):
 
         # standard methods
         elif args['data'] == 'lap_number':
-            if args['lap']['lap_number'] > 0:
-                args['text'] = args['lap']['lap_number']
+            if args['lap'].lap_number > 0:
+                args['text'] = args['lap'].lap_number
             else:
                 return False
 
         elif args['data'] == 'lap_time':
-            args['text'] = '{0:.1f}'.format(args['lap']['lap_time'] / 1000)
+            args['text'] = '{0:.1f}'.format(args['lap'].lap_time / 1000)
 
         elif args['data'] == 'position':
             if 'results' in args and args['results']:
@@ -126,7 +126,7 @@ def scrollText(args):
     if args['data'] == 'message':
         text = str(args['message'])
     elif args['data'] == 'lap_time':
-        text = str(args['lap']['lap_time_formatted'])
+        text = str(args['lap'].lap_time_formatted)
     else:
         return False
 
