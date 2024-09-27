@@ -702,11 +702,13 @@ def on_cluster_event_trigger(data):
                 RaceContext.race.seat_colors = evtArgs['race_node_colors']
             else:
                 RaceContext.race.updateSeatColors(mode_override=0)
-            evtArgs['pi_staging_at_s'] = (evtArgs['server_staging_epoch_ms'] - MTONIC_TO_EPOCH_MILLIS_OFFSET) / 1000
-            evtArgs['pi_starts_at_s'] = (evtArgs['server_start_epoch_ms'] - MTONIC_TO_EPOCH_MILLIS_OFFSET) / 1000
 
-        elif evtName == Evt.RACE_START:
-            RaceContext.race.race_status = RaceStatus.RACING
+            start_race_args = {
+                'secondary_format': True,
+                'start_time_epoch_ms': evtArgs['server_start_epoch_ms'],
+            }
+            RaceContext.race.stage(start_race_args)
+
         elif evtName == Evt.RACE_STOP:
             RaceContext.race.race_status = RaceStatus.DONE
         elif evtName == Evt.LAPS_CLEAR:
@@ -716,7 +718,7 @@ def on_cluster_event_trigger(data):
 
     evtArgs.pop('RACE', None) # remove race if exists
 
-    if evtName not in [Evt.STARTUP, Evt.LED_SET_MANUAL]:
+    if evtName not in [Evt.STARTUP,  Evt.RACE_START, Evt.LED_SET_MANUAL]:
         Events.trigger(evtName, evtArgs)
     # special handling for LED Control via primary timer
     elif 'effect' in evtArgs and RaceContext.led_manager.isEnabled():
