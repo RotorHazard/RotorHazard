@@ -695,7 +695,6 @@ def on_cluster_event_trigger(data):
     # set mirror timer state
     if Server_secondary_mode == SecondaryNode.MIRROR_MODE:
         if evtName == Evt.RACE_STAGE:
-            RaceContext.race.race_status = RaceStatus.STAGING
             RaceContext.race.results = None
             RaceContext.race.external_flag = True
             if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
@@ -710,9 +709,9 @@ def on_cluster_event_trigger(data):
             RaceContext.race.stage(start_race_args)
 
         elif evtName == Evt.RACE_STOP:
-            RaceContext.race.race_status = RaceStatus.DONE
+            RaceContext.race.stop()
         elif evtName == Evt.LAPS_CLEAR:
-            RaceContext.race.race_status = RaceStatus.READY
+            RaceContext.race.discard_laps()
         elif evtName == Evt.RACE_LAP_RECORDED:
             RaceContext.race.results = evtArgs['results']
 
