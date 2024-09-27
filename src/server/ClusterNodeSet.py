@@ -5,8 +5,9 @@ import gevent
 import json
 import socketio
 from time import monotonic
+from dataclasses import asdict
 import RHUtils
-from RHRace import RaceStatus
+from RHRace import RaceStatus, Crossing
 from eventmanager import Evt
 from util.RunningMedian import RunningMedian
 from util.Averager import Averager
@@ -717,6 +718,9 @@ class ClusterNodeSet:
             if self.hasRecEventsSecondaries():
                 payload = { 'evt_name': args['_eventName'] }
                 del args['_eventName']
+                for arg in args:
+                    if isinstance(args[arg], Crossing):
+                        args[arg] = asdict(args[arg])
                 payload['evt_args'] = json.dumps(args, default=lambda _: '<not serializiable>')
                 self.emitEventTrigger(payload)
         except:

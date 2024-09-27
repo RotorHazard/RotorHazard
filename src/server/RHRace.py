@@ -24,7 +24,7 @@ APP.app_context().push()
 logger = logging.getLogger(__name__)
 
 @dataclass
-class Crossing():
+class Crossing(dict):
     node_index: int = None
     pilot_id: int = None
     lap_number: int = 0
