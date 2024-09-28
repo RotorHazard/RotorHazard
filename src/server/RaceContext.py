@@ -265,6 +265,9 @@ class ServerState:
     def monotonic_to_epoch_millis(self, secs):
         return 1000.0*secs + self.mtonic_to_epoch_millis_offset
 
+    def epoch_millis_to_monotonic(self, secs):
+        return (secs - self.mtonic_to_epoch_millis_offset)/1000.0
+
     # SERVER GLOBALS
 
     # race format used in secondary mode (must be initialized after database)

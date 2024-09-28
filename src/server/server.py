@@ -695,25 +695,30 @@ def on_cluster_event_trigger(data):
     # set mirror timer state
     if Server_secondary_mode == SecondaryNode.MIRROR_MODE:
         if evtName == Evt.RACE_STAGE:
-            RaceContext.race.race_status = RaceStatus.STAGING
             RaceContext.race.results = None
             RaceContext.race.external_flag = True
             if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
                 RaceContext.race.seat_colors = evtArgs['race_node_colors']
             else:
                 RaceContext.race.updateSeatColors(mode_override=0)
-        elif evtName == Evt.RACE_START:
-            RaceContext.race.race_status = RaceStatus.RACING
+
+            start_race_args = {
+                'secondary_format': True,
+                'start_time_epoch_ms': evtArgs['server_start_epoch_ms'],
+                'correction_ms': data['correction_ms'] if 'correction_ms' in data else 0,
+            }
+            RaceContext.race.stage(start_race_args)
+
         elif evtName == Evt.RACE_STOP:
-            RaceContext.race.race_status = RaceStatus.DONE
+            RaceContext.race.stop()
         elif evtName == Evt.LAPS_CLEAR:
-            RaceContext.race.race_status = RaceStatus.READY
+            RaceContext.race.discard_laps()
         elif evtName == Evt.RACE_LAP_RECORDED:
             RaceContext.race.results = evtArgs['results']
 
     evtArgs.pop('RACE', None) # remove race if exists
 
-    if evtName not in [Evt.STARTUP, Evt.LED_SET_MANUAL]:
+    if evtName not in [Evt.STARTUP,  Evt.RACE_START, Evt.LED_SET_MANUAL]:
         Events.trigger(evtName, evtArgs)
     # special handling for LED Control via primary timer
     elif 'effect' in evtArgs and RaceContext.led_manager.isEnabled():
