@@ -289,7 +289,7 @@ class SecondaryNode:
         try:
             if self.lastContactTime > 0:
                 if event == 'stage_race':
-                    data['start_time_epoch_ms']: self._racecontext.race.start_time_epoch_ms
+                    data['start_time_epoch_ms'] = self._racecontext.race.start_time_epoch_ms
 
                 self.sio.emit(event, data)
                 self.lastContactTime = monotonic()
