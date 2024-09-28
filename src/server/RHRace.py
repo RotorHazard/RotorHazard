@@ -202,9 +202,6 @@ class RHRace():
                         heatNode.node_index = idx
                         heatNodes.append(heatNode)
 
-            if self._racecontext.cluster:
-                self._racecontext.cluster.emitToSplits('stage_race')
-
             if self.race_status != RaceStatus.READY:
                 if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
                     if self.race_status == RaceStatus.RACING:
@@ -298,6 +295,9 @@ class RHRace():
                     'heat_id': self.current_heat,
                     'race_node_colors': self.seat_colors,
                 }
+
+                if self._racecontext.cluster:
+                    self._racecontext.cluster.emitToSplits('stage_race')
 
                 self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
                 self._racecontext.rhui.emit_race_stage(eventPayload)
