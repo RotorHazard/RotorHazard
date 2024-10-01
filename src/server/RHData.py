@@ -2921,7 +2921,10 @@ class RHData():
         old_heat_id = race_meta.heat_id
         old_heat = self.get_heat(old_heat_id)
         old_class = self.get_raceClass(old_heat.class_id)
-        old_format_id = old_class.format_id
+        if old_class:
+            old_format_id = old_class.format_id
+        else:
+            old_format_id = race_meta.format_id
 
         new_heat = self.get_heat(new_heat_id)
         new_class = self.get_raceClass(new_heat.class_id)
@@ -2995,7 +2998,8 @@ class RHData():
 
         if old_heat.class_id != new_heat.class_id:
             self.clear_results_raceClass(new_class)
-            self.clear_results_raceClass(old_class)
+            if old_class:
+                self.clear_results_raceClass(old_class)
 
         self.commit()
 
