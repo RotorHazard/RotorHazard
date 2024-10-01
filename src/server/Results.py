@@ -240,8 +240,15 @@ def _do_calc_leaderboard(racecontext, **params):
 
         if raceObj.current_heat:
             heat_displayname = current_heat.display_name
-            if current_class and current_class.round_type == RoundType.GROUPED:
-                round_num = 0
+
+            if current_class:
+                if current_class.format_id:
+                    race_format = rhDataObj.get_raceFormat(current_class.format_id)
+
+                if current_class.round_type == RoundType.GROUPED:
+                    round_num = 0
+                else:
+                    round_num = racecontext.rhdata.get_round_num_for_heat(current_heat.id)
             else:
                 round_num = racecontext.rhdata.get_round_num_for_heat(current_heat.id)
         else:
@@ -258,8 +265,14 @@ def _do_calc_leaderboard(racecontext, **params):
         race_format = rhDataObj.get_raceFormat(raceObj.format_id)
         heat_displayname = current_heat.display_name
 
-        if current_class and current_class.round_type == RoundType.GROUPED:
-            round_num = 0
+        if current_class:
+            if current_class.format_id:
+                race_format = rhDataObj.get_raceFormat(current_class.format_id)
+
+            if current_class.round_type == RoundType.GROUPED:
+                round_num = 0
+            else:
+                round_num = raceObj.round_id
         else:
             round_num = raceObj.round_id
 
@@ -488,7 +501,7 @@ def _do_calc_leaderboard(racecontext, **params):
         result_pilot['consecutives_raw'] = result_pilot['consecutives']
         result_pilot['last_lap_raw'] = result_pilot['last_lap']
 
-        if race_format.start_behavior == StartBehavior.STAGGERED:
+        if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
             result_pilot['total_time_raw'] = result_pilot['total_time_laps_raw']
 
     leaderboard_output = {
@@ -497,9 +510,9 @@ def _do_calc_leaderboard(racecontext, **params):
         'by_consecutives': copy.deepcopy(leaderboard)
     }
 
-    if race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+    if race_format and race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
         primary_leaderboard = 'by_consecutives'
-    elif race_format.win_condition == WinCondition.FASTEST_LAP:
+    elif race_format and race_format.win_condition == WinCondition.FASTEST_LAP:
         primary_leaderboard = 'by_fastest_lap'
     else:
         # WinCondition.NONE
@@ -509,9 +522,9 @@ def _do_calc_leaderboard(racecontext, **params):
 
     leaderboard_output['meta'] = {
         'primary_leaderboard': primary_leaderboard,
-        'win_condition': race_format.win_condition,
-        'team_racing_mode': race_format.team_racing_mode,
-        'start_behavior': race_format.start_behavior,
+        'win_condition': race_format.win_condition if race_format else None,
+        'team_racing_mode': race_format.team_racing_mode if race_format else False,
+        'start_behavior': race_format.start_behavior if race_format else None,
         'consecutives_count': consecutivesCount,
     }
 
