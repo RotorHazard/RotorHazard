@@ -312,7 +312,7 @@ Effects run as IDLE do not clear the display when they complete.
 LED effects which contain animation require execution delays. Effects **MUST** use the provided `effect_delay` for this purpose _(see below)_.
 
 > [!CAUTION]
-> Using `time.sleep`, `gevent.sleep`, or other methods for execution delays in LED effects will prevent proper effect termination and cause visual issues on the LED display or other erratic behavior. 
+> Using `time.sleep`, `gevent.sleep`, or other methods for execution delays in LED effects will prevent proper effect termination and cause visual issues on the LED display or other erratic behavior. _See `effect_delay()`_ 
 
 
 #### LEDEffect(label, handler_fn, valid_events, default_args=None, name=None)

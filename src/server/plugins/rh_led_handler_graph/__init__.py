@@ -5,7 +5,7 @@
 
 import logging
 from eventmanager import Evt
-from led_event_manager import LEDEffect, Color, ColorVal, effect_delay
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, effect_delay
 import gevent
 
 logger = logging.getLogger(__name__)
@@ -22,24 +22,26 @@ def rssiGraph(args):
     else:
         return False
 
-    if 'rhapi' in args:
-        INTERFACE = args['rhapi'].interface
+    if 'RHAPI' in args:
+        INTERFACE = args['RHAPI'].interface
     else:
         return False
 
-    if len(INTERFACE.nodes) < 1:
+    if len(INTERFACE.seats) < 1:
         return False
 
-    panel = getPanelImg(strip)
+    panel = getPanelImg(strip, args)
 
-    if 'active_only' in args and args['active_only'] == True:
+    if args.get('active_only'):
         active_nodes = []
-        for node in INTERFACE.nodes:
+        for node in INTERFACE.seats:
             if node.frequency:
                 active_nodes.append(node)
 
     else:
-        active_nodes = INTERFACE.nodes
+        active_nodes = INTERFACE.seats
+
+    logger.debug(active_nodes)
 
     if panel['width'] < len(active_nodes):
         barWidth = 1
@@ -49,7 +51,7 @@ def rssiGraph(args):
     while True:
         panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
 
-        for node in active_nodes:
+        for idx, node in enumerate(active_nodes):
             rssi_min = node.node_nadir_rssi
             rssi_max = node.node_peak_rssi
             rssi_val = node.current_rssi
@@ -61,16 +63,16 @@ def rssiGraph(args):
             if rssi_range:
                 point = (rssi_max - rssi_val) / float(rssi_range) * panel['height']
 
-                panel['draw'].rectangle((barWidth * node.index, point, (barWidth * node.index) + barWidth - 1, panel['height']), fill=color)
+                panel['draw'].rectangle((barWidth * idx, point, (barWidth * idx) + barWidth - 1, panel['height']), fill=color)
 
         img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
-        setPixels(strip, img)
+        setPixels(strip, img, args)
         strip.show()
 
-        gevent.idle()
+        effect_delay(100, args)
 
-def getPanelImg(strip):
-    panel_w = args['RHAPI'].config.get_item('LED', 'LED_COUNT') // args['RHAPI'].config.get_itme('LED', 'LED_ROWS')
+def getPanelImg(strip, args):
+    panel_w = args['RHAPI'].config.get_item('LED', 'LED_COUNT') // args['RHAPI'].config.get_item('LED', 'LED_ROWS')
     panel_h = args['RHAPI'].config.get_item('LED','LED_ROWS')
 
     if args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE') % 2:
@@ -88,7 +90,7 @@ def getPanelImg(strip):
         'draw': ImageDraw.Draw(im)
     }
 
-def setPixels(strip, img):
+def setPixels(strip, img, args):
     pos = 0
     for row in range(0, img.height):
         for col in range(0, img.width):
@@ -116,7 +118,7 @@ def register_handlers(args):
         LEDEffect(
             "Graph: RSSI (all)",
             rssiGraph, {
-                'include': [],
+                'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
                 'exclude': [],
                 'recommended': []
             },
@@ -126,7 +128,7 @@ def register_handlers(args):
         LEDEffect(
             "Graph: RSSI (enabled)",
             rssiGraph, {
-                'include': [],
+                'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
                 'exclude': [],
                 'recommended': []
             }, {
