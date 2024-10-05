@@ -3,7 +3,7 @@
 
 #include "config.h"
 
-#define TEXT_BLOCK_SIZE 16   // length of data for 'writeTextBlock()'
+#define TEXT_BLOCK_SIZE 16   // length oc:\Users\RaceF\OneDrive\Documents\Arduino\node_id_button\config.h c:\Users\RaceF\OneDrive\Documents\Arduino\node_id_button\commands.cpp c:\Users\RaceF\OneDrive\Documents\Arduino\node_id_button\commands.hf data for 'writeTextBlock()'
 
 class Buffer {
     public:
