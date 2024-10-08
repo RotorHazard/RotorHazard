@@ -129,7 +129,15 @@ class RHRace():
             if data and data.get('secondary_format'):
                 self.format = self._racecontext.serverstate.secondary_race_format
 
-            assigned_start = data.get('start_time_s', False) if data else None
+            assigned_start_epoch = data.get('start_time_epoch_ms', False) if data else None
+            if assigned_start_epoch:
+                if data.get('correction_ms'):
+                    assigned_start_epoch = assigned_start_epoch + data['correction_ms']
+
+                assigned_start = self._racecontext.serverstate.epoch_millis_to_monotonic(
+                    assigned_start_epoch)
+            else:
+                assigned_start = data.get('start_time_s', False) if data else None
 
             race_format = self.format
             if race_format is self._racecontext.serverstate.secondary_race_format and \
@@ -193,9 +201,6 @@ class RHRace():
                         heatNode = FauxHeatNode
                         heatNode.node_index = idx
                         heatNodes.append(heatNode)
-
-            if self._racecontext.cluster:
-                self._racecontext.cluster.emitToSplits('stage_race')
 
             if self.race_status != RaceStatus.READY:
                 if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
@@ -280,14 +285,21 @@ class RHRace():
                 eventPayload = {
                     'hide_stage_timer': hide_stage_timer,
                     'pi_staging_at_s': self.stage_time_monotonic,
+                    'server_staging_epoch_ms': self._racecontext.serverstate.monotonic_to_epoch_millis(self.stage_time_monotonic),
                     'staging_tones': staging_tones,
                     'pi_starts_at_s': self.start_time_monotonic,
+                    'server_start_epoch_ms': self.start_time_epoch_ms,
                     'unlimited_time': race_format.unlimited_time,
                     'race_time_sec': race_format.race_time_sec,
                     'color': ColorVal.ORANGE,
                     'heat_id': self.current_heat,
                     'race_node_colors': self.seat_colors,
                 }
+
+                if self._racecontext.cluster:
+                    splitsData = {}
+                    splitsData['start_time_epoch_ms'] = self._racecontext.race.start_time_epoch_ms
+                    self._racecontext.cluster.emitToSplits('stage_race', splitsData, addTimeCorrFlag=True)
 
                 self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
                 self._racecontext.rhui.emit_race_stage(eventPayload)
