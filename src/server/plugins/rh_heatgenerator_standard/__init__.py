@@ -1,5 +1,5 @@
 '''Standardized heat structures'''
-# FAI: https://www.fai.org/sites/default/files/ciam/wcup_drones/sc4_vol_f9_dronesport_22_2022-03-01_0.pdf
+# FAI: https://www.fai.org/sites/default/files/ciam/wcup_drones/sc4_vol_f9_dronesport_24_0.pdf
 # MultiGP: https://docs.google.com/document/d/1jWVjCnoIGdW1j_bklrbg-0D24c3x6YG5m_vmF7faG-U/edit#heading=h.hoxlrr3v86bb
 
 import logging
@@ -8,6 +8,48 @@ from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
 
 logger = logging.getLogger(__name__)
+
+def bracket_1e_8_fai(rhapi):
+    return [
+       # W1
+       HeatPlan(
+            rhapi.__("Race") + " 1",
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 8)
+            ]
+        ),
+        # W2
+        HeatPlan(
+            rhapi.__("Race") + " 2",
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 7)
+            ]
+        ),
+        HeatPlan(
+            rhapi.__("Small Final"),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 1)
+            ]
+        ),
+        HeatPlan(
+            rhapi.__("Final"),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
+            ]
+        )
+    ]
 
 def bracket_1e_16_fai(rhapi):
     return [
@@ -521,6 +563,70 @@ def bracket_1e_64_fai(rhapi):
                 HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 28),
                 HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 29),
                 HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 29)
+            ]
+        )
+    ]
+
+def bracket_2e_8_fai(rhapi):
+    return [
+       # W1
+       HeatPlan(
+            rhapi.__("Race") + " 1",
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 8)
+            ]
+        ),
+        # W2
+        HeatPlan(
+            rhapi.__("Race") + " 2",
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 7)
+            ]
+        ),
+        # L1
+        HeatPlan(
+            rhapi.__("Race") + " 3",
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 1)
+            ]
+        ),
+        # W3
+        HeatPlan(
+            rhapi.__("Race") + " 4",
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1)
+            ]
+        ),
+        # L2
+        HeatPlan(
+            rhapi.__("Race") + " 5",
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 3)
+            ]
+        ),
+        # Final
+        HeatPlan(
+            rhapi.__("Final"),
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 4),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 4)
             ]
         )
     ]
@@ -1625,7 +1731,9 @@ def bracket_1e_std(rhapi, generate_args):
     if 'standard' not in generate_args:
         return False
 
-    if generate_args['standard'] == 'fai16':
+    if generate_args['standard'] == 'fai8':
+        heats = bracket_1e_8_fai(rhapi)
+    elif generate_args['standard'] == 'fai16':
         heats = bracket_1e_16_fai(rhapi)
     elif generate_args['standard'] == 'fai32':
         heats = bracket_1e_32_fai(rhapi)
@@ -1648,7 +1756,9 @@ def bracket_2e_std(rhapi, generate_args):
     if 'standard' not in generate_args:
         return False
 
-    if generate_args['standard'] == 'fai16':
+    if generate_args['standard'] == 'fai8':
+        heats = bracket_2e_8_fai(rhapi)
+    elif generate_args['standard'] == 'fai16':
         heats = bracket_2e_16_fai(rhapi)
     elif generate_args['standard'] == 'fai32':
         heats = bracket_2e_32_fai(rhapi)
@@ -1677,6 +1787,7 @@ def register_handlers(args):
             None,
             [
                 UIField('standard', "Spec", UIFieldType.SELECT, options=[
+                        UIFieldSelectOption('fai8', "FAI-like, 4-up, 8-pilot"),
                         UIFieldSelectOption('fai16', "FAI, 4-up, 16-pilot"),
                         UIFieldSelectOption('fai32', "FAI, 4-up, 32-pilot"),
                         UIFieldSelectOption('fai64', "FAI, 4-up, 64-pilot"),
@@ -1690,6 +1801,7 @@ def register_handlers(args):
             None,
             [
                 UIField('standard', "Spec", UIFieldType.SELECT, options=[
+                        UIFieldSelectOption('fai8', "FAI-like, 4-up, 8-pilot"),
                         UIFieldSelectOption('fai16', "FAI, 4-up, 16-pilot"),
                         UIFieldSelectOption('fai32', "FAI, 4-up, 32-pilot"),
                         UIFieldSelectOption('fai64', "FAI, 4-up, 64-pilot"),
