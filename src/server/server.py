@@ -629,7 +629,7 @@ def connect_handler(auth):
     gevent.spawn_later(0.050, finish_connect_handler)
 
 @SOCKET_IO.on('disconnect')
-def disconnect_handler():
+def disconnect_handler(*args):
     '''Emit disconnect event.'''
     logger.debug('Client disconnected')
 
@@ -637,7 +637,7 @@ def disconnect_handler():
 
 @SOCKET_IO.on('join_cluster')
 @catchLogExcWithDBWrapper
-def on_join_cluster():
+def on_join_cluster(*args):
     RaceContext.race.format = RaceContext.serverstate.secondary_race_format
     RaceContext.rhui.emit_current_laps()
     RaceContext.rhui.emit_race_status()
@@ -1118,7 +1118,7 @@ def on_delete_heat(data):
 
 @SOCKET_IO.on('add_race_class')
 @catchLogExcWithDBWrapper
-def on_add_race_class():
+def on_add_race_class(*args):
     '''Adds the next available pilot id number in the database.'''
     RaceContext.rhdata.add_raceClass()
     RaceContext.rhui.emit_class_data()
@@ -1164,7 +1164,7 @@ def on_delete_class(data):
 
 @SOCKET_IO.on('add_pilot')
 @catchLogExcWithDBWrapper
-def on_add_pilot():
+def on_add_pilot(*args):
     '''Adds the next available pilot id number in the database.'''
     RaceContext.rhdata.add_pilot()
     RaceContext.rhui.emit_pilot_data()
@@ -1224,7 +1224,7 @@ def on_set_seat_color(data):
 
 @SOCKET_IO.on('reset_seat_color')
 @catchLogExcWithDBWrapper
-def on_reset_seat_color():
+def on_reset_seat_color(*args):
     '''Update seat color.'''
     RaceContext.serverconfig.set_item('LED', 'seatColors', [])
     RaceContext.race.updateSeatColors()
@@ -1239,7 +1239,7 @@ def on_reset_seat_color():
 
 @SOCKET_IO.on('add_profile')
 @catchLogExcWithDBWrapper
-def on_add_profile():
+def on_add_profile(*args):
     '''Adds new profile (frequency set) in the database.'''
     source_profile = RaceContext.race.profile
     new_profile = RaceContext.rhdata.duplicate_profile(source_profile)
@@ -1259,7 +1259,7 @@ def on_alter_profile(data):
 
 @SOCKET_IO.on('delete_profile')
 @catchLogExcWithDBWrapper
-def on_delete_profile():
+def on_delete_profile(*args):
     '''Delete profile'''
     profile = RaceContext.race.profile
     result = RaceContext.rhdata.delete_profile(profile)
@@ -1358,7 +1358,7 @@ def on_alter_race(data):
 
 @SOCKET_IO.on('backup_database')
 @catchLogExcWithDBWrapper
-def on_backup_database():
+def on_backup_database(*args):
     '''Backup database.'''
     bkp_name = RaceContext.rhdata.backup_db_file(True)  # make copy of DB file
 
@@ -1381,7 +1381,7 @@ def on_backup_database():
 
 @SOCKET_IO.on('list_backups')
 @catchLogExceptionsWrapper
-def on_list_backups():
+def on_list_backups(*args):
     '''List database files in db_bkp'''
 
     if not os.path.exists(DB_BKP_DIR_NAME):
@@ -1654,7 +1654,7 @@ def on_generate_heats_v2(data):
 
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
-def on_shutdown_pi():
+def on_shutdown_pi(*args):
     '''Shutdown the raspberry pi.'''
     if  RaceContext.interface.send_shutdown_started_message():
         gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
@@ -1677,7 +1677,7 @@ def on_shutdown_pi():
 
 @SOCKET_IO.on('reboot_pi')
 @catchLogExceptionsWrapper
-def on_reboot_pi():
+def on_reboot_pi(*args):
     '''Reboot the raspberry pi.'''
     if RaceContext.cluster:
         RaceContext.cluster.emit('reboot_pi')
@@ -1698,7 +1698,7 @@ def on_reboot_pi():
 
 @SOCKET_IO.on('kill_server')
 @catchLogExceptionsWrapper
-def on_kill_server():
+def on_kill_server(*args):
     '''Shutdown this server.'''
     if RaceContext.cluster:
         RaceContext.cluster.emit('kill_server')
@@ -1942,7 +1942,7 @@ def on_use_led_effect(data):
 # TODO: Remove
 @SOCKET_IO.on('get_pi_time')
 @catchLogExceptionsWrapper
-def on_get_pi_time():
+def on_get_pi_time(*args):
     # never broadcasts to all (client must make request)
     emit('pi_time', {
         'pi_time_s': monotonic()
@@ -1950,7 +1950,7 @@ def on_get_pi_time():
 
 @SOCKET_IO.on('get_server_time')
 @catchLogExceptionsWrapper
-def on_get_server_time():
+def on_get_server_time(*args):
     return {'server_time_s': monotonic()}
 
 @SOCKET_IO.on('schedule_race')
@@ -1960,7 +1960,7 @@ def on_schedule_race(data):
 
 @SOCKET_IO.on('cancel_schedule_race')
 @catchLogExceptionsWrapper
-def cancel_schedule_race():
+def cancel_schedule_race(*args):
     RaceContext.race.schedule(None)
 
 @SOCKET_IO.on('stage_race')
@@ -2203,7 +2203,7 @@ def on_set_consecutives_count(data):
 
 @SOCKET_IO.on('get_race_scheduled')
 @catchLogExceptionsWrapper
-def get_race_elapsed():
+def get_race_elapsed(*args):
     # get current race status; never broadcasts to all
     emit('race_scheduled', {
         'scheduled': RaceContext.race.scheduled,
@@ -2221,7 +2221,7 @@ def save_callouts(data):
 
 @SOCKET_IO.on('reload_callouts')
 @catchLogExcWithDBWrapper
-def reload_callouts():
+def reload_callouts(*args):
     RaceContext.rhui.emit_callouts()
 
 @SOCKET_IO.on('play_callout_text')
@@ -2238,7 +2238,7 @@ def imdtabler_update_freqs(data):
 
 @SOCKET_IO.on('clean_cache')
 @catchLogExcWithDBWrapper
-def clean_results_cache():
+def clean_results_cache(*args):
     ''' wipe all results caches '''
     Events.trigger(Evt.CACHE_CLEAR)
     RaceContext.rhdata.clear_results_all()
