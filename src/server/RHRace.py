@@ -297,7 +297,9 @@ class RHRace():
                 }
 
                 if self._racecontext.cluster:
-                    self._racecontext.cluster.emitToSplits('stage_race')
+                    splitsData = {}
+                    splitsData['start_time_epoch_ms'] = self._racecontext.race.start_time_epoch_ms
+                    self._racecontext.cluster.emitToSplits('stage_race', splitsData, addTimeCorrFlag=True)
 
                 self._racecontext.events.trigger(Evt.RACE_STAGE, eventPayload)
                 self._racecontext.rhui.emit_race_stage(eventPayload)

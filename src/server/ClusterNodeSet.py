@@ -282,15 +282,9 @@ class SecondaryNode:
                     gevent.sleep(9)
         logger.debug("Exiting worker thread for secondary timer {}".format(self.id+1))
 
-    def emit(self, event, data = None):
-        if data is None: data = {}
-        data['correction_ms'] = self.timeDiffMedianMs
-
+    def emit(self, event, data=None):
         try:
             if self.lastContactTime > 0:
-                if event == 'stage_race':
-                    data['start_time_epoch_ms'] = self._racecontext.race.start_time_epoch_ms
-
                 self.sio.emit(event, data)
                 self.lastContactTime = monotonic()
                 self.numContacts += 1
@@ -781,8 +775,10 @@ class ClusterNodeSet:
         for secondary in self.secondaries:
             gevent.spawn(secondary.emit, event, data)
 
-    def emitToSplits(self, event, data = None):
+    def emitToSplits(self, event, data=None, addTimeCorrFlag=False):
         for secondary in self.splitSecondaries:
+            if addTimeCorrFlag and type(data) is dict:
+                data['correction_ms'] = secondary.timeDiffMedianMs
             gevent.spawn(secondary.emit, event, data)
 
     def emitEventTrigger(self, data = None):
