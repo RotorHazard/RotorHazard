@@ -18,7 +18,7 @@ SQLAlchemy==2.0.*
 gevent==23.9.*
 gevent-websocket==0.10.*
 greenlet==3.0.*
-cffi==1.15.*
+cffi==1.17.*
 
 # Other
 pyserial==3.4.*
