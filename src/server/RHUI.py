@@ -852,6 +852,13 @@ class RHUI():
     def emit_heat_data(self, **params):
         '''Emits heat data.'''
 
+        attrs = []
+        types = {}
+        for attr in self.heat_attributes:
+            if not attr.private:
+                types[attr.name] = attr.field_type
+                attrs.append(attr.frontend_repr())
+
         heats = []
         for heat in self._racecontext.rhdata.get_heats():
             current_heat = {}
@@ -892,12 +899,18 @@ class RHUI():
                     is_dynamic = True
 
             current_heat['dynamic'] = is_dynamic
-
             current_heat['locked'] = bool(self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id))
+
+            heat_attributes = self._racecontext.rhdata.get_heat_attributes(heat)
+            for attr in heat_attributes:
+                if types.get(attr.name):
+                    current_heat[attr.name] = attr.value != '0' if types.get(attr.name) == UIFieldType.CHECKBOX else attr.value
+
             heats.append(current_heat)
 
         emit_payload = {
             'heats': heats,
+            'attributes': attrs
         }
 
         emit_payload = self._filters.run_filters(Flt.EMIT_HEAT_DATA, emit_payload)
@@ -911,6 +924,14 @@ class RHUI():
 
     def emit_class_data(self, **params):
         '''Emits class data.'''
+
+        attrs = []
+        types = {}
+        for attr in self.raceclass_attributes:
+            if not attr.private:
+                types[attr.name] = attr.field_type
+                attrs.append(attr.frontend_repr())
+
         current_classes = []
         for race_class in self._racecontext.rhdata.get_raceClasses():
             current_class = {}
@@ -926,13 +947,20 @@ class RHUI():
             current_class['round_type'] = race_class.round_type
             current_class['order'] = race_class.order
             current_class['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceClass(race_class.id)
-            current_classes.append(current_class)
 
             if current_class['win_condition'] and race_class.win_condition in self._racecontext.raceclass_rank_manager.methods:
                 current_class['rank_method_label'] = self._racecontext.raceclass_rank_manager.methods[race_class.win_condition].label
 
+            raceclass_attributes = self._racecontext.rhdata.get_raceclass_attributes(race_class)
+            for attr in raceclass_attributes:
+                if types.get(attr.name):
+                    current_class[attr.name] = attr.value != '0' if types.get(attr.name) == UIFieldType.CHECKBOX else attr.value
+
+            current_classes.append(current_class)
+
         emit_payload = {
             'classes': current_classes,
+            'attributes': attrs
         }
 
         emit_payload = self._filters.run_filters(Flt.EMIT_CLASS_DATA, emit_payload)

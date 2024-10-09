@@ -39,7 +39,7 @@
 }
 
 html {
-	background: #fff;
+	background: #fff;1
 	color: #000;
 	margin: 0;
 	padding: 0;
@@ -1542,24 +1542,25 @@ main.page-home {
 	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
 }
 
-.pilot_attr {
+.custom_attr {
 	margin:0.25rem 0;
 	display: flex;
 	flex-basis: 100%;
 	flex-wrap: wrap;
 }
 
-.pilot_attr .desc {
+.custom_attr .desc {
 	margin: 0;
 	font-size: 0.75em;
 	font-style: italic;
 }
 
-.pilot_attr input:not([type="checkbox"]) {
+.custom_attr input:not([type="checkbox"]),
+.custom_attr select {
 	flex-basis: 100%;
 }
 
-.pilot_attr [type="checkbox"] {
+.custom_attr [type="checkbox"] {
 	order: -1;
 	flex: 0 1 auto;
 	margin-right: 0.5rem;
@@ -1704,10 +1705,22 @@ main.page-home {
 		grid-row: 6;
 	}
 
+	.race_classes .attrs {
+		grid-column: 1 / -1;
+		grid-row: 7;
+		columns: 19rem;
+		gap: 1rem;
+	}
+
+	.race_classes .attrs>.custom_attr {
+		display: inline-flex;
+		width: 100%;
+	}
+
 	.race_classes .heats,
 	.race_classes .groups {
 		grid-column: 1 / -1;
-		grid-row: 7;
+		grid-row: 8;
 	}
 }
 
