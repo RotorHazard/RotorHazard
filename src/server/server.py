@@ -2035,7 +2035,7 @@ def on_resave_laps(data):
     if RaceContext.serverconfig.get_item_int('TIMING', 'calibrationMode'):
         RaceContext.calibration.auto_calibrate()
 
-    if RaceContext.last_race.db_id == race_id:
+    if RaceContext.last_race and RaceContext.last_race.db_id == race_id:
         RaceContext.last_race.results = RaceContext.rhdata.get_results_savedRaceMeta(race_id)
 
         RaceContext.last_race.clear_lap_results()
