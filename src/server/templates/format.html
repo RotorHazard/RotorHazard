@@ -427,7 +427,7 @@
 						for (var attr_idx in rotorhazard.event.raceclass_attributes) {
 							var raceclass_attr = { ...rotorhazard.event.raceclass_attributes[attr_idx]};
 							raceclass_attr.fieldClass = 'set_raceclass_attr';
-							raceclass_attr.wrapperClass = 'raceclass_attr';
+							raceclass_attr.wrapperClass = 'custom_attr';
 							raceclass_attr.id = 'raceclassAttr_' + raceclass_attr.name + '_' + race_class.id;
 							raceclass_attr.data = {
 								'raceclass_id': race_class.id,
@@ -700,7 +700,7 @@
 				value: value
 			};
 			socket.emit('alter_race_class', data);
-			var raceclass = rotorhazard.event.raceclasss.find(obj => {return obj.raceclass_id == raceclass_id});
+			var raceclass = rotorhazard.event.classes.find(obj => {return obj.id == raceclass_id});
 			raceclass[raceclass_attr] = value;
 		})
 
@@ -923,7 +923,7 @@
 			for (var attr_idx in rotorhazard.event.heat_attributes) {
 				var heat_attr = { ...rotorhazard.event.heat_attributes[attr_idx]};
 				heat_attr.fieldClass = 'set_heat_attr';
-				heat_attr.wrapperClass = 'heat_attr';
+				heat_attr.wrapperClass = 'custom_attr';
 				heat_attr.id = 'heatAttr_' + heat_attr.name + '_' + heat.heat_id;
 				heat_attr.data = {
 					'heat_id': heat.id,
@@ -1181,7 +1181,7 @@
 				value: value
 			};
 			socket.emit('alter_heat', data);
-			var heat = rotorhazard.event.heats.find(obj => {return obj.heat_id == heat_id});
+			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			heat[heat_attr] = value;
 		})
 
@@ -1430,7 +1430,7 @@
 						for (var attr_idx in rotorhazard.event.pilot_attributes) {
 							var pilot_attr = { ...rotorhazard.event.pilot_attributes[attr_idx]};
 							pilot_attr.fieldClass = 'set_pilot_attr';
-							pilot_attr.wrapperClass = 'pilot_attr';
+							pilot_attr.wrapperClass = 'custom_attr';
 							pilot_attr.id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
 							pilot_attr.data = {
 								'pilot_id': pilot.pilot_id,
