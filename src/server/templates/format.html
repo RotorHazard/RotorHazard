@@ -291,6 +291,7 @@
 
 		socket.on('class_data', function (msg) {
 			rotorhazard.event.classes = msg.classes;
+			rotorhazard.event.raceclass_attributes = msg.attributes;
 			display_classes();
 			freq.updateBlocks();
 		});
@@ -421,6 +422,25 @@
 						var input = $('<input hidden type="number" id="race_class_order-' + race_class.id + '" class="set_race_class_order" data-class_id="' + race_class.id + '" step="1" min="0">');
 						input.val(race_class.order);
 						el.append(input);
+
+						var attrgroup_el = $('<div class="attrs">');
+						for (var attr_idx in rotorhazard.event.raceclass_attributes) {
+							var raceclass_attr = { ...rotorhazard.event.raceclass_attributes[attr_idx]};
+							raceclass_attr.fieldClass = 'set_raceclass_attr';
+							raceclass_attr.wrapperClass = 'raceclass_attr';
+							raceclass_attr.id = 'raceclassAttr_' + raceclass_attr.name + '_' + race_class.id;
+							raceclass_attr.data = {
+								'raceclass_id': race_class.id,
+								'attr': raceclass_attr.name,
+							}
+
+							if (raceclass_attr.name in race_class) {
+								raceclass_attr.value = race_class[raceclass_attr.name]
+							}
+
+							attrgroup_el.append(rhui.buildField(raceclass_attr));
+						}
+						el.append(attrgroup_el);
 
 						if (race_class.round_type == 1) {
 							var groups_el = $('<div class="groups">');
@@ -666,6 +686,24 @@
 			}
 		});
 
+		$(document).on("focus", '.set_raceclass_attr', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_raceclass_attr', function (event) {
+			var raceclass_id = parseInt($(this).data('raceclass_id'));
+			var raceclass_attr = $(this).data('attr');
+			var value = rhui.getFieldVal(this);
+			var data = {
+				class_id: raceclass_id,
+				class_attr: raceclass_attr,
+				value: value
+			};
+			socket.emit('alter_race_class', data);
+			var raceclass = rotorhazard.event.raceclasss.find(obj => {return obj.raceclass_id == raceclass_id});
+			raceclass[raceclass_attr] = value;
+		})
+
 		$(document).on("click", '.unlock_class', function (event) {
 			class_to_unlock = $(this).data('id');
 		});
@@ -712,6 +750,7 @@
 		/* Heats */
 		socket.on('heat_data', function (msg) {
 			rotorhazard.event.heats = msg.heats;
+			rotorhazard.event.heat_attributes = msg.attributes;
 			display_classes();
 			display_unclassified_heats();
 			if (rotorhazard.generators) {
@@ -881,6 +920,22 @@
 			el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">' + __('Revert to Plan') + '</button>');
 			el.append('<button class="plan-calc" data-id="' + heat.id + '">' + __('Seed Now') + '</button>');
 
+			for (var attr_idx in rotorhazard.event.heat_attributes) {
+				var heat_attr = { ...rotorhazard.event.heat_attributes[attr_idx]};
+				heat_attr.fieldClass = 'set_heat_attr';
+				heat_attr.wrapperClass = 'heat_attr';
+				heat_attr.id = 'heatAttr_' + heat_attr.name + '_' + heat.heat_id;
+				heat_attr.data = {
+					'heat_id': heat.id,
+					'attr': heat_attr.name,
+				}
+
+				if (heat_attr.name in heat) {
+					heat_attr.value = heat[heat_attr.name]
+				}
+
+				el.append(rhui.buildField(heat_attr));
+			}
 			update_heat_ui(el, heat.id);
 			return el;
 		}
@@ -1111,6 +1166,24 @@
 
 			display_classes();
 		});
+
+		$(document).on("focus", '.set_heat_attr', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_heat_attr', function (event) {
+			var heat_id = parseInt($(this).data('heat_id'));
+			var heat_attr = $(this).data('attr');
+			var value = rhui.getFieldVal(this);
+			var data = {
+				heat: heat_id,
+				heat_attr: heat_attr,
+				value: value
+			};
+			socket.emit('alter_heat', data);
+			var heat = rotorhazard.event.heats.find(obj => {return obj.heat_id == heat_id});
+			heat[heat_attr] = value;
+		})
 
 		$(document).on("click", 'button.plan-calc', function (event) {
 			var data = {
