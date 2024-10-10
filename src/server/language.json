@@ -2542,6 +2542,7 @@
 			"Balanced random fill": "平衡随机填充",
 			"Blink 3x": "闪烁 3 次",
 			"Browser Sync Loss": "浏览器同步丢失",
+			"Build timestamp": "编译日期",
 			"Calibration Guide": "校准指南",
 			"Calibration Mode": "校准模式",
 			"Calibration": "校准",
@@ -2680,8 +2681,9 @@
 			"Fastest": "最快",
 			"File path relative to RotorHazard/server/static/user": "文件相对路径 RotorHazard/server/static/user",
 			"Filter Ratio": "滤波比率",
-			"Firmware update file size = {} bytes<br>": "固件升级文件大小 = {} bytes<br>",
-			"Firmware update version: {} ({}Build timestamp: {})<br><br>": "固件升级版本: {} ({}编译日期: {})<br><br>",
+			"Firmware file processor type ({}) does not match current ({})": "固件文件处理器类型 ({}) 与当前不匹配 ({})",
+			"Firmware update file size": "固件升级文件大小",
+			"Firmware update version": "固件升级版本",
 			"First Crossing": "计时方式",
 			"First Lap": "第一圈结束",
 			"First to X Laps": "第一个到达 X 圈",
@@ -3153,6 +3155,7 @@
 			"Volume": "音量",
 			"VRx locks": "VRx 锁定",
 			"Wait": "等待",
+			"Warning": "警告",
 			"WARNING: Force end adjustment on node {0} failed: insufficient RSSI range.": "警告: 节点 {0} 的强制结束调整失败: RSSI 范围不足。",
 			"WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.": "警告: 节点 {0} 的强制结束需要增加 '进入值'。'进入值' 可能未正确校准。",
 			"Web Links": "网页链接",
@@ -3161,10 +3164,7 @@
 			"Win Condition": "胜利条件",
 			"Winner is": "获胜者是",
 			"Wipe": "清除",
-			"°C": "°C",
-			" ({}Build timestamp: {})": " ({}编译日期: {})",
-			"(unknown)": "(未知)",
-			"<br><br><b>Warning</b>: Firmware file processor type ({}) does not match current ({})": "<br><br><b>警告</b>: 固件文件处理器类型 ({}) 与当前不匹配 ({})"
+			"°C": "°C"
 		}
 	}
 }
