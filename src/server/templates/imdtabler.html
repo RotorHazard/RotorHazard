@@ -55,7 +55,7 @@
 
 <h2>IMDTabler - {{ __('Intermodulation Distortion Table Generator') }}</h2>
 
-<p>Sample frequency sets:<br>
+<p>{{ __('Sample frequency sets') }}:<br>
 <a href="" class="freq_set_link" data-freqs="5658 5695 5760 5800 5880 5917">IMD 6C</a>: 5658 5695 5760 5800 5880 5917, <a href="" class="freq_set_link" data-freqs="5665 5725 5820 5860 5945">ET5</a>: 5665 5725 5820 5860 5945<br>
 <a href="" class="freq_set_link" data-freqs="5645 5685 5760 5805 5905 5945">ETBest6</a>: 5645 5685 5760 5805 5905 5945, <a href="" class="freq_set_link" data-freqs="5645 5685 5760 5905 5945">ET6minus1</a>: 5645 5685 5760 5905 5945<br>
 <a href="" class="freq_set_link" data-freqs="5665 5752 5800 5866 5905">ET5A</a>: 5665 5752 5800 5866 5905, <a href="" class="freq_set_link" data-freqs="5658 5732 5843 5917">Racebnd4</a>: 5658 5732 5843 5917<br>
@@ -74,7 +74,7 @@
 	<div class="table_data"><p>{{ __('Loading') }}...</p></div>
 </div>
 
-<p>IMD rating: A "perfect" table will be rated at 100; lower values are worse. For each (valid) cell in the table with a frequency-difference value less than 35, a value of (35-diff)^2 is added to a ratings total (the squaring is to make low-difference values detract more from the IMD rating). The ratings total is then divided by the number of selected frequencies and again by 5, and then subtracted from 100 to get the IMD rating.<br>
+<p>{{ __('IMD rating: A "perfect" table will be rated at 100; lower values are worse. For each (valid) cell in the table with a frequency-difference value less than 35, a value of (35-diff)^2 is added to a ratings total (the squaring is to make low-difference values detract more from the IMD rating). The ratings total is then divided by the number of selected frequencies and again by 5, and then subtracted from 100 to get the IMD rating.') }}<br>
 <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;
 &nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; &nbsp; &nbsp; 2&nbsp; &nbsp;
@@ -90,7 +90,7 @@ Band D:  5660 5695 5735 5770 5805 5839 5880 5914  (DJI 25M)<br>
 
 <div id='version_info'></div><br>
 
-Web Links:&nbsp; <a href="http://www.etheli.com/IMD" target="_blank">IMDTools</a>,
+{{ __('Web Links') }}:&nbsp; <a href="http://www.etheli.com/IMD" target="_blank">IMDTools</a>,
 <a href="http://etserv.etheli.com/IMDTabler/run" target="_blank">IMDTabler</a>,
 <a href="http://etserv.etheli.com/FreqSetGen/run" target="_blank">FreqSetGen</a>
 </p>
