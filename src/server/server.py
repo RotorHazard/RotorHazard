@@ -2327,7 +2327,7 @@ def check_bpillfw_file(data):
                 curNodeStr += " ({}{}: {})".format(ptStr, __("Build timestamp"), tsStr)
         else:
             curRTypStr = None
-            curNodeStr = __("(unknown)")
+            curNodeStr = "({})".format(__("(unknown)"))
         infoStr += __("Current firmware version: ") + curNodeStr
         if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
             infoStr += "<br><br><b>{}</b>:".format(__("Warning")) + \
