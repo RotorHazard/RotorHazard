@@ -107,7 +107,7 @@ Panels are represented with the `UIPanel` class, which has the following propert
 _Read only_
 The list of registered panels. Returns `List[UIPanel]`.
 
-#### ui.register_panel(name, label, page, order=0)
+#### ui.register_panel(name, label, page, order=0, open=False)
 
 Register a UI panel and assign it to a page. Returns all panels as `list[UIPanel]`.
 
@@ -143,7 +143,7 @@ Register a Quickbutton and assign it to a UI panel. Returns all buttons as `list
 
 Provides a simple interface to add a UI Markdown block to a panel.
 
-Markdow blocks are represented with the `Markdown` class, which has the following properties:
+Markdown blocks are represented with the `Markdown` class, which has the following properties:
 
 - `panel` (string): `name` of panel where markdown will appear
 - `name` (string): Internal identifier for this markdown block
@@ -1228,6 +1228,46 @@ Calculated race results. Returns `dict`.
 _Read only_
 Calculated race team results. Returns `dict`, or `None` if not in team mode.
 
+#### race.win_status
+_Read only_
+True if a winner has been declared. Returns `boolean`.
+
+#### race.race_winner_name
+_Read only_
+Callsign of race winner, if declared. Returns `str`, or `None`.
+
+#### race.race_winner_phonetic
+_Read only_
+Phonetic of race winner, if declared. Returns `str`, or `None`.
+
+#### race.race_winner_lap_id
+_Read only_
+Lap count of race winner, if declared. Returns `int`, or `None`.
+
+#### race.race_winner_pilot_id
+_Read only_
+Pilot database ID of race winner, if declared. Returns `int`, or `None`.
+
+#### race.prev_race_winner_name
+_Read only_
+Callsign of previous race winner, if declared. Updates upon race save. Returns `str`, or `None`.
+
+#### race.prev_race_winner_phonetic
+_Read only_
+Phonetic of previous race winner, if declared. Updates upon race save.. Returns `str`, or `None`.
+
+#### race.prev_race_winner_pilot_id
+_Read only_
+Pilot database ID of previous race winner, if declared. Updates upon race save. Returns `int`, or `None`.
+
+#### race.race_leader_lap
+_Read only_
+Lap count of current race leader. Returns `int`, or `None`.
+
+#### race.race_leader_pilot_id
+_Read only_
+Pilot database ID of current race leader. Returns `int`, or `None`.
+
 #### race.scheduled
 _Read only_
 Internal (monotonic) timestamp of scheduled race staging start time. Returns `int`, or `None` if race is not scheduled. 
@@ -1322,3 +1362,124 @@ List of sensor data. Returns `list[Sensor]`.
 #### sensors.sensor_obj(name)
 Individual sensor data. Returns `Sensor`.
 - `name` (string): Name of sensor to retrieve
+
+
+
+## Server
+
+Information and functions relating to server state.
+These methods are accessed via `RHAPI.server` 
+
+### All Properties and Methods
+
+#### server.enable_heartbeat_event()
+When enabled, each time the server heartbeat function runs a `Evt.HEARTBEAT` event will be triggered. No return value.
+
+#### server.info
+_Read only_
+Server information. Returns `dict`.
+
+#### server.plugins
+_Read only_
+Currently loaded plugins. Returns `list[plugin]`.
+
+#### server.program_start_epoch_time
+_Read only_
+Time this server was started, in epoch milliseconds. Returns `float`.
+
+#### server.program_start_mtonic
+_Read only_
+Time this server was started, in monotonic seconds. Returns `float`.
+
+#### server.mtonic_to_epoch_millis_offset
+_Read only_
+Conversion offset between monotonic seconds and epoch milliseconds. Returns `float`.
+
+#### server.program_start_epoch_formatted
+_Read only_
+Time this server was started, in epoch milliseconds, displayed without decimals. Returns `string`.
+
+#### server.program_start_time_formatted
+_Read only_
+Time this server was started, formatted for readability. Returns `string`.
+
+#### server.monotonic_to_epoch_millis(secs)
+Convert time value from server monotonic seconds to epoch milliseconds, using this server's conversion offset. Returns `float`.
+- `secs` (int|float): time in monotonic seconds
+
+#### server.epoch_millis_to_monotonic(ms)
+Convert time value from epoch milliseconds to server monotonic seconds, using this server's conversion offset. Returns `float`.
+- `ms` (int|float): time in epoch milliseconds
+
+#### server.seat_color_defaults:
+_Read only_
+List of sensor data. Returns `list[Sensor]`.
+
+
+
+## Utilitites
+
+Helper functions and utilities for data handling. 
+These methods are accessed via `RHAPI.utils` 
+
+### All Properties and Methods
+
+#### utils.format_time_to_str(millis, time_format=None):
+Convert milliseconds converted to formatted time (00:00.000). Returns `string`.
+- `time_format` _(optional)_ (string): Time format string, overriding user-specified format 
+
+#### utils.format_split_time_to_str(millis, time_format=None):
+Convert milliseconds to formatted time with leading zeros removed (0:00.000). Returns `string`.
+- `time_format` _(optional)_ (string): Time format string, overriding user-specified format 
+
+#### utils.format_phonetic_time_to_str(millis, time_format=None):
+Convert milliseconds to formatted phonetic callout time (0 0.0). Returns `string`.
+- `time_format` _(optional)_ (string): Time format string, overriding user-specified format 
+
+#### utils.generate_unique_name(desired_name, other_names):
+Generate unique name within a naming context. Returns `desired_name` if possible, otherwise adds an incremental token: "Name", "Name 2". Returns `string`.
+- `desired_name` (string): desired name 
+- `other_names` (list[string]): list of names to compare against and avoid 
+
+#### utils.generate_unique_name_from_base(base_name, other_names):
+Generate unique name within a naming context. Always adds an incremental token to `base_name`: "Name 1", "Name 2". Returns `string`.
+- `base_name` (string): desired base name 
+- `other_names` (list[string]): list of names to compare against and avoid 
+
+#### utils.color_hsl_to_hexstring(h, s, l):
+Convert HSL color values to a hexadecimal string. Returns `string`.
+- `h` (int|float): hue component, from 0 to <360
+- `s` (int|float): saturation component, from 0 to 100
+- `l` (int|float): luminance component, from 0 to 100
+    
+#### utils.color_hexstring_to_int(hex_color):
+Convert hexadecimal string color to packed int. Accepts strings with or without "#" prefix. Returns `int`.
+- `hex_color` (string): hexadecimal color string to convert
+
+
+
+## Filters
+
+Alter the output of functions and processes at specified hooks.
+These methods are accessed via `RHAPI.filters` 
+
+For example, the `Flt.EMIT_PHONETIC_DATA` hook runs just before lap announcement data is sent to the frontend. Adding a filter to this hook allows the filter to alter the text that is read aloud.
+
+### All Properties and Methods
+
+#### filters.add(hook, name, fn, priority=200):
+Add a new filter function to an existing hook. The filter will be run when the hook is triggered.
+- `hook` (Flt|string): Hook to attach this filter to 
+- `name` (string): Internal identifier for this filter
+- `fn` (function): Function to run when the hook is triggered 
+- `priority` _(optional)_ (int): Order in which this filter will run among all attached to this hook
+
+#### filters.remove(hook, name):
+Remove a filter from a hook.
+- `hook` (Flt|string): Hook from which filter to remove is attached
+- `name` (string): Internal identifier of filter to remove
+
+#### filters.run(hook, data):
+Run filters attached to specified hook.
+- `hook` (Flt|string): Hook on which filters will be called
+- `data` (any): Data supplied to filters attached to hook

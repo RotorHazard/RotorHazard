@@ -79,15 +79,15 @@ def format_phonetic_time_to_str(millis, timeformat='{m} {s}.{d}'):
 # Previous (now deprecated) versions of time-formatting functions:
 
 def time_format(millis, *args, **kwargs):
-    logger.warning("Deprecated function 'RHUtils.time_format()' function invoked; should use 'rhapi.utils.format_time_to_str()' instead")
+    logger.warning("Deprecated function 'RHUtils.time_format()' function invoked; should use 'rhapi.utils.format_time_to_str()' instead", stack_info=True)
     return format_time_to_str(millis, *args, **kwargs)
 
 def split_time_format(millis, *args, **kwargs):
-    logger.warning("Deprecated function 'RHUtils.split_time_format()' function invoked; should use 'rhapi.utils.format_split_time_to_str()' instead")
+    logger.warning("Deprecated function 'RHUtils.split_time_format()' function invoked; should use 'rhapi.utils.format_split_time_to_str()' instead", stack_info=True)
     return format_split_time_to_str(millis, *args, **kwargs)
 
 def phonetictime_format(millis, *args, **kwargs):
-    logger.warning("Deprecated function 'RHUtils.phonetictime_format()' function invoked; should use 'rhapi.utils.format_phonetic_time_to_str()' instead")
+    logger.warning("Deprecated function 'RHUtils.phonetictime_format()' function invoked; should use 'rhapi.utils.format_phonetic_time_to_str()' instead", stack_info=True)
     return format_phonetic_time_to_str(millis, *args, **kwargs)
 
 
@@ -329,13 +329,13 @@ def appendToBaseFilename(fileNameStr, addStr):
         retStr += '.' + sList[1]
     return retStr
 
-# Converts Hue/Saturation/Lightness color to hexadecimal
+# Converts Hue/Saturation/Lightness color to hexadecimal string
 def hslToHex(h, s, l):
-    if not h:
+    if h is None:
         h = random.randint(0, 359)
-    if not s:
+    if s is None:
         s = random.randint(0, 100)
-    if not l:
+    if l is None:
         l = random.randint(0, 100)
 
     h = h / 360.0
