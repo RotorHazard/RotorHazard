@@ -1,5 +1,7 @@
 # NuclearHazard Core Timer
 
+Current hardware version: v8
+
 NuclearHazard Core is a design which allows simple access to RotorHazard timer hardware by allowing it to be populated directly by PCB manufacturers.
 
 [NuclearHazard timer kits are available for purchase](https://nuclearquads.etsy.com/listing/1428199972) from the board designer.
