@@ -331,11 +331,11 @@ def appendToBaseFilename(fileNameStr, addStr):
 
 # Converts Hue/Saturation/Lightness color to hexadecimal string
 def hslToHex(h, s, l):
-    if h is None:
+    if h is None or h is False:
         h = random.randint(0, 359)
-    if s is None:
+    if s is None or s is False:
         s = random.randint(0, 100)
-    if l is None:
+    if l is None or l is False:
         l = random.randint(0, 100)
 
     h = h / 360.0
