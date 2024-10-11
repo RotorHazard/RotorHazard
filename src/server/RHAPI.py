@@ -45,7 +45,7 @@ class RHAPI():
         self.events = EventsAPI(self._racecontext)
         self.server = ServerAPI(self._racecontext)
         self.filters = FilterAPI(self._racecontext)
-        self.utils = UtilsAPI()
+        self.utils = UtilsAPI(self._racecontext)
 
         self.__ = self.language.__ # shortcut access
 
@@ -1288,6 +1288,44 @@ class ServerAPI():
     def enable_heartbeat_event(self):
         self._racecontext.serverstate.enable_heartbeat_event = True
 
+    @property
+    def info(self):
+        return self._racecontext.serverstate.info_dict
+
+    @property
+    def plugins(self):
+        return self._racecontext.serverstate.plugins
+
+    @property
+    def program_start_epoch_time(self):
+        return self._racecontext.serverstate.program_start_epoch_time
+
+    @property
+    def program_start_mtonic(self):
+        return self._racecontext.serverstate.program_start_mtonic
+
+    @property
+    def mtonic_to_epoch_millis_offset(self):
+        return self._racecontext.serverstate.mtonic_to_epoch_millis_offset
+
+    @property
+    def program_start_epoch_formatted(self):
+        return self._racecontext.serverstate.program_start_epoch_formatted
+
+    @property
+    def program_start_time_formatted(self):
+        return self._racecontext.serverstate.program_start_time_formatted
+
+    def monotonic_to_epoch_millis(self, secs):
+        self._racecontext.serverstate.monotonic_to_epoch_millis(secs)
+
+    def epoch_millis_to_monotonic(self, ms):
+        self._racecontext.serverstate.epoch_millis_to_monotonic(ms)
+
+    @property
+    def seat_color_defaults(self):
+        return copy.copy(self._seat_color_defaults)
+
 
 #
 # Filters
@@ -1296,28 +1334,57 @@ class FilterAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
-    def add(self, type, name, fn, priority=200):
-        self._racecontext.filters.add_filter(type, name, fn, priority)
+    def add(self, hook, name, fn, priority=200):
+        self._racecontext.filters.add_filter(hook, name, fn, priority)
 
-    def remove(self, type, name):
-        self._racecontext.filters.remove_filter(type, name)
+    def remove(self, hook, name):
+        self._racecontext.filters.remove_filter(hook, name)
 
-    def run(self, type, data):
-        return self._racecontext.filters.run_filters(type, data)
+    def run(self, hook, data):
+        return self._racecontext.filters.run_filters(hook, data)
 
 
 #
 # Utility Functions
 #
 class UtilsAPI():
+    def __init__(self, race_context):
+        self._racecontext = race_context
+
     # Convert milliseconds to 00:00.000
-    def format_time_to_str(self, millis, *args, **kwargs):
-        return RHUtils.format_time_to_str(millis, *args, **kwargs)
+    def format_time_to_str(self, millis, time_format=None):
+        if not time_format:
+            time_format = self._racecontext.serverconfig.get_item('UI', 'timeFormat')
+
+        return RHUtils.format_time_to_str(millis, timeformat=time_format)
 
     # Convert milliseconds to 00:00.000 with leading zeros removed
-    def format_split_time_to_str(self, millis, *args, **kwargs):
-        return RHUtils.format_time_to_str(millis, *args, **kwargs)
+    def format_split_time_to_str(self, millis, time_format=None):
+        if not time_format:
+            time_format = self._racecontext.serverconfig.get_item('UI', 'timeFormat')
+
+        return RHUtils.format_time_to_str(millis, timeformat=time_format)
 
     # Convert milliseconds to phonetic callout string
-    def format_phonetic_time_to_str(self, millis, *args, **kwargs):
-        return RHUtils.format_phonetic_time_to_str(millis, *args, **kwargs)
+    def format_phonetic_time_to_str(self, millis, time_format=None):
+        if not time_format:
+            time_format = self._racecontext.serverconfig.get_item('UI', 'timeFormat')
+
+        return RHUtils.format_phonetic_time_to_str(millis, timeformat=time_format)
+
+    # Generate unique name within a naming context: name, name 2..
+    def generate_unique_name(self, desired_name, other_names):
+        return RHUtils.uniqueName(desired_name, other_names)
+
+    # Generate unique name within a naming context, using base only: name 1, name 2..
+    def generate_unique_name_from_base(self, base_name, other_names):
+        return RHUtils.unique_name_from_base(base_name, other_names)
+
+    # Convert HSL color values to hexadecimal string
+    def color_hsl_to_hexstring(self, h, s, l):
+        return RHUtils.hslToHex(h, s, l)
+
+    # Convert hexadecimal color values to packed int (LED)
+    def color_hexstring_to_int(self, hex_color):
+        return RHUtils.hexToColor(hex_color)
+
