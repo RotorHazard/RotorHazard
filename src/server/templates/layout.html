@@ -111,7 +111,7 @@
 	{% block content %}{% endblock %}
 
 	<footer>
-		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
+		<p>{{ __('Powered by') }} <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
 	</footer>
 
 	<a id="message-notification" hidden href="#message-center" class="open-mfp-popup"><span class="screen-reader-text">Open</span> <span id="message-count">0</span> <span class="screen-reader-text">messages</span></a>
@@ -119,7 +119,7 @@
 	<div id="message-center" class="mfp-hide popup">
 		<h2>{{ __("Messages") }}</h2>
 		<div class="popup-content">
-			<button id="message-dismiss-all">Dismiss All</button>
+			<button id="message-dismiss-all">{{ __('Dismiss All') }}</button>
 			<ol id="message-queue"></ol>
 		</div>
 	</div>

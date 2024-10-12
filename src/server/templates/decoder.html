@@ -290,7 +290,7 @@
 
 			function show_imd_rating(val) {
 				$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
-					  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+					  ': ' + val + ' &nbsp; <a href="/imdtabler">{{ __("View with IMDTabler") }}</a>');
 			};
 
 			function show_imd_rating_dashes() {
@@ -993,7 +993,7 @@
 	</main>
 
 	<footer>
-		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
+		<p>{{ __('Powered by') }} <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
 	</footer>
 </body>
 
