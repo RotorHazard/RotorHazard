@@ -2335,8 +2335,8 @@ def check_bpillfw_file(data):
             curNodeStr = "({})".format(__("(unknown)"))
         infoStr += __("Current firmware version: ") + curNodeStr
         if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
-            infoStr += "<br><br><b>{}</b>:".format(__("Warning")) + \
-                        "Firmware file processor type ({}) does not match current ({})".\
+            infoStr += "<br><br><b>{}</b>: ".format(__("Warning")) + \
+                        __("Firmware file processor type ({}) does not match current ({})").\
                         format(fwRTypStr, curRTypStr)
         SOCKET_IO.emit('upd_set_info_text', infoStr)
         SOCKET_IO.emit('upd_enable_update_button')
