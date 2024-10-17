@@ -27,6 +27,8 @@ class TracksideConnector():
         self._rhapi.ui.socket_listen('ts_server_info', self.server_info)
         self._rhapi.ui.socket_listen('ts_server_time', self.server_time)
         self._rhapi.ui.socket_listen('ts_frequency_setup', self.frequency_setup)
+        self._rhapi.ui.socket_listen('ts_color_setup', self.color_setup)
+
         self._rhapi.ui.socket_listen('ts_race_stage', self.race_stage)
         self._rhapi.ui.socket_listen('ts_race_stop', self.race_stop)
 
@@ -80,7 +82,7 @@ class TracksideConnector():
             rh_pilots = self._rhapi.db.pilots
             added_pilot = False
             for idx, ts_pilot_callsign in enumerate(ts_pilot_callsigns):
-                ts_id = ts_pilot_ids[idx] if idx < len(ts_pilot_ids) else None
+                ts_id = ts_pilot_ids[idx] if ts_pilot_ids and idx < len(ts_pilot_ids) else None
                 for rh_pilot in rh_pilots:
                     rh_pilot_ts_id = self._rhapi.db.pilot_attribute_value(rh_pilot.id, 'trackside_pilot_ID', None)
                     if ts_id and rh_pilot_ts_id == ts_id:
@@ -182,6 +184,13 @@ class TracksideConnector():
             }
             self._rhapi.ui.socket_broadcast('ts_race_marshal', payload)
 
+    def color_setup(self, arg):
+        if arg.get('channel_color'):
+            self._rhapi.config.set_item('LED', 'ledColorMode', 0)  # TS supports only "seat" mode
+            self._rhapi.config.set_item('LED', 'seatColors', arg.get('channel_color'))
+            self._rhapi.race.update_colors()
+            self._rhapi.ui.broadcast_pilots()
+            self._rhapi.ui.broadcast_heats()
 
 def initialize(rhapi):
     connector = TracksideConnector(rhapi)
