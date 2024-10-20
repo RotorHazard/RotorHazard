@@ -1991,8 +1991,9 @@ def get_leading_team_name(results):
     try:
         primary_leaderboard = results['meta']['primary_leaderboard']
         results_list = results[primary_leaderboard]
-        if len(results_list) > 1:  # only return leader if more than one team
-            return results_list[0]['name']
+        # only return leader if more than one team and team has most laps
+        if len(results_list) > 1 and results_list[0].get('laps', 0) > results_list[1].get('laps', 0):
+            return results_list[0].get('name', '')
     except Exception:
         logger.exception("Error in Results 'get_leading_team_name()'")
     return ''
