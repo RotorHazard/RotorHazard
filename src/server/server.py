@@ -585,7 +585,8 @@ def start_background_threads(forceFlag=False):
     global BACKGROUND_THREADS_ENABLED
     if BACKGROUND_THREADS_ENABLED or forceFlag:
         BACKGROUND_THREADS_ENABLED = True
-        RaceContext.interface.start()
+        if RaceContext.interface:
+            RaceContext.interface.start()
         global HEARTBEAT_THREAD
         if HEARTBEAT_THREAD is None:
             HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
@@ -605,7 +606,8 @@ def stop_background_threads():
             logger.info('Stopping heartbeat thread')
             HEARTBEAT_THREAD.kill(block=True, timeout=0.5)
             HEARTBEAT_THREAD = None
-        RaceContext.interface.stop()
+        if RaceContext.interface:
+            RaceContext.interface.stop()
     except:
         logger.exception("Error stopping background threads")
 
@@ -3139,7 +3141,7 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
     log.close_logging()
 
 @catchLogExceptionsWrapper
-def rh_program_initialize():
+def rh_program_initialize(reg_endpoints_flag=True):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
         logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format( \
@@ -3472,7 +3474,8 @@ def rh_program_initialize():
         gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
         # register endpoints
-        APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
+        if reg_endpoints_flag:  # flag may be disabled when run via unit test
+            APP.register_blueprint(json_endpoints.createBlueprint(RaceContext, RaceContext.serverstate.info_dict))
 
         #register event actions
         global EventActionsObj

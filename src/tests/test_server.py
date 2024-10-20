@@ -20,6 +20,7 @@ from RHUI import UIField, UIFieldType
 class ServerTest(unittest.TestCase):
     def setUp(self):
         self.client = server.SOCKET_IO.test_client(server.APP)
+        server.rh_program_initialize(reg_endpoints_flag=False)
 
     def tearDown(self):
         self.client.disconnect()
