@@ -1317,14 +1317,14 @@ class ServerAPI():
         return self._racecontext.serverstate.program_start_time_formatted
 
     def monotonic_to_epoch_millis(self, secs):
-        self._racecontext.serverstate.monotonic_to_epoch_millis(secs)
+        return self._racecontext.serverstate.monotonic_to_epoch_millis(secs)
 
     def epoch_millis_to_monotonic(self, ms):
-        self._racecontext.serverstate.epoch_millis_to_monotonic(ms)
+        return self._racecontext.serverstate.epoch_millis_to_monotonic(ms)
 
     @property
     def seat_color_defaults(self):
-        return copy.copy(self._seat_color_defaults)
+        return self._racecontext.serverstate.seat_color_defaults
 
 
 #
