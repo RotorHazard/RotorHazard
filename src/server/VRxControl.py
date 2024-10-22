@@ -41,7 +41,7 @@ class VRxControlManager():
             self.Events.on(Evt.OPTION_SET, 'VRx', self.doOptionSet)
             self.Events.on(Evt.SHUTDOWN, 'VRx', self.doShutdown)
         else:
-            logger.info('VRx Control disabled: no registered controllers')
+            logger.debug('VRx Control disabled: no registered controllers')
             self.enabled = False
 
     def registerController(self, controller):
