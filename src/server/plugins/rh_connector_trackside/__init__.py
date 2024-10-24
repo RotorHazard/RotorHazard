@@ -134,7 +134,7 @@ class TracksideConnector():
                 'seat': args['node_index'],
                 'frequency': args['frequency'],
                 'peak_rssi': args['peak_rssi'],
-                'lap_time': args['lap']['lap_time_stamp'] / 1000,
+                'lap_time': args['lap'].lap_time_stamp / 1000,
             }
             self._rhapi.ui.socket_broadcast('ts_lap_data', payload)
 
