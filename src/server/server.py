@@ -60,8 +60,9 @@ import importlib
 # import copy
 import functools
 import signal
+import werkzeug
 
-from flask import Flask, send_file, request, Response, templating, redirect, abort, copy_current_request_context
+from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
 
 BASEDIR = os.getcwd()
@@ -517,31 +518,24 @@ def render_vrxstatus():
 @APP.route('/docs')
 def render_viewDocs():
     '''Route to doc viewer.'''
-
     folderBase = '../../doc/'
-
     try:
         docfile = request.args.get('d')
-
-        docfile = docfile.replace('../', '')
-
-        docPath = folderBase + docfile
-
-        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-        if language:
-            translated_path = folderBase + language + '/' + docfile
-            if os.path.isfile(translated_path):
-                docPath = translated_path
-
-        with io.open(docPath, 'r', encoding="utf-8") as f:
-            doc = f.read()
-
-        return templating.render_template('viewdocs.html',
-            serverInfo=RaceContext.serverstate.template_info_dict,
-            getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item,
-            __=__,
-            doc=doc
-            )
+        docPath = werkzeug.security.safe_join(folderBase, docfile)
+        if docPath:
+            language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+            if language:
+                translated_path = werkzeug.security.safe_join(folderBase + language + '/', docfile)
+                if os.path.isfile(translated_path):
+                    docPath = translated_path
+            with io.open(docPath, 'r', encoding="utf-8") as f:
+                doc = f.read()
+            return templating.render_template('viewdocs.html',
+                serverInfo=RaceContext.serverstate.template_info_dict,
+                getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item,
+                __=__,
+                doc=doc
+                )
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
@@ -549,24 +543,18 @@ def render_viewDocs():
 @APP.route('/img/<path:imgfile>')
 def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
-
     folderBase = '../../doc/'
     folderImg = 'img/'
-
-    imgfile = imgfile.replace('../', '')
-
-    imgPath = folderBase + folderImg + imgfile
-
-    language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-    if language:
-        translated_path = folderBase + language + '/' + folderImg + imgfile
-        if os.path.isfile(translated_path):
-            imgPath = translated_path
-
-    if os.path.isfile(imgPath):
-        return send_file(imgPath)
-    else:
-        abort(404)
+    imgPath = werkzeug.security.safe_join(folderImg, imgfile)
+    if imgPath:
+        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+        if language:
+            translated_path = werkzeug.security.safe_join(language + '/' + folderImg, imgfile)
+            if os.path.isfile(folderBase + translated_path):
+                imgPath = translated_path
+        if os.path.isfile(folderBase + imgPath):
+            return send_from_directory(folderBase, imgPath)
+    abort(404)
 
 # Redirect routes (Previous versions/Delta 5)
 @APP.route('/race')
