@@ -154,6 +154,10 @@
 			headerLevelStart: 3
 		});
 
+		socket.on('update_server_messages', function (str) {
+			$('#server_messages').html(str);
+		});
+
 		socket.on('ui', function (msg) {
 			if (msg.page == 'settings') {
 				$('#custom-ui').empty();
@@ -1716,13 +1720,11 @@
 {% endblock %} {% block content %}
 <main class="page-settings">
 
-{% if server_messages %}
-	<div class="server-messages">
-		<ul>
-			{{ server_messages | safe }}
-		</ul>
-	</div>
-{% endif %}
+<div class="server-messages" id="server_messages">
+	{% if server_messages %}
+		{{ server_messages | safe }}
+	{% endif %}
+</div>
 
 <!--Frequency Setup-->
 <div class="panel collapsing">

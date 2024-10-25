@@ -143,6 +143,7 @@ ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 HardwareHelpers = {}
 UI_server_messages = {}
+Auth_succeeded_flag = False
 
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
@@ -193,6 +194,19 @@ SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=RaceContext.
 # thus set up logging for good.
 Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_section('LOGGING'), SOCKET_IO)
 
+# Callback function invoked when an error-level message is logged
+def log_error_callback_fn(*args):
+    if not is_ui_message_set("errors-logged"):
+        set_ui_message("errors-logged",\
+                   __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                   header="Notice", subclass="errors-logged")
+        if Auth_succeeded_flag:
+            SOCKET_IO.emit('update_server_messages', get_ui_server_messages_str())
+    if check_log_error_alert():  # show alert popup if not previously shown
+        log.set_log_level_callback(logging.NOTSET)  # if popup shown then clear callback function
+
+log.set_log_level_callback(logging.ERROR, log_error_callback_fn)
+
 RaceContext.sensors = Sensors()
 RaceContext.cluster = None
 RaceContext.rhdata = RHData.RHData(Events, RaceContext, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
@@ -216,6 +230,30 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
     if subclass:
         item['subclass'] = subclass
     UI_server_messages[mainclass] = item
+
+def is_ui_message_set(mainclass):
+    return mainclass in UI_server_messages
+
+def get_ui_server_messages_str():
+    server_messages_formatted = ''
+    if len(UI_server_messages):
+        for key, item in UI_server_messages.items():
+            message = '<li class="' + key
+            if 'subclass' in item and item['subclass']:
+                message += ' ' + key + '-' + item['subclass']
+            if 'header' in item and item['header']:
+                message += ' ' + item['header'].lower()
+            message += '">'
+            if 'header' in item and item['header']:
+                message += '<strong>' + item['header'] + ':</strong> '
+            message += item['message']
+            message += '</li>'
+            server_messages_formatted += message
+    if RaceContext.serverconfig.config_file_status == -1:
+        server_messages_formatted += '<li class="config config-bad warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
+    if len(server_messages_formatted):
+        server_messages_formatted = '<ul>' + server_messages_formatted + '</ul>'
+    return server_messages_formatted
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
@@ -272,6 +310,14 @@ def getFwfileProctypeStr(fileStr):
         logger.debug("Error processing file '{}' in 'getFwfileProctypeStr()': {}".format(fileStr, ex))
     return None
 
+# Shows an alert popup if error messages have been logged and popup was not previously shown
+def check_log_error_alert():
+    if Auth_succeeded_flag and log.get_log_error_alert_flag():
+        gevent.spawn_later(1.0, RaceContext.rhui.emit_priority_message,\
+                __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                True, False, True)  # admin_only=True
+        return True
+    return False
 
 #
 # Authentication
@@ -279,7 +325,11 @@ def getFwfileProctypeStr(fileStr):
 
 def check_auth(username, password):
     '''Check if a username password combination is valid.'''
-    return username == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') and password == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD')
+    if username == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') and password == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD'):
+        global Auth_succeeded_flag
+        Auth_succeeded_flag = True
+        return True
+    return False
 
 def authenticate():
     '''Sends a 401 response that enables basic auth.'''
@@ -301,6 +351,8 @@ def requires_auth(f):
     # allow open access if both ADMIN fields set to empty string:
     @functools.wraps(f)
     def decorated_noauth(*args, **kwargs):
+        global Auth_succeeded_flag
+        Auth_succeeded_flag = True
         return f(*args, **kwargs)
     return decorated_noauth
 
@@ -308,6 +360,7 @@ def requires_auth(f):
 # details are sent to the log file (instead of 'stderr').
 def render_template(template_name_or_list, **context):
     try:
+        check_log_error_alert()
         return templating.render_template(template_name_or_list, **context)
     except Exception:
         logger.exception("Exception in render_template")
@@ -394,29 +447,12 @@ def render_format():
 @requires_auth
 def render_settings():
     '''Route to settings page.'''
-    server_messages_formatted = ''
-    if len(UI_server_messages):
-        for key, item in UI_server_messages.items():
-            message = '<li class="' + key
-            if 'subclass' in item and item['subclass']:
-                message += ' ' + key + '-' + item['subclass']
-            if 'header' in item and item['header']:
-                message += ' ' + item['header'].lower()
-            message += '">'
-            if 'header' in item and item['header']:
-                message += '<strong>' + item['header'] + ':</strong> '
-            message += item['message']
-            message += '</li>'
-            server_messages_formatted += message
-    if RaceContext.serverconfig.config_file_status == -1:
-        server_messages_formatted += '<li class="config config-bad warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
-
     return render_template('settings.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
                            led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
                            led_events_enabled=RaceContext.led_manager.isEnabled(),
                            vrx_enabled=RaceContext.vrx_manager.isEnabled(),
                            num_nodes=RaceContext.race.num_nodes,
-                           server_messages=server_messages_formatted,
+                           server_messages=get_ui_server_messages_str(),
                            cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
                            node_fw_updatable=(RaceContext.interface.get_fwupd_serial_name()!=None),
                            is_raspberry_pi=RHUtils.is_sys_raspberry_pi(),
@@ -812,7 +848,7 @@ def on_load_data(data):
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
-            emit_current_log_file_to_socket()
+            log.emit_current_log_file_to_socket(Current_log_path_name, SOCKET_IO)
         else:
             logger.warning('Called undefined load type: {}'.format(load_type))
 
@@ -1698,6 +1734,20 @@ def on_kill_server(*args):
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+
+@SOCKET_IO.on('set_log_level')
+@catchLogExceptionsWrapper
+def on_set_log_level(data):
+    '''Set minimum log level shown on Server Log page.'''
+    log_lvl_num = log.get_logging_level_value(data.get('log_level_str'))
+    if log_lvl_num < 0:
+        log_lvl_num = logging.NOTSET
+    log.set_socket_min_log_level(log_lvl_num)
+    # use spawned thread to allow initial log-page load to happen first
+    if not data.get('refresh_page_flag'):
+        gevent.spawn_later(0.05, log.emit_current_log_file_to_socket, Current_log_path_name, SOCKET_IO)
+    else:  # if flag then do page refresh (to remove keyboard focus from selector widget)
+        gevent.spawn_later(0.05, SOCKET_IO.emit, 'do_log_page_refresh')
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -2637,15 +2687,6 @@ def assign_frequencies():
 
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
-def emit_current_log_file_to_socket():
-    if Current_log_path_name:
-        try:
-            with io.open(Current_log_path_name, 'r') as f:
-                SOCKET_IO.emit("hardware_log_init", f.read())
-        except Exception:
-            logger.exception("Error sending current log file to socket")
-    log.start_socket_forward_handler()
-
 def db_init(nofill=False):
     '''Initialize database.'''
     RaceContext.rhdata.db_init(nofill)
@@ -3004,6 +3045,7 @@ def check_requirements():
                 header='Warning', subclass='none')
     except:
         logger.exception("Error checking package requirements")
+    
 
 class plugin_class():
     def __init__(self, name):
@@ -3123,6 +3165,7 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
     rep_str = RaceContext.interface.get_intf_error_report_str(True)
     if rep_str:
         logger.log((logging.INFO if RaceContext.interface.get_intf_total_error_count() else logging.DEBUG), rep_str)
+    logger.info("Logged message counts:  " + log.get_log_level_counts_str())
     stop_background_threads()
     log.wait_for_queue_empty()
     gevent.sleep(2)  # allow system shutdown command to run before program exit

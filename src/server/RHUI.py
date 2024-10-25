@@ -347,7 +347,7 @@ class RHUI():
         else:
             self._socket.emit('ui', emit_payload)
 
-    def emit_priority_message(self, message, interrupt=False, caller=False, **params):
+    def emit_priority_message(self, message, interrupt=False, caller=False, admin_only=False, **params):
         ''' Emits message to all clients '''
         if message and re.search(r"[0-\udfff]", message):  # don't emit if msg is only whitespace and punctuation
             logger.debug("Emitting {}: {}".format(("alert" if interrupt else "message"), message))
@@ -355,6 +355,8 @@ class RHUI():
                 'message': message,
                 'interrupt': interrupt
             }
+            if admin_only:
+                emit_payload['admin_only'] = True
             if ('nobroadcast' in params):
                 emit('priority_message', emit_payload)
             else:
