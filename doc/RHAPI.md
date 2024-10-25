@@ -1159,6 +1159,10 @@ Total number of seats/slots. Returns `int`.
 _Read only_
 Active color for each seat, indexed by seat. Returns `list[Color]`.
 
+#### race.update_colors()
+_Read only_
+Loads color set into current race based on color mode and values in database. No return value.
+
 #### race.heat
 _Read/write_
 ID of assigned heat (`int` or `None`). `None` is practice mode.

@@ -1010,6 +1010,9 @@ class RaceAPI():
     def seat_colors(self):
         return self._racecontext.race.seat_colors
 
+    def update_colors(self):
+        return self._racecontext.race.updateSeatColors()
+
     @property
     def heat(self):
         return self._racecontext.race.current_heat
