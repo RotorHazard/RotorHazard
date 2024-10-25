@@ -161,8 +161,12 @@ class StreamToLogger:
         self.linebuf = ''  # buffer to accumulate partial lines
 
     def write(self, buf):
+        lvl = self.log_level
+        if buf.lstrip().startswith("PYDEV DEBUGGER WARNING"):
+            lvl = logging.DEBUG  # don't treat expected debugger warning as error
+            buf = buf.lstrip()
         for line in buf.rstrip().splitlines():
-            self.logger.log(self.log_level, line.rstrip())
+            self.logger.log(lvl, line.rstrip())
 
     def flush(self):
         pass  # ensure compatibility with file-like objects
