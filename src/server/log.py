@@ -150,6 +150,23 @@ class SocketForwardHandler(logging.Handler):
     def emit(self, record):
         self._socket.emit("hardware_log", self.format(record))
 
+class StreamToLogger:
+    """
+    File-like stream object that redirects writes to a logger instance.
+    From: https://www.iditect.com/program-example/how-to-redirect-stdout-and-stderr-to-logger-in-python.html
+    """
+    def __init__(self, logger, log_level=logging.INFO):
+        self.logger = logger
+        self.log_level = log_level
+        self.linebuf = ''  # buffer to accumulate partial lines
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.log_level, line.rstrip())
+
+    def flush(self):
+        pass  # ensure compatibility with file-like objects
+
 
 def early_stage_setup():
     logging.addLevelName(LEVEL_NONE_VALUE, LEVEL_NONE_STR)
@@ -296,6 +313,13 @@ def later_stage_setup(config, socket):
 
     if num_old_del > 0:
         logging.debug("Deleted {0} old log file(s)".format(num_old_del))
+
+    # redirect stdout and stderr to logger
+    con_logger = logging.getLogger("_console_")
+    stdout_logger = StreamToLogger(con_logger, logging.INFO)
+    stderr_logger = StreamToLogger(con_logger, logging.ERROR)
+    sys.stdout = stdout_logger
+    sys.stderr = stderr_logger
 
     return log_path_name
 
