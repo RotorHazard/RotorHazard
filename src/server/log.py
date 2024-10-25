@@ -1,3 +1,4 @@
+import io
 import sys
 import os
 import glob
@@ -31,7 +32,7 @@ LOGZIP_DIR_NAME = "logs/zip"
 
 CONSOLE_FORMAT_STR = "%(message)s"
 SYSLOG_FORMAT_STR = "<-RotorHazard-> %(name)s [%(levelname)s] %(message)s"
-FILELOG_FORMAT_STR = "%(asctime)s.%(msecs)03d: %(name)s [%(levelname)s] %(message)s"
+FILELOG_FORMAT_STR = "%(asctime)s.%(msecs)03d: [%(levelname)s] %(name)s %(message)s"
 
 CONSOLE_LEVEL_STR = "CONSOLE_LEVEL"
 SYSLOG_LEVEL_STR = "SYSLOG_LEVEL"
@@ -42,7 +43,27 @@ LEVEL_NONE_STR = "NONE"
 LEVEL_NONE_VALUE = 9999
 
 socket_handler_obj = None
-queued_handler_obj = None
+queued_handler_obj = None   # for log file
+queued_handler2_obj = None  # for socket output
+socket_min_log_level = logging.NOTSET  # minimum log level for sockout output (NOTSET = show all)
+log_error_alerted_flag = False
+
+# Counters to track number of messages logged for each log level
+class LogMsgLevelCounters:
+    def __init__(self):
+        self.level_counters_dict = {}
+
+    def inc_count(self, lvl_name):
+        prev_count = self.level_counters_dict.get(lvl_name, 0)
+        self.level_counters_dict[lvl_name] = prev_count + 1
+
+    def get_count(self, lvl_name):
+        return self.level_counters_dict.get(lvl_name, 0)
+
+    def get_items(self):
+        return self.level_counters_dict.items()
+
+msg_level_counters_obj = LogMsgLevelCounters()
 
 # Log handler that distributes log records to one or more destination handlers via a gevent queue.
 class QueuedLogEventHandler(logging.Handler):
@@ -54,20 +75,32 @@ class QueuedLogEventHandler(logging.Handler):
         self.log_record_queue = gevent.queue.Queue(maxsize=99)
         if dest_hndlr:
             self.queue_handlers_list.append(dest_hndlr)
+        self.log_level_callback_lvl_num = logging.NOTSET
+        self.log_level_callback_obj = None
         gevent.spawn(self.queueWorkerFn)
 
     # Adds given destination log handler.
     def addHandler(self, dest_hndlr):
         self.queue_handlers_list.append(dest_hndlr)
 
+    # Sets callback invoked when message with given log level is logged
+    def setLogLevelCallback(self, lvl_num, callback_obj):
+        self.log_level_callback_lvl_num = lvl_num
+        self.log_level_callback_obj = callback_obj
+
     def queueWorkerFn(self):
         while True:
             try:
                 log_rec = self.log_record_queue.get()  # block until log record put into queue
+                msg_level_counters_obj.inc_count(log_rec.levelname)
                 for dest_hndlr in self.queue_handlers_list:
                     if log_rec.levelno >= dest_hndlr.level:
                         gevent.sleep(0.001)
                         dest_hndlr.emit(log_rec)
+                if self.log_level_callback_lvl_num > logging.NOTSET and \
+                                    log_rec.levelno >= self.log_level_callback_lvl_num and \
+                                    callable(self.log_level_callback_obj):
+                    self.log_level_callback_obj(log_rec)
             except KeyboardInterrupt:
                 print("Log-event queue worker thread terminated by keyboard interrupt")
                 raise
@@ -128,28 +161,32 @@ def early_stage_setup():
 
     # some 3rd party packages use logging. Good for them. Now be quiet.
     for name in [
-            "geventwebsocket.handler",
-            "socketio.server",
-            "engineio.server",
-            "socketio.client",
-            "engineio.client",
-            "sqlalchemy",
-            "urllib3",
-            "requests",
-            "PIL",
-            "Adafruit_I2C",
-            "Adafruit_I2C.Device.Bus"
-            ]:
+        "geventwebsocket.handler",
+        "socketio.server",
+        "engineio.server",
+        "socketio.client",
+        "engineio.client",
+        "sqlalchemy",
+        "urllib3",
+        "requests",
+        "PIL",
+        "Adafruit_I2C",
+        "Adafruit_I2C.Device.Bus"
+    ]:
         logging.getLogger(name).setLevel(logging.WARN)
 
+def get_logging_level_value(lvl_name):
+    try:
+        return int(logging.getLevelName(lvl_name))
+    except Exception:
+        return -1
 
 # Determines numeric log level for configuration item, or generates error
 #  message if invalid.
 def get_logging_level_for_item(logging_config, cfg_item_name, err_str, def_level=logging.INFO):
     lvl_name = logging_config[cfg_item_name]
-    try:
-        lvl_num = int(logging.getLevelName(lvl_name))
-    except Exception:
+    lvl_num = get_logging_level_value(lvl_name)
+    if lvl_num < 0:
         lvl_num = def_level
         if err_str:
             err_str += ", "
@@ -197,8 +234,8 @@ def later_stage_setup(config, socket):
     (lvl, err_str) = get_logging_level_for_item(logging_config, SYSLOG_LEVEL_STR, err_str, logging.NOTSET)
     if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         system_logger = logging.handlers.SysLogHandler("/dev/log") \
-                        if platform.system() != "Windows" else \
-                        logging.handlers.NTEventLogHandler("RotorHazard")
+            if platform.system() != "Windows" else \
+            logging.handlers.NTEventLogHandler("RotorHazard")
         system_logger.setLevel(lvl)
         system_logger.setFormatter(logging.Formatter(SYSLOG_FORMAT_STR))
         handlers.append(system_logger)
@@ -262,6 +299,29 @@ def later_stage_setup(config, socket):
 
     return log_path_name
 
+# Sets callback invoked when message with given log level is logged
+def set_log_level_callback(lvl_num, callback_obj=None):
+    if queued_handler_obj:
+        queued_handler_obj.setLogLevelCallback(lvl_num, callback_obj)
+
+# Returns True if an alert indicating that error messages have been logged should be shown
+def get_log_error_alert_flag():
+    global log_error_alerted_flag
+    if log_error_alerted_flag or (not queued_handler_obj):
+        return False
+    if msg_level_counters_obj.get_count(logging.getLevelName(logging.ERROR)) > 0:
+        log_error_alerted_flag = True  # set flag so alert is only shown once
+        return True
+    return False
+
+# Returns a string showing the number of messages for each log level
+def get_log_level_counts_str():
+    str_list = []
+    for name,count in sorted(msg_level_counters_obj.get_items(), key=get_logging_level_value):
+        str_list.append("{}={}".format(name, count))
+    str_list.reverse()
+    return ", ".join(str_list)
+
 def wait_for_queue_empty():
     if queued_handler_obj:
         queued_handler_obj.waitForQueueEmpty()
@@ -283,13 +343,55 @@ def close_logging():
     except Exception as ex:
         print("Error closing logging: " + str(ex))
 
+def set_socket_min_log_level(lvl_num):
+    global socket_min_log_level
+    socket_min_log_level = lvl_num
+    if queued_handler2_obj:
+        queued_handler2_obj.setLevel(socket_min_log_level)
+
 def start_socket_forward_handler():
     global socket_handler_obj
+    global queued_handler2_obj
     if socket_handler_obj:
         # use separate queue for socket forwarder (in case it has trouble because of network issues)
-        queued_handler2 = QueuedLogEventHandler(socket_handler_obj)
-        logging.getLogger().addHandler(queued_handler2)
+        queued_handler2_obj = QueuedLogEventHandler(socket_handler_obj)
+        logging.getLogger().addHandler(queued_handler2_obj)
         socket_handler_obj = None
+    if queued_handler2_obj:
+        queued_handler2_obj.setLevel(socket_min_log_level)
+
+def emit_current_log_file_to_socket(log_path_name, SOCKET_IO):
+    if log_path_name:
+        try:
+            if socket_min_log_level <= logging.NOTSET:
+                with io.open(log_path_name, 'r') as f:
+                    SOCKET_IO.emit("hardware_log_init", f.read())
+                SOCKET_IO.emit("log_level_sel_init", logging.getLevelName(logging.NOTSET))
+            else:
+                line_list = []  # filter lines so only log levels >= 'socket_min_log_level' are included
+                with io.open(log_path_name, 'r') as f:
+                    min_lvl_flag = False
+                    for line_str in f:
+                        if len(line_str) > 24:
+                            pos1 = line_str.find('[', 24)
+                        if pos1 > 0:
+                            pos2 = line_str.find(']', pos1)
+                            if pos2 > pos1:
+                                lvl_num = get_logging_level_value(line_str[pos1+1 : pos2])
+                                if lvl_num >= socket_min_log_level:
+                                    min_lvl_flag = True
+                                    line_list.append(line_str)
+                                else:
+                                    min_lvl_flag = False
+                            elif min_lvl_flag:
+                                line_list.append(line_str)  # if line does not contain "[log-level]" and
+                        elif min_lvl_flag:                  #  previous line did then include this one
+                            line_list.append(line_str)      #  (because it's probably a stack trace)
+                SOCKET_IO.emit("hardware_log_init", ''.join(line_list))
+                SOCKET_IO.emit("log_level_sel_init", logging.getLevelName(socket_min_log_level))
+        except Exception:
+            logging.getLogger(__name__).exception("Error sending current log file to socket")
+    start_socket_forward_handler()
 
 
 def delete_old_log_files(num_keep_val, lfname, lfext, err_str):
