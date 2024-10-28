@@ -35,6 +35,8 @@ class Crossing(dict):
     deleted: bool = False
     late_lap: bool = False
     invalid: bool = False
+    def __bool__(self):
+        return True  # always evaluate object as 'True', even if underlying dict is empty
 
 class RHRace():
     '''Class to hold race management variables.'''
