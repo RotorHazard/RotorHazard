@@ -49,7 +49,7 @@ def format_split_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000 with leading zeros removed'''
     if not isinstance(millis, (int, float)):
         return ''
-    s = time_format(millis, timeformat)
+    s = format_time_to_str(millis, timeformat)
     if len(s) > 3 and s.startswith("0:"):
         p = 3 if s[2] == '0' else 2
         s = s[p:]
