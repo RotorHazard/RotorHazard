@@ -799,7 +799,9 @@ class RHData():
             return pilot_or_id
 
     def get_pilot(self, pilot_id):
-        return Database.Pilot.query.get(pilot_id)
+        if pilot_id:
+            return Database.Pilot.query.get(pilot_id)
+        return None
 
     def get_pilots(self):
         return Database.Pilot.query.all()
