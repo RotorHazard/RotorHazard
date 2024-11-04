@@ -182,7 +182,7 @@ class ClusterLEDManager():
         return False
 
     def registerEffect(self, effect):
-        self.eventEffects[effect['name']] = effect
+        self.eventEffects[effect.name] = effect
         return True
 
     def getRegisteredEffects(self):
