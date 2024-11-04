@@ -2093,6 +2093,21 @@ def on_schedule_race(data):
 def cancel_schedule_race():
     RaceContext.race.schedule(None)
 
+@SOCKET_IO.on('break_timer_started')
+@catchLogExceptionsWrapper
+def break_timer_started(data=None):
+    logger.info('break_timer_started received in server')
+    if(data and data.get('break_time')):
+        logger.info('break_timer_started in method')
+        RaceContext.rhui.emit_break_timer_started(data.get('break_time'))
+        logger.info('break_timer_started emitted')
+
+@SOCKET_IO.on('break_timer_cancelled')
+@catchLogExceptionsWrapper
+def break_timer_cancelled():
+    logger.info('break_timer_cancelled')
+    RaceContext.rhui.emit_break_timer_cancelled()
+
 # TODO: Remove
 @SOCKET_IO.on('get_pi_time')
 @catchLogExceptionsWrapper

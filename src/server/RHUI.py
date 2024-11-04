@@ -526,6 +526,25 @@ class RHUI():
         else:
             self._socket.emit('current_laps', emit_payload)
 
+    def emit_break_timer_started(self, break_time, **params):
+        '''Emits break timer started'''
+        emit_payload = {
+            'break_time': break_time
+        }
+
+        if ('nobroadcast' in params):
+            emit('break_timer_started', emit_payload)
+        else:
+            self._socket.emit('break_timer_started', emit_payload)
+
+    def emit_break_timer_cancelled(self, **params):
+        '''Emits break timer cancelled'''
+
+        if ('nobroadcast' in params):
+            emit('break_timer_cancelled')
+        else:
+            self._socket.emit('break_timer_cancelled')
+
     def emit_race_list(self, **params):
         '''Emits race listing'''
         heats = {}

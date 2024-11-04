@@ -10,6 +10,36 @@
 	rotorhazard.show_messages = false;
 	var heat_data;
 	var streamheat = {{ heat_id }}
+	var breakTimeLeft = 0;
+	var breakTimer;
+
+	function updateBreakTimer() {
+		if(breakTimeLeft > 0) {
+			breakTimeLeft = breakTimeLeft - 1;
+
+			var minutes = Math.floor(breakTimeLeft / 60);
+			var seconds = breakTimeLeft - (minutes * 60);
+
+			if(minutes < 10)
+				minutes = '0' + minutes;
+
+			if(seconds < 10)
+				seconds = '0' + seconds;
+
+			if(minutes == 0)
+			{
+				$('#break-timer-value').addClass('urgent');
+			}
+
+			$('#break-timer-value').html(minutes + ':' + seconds);
+		}
+		else
+		{
+			$('#break-timer-value').removeClass('urgent');
+			$('#break-timer').hide();
+			clearInterval(breakTimer);
+		}
+	}
 
 	$(document).ready(function () {
 		// set up node local store
@@ -251,6 +281,22 @@
 			streamheat = msg.current_heat;
 			display_heats();
 		});
+
+		socket.on('break_timer_started', function (msg) {
+			clearInterval(breakTimer);
+			breakTimeLeft = msg.break_time;
+			$('#break-timer-value').removeClass('urgent');
+			$('#break-timer').show();
+			updateBreakTimer();
+			breakTimer = setInterval(updateBreakTimer, 1000)
+		});
+
+		socket.on('break_timer_cancelled', function(msg) {
+			breakTimeLeft = 0;
+			clearInterval(breakTimer);
+			$('#break-timer').hide();
+			$('#break-timer-value').removeClass('urgent');
+		});
 	});
 
 </script>
@@ -342,4 +388,14 @@
 		</div>
 	</div>
 </main>
+
+<div id="break-timer" class="break-timer-overlay">
+	<span class="break-timer-header">
+		PRZERWA KOŃCZY SIĘ ZA
+	</span>
+	<span class="break-timer" id="break-timer-value">
+		--:--
+	</span>
+</div>
+
 {% endblock %}

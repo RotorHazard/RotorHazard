@@ -993,6 +993,16 @@ main.page-home {
 	text-align: right;
 }
 
+#break_time_m {
+	width: 4em;
+	text-align: right;
+}
+
+#break_time_s {
+	width: 3em;
+	text-align: right;
+}
+
 @media (max-width: 42em) {
 	.compact-field input {
 		width: 100%;
@@ -2779,5 +2789,33 @@ table.laps td {
 }
 
 #lap-summary-hidden {
+	display:none;
+}
+
+.break-timer-header {
+	margin-left: auto;
+	margin-right: auto;
+	display:block;
+	color: white;
+	font-size: 24px;
+	text-align: center;
+}
+
+#break-timer-value {
+  margin-left: auto;
+  margin-right: auto;
+  display:block;
+  color: white;
+  font-size: 50px;
+  text-align: center;
+  font-weight: 600;
+}
+
+#break-timer {
+	background-color:red;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	margin-top: 10px;
+	border-radius: 10px;
 	display:none;
 }

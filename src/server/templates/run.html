@@ -34,6 +34,37 @@
 	var request_pi_time;
 	var resume_check = true;
 
+	var breakTimeLeft = 0;
+	var breakTimer;
+
+	function updateBreakTimer() {
+		if(breakTimeLeft > 0) {
+			breakTimeLeft = breakTimeLeft - 1;
+
+			var minutes = Math.floor(breakTimeLeft / 60);
+			var seconds = breakTimeLeft - (minutes * 60);
+
+			if(minutes < 10)
+				minutes = '0' + minutes;
+
+			if(seconds < 10)
+				seconds = '0' + seconds;
+
+			if(minutes == 0)
+			{
+				$('#break-timer-value').addClass('urgent');
+			}
+
+			$('#break-timer-value').html(minutes + ':' + seconds);
+		}
+		else
+		{
+			$('#break-timer-value').removeClass('urgent');
+			$('#break-timer').hide();
+			clearInterval(breakTimer);
+		}
+	}
+
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
 
@@ -311,6 +342,7 @@
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
 					$('button#schedule_race').prop('disabled', true);
+					$('button#start_break_timer').prop('disabled', true);
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
@@ -332,6 +364,7 @@
 					$('button#discard_laps').prop('disabled', false)
 					$('button.simulate_lap').prop('disabled', true);
 					$('button#schedule_race').prop('disabled', true);
+					$('button#start_break_timer').prop('disabled', true);
 					$('body').removeClass('race-running');
 					$('body').addClass('race-stopped');
 					$('body').removeClass('race-new');
@@ -345,6 +378,7 @@
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', true);
 					$('button#schedule_race').prop('disabled', true);
+					$('button#start_break_timer').prop('disabled', true);
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
@@ -361,6 +395,7 @@
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', true);
 					$('button#schedule_race').prop('disabled', false);
+					$('button#start_break_timer').prop('disabled', false);
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').addClass('race-new');
@@ -1036,6 +1071,22 @@
 			race_kickoff(msg);
 		});
 
+		socket.on('break_timer_started', function (msg) {
+			clearInterval(breakTimer);
+			breakTimeLeft = msg.break_time;
+			$('#break-timer-value').removeClass('urgent');
+			$('#break-timer').show();
+			updateBreakTimer();
+			breakTimer = setInterval(updateBreakTimer, 1000)
+		});
+
+		socket.on('break_timer_cancelled', function(msg) {
+			breakTimeLeft = 0;
+			clearInterval(breakTimer);
+			$('#break-timer').hide();
+			$('#break-timer-value').removeClass('urgent');
+		});
+
 		$('button#start_race').click(function (event) {
 			if(!$(this).prop('disabled')) {
 				$('#set_current_heat').prop('disabled', true);
@@ -1432,6 +1483,25 @@
 
 		$('#cancel_schedule_race').click(function (event) {
 			socket.emit('cancel_schedule_race');
+		})
+
+		$('#start_break_timer').click(function (event) {
+			var m = parseInt($('#break_time_m').val() || 0);
+			var s = parseInt($('#break_time_s').val() || 0);
+
+			var totalSeconds = (m * 60) + s;
+
+			if (m || s) {
+				var data = {
+					break_time: totalSeconds
+				};
+				request_time = new Date();
+				socket.emit('break_timer_started', data);
+			}
+		})
+
+		$('#cancel_break_timer').click(function (event) {
+			socket.emit('break_timer_cancelled');
 		})
 
 		socket.on('min_lap', function (msg) {
@@ -2228,6 +2298,10 @@
 
 <div id="main_panel" class="panel">
 	<div class="panel-content full-width">
+		<div id="break-timer">
+			<span class="break-timer-header">PRZERWA KOŃCZY SIĘ ZA</span>
+			<span id="break-timer-value">--:--</span>			
+		</div>
 		<div class="timer">
 			<div class="timing-clock"><div class="warning" title="Browser Sync Loss">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
@@ -2394,6 +2468,14 @@
 					<option value="0">{{ __('Highlight Short Laps') }}</option>
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="break_timer">Break timer</label>
+				</div>
+				<div>
+					<label for="break_time_m" class="screen-reader-text">{{ __('Minutes') }}</label><input type="number" id="break_time_m" min="0" max="999" placeholder="mm" value="15">:<label for="break_time_s" class="screen-reader-text">{{ __('Seconds') }}</label><input type="number" id="break_time_s" min="0" max="59" placeholder="ss"> <button id="start_break_timer">Start timer</button> <button id="cancel_break_timer">{{ __('Cancel') }}</button>
+				</div>
 			</li>
 		</ol>
 	</div>

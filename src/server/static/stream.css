@@ -225,3 +225,40 @@ main {
 	left: 0;
 	z-index: -5;
   }
+
+  #break-timer {
+	width:100%;
+	height:100%;
+	position:absolute;
+	display:block;
+	z-index: 1000;
+	left:0px;
+	top: 0px;
+	background-color:rgba(0, 0, 0, 0.8);
+	display:none;
+  }
+
+  .break-timer-header {
+	  margin-left: auto;
+	  margin-right: auto;
+	  display:block;
+	  color: white;
+	  font-size: 100px;
+	  margin-top: 300px;
+	  text-align: center;
+  }
+
+  #break-timer-value {
+	margin-left: auto;
+	margin-right: auto;
+	display:block;
+	color: white;
+	font-size: 250px;
+	text-align: center;
+	font-weight: 600;
+  }
+
+  #break-timer-value.urgent {
+	  color: red;
+  }
+}
