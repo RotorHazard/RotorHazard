@@ -659,7 +659,7 @@ class RHRace():
                     self._racecontext.rhdata.alter_heat({
                         'heat': heat.id,
                         'active': False
-                    })
+                    }, mute_event=True if regen_heat is False else True)
 
                     self._racecontext.rhui.emit_heat_data()
 
@@ -1716,26 +1716,26 @@ class RHRace():
         except:
             logger.exception("Error checking/creating heat for secondary format")
 
-    def set_heat(self, new_heat_id, silent=False, force=False): #set_current_heat_data
+    def set_heat(self, new_heat_id, silent=False, force=False, mute_event=False): #set_current_heat_data
         new_heat_id = self._filters.run_filters(Flt.RACE_SET_HEAT, new_heat_id)
 
         logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
 
         if force:
-            self.finalize_heat_set(new_heat_id)
+            self.finalize_heat_set(new_heat_id, mute_event=mute_event)
 
         heat = self._racecontext.rhdata.get_heat(new_heat_id)
         if heat and not heat.active:
-            self.finalize_heat_set(RHUtils.HEAT_ID_NONE)
+            self.finalize_heat_set(RHUtils.HEAT_ID_NONE, mute_event=mute_event)
 
         result = self._racecontext.heatautomator.calc_heat(new_heat_id, silent)
 
         if result == 'safe':
-            self.finalize_heat_set(new_heat_id)
+            self.finalize_heat_set(new_heat_id, mute_event=mute_event)
         elif result == 'no-heat':
-            self.finalize_heat_set(RHUtils.HEAT_ID_NONE)
+            self.finalize_heat_set(RHUtils.HEAT_ID_NONE, mute_event=mute_event)
 
-    def finalize_heat_set(self, new_heat_id): #finalize_current_heat_set
+    def finalize_heat_set(self, new_heat_id, mute_event=False): #finalize_current_heat_set
         if self.race_status == RaceStatus.READY:
 
             if new_heat_id == RHUtils.HEAT_ID_NONE:
@@ -1781,9 +1781,10 @@ class RHRace():
 
             self.updateSeatColors()
 
-            self._racecontext.events.trigger(Evt.HEAT_SET, {
-                'heat_id': new_heat_id,
-                })
+            if not mute_event:
+                self._racecontext.events.trigger(Evt.HEAT_SET, {
+                    'heat_id': new_heat_id,
+                    })
 
             self.clear_results() # refresh leaderboard
 
