@@ -1224,6 +1224,11 @@ All lap data. Returns `list[dict]`.
 All lap data, removing deleted laps. Returns `list[dict]`.
 - `filter_late_laps` _(optional)_: Set `True` to also remove laps flagged as late.
 
+#### race.lap_add(seat_index, timestamp)
+Add a lap record to the current race. Laps must be entered sequentially. No return value.
+- `seat_index` (int): seat number on which to add lap
+- `timestamp` (int): timestamp of lap to add, in server monotonic time
+
 #### race.results
 _Read only_
 Calculated race results. Returns `dict`.
