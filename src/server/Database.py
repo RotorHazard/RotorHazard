@@ -140,6 +140,18 @@ class Heat(Base):
 
         return output
 
+    @property
+    def display_name_short(self):
+        output = ''
+        if self.name:
+            output += self.name
+        elif self.auto_name:
+            output += self.auto_name
+        else:
+            output = f"{__('Heat')} {str(self.id)}"
+
+        return output
+
     def __repr__(self):
         return '<Heat %r>' % self.id
 
