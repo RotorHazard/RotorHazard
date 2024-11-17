@@ -250,12 +250,15 @@ The variables listed below may be used for the  effects.
 | %FASTEST_LAP%             | Fastest lap time                                                        |
 | %TIME_BEHIND_CALL%        | Amount of time behind race leader (with prompt)                         |
 | %TIME_BEHIND_FINPOS_CALL% | Pilot NAME finished at position X, MM:SS.SSS behind                     |
+| %TIME_BEHIND_FINPLACE_CALL% | Pilot NAME finished in X place, MM:SS.SSS behind                      |
 | %FASTEST_SPEED%           | Fastest speed for pilot                                                 |
 | %CONSECUTIVE%             | Fastest consecutive laps for pilot                                      |
 | %TOTAL_TIME%              | Total time since start of race for pilot                                |
 | %TOTAL_TIME_LAPS%         | Total time since start of first lap for pilot                           |
 | %POSITION%                | Race position for pilot                                                 |
 | %POSITION_CALL%           | Race position for pilot (with prompt)                                   |
+| %POSITION_PLACE%          | Race position (first, second, etc) for pilot                            |
+| %POSITION_PLACE_CALL%     | Race position (first, second, etc) for pilot (with prompt)              |
 | %FASTEST_RACE_LAP%        | Pilot/time for fastest lap in race                                      |
 | %FASTEST_RACE_LAP_CALL%   | Pilot/time for fastest lap in race (with prompt)                        |
 | %FASTEST_RACE_SPEED%      | Pilot/speed for fastest speed in race                                   |

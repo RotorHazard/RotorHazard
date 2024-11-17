@@ -27,6 +27,8 @@ from Database import ProgramMethod, HeatAdvanceType, RoundType, HeatStatus
 from FlaskAppObj import APP
 APP.app_context().push()
 
+Position_place_strings = None
+
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
     TEAM_NAMES_LIST = [str(chr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
@@ -3659,14 +3661,27 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                                 pos_bhind_str = str(result.get('position', ''))
                                 if pos_bhind_str == '1':  # only do %TIME_BEHIND_POS_CALL% if not first
                                     pos_bhind_str = ''
-                                if len(pos_bhind_str) > 0:
-                                    pos_bhind_str = "{} {} {} {}, {}".format(rhapi.__('Pilot'), \
-                                                                             pilot_name_str, rhapi.__('finished at position'), \
-                                                                             pos_bhind_str, behind_str)
                         # %TIME_BEHIND_CALL% : Amount of time behind race leader (with prompt)
                         text = text.replace('%TIME_BEHIND_CALL%', behind_str)
-                        # %TIME_BEHIND_FINPOS_CALL% : Pilot NAME finished at position X, MM:SS.SSS behind
-                        text = text.replace('%TIME_BEHIND_FINPOS_CALL%', pos_bhind_str)
+                        if "%TIME_BEHIND_FINPLACE_CALL%" in text:
+                            place_str = get_position_place_str(rhapi, pos_bhind_str)
+                            if place_str is not None:
+                                pos_bhind_str = "{} {} {} {} {}, {}".format(rhapi.__('Pilot'), \
+                                                                     pilot_name_str, rhapi.__('finished in'), \
+                                                                     place_str, rhapi.__('place'), behind_str)
+                            elif len(pos_bhind_str) > 0:
+                                pos_bhind_str = "{} {} {} {}, {}".format(rhapi.__('Pilot'), \
+                                                                         pilot_name_str, rhapi.__('finished at position'), \
+                                                                         pos_bhind_str, behind_str)
+                            # %TIME_BEHIND_FINPLACE_CALL% : Pilot NAME finished in X place, MM:SS.SSS behind
+                            text = text.replace('%TIME_BEHIND_FINPLACE_CALL%', pos_bhind_str)
+                        else:
+                            if len(pos_bhind_str) > 0:
+                                pos_bhind_str = "{} {} {} {}, {}".format(rhapi.__('Pilot'), \
+                                                                         pilot_name_str, rhapi.__('finished at position'), \
+                                                                         pos_bhind_str, behind_str)
+                            # %TIME_BEHIND_FINPOS_CALL% : Pilot NAME finished at position X, MM:SS.SSS behind
+                            text = text.replace('%TIME_BEHIND_FINPOS_CALL%', pos_bhind_str)
 
                     # %FASTEST_SPEED% : Fastest speed for pilot
                     text = text.replace('%FASTEST_SPEED%', getFastestSpeedStr(rhapi, spoken_flag, \
@@ -3681,13 +3696,28 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                         text = text.replace('%CONSECUTIVE%', rhapi.__('None'))
 
                     if '%POSITION' in text:
-                        # %POSITION% : Race position for pilot
                         position_str = str(result.get('position', ''))
-                        text = text.replace('%POSITION%', position_str)
-                        # %POSITION_CALL% : Race position for pilot (with prompt)
-                        if len(position_str) > 0:
-                            position_str = "{} {}".format(rhapi.__('Position'), position_str)
-                        text = text.replace('%POSITION_CALL%', position_str)
+                        if '%POSITION_PLACE' in text:
+                            place_str = get_position_place_str(rhapi, position_str)
+                            if place_str is not None:
+                                # %POSITION_PLACE% : Race position (first, second, etc) for pilot
+                                text = text.replace('%POSITION_PLACE%', place_str)
+                                # %POSITION_PLACE_CALL% : Race position (first, second, etc) for pilot (with prompt)
+                                if len(place_str) > 0:
+                                    place_str = "{} {}".format(place_str, rhapi.__('place'))
+                                text = text.replace('%POSITION_PLACE_CALL%', place_str)
+                            else:
+                                text = text.replace('%POSITION_PLACE%', position_str)
+                                if len(position_str) > 0:
+                                    position_str = "{} {}".format(rhapi.__('Position'), position_str)
+                                text = text.replace('%POSITION_PLACE_CALL%', position_str)
+                        else:
+                            # %POSITION% : Race position for pilot
+                            text = text.replace('%POSITION%', position_str)
+                            # %POSITION_CALL% : Race position for pilot (with prompt)
+                            if len(position_str) > 0:
+                                position_str = "{} {}".format(rhapi.__('Position'), position_str)
+                            text = text.replace('%POSITION_CALL%', position_str)
 
                     break
 
@@ -3768,3 +3798,16 @@ def getPilotFreqsStr(rhapi, sep_str, spoken_flag):
                             pilots_str += sep_str
                         pilots_str += text + ': ' + freq
     return pilots_str
+
+def get_position_place_str(rhapi, pos_str):
+    global Position_place_strings
+    if type(Position_place_strings) is not list:
+        Position_place_strings = rhapi.__("first,second,third,fourth,fifth,sixth,seventh,eighth,ninth,tenth,eleventh,\
+            twelfth,thirteenth,fourteenth,fifteenth,sixteenth,seventeenth,eighteenth,nineteenth,twentieth").split(',')
+    try:
+        pos_val = int(pos_str) - 1
+        if pos_val >= 0 and pos_val < len(Position_place_strings):
+            return Position_place_strings[pos_val]
+    except:
+        pass
+    return None
