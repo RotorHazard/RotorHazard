@@ -3487,11 +3487,23 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
         race_results = rhapi.race.results
 
         # %HEAT% : Current heat name or ID value
-        if 'heat_id' in args:
-            heat = rhapi.db.heat_by_id(args['heat_id'])
-        else:
-            heat = rhapi.db.heat_by_id(rhapi.race.heat)
-        text = text.replace('%HEAT%', heat.display_name if heat and heat.display_name else rhapi.__('None'))
+        if '%HEAT%' in text:
+            if 'heat_id' in args:
+                heat = rhapi.db.heat_by_id(args['heat_id'])
+            else:
+                heat = rhapi.db.heat_by_id(rhapi.race.heat)
+
+            heat_name = None
+            if heat:
+                if spoken_flag:
+                    heat_name = heat.display_name_short
+                else:
+                    heat_name = heat.display_name
+
+            if not heat_name:
+                heat_name = rhapi.__('None')
+
+            text = text.replace('%HEAT%', heat_name)
 
         pilot_name_str = ''
         if 'pilot_id' in args or 'node_index' in args:
