@@ -666,6 +666,7 @@ class RHUI():
                     Evt.RACE_STOP: 'Race Stop',
                     Evt.RACE_WIN: 'Race Win',
                     Evt.RACE_INITIAL_PASS: 'Race Initial Pass',
+                    Evt.RACE_PILOT_LEADING: 'Pilot Leading',
                     Evt.RACE_PILOT_DONE: 'Pilot Done',
                     Evt.HEAT_SET: 'Heat Change',
                     Evt.RACE_SCHEDULE: 'Race Schedule',

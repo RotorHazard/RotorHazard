@@ -901,6 +901,11 @@ class RHRace():
                                                     logger.info('Pilot {} is leading'.format(leader_pilot_obj.callsign))
                                             else:
                                                 logger.info('Pilot {} is leading'.format(pilot_namestr))
+                                            self._racecontext.events.trigger(Evt.RACE_PILOT_LEADING, {
+                                                'pilot_id': leader_pilot_id,
+                                                'node_index': self._racecontext.rhdata.get_node_idx_from_heatNode(\
+                                                                              self.current_heat, leader_pilot_id)
+                                            })
 
                                     # check for and announce possible winner and trigger possible pilot-done events
                                     #  (but wait until pass-record processings are finished)

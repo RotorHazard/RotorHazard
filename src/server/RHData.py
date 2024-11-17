@@ -1699,6 +1699,13 @@ class RHData():
         else:
             return None
 
+    def get_node_idx_from_heatNode(self, heat_id, pilot_id):
+        heatNode = Database.HeatNode.query.filter_by(heat_id=heat_id, pilot_id=pilot_id).one_or_none()
+        if heatNode:
+            return heatNode.node_index
+        else:
+            return -1
+
     def alter_heatNodes_fast(self, slot_list):
         # Alters heatNodes quickly, in batch
         # !! Unsafe for general use. Intentionally light type checking,    !!
