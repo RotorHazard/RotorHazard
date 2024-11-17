@@ -1180,7 +1180,7 @@ class RHData():
 
         return new_heat
 
-    def alter_heat(self, data):
+    def alter_heat(self, data, mute_event=False):
         # Alters heat. Returns heat and list of affected races
         heat_id = data['heat']
         heat = Database.Heat.query.get(heat_id)
@@ -1306,7 +1306,7 @@ class RHData():
         # update current race
         if heat_id == self._racecontext.race.current_heat:
             if not heat.active:
-                self._racecontext.race.set_heat(RHUtils.HEAT_ID_NONE)
+                self._racecontext.race.set_heat(RHUtils.HEAT_ID_NONE, mute_event=mute_event)
             else:
                 self._racecontext.race.node_pilots = {}
                 self._racecontext.race.node_teams = {}
