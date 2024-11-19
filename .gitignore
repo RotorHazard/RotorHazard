@@ -33,3 +33,5 @@ venv
 
 /src/server/static/pilot-photos/*
 !/src/server/static/pilot-photos/default.png
+
+.idea

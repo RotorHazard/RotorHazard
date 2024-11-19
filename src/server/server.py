@@ -331,6 +331,12 @@ def render_event_heat(heat_id):
         heat_id=heat_id
     )
 
+@APP.route('/wop/nextheat')
+def render_next_heat_poster():
+    '''Route to heat display for event management.'''
+    return render_template('eventheatwopv2.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
+
+
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
@@ -350,6 +356,31 @@ def render_run():
             })
 
     return render_template('run.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
+        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+        num_nodes=RaceContext.race.num_nodes,
+        nodes=nodes,
+        cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
+
+@APP.route('/wop/stream/node-image/<int:node_id>')
+def render_stream_pilot(node_id):
+        position = request.args.get('position')
+        return render_template('streamnodepilotsimagewop.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__, node_id=node_id, pos=position)
+
+@APP.route('/wop/run')
+@requires_auth
+def render_runwop():
+    '''Route to race management page.'''
+    frequencies = [node.frequency for node in RaceContext.interface.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
+    return render_template('runRace.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
         vrx_enabled=RaceContext.vrx_manager.isEnabled(),
         num_nodes=RaceContext.race.num_nodes,

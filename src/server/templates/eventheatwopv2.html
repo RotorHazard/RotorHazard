@@ -1,0 +1,281 @@
+
+{% extends "layout-basic.html" %}
+{% block title %}
+{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'race_status',
+	];
+
+	rotorhazard.show_messages = false;
+	var breakTimeLeft = 0;
+	var breakTimer;
+	var rh_server = 'http://localhost:5000/api/';
+
+	function updateBreakTimer() {
+		if(breakTimeLeft > 0) {
+			breakTimeLeft = breakTimeLeft - 1;
+
+			var minutes = Math.floor(breakTimeLeft / 60);
+			var seconds = breakTimeLeft - (minutes * 60);
+
+			if(minutes < 10)
+				minutes = '0' + minutes;
+
+			if(seconds < 10)
+				seconds = '0' + seconds;
+
+			if(minutes == 0)
+			{
+				$('#break-timer-value').addClass('urgent');
+			}
+
+			$('#break-timer-value').html(minutes + ':' + seconds);
+		}
+		else
+		{
+			$('#break-timer-value').removeClass('urgent');
+			$('#break-timer').hide();
+			clearInterval(breakTimer);
+		}
+	}
+
+
+	async function updatePilotInfo(node_id, pilot_data) {
+		html_element = $('#pilot_'+node_id);
+		html_element.find('.photo_container').empty();
+
+		if (!pilot_data.pilot ) {
+			html_element.find('.pilot-name-container').hide();
+			html_element.find('.pilot-channel').hide();
+			html_element.find('.photo_container').hide();
+			return
+		}
+		var callsign = pilot_data.pilot.callsign;
+		var photo = pilot_data.pilot.photo;
+
+		html_element.find('.pilot-name-container').show();
+		html_element.find('.pilot-channel').show();
+		html_element.find('.photo_container').show();
+
+		html_element.find('.pilot-name-container').find('.pilot-name').html(callsign);
+
+		if(!photo)
+			html_element.find('.photo_container').append('<img src="/static/pilot-photos/default.png" style="height:200px; width:200px; object-fit:cover; opacity:90%;"/>');
+		else
+			html_element.find('.photo_container').append('<img src="'+photo+'" style="height:200px; width:200px; object-fit:cover; opacity:90%;"/>');
+
+	}
+
+	async function updateSpotterInfo(node_id, pilot_data, isNextSpotter=false) {
+		if (isNextSpotter) {
+			html_element = $('#nextSpotters').find('#pilot_'+node_id);
+		} else {
+			html_element = $('#spotters').find('#pilot_'+node_id);
+		}
+		html_element.find('.photo_container').empty();
+		console.log(pilot_data);
+		if (!pilot_data.pilot) {
+			html_element.find('.pilot-name-container').find('.pilot-name').html('BRAK SPOTERA');
+			return
+		}
+		var callsign = pilot_data.pilot.callsign;
+
+		html_element.find('.pilot-name-container').show();
+
+		html_element.find('.pilot-name-container').find('.pilot-name').html(callsign);
+
+
+	}
+
+	async function updateHeaders(current_heat, spotterHeat){
+		const flyingHeatname = __('Heat') + ' ' + current_heat;
+		$('#flyingHeat-id').html(flyingHeatname);
+
+		const spottingHeatname = __('Heat') + ' ' + spotterHeat;
+		$('#spottingHeat-id').html(spottingHeatname);
+	}
+
+	function getNextHeatId(current_heat, heats_count) {
+		if (current_heat >= heats_count) {
+			return 1
+		} else {
+			return current_heat + 1
+		}
+	}
+
+	async function updateData() {
+
+		const status_data = await fetchRHData("status")
+		const heats_data = await fetchRHData("heat/all")
+		const heats_count =  Object.keys(heats_data.heats).length
+		const current_heat = status_data.status.state.current_heat
+		// const current_pilots = await  fetchRHData("heat/" + heats_data.heats[current_heat].node_pilots)
+		// const spotters = await  fetchRHData("heat/" + status_data.status.state.current_heat)
+		// const next_spotters = await  fetchRHData("heat/" + status_data.status.state.current_heat)
+		for (node_id of [0,1,2,3]) {
+			const pilot_data = await fetchRHData("pilot/" + heats_data.heats[current_heat].nodes_pilots[node_id])
+			await updatePilotInfo(node_id, pilot_data)
+		}
+		const spotter_heat = getNextHeatId(current_heat,heats_count)
+		for (node_id of [0,1,2,3]) {
+			const pilot_data = await fetchRHData("pilot/" + heats_data.heats[spotter_heat].nodes_pilots[node_id])
+			await updateSpotterInfo(node_id, pilot_data)
+		}
+		const next_spotter_heat = getNextHeatId(current_heat +1,heats_count)
+		for (node_id of [0,1,2,3]) {
+			const pilot_data = await fetchRHData("pilot/" + heats_data.heats[next_spotter_heat].nodes_pilots[node_id])
+			await updateSpotterInfo(node_id, pilot_data, true)
+		}
+
+		await updateHeaders(current_heat, spotter_heat)
+		// const pilot_data = await fetchRHData("pilot/" + heat_data.heat.setup.nodes_pilots[node_id])
+
+
+		// $('#pilot-image').attr('src', pilot_data.pilot.photo);
+
+	}
+
+	async function fetchRHData(endpoint) {
+		const apiUrl = rh_server + endpoint;
+
+		const response = await fetch(apiUrl);
+		if (!response.ok) {
+			throw new Error('Network response was not ok');
+		}
+
+		const data = await response.json();
+		return data
+	}
+
+
+	$(document).ready(function () {
+
+		socket.on('race_status', function (msg) {
+			updateData();
+		});
+
+
+		socket.on('break_timer_started', function (msg) {
+			clearInterval(breakTimer);
+			breakTimeLeft = msg.break_time;
+			$('#break-timer-value').removeClass('urgent');
+			$('#break-timer').show();
+			updateBreakTimer();
+			breakTimer = setInterval(updateBreakTimer, 1000)
+		});
+
+		socket.on('break_timer_cancelled', function(msg) {
+			breakTimeLeft = 0;
+			clearInterval(breakTimer);
+			$('#break-timer').hide();
+			$('#break-timer-value').removeClass('urgent');
+		});
+
+
+		})
+		;
+
+</script>
+{% endblock %} {% block content %}
+<main style="background-color: #202020;">
+	<!--Display the race leaderboard-->
+	<div class="header" style="width:100%; text-align: center; display: flex;justify-content: center;">
+		<p style="display:inline; font-size:50px; color:white; weight: 100; margin:0px; margin-top: 10px;">Flying:</p>
+		<p id="flyingHeat-id" style="font-size:70px; color:white; weight: 500; margin:0px; margin-top: 10px; margin-left:30px;">Heat 0</p>
+		<div id="spottingHeat" style="display: flex;">
+			<p style="display:inline; font-size:50px; color:white; weight: 100; margin:0px; margin-top: 10px; margin-left:100px;">Spotting:</p>
+			<p id="spottingHeat-id" style="font-size:70px; color:white; weight: 500; margin:0px; margin-top: 10px; margin-left:30px;">Heat 0</p>
+		</div>
+	</div>
+	<div id="pilots" style="width:80%; margin:auto; margin-bottom:0px; margin-top:30px;">
+		<div id="pilot_0" style="width:24%; display:inline-block; margin:0px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#44a43a">R1</p>	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#44a43a">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container" style="text-align:center;"></div>		
+		</div>
+		<div id="pilot_1" style="width:24%; display:inline-block;margin:0px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#c775b0">R3</p>	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#c775b0">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container" style="text-align:center;"></div>		
+		</div>
+		<div id="pilot_2" style="width:24%; display:inline-block;margin:0px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#bea72b">R6</p>	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#bea72b">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container" style="text-align:center;"></div>	
+		</div>
+		<div id="pilot_3" style="width:24%; display:inline-block;margin:0px;">
+			<p class="pilot-channel" style="font-size:30px; color:white; height:50px; width:100px; line-height:50px; margin:auto; padding:0px; text-align:center; font-weight:900; background-color:#65b9c1">R7</p>	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#65b9c1">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+			<div class="photo_container" style="text-align:center;"></div>		
+		</div>
+	</div>
+	<p style="width:100%; text-align:center; font-size: 40px; line-height: 40px; margin:0px; margin-top:10px; color:white">Spotters</p>
+	<div id="spotters" style="width:80%; margin:auto; margin-top:10px;">
+		<div id="pilot_0" style="width:24%; display:inline-block; margin:0px;">	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#44a43a">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+		</div>
+		<div id="pilot_1" style="width:24%; display:inline-block;margin:0px;">	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#c775b0">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+		</div>
+		<div id="pilot_2" style="width:24%; display:inline-block;margin:0px;">
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#bea72b">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>	
+		</div>
+		<div id="pilot_3" style="width:24%; display:inline-block;margin:0px;">	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#65b9c1">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+		</div>
+	</div>
+	<p style="width:100%; text-align:center; font-size: 30px; line-height: 30px; margin:0px; margin-top:10px; color:white">Next spotters</p>
+	<div id="nextSpotters" style="width:80%; margin:auto; margin-top:20px;">
+		<div id="pilot_0" style="width:24%; display:inline-block; margin:0px;">	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#44a43a">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+		</div>
+		<div id="pilot_1" style="width:24%; display:inline-block;margin:0px;">	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#c775b0">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+		</div>
+		<div id="pilot_2" style="width:24%; display:inline-block;margin:0px;">
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#bea72b">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>	
+		</div>
+		<div id="pilot_3" style="width:24%; display:inline-block;margin:0px;">	
+			<div class="pilot-name-container" style="width:100%; height:50px; background-color:#65b9c1">
+				<p class="pilot-name" style="font-size:40px; color:white; height:50px; width:100%; line-height:50px; margin:0px; padding:0px; text-align:center;"></p>	
+			</div>
+		</div>
+	</div>
+</main>
+
+<div id="break-timer" class="break-timer-overlay">
+	<span class="break-timer-header">
+		PRZERWA KOŃCZY SIĘ ZA
+	</span>
+	<span class="break-timer" id="break-timer-value">
+		--:--
+	</span>
+</div>
+
+{% endblock %}

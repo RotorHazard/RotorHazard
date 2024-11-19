@@ -1,0 +1,104 @@
+{% extends "layout-basic.html" %}
+{% block title %}
+Pilot details stream overlay
+{% endblock %}
+{% block head %}
+<script>
+    var data_dependencies = [
+        'race_status',
+    ];
+
+    var rh_server = 'http://localhost:5000/api/';
+    const node_id = {{ node_id }}
+    const posit = {{ pos }}
+
+    $(document).ready(function () {
+        rotorhazard.show_messages = false;
+        setupCSS()
+        updateNodeData()
+
+        socket.on('race_status', function (msg) {
+            updateNodeData();
+        });
+
+    });
+
+    async function updateNodeData() {
+
+        const status_data = await fetchRHData("status")
+        const heat_data = await  fetchRHData("heat/" + status_data.status.state.current_heat)
+        const pilot_data = await fetchRHData("pilot/" + heat_data.heat.setup.nodes_pilots[node_id])
+        console.log(pilot_data)
+
+        $('#pilot-image').attr('src', pilot_data.pilot.photo);
+
+    }
+
+    async function fetchRHData(endpoint) {
+        const apiUrl = rh_server + endpoint;
+
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        return data
+    }
+
+    function setupCSS() {
+        switch(posit)
+        {
+            case 0:
+                $('html').css('--pilot-image-bottom', '2em');
+                $('html').css('--pilot-image-right', '4em');
+                break;
+            case 1:
+
+                $('html').css('--pilot-image-bottom', '4em');
+                $('html').css('--pilot-image-left', '4em');
+                break;
+            case 2:
+
+                $('html').css('--pilot-image-right', '4em');
+                $('html').css('--pilot-image-top', '3em');
+                break;
+            case 3:
+
+                $('html').css('--pilot-image-left', '4em');
+                $('html').css('--pilot-image-top', '3em');
+                break;
+        }
+    }
+
+
+
+</script>
+<style>
+
+    .container {
+        position: absolute;
+        top: var(--pilot-image-top);
+        left: var(--pilot-image-left);
+        right: var(--pilot-image-right);
+        bottom: var(--pilot-image-bottom);
+        margin: 50px;
+    }
+
+    #pilot-image {
+        position: relative;
+        object-fit: cover;
+        height:400px;
+        width: auto;
+    }
+
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="container">
+    <img id="pilot-image" src="/static/pilot-photos/default.png"/>
+
+</div>
+
+{% endblock %}
