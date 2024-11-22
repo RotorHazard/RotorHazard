@@ -410,8 +410,10 @@ def emit_current_log_file_to_socket(log_path_name, SOCKET_IO):
                                 if lvl_num >= socket_min_log_level:
                                     min_lvl_flag = True
                                     line_list.append(line_str)
-                                else:
+                                elif lvl_num >= 0:
                                     min_lvl_flag = False
+                                elif min_lvl_flag:
+                                    line_list.append(line_str)
                             elif min_lvl_flag:
                                 line_list.append(line_str)  # if line does not contain "[log-level]" and
                         elif min_lvl_flag:                  #  previous line did then include this one
