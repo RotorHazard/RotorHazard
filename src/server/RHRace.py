@@ -783,13 +783,18 @@ class RHRace():
 
                             if lap_ok_flag:
                                 node_finished_flag = self.get_node_finished_flag(node.index)
-                                # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
-                                if (race_format.unlimited_time == 0 and lap_time_stamp > race_format.race_time_sec * 1000) or \
-                                    (self.format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
-                                    if not node_finished_flag:
+                                if not node_finished_flag:
+                                    # set next node race status as 'finished' if timer mode is count-down race and race-time has expired
+                                    if race_format.unlimited_time == 0 and lap_time_stamp > race_format.race_time_sec * 1000:
                                         pilot_done_flag = True
-
-                                if node_finished_flag:
+                                    elif self.format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                                        if race_format.start_behavior != StartBehavior.FIRST_LAP:
+                                            if lap_number >= race_format.number_laps_win:
+                                                pilot_done_flag = True
+                                        else:
+                                            if lap_number + 1 >= race_format.number_laps_win:
+                                                pilot_done_flag = True
+                                else:
                                     lap_late_flag = True  # "late" lap pass (after grace lap)
                                     logger.info('Ignoring lap after pilot done: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
                                                .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \

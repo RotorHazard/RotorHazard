@@ -391,7 +391,7 @@ def _do_calc_leaderboard(racecontext, **params):
             chk_laps = chk_pilot.get('pilot_crossings', [])
             for chk_lap in chk_laps:
                 lnum = chk_lap.lap_number
-                if lnum:
+                if lnum is not None and (lnum > 0 or (race_format and race_format.start_behavior == StartBehavior.FIRST_LAP)):
                     ldr_plt, ldr_lap = leader_laps.get(lnum, NONE_NONE_PAIR)
                     # if first entry or earliest entry for lap
                     if ldr_lap is None or chk_lap.lap_time_stamp < ldr_lap.lap_time_stamp:
@@ -433,7 +433,9 @@ def _do_calc_leaderboard(racecontext, **params):
             if USE_CURRENT:
                 current_lap = result_pilot['pilot_laps'][-1]
                 cur_lap_num = current_lap.lap_number
-                if cur_lap_num > 0:  # pilot has completed at least first lap
+                # check if pilot has completed at least first lap
+                if cur_lap_num > 0 or \
+                        (race_format and race_format.start_behavior == StartBehavior.FIRST_LAP):
                     ldr_pilot, ldr_lap = leader_laps.get(cur_lap_num, NONE_NONE_PAIR)
                     # if another pilot is leader on lap
                     if ldr_lap is not None and ldr_pilot.get('node') != result_pilot.get('node'):
