@@ -17,6 +17,8 @@
 // See https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing
 #define NODE_NUMBER 0
 
+#define SOLOSWARM_MODE_FLAG 1 // Enable this value to enable soloSwarm feature options
+
 #endif
 
 // ******************************************************************** //
@@ -80,6 +82,19 @@
 #endif
 
 #define DISABLE_SERIAL_PIN 9  //pull pin low (to GND) to disable serial port
+
+#ifdef SOLOSWARM_MODE_FLAG
+#define NODE_ID_LED_PIN_1 7
+#define NODE_ID_LED_PIN_2 6
+#define NODE_ID_LED_PIN_3 5
+#define NODE_ID_LED_PIN_4 4
+#define NODE_ID_LED_PIN_5 3
+#define NODE_ID_LED_PIN_6 2
+#define NODE_ID_INPUT_PIN 8
+#define PI_BOOT_LED_PIN A3  // Using A3 as a digital pin
+#define PI_BOOT_READY_PIN A6  // Using A6 as a digital pin
+#define NODE_NUMBER 1 // Set the node number to 1 by default for initial bootstrap process
+#else
 #define HARDWARE_SELECT_PIN_1 2
 #define HARDWARE_SELECT_PIN_2 3
 #define HARDWARE_SELECT_PIN_3 4
@@ -88,6 +103,7 @@
 #define LEGACY_HARDWARE_SELECT_PIN_3 6
 #define LEGACY_HARDWARE_SELECT_PIN_4 7
 #define LEGACY_HARDWARE_SELECT_PIN_5 8
+#endif
 
 #define MODULE_LED_ONSTATE HIGH
 #define MODULE_LED_OFFSTATE LOW
