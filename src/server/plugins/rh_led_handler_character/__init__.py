@@ -236,7 +236,7 @@ def multiLapGrid(args):
 
             panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
 
-    img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', ['PANEL_ROTATE']), expand=True)
+    img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
     setPixels(strip, img, panel['width'], args['RHAPI'].config)
     strip.show()
 
