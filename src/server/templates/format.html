@@ -924,6 +924,38 @@
 			afc.append(label);
 			el.append(afc);
 
+			// if Co-op racing mode then show best time/laps field associated with heat
+			if (typeof rotorhazard.event.race_formats != "undefined") {
+				var format_id = parseInt($('#set_race_format').val());
+				var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
+				if (rf && rf.team_racing_mode == RACING_MODE_COOP) {
+					if (rf.win_condition == 2) {  // if First to X Laps
+						var coopTimeField = $('<div>');
+						coopTimeField.append('<label class="coop_best_field" for="heat-coop-best-time-' + heat.id + '">' + __('Co-op Best Time') + '</label>');
+						var input = $('<input type="text" id="heat-coop-best-time-' + heat.id + '" class="set_heat_coop_best_time" data-heat="' + heat.id + '" >');
+						input.val(heat.coop_best_time ? String(heat.coop_best_time) : '');
+						var clFieldOl = $('<ol>');
+						var clFieldLi = $('<li>');
+						clFieldLi.append(coopTimeField);
+						clFieldLi.append(input);
+						clFieldOl.append(clFieldLi);
+						el.append(clFieldOl);
+							// if Most Laps in Fastest Time | Most Laps Only | Most Laps Only with Overtime
+					} else if (rf.win_condition == 1 || rf.win_condition == 5 || rf.win_condition == 6) {
+						var coopLapsField = $('<div>');
+						coopLapsField.append('<label class="coop_best_field" for="heat-coop-num-laps-' + heat.id + '">' + __('Co-op Best # of Laps') + '</label>');
+						var input = $('<input type="number" id="heat-coop-num-laps-' + heat.id + '" class="set_heat_coop_num_laps" data-heat="' + heat.id + '" step="1" min="0">');
+						input.val(heat.coop_num_laps ? String(heat.coop_num_laps) : '');
+						var clFieldOl = $('<ol>');
+						var clFieldLi = $('<li>');
+						clFieldLi.append(coopLapsField);
+						clFieldLi.append(input);
+						clFieldOl.append(clFieldLi);
+						el.append(clFieldOl);
+					}
+				}
+			}
+
 			el.append('<button class="btn-danger plan-reset" data-id="' + heat.id + '">' + __('Revert to Plan') + '</button>');
 			el.append('<button class="plan-calc" data-id="' + heat.id + '">' + __('Seed Now') + '</button>');
 
@@ -1172,6 +1204,26 @@
 			}
 
 			display_classes();
+		});
+
+		$(document).on("change", '.set_heat_coop_best_time', function (event) {
+			var heat_id = parseInt($(this).data('heat'));
+			var data = {
+				heat: heat_id,
+				coop_best_time: parseFloat($(this).val()),
+				coop_data_flag: true  // set flag to indicate only co-op data was modified
+			};
+			socket.emit('alter_heat', data);
+		});
+
+		$(document).on("change", '.set_heat_coop_num_laps', function (event) {
+			var heat_id = parseInt($(this).data('heat'));
+			var data = {
+				heat: heat_id,
+				coop_num_laps: parseInt($(this).val()),
+				coop_data_flag: true  // set flag to indicate only co-op data was modified
+			};
+			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("focus", '.set_heat_attr', function(){
@@ -1664,6 +1716,7 @@
 				$('#set_points_params').html(svg_asset.gear);
 
 				display_format();
+				display_unclassified_heats();  // update to show/hide fields for co-op racing mode
 			}
 		}
 
@@ -1720,11 +1773,11 @@
 		}
 
 		function update_race_format_ui() {
-			format_id = $('#set_race_format').val();
+			var format_id = parseInt($('#set_race_format').val());
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 
-			$('.format-race-duration-fields').toggle(rf.unlimited_time == 0);
-			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
+			$('.format-race-duration-fields').prop('hidden', (rf.unlimited_time == 0));
+			$('#format-laps-to-win-field').prop('hidden', (rf.win_condition != 2));
 
 			var issues = []
 
@@ -1774,6 +1827,8 @@
 		$('#set_race_format').change(function (event) {
 			current_format = $('#set_race_format').val();
 			display_format();
+			display_unclassified_heats();  // update to show/hide fields for co-op racing mode
+
 		});
 
 		$('button#add_race_format').click(function (event) {
@@ -1917,10 +1972,10 @@
 			};
 			socket.emit('alter_race_format', data);
 			rotorhazard.race_format.start_behavior = parseInt($(this).val());
-			update_race_format_ui();
 
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 			rf.start_behavior = start_behavior;
+			update_race_format_ui();
 		})
 
 		$('#set_win_condition').change(function (event) {
@@ -1932,10 +1987,11 @@
 			};
 			socket.emit('alter_race_format', data);
 			rotorhazard.race_format.win_condition = parseInt($(this).val());
-			update_race_format_ui();
 
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 			rf.win_condition = win_condition;
+			update_race_format_ui();
+			display_unclassified_heats();  // update to show/hide fields for co-op racing mode
 		})
 
 		$('#set_number_laps_win').change(function (event) {
@@ -1953,7 +2009,7 @@
 
 		$('#set_team_racing_mode').change(function (event) {
 			var format_id = parseInt($('#set_race_format').val());
-			var team_racing_mode = parseInt($(this).val()); // 0=disabled, 1=enabled
+			var team_racing_mode = parseInt($(this).val());  // 0=individual, 1=team, 2=co-op
 			var data = {
 				format_id: format_id,
 				team_racing_mode: team_racing_mode
@@ -1962,6 +2018,7 @@
 
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 			rf.team_racing_mode = team_racing_mode;
+			display_unclassified_heats();  // update to show/hide fields for co-op racing mode
 		})
 
 		$('#set_points_method').change(function (event) {
@@ -2859,11 +2916,12 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
+					<label for="set_team_racing_mode">{{ __('Team/Co-op Racing Mode') }}</label>
 				</div>
 				<select id="set_team_racing_mode">
-					<option value="0">{{ __('Team Racing Disabled') }}</option>
-					<option value="1">{{ __('Team Racing Enabled') }}</option>
+					<option value="0">{{ __('Individual') }}</option>
+					<option value="1">{{ __('Team Racing') }}</option>
+					<option value="2">{{ __('Co-op Racing') }}</option>
 				</select>
 			</li>
 		</ol>

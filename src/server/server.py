@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.3.0-dev.2" # Public release version code
-SERVER_API = 45 # Server API version
+SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -1174,13 +1174,16 @@ def on_activate_heat(data):
 def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RaceContext.rhdata.alter_heat(data)
-    if RaceContext.race.current_heat == heat.id:  # if current heat was altered then update heat data
-        RaceContext.race.set_heat(heat.id, silent=True)
-    RaceContext.rhui.emit_heat_data(noself=True)
-    if ('name' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
-        RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to heat: {0}').format(heat.display_name)
-        RaceContext.rhui.emit_priority_message(message, False)
+    if not data.get('coop_data_flag', False):  # if only co-op data modified then skip rest of heat-data handling
+        if RaceContext.race.current_heat == heat.id:  # if current heat was altered then update heat data
+            RaceContext.race.set_heat(heat.id, silent=True)
+        RaceContext.rhui.emit_heat_data(noself=True)
+        if ('name' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
+            RaceContext.rhui.emit_result_data() # live update rounds page
+            message = __('Alterations made to heat: {0}').format(heat.display_name)
+            RaceContext.rhui.emit_priority_message(message, False)
+    else:
+        RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('delete_heat')
 @catchLogExcWithDBWrapper
@@ -3547,7 +3550,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                                                                             staging_delay_tones=0,
                                                                             number_laps_win=0,
                                                                             win_condition=WinCondition.NONE,
-                                                                            team_racing_mode=False,
+                                                                            team_racing_mode=0,
                                                                             start_behavior=0,
                                                                             points_method=None)
 

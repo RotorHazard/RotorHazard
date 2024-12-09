@@ -462,30 +462,30 @@
 					var ttstext = '';
 	
 					if (rotorhazard.voice_callsign == 1 ||
-								(rotorhazard.voice_callsign == 2 && (!msg.team_name))) {
+								(rotorhazard.voice_callsign == 2 && (!msg.team_phonetic))) {
 						ttstext = msg.callsign;
 						if (msg.pilot)
 							ttstext = msg.pilot;
 					}
 	
 					if (rotorhazard.voice_lap_count == 1 ||
-								(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
+								(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_phonetic))) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
 						ttstext += __l('Lap') + " " + msg.lap;
 					}
 	
 					if (rotorhazard.voice_lap_time == 1 ||
-								(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
+								(rotorhazard.voice_lap_time == 2 && (!msg.team_phonetic))) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
 						ttstext += msg.phonetic;
 					}
 	
-					if (msg.team_name && msg.team_laps && rotorhazard.voice_team_lap_count != 0) {
+					if (msg.team_phonetic && rotorhazard.voice_team_lap_count != 0) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
-						ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
+						ttstext += msg.team_phonetic;
 					}
 	
 					if (ttstext.length > 0) {
@@ -493,7 +493,7 @@
 							if (rotorhazard.beep_race_leader_lap) {
 								speak(LEADER_FLAG_CHAR);
 							}
-							if (rotorhazard.voice_race_leader && (!msg.team_name)) {
+							if (rotorhazard.voice_race_leader && (!msg.team_phonetic)) {
 								setTimeout(callout_current_leader, (rotorhazard.voice_race_leader * 1000), (msg.pilot ? msg.pilot : msg.callsign));
 							}
 						}
@@ -858,7 +858,7 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -868,7 +868,7 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -878,7 +878,7 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -894,11 +894,11 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+						<label for="voice_team_lap_count">{{ __('Team/Co-op Lap Total') }}</label>
 					</div>
 					<select id="voice_team_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('On Team Races') }}</option>
+						<option value="1">{{ __('On Team/Co-op Races') }}</option>
 					</select>
 				</li>
 				<li>

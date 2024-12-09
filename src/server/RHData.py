@@ -21,7 +21,7 @@ import Results
 from time import monotonic
 from eventmanager import Evt
 from filtermanager import Flt
-from RHRace import RaceStatus, WinCondition, StagingTones
+from RHRace import RaceStatus, WinCondition, RacingMode, StagingTones
 from Database import ProgramMethod, HeatAdvanceType, RoundType, HeatStatus
 
 from FlaskAppObj import APP
@@ -77,18 +77,18 @@ class RHData():
             self._OptionsCache[setting.option_name] = setting.option_value
 
     # General
-    def db_init(self, nofill=False):
+    def db_init(self, nofill=False, migrateDbApi=None):
         # Creates tables from database classes/models
         try:
             Database.initialize()
             Database.create_db_all()
-            self.reset_all(nofill) # Fill with defaults
+            self.reset_all(nofill, migrateDbApi) # Fill with defaults
             return True
         except Exception as ex:
             logger.error('Error creating database: ' + str(ex))
             return False
 
-    def do_reset_all(self, nofill):
+    def do_reset_all(self, nofill, migrateDbApi):
         self.reset_pilots()
         if nofill:
             self.reset_heats(nofill=True)
@@ -96,17 +96,18 @@ class RHData():
             self.reset_heats()
         self.clear_race_data()
         self.reset_profiles()
-        self.reset_raceFormats()
+        # (if older DB then co-op race formats will be added after recovery)
+        self.reset_raceFormats(migrateDbApi is None or migrateDbApi >= 46)
         self.reset_raceClasses()
         self.reset_options()
 
-    def reset_all(self, nofill=False):
+    def reset_all(self, nofill=False, migrateDbApi=None):
         try:
-            self.do_reset_all(nofill)
+            self.do_reset_all(nofill, migrateDbApi)
         except Exception as ex:
             logger.warning("Doing DB session rollback and retry after error: {}".format(ex))
             Database.DB_session.rollback()
-            self.do_reset_all(nofill)
+            self.do_reset_all(nofill, migrateDbApi)
 
     def commit(self):
         try:
@@ -360,6 +361,15 @@ class RHData():
             'stage_2': False,
         }
 
+        migrate_db_api = 0  # default to delta5 or very old RH versions
+        options_query_data = None
+        pilot_query_data = None
+        heat_query_data = None
+        heatNode_query_data = None
+        raceFormat_query_data = None
+        profiles_query_data = None
+        raceClass_query_data = None
+
         # stage 0: collect data from file
         try:
             logger.info('Recovering data from previous database')
@@ -371,7 +381,6 @@ class RHData():
 
             options_query_data = self.get_legacy_table_data(engine, metadata, 'global_settings')
 
-            migrate_db_api = 0 # delta5 or very old RH versions
             if options_query_data:
                 for row in options_query_data:
                     if row['option_name'] == 'server_api':
@@ -468,7 +477,7 @@ class RHData():
         if "startup" in kwargs:
             self.backup_db_file(False)  # rename and move DB file
 
-        self.db_init(nofill=True)
+        self.db_init(nofill=True, migrateDbApi=migrate_db_api)
 
         # stage 1: recover pilots, heats, heatnodes, format, profile, class, options
         if recover_status['stage_0'] == True:
@@ -494,7 +503,7 @@ class RHData():
 
                     # build list of heat meta
                     heat_extracted_meta = []
-                    if len(heat_query_data):
+                    if heat_query_data and len(heat_query_data):
                         for row in heat_query_data:
                             if 'node_index' in row:
                                 if row['node_index'] == 0:
@@ -626,9 +635,12 @@ class RHData():
                         'staging_delay_tones': 0,
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS,
-                        'team_racing_mode': False,
+                        'team_racing_mode': RacingMode.INDIVIDUAL,
                         'points_method': None
                     })
+                    if migrate_db_api < 46:
+                        self.add_coopRaceFormats()
+                        logger.info("Added co-op race formats")
                 else:
                     self.reset_raceFormats()
 
@@ -1235,6 +1247,10 @@ class RHData():
             heat.status = data['status']
         if 'active' in data:
             heat.active = data['active']
+        if 'coop_best_time' in data:
+            heat.coop_best_time = data['coop_best_time']
+        if 'coop_num_laps' in data:
+            heat.coop_num_laps = data['coop_num_laps']
 
         heat.auto_name = self.get_heat_auto_name(heat)
 
@@ -1758,6 +1774,21 @@ class RHData():
             if not matched_flag:
                 return False
         return True
+
+    # Fetches co-op race values stored via heat in database and loads them into the given RHRace object
+    def get_heat_coop_values(self, heat_or_id, rh_race_obj):
+        heat_obj = self.resolve_heat_from_heat_or_id(heat_or_id)
+        if heat_obj and rh_race_obj:
+            rh_race_obj.coop_best_time = heat_obj.coop_best_time
+            rh_race_obj.coop_num_laps = heat_obj.coop_num_laps
+
+    # Update co-op race values stored via heat in database (if modified)
+    def update_heat_coop_values(self, heat_or_id, coop_best_time, coop_num_laps):
+        heat_obj = self.resolve_heat_from_heat_or_id(heat_or_id)
+        if heat_obj and (coop_best_time != heat_obj.coop_best_time or coop_num_laps != heat_obj.coop_num_laps):
+            heat_obj.coop_best_time = coop_best_time
+            heat_obj.coop_num_laps = coop_num_laps
+            self.commit()
 
     # Race Classes
     def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):
@@ -2437,7 +2468,7 @@ class RHData():
             start_delay_max_ms=1000,
             number_laps_win=0,
             win_condition=0,
-            team_racing_mode=False,
+            team_racing_mode=RacingMode.INDIVIDUAL,
             start_behavior=0,
             points_method=None)
 
@@ -2465,7 +2496,7 @@ class RHData():
             if 'number_laps_win' in init:
                 race_format.number_laps_win = init['number_laps_win']
             if 'team_racing_mode' in init:
-                race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
+                race_format.team_racing_mode = int(init['team_racing_mode']) if init['team_racing_mode'] else RacingMode.INDIVIDUAL
             if 'points_method' in init:
                 race_format.points_method = init['points_method']
 
@@ -2551,7 +2582,7 @@ class RHData():
         if 'number_laps_win' in data:
             race_format.number_laps_win = data['number_laps_win'] if isinstance(data['number_laps_win'], int) else 0
         if 'team_racing_mode' in data:
-            race_format.team_racing_mode = True if data['team_racing_mode'] else False
+            race_format.team_racing_mode = int(data['team_racing_mode']) if data['team_racing_mode'] else RacingMode.INDIVIDUAL
         if 'points_method' in data:
             if data['points_method']:
                 if race_format.points_method:
@@ -2657,7 +2688,7 @@ class RHData():
         self.commit()
         return True
 
-    def reset_raceFormats(self):
+    def reset_raceFormats(self, addCoopFlag=True):
         self.clear_raceFormats()
         self.add_format({
             'format_name': self.__("2:00 Standard Race"),
@@ -2670,7 +2701,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2685,7 +2716,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2700,7 +2731,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2715,7 +2746,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 3,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2730,7 +2761,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.NONE,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2745,7 +2776,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2760,7 +2791,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2775,7 +2806,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_LAPS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2790,7 +2821,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2805,7 +2836,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 7,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2820,7 +2851,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2835,14 +2866,60 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
+        if addCoopFlag:
+            self.add_coopRaceFormats()
 
         self.commit()
         logger.info("Database reset race formats")
         return True
+
+    def add_coopRaceFormats(self):
+        self.add_format({
+            'format_name': self.__("Co-op Fastest Time to 7 Laps"),
+            'unlimited_time': 1,
+            'race_time_sec': 0,
+            "staging_fixed_tones": 3,
+            'start_delay_min_ms': 1000,
+            'start_delay_max_ms': 0,
+            'staging_delay_tones': 2,
+            'number_laps_win': 7,
+            'win_condition': WinCondition.FIRST_TO_LAP_X,
+            'team_racing_mode': RacingMode.COOP_ENABLED,
+            'start_behavior': 0,
+            'points_method': None
+        })
+        self.add_format({
+            'format_name': self.__("Co-op Most Laps in Race Time"),
+            'unlimited_time': 0,
+            'race_time_sec': 150,
+            "staging_fixed_tones": 3,
+            'start_delay_min_ms': 1000,
+            'start_delay_max_ms': 0,
+            'staging_delay_tones': 2,
+            'number_laps_win': 0,
+            'win_condition': WinCondition.MOST_LAPS,
+            'team_racing_mode': RacingMode.COOP_ENABLED,
+            'start_behavior': 0,
+            'points_method': None
+        })
+        self.add_format({
+            'format_name': self.__("Co-op Most Laps - Finish Laps"),
+            'unlimited_time': 0,
+            'race_time_sec': 150,
+            "staging_fixed_tones": 3,
+            'start_delay_min_ms': 1000,
+            'start_delay_max_ms': 0,
+            'staging_delay_tones': 2,
+            'number_laps_win': 0,
+            'win_condition': WinCondition.MOST_LAPS_OVERTIME,
+            'team_racing_mode': RacingMode.COOP_ENABLED,
+            'start_behavior': 0,
+            'points_method': None
+        })
 
     # Race Format Attributes
     def get_raceformat_attribute(self, raceformat_or_id, name):

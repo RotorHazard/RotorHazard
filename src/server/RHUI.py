@@ -16,6 +16,7 @@ import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod, RoundType
+from RHRace import RacingMode
 from filtermanager import Flt
 import logging
 logger = logging.getLogger(__name__)
@@ -509,8 +510,8 @@ class RHUI():
                 'race_format_id': self._racecontext.race.format.id if hasattr(self._racecontext.race.format, 'id') else None,
                 'race_heat_id': heat_id,
                 'race_class_id': class_id,
-                'unlimited_time': race_format.unlimited_time,
-                'race_time_sec': race_format.race_time_sec,
+                'unlimited_time': self._racecontext.race.unlimited_time,
+                'race_time_sec': self._racecontext.race.race_time_sec,
                 'staging_tones': 0,
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
@@ -842,8 +843,10 @@ class RHUI():
 
         emit_payload['current']['leaderboard'] = self._racecontext.race.get_results()
 
-        if self._racecontext.race.format.team_racing_mode:
+        if self._racecontext.race.format.team_racing_mode == RacingMode.TEAM_ENABLED:
             emit_payload['current']['team_leaderboard'] = self._racecontext.race.get_team_results()
+        elif self._racecontext.race.format.team_racing_mode == RacingMode.COOP_ENABLED:
+            emit_payload['current']['team_leaderboard'] = self._racecontext.race.get_coop_results()
 
         # cache
         if self._racecontext.last_race:
@@ -863,8 +866,10 @@ class RHUI():
 
             emit_payload['last_race']['leaderboard'] = self._racecontext.last_race.get_results()
 
-            if self._racecontext.last_race.format.team_racing_mode:
+            if self._racecontext.last_race.format.team_racing_mode == RacingMode.TEAM_ENABLED:
                 emit_payload['last_race']['team_leaderboard'] = self._racecontext.last_race.get_team_results()
+            elif self._racecontext.last_race.format.team_racing_mode == RacingMode.COOP_ENABLED:
+                emit_payload['last_race']['team_leaderboard'] = self._racecontext.last_race.get_coop_results()
 
         if ('nobroadcast' in params):
             emit('leaderboard', emit_payload)
@@ -894,6 +899,8 @@ class RHUI():
             current_heat['status'] = heat.status
             current_heat['auto_frequency'] = heat.auto_frequency
             current_heat['active'] = heat.active
+            current_heat['coop_best_time'] = heat.coop_best_time
+            current_heat['coop_num_laps'] = heat.coop_num_laps
             current_heat['next_round'] = self._racecontext.rhdata.get_max_round(heat.id)
 
             current_heat['slots'] = []
@@ -1010,7 +1017,7 @@ class RHUI():
             raceformat['start_delay_max'] = race_format.start_delay_max_ms
             raceformat['number_laps_win'] = race_format.number_laps_win
             raceformat['win_condition'] = race_format.win_condition
-            raceformat['team_racing_mode'] = 1 if race_format.team_racing_mode else 0
+            raceformat['team_racing_mode'] = int(race_format.team_racing_mode) if race_format.team_racing_mode else RacingMode.INDIVIDUAL
             raceformat['start_behavior'] = race_format.start_behavior
             raceformat['locked'] = self._racecontext.rhdata.savedRaceMetas_has_raceFormat(race_format.id)
             formats.append(raceformat)
@@ -1199,7 +1206,7 @@ class RHUI():
         else:
             self._socket.emit('current_heat', emit_payload)
 
-    def emit_phonetic_data(self, pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, node_finished=False, node_index=None, **params):
+    def emit_phonetic_data(self, pilot_id, lap_id, lap_time, team_phonetic, leader_flag=False, node_finished=False, node_index=None, **params):
         '''Emits phonetic data.'''
         raw_time = lap_time
         phonetic_time = RHUtils.format_phonetic_time_to_str(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
@@ -1208,8 +1215,7 @@ class RHUI():
             'lap': lap_id,
             'raw_time': raw_time,
             'phonetic': phonetic_time,
-            'team_name' : team_name,
-            'team_laps' : team_laps,
+            'team_phonetic' : team_phonetic,
             'leader_flag' : leader_flag,
             'node_finished': node_finished,
         }

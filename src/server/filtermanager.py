@@ -80,6 +80,7 @@ class Flt:
     LAPS_SAVE = 'lapsSave'
     RACE_RESULTS = 'raceResults'
     RACE_TEAM_RESULTS = 'raceTeamResults'
+    RACE_COOP_RESULTS = 'raceCoopResults'
     RACE_SET_HEAT = 'raceSetHeat'
 
     EMIT_UI = 'emitUI'

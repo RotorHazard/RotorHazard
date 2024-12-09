@@ -13,7 +13,7 @@ from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import logging
 from time import monotonic
 from Database import RoundType
-from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
+from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus, RacingMode
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,65 @@ class RacePointsMethod():
 
     def assign(self, rhapi, leaderboard, localArgs):
         return self.assignFn(rhapi, leaderboard, {**(self.default_args if self.default_args else {}), **(localArgs if localArgs else {})})
+
+class LapInfo():
+    class race:
+        total_pilots: None
+        lap_max: None
+        consecutives_base: None
+        win_condition = None
+        best_lap: None
+        best_lap_callsign: None
+        split_count: None
+
+    class current:
+        pilot_id = None
+        seat = None
+        position = None
+        callsign = None
+        lap_number = None
+        last_lap_time = None
+        total_time = None
+        total_time_laps = None
+        consecutives = None
+        is_best_lap = None
+        lap_list = None
+
+    class next_rank:
+        pilot_id = None
+        seat = None
+        position = None
+        callsign = None
+        diff_time = None
+        lap_number = None
+        last_lap_time = None
+        total_time = None
+
+    class first_rank:
+        pilot_id = None
+        seat = None
+        position = None
+        callsign = None
+        lap_number = None
+        last_lap_time = None
+        total_time = None
+
+    def __init__(self):
+        self.race = self.race()
+        self.current = self.current()
+        self.next_rank = self.next_rank()
+        self.first_rank = self.first_rank()
+
+    def toJSON(self):
+        return {
+            'race': json.dumps(self.race, default=lambda o: o.__dict__),
+            'current': json.dumps(self.current, default=lambda o: o.__dict__),
+            'next_rank': json.dumps(self.next_rank, default=lambda o: o.__dict__),
+            'first_rank': json.dumps(self.first_rank, default=lambda o: o.__dict__)
+        }
+
+    def __repr__(self):
+        return json.dumps(self.toJSON())
 
 @catchLogExceptionsWrapper
 def build_atomic_results(rhDataObj, params):
@@ -991,6 +1050,117 @@ def calc_team_leaderboard(racecontext):
         return leaderboard_output
     return None
 
+def calc_coop_leaderboard(racecontext):
+    '''Calculates and returns co-op-racing info.'''
+    raceObj = racecontext.race
+    time_format = racecontext.serverconfig.get_item('UI', 'timeFormat')
+    # Uses current results cache / requires calc_leaderboard to have been run prior
+    race_format = raceObj.format
+
+    if raceObj.results:
+        results = raceObj.results['by_race_time']
+
+        coopGroup = {}
+
+        for line in results:
+            contributing = 0
+            if race_format and race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                if line['laps'] >= 3:
+                    contributing = 1
+            else:
+                # race_format.win_condition == WinCondition.MOST_LAPS or \
+                # race_format.win_condition == WinCondition.FIRST_TO_LAP_X or \
+                # race_format.win_condition == WinCondition.FASTEST_LAP:
+                if line['laps'] > 0:
+                    contributing = 1
+
+            if coopGroup:
+                coopGroup['contributing'] += contributing
+                coopGroup['members'] += 1
+                coopGroup['laps'] += line['laps']
+                coopGroup['total_time_raw'] += line['total_time_raw']
+                if line['total_time_raw'] > coopGroup['coop_total_time_raw']:
+                    coopGroup['coop_total_time_raw'] = line['total_time_raw']  # track last lap
+                    coopGroup['coop_total_time'] = line['total_time']
+                if line['average_lap_raw']:
+                    coopGroup['combined_average_lap_raw'] += line['average_lap_raw']
+                if line['fastest_lap_raw']:
+                    coopGroup['combined_fastest_lap_raw'] += line['fastest_lap_raw']
+                if line['consecutives_raw']:
+                    coopGroup['combined_consecutives_raw'] += line['consecutives_raw']
+            else:
+                coopGroup['contributing'] = contributing
+                coopGroup['members'] = 1
+                coopGroup['laps'] = line['laps']
+                coopGroup['total_time_raw'] = line['total_time_raw']
+                coopGroup['coop_total_time_raw'] = line['total_time_raw']
+                coopGroup['coop_total_time'] = line['total_time']
+                coopGroup['combined_average_lap_raw'] = line['average_lap_raw']
+                coopGroup['combined_fastest_lap_raw'] = line['fastest_lap_raw']
+                coopGroup['combined_consecutives_raw'] = line['consecutives_raw']
+
+        contribution_amt = 0
+        average_lap_raw = 0
+        average_fastest_lap_raw = 0
+        average_consecutives_raw = 0
+        if coopGroup['contributing']:
+            if coopGroup['members']:
+                contribution_amt = float(coopGroup['contributing']) / coopGroup['members']
+            if coopGroup['combined_average_lap_raw']:
+                average_lap_raw = float(coopGroup['combined_average_lap_raw']) / coopGroup['contributing']
+            if coopGroup['combined_fastest_lap_raw']:
+                average_fastest_lap_raw = float(coopGroup['combined_fastest_lap_raw']) / coopGroup['contributing']
+            if coopGroup['combined_consecutives_raw']:
+                average_consecutives_raw = float(coopGroup['combined_consecutives_raw']) / coopGroup['contributing']
+
+        leaderboard = [{
+            'name': "Group",
+            'contributing': coopGroup['contributing'],
+            'members': coopGroup['members'],
+            'contribution_amt': contribution_amt,
+            'laps': coopGroup['laps'],
+            'total_time_raw': coopGroup['total_time_raw'],
+            'coop_total_time_raw': coopGroup['coop_total_time_raw'],
+            'coop_total_time': coopGroup['coop_total_time'],
+            'average_lap_raw': average_lap_raw,
+            'average_fastest_lap_raw': average_fastest_lap_raw,
+            'average_consecutives_raw': average_consecutives_raw,
+            'total_time': RHUtils.format_time_to_str(coopGroup['total_time_raw'], time_format),
+            'average_lap': RHUtils.format_time_to_str(average_lap_raw, time_format),
+            'average_fastest_lap': RHUtils.format_time_to_str(average_fastest_lap_raw, time_format),
+            'average_consecutives': RHUtils.format_time_to_str(average_consecutives_raw, time_format),
+        }]
+
+        leaderboard_output = {
+            'by_race_time': leaderboard
+        }
+
+        if race_format:
+            if race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                primary_leaderboard = 'by_avg_consecutives'
+            elif race_format.win_condition == WinCondition.FASTEST_LAP:
+                primary_leaderboard = 'by_avg_fastest_lap'
+            else:
+                # WinCondition.NONE
+                # WinCondition.MOST_LAPS
+                # WinCondition.FIRST_TO_LAP_X
+                primary_leaderboard = 'by_race_time'
+
+            leaderboard_output['meta'] = {
+                'primary_leaderboard': primary_leaderboard,
+                'win_condition': race_format.win_condition,
+                'coopGroup': coopGroup
+            }
+        else:
+            leaderboard_output['meta'] = {
+                'primary_leaderboard': 'by_race_time',
+                'win_condition': WinCondition.NONE,
+                'coopGroup': coopGroup
+            }
+
+        return leaderboard_output
+    return None
+
 def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
     if class_id:
         race_class = racecontext.rhdata.get_raceClass(class_id)
@@ -1007,65 +1177,6 @@ def calc_class_ranking_leaderboard(racecontext, race_class=None, class_id=None):
             logger.warning("{} uses unsupported ranking method: {}".format(race_class.display_name, race_class.win_condition))
 
     return False
-
-class LapInfo():
-    class race:
-        total_pilots: None
-        lap_max: None
-        consecutives_base: None
-        win_condition = None
-        best_lap: None
-        best_lap_callsign: None
-        split_count: None
-
-    class current:
-        pilot_id = None
-        seat = None
-        position = None
-        callsign = None
-        lap_number = None
-        last_lap_time = None
-        total_time = None
-        total_time_laps = None
-        consecutives = None
-        is_best_lap = None
-        lap_list = None
-
-    class next_rank:
-        pilot_id = None
-        seat = None
-        position = None
-        callsign = None
-        diff_time = None
-        lap_number = None
-        last_lap_time = None
-        total_time = None
-
-    class first_rank:
-        pilot_id = None
-        seat = None
-        position = None
-        callsign = None
-        lap_number = None
-        last_lap_time = None
-        total_time = None
-
-    def __init__(self):
-        self.race = self.race()
-        self.current = self.current()
-        self.next_rank = self.next_rank()
-        self.first_rank = self.first_rank()
-
-    def toJSON(self):
-        return {
-            'race': json.dumps(self.race, default=lambda o: o.__dict__),
-            'current': json.dumps(self.current, default=lambda o: o.__dict__),
-            'next_rank': json.dumps(self.next_rank, default=lambda o: o.__dict__),
-            'first_rank': json.dumps(self.first_rank, default=lambda o: o.__dict__)
-        }
-
-    def __repr__(self):
-        return json.dumps(self.toJSON())
 
 def get_gap_info(racecontext, seat_index):
     ''' Assembles current lap information for OSD '''
@@ -1229,7 +1340,7 @@ def check_win_condition_result(racecontext, **kwargs):
     race_format = raceObj.format
     if race_format:
         consecutivesCount = rhDataObj.get_optionInt('consecutivesCount', 3)
-        if race_format.team_racing_mode:
+        if race_format.team_racing_mode == RacingMode.TEAM_ENABLED:
             if race_format.win_condition == WinCondition.MOST_PROGRESS:
                 return check_win_team_laps_and_time(racecontext, **kwargs)
             elif race_format.win_condition == WinCondition.MOST_LAPS:
@@ -1242,6 +1353,13 @@ def check_win_condition_result(racecontext, **kwargs):
                 return check_win_team_fastest_consecutive(racecontext, consecutivesCount, **kwargs)
             elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
                 return check_win_team_laps_and_overtime(racecontext, **kwargs)
+        elif race_format.team_racing_mode == RacingMode.COOP_ENABLED:
+            if race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
+                return check_win_coop_first_to_x(racecontext, **kwargs)
+#             elif race_format.win_condition == WinCondition.MOST_LAPS:
+#                 return check_win_coop_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs)
+#             elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
+#                 return check_win_coop_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
         else:
             if race_format.win_condition == WinCondition.MOST_PROGRESS:
                 return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
@@ -1954,6 +2072,22 @@ def check_win_team_fastest_consecutive(racecontext, consecutivesCount, **kwargs)
                     'max_consideration': max_consideration
                 }
 
+    return {
+        'status': WinStatus.NONE
+    }
+
+def check_win_coop_first_to_x(racecontext, **kwargs):
+    raceObj = racecontext.race
+    if raceObj.format.number_laps_win:  # must have laps > 0 to win
+        leaderboard_output = calc_coop_leaderboard(racecontext)
+        coop_leaderboard = leaderboard_output.get('by_race_time') if leaderboard_output else None
+        if coop_leaderboard and len(coop_leaderboard) > 0:
+            coop_laps = coop_leaderboard[0].get('laps')
+            if type(coop_laps) is int and coop_laps >= raceObj.format.number_laps_win:  # lap passes win threshold
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': coop_leaderboard[0]
+                }
     return {
         'status': WinStatus.NONE
     }
