@@ -1,6 +1,6 @@
 import logging
 import json
-from RHUtils import catchLogExceptionsWrapper, cleanVarName
+from RHUtils import catchLogExceptionsWrapper, cleanVarName, getNumericEntry
 from eventmanager import Evt
 from typing import List
 from RHUI import UIField
@@ -64,7 +64,7 @@ class EventActions:
 
     def runEffect(self, action, args):
         self.logger.debug("Calling effect '{}', node {}".format(action, \
-                            ((args.get('node_index', -1) + 1) if isinstance(args, dict) else 0)))
+                            getNumericEntry(args, 'node_index', -1) + 1))
         self.effects[action['effect']].runEffect(action, args)
 
 class ActionEffect():

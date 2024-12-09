@@ -1326,7 +1326,7 @@ class RHRace():
                     self._racecontext.events.trigger(Evt.RACE_WIN, {
                         'win_status': win_status_dict,
                         'message': self.status_message,
-                        'node_index': win_data.get('node', None),
+                        'node_index': win_data.get('node', -1),
                         'color': self.seat_colors[win_data['node']] \
                                                 if 'node' in win_data else None,
                         })

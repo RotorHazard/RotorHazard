@@ -3519,9 +3519,10 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             if 'pilot_id' in args:
                 pilot = rhapi.db.pilot_by_id(args['pilot_id'])
             else:
-                pilot = rhapi.db.pilot_by_id(rhapi.race.pilots[args['node_index']])
-            pilot_name_str = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
-            text = text.replace('%PILOT%', pilot_name_str)
+                pilot = rhapi.db.pilot_by_id(rhapi.race.pilots.get(args['node_index']))
+            if pilot:
+                pilot_name_str = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
+                text = text.replace('%PILOT%', pilot_name_str)
 
         if '%FASTEST_RACE_LAP' in text:
             fastest_race_lap_data = race_results.get('meta', {}).get('fastest_race_lap_data')
@@ -3621,12 +3622,13 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             text = text.replace('%CURRENT_TIME_SECS_24%', now_obj.strftime("%H:%M:%S"))
 
         leaderboard = None
-        if 'node_index' in args and '%' in text:
+        node_idx_val = RHUtils.getNumericEntry(args, 'node_index', -1)
+        if node_idx_val >= 0 and '%' in text:
             lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
             leaderboard = race_results.get(lboard_name, [])
 
             for result in leaderboard:
-                if result.get('node') == args['node_index']:
+                if result.get('node') == node_idx_val:
                     # %LAP_COUNT% : Current lap number
                     text = text.replace('%LAP_COUNT%', str(result.get('laps')))
 

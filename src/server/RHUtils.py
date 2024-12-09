@@ -10,6 +10,7 @@ import subprocess
 import glob
 import socket
 import random
+import numbers
 import functools
 import traceback
 import util.RH_GPIO as RH_GPIO
@@ -373,6 +374,14 @@ def hslToHex(h, s, l):
 # converts hexadecimal to int color
 def hexToColor(hexColor):
     return int(hexColor.replace('#', ''), 16)
+
+# Fetches and returns numeric value from Dict, or default if unable
+def getNumericEntry(srcDict, keyObj, defaultVal=0):
+    if isinstance(srcDict, dict):
+        val = srcDict.get(keyObj)
+        if isinstance(val, numbers.Real):
+            return val
+    return defaultVal
 
 # Attempts to launch a web browser on host system
 def launchBrowser(hostStr, httpPortNum=0, pageNameStr=None, launchCmdStr=None):
