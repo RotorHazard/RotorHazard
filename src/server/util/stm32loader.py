@@ -889,7 +889,7 @@ def flash_file_to_stm32(portStr, srcStr):
                     Console_output_fn("Activating bootloader")
                     bootloaderObj.reset_from_system_memory()
                 except CommandError:
-                    Console_output_fn("Can't init into bootloader - ensure that Boot0 jumper is installed and RH server is not running")
+                    Console_output_fn("Can't init into bootloader - try installing Boot0 jumper")
                     Console_output_fn("Resetting BPill via GPIO")
                     reset_to_run()
                     return False
