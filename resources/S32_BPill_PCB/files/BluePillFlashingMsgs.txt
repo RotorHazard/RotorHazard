@@ -1,0 +1,16 @@
+Performing S32_BPill update, port='/dev/ttyAMA0', file: http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin
+
+Downloading file data from: http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin
+Downloaded 22096 bytes
+stm32loader using port /dev/ttyAMA0
+Activated bootloader
+Device bootloader version: 0x22
+Device chip id: 0x410 (STM32F10x Medium-density)
+Device UID: FF34-066A-39345041-57242111
+Flash size: 64 KiB
+Erasing memory
+Write 87 chunks at address 0x8000000...
+Read 87 chunks at address 0x8000000...
+Verification OK
+
+Node update succeeded; restarting interface
