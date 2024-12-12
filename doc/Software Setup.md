@@ -311,7 +311,7 @@ See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) sect
 Additional LED effects for a two-dimensional LED display (panel) are available by installing image manipulation libraries.
 ```
 sudo apt-get install libjpeg-dev
-pip install pillow==9.5.0
+pip install pillow
 sudo apt-get install libopenjp2-7-dev
 ```
 
