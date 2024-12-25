@@ -122,9 +122,7 @@
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
-		if ('{{ getConfig('TIMING', 'calibrationMode') }}' == '1') {
-			$('#set_calibrationMode').val(1);
-		}
+		$('#set_calibrationMode').val( {{ getConfig('TIMING', 'calibrationMode') }} );
 
 		if ('{{ getOption('pilotSort') }}' == 'callsign') {
 			$('#set_pilotSort').val('callsign');
@@ -1864,8 +1862,9 @@
 					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
 				</div>
 				<select id="set_calibrationMode" class="set-config" data-section="TIMING" data-key="calibrationMode">
-					<option value="0">{{ __('Manual') }}</option>
-					<option value="1">{{ __('Adaptive') }}</option>
+					{% for calibration_method in calibration_methods %}
+					<option value="{{ loop.index - 1 }}">{{ calibration_method }}</option>
+					{% endfor %}
 				</select>
 			</li>
 			<li>

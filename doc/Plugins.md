@@ -12,6 +12,7 @@
     - [LED Effects](#led-effects)
     - [Data Exporters](#data-exporters)
     - [Data Importers](#data-importers)
+    - [Node Calibration](#node-calibration)
     - [UI Fields](#ui-fields)
     - [Metadata](#metadata)
 
@@ -456,6 +457,86 @@ The `import_fn` receives as arguments:
 - `rhapi` (RHAPI): the RHAPI class
 - `data` (any): data to import, provided by the user
 - `args` (dict): collated default and locally-provided arguments
+
+
+### Node Calibration
+
+Allows to extend RotorHazrd built-in calibration methods.
+A user may select calibration method in the UI in the sensor tuning tab at the drop-down list called "Calibation Mode".
+
+![Calibration Mode Selection](img/CalibrationMethodSelection.png)
+
+_CalibrationMethods_ must be registered before use. Access to registration is provided though the `register_fn` argument of the `Evt.CALIBRATION_INITIALIZE` event.
+Plugin authors are expected to extend _CalibrationMethod_ class and pass an instance of it to the `register_fn` handler. 
+
+For example, calibration method might be registered with the following code:
+
+```python
+from eventmanager import Evt
+from calibration import CalibrationMethod
+
+class MyCalibrationMethod(CalibrationMethod):
+    def __init__(self):
+        super().__init__("My Calibration Method")
+
+    def calibrate(self, rhapi, node, seat_index):
+        # Your calibration implementation
+
+def register_handlers(args):
+    args['register_fn'](
+        MyCalibrationMethod()
+    )
+
+def initialize(rhapi):
+    rhapi.events.on(Evt.CALIBRATION_INITIALIZE, register_handlers)
+```
+
+Two built-in calibration methods are defined and always preregistered:
+- AdaptiveCalibrationMethod
+- ManualCalibrationMethod
+
+If plugin authors would like to reuse the behavior of these built-in calibration method behaviors - they may achieve so by composition.
+
+For example:
+```python
+from eventmanager import Evt
+from calibration import CalibrationMethod, AdaptiveCalibrationMethod
+
+class MyCalibrationMethod(CalibrationMethod):
+    def __init__(self):
+        super().__init__("My Calibration Method")
+        self.adaptive_calibration = AdaptiveCalibrationMethod()
+
+    def calibrate(self, rhapi, node, seat_index):
+        calibration_thresholds = self.adaptive_calibration.calibrate(rhapi, node, seat_index)
+        if calibration_thresholds is None:
+            # Your calibration logic in case, adaptive calibration was unable to find any calibration values
+
+def register_handlers(args):
+    args['register_fn'](
+        MyCalibrationMethod()
+    )
+
+def initialize(rhapi):
+    rhapi.events.on(Evt.CALIBRATION_INITIALIZE, register_handlers)
+
+```
+
+#### CalibrationMethod class
+The main calibration extension point is the CalibrationMethod class.
+
+All CalibrationMethods must have a name, normally passed to super-class constructor.
+In addition to name, plugin authors, registering CalibrationMethod class are expected to provide implementation to method `calibrate()`.
+
+`calibrate()` receives three arguments:
+- _rhapi_ - instance of RotorHazard API
+- _node_ - instance of node which is being calibrated
+- _seat_index_ - seat index of the pilot for the heat being calibrated currently
+
+`calibrate()` method is expected to return a Dict consisting of to keys: "enter_at_value" and "exit_at_value".
+These keys should have integer typed values which will be used for setting the cooresponding thresholds.
+If the method is unable to find good calibration values - `None` may be returned to indicate that.
+This allows either for fallback to manual configuration values, or, when methods are being used in composition to each other - indicate that some other method should be used.
 
 
 ### UI Fields

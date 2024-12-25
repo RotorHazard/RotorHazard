@@ -6,7 +6,131 @@ import RHUtils
 from eventmanager import Evt
 from RHUtils import catchLogExceptionsWrapper
 
+FALLBACK_CALIBRATION_METHOD_ID = 0 # Manual
+
 logger = logging.getLogger(__name__)
+
+
+class CalibrationMethod:
+    def __init__(self, name):
+        self.name = name
+
+    def calibrate(self, rhapi, node, seat_index):
+        """ Calibration method suggests CalibrationResult to use """
+        pass
+
+class AdaptiveCalibrationMethod(CalibrationMethod):
+    def __init__(self):
+        super().__init__("Adaptive")
+
+    def calibrate(self, rhapi, node, seat_index):
+        ''' Search race history for best tuning values '''
+        if rhapi.race.current_heat == RHUtils.HEAT_ID_NONE:
+            logger.debug('Skipping auto calibration; server in practice mode')
+            return None
+
+        # get commonly used values
+        heat = rhapi.rhdata.get_heat(rhapi.race.current_heat)
+        pilot = rhapi.rhdata.get_pilot_from_heatNode(rhapi.race.current_heat, seat_index)
+        current_class = heat.class_id
+        races = rhapi.rhdata.get_savedRaceMetas()
+        races.sort(key=lambda x: x.id, reverse=True)
+        pilotRaces = rhapi.rhdata.get_savedPilotRaces()
+        pilotRaces.sort(key=lambda x: x.id, reverse=True)
+
+        # test for disabled node
+        if pilot is RHUtils.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
+            logger.debug('Node {0} calibration: skipping disabled node'.format(node.index+1))
+            return {
+                'enter_at_level': node.enter_at_level,
+                'exit_at_level': node.exit_at_level
+            }
+
+        # test for same heat, same node
+        for race in races:
+            if race.heat_id == heat.id:
+                for pilotRace in pilotRaces:
+                    if pilotRace.race_id == race.id and \
+                        pilotRace.node_index == seat_index and \
+                        pilotRace.frequency == node.frequency:
+                        logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
+                        return {
+                            'enter_at_level': pilotRace.enter_at,
+                            'exit_at_level': pilotRace.exit_at
+                        }
+                break
+
+        # test for same class, same pilot, same node
+        for race in races:
+            if race.class_id == current_class:
+                for pilotRace in pilotRaces:
+                    if pilotRace.race_id == race.id and \
+                        pilotRace.node_index == seat_index and \
+                        pilotRace.pilot_id == pilot and \
+                        pilotRace.frequency == node.frequency:
+                        logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
+                        return {
+                            'enter_at_level': pilotRace.enter_at,
+                            'exit_at_level': pilotRace.exit_at
+                        }
+                break
+
+        # test for same pilot, same node
+        for pilotRace in pilotRaces:
+            if pilotRace.node_index == seat_index and \
+                pilotRace.pilot_id == pilot and \
+                pilotRace.frequency == node.frequency:
+                logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
+                return {
+                    'enter_at_level': pilotRace.enter_at,
+                    'exit_at_level': pilotRace.exit_at
+                }
+
+        # test for same node
+        for pilotRace in pilotRaces:
+            if pilotRace.node_index == seat_index and \
+                pilotRace.frequency == node.frequency:
+                logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
+                return {
+                    'enter_at_level': pilotRace.enter_at,
+                    'exit_at_level': pilotRace.exit_at
+                }
+
+        return None
+
+class ManualCalibrationMethod(CalibrationMethod):
+    def __init__(self):
+        super().__init__("Manual")
+
+    def calibrate(self, _rhapi, node, _seat_index):
+        return {
+            'enter_at_level': node.enter_at_level,
+            'exit_at_level': node.exit_at_level
+        }
+
+class CalibrationMethodsManager:
+    def __init__(self, Events):
+        self._methods = []
+
+        # preregister adaptive calibration method
+        self.registerMethod(ManualCalibrationMethod())
+        self.registerMethod(AdaptiveCalibrationMethod())
+
+        Events.trigger(Evt.CALIBRATION_INITIALIZE, {
+            'register_fn': self.registerMethod
+        })
+
+
+    def registerMethod(self, method):
+        if isinstance(method, CalibrationMethod):
+            self._methods.append(method)
+            logger.info(f"Registered {method.name} calibration method")
+        else:
+            logger.warning('Invalid method')
+
+    def get_registered_methods(self):
+        registered_methods = map(lambda m: m.name, self._methods)
+        return registered_methods
 
 class Calibration:
     def __init__(self, racecontext):
@@ -102,12 +226,8 @@ class Calibration:
             else:
                 self.set_exit_at_level(idx, self._racecontext.interface.nodes[idx].exit_at_level)
 
-    def auto_calibrate(self):
+    def calibrate_nodes(self):
         ''' Apply best tuning values to nodes '''
-        if self._racecontext.race.current_heat == RHUtils.HEAT_ID_NONE:
-            logger.debug('Skipping auto calibration; server in practice mode')
-            return None
-
         for seat_index, node in enumerate(self._racecontext.interface.nodes):
             calibration = self.find_best_calibration_values(node, seat_index)
 
@@ -121,80 +241,21 @@ class Calibration:
         self._racecontext.rhui.emit_enter_and_exit_at_levels()
 
     def find_best_calibration_values(self, node, seat_index):
-        ''' Search race history for best tuning values '''
+        calibration_methods = self._racecontext.calibration_method_manager._methods
+        fallback_calibration_method = calibration_methods[FALLBACK_CALIBRATION_METHOD_ID]
+        calibration_method_id = self._racecontext.serverconfig.get_item_int('TIMING', 'calibrationMode')
 
-        # get commonly used values
-        heat = self._racecontext.rhdata.get_heat(self._racecontext.race.current_heat)
-        pilot = self._racecontext.rhdata.get_pilot_from_heatNode(self._racecontext.race.current_heat, seat_index)
-        current_class = heat.class_id
-        races = self._racecontext.rhdata.get_savedRaceMetas()
-        races.sort(key=lambda x: x.id, reverse=True)
-        pilotRaces = self._racecontext.rhdata.get_savedPilotRaces()
-        pilotRaces.sort(key=lambda x: x.id, reverse=True)
+        # Verify configuration values
+        if calibration_method_id < 0 or calibration_method_id >= len(calibration_methods):
+            logger.warning(f"Unexpected calibration method selected: {calibration_method_id}. Falling back to manual control")
+            return fallback_calibration_method.calibrate(self._racecontext, node, seat_index)
 
-        # test for disabled node
-        if pilot is RHUtils.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
-            logger.debug('Node {0} calibration: skipping disabled node'.format(node.index+1))
-            return {
-                'enter_at_level': node.enter_at_level,
-                'exit_at_level': node.exit_at_level
-            }
+        # Attempt to derive calibration values via selected calibration method
+        calibration_method = calibration_methods[calibration_method_id];
+        logger.debug(f"Attempting to use {calibration_method.name} calibration method for deriving calibration values")
+        calib = calibration_method.calibrate(self._racecontext, node, seat_index)
+        if calib is None:
+            logger.debug('Node {0} calibration: no calibration hints found, no change'.format(node.index+1))
+            return fallback_calibration_method.calibrate(self._racecontext, node, seat_index)
 
-        # test for same heat, same node
-        for race in races:
-            if race.heat_id == heat.id:
-                for pilotRace in pilotRaces:
-                    if pilotRace.race_id == race.id and \
-                        pilotRace.node_index == seat_index and \
-                        pilotRace.frequency == node.frequency:
-                        logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
-                        return {
-                            'enter_at_level': pilotRace.enter_at,
-                            'exit_at_level': pilotRace.exit_at
-                        }
-                break
-
-        # test for same class, same pilot, same node
-        for race in races:
-            if race.class_id == current_class:
-                for pilotRace in pilotRaces:
-                    if pilotRace.race_id == race.id and \
-                        pilotRace.node_index == seat_index and \
-                        pilotRace.pilot_id == pilot and \
-                        pilotRace.frequency == node.frequency:
-                        logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
-                        return {
-                            'enter_at_level': pilotRace.enter_at,
-                            'exit_at_level': pilotRace.exit_at
-                        }
-                break
-
-        # test for same pilot, same node
-        for pilotRace in pilotRaces:
-            if pilotRace.node_index == seat_index and \
-                pilotRace.pilot_id == pilot and \
-                pilotRace.frequency == node.frequency:
-                logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
-                return {
-                    'enter_at_level': pilotRace.enter_at,
-                    'exit_at_level': pilotRace.exit_at
-                }
-
-        # test for same node
-        for pilotRace in pilotRaces:
-            if pilotRace.node_index == seat_index and \
-                pilotRace.frequency == node.frequency:
-                logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
-                return {
-                    'enter_at_level': pilotRace.enter_at,
-                    'exit_at_level': pilotRace.exit_at
-                }
-
-        # fallback
-        logger.debug('Node {0} calibration: no calibration hints found, no change'.format(node.index+1))
-        return {
-            'enter_at_level': node.enter_at_level,
-            'exit_at_level': node.exit_at_level
-        }
-
-    
+        return calib

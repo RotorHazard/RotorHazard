@@ -1785,9 +1785,7 @@ class RHRace():
                         self._racecontext.rhui.emit_current_laps()
                         logger.info("Forcing race format from class setting: '{0}' ({1})".format(self.format.name, self.format.id))
 
-                adaptive = bool(self._racecontext.serverconfig.get_item_int('TIMING', 'calibrationMode'))
-                if adaptive:
-                    self._racecontext.calibration.auto_calibrate()
+                self._racecontext.calibration.calibrate_nodes()
 
             self.updateSeatColors()
 
