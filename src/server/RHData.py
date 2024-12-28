@@ -965,6 +965,10 @@ class RHData():
                     heatNode.pilot_id = RHUtils.PILOT_ID_NONE
             self.commit()
 
+            self._Events.trigger(Evt.PILOT_DELETE, {
+                'pilot_id': pilot.id,
+                })
+
             logger.info('Pilot {0} deleted'.format(pilot.id))
 
             self._racecontext.race.clear_results() # refresh leaderboard
