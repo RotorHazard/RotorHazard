@@ -403,20 +403,20 @@ def _do_calc_leaderboard(racecontext, **params):
         do_gevent_sleep()
 
         # Get the total race time for each pilot
-        laps_total = 0
+        l_time_total = 0
         for lap in result_pilot['pilot_crossings']:
-            laps_total += lap.lap_time
-        result_pilot['total_time'] = laps_total
-        result_pilot['total_time_laps'] = laps_total
+            l_time_total += lap.lap_time
+        result_pilot['total_time'] = round(l_time_total, 3)
 
         if len(result_pilot['pilot_crossings']) != len(result_pilot['pilot_laps']):
-            result_pilot['total_time_laps'] -= result_pilot['pilot_crossings'][0].lap_time
+            l_time_total -= result_pilot['pilot_crossings'][0].lap_time
+        result_pilot['total_time_laps'] = round(l_time_total, 3)
 
         if result_pilot['laps']:
             # Get the last lap for each pilot
             result_pilot['last_lap'] = result_pilot['pilot_laps'][-1].lap_time
             # Get the average lap time for each pilot
-            result_pilot['average_lap'] = result_pilot['total_time_laps'] / result_pilot['laps']
+            result_pilot['average_lap'] = round(result_pilot['total_time_laps'] / result_pilot['laps'], 3)
             # Get the fastest lap time for each pilot
             result_pilot['fastest_lap'] = sorted(result_pilot['pilot_laps'], key=lambda val: val.lap_time)[0].lap_time
             # Set lap source info
@@ -442,7 +442,7 @@ def _do_calc_leaderboard(racecontext, **params):
                         ldr_lap_ts = ldr_lap.lap_time_stamp
                         cur_lap_ts = current_lap.lap_time_stamp
                         if cur_lap_ts > ldr_lap_ts:
-                            result_pilot['time_behind'] = (cur_lap_ts - ldr_lap_ts)
+                            result_pilot['time_behind'] = round(cur_lap_ts - ldr_lap_ts, 3)
 
                 do_gevent_sleep(0)
 
@@ -469,7 +469,7 @@ def _do_calc_leaderboard(racecontext, **params):
             # Sort consecutives
             all_consecutives.sort(key = lambda x: (-x['laps'], not bool(x['time']), x['time']))
 
-            result_pilot['consecutives'] = all_consecutives[0]['time']
+            result_pilot['consecutives'] = round(all_consecutives[0]['time'], 3)
             result_pilot['consecutives_base'] = all_consecutives[0]['laps']
             result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
 
@@ -862,19 +862,19 @@ def calc_team_leaderboard(racecontext):
         leaderboard = []
         for team in teams:
             contribution_amt = float(teams[team]['contributing']) / teams[team]['members']
-
             average_lap_raw = 0
             average_fastest_lap_raw = 0
             average_consecutives_raw = 0
             if teams[team]['contributing']:
                 if teams[team]['combined_average_lap_raw']:
-                    average_lap_raw = float(teams[team]['combined_average_lap_raw']) / teams[team]['contributing']
+                    average_lap_raw = round(float(teams[team]['combined_average_lap_raw']) / teams[team]['contributing'], 3)
 
                 if teams[team]['combined_fastest_lap_raw']:
-                    average_fastest_lap_raw = float(teams[team]['combined_fastest_lap_raw']) / teams[team]['contributing']
+                    average_fastest_lap_raw = round(float(teams[team]['combined_fastest_lap_raw']) / teams[team]['contributing'], 3)
 
                 if teams[team]['combined_consecutives_raw']:
-                    average_consecutives_raw = float(teams[team]['combined_consecutives_raw']) / teams[team]['contributing']
+                    average_consecutives_raw = round(float(teams[team]['combined_consecutives_raw']) / teams[team]['contributing'], 3)
+            teams[team]['total_time_raw'] = round(teams[team]['total_time_raw'], 3)
 
             leaderboard.append({
                 'name': team,
