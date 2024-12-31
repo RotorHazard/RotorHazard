@@ -1,12 +1,12 @@
 # Flask
-Flask==3.0.*
-itsdangerous==2.1.*
+Flask==3.1.*
+itsdangerous==2.2.*
 Jinja2==3.1.*
-Werkzeug==3.0.*
-MarkupSafe==2.1.*
+Werkzeug==3.1.*
+MarkupSafe==3.0.*
 
 # Socket
-Flask-SocketIO==5.3.*
+Flask-SocketIO==5.4.*
 python-socketio==5.8.*
 python-engineio==4.4.*
 websocket-client==1.5.*
@@ -15,11 +15,11 @@ websocket-client==1.5.*
 SQLAlchemy==2.0.*
 
 # gevent
-gevent==23.9.*
+gevent==24.11.*
 gevent-websocket==0.10.*
-greenlet==3.0.*
+greenlet==3.1.*
 cffi==1.17.*
 
 # Other
-pyserial==3.4.*
+pyserial==3.5.*
 requests==2.32.*

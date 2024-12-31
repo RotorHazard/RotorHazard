@@ -363,7 +363,7 @@ cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be moved or deleted.
 
-For RotorHazard the minimum version of Python supported is 3.8. If the installed version is Python 3.7 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
+For RotorHazard the minimum version of Python supported is 3.9. If the installed version is Python 3.7 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
 
 The RotorHazard server dependencies will also need to be updated (be patient, this command may take a few minutes):
 ```
@@ -380,7 +380,7 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 **To install the RotorHazard server on these systems:**
 
-1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.8. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
+1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.9. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
 
 2. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 
