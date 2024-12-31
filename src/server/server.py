@@ -1144,6 +1144,7 @@ def on_add_heat(data=None):
     else:
         RaceContext.rhdata.add_heat()
     RaceContext.rhui.emit_heat_data()
+    RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('duplicate_heat')
 @catchLogExcWithDBWrapper
@@ -1182,8 +1183,10 @@ def on_alter_heat(data):
             RaceContext.rhui.emit_result_data() # live update rounds page
             message = __('Alterations made to heat: {0}').format(heat.display_name)
             RaceContext.rhui.emit_priority_message(message, False)
-    else:
+    else:        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
         RaceContext.rhui.emit_heat_data()
+    RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('delete_heat')
 @catchLogExcWithDBWrapper
@@ -1197,6 +1200,7 @@ def on_delete_heat(data):
         if RaceContext.race.current_heat == heat_id:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
             RaceContext.race.set_heat(RHUtils.HEAT_ID_NONE)
         RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('add_race_class')
 @catchLogExcWithDBWrapper
@@ -1879,6 +1883,9 @@ def on_set_race_format(data):
         race_format_val = data['race_format']
         RaceContext.race.format = RaceContext.rhdata.get_raceFormat(race_format_val)
 
+        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+
         Events.trigger(Evt.RACE_FORMAT_SET, {
             'race_format': race_format_val,
             })
@@ -1910,6 +1917,10 @@ def on_alter_race_format(data):
 
     if race_format != False:
         RaceContext.race.format = race_format
+        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+        RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_status()
         RaceContext.rhui.emit_current_laps()
 
         if 'format_name' in data:
@@ -1927,12 +1938,19 @@ def on_alter_race_format(data):
 @catchLogExcWithDBWrapper
 def on_delete_race_format(data):
     '''Delete race format'''
-    format_id = data['format_id']
-    result = RaceContext.rhdata.delete_raceFormat(format_id)
-
-    if result:
-        first_raceFormat = RaceContext.rhdata.get_first_raceFormat()
-        RaceContext.race.format = first_raceFormat
+    format_id = data.get('format_id', 0)
+    if RaceContext.rhdata.delete_raceFormat(format_id):
+        # if current race format was deleted then select previous race format in list, or first if not found
+        if RaceContext.race.format and hasattr(RaceContext.race.format, 'id') and \
+                                        RaceContext.race.format.id == format_id:
+            new_raceFormat = RaceContext.rhdata.get_raceFormat(format_id - 1 if format_id > 0 else 0)
+            if not new_raceFormat:
+                new_raceFormat = RaceContext.rhdata.get_first_raceFormat()
+            RaceContext.race.format = new_raceFormat
+        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+        RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_status()
         RaceContext.rhui.emit_current_laps()
         RaceContext.rhui.emit_format_data()
     else:
@@ -2229,6 +2247,7 @@ def on_confirm_heat(data):
 def on_set_current_heat(data):
     '''Update the current heat variable and data.'''
     RaceContext.race.set_heat(data['heat'])
+    RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -3599,6 +3618,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # make event actions available to cluster/secondary timers
         RaceContext.cluster.setEventActionsObj(EventActionsObj)
+
+        # put time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
 
 RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
 RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions

@@ -16,6 +16,7 @@
 	var request_time;
 	var request_pi_time;
 	var resume_check = true;
+	var leaderboard_current_flag = true;
 
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
@@ -181,6 +182,18 @@
 			}
 		}
 
+		function any_laps_recorded() {
+			if (current_laps && 'node_index' in current_laps) {
+				for (var node_i in current_laps.node_index) {
+					if ('laps' in current_laps.node_index[node_i] &&
+							current_laps.node_index[node_i].laps.length > 0) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
@@ -192,6 +205,7 @@
 
 		socket.on('race_status', function (msg) {
 			rotorhazard.event.race_status = msg;
+			rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
 
 			switch (msg.race_status) {
 				case 1: // Race running
@@ -200,6 +214,10 @@
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					if (msg.show_init_time_flag) {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
 					if (resume_check) {
 						race_kickoff(msg);
 					}
@@ -224,6 +242,16 @@
 					$('body').removeClass('race-stopped');
 					$('body').addClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					if (msg.show_init_time_flag) {
+						if ((!leaderboard_current_flag) || (!any_laps_recorded())) {
+							rotorhazard.timer.deferred.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+							rotorhazard.timer.race.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+						}
+					} else {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
+					rotorhazard.timer.deferred.renderHTMLandUpdate();
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}
@@ -419,11 +447,12 @@
 				} else {
 					$('.current-heat').html(msg.current.displayname);
 				}
-
 				$('#next-race').slideDown();
+				leaderboard_current_flag = false;
 			} else {
 				var race = msg.current;
 				$('#next-race').slideUp();
+				leaderboard_current_flag = true;
 			}
 
 			if (race.round) {

@@ -761,6 +761,7 @@ function timerModel() {
 	this.time_staging_tenths = null; // staging-relative time
 	this.count_up = false; // use fixed-length timer
 	this.duration_tenths = 0; // fixed-length duration, in tenths
+	this.initial_disp_tenths = null; // time value to show before start
 	this.has_looped = false; // prevent expire callbacks until timer runs 1 loop
 	this.allow_expire = false; // prevent multiple expire callbacks
 
@@ -944,22 +945,32 @@ function timerModel() {
 		if (self.callbacks.stop instanceof Function) {
 			self.callbacks.stop(this);
 		}
+		this.time = 0;  // clear to make sure sure 'Ready' message doesn't get stuck showing on timer
 	}
 
 	this.renderHTML = function() {
+		var active_time_tenths = 0;
 		if (this.local_zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
-			return '--:--';
+			if (this.initial_disp_tenths) {
+				active_time_tenths = this.initial_disp_tenths;
+			} else {
+				return '--:--';
+			}
+		} else {
+			this.initial_disp_tenths = null;
 		}
 
 		if (this.hidden_staging && this.time < 0) {
 			return __l('Ready');
 		}
 
-		var active_time_tenths = this.time_tenths;
+		if (!active_time_tenths) {
+			active_time_tenths = this.time_tenths;
 
-		// hold timer during prestage
-		if (this.phased_staging && this.time_staging_tenths < 0) {
-			active_time_tenths = Math.trunc((this.local_staging_start_time - this.local_zero_time) / 100);
+			// hold timer during prestage
+			if (this.phased_staging && this.time_staging_tenths < 0) {
+				active_time_tenths = Math.trunc((this.local_staging_start_time - this.local_zero_time) / 100);
+			}
 		}
 
 		var active_time_s = Math.trunc(active_time_tenths / 10);
@@ -985,6 +996,10 @@ function timerModel() {
 		} else {
 			return sign + minute + ':' + second + '.' + decimal;
 		}
+	}
+
+	this.renderHTMLandUpdate = function() {
+		$('.time-display').html(this.renderHTML());
 	}
 }
 

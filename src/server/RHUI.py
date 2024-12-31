@@ -515,7 +515,8 @@ class RHUI():
                 'staging_tones': 0,
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
-                'pi_staging_at_s': self._racecontext.race.stage_time_monotonic
+                'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
+                'show_init_time_flag': self._racecontext.race.show_init_time_flag
             }
         if class_id and race_class.round_type == RoundType.GROUPED:
             emit_payload['next_round'] = heat.group_id + 1

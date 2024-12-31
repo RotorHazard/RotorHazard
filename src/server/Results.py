@@ -1107,11 +1107,12 @@ def calc_coop_leaderboard(racecontext):
             if coopGroup['members']:
                 contribution_amt = float(coopGroup['contributing']) / coopGroup['members']
             if coopGroup['combined_average_lap_raw']:
-                average_lap_raw = float(coopGroup['combined_average_lap_raw']) / coopGroup['contributing']
+                average_lap_raw = round(float(coopGroup['combined_average_lap_raw']) / coopGroup['contributing'], 3)
             if coopGroup['combined_fastest_lap_raw']:
-                average_fastest_lap_raw = float(coopGroup['combined_fastest_lap_raw']) / coopGroup['contributing']
+                average_fastest_lap_raw = round(float(coopGroup['combined_fastest_lap_raw']) / coopGroup['contributing'], 3)
             if coopGroup['combined_consecutives_raw']:
-                average_consecutives_raw = float(coopGroup['combined_consecutives_raw']) / coopGroup['contributing']
+                average_consecutives_raw = round(float(coopGroup['combined_consecutives_raw']) / coopGroup['contributing'], 3)
+        coopGroup['coop_total_time_raw'] = round(coopGroup['coop_total_time_raw'], 3)
 
         leaderboard = [{
             'name': "Group",

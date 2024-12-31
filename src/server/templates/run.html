@@ -388,6 +388,10 @@
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					if (msg.show_init_time_flag) {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
 					if (resume_check) {
 						race_kickoff(msg);
 					}
@@ -439,7 +443,16 @@
 					$('body').addClass('race-new');
 					$('.timing-clock').removeClass('staging');
 					rotorhazard.timer.race.stop();
-					rotorhazard.timer.race.renderHTML();
+					if (msg.show_init_time_flag) {
+						if (!any_laps_recorded()) {
+							rotorhazard.timer.deferred.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+							rotorhazard.timer.race.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+						}
+					} else {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
+					rotorhazard.timer.deferred.renderHTMLandUpdate();
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}

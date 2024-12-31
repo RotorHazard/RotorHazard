@@ -66,6 +66,7 @@ class RHRace():
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
         self.unlimited_time = True
         self.race_time_sec = 0
+        self.show_init_time_flag = False  # True show 'race_time_sec' value on initial Run-page timer display (if nonzero)
         self.coop_best_time = 0.0  # best time achieved in co-op racing mode (seconds)
         self.coop_num_laps = 0     # best # of laps in co-op racing mode
         self.node_laps = {} # current race lap objects, by node
@@ -246,14 +247,7 @@ class RHRace():
                 self.status_message = ''
                 self.any_races_started = True
 
-                self.unlimited_time = race_format.unlimited_time
-                self.race_time_sec = race_format.race_time_sec
-                if heat_data and race_format and race_format.team_racing_mode == RacingMode.COOP_ENABLED:
-                    self._racecontext.rhdata.get_heat_coop_values(heat_data, self)
-                    if race_format.win_condition == WinCondition.FIRST_TO_LAP_X and \
-                                    self.coop_best_time and self.coop_best_time > 0.001:
-                        self.unlimited_time = False
-                        self.race_time_sec = round(self.coop_best_time, 1)
+                self.set_race_format_time_fields(race_format, heat_data)
 
                 self.init_node_finished_flags(heatNodes)
 
@@ -328,6 +322,24 @@ class RHRace():
 
             else:
                 logger.info("Attempted to stage race while status is not 'ready'")
+
+    def set_race_format_time_fields(self, race_format, heat_data):
+        if race_format:
+            self.unlimited_time = race_format.unlimited_time
+            self.race_time_sec = race_format.race_time_sec
+            # handle special case where co-op mode uses best-time value from heat:
+            if race_format.team_racing_mode == RacingMode.COOP_ENABLED:
+                if heat_data:
+                    self._racecontext.rhdata.get_heat_coop_values(heat_data, self)
+                    if race_format.win_condition == WinCondition.FIRST_TO_LAP_X and \
+                                self.coop_best_time and self.coop_best_time > 0.001:
+                        self.unlimited_time = False
+                        self.race_time_sec = round(self.coop_best_time, 1)
+                self.show_init_time_flag = True  # show 'race_time_sec' value on initial Run-page timer display (if nonzero)
+            else:
+                self.show_init_time_flag = False
+        else:
+            self.show_init_time_flag = False
 
 
     @catchLogExceptionsWrapper
@@ -640,6 +652,10 @@ class RHRace():
 
             if self.format.team_racing_mode == RacingMode.COOP_ENABLED:
                 self._racecontext.rhdata.update_heat_coop_values(heat, self.coop_best_time, self.coop_num_laps)
+                # keep time fields in the current race in sync with the current race format
+                self.set_race_format_time_fields(self.format, self.current_heat)
+                self._racecontext.rhui.emit_heat_data()    # update displayed values
+                self._racecontext.rhui.emit_race_status()
 
             result = self.get_results()
             if heat_result:
@@ -1862,6 +1878,9 @@ class RHRace():
             self.finalize_heat_set(new_heat_id, mute_event=mute_event)
         elif result == 'no-heat':
             self.finalize_heat_set(RHUtils.HEAT_ID_NONE, mute_event=mute_event)
+
+        # keep time fields in the current race in sync with the current race format
+        self.set_race_format_time_fields(self.format, heat)
 
     def finalize_heat_set(self, new_heat_id, mute_event=False): #finalize_current_heat_set
         if self.race_status == RaceStatus.READY:
