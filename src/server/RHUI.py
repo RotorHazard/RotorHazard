@@ -900,7 +900,9 @@ class RHUI():
             current_heat['status'] = heat.status
             current_heat['auto_frequency'] = heat.auto_frequency
             current_heat['active'] = heat.active
-            current_heat['coop_best_time'] = heat.coop_best_time
+            current_heat['coop_best_time'] = RHUtils.format_secs_to_duration_str(heat.coop_best_time) \
+                                    if isinstance(heat.coop_best_time, (int, float)) and \
+                                                        heat.coop_best_time >= 0.001 else ''
             current_heat['coop_num_laps'] = heat.coop_num_laps
             current_heat['next_round'] = self._racecontext.rhdata.get_max_round(heat.id)
 
@@ -1207,7 +1209,8 @@ class RHUI():
         else:
             self._socket.emit('current_heat', emit_payload)
 
-    def emit_phonetic_data(self, pilot_id, lap_id, lap_time, team_phonetic, leader_flag=False, node_finished=False, node_index=None, **params):
+    def emit_phonetic_data(self, pilot_id, lap_id, lap_time, team_phonetic, leader_flag=False, \
+                           node_finished=False, node_index=None, team_short_phonetic=None, **params):
         '''Emits phonetic data.'''
         raw_time = lap_time
         phonetic_time = RHUtils.format_phonetic_time_to_str(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
@@ -1217,6 +1220,7 @@ class RHUI():
             'raw_time': raw_time,
             'phonetic': phonetic_time,
             'team_phonetic' : team_phonetic,
+            'team_short_phonetic': team_short_phonetic,
             'leader_flag' : leader_flag,
             'node_finished': node_finished,
         }

@@ -1248,7 +1248,7 @@ class RHData():
         if 'active' in data:
             heat.active = data['active']
         if 'coop_best_time' in data:
-            heat.coop_best_time = data['coop_best_time']
+            heat.coop_best_time = RHUtils.parse_duration_str_to_secs(data['coop_best_time'])
         if 'coop_num_laps' in data:
             heat.coop_num_laps = data['coop_num_laps']
 
@@ -2882,6 +2882,7 @@ class RHData():
             'format_name': self.__("Co-op Fastest Time to 7 Laps"),
             'unlimited_time': 1,
             'race_time_sec': 0,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
@@ -2893,29 +2894,16 @@ class RHData():
             'points_method': None
         })
         self.add_format({
-            'format_name': self.__("Co-op Most Laps in Race Time"),
+            'format_name': self.__("Co-op Most Laps in 2:30"),
             'unlimited_time': 0,
             'race_time_sec': 150,
+            'lap_grace_sec': -1,
             "staging_fixed_tones": 3,
             'start_delay_min_ms': 1000,
             'start_delay_max_ms': 0,
             'staging_delay_tones': 2,
             'number_laps_win': 0,
-            'win_condition': WinCondition.MOST_LAPS,
-            'team_racing_mode': RacingMode.COOP_ENABLED,
-            'start_behavior': 0,
-            'points_method': None
-        })
-        self.add_format({
-            'format_name': self.__("Co-op Most Laps - Finish Laps"),
-            'unlimited_time': 0,
-            'race_time_sec': 150,
-            "staging_fixed_tones": 3,
-            'start_delay_min_ms': 1000,
-            'start_delay_max_ms': 0,
-            'staging_delay_tones': 2,
-            'number_laps_win': 0,
-            'win_condition': WinCondition.MOST_LAPS_OVERTIME,
+            'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': RacingMode.COOP_ENABLED,
             'start_behavior': 0,
             'points_method': None
@@ -3588,20 +3576,21 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
 def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
     if '%' in text:
         race_results = rhapi.race.results
+        heat_data = None
 
         # %HEAT% : Current heat name or ID value
         if '%HEAT%' in text:
             if 'heat_id' in args:
-                heat = rhapi.db.heat_by_id(args['heat_id'])
+                heat_data = rhapi.db.heat_by_id(args['heat_id'])
             else:
-                heat = rhapi.db.heat_by_id(rhapi.race.heat)
+                heat_data = rhapi.db.heat_by_id(rhapi.race.heat)
 
             heat_name = None
-            if heat:
+            if heat_data:
                 if spoken_flag:
-                    heat_name = heat.display_name_short
+                    heat_name = heat_data.display_name_short
                 else:
-                    heat_name = heat.display_name
+                    heat_name = heat_data.display_name
 
             if not heat_name:
                 heat_name = rhapi.__('None')
@@ -3676,10 +3665,10 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
         # %RACE_FORMAT% : Current race format
         if '%RACE_FORMAT%' in text:
             format_obj = rhapi.race.raceformat
-            if format_obj:
-                text = text.replace('%RACE_FORMAT%', format_obj.name)
-                text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
-                text = text.replace('/', ' ')
+            fmt_str = getattr(format_obj, 'name', '') if format_obj else ''
+            text = text.replace('%RACE_FORMAT%', fmt_str)
+            text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
+            text = text.replace('/', ' ')
 
         # %PILOTS% : List of pilot callsigns (read out slower)
         if '%PILOTS%' in text:
@@ -3729,32 +3718,32 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                     # %TOTAL_TIME% : Total time since start of race for pilot
                     text = text.replace('%TOTAL_TIME%', RHUtils.format_phonetic_time_to_str( \
                         result.get('total_time_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('total_time', '')))
+                                            if spoken_flag else str(result.get('total_time', '')))
 
                     # %TOTAL_TIME_LAPS%: Total time since start of first lap for pilot
                     text = text.replace('%TOTAL_TIME_LAPS%', RHUtils.format_phonetic_time_to_str( \
                         result.get('total_time_laps_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('total_time_laps', '')))
+                                            if spoken_flag else str(result.get('total_time_laps', '')))
 
                     # %LAST_LAP% : Last lap time for pilot
                     text = text.replace('%LAST_LAP%', RHUtils.format_phonetic_time_to_str( \
                         result.get('last_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('last_lap', '')))
+                                            if spoken_flag else str(result.get('last_lap', '')))
 
                     # %AVERAGE_LAP% : Average lap time for pilot
                     text = text.replace('%AVERAGE_LAP%', RHUtils.format_phonetic_time_to_str( \
                         result.get('average_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('average_lap', '')))
+                                            if spoken_flag else str(result.get('average_lap', '')))
 
                     # %FASTEST_LAP% : Fastest lap time
                     text = text.replace('%FASTEST_LAP%', RHUtils.format_phonetic_time_to_str( \
                         result.get('fastest_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('fastest_lap', '')))
+                                            if spoken_flag else str(result.get('fastest_lap', '')))
 
                     if '%TIME_BEHIND' in text:
                         behind_str = RHUtils.format_phonetic_time_to_str( \
                             result.get('time_behind_raw', ''), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                            if spoken_flag else str(result.get('time_behind', ''))
+                                                if spoken_flag else str(result.get('time_behind', ''))
                         pos_bhind_str = ''
                         if behind_str:
                             # %TIME_BEHIND% : Amount of time behind race leader
@@ -3857,6 +3846,50 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                         delay_sec_holder.append(float(num_str))
                     text = text[(len(num_str)+vlen):].strip()
 
+        # %COOP_RACE_INFO% : Co-op race mode information (target time or laps)
+        if '%COOP_RACE_INFO%' in text:
+            format_obj = rhapi.race.raceformat
+            info_str = ''
+            if format_obj and format_obj.team_racing_mode == RacingMode.COOP_ENABLED:
+                if not heat_data:
+                    if 'heat_id' in args:
+                        heat_data = rhapi.db.heat_by_id(args['heat_id'])
+                    else:
+                        heat_data = rhapi.db.heat_by_id(rhapi.race.heat)
+                if heat_data:
+                    if format_obj.win_condition == WinCondition.FIRST_TO_LAP_X:
+                        if heat_data.coop_best_time and heat_data.coop_best_time > 0.001:
+                            c_time_ms = int(round(heat_data.coop_best_time,1)*1000)
+                            c_time_str = RHUtils.format_phonetic_time_to_str(c_time_ms, \
+                                        rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                                        if spoken_flag else RHUtils.format_time_to_str(c_time_ms, \
+                                                            rhapi.config.get_item('UI', 'timeFormat'))
+                            info_str = rhapi.__('target time is') + ' ' + c_time_str
+                        else:
+                            info_str = rhapi.__('benchmark race')
+                    else:
+                        if heat_data.coop_num_laps and heat_data.coop_num_laps > 0:
+                            info_str = rhapi.__('target laps is') + ' ' + str(heat_data.coop_num_laps)
+                        else:
+                            info_str = rhapi.__('benchmark race')
+            text = text.replace('%COOP_RACE_INFO%', info_str)
+
+        # %COOP_RACE_LAP_TOTALS% : Pilot lap counts for race in co-op mode
+        if '%COOP_RACE_LAP_TOTALS%' in text:
+            format_obj = rhapi.race.raceformat
+            totals_str = ''
+            if format_obj and format_obj.team_racing_mode == RacingMode.COOP_ENABLED:
+                if not leaderboard:
+                    lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
+                    leaderboard = race_results.get(lboard_name, [])
+                totals_str = getPilotLapsStr(rhapi, ' , ', spoken_flag, leaderboard)
+            text = text.replace('%COOP_RACE_LAP_TOTALS%', totals_str)
+
+        # %RACE_RESULT% : Race result status message (race winner or co-op result)
+        if '%RACE_RESULT%' in text:
+            result_str = rhapi.race.phonetic_status_msg if spoken_flag else rhapi.race.status_message
+            text = text.replace('%RACE_RESULT%', result_str if result_str else '')
+
     return text
 
 def heatNodeSorter( x):
@@ -3900,6 +3933,24 @@ def getPilotFreqsStr(rhapi, sep_str, spoken_flag):
                         else:
                             pilots_str += sep_str
                         pilots_str += text + ': ' + freq
+    return pilots_str
+
+def getPilotLapsStr(rhapi, sep_str, spoken_flag, leaderboard):
+    pilots_str = ''
+    first_flag = True
+    for result in leaderboard:
+        pilot_obj = rhapi.db.pilot_by_id(result.get('pilot_id'))
+        if pilot_obj:
+            text = pilot_obj.spoken_callsign if spoken_flag else pilot_obj.display_callsign
+            if text:
+                lap_count = result.get('laps')
+                if lap_count:
+                    if first_flag:
+                        first_flag = False
+                    else:
+                        pilots_str += sep_str
+                    pilots_str += text + ' ' + rhapi.__('had') + ' ' + str(lap_count) + ' ' + \
+                                      (rhapi.__('laps') if str(lap_count) != '1' else rhapi.__('lap'))
     return pilots_str
 
 def get_position_place_str(rhapi, pos_str):

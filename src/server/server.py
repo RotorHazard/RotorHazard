@@ -1919,12 +1919,12 @@ def on_alter_race_format(data):
         RaceContext.race.format = race_format
         # keep time fields in the current race in sync with the current race format
         RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+        RaceContext.rhui.emit_format_data()
         RaceContext.rhui.emit_heat_data()
         RaceContext.rhui.emit_race_status()
         RaceContext.rhui.emit_current_laps()
 
         if 'format_name' in data:
-            RaceContext.rhui.emit_format_data()
             RaceContext.rhui.emit_class_data()
 
         if len(race_list):

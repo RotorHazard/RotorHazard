@@ -514,7 +514,11 @@
 					if (msg.team_phonetic && rotorhazard.voice_team_lap_count != 0) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
-						ttstext += msg.team_phonetic;
+						if (rotorhazard.voice_team_lap_count == 2 && msg.team_short_phonetic) {
+							ttstext += msg.team_short_phonetic;
+						} else {
+							ttstext += msg.team_phonetic;
+						}
 					}
 	
 					if (ttstext.length > 0) {
@@ -928,6 +932,7 @@
 					<select id="voice_team_lap_count">
 						<option value="0">{{ __('Never') }}</option>
 						<option value="1">{{ __('On Team/Co-op Races') }}</option>
+						<option value="2">{{ __('On Team/Co-op Races (short call)') }}</option>
 					</select>
 				</li>
 				<li>

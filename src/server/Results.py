@@ -1357,10 +1357,8 @@ def check_win_condition_result(racecontext, **kwargs):
         elif race_format.team_racing_mode == RacingMode.COOP_ENABLED:
             if race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
                 return check_win_coop_first_to_x(racecontext, **kwargs)
-#             elif race_format.win_condition == WinCondition.MOST_LAPS:
-#                 return check_win_coop_most_laps(raceObj, rhDataObj, interfaceObj, **kwargs)
-#             elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
-#                 return check_win_coop_laps_and_overtime(raceObj, rhDataObj, interfaceObj, **kwargs)
+            else:
+                return check_win_coop_most_laps(racecontext, **kwargs)
         else:
             if race_format.win_condition == WinCondition.MOST_PROGRESS:
                 return check_win_laps_and_time(raceObj, interfaceObj, **kwargs)
@@ -2087,8 +2085,28 @@ def check_win_coop_first_to_x(racecontext, **kwargs):
             if type(coop_laps) is int and coop_laps >= raceObj.format.number_laps_win:  # lap passes win threshold
                 return {
                     'status': WinStatus.DECLARED,
-                    'data': coop_leaderboard[0]
+                    'data': coop_leaderboard[0],
+                    'race_win_event_flag': False  # don't trigger RACE_WIN event on co-op race
                 }
+    return {
+        'status': WinStatus.NONE
+    }
+
+def check_win_coop_most_laps(racecontext, **kwargs):
+    raceObj = racecontext.race
+    if (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
+                        raceObj.race_status == RaceStatus.DONE or 'at_finish' in kwargs:
+        if isinstance(raceObj.coop_num_laps, (int, float)):
+            leaderboard_output = calc_coop_leaderboard(racecontext)
+            coop_leaderboard = leaderboard_output.get('by_race_time') if leaderboard_output else None
+            if coop_leaderboard and len(coop_leaderboard) > 0:
+                coop_laps = coop_leaderboard[0].get('laps')
+                if type(coop_laps) is int and coop_laps > 0:  # at least one co-op lap results in "winner" condition
+                    return {
+                        'status': WinStatus.DECLARED,
+                        'data': coop_leaderboard[0],
+                        'race_win_event_flag': False  # don't trigger RACE_WIN event on co-op race
+                    }
     return {
         'status': WinStatus.NONE
     }
