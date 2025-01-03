@@ -1,6 +1,7 @@
 # ClusterNodeSet:  Manages a set of secondary nodes
 
 import logging
+import copy
 import gevent
 import json
 import socketio
@@ -716,12 +717,17 @@ class ClusterNodeSet:
         try:
             # if there are cluster timers interested in events then emit it out to them
             if self.hasRecEventsSecondaries():
-                payload = { 'evt_name': args['_eventName'] }
-                del args['_eventName']
-                for arg in args:
-                    if isinstance(args[arg], Crossing):
-                        args[arg] = asdict(args[arg])
-                payload['evt_args'] = json.dumps(args, default=lambda _: '<not serializiable>')
+                payload = {
+                    'evt_name': args['_eventName'],
+                    'evt_args': {}
+                }
+                for key, val in payload['evt_args'].items():
+                    if key is not '_eventName':
+                        if isinstance(val, Crossing):
+                            payload['evt_args'][key] = asdict(val)
+                        else:
+                            payload['evt_args'][key] = copy.deepcopy(val)
+                payload['evt_args'] = json.dumps(payload['evt_args'], default=lambda _: '<not serializiable>')
                 self.emitEventTrigger(payload)
         except:
             logger.exception("Exception in 'Events.trigger()'")
