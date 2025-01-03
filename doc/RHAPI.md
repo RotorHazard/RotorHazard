@@ -585,6 +585,7 @@ Race classes are represented with the `RaceClass` class, which has the following
 - `_rank_status`: Internal use only
 - `rounds` (int): Number of expected/planned rounds each heat will be run
 - `heat_advance_type` (HeatAdvanceType): Method used for automatic heat advance
+- `round_type` (RoundType): Method used for determining round groupings
 - `order` (int): Not yet implemented
 - `active` (boolean): Not yet implemented
 
@@ -620,7 +621,7 @@ ID of race classes with attribute matching the specified attribute/value combina
 - `name` (string): attribute to match
 - `value` (string): value to match
 
-#### db.raceclass_add(name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None)
+#### db.raceclass_add(name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, round_type=None)
 Add a new race class to the database. Returns the new `RaceClass`.
 - `name` _(optional)_ (string): Name for new race class
 - `description` _(optional)_ (string): Description for new race class
@@ -628,12 +629,13 @@ Add a new race class to the database. Returns the new `RaceClass`.
 - `win_condition` _(optional)_ (string): Class ranking identifier to assign
 - `rounds` _(optional)_ (int): Number of rounds to assign to race class
 - `heat_advance_type` _(optional)_ (HeatAdvanceType): Advancement method to assign to race class
-
+- `round_type` _(optional)_ (RoundType): Method used for determining round groupings
+- 
 #### db.raceclass_duplicate(source_class_or_id)
 Duplicate a race class. Returns the new `RaceClass`.
 - `source_class_or_id` (int|RaceClass): Either a race class object or the ID of a race class
 
-#### db.raceclass_alter(raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, rank_settings=None, attributes=None)
+#### db.raceclass_alter(raceclass_id, name=None, description=None, raceformat=None, win_condition=None, rounds=None, heat_advance_type=None, round_type=None, rank_settings=None, attributes=None)
 Alter race class data. Returns tuple of this `RaceClass` and affected races as `list[SavedRace]`.
 - `raceclass_id` (int): ID of race class to alter
 - `name` _(optional)_ (string): Name for new race class
@@ -642,6 +644,7 @@ Alter race class data. Returns tuple of this `RaceClass` and affected races as `
 - `win_condition` _(optional)_ (string): Class ranking identifier to assign
 - `rounds` _(optional)_ (int): Number of rounds to assign to race class
 - `heat_advance_type` _(optional)_ (HeatAdvanceType): Advancement method to assign to race class
+- `round_type` _(optional)_ (RoundType): Method used for determining round groupings- 
 - `rank_settings` _(optional)_ (dict): arguments to pass to class ranking
 - `attributes` _(optional)_ (dict): Attributes to alter, attribute values assigned to respective keys
 
