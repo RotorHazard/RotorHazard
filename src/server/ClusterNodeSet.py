@@ -717,12 +717,13 @@ class ClusterNodeSet:
         try:
             # if there are cluster timers interested in events then emit it out to them
             if self.hasRecEventsSecondaries():
+                # move eventName out of args payload and don't try to send callable objects
                 payload = {
                     'evt_name': args['_eventName'],
                     'evt_args': {}
                 }
-                for key, val in payload['evt_args'].items():
-                    if key is not '_eventName':
+                for key, val in args.items():
+                    if key is not '_eventName' and not callable(val):
                         if isinstance(val, Crossing):
                             payload['evt_args'][key] = asdict(val)
                         else:
