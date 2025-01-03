@@ -456,6 +456,7 @@ def render_settings():
                            cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
                            node_fw_updatable=(RaceContext.interface.get_fwupd_serial_name()!=None),
                            is_raspberry_pi=RHUtils.is_sys_raspberry_pi(),
+                           calibration_methods=RaceContext.calibration_method_manager.get_registered_methods(),
                            Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
 @APP.route('/streams')
@@ -2072,8 +2073,7 @@ def on_resave_laps(data):
     logger.info(message)
 
     # run adaptive calibration
-    if RaceContext.serverconfig.get_item_int('TIMING', 'calibrationMode'):
-        RaceContext.calibration.auto_calibrate()
+    RaceContext.calibration.calibrate_nodes()
 
     if RaceContext.last_race and RaceContext.last_race.db_id == race_id:
         RaceContext.last_race.results = RaceContext.rhdata.get_results_savedRaceMeta(race_id)
@@ -3441,6 +3441,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
             init_LED_effects()
         else:
             RaceContext.led_manager = NoLEDManager()
+
+        # Calibration methods manager
+        RaceContext.calibration_method_manager = calibration.CalibrationMethodsManager(Events)
 
         # leaderboard ranking managers
         RaceContext.race_points_manager = Results.RacePointsManager(RHAPI, Events)

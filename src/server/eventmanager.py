@@ -192,4 +192,6 @@ class Evt:
     ACTIONS_INITIALIZE = 'actionsInitialize'
     DATA_IMPORT_INITIALIZE = 'Import_Initialize'
     DATA_EXPORT_INITIALIZE = 'Export_Initialize'
+    # Calibration
+    CALIBRATION_INITIALIZE = 'Calibration_Initialize'
 
