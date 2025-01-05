@@ -17,6 +17,7 @@
 # Local system configuration
 /src/server/config*.json
 /src/tests/config*.json
+datapath.ini
 
 # Run logs
 logs

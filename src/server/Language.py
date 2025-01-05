@@ -12,7 +12,7 @@ class Language():
 
     def __init__(self, racecontext):
         self._racecontext = racecontext
-        self._language_file = racecontext.serverstate.data_dir + '/language.json'
+        self._language_file = racecontext.serverstate.program_dir + '/language.json'
 
         self._InitResultStr = None
         self._InitResultLogLevel = logging.INFO

@@ -15,6 +15,7 @@ CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to no
 CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
 CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
 CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
+CMDARG_DATA_DIR = '--data'               # use given dir as data location
 
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
@@ -65,11 +66,44 @@ import werkzeug
 from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
 
+PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+# determine data location, with priority to:
+# 1 --data command-line arg
+# 2 datapath.ini
+# 3 current working dir
+if __name__ == '__main__' and len(sys.argv) > 1 and CMDARG_DATA_DIR in sys.argv:
+    data_dir_arg_idx = sys.argv.index(CMDARG_DATA_DIR) + 1
+    if data_dir_arg_idx < len(sys.argv):
+        if os.path.exists(sys.argv[data_dir_arg_idx]):
+            os.chdir(sys.argv[data_dir_arg_idx])
+        else:
+            print("Unable to find given data location: {0}".format(sys.argv[data_dir_arg_idx]))
+            sys.exit(1)
+    else:
+        print("Usage: python server.py --data {0}".format(CMDARG_DATA_DIR))
+        sys.exit(1)
+else:
+    try:
+        with open(PROGRAM_DIR + '/datapath.ini', 'r') as f:
+            data_path = f.readline().strip()
+            if os.path.exists(data_path):
+                os.chdir(data_path)
+            else:
+                print("datapath.ini points to an invalid system location.")
+                sys.exit(1)
+    except IOError:
+        # missing file is valid
+        pass
+    except Exception as ex:
+        print("datapath.ini is invalid; error is: " + str(ex))
+        sys.exit(1)
+
 DATA_DIR = os.getcwd()
+
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 _DB_URI = 'sqlite:///' + os.path.join(DATA_DIR, DB_FILE_NAME)
-PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 sys.path.append(PROGRAM_DIR + '/util')
 
