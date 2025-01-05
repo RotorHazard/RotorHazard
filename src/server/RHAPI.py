@@ -1331,6 +1331,13 @@ class ServerAPI():
     def seat_color_defaults(self):
         return self._racecontext.serverstate.seat_color_defaults
 
+    @property
+    def program_dir(self):
+        return self._racecontext.serverstate.program_dir
+
+    @property
+    def data_dir(self):
+        return self._racecontext.serverstate.data_dir
 
 #
 # Filters

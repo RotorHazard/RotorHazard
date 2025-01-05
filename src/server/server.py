@@ -65,10 +65,13 @@ import werkzeug
 from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
 from flask_socketio import SocketIO, emit
 
-BASEDIR = os.getcwd()
+DATA_DIR = os.getcwd()
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
-_DB_URI = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
+_DB_URI = 'sqlite:///' + os.path.join(DATA_DIR, DB_FILE_NAME)
+PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+sys.path.append(PROGRAM_DIR + '/util')
 
 APP = Flask(__name__, static_url_path='/static')
 APP.app_context().push()
@@ -110,7 +113,7 @@ from filtermanager import Flt, FilterManager
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern
 
-sys.path.append('../interface')
+sys.path.append(PROGRAM_DIR + '/../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
 from Plugins import search_modules  #pylint: disable=import-error
@@ -130,6 +133,8 @@ RaceContext.serverstate.program_start_epoch_time = _program_start_epoch_time
 RaceContext.serverstate.program_start_mtonic = _program_start_mtonic
 RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - \
                                                         1000.0*RaceContext.serverstate.program_start_mtonic
+RaceContext.serverstate.data_dir = DATA_DIR
+RaceContext.serverstate.program_dir = PROGRAM_DIR
 
 Events = EventManager(RaceContext)
 RaceContext.events = Events
@@ -278,8 +283,8 @@ def getDefNodeFwUpdateUrl():
             retStr = stm32loader.DEF_BINSRC_STR      # use current "dev" firmware at URL
         else:
             # return path that is up two levels from BASEDIR, and then NODE_FW_PATHNAME
-            retStr = os.path.abspath(os.path.join(os.path.join(os.path.join(BASEDIR, os.pardir), \
-                                                             os.pardir), NODE_FW_PATHNAME))
+            retStr = os.path.abspath(os.path.join(os.path.join(os.path.join(PROGRAM_DIR, os.pardir), \
+                                                               os.pardir), NODE_FW_PATHNAME))
         # check if file with better-matching processor type (i.e., STM32F4) is available
         try:
             curTypStr = RaceContext.interface.nodes[0].firmware_proctype_str if len(RaceContext.interface.nodes) else None
@@ -3032,7 +3037,7 @@ def check_requirements():
         num_mismatched = 0
         num_checked = 0
         req_file_name = "requirements.txt" if RHUtils.is_sys_raspberry_pi() else "reqsNonPi.txt"
-        with open(req_file_name) as rf:
+        with open(PROGRAM_DIR + "/" + req_file_name) as rf:
             for line in rf.readlines():
                 for entry in chk_list:
                     if line.startswith(entry[0]):
@@ -3049,14 +3054,16 @@ def check_requirements():
     
 
 class plugin_class():
-    def __init__(self, name):
+    def __init__(self, name, dir, is_bundled):
         self.name = name
+        self.dir = dir
         self.module = None
         self.meta = None
         self.enabled = True #TODO: remove temporary default-enable of all plugins
         self.loaded = False
         self.load_issue = None
         self.load_issue_detail = None
+        self.is_bundled = is_bundled
 
 def load_plugin(plugin):
     if not plugin.enabled:
@@ -3064,7 +3071,7 @@ def load_plugin(plugin):
         return False
 
     try:
-        with open(F'plugins/{plugin.name}/manifest.json', 'r') as f:
+        with open(F'{plugin.dir}/plugins/{plugin.name}/manifest.json', 'r') as f:
             meta = json.load(f)
 
         if isinstance(meta, dict):
@@ -3191,12 +3198,20 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # Plugin handling
         plugin_modules = []
-        if os.path.isdir('./plugins'):
-            dirs = [f.name for f in os.scandir('./plugins') if f.is_dir()]
+        if os.path.isdir(PROGRAM_DIR + '/plugins'):
+            dirs = [f.name for f in os.scandir(PROGRAM_DIR + '/plugins') if f.is_dir()]
             for name in dirs:
-                plugin_modules.append(plugin_class(name))
+                plugin_modules.append(plugin_class(name, PROGRAM_DIR, True))
         else:
-            logger.warning('No plugins directory found.')
+            logger.warning('No bundled plugins directory found.')
+
+        if PROGRAM_DIR != DATA_DIR:
+            if os.path.isdir(DATA_DIR + '/plugins'):
+                dirs = [f.name for f in os.scandir(DATA_DIR + '/plugins') if f.is_dir()]
+                for name in dirs:
+                    plugin_modules.append(plugin_class(name, DATA_DIR, False))
+            else:
+                logger.notice('No user plugins directory found.')
 
         for plugin in plugin_modules:
             if load_plugin(plugin):

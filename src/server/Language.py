@@ -8,19 +8,18 @@ import io
 logger = logging.getLogger(__name__)
 
 class Language():
-    LANGUAGE_FILE_NAME = 'language.json'
-
     Languages = {}
 
     def __init__(self, racecontext):
         self._racecontext = racecontext
+        self._language_file = racecontext.serverstate.data_dir + '/language.json'
 
         self._InitResultStr = None
         self._InitResultLogLevel = logging.INFO
 
         # Load language file
         try:
-            with io.open(self.LANGUAGE_FILE_NAME, 'r', encoding="utf8") as f:
+            with io.open(self._language_file, 'r', encoding="utf8") as f:
                 self._Languages = json.load(f)
             self._InitResultStr = 'Language file imported'
             self._InitResultLogLevel = logging.DEBUG

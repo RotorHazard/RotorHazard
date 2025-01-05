@@ -1,8 +1,5 @@
 # ButtonInputHandler:  Handler for a button connected to a GPIO input pin
 
-import sys
-sys.path.append('util')  # needed at runtime to find RH_GPIO module
-
 import RH_GPIO  #pylint: disable=import-error
 
 class ButtonInputHandler:
