@@ -952,29 +952,34 @@ class RHData():
     def delete_pilot(self, pilot_or_id):
         pilot = self.resolve_pilot_from_pilot_or_id(pilot_or_id)
 
-        if self.savedPilotRaces_has_pilot(pilot.id):
-            logger.info('Refusing to delete pilot {0}: is in use'.format(pilot.id))
-            return False
+        if pilot:
+            if self.savedPilotRaces_has_pilot(pilot.id):
+                logger.info('Refusing to delete pilot {0}: is in use'.format(pilot.id))
+                return False
+            else:
+                deleted_pilot_id = pilot.id
+
+                for attr in self.get_pilot_attributes(pilot_or_id):
+                    Database.DB_session.delete(attr)
+
+                Database.DB_session.delete(pilot)
+                for heatNode in Database.HeatNode.query.all():
+                    if heatNode.pilot_id == pilot.id:
+                        heatNode.pilot_id = RHUtils.PILOT_ID_NONE
+                self.commit()
+
+                self._Events.trigger(Evt.PILOT_DELETE, {
+                    'pilot_id': deleted_pilot_id,
+                    })
+
+                logger.info('Pilot {0} deleted'.format(deleted_pilot_id))
+
+                self._racecontext.race.clear_results() # refresh leaderboard
+
+                return True
         else:
-            for attr in self.get_pilot_attributes(pilot_or_id):
-                Database.DB_session.delete(attr)
-
-            Database.DB_session.delete(pilot)
-            for heatNode in Database.HeatNode.query.all():
-                if heatNode.pilot_id == pilot.id:
-                    heatNode.pilot_id = RHUtils.PILOT_ID_NONE
-            self.commit()
-
-            self._Events.trigger(Evt.PILOT_DELETE, {
-                'pilot_id': pilot.id,
-                })
-
-            logger.info('Pilot {0} deleted'.format(pilot.id))
-
-            self._racecontext.race.clear_results() # refresh leaderboard
-
-            return True
-
+            logger.info("No pilot to delete")
+            return False
     def get_recent_pilot_node(self, pilot_id):
         return Database.HeatNode.query.filter_by(pilot_id=pilot_id).order_by(Database.HeatNode.id.desc()).first()
 
@@ -1333,6 +1338,8 @@ class RHData():
         # Deletes heat. Returns True if successful, False if not
         heat = self.resolve_heat_from_heat_or_id(heat_or_id)
         if heat:
+            deleted_heat_id = heat.id
+
             heat_count = Database.Heat.query.count()
             heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
 
@@ -1350,10 +1357,10 @@ class RHData():
                     Database.DB_session.delete(heatnode)
                 self.commit()
 
-                logger.info('Heat {0} deleted'.format(heat.id))
+                logger.info('Heat {0} deleted'.format(deleted_heat_id))
 
                 self._Events.trigger(Evt.HEAT_DELETE, {
-                    'heat_id': heat.id,
+                    'heat_id': deleted_heat_id,
                     })
 
                 # if only one heat remaining then set ID to 1
@@ -1979,6 +1986,8 @@ class RHData():
             logger.info('Refusing to delete class {0}: is in use'.format(race_class.id))
             return False
         else:
+            deleted_race_class = race_class.id
+
             for attr in self.get_raceclass_attributes(raceClass_or_id):
                 Database.DB_session.delete(attr)
 
@@ -1990,10 +1999,10 @@ class RHData():
             self.commit()
 
             self._Events.trigger(Evt.CLASS_DELETE, {
-                'class_id': race_class.id,
+                'class_id': deleted_race_class,
                 })
 
-            logger.info('Class {0} deleted'.format(race_class.id))
+            logger.info('Class {0} deleted'.format(deleted_race_class))
 
             return True
 
@@ -2357,11 +2366,12 @@ class RHData():
     def delete_profile(self, profile_or_id):
         if len(self.get_profiles()) > 1: # keep one profile
             profile = self.resolve_profile_from_profile_or_id(profile_or_id)
+            deleted_profile_id = profile.id
             Database.DB_session.delete(profile)
             self.commit()
 
             self._Events.trigger(Evt.PROFILE_DELETE, {
-                'profile_id': profile.id,
+                'profile_id': deleted_profile_id,
                 })
 
             return True
