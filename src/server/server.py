@@ -1573,6 +1573,11 @@ def on_reset_database(data):
         cl_data = { 'with_archive': True, 'reset_type': 'races' }
         RaceContext.cluster.emitToSplits('reset_database', cl_data)
 
+    if with_archive:
+        RaceContext.rhdata.set_option('eventName', RaceContext.rhdata.generate_new_event_name())
+        RaceContext.rhdata.set_option('eventDescription', "")
+        RaceContext.rhui.emit_option_update(['eventName', 'eventDescription'])
+
     emit('reset_confirm')
 
     Events.trigger(Evt.DATABASE_RESET)
