@@ -2116,6 +2116,13 @@
 			socket.emit('delete_database', data);
 		});
 
+		$('button#download_database').click(function (event) {
+			var data = {
+				event_file: $('#database_list').val()
+			};
+			socket.emit('download_database', data);
+		});
+
 		socket.on('reset_confirm', function () {
 			push_message(__('Data Cleared'));
 		});
@@ -2542,6 +2549,7 @@
 		<div class="control-set">
 			<button data-mfp-src="#database_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Event') }}</button>
 			<button data-mfp-src="#database_delete_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Delete Event') }}</button>
+			<button id="download_database">{{ __('Download Event Database') }}</button>
 		</div>
 
 		<div id="database_archive_new_confirm" class="priority-message-interrupt mfp-hide popup">

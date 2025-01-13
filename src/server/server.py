@@ -1388,22 +1388,34 @@ def on_backup_database(*args):
     '''Backup database.'''
     bkp_name = RaceContext.rhdata.backup_db_file(True)  # make copy of DB file
 
+    download_database(bkp_name)
+
+    Events.trigger(Evt.DATABASE_BACKUP, {
+        'file_name': os.path.basename(bkp_name),
+        })
+
+    on_list_backups()
+
+@SOCKET_IO.on('download_database')
+@catchLogExcWithDBWrapper
+def on_download_database(data):
+    '''Download selected event database file.'''
+    if data and data['event_file']:
+        db_file = data['event_file']
+        download_database(db_file)
+
+def download_database(db_file):
     # read DB data and convert to Base64
-    with open(bkp_name, mode='rb') as file_obj:
+    with open(DB_BKP_DIR_NAME + '/' + db_file, mode='rb') as file_obj:
         file_content = file_obj.read()
     file_content = base64.encodebytes(file_content).decode()
 
     emit_payload = {
-        'file_name': os.path.basename(bkp_name),
+        'file_name': os.path.basename(db_file),
         'file_data' : file_content
     }
 
-    Events.trigger(Evt.DATABASE_BACKUP, {
-        'file_name': emit_payload['file_name'],
-        })
-
     emit('database_bkp_done', emit_payload)
-    on_list_backups()
 
 @SOCKET_IO.on('list_backups')
 @catchLogExceptionsWrapper
