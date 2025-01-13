@@ -418,6 +418,24 @@ class RHUI():
         else:
             self._socket.emit('plugin_list', emit_payload)
 
+    def emit_option_update(self, options, **params):
+        option_vals = {}
+        if isinstance(options, str):
+            option_vals[options] = self._racecontext.rhdata.get_option(options)
+
+        if isinstance(options, list):
+            for opt in options:
+                option_vals[opt] = self._racecontext.rhdata.get_option(opt)
+
+        emit_payload = {
+            'options': option_vals
+        }
+
+        if ('nobroadcast' in params):
+            emit('option_update', emit_payload)
+        else:
+            self._socket.emit('option_update', emit_payload)
+
     def emit_heat_plan_result(self, new_heat_id, calc_result):
         heat = self._racecontext.rhdata.get_heat(new_heat_id)
         heatNodes = []

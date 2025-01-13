@@ -162,6 +162,13 @@
 			}
 		});
 
+		socket.on('option_update', function (msg) {
+			for (var key in msg.options) {
+				var val = msg.options[key];
+				$('.set-option[data-option="' + key + '"]').val(val);
+			}
+		});
+
 		$(document).on('change', '.set_ui_option', function (event) {
 			var field = $(this).data('field');
 			var section = $(this).data('section');
