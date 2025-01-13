@@ -3245,7 +3245,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 for name in dirs:
                     plugin_modules.append(plugin_class(name, DATA_DIR, False))
             else:
-                logger.notice('No user plugins directory found.')
+                logger.info('No user plugins directory found.')
 
         for plugin in plugin_modules:
             if load_plugin(plugin):
