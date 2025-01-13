@@ -1,0 +1,68 @@
+{% extends "layout.html" %} {% block title %}{{ __('Home') }}{% endblock %} {% block head %}
+
+<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+
+{% endblock %} {% block content %}
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+	];
+
+	$(document).ready(function () {
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		$(document).on('change', '.set-config', function (event) {
+			var data = {
+				section: $(this).data('section'),
+				key: $(this).data('key'),
+				value: $(this).val()
+			};
+			socket.emit('set_config', data);
+		});
+	});
+</script>
+
+<main class="page-home">
+
+<div class="header">
+	<h1>
+		<div class="rh-logo"></div>
+	</h1>
+</div>
+
+<div class="panel">
+	<div class="panel-header">
+		<h2 style="text-align:center">{{ __("Welcome to RotorHazard!") }}</h2>
+	</div>
+	<div class="panel-content">
+		<p style="text-align:center">{{ __("Please set an admin login.") }}</p>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_admin_user">{{ __('Username') }}</label>
+				</div>
+				<input type="text" id="set_admin_user" class="set-config" data-section="SECRETS" data-key="ADMIN_USERNAME" value="{{ getConfig('SECRETS', 'ADMIN_USERNAME') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_admin_password">{{ __('Password') }}</label>
+					<p class="desc">{{ __('Default') }}: rotorhazard</p>
+				</div>
+				<input type="password" id="set_admin_password" class="set-config" data-section="SECRETS" data-key="ADMIN_PASSWORD" value="***********">
+			</li>
+		</ol>
+
+		<div class="control-set">
+			<a href="/settings" class="button-like">{{ __("Go to Settings") }}</a>
+		</div>
+	</div>
+</div>
+
+</main>
+{% endblock %}

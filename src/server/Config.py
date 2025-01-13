@@ -15,6 +15,7 @@ class Config:
     def __init__(self, racecontext, filename='config.json'):
         self._racecontext = racecontext
         self.filename = filename
+        self.config_file_status = None
 
         self.config = {
             'SECRETS': {},
@@ -70,8 +71,6 @@ class Config:
 
         # other default configurations
         self.config['GENERAL']['HTTP_PORT'] = 5000
-        self.config['GENERAL']['ADMIN_USERNAME'] = 'admin'
-        self.config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
         self.config['GENERAL']['SECONDARIES'] = []
         self.config['GENERAL']['SECONDARY_TIMEOUT'] = 300  # seconds
         self.config['GENERAL']['DEBUG'] = False
@@ -85,6 +84,9 @@ class Config:
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
         self.config['GENERAL']['SERIAL_PORTS'] = []
         self.config['GENERAL']['LAST_MODIFIED_TIME'] = 0
+
+        self.config['SECRETS']['ADMIN_USERNAME'] = 'admin'
+        self.config['SECRETS']['ADMIN_PASSWORD'] = 'rotorhazard'
 
         # UI
         self.config['UI']['timerName'] = "RotorHazard"
@@ -172,7 +174,7 @@ class Config:
             self.InitResultLogLevel = logging.INFO
         except IOError:
             self.config_file_status = 0
-            self.InitResultStr = "No configuration file found, using defaults"
+            self.InitResultStr = "No configuration file found, starting up in first-run mode"
             self.InitResultLogLevel = logging.INFO
         except ValueError as ex:
             self.config_file_status = -1

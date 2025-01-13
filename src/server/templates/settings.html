@@ -2263,6 +2263,19 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
+					<label for="set_admin_user">{{ __('Username') }}</label>
+				</div>
+				<input type="text" id="set_admin_user" class="set-config" data-section="SECRETS" data-key="ADMIN_USERNAME" value="{{ getConfig('SECRETS', 'ADMIN_USERNAME') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_admin_password">{{ __('Password') }}</label>
+					<p class="desc">{{ __('Default') }}: rotorhazard</p>
+				</div>
+				<input type="password" id="set_admin_password" class="set-config" data-section="SECRETS" data-key="ADMIN_PASSWORD" value="**********">
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_language">{{ __('Language') }}</label>
 				</div>
 				<select id="set_language">
