@@ -1211,19 +1211,21 @@ class ServerConfigAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
+    def register_section(self, section):
+        return self._racecontext.serverconfig.register_section(section)
+
     @property
-    def config(self):
+    def all_config(self):
         return copy.deepcopy(self._racecontext.serverconfig.config)
 
-    def get_item(self, section, item, as_int=False):
+    def item(self, section, name, as_int=False):
         if as_int:
-            return self._racecontext.serverconfig.get_item_int(section, item)
+            return self._racecontext.serverconfig.get_item_int(section, name)
         else:
-            return self._racecontext.serverconfig.get_item(section, item)
+            return self._racecontext.serverconfig.get_item(section, name)
 
-
-    def set_item(self, section, item, value):
-        return self._racecontext.serverconfig.set_item(section, item, value)
+    def item_set(self, section, name, value):
+        return self._racecontext.serverconfig.set_item(section, name, value)
 
 
 #
