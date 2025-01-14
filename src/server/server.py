@@ -363,12 +363,26 @@ def check_log_error_alert():
 # Authentication
 #
 
-def check_auth(username, password):
+def check_auth(auth):
     '''Check if a username password combination is valid.'''
-    if username == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') and password == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD'):
-        global Auth_succeeded_flag
+    global Auth_succeeded_flag
+    # allow open access if both ADMIN fields set to empty string:
+    if not RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') and \
+        not RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD'):
         Auth_succeeded_flag = True
         return True
+
+    # allow open access if no config has been set:
+    if RaceContext.serverconfig.config_file_status == 0:
+        Auth_succeeded_flag = True
+        return True
+
+    # allow access if user/password match
+    if auth and auth.username and auth.password:
+        if (auth.username == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') and \
+                auth.password == RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD')):
+            Auth_succeeded_flag = True
+            return True
     return False
 
 def authenticate():
@@ -379,22 +393,12 @@ def authenticate():
         {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
 def requires_auth(f):
-    if RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') or \
-        RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD'):
-        @functools.wraps(f)
-        def decorated_auth(*args, **kwargs):
-            auth = request.authorization
-            if not auth or not check_auth(auth.username, auth.password):
-                return authenticate()
-            return f(*args, **kwargs)
-        return decorated_auth
-    # allow open access if both ADMIN fields set to empty string:
     @functools.wraps(f)
-    def decorated_noauth(*args, **kwargs):
-        global Auth_succeeded_flag
-        Auth_succeeded_flag = True
+    def decorated_auth(*args, **kwargs):
+        if not check_auth(request.authorization):
+            return authenticate()
         return f(*args, **kwargs)
-    return decorated_noauth
+    return decorated_auth
 
 # Flask template render with exception catch, so exception
 # details are sent to the log file (instead of 'stderr').
@@ -419,8 +423,18 @@ def shutdown_session(exception=None):
 @APP.route('/')
 def render_index():
     '''Route to home page.'''
+    if RaceContext.serverconfig.config_file_status == 0:
+        return redirect("/first-run", code=302)
+
     return render_template('home.html', serverInfo=RaceContext.serverstate.template_info_dict,
                            getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+
+@APP.route('/first-run')
+@requires_auth
+def render_welcome():
+    '''Route to first-run (admin) setup.'''
+    RaceContext.serverconfig.config_file_status = 1
+    return render_template('first-run.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
 
 @APP.route('/event')
 def render_event():

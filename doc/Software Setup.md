@@ -151,12 +151,7 @@ pip install -r requirements.txt
 ```
 
 ### 8. Configuration File
-When the RotorHazard server is run for the first time, it will create (in the "src/server" directory) a "config.json" file.  The file will contain default values, including these:
-```
-"ADMIN_USERNAME": "admin",
-"ADMIN_PASSWORD": "rotorhazard"
-```
-These are the login credentials you will need to enter in (to the browser popup window) to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages).
+When the RotorHazard server is run for the first time, it will create (in the data directory) a "config.json" file.
 
 The "config.json" file may be edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running (otherwise the changes will be overwritten). When the server starts up, if it detects that the "config.json" has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
 
@@ -178,6 +173,8 @@ python server.py
 The server may be stopped by hitting Ctrl-C
 
 Once the server is running, its web-GUI interface may be accessed in a browser; see the [Connect to the Server](User%20Guide.md#connect-to-the-server) section in the [User Guide](User%20Guide.md) for more information.
+
+If no configuration file exists when the server is started, RotorHazard will prompt the user to confirm an admin username and password the first time the server frontend is accessed. You will need these credentials to access pages reserved for the race director (i.e., the *Settings* and *Run* pages).
 
 ### Start on Boot
 
