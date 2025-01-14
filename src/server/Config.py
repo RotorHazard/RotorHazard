@@ -271,6 +271,12 @@ class Config:
     def register_section(self, section):
         self.config_sections[section] = {}
 
+    def clean_config(self):
+        config_cleaned = {}
+        for item in self.config_sections:
+            config_cleaned = copy.deepcopy(self.config[item])
+        self.config = config_cleaned
+
     def save_config(self):
         self.config['GENERAL']['LAST_MODIFIED_TIME'] = int(time.time())
         with open(self.filename, 'w') as f:
