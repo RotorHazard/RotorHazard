@@ -100,6 +100,7 @@ else:
         sys.exit(1)
 
 DATA_DIR = os.getcwd()
+logger.info('Data path: {0}'.format(DATA_DIR))
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -222,7 +223,7 @@ if __name__ == '__main__' and len(sys.argv) > 1:
                 flashPillSrcStr = None                       #  unless arg is switch param
             flashPillSuccessFlag = stm32loader.flash_file_to_stm32(flashPillPortStr, flashPillSrcStr)
             sys.exit(0 if flashPillSuccessFlag else 1)
-        elif CMDARG_LAUNCH_B_STR not in sys.argv:
+        elif CMDARG_LAUNCH_B_STR not in sys.argv and CMDARG_DATA_DIR not in sys.argv:
             print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
             sys.exit(1)
 
