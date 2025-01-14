@@ -1427,6 +1427,13 @@ Convert time value from epoch milliseconds to server monotonic seconds, using th
 _Read only_
 List of sensor data. Returns `list[Sensor]`.
 
+#### server.program_dir:
+_Read only_
+System path to server instance. Returns `string`.
+
+#### server.data_dir:
+_Read only_
+System path to user data directory. Returns `string`.
 
 
 ## Utilitites
