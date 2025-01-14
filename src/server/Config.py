@@ -17,7 +17,7 @@ class Config:
         self.filename = filename
         self.config_file_status = None
 
-        self.config = {
+        self.config_sections = {
             'SECRETS': {},
             'GENERAL': {},
             'TIMING': {},
@@ -28,6 +28,8 @@ class Config:
             'LOGGING': {},
             'SENSORS': {},
         }
+
+        self.config = copy.copy(self.config_sections)
 
         # LED strip configuration:
         self.config['LED']['LED_COUNT'] = 0  # Number of LED pixels.
@@ -265,6 +267,9 @@ class Config:
         except:
             return False
         return True
+
+    def register_section(self, section):
+        self.config_sections[section] = {}
 
     def save_config(self):
         self.config['GENERAL']['LAST_MODIFIED_TIME'] = int(time.time())
