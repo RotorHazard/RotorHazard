@@ -3401,12 +3401,15 @@ class RHData():
         # minimum lap
         self.set_option("MinLapSec", "10")
         # event information
-        self.set_option("eventName", "{} {}".format(datetime.now().strftime('%Y-%m-%d'), self.__("FPV Race")))
+        self.set_option("eventName", self.generate_new_event_name())
         self.set_option("eventDescription", "")
         # Event results cache
         self.set_option("eventResults_cacheStatus", None)
 
         logger.info("Reset event options")
+
+    def generate_new_event_name(self):
+        return "{} {}".format(datetime.now().strftime('%Y-%m-%d'), self.__("FPV Race"))
 
     # Event Results (Options)
     def get_results_event(self):
