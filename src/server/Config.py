@@ -16,6 +16,7 @@ class Config:
         self._racecontext = racecontext
         self.filename = filename
         self.config_file_status = None
+        self._backup_run = False
 
         self.config_sections = {
             'SECRETS': {},
@@ -27,6 +28,7 @@ class Config:
             'LED': {},
             'LOGGING': {},
             'SENSORS': {},
+            'VRX_CONTROL': {}  # Deprecated
         }
 
         self.config = copy.copy(self.config_sections)
@@ -63,7 +65,6 @@ class Config:
         ]
 
         # Legacy Video Receiver Configuration (DEPRECATED)
-        self.config['VRX_CONTROL'] = {}
         self.config['VRX_CONTROL']['HOST'] = 'localhost'  # MQTT broker IP Address
         self.config['VRX_CONTROL']['ENABLED'] = False
         self.config['VRX_CONTROL']['OSD_LAP_HEADER'] = 'L'
@@ -164,12 +165,14 @@ class Config:
         # override defaults above with config from file
         try:
             with open(self.filename, 'r') as f:
-                ExternalConfig = json.load(f)
+                external_config = json.load(f)
 
-            for key in ExternalConfig.keys():
-                self.migrate_legacy_config_early(key, ExternalConfig[key])
+            self.migrate_legacy_config_early(external_config)
+            for key in external_config.keys():
                 if key in self.config:
-                    self.config[key].update(ExternalConfig[key])
+                    self.config[key].update(external_config[key])
+                else:
+                    self.config.update({key:external_config[key]})
 
             self.config_file_status = 1
             self.InitResultStr = "Using configuration file '{0}'".format(self.filename)
@@ -185,12 +188,13 @@ class Config:
 
         self.check_backup_config_file()
         self.migrate_legacy_config()
-        self.save_config()
 
-    def migrate_legacy_config_early(self, key, value):
-        if key == 'SERIAL_PORTS':
-            if not self.config['GENERAL'].get('SERIAL_PORTS'):
-                self.config['GENERAL']['SERIAL_PORTS'] = value
+    def migrate_legacy_config_early(self, external_config):
+        for key in list(external_config.keys()):
+            if key == 'SERIAL_PORTS':
+                if not self.config['GENERAL'].get('SERIAL_PORTS'):
+                    self.config['GENERAL']['SERIAL_PORTS'] = external_config[key]
+                del external_config[key]
 
     def migrate_legacy_config(self):
         if 'SLAVES' in self.config['GENERAL']:
@@ -273,6 +277,12 @@ class Config:
         self.config[section] = {}
 
     def clean_config(self):
+        if self.config.keys() == self.config_sections.keys():
+            return
+
+        logger.info("Change in registered configuration sections detected")
+        self.backup_config_file()
+
         config_cleaned = {}
         for item in self.config_sections:
             if item in self.config:
@@ -292,13 +302,23 @@ class Config:
                 last_modified_time = self.get_item_int('GENERAL', 'LAST_MODIFIED_TIME')
                 file_modified_time = int(os.path.getmtime(self.filename))
                 if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
-                    time_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d_%H%M%S')
-                    (fname_str, fext_str) = os.path.splitext(self.filename)
-                    bkp_file_name = "{}_bkp_{}{}".format(fname_str, time_str, fext_str)
-                    logger.info("Making backup of configuration file, name: {}".format(bkp_file_name))
-                    shutil.copy2(self.filename, bkp_file_name)
+                    logger.info("External configuration file modification detected")
+                    self.backup_config_file()
         except Exception as ex:
-                logger.warning("Error in 'check_backup_config_file()':  {}".format(ex))
+            logger.warning("Error in 'check_backup_config_file()':  {}".format(ex))
+
+    def backup_config_file(self):
+        if not self._backup_run:
+            try:
+                file_modified_time = int(os.path.getmtime(self.filename))
+                time_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d_%H%M%S')
+                (fname_str, fext_str) = os.path.splitext(self.filename)
+                bkp_file_name = "{}_bkp_{}{}".format(fname_str, time_str, fext_str)
+                logger.info("Making backup of configuration file, name: {}".format(bkp_file_name))
+                shutil.copy2(self.filename, bkp_file_name)
+                self._backup_run = True
+            except Exception as ex:
+                logger.warning("Error in 'backup_config_file()':  {}".format(ex))
 
     def get_sharable_config(self):
         sharable_config = copy.deepcopy(self.config)
