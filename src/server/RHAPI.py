@@ -1215,17 +1215,29 @@ class ServerConfigAPI():
         return self._racecontext.serverconfig.register_section(section)
 
     @property
-    def all_config(self):
+    def get_all(self):
         return copy.deepcopy(self._racecontext.serverconfig.config)
 
-    def item(self, section, name, as_int=False):
+    def get(self, section, name, as_int=False):
         if as_int:
             return self._racecontext.serverconfig.get_item_int(section, name)
         else:
             return self._racecontext.serverconfig.get_item(section, name)
 
-    def item_set(self, section, name, value):
+    def set(self, section, name, value):
         return self._racecontext.serverconfig.set_item(section, name, value)
+
+    def config(self):
+        # Deprecated. Retain for compatibility in v4. Changed before documented.
+        self.get_all()
+
+    def get_item(self, section, name, as_int=False):
+        # Deprecated. Retain for compatibility in v4. Was used internally but changed before documented.
+        self.get(section, name, as_int)
+
+    def set_item(self, section, name, value):
+        # Deprecated. Retain for compatibility in v4. Was used internally but changed before documented.
+        self.set(section, name, value)
 
 
 #

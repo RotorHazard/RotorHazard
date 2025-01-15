@@ -1362,17 +1362,17 @@ View information stored in server configuration and persistent (non-event, non-d
 Registers a custom data section and allows data to be stored and retrieved. Using during `initialize()`. No return value.
 - `section` (string): name of section item is within
 
-#### config.all_config:
+#### config.get_all:
 _Read only_
 Returns the entire current configuration set.
 
-#### config.item(section, name, as_int=False):
+#### config.get(section, name, as_int=False):
 Value of item in section with the provided name. Returns the option value.
 - `section` (string): name of section item is within
 - `name` (string): name of option to retrieve
 - `as_int` _(optional)_ (boolean): Return value as integer instead of string
 
-#### config.item_set(section, name, value):
+#### config.set(section, name, value):
 	return self._racecontext.serverconfig.set_item(section, item, value)
 Set value for the item with provided name in section. No return value.
 - `section` (string): name of section item is within
