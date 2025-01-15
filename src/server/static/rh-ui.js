@@ -97,21 +97,18 @@ var rhui = {
 		} else if (settings.field_type == 'date') {
 			var field = $('<input>')
 				.attr('type', 'date')
-				.attr('placeholder', settings.placeholder);
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'time') {
 			var field = $('<input>')
 				.attr('type', 'time')
-				.attr('placeholder', settings.placeholder);
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'datetime') {
 			var field = $('<input>')
 				.attr('type', 'datetime-local')
-				.attr('placeholder', settings.placeholder);
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
