@@ -461,9 +461,17 @@ The `import_fn` receives as arguments:
 ### UI Fields
 
 An `RHUI.UIField` object defines a frontend user interface for collecting data. It is defined in the following format:
+
 - `name` (string): internal identifier for this parameter
 - `label` (string): text that appears in the RotorHazard frontend interface
-- `field_type` (UIFieldType): One of `UIFieldType.TEXT`, `UIFieldType.BASIC_INT`, `UIFieldType.SELECT`, or `UIFieldType.CHECKBOX`
+- `field_type` (UIFieldType), one of:
+    - `UIFieldType.TEXT`
+    - `UIFieldType.BASIC_INT`
+    - `UIFieldType.SELECT`
+    - `UIFieldType.CHECKBOX`
+    - `UIFieldType.DATE`
+    - `UIFieldType.TIME`
+    - `UIFieldType.DATETIME`
 - `value` _optional_ (any): Default value for field
 - `desc` _optional_ (string): additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
 - `private` _optional_ (boolean): Prevent automatically generated UI
