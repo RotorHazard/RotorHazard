@@ -65,17 +65,17 @@ def rssiGraph(args):
 
                 panel['draw'].rectangle((barWidth * idx, point, (barWidth * idx) + barWidth - 1, panel['height']), fill=color)
 
-        img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
+        img = panel['im'].rotate(90 * args['RHAPI'].config.get('LED', 'PANEL_ROTATE'), expand=True)
         setPixels(strip, img, args)
         strip.show()
 
         effect_delay(100, args)
 
 def getPanelImg(strip, args):
-    panel_w = args['RHAPI'].config.get_item('LED', 'LED_COUNT') // args['RHAPI'].config.get_item('LED', 'LED_ROWS')
-    panel_h = args['RHAPI'].config.get_item('LED','LED_ROWS')
+    panel_w = args['RHAPI'].config.get('LED', 'LED_COUNT') // args['RHAPI'].config.get('LED', 'LED_ROWS')
+    panel_h = args['RHAPI'].config.get('LED','LED_ROWS')
 
-    if args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE') % 2:
+    if args['RHAPI'].config.get('LED', 'PANEL_ROTATE') % 2:
         width = panel_h
         height = panel_w
     else:
@@ -98,7 +98,7 @@ def setPixels(strip, img, args):
                 return
 
             c = col
-            if args['RHAPI'].config.get_item('LED', 'INVERTED_PANEL_ROWS'):
+            if args['RHAPI'].config.get('LED', 'INVERTED_PANEL_ROWS'):
                 if row % 2 == 0:
                     c = 15 - col
 

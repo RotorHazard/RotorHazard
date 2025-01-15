@@ -65,7 +65,7 @@ def rank_best_rounds(rhapi, race_class, args):
             new_pilot_result['total_time_raw'] += race['total_time_raw']
             new_pilot_result['total_time_laps_raw'] += race['total_time_laps_raw']
 
-        timeFormat = rhapi.config.get_item('UI', 'timeFormat')
+        timeFormat = rhapi.config.get('UI', 'timeFormat')
         new_pilot_result['total_time'] = rhapi.utils.format_time_to_str(new_pilot_result['total_time_raw'], timeFormat)
         new_pilot_result['total_time_laps'] = rhapi.utils.format_time_to_str(new_pilot_result['total_time_laps_raw'], timeFormat)
 

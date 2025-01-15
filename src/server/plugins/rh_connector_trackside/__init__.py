@@ -38,16 +38,16 @@ class TracksideConnector():
     def server_info(self, _arg=None):
         self.enabled = True
         info = {
-            'name': self._rhapi.config.get_item('UI', 'timerName'),
-            'logo': self._rhapi.config.get_item('UI', 'timerLogo'),
-            'hue_primary': self._rhapi.config.get_item('UI', 'hue_0'),
-            'sat_primary': self._rhapi.config.get_item('UI', 'sat_0'),
-            'lum_primary': self._rhapi.config.get_item('UI', 'lum_0_low'),
-            'contrast_primary': self._rhapi.config.get_item('UI', 'contrast_0_low'),
-            'hue_secondary': self._rhapi.config.get_item('UI', 'hue_1'),
-            'sat_secondary': self._rhapi.config.get_item('UI', 'sat_1'),
-            'lum_secondmary': self._rhapi.config.get_item('UI', 'lum_1_low'),
-            'contrast_secondmary': self._rhapi.config.get_item('UI', 'contrast_1_low'),
+            'name': self._rhapi.config.get('UI', 'timerName'),
+            'logo': self._rhapi.config.get('UI', 'timerLogo'),
+            'hue_primary': self._rhapi.config.get('UI', 'hue_0'),
+            'sat_primary': self._rhapi.config.get('UI', 'sat_0'),
+            'lum_primary': self._rhapi.config.get('UI', 'lum_0_low'),
+            'contrast_primary': self._rhapi.config.get('UI', 'contrast_0_low'),
+            'hue_secondary': self._rhapi.config.get('UI', 'hue_1'),
+            'sat_secondary': self._rhapi.config.get('UI', 'sat_1'),
+            'lum_secondmary': self._rhapi.config.get('UI', 'lum_1_low'),
+            'contrast_secondmary': self._rhapi.config.get('UI', 'contrast_1_low'),
         }
         info.update(self._rhapi.server_info)
         return info
@@ -186,8 +186,8 @@ class TracksideConnector():
 
     def color_setup(self, arg):
         if arg.get('channel_color'):
-            self._rhapi.config.set_item('LED', 'ledColorMode', 0)  # TS supports only "seat" mode
-            self._rhapi.config.set_item('LED', 'seatColors', arg.get('channel_color'))
+            self._rhapi.config.set('LED', 'ledColorMode', 0)  # TS supports only "seat" mode
+            self._rhapi.config.set('LED', 'seatColors', arg.get('channel_color'))
             self._rhapi.race.update_colors()
             self._rhapi.ui.broadcast_pilots()
             self._rhapi.ui.broadcast_heats()
