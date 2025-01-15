@@ -270,11 +270,13 @@ class Config:
 
     def register_section(self, section):
         self.config_sections[section] = {}
+        self.config[section] = {}
 
     def clean_config(self):
         config_cleaned = {}
         for item in self.config_sections:
-            config_cleaned = copy.deepcopy(self.config[item])
+            if item in self.config:
+                config_cleaned[item] = copy.deepcopy(self.config[item])
         self.config = config_cleaned
 
     def save_config(self):

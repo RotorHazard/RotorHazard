@@ -1229,15 +1229,15 @@ class ServerConfigAPI():
 
     def config(self):
         # Deprecated. Retain for compatibility in v4. Changed before documented.
-        self.get_all()
+        return self.get_all()
 
     def get_item(self, section, name, as_int=False):
         # Deprecated. Retain for compatibility in v4. Was used internally but changed before documented.
-        self.get(section, name, as_int)
+        return self.get(section, name, as_int)
 
     def set_item(self, section, name, value):
         # Deprecated. Retain for compatibility in v4. Was used internally but changed before documented.
-        self.set(section, name, value)
+        return self.set(section, name, value)
 
 
 #

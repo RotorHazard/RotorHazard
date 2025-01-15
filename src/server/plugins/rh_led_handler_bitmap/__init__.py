@@ -48,8 +48,8 @@ class BitmapEffects():
                 img = Image.open(bitmap['image'])
                 delay = bitmap['delay']
 
-                panel_w = args['RHAPI'].config.get('LED', 'LED_COUNT') // args['RHAPI'].config.get('LED', 'LED_ROWS')
-                panel_h = args['RHAPI'].config.get('LED', 'LED_ROWS')
+                panel_w = args['RHAPI'].config.get('LED', 'LED_COUNT', as_int=True) // args['RHAPI'].config.get('LED', 'LED_ROWS', as_int=True)
+                panel_h = args['RHAPI'].config.get('LED', 'LED_ROWS', as_int=True)
 
                 if args['RHAPI'].config.get('LED', 'PANEL_ROTATE') % 2:
                     output_w = panel_h
