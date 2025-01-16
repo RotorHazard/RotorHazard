@@ -380,32 +380,33 @@ class RHUI():
 
         plugin_data = []
         for plugin in plugins:
-            plugin_info = {
-                'name': None,
-                'author': None,
-                'author_uri': None,
-                'description': None,
-                'info_uri': None,
-                'license': None,
-                'license_uri': None,
-                'version': None,
-                'required_rhapi_version': None,
-                'update_uri': None,
-                'text_domain': None,
-            }
-            if plugin.meta:
-                for key, value in plugin.meta.items():
-                    if key in plugin_info:
-                        plugin_info[key] = value
-            else:
-                plugin_info['name'] = plugin.name
+            if not plugin.is_bundled:
+                plugin_info = {
+                    'name': None,
+                    'author': None,
+                    'author_uri': None,
+                    'description': None,
+                    'info_uri': None,
+                    'license': None,
+                    'license_uri': None,
+                    'version': None,
+                    'required_rhapi_version': None,
+                    'update_uri': None,
+                    'text_domain': None,
+                }
+                if plugin.meta:
+                    for key, value in plugin.meta.items():
+                        if key in plugin_info:
+                            plugin_info[key] = value
+                else:
+                    plugin_info['name'] = plugin.name
 
-            plugin_info['id'] = plugin.name
-            plugin_info['enabled'] = plugin.enabled
-            plugin_info['loaded'] = plugin.loaded
-            plugin_info['load_issue'] = plugin.load_issue
+                plugin_info['id'] = plugin.name
+                plugin_info['enabled'] = plugin.enabled
+                plugin_info['loaded'] = plugin.loaded
+                plugin_info['load_issue'] = plugin.load_issue
 
-            plugin_data.append(plugin_info)
+                plugin_data.append(plugin_info)
 
         emit_payload = {
             'plugins': plugin_data
