@@ -645,6 +645,23 @@ def render_viewImg(imgfile):
             return send_from_directory(folderBase, imgPath)
     abort(404)
 
+@APP.route('/shared/<path:file>')
+def serve_shared_file(file):
+    if file and os.path.exists(RaceContext.serverstate.data_dir + '/shared/' + file):
+        return send_from_directory(RaceContext.serverstate.data_dir + '/shared', file)
+    abort(404)
+
+@APP.route('/timer-logo')
+def locate_timer_logo():
+    logo_file = RaceContext.serverconfig.get_item('UI', 'timerLogo')
+    if logo_file:
+        if os.path.exists(RaceContext.serverstate.data_dir + '/shared/' + logo_file):
+            return send_from_directory(RaceContext.serverstate.data_dir + '/shared', logo_file)
+        elif os.path.exists(RaceContext.serverstate.program_dir + '/static/user/' + logo_file):
+            # DEPRECATED: Fallback for legacy installations
+            return send_from_directory(RaceContext.serverstate.program_dir + '/static/user', logo_file)
+    abort(404)
+
 # Redirect routes (Previous versions/Delta 5)
 @APP.route('/race')
 def redirect_race():
