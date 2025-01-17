@@ -6,7 +6,6 @@
 import logging
 from eventmanager import Evt
 from led_event_manager import LEDEffect, Color, effect_delay
-import gevent
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class BitmapEffects():
                 panel_w = args['RHAPI'].config.get('LED', 'LED_COUNT', as_int=True) // args['RHAPI'].config.get('LED', 'LED_ROWS', as_int=True)
                 panel_h = args['RHAPI'].config.get('LED', 'LED_ROWS', as_int=True)
 
-                if args['RHAPI'].config.get('LED', 'PANEL_ROTATE') % 2:
+                if args['RHAPI'].config.get('LED', 'PANEL_ROTATE', as_int=True) % 2:
                     output_w = panel_h
                     output_h = panel_w
                 else:
@@ -72,7 +71,7 @@ class BitmapEffects():
                 pad_left = int((output_w - size[0]) / 2)
                 pad_top = int((output_h - size[1]) / 2)
                 output_img.paste(img, (pad_left, pad_top))
-                output_img = output_img.rotate(90 * args['RHAPI'].config.get('LED', 'PANEL_ROTATE'), expand=True)
+                output_img = output_img.rotate(90 * args['RHAPI'].config.get('LED', 'PANEL_ROTATE', as_int=True), expand=True)
 
                 setPixels(output_img, panel_w)
                 strip.show()
