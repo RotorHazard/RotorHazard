@@ -100,7 +100,6 @@ else:
         sys.exit(1)
 
 DATA_DIR = os.getcwd()
-logger.info('Data path: {0}'.format(DATA_DIR))
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -3254,6 +3253,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
         logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time, \
                                                                  RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
         RHUtils.idAndLogSystemInfo()
+        logger.info('Data path: {0}'.format(DATA_DIR))
 
         check_requirements()
 
