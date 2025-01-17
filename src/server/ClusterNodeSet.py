@@ -723,7 +723,7 @@ class ClusterNodeSet:
                     'evt_args': {}
                 }
                 for key, val in args.items():
-                    if key is not '_eventName' and not callable(val):
+                    if key != '_eventName' and not callable(val):
                         if isinstance(val, Crossing):
                             payload['evt_args'][key] = asdict(val)
                         else:
