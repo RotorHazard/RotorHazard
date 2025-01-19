@@ -13,28 +13,55 @@
 		{
 			'type': 'ui',
 			'value': 'format'
-		},
-		'frequency_data',
-		'pilot_data',
-		'seat_data',
-		'heat_data',
-		'class_data',
-		'format_data',
-		'min_lap',
-		'race_status',
-		'backups_list',
-		'exporter_list',
-		'importer_list',
-		'heatgenerator_list',
-		'raceclass_rank_method_list',
-		'race_points_method_list'
+		}
 	];
+
+	var has_loaded = [];
+	function load_required_data(data_requests) {
+		var needs_requested = [];
+
+		for (var i in data_requests) {
+			var request = data_requests[i];
+			if (!has_loaded.includes(request)) {
+				needs_requested.push(request);
+				has_loaded.push(request);
+			}
+		}
+
+		if (needs_requested.length) {
+			socket.emit('load_data', {'load_types': needs_requested});
+		}
+	}
 
 	var heat_to_unlock = null;
 	var class_to_unlock = null;
 	var current_format = null;
 
 	$(document).ready(function () {
+		$(document).on('click', '#event-details', function (event) {
+			load_required_data(['min_lap', 'backups_list']);
+		});
+
+		$(document).on('click', '#pilot_list', function (event) {
+			load_required_data(['pilot_data', 'seat_data']);
+		});
+
+		$(document).on('click', '#classes_and_heats', function (event) {
+			load_required_data(['pilot_data', 'heat_data', 'class_data', 'format_data', 'raceclass_rank_method_list', 'race_status', 'frequency_data']);
+		});
+
+		$(document).on('click', '#heat_generator', function (event) {
+			load_required_data(['heatgenerator_list', 'class_data']);
+		});
+
+		$(document).on('click', '#race_format', function (event) {
+			load_required_data(['format_data', 'race_points_method_list', 'race_status']);
+		});
+
+		$(document).on('click', '#data-management', function (event) {
+			load_required_data(['exporter_list', 'importer_list']);
+		});
+
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
@@ -300,6 +327,7 @@
 			rotorhazard.event.classes = msg.classes;
 			rotorhazard.event.raceclass_attributes = msg.attributes;
 			display_classes();
+			update_class_selectors();
 			freq.updateBlocks();
 		});
 
@@ -501,7 +529,6 @@
 				classlist.appendTo($('.race_classes'));
 				freq.updateBlocks();
 				init_popup_generics();
-				update_class_selectors();
 			}
 		}
 
@@ -2488,7 +2515,7 @@
 <main class="page-format">
 
 <!--Event Overview-->
-<div class="panel collapsing">
+<div class="panel collapsing" id="event-details">
 	<div class="panel-header">
 		<h2>{{ __('Event') }}</h2>
 	</div>
@@ -2606,7 +2633,7 @@
 </div>
 
 <!--Pilots list for editing-->
-<div class="panel collapsing">
+<div class="panel collapsing" id="pilot_list">
 	<div class="panel-header">
 		<h2>{{ __('Pilots') }}</h2>
 	</div>
@@ -2873,7 +2900,7 @@
 </div>
 
 <!--Data Management-->
-<div class="panel collapsing">
+<div class="panel collapsing" id="data-management">
 	<div class="panel-header">
 		<h2>{{ __('Data Management') }}</h2>
 	</div>
