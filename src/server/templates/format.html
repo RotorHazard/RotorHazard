@@ -25,6 +25,14 @@
 			if (!has_loaded.includes(request)) {
 				needs_requested.push(request);
 				has_loaded.push(request);
+				if (request == 'pilot_data') {
+					has_loaded.push('pilot_list');
+				} else if (request == 'heat_data') {
+					has_loaded.push('heat_list');
+				} else if (request == 'class_data') {
+					has_loaded.push('class_list');
+				}
+
 			}
 		}
 
@@ -47,11 +55,11 @@
 		});
 
 		$(document).on('click', '#classes_and_heats', function (event) {
-			load_required_data(['pilot_data', 'heat_data', 'class_data', 'format_data', 'raceclass_rank_method_list', 'race_status', 'frequency_data']);
+			load_required_data(['pilot_list', 'heat_list', 'class_data', 'format_data', 'raceclass_rank_method_list', 'race_status', 'frequency_data']);
 		});
 
 		$(document).on('click', '#heat_generator', function (event) {
-			load_required_data(['heatgenerator_list', 'class_data']);
+			load_required_data(['heatgenerator_list', 'class_list']);
 		});
 
 		$(document).on('click', '#race_format', function (event) {
@@ -290,7 +298,7 @@
 
 		/* Classes */
 		function update_class_selectors() {
-			var class_data = rotorhazard.event;
+			var class_data = rotorhazard.event.classes;
 
 			var input_val = $('#generator_input_class').val();
 			var output_val = $('#generator_output_class').val();
@@ -298,14 +306,14 @@
 			$('#generator_input_class').empty().append($('<option value="0">-' + __('All Pilots') + '-</option>'));
 			$('#generator_output_class').empty().append($('<option value="">-' + __('New Class') + '-</option>'));
 
-			if (class_data.classes.length) {
-				class_data.classes.sort((a, b) => a.order - b.order || a.id - b.id);
-				for (var i in class_data.classes) {
-					var race_class = class_data.classes[i];
+			if (class_data.length) {
+				class_data.sort((a, b) => a.order - b.order || a.id - b.id);
+				for (var i in class_data) {
+					var race_class = class_data[i];
 
-					if (race_class.name) {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + '</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + race_class.name + '</option>'));
+					if (race_class.displayname) {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.displayname + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + race_class.displayname + '</option>'));
 					} else {
 						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
 						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
@@ -323,6 +331,11 @@
 			}
 		}
 
+		socket.on('class_list', function (msg) {
+			rotorhazard.event.classes = msg.classes;
+			update_class_selectors();
+		});
+
 		socket.on('class_data', function (msg) {
 			rotorhazard.event.classes = msg.classes;
 			rotorhazard.event.raceclass_attributes = msg.attributes;
@@ -330,6 +343,14 @@
 			update_class_selectors();
 			freq.updateBlocks();
 		});
+
+		function create_or_update(element_id, tag='div'){
+			if ($('#' + element_id).length) {
+				return $('#' + element_id);
+			} else {
+				return $('<'+ tag + ' id="' + element_id + '">');
+			}
+		}
 
 		function display_classes() {
 			if (typeof rotorhazard.event.classes != "undefined" &&
@@ -339,14 +360,14 @@
 				typeof rotorhazard.raceclass_rank_methods != "undefined") {
 				$(".race_classes").empty();
 
-				var classlist = $('<ol>');
-				rotorhazard.event.classes.sort((a, b) => a.order - b.order || a.id - b.id);
-				rotorhazard.event.heats.sort((a, b) => a.order - b.order || a.id - b.id);
+				var classlist = create_or_update('class-list', 'ol');
+				rotorhazard.event.classes.sort((a, b) => b.order - a.order || b.id - a.id);
+				rotorhazard.event.heats.sort((a, b) => b.order - a.order || b.id - a.id);
 				if (rotorhazard.event.classes.length) {
 					for (var i in rotorhazard.event.classes) {
 						var race_class = rotorhazard.event.classes[i];
 
-						var el = $('<li>');
+						var el = create_or_update('race-class-'+ race_class.id, 'li');
 						var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
 
 						el.append(header);
@@ -511,14 +532,15 @@
 							el.append(groups_el);
 
 						} else {
-							var heats_el = $('<ol class="heats">');
+							var heats_el = $('<select class="heats" data-class="' + race_class.id + '">');
 							for (var i in rotorhazard.event.heats) {
 								var heat = rotorhazard.event.heats[i];
 								if (heat.class_id == race_class.id) {
-									heats_el.append(create_heat_ui(heat, race_class));
+									heats_el.append($('<option value="' + heat.id + '">' + heat.displayname + '</option>'));
 								}
 							}
-							heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button></li>');
+							el.append('<button class="open-heat-editor" data-class-id="' + race_class.id + '">' + __('Edit Heat') + '</button>');
+							el.append('<button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button>');
 							el.append(heats_el);
 
 						}
@@ -782,6 +804,16 @@
 		});
 
 		/* Heats */
+		socket.on('heat_list', function (msg) {
+			rotorhazard.event.heats = msg.heats;
+			display_classes();
+			display_unclassified_heats();
+			if (rotorhazard.generators) {
+				$('#generate_heats_2').prop('disabled', false);
+			}
+			$('#generating-message').prop('hidden', true);
+		});
+
 		socket.on('heat_data', function (msg) {
 			rotorhazard.event.heats = msg.heats;
 			rotorhazard.event.heat_attributes = msg.attributes;
@@ -793,7 +825,75 @@
 			$('#generating-message').prop('hidden', true);
 		});
 
+		$(document).on('click', '.open-heat-editor', function() {
+			var class_id = $(this).data('class-id')
+			var selector = $('select.heats[data-class="' + class_id + '"]');
+			var heat_id = parseInt(selector.val());
+
+			var data = {
+				heat: heat_id,
+			};
+			socket.emit('expand_heat', data);
+
+			$('#heat_edit_form').empty();
+			$('#heat_edit_form').append('<p class="form-note">').text( __('Loading...') );
+
+			$.magnificPopup.open({
+				items: {
+					src: '#heat_editor'
+				},
+				type: 'inline'
+			});
+		});
+
+		socket.on('heat_expanded', function (msg) {
+			var heat_arr_index = heat_arr.find(obj => {return obj.value == msg.heat.id});
+			rotorhazard.event.heats[heat_arr_index] = msg.heat;
+			$('#heat_edit_form').html(create_heat_ui(msg.heat.id, msg.heat.class_id));
+		});
+
 		function create_heat_ui(heat, race_class=null) {
+			var el = $('<li class="rh-heat" data-heat="' + heat.id + '">');
+
+			if (heat.status == 2) {
+				el.addClass('is-confirmed');
+			}
+
+			var locked = heat.locked;
+			var active_race = false
+			if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_heat_id == heat.id) {
+				active_race = true;
+				locked = true;
+			}
+
+			var header = $('<h4>Heat ' + heat.id + '</h4>');
+			el.append(header);
+
+			var placeholder_name = heat.auto_name ? heat.auto_name : heat.displayname;
+			var input = $('<input type="text" id="heat-name-' + heat.id + '" class="set_heat_name" data-heat="' + heat.id + '" placeholder="' + __('Name') + ' (' + placeholder_name + ')" maxlength="80">');
+			input.val(heat.name);
+			el.append(input);
+
+			var actions = $('<div class="actions">');
+			actions.append('<button class="duplicate_heat" data-id="' + heat.id + '" title="' + __('Duplicate Heat') + ': ' + heat.displayname + '">+</button>');
+			if (locked) {
+				if (heat.active) {
+					actions.prepend('<button class="deactivate_heat eye-icon" data-id="' + heat.id + '" title="' + __('Deactivate Heat') + ': ' + heat.displayname + '">' + svg_asset.eye_visible + '</button>');
+				} else if (race_class && !race_class.round_type) {
+					actions.prepend('<button class="activate_heat eye-icon" data-id="' + heat.id + '" title="' + __('Activate Heat') + ': ' + heat.displayname + '">' + svg_asset.eye_invisible + '</button>');
+				}
+
+				if (!active_race) {
+					actions.append('<button class="btn-warning open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heat.id + '" title="' + __('Force Modify Heat') + ': ' + heat.displayname + '">' + svg_asset.lock + '</button>');
+				}
+			} else {
+				actions.append('<button class="delete_heat btn-danger" data-id="' + heat.id + '" title="Delete Heat ' + heat.id + '">&#215;</button>');
+			}
+			el.append(actions);
+			return el;
+		}
+
+		function create_expanded_heat_ui(heat, race_class=null) {
 			var el = $('<li class="rh-heat" data-heat="' + heat.id + '">');
 
 			if (heat.status == 2) {
@@ -1360,10 +1460,6 @@
 			return '(' + __('Undefined') + ')';
 		}
 
-		$('button#add_heat').click(function (event) {
-			socket.emit('add_heat');
-		});
-
 		$(document).on("click", '.delete_heat', function (event) {
 			var data = {
 				heat: parseInt($(this).data('id')),
@@ -1415,6 +1511,21 @@
 		});
 
 		/* Pilots */
+		socket.on('pilot_list', function (msg) {
+			rotorhazard.event.pilots = msg.pilots;
+			rotorhazard.options.pilotSort = msg.pilotSort;
+
+			if (rotorhazard.options.pilotSort == 'callsign') {
+				rotorhazard.event.pilots.sort((a, b) => a.callsign.localeCompare(b.callsign, undefined, {sensitivity: 'base'}));
+			} else if (rotorhazard.options.pilotSort == 'id') {
+				rotorhazard.event.pilots.sort((a, b) => a.pilot_id - b.pilot_id);
+			} else {
+				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+			}
+
+			display_pilot_selectors();
+		});
+
 		socket.on('pilot_data', function (msg) {
 			rotorhazard.event.pilot_attributes = msg.attributes;
 			rotorhazard.event.pilots = msg.pilots;
@@ -1432,6 +1543,18 @@
 			display_classes();
 			display_unclassified_heats();
 		});
+
+		function display_pilot_selectors() {
+			if (rotorhazard.event.pilots) {
+				$('.set_pilot_position').each(function(){
+					$(this).empty();
+
+					for (var i in rotorhazard.event.pilots) {
+						$(this).append('<option value="'+ rotorhazard.event.pilots[i].id + '">' + rotorhazard.event.pilots[i].callsign + ' (' + rotorhazard.event.pilots[i].name + ')</option>');
+					}
+				});
+			}
+		}
 
 		function display_pilots() {
 			if (rotorhazard.event.pilots) {
@@ -1484,14 +1607,7 @@
 
 				$('.pilots').append('<li class="new-pilot-container"><button id="add_pilot">' + __('Add Pilot') + '</button></li>');
 
-				$('.set_pilot_position').each(function(){
-					$(this).empty();
-
-					for (var i in rotorhazard.event.pilots) {
-						$(this).append('<option value="'+ rotorhazard.event.pilots[i].id + '">' + rotorhazard.event.pilots[i].callsign + ' (' + rotorhazard.event.pilots[i].name + ')</option>');
-					}
-				});
-
+				display_pilot_selectors();
 			}
 		}
 
@@ -2675,15 +2791,15 @@
 		<h2>{{ __('Classes and Heats') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p id="active_race_lock" class="form-note">{{ __('Some options cannot be changed for currently active race.') }}
+		<p id="active_race_lock" hidden="hidden" class="form-note">{{ __('Some options cannot be changed for currently active race.') }}
 			<button id="stop_save" class="btn-danger">{{ __('Stop/Save') }}</button>
 			<button id="stop_discard" class="btn-danger">{{ __('Stop/Discard') }}</button></p>
 
-		<div id="race_classes" class="race_classes item-blocks">
-			<p class="form-note">{{ __('Loading...') }}</p>
-		</div>
 		<div class="control-set new-class-container">
 			<button id="add_race_class">{{ __('Add Class') }}</button>
+		</div>
+		<div id="race_classes" class="race_classes item-blocks">
+			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
 
 		<div id="unclassified_heats" class="item-blocks">
@@ -2705,6 +2821,14 @@
 				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
 				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="heat_editor" class="mfp-hide popup">
+			<h2>{{ __('Edit Heat') }}</h2>
+			<div class="popup-content">
+				<div id="heat_edit_form"></div>
+				<div class="control-set"><button class="mfp-close">{{ __('Close') }}</button></div>
 			</div>
 		</div>
 	</div>
