@@ -834,14 +834,20 @@ def on_load_data(data):
             RaceContext.rhui.emit_frequency_data(nobroadcast=True)
             if Use_imdtabler_jar_flag:
                 heartbeat_thread_function.imdtabler_flag = True
+        elif load_type == 'heat_list':
+            RaceContext.rhui.emit_heat_list(nobroadcast=True)
         elif load_type == 'heat_data':
             RaceContext.rhui.emit_heat_data(nobroadcast=True)
         elif load_type == 'seat_data':
             RaceContext.rhui.emit_seat_data(nobroadcast=True)
+        elif load_type == 'class_list':
+            RaceContext.rhui.emit_class_list(nobroadcast=True)
         elif load_type == 'class_data':
             RaceContext.rhui.emit_class_data(nobroadcast=True)
         elif load_type == 'format_data':
             RaceContext.rhui.emit_format_data(nobroadcast=True)
+        elif load_type == 'pilot_list':
+            RaceContext.rhui.emit_pilot_list(nobroadcast=True)
         elif load_type == 'pilot_data':
             RaceContext.rhui.emit_pilot_data(nobroadcast=True)
         elif load_type == 'result_data':
@@ -1130,6 +1136,12 @@ def on_set_scan(data):
         gevent.sleep(0.100)  # pause/spawn to get clear of heartbeat actions for scanner
         gevent.spawn(restore_node_frequency, node_index)
 
+@SOCKET_IO.on('expand_heat')
+@catchLogExcWithDBWrapper
+def on_expand_heat(data):
+    if data and 'heat' in data:
+        RaceContext.rhui.emit_expanded_heat(data['heat'])
+
 @SOCKET_IO.on('add_heat')
 @catchLogExcWithDBWrapper
 def on_add_heat(data=None):
@@ -1247,6 +1259,7 @@ def on_add_pilot(*args):
     '''Adds the next available pilot id number in the database.'''
     RaceContext.rhdata.add_pilot()
     RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('alter_pilot')
 @catchLogExcWithDBWrapper
@@ -1255,6 +1268,7 @@ def on_alter_pilot(data):
     _pilot, race_list = RaceContext.rhdata.alter_pilot(data)
 
     RaceContext.rhui.emit_pilot_data(noself=True) # Settings page, new pilot settings
+    RaceContext.rhui.emit_heat_data()
 
     if 'callsign' in data or 'team_name' in data:
         RaceContext.rhui.emit_heat_data() # Settings page, new pilot callsign in heats
@@ -1293,6 +1307,7 @@ def on_set_seat_color(data):
     RaceContext.serverconfig.set_item('LED', 'seatColors', seat_colors)
     RaceContext.race.updateSeatColors()
     RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_heat_data()
     RaceContext.rhui.emit_seat_data()
 
     Events.trigger(Evt.CONFIG_SET, {
@@ -1308,6 +1323,7 @@ def on_reset_seat_color(*args):
     RaceContext.serverconfig.set_item('LED', 'seatColors', [])
     RaceContext.race.updateSeatColors()
     RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_heat_data()
     RaceContext.rhui.emit_seat_data()
 
     Events.trigger(Evt.CONFIG_SET, {
