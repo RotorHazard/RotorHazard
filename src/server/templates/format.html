@@ -497,11 +497,15 @@
 						// Heat List
 						var heatedit_el = $('<div class="heat-edit-selectors">');
 						var heatselect_el = $('<select class="class-heat-list" data-class="' + race_class.id + '">');
+
+						var heats_total = 0;
+
 						if (race_class.round_type == 1) {
 							var heats_by_group = [];
 							for (var i in rotorhazard.event.heats) {
 								heat = rotorhazard.event.heats[i];
 								if (heat.class_id == race_class.id) {
+									heats_total++;
 									var group = heat.group_id == null ? -1 : heat.group_id;
 									if (!heats_by_group[group]) {
 										heats_by_group[group] = []
@@ -509,7 +513,9 @@
 									heats_by_group[group].push(heat);
 								}
 							}
+							var groups = [];
 							for (var i in heats_by_group) {
+								groups.push(i);
 								var group_el = $('<optgroup label="' + __('Round') + ' ' + (parseInt(i)+1) + '">');
 								for (var j in heats_by_group[i]) {
 									var heat = heats_by_group[i][j];
@@ -521,18 +527,31 @@
 							for (var i in rotorhazard.event.heats) {
 								var heat = rotorhazard.event.heats[i];
 								if (heat.class_id == race_class.id) {
+									heats_total++;
 									heatselect_el.append($('<option value="' + heat.id + '">' + heat.displayname + '</option>'));
 								}
 							}
 						}
 						heatedit_el.append(heatselect_el);
 						heatedit_el.append('<button class="open-heat-editor" data-class-id="' + race_class.id + '">' + __('Edit Heat') + '</button>');
+						if (race_class.round_type == 1) {
+							var groupselect_el = $('<select class="class-group-list" data-class="' + race_class.id + '">');
+
+							for (var i in groups) {
+								groupselect_el.append($('<option value="' + i + '">' + __('Round') + ' ' + (parseInt(i)+1) + '</option>'));
+							}
+							heatedit_el.append(groupselect_el);
+						}
 						heatedit_el.append('<button class="add_heat" data-id="' + race_class.id + '">' + __('Add Heat') + '</button>');
 						el.append(heatedit_el);
 
 						// Recent Heats
 						var recents = $('<div class="recents" data-class_id="' + race_class.id + '">');
 						recents.append('<h4>').text(__('Recent Heats'));
+						recents.append($('<div class="heat-data">').html('<p>' + __('Loading...') + '</p>'));
+						if (heats_total > 6) {
+							recents.append('<button class="load_all_heats" data-id="' + race_class.id + '">' + __('Load All') + '</button>');
+						}
 						el.append(recents);
 						socket.emit('get_class_recents', {'class_id': race_class.id});
 
@@ -830,53 +849,49 @@
 		});
 
 		function display_recents(class_id, heats) {
-			var el = $('.recents[data-class_id="' + class_id + '"]');
-			el.empty();
-			el.append('<h4>').text(__('Recent Heats'));
+			var el = $('.recents[data-class_id="' + class_id + '"]>.heat-data');
 
-			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == class_id});
-			if (race_class.round_type == 1) {
-				var groups_el = $('<div class="groups">');
-				var heats_by_group = [];
-				for (var i in heats) {
-					heat = heats[i];
-					if (heat.class_id == race_class.id) {
-						var group = heat.group_id == null ? -1 : heat.group_id;
-						if (!heats_by_group[group]) {
-							heats_by_group[group] = []
-						};
-						heats_by_group[group].push(heat);
+			if (heats.length) {
+				el.empty();
+				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == class_id});
+				if (race_class.round_type == 1) {
+					var groups_el = $('<div class="groups">');
+					var heats_by_group = [];
+					for (var i in heats) {
+						heat = heats[i];
+						if (heat.class_id == race_class.id) {
+							var group = heat.group_id == null ? -1 : heat.group_id;
+							if (!heats_by_group[group]) {
+								heats_by_group[group] = []
+							};
+							heats_by_group[group].push(heat);
+						}
 					}
-				}
-				for (var i in heats_by_group) {
-					groups_el.append('<p>' + __('Round') + ' ' + (parseInt(i)+1) + '</p>');
+					for (var i in heats_by_group) {
+						groups_el.append('<p>' + __('Round') + ' ' + (parseInt(i)+1) + '</p>');
 
-					var heats_el = $('<ol class="heats heat-edit-list">');
-					for (var j in heats_by_group[i]) {
-						var heat = heats_by_group[i][j];
-						heats_el.append(create_heat_ui(heat));
+						var heats_el = $('<ol class="heats heat-edit-list">');
+						for (var j in heats_by_group[i]) {
+							var heat = heats_by_group[i][j];
+							heats_el.append(create_heat_ui(heat));
+						}
+						groups_el.append(heats_el);
 					}
-					heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '" data-group="' + i + '">' + __('Add Heat') + '</button></li>');
-					groups_el.append(heats_el);
-				}
-				if (!heats_by_group.length) {
-					groups_el.append('<p>' + __('Round') + ' 1</p>');
+					el.append(groups_el);
+				} else {
 					var heats_el = $('<ol class="heats heat-edit-list">');
-					heats_el.append('<li class="new_heat_container"><button class="add_heat" data-id="' + race_class.id + '" data-group="0">' + __('Add Heat') + '</button></li>');
-					groups_el.append(heats_el);
+					for (var i in heats) {
+						var heat = heats[i];
+						if (heat.class_id == race_class.id) {
+							heats_el.append(create_heat_ui(heat));
+						}
+					}
+					el.append(heats_el);
 				}
-				el.append(groups_el);
+				freq.updateBlocks();
 			} else {
-				var heats_el = $('<ol class="heats heat-edit-list">');
-				for (var i in heats) {
-					var heat = heats[i];
-					if (heat.class_id == race_class.id) {
-						heats_el.append(create_heat_ui(heat));
-					}
-				}
-				el.append(heats_el);
+				el.html('<p>' + __('No heats') + '</p>');
 			}
-			freq.updateBlocks();
 		}
 
 		$(document).on('click', '.open-heat-editor', function() {
@@ -908,7 +923,7 @@
 		});
 
 		function create_heat_ui(heat, race_class=null) {
-			var el = $('<li class="heat-edit" data-heat="' + heat.id + '">');
+			var el = $('<li class="rh-heat heat-edit" data-heat="' + heat.id + '">');
 
 			if (heat.status == 2) {
 				el.addClass('is-confirmed');
@@ -1483,6 +1498,17 @@
 
 		$(document).on("click", '.unlock_heat', function (event) {
 			heat_to_unlock = $(this).data('id');
+
+			// TODO: Temporary!!
+			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_to_unlock });
+
+			var el = $('.rh-heat[data-heat="' + heat_to_unlock + '"]')
+			update_heat_ui(el, heat_to_unlock);
+
+			el.find('li').each(function(){
+				$(this).prop('hidden', false);
+				$(this).find('.set_pilot_position').prop('disabled', false);
+			});
 		});
 
 		$(document).on("click", '#unlock_heat', function (event) {
