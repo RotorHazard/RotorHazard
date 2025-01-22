@@ -89,6 +89,7 @@ class Flt:
     EMIT_RACE_LIST = 'emitRaceList'
     EMIT_HEAT_LIST = 'emitHeatList'
     EMIT_HEAT_DATA = 'emitHeatData'
+    EMIT_RECENT_HEAT_DATA = 'emitRecentHeatData'
     EMIT_HEAT_EXPANDED = 'emitHeatExpanded'
     EMIT_CLASS_LIST = 'emitClassList'
     EMIT_CLASS_DATA = 'emitClassData'

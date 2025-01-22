@@ -1142,6 +1142,12 @@ def on_expand_heat(data):
     if data and 'heat' in data:
         RaceContext.rhui.emit_expanded_heat(data['heat'])
 
+@SOCKET_IO.on('get_class_recents')
+@catchLogExcWithDBWrapper
+def on_get_class_recents(data):
+    if data and 'class_id' in data:
+        RaceContext.rhui.emit_recent_heats(data['class_id'], 6) # TODO: Place var in UI Config
+
 @SOCKET_IO.on('add_heat')
 @catchLogExcWithDBWrapper
 def on_add_heat(data=None):
