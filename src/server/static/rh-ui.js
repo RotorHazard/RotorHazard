@@ -132,6 +132,9 @@ var rhui = {
 
 		return wrapper
 	},
+	updateField: function(field_options) {
+		// *** TODO
+	}
 	buildQuickbuttons: function(btn_list) {
 		var btn_list_el = $('<div class="control-set">');
 		for (var idx in btn_list) {
