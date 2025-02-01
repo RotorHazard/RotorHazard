@@ -67,6 +67,7 @@ class UIField():
             'placeholder': self.placeholder,
             'options': [asdict(option) for option in self.options] if self.options else None,
             'order': self.order,
+            'html_attributes': self.html_attributes
         }
 
 @dataclass

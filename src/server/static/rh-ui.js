@@ -17,7 +17,11 @@ var rhui = {
 			wrapperClass: null
 		}
 
-		Object.assign(field_options, settings);
+		for (item in settings) {
+			if (field_options[item] != null) {
+				settings[item] = field_options[item];
+			}
+		}
 
 		return settings;
 	},
@@ -108,7 +112,7 @@ var rhui = {
 			wrapper.append(field);
 		} else if (settings.field_type == 'range') {
 			var field = $('<input>')
-				.attr('type', 'number')
+				.attr('type', 'range')
 				.attr('placeholder', settings.placeholder);
 
 			if ('min' in settings.html_attributes) {
