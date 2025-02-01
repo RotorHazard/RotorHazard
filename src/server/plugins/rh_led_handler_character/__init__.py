@@ -104,20 +104,20 @@ def printCharacter(args):
 
     use_small_flag = True
     if panel['height'] >= 16:
-        font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
+        font = ImageFont.truetype(args['RHAPI'].server.program_dir + '/static/fonts/RotorHazardPanel16.ttf', 16)
         _, _, w, h = font.getbbox(text)
         if w <= panel['width'] - 1:
             use_small_flag = False
             h = 16
 
     if use_small_flag:
-        font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
+        font = ImageFont.truetype(args['RHAPI'].server.program_dir + '/static/fonts/RotorHazardPanel8.ttf', 8)
         _, _, w, h = font.getbbox(text)
         h = 8
 
     panel['draw'].text((int((panel['width']-w)/2), int((panel['height']-h)/2)), text, font=font, fill=(color))
 
-    img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
+    img = panel['im'].rotate(90 * args['RHAPI'].config.get('LED', 'PANEL_ROTATE', as_int=True), expand=True)
 
     setPixels(strip, img, panel['width'], args['RHAPI'].config)
     strip.show()
@@ -146,11 +146,11 @@ def scrollText(args):
     panel = getPanelImg(strip, args['RHAPI'].config)
 
     if panel['height'] >= 16:
-        font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
+        font = ImageFont.truetype(args['RHAPI'].server.program_dir + '/static/fonts/RotorHazardPanel16.ttf', 16)
         _, _, w, h = font.getbbox(text)
         h = 16
     else:
-        font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
+        font = ImageFont.truetype(args['RHAPI'].server.program_dir + '/static/fonts/RotorHazardPanel8.ttf', 8)
         _, _, w, h = font.getbbox(text)
         h = 8
 
@@ -159,7 +159,7 @@ def scrollText(args):
     for i in range(-panel['width'], w + panel['width']):
         panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
         panel['draw'].text((-i, draw_y), text, font=font, fill=(color))
-        img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
+        img = panel['im'].rotate(90 * args['RHAPI'].config.get('LED', 'PANEL_ROTATE', as_int=True), expand=True)
         setPixels(strip, img, panel['width'], args['RHAPI'].config)
         strip.show()
         effect_delay(10, args)
@@ -190,10 +190,10 @@ def multiLapGrid(args):
     half_width = panel['width']/2
 
     if panel['height'] >= 32:
-        font = ImageFont.truetype('static/fonts/RotorHazardPanel16.ttf', 16)
+        font = ImageFont.truetype(args['RHAPI'].server.program_dir + '/static/fonts/RotorHazardPanel16.ttf', 16)
         font_h = 16
     else:
-        font = ImageFont.truetype('static/fonts/RotorHazardPanel8.ttf', 8)
+        font = ImageFont.truetype(args['RHAPI'].server.program_dir + '/static/fonts/RotorHazardPanel8.ttf', 8)
         font_h = 8
 
     active_nodes = []
@@ -236,15 +236,15 @@ def multiLapGrid(args):
 
             panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
 
-    img = panel['im'].rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
+    img = panel['im'].rotate(90 * args['RHAPI'].config.get('LED', 'PANEL_ROTATE', as_int=True), expand=True)
     setPixels(strip, img, panel['width'], args['RHAPI'].config)
     strip.show()
 
 def getPanelImg(strip, config):
-    panel_w = config.get_item('LED', 'LED_COUNT') // config.get_item('LED', 'LED_ROWS')
-    panel_h = config.get_item('LED', 'LED_ROWS')
+    panel_w = config.get('LED', 'LED_COUNT', as_int=True) // config.get('LED', 'LED_ROWS', as_int=True)
+    panel_h = config.get('LED', 'LED_ROWS', as_int=True)
 
-    if config.get_item('LED', 'PANEL_ROTATE') % 2:
+    if config.get('LED', 'PANEL_ROTATE', as_int=True) % 2:
         width = panel_h
         height = panel_w
     else:
@@ -267,7 +267,7 @@ def setPixels(strip, img, panel_w, config):
                 return
 
             c = col
-            if config.get_item('LED', 'INVERTED_PANEL_ROWS'):
+            if config.get('LED', 'INVERTED_PANEL_ROWS', as_int=True):
                 if row % 2 == 0:
                     c = (panel_w - 1) - col
 
@@ -377,7 +377,7 @@ def discover(rhapi):
     ),
     ]
 
-    if (rhapi.config.get_item('LED', 'LED_ROWS') >= 16):
+    if (rhapi.config.get('LED', 'LED_ROWS', as_int=True) >= 16):
         effects.append(
             LEDEffect(
                 "Text: 4-Seat Lap Count",

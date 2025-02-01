@@ -3185,6 +3185,8 @@ def load_plugin(plugin):
 
 @catchLogExceptionsWrapper
 def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), argv_arr=None):
+    RaceContext.serverconfig.clean_config()
+    RaceContext.serverconfig.save_config()
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
         if not RaceContext.serverconfig.get_item('SECRETS', 'SECRET_KEY'):
             new_key = ''.join(random.choice(string.ascii_letters) for _ in range(50))
