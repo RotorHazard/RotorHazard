@@ -185,7 +185,7 @@ HardwareHelpers = {}
 UI_server_messages = {}
 Auth_succeeded_flag = False
 
-RESTART_FLAG = False
+SERVER_PROCESS_RESTART_FLAG = False
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
 HEARTBEAT_DATA_RATE_FACTOR = 5
@@ -1797,8 +1797,8 @@ def on_reboot_pi(*args):
 @SOCKET_IO.on('restart_server')
 def on_restart_server():
     '''Re-execute the current process.'''
-    global RESTART_FLAG
-    RESTART_FLAG = True
+    global SERVER_PROCESS_RESTART_FLAG
+    SERVER_PROCESS_RESTART_FLAG = True
     if RaceContext.cluster:
         RaceContext.cluster.emit('restart_server')
     RaceContext.rhui.emit_priority_message(__('Server is restarting.'), True, caller='shutdown')
@@ -3260,7 +3260,7 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
     gevent.sleep(2)  # allow system shutdown command to run before program exit
     log.close_logging()
 
-    if RESTART_FLAG:
+    if SERVER_PROCESS_RESTART_FLAG:
         args = sys.argv[:]
         args.insert(0, sys.executable)
         if sys.platform == 'win32':
