@@ -29,6 +29,9 @@ class UIFieldType(Enum):
     SELECT = "select"
     CHECKBOX = "checkbox"
     PASSWORD = "password"
+    DATE = "date"
+    TIME = "time"
+    DATETIME = "datetime"
 
 @dataclass
 class UIFieldSelectOption():
