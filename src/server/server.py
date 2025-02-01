@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.3.0-dev.1" # Public release version code
+RELEASE_VERSION = "4.3.0-dev.2" # Public release version code
 SERVER_API = 45 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -100,7 +100,6 @@ else:
         sys.exit(1)
 
 DATA_DIR = os.getcwd()
-logger.info('Data path: {0}'.format(DATA_DIR))
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -3256,6 +3255,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
         logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time, \
                                                                  RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
         RHUtils.idAndLogSystemInfo()
+        logger.info('Data path: {0}'.format(DATA_DIR))
 
         check_requirements()
 
