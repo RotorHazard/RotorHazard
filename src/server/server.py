@@ -838,6 +838,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_heat_list(nobroadcast=True)
         elif load_type == 'heat_data':
             RaceContext.rhui.emit_heat_data(nobroadcast=True)
+        elif load_type == 'heat_attribute_types':
+            RaceContext.rhui.emit_heat_attribute_types(nobroadcast=True)
         elif load_type == 'seat_data':
             RaceContext.rhui.emit_seat_data(nobroadcast=True)
         elif load_type == 'class_list':
