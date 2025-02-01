@@ -168,6 +168,8 @@ class Config:
                 self.migrate_legacy_config_early(key, ExternalConfig[key])
                 if key in self.config:
                     self.config[key].update(ExternalConfig[key])
+                else:
+                    self.config.update({key:ExternalConfig[key]})
 
             self.config_file_status = 1
             self.InitResultStr = "Using configuration file '{0}'".format(self.filename)
