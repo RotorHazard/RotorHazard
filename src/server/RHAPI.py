@@ -789,7 +789,7 @@ class DatabaseAPI():
     def pilotruns_by_race(self, race_id):
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
 
-    def pilotruns_add(self, race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps):
+    def pilotrun_add(self, race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps):
         data = {}
 
         for name, value in [

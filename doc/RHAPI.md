@@ -896,6 +896,15 @@ ID of races with attribute matching the specified attribute/value combination. R
 - `name` (string): attribute to match
 - `value` (string): value to match
 
+#### db.race_add(round_id, heat_id, class_id, format_id, start_time, start_time_formatted)
+Add a saved race directly in the database. Returns `SavedRaceMeta`.
+- `round_id` (int): round number
+- `heat_id` (int): ID of associated heat
+- `class_id` (int): ID of associated race class, or `CLASS_ID_NONE`
+- `format_id` (int): ID of associated race format
+- `start_time` (int): Internal (monotonic) time value of race start
+- `start_time_formatted` (string): Human-readable time of race start
+
 #### db.race_alter(race_id, attributes=None)
 Alter race data. Supports only custom attributes. No return value.
 - `race_id` (int): ID of race to alter
@@ -937,6 +946,17 @@ A single pilot run record, retrieved by ID. Returns `SavedPilotRace`.
 Pilot run records matching the provided saved race ID. Returns `list[SavedPilotRace]`.
 - `race_id` (int): ID of saved race used to retrieve pilot runs
 
+#### db.pilotrun_add(race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps)
+Add a `SavedPilotRace` directly in the database. Laps must be added during creation. Returns `SavedPilotRace`.
+- `race_id` (int): ID of associated saved race
+- `node_index` (int): Seat number
+- `pilot_id` (int): ID of associated pilot
+- `history_values` (string): JSON-serialized raw RSSI data
+- `history_times` (string): JSON-serialized timestamps for raw RSSI data 
+- `enter_at` (int): Gate enter calibration point
+- `exit_at` (int): Gate exit calibration point
+- `frequency` (int): Active frequency for this seat at race time
+- `laps` (list[Crossing]): List of `Crossing` objects to add to this run
 
 ### Saved Race &rarr; Pilot Run &rarr; Laps
 Laps store data related to start gate crossings. Each pilot run may have one or more laps associated with it. When displaying laps, be sure to reference the associated race format.
