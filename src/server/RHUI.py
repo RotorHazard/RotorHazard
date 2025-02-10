@@ -419,6 +419,18 @@ class RHUI():
         else:
             self._socket.emit('plugin_list', emit_payload)
 
+    def emit_plugin_repo(self, **params):
+        ui_data = self._racecontext.plugin_manager.get_display_data()
+
+        emit_payload = {
+            'remote_data': ui_data
+        }
+
+        if ('nobroadcast' in params):
+            emit('plugin_repo', emit_payload)
+        else:
+            self._socket.emit('plugin_repo', emit_payload)
+
     def emit_option_update(self, options, **params):
         option_vals = {}
         if isinstance(options, str):

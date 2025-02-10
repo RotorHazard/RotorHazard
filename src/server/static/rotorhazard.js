@@ -1049,6 +1049,7 @@ var rotorhazard = {
 	//
 	event: {}, // race data
 	options: {}, // server options
+	plugins: {}, // plugin data
 
 	language_strings: {},
 	interface_language: '',

@@ -267,17 +267,10 @@ class PluginInstallationManager:
 
     def get_display_data(self) -> dict[str, dict]:
         """
-        Generates a compilation of local and remote plugin data for the
+        Generates a compilation of remote plugin data for the
         user interface
 
         :return: Compilation of plugin data
         """
 
-        local = copy.deepcopy(self._local_plugin_data)
-        for key, items in self._remote_plugin_data.items():
-            if key in local:
-                local[key] = local[key] | items
-            else:
-                local[key] = items
-
-        return local
+        return self._remote_plugin_data

@@ -36,6 +36,7 @@ class RaceContext():
         self.heat_generate_manager = None
         self.raceclass_rank_manager = None
         self.race_points_manager = None
+        self.plugin_manager = None
 
         self.serverconfig = Config.Config(self)
         self.serverstate = ServerState(self)

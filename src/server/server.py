@@ -120,6 +120,7 @@ import socket
 import random
 import string
 import json
+from pathlib import Path
 
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
 
@@ -142,7 +143,10 @@ import util.stm32loader as stm32loader
 from eventmanager import Evt, EventManager
 
 # Filter manager
-from filtermanager import Flt, FilterManager
+from filtermanager import FilterManager
+
+# Plugin manager
+from util.plugin_installation import PluginInstallationManager
 
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern
@@ -573,6 +577,17 @@ def render_updatenodes():
     return render_template('updatenodes.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, \
                            fw_src_str=getDefNodeFwUpdateUrl())
 
+@APP.route('/plugins')
+@requires_auth
+def render_plugin_manager():
+    '''Route to settings page.'''
+    return render_template('plugins.html',
+                           serverInfo=RaceContext.serverstate.template_info_dict,
+                           getOption=RaceContext.rhdata.get_option,
+                           getConfig=RaceContext.serverconfig.get_item,
+                           __=__
+                           )
+
 # Debug Routes
 
 @APP.route('/hardwarelog')
@@ -898,6 +913,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_race_points_method_list()
         elif load_type == 'plugin_list':
             RaceContext.rhui.emit_plugin_list(nobroadcast=True)
+        elif load_type == 'plugin_repo':
+            RaceContext.rhui.emit_plugin_repo(nobroadcast=True)
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -2514,6 +2531,19 @@ def set_vrx_node(data):
     else:
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
 
+@SOCKET_IO.on('plugin_install')
+@catchLogExceptionsWrapper
+def on_plugin_install(data):
+    if data['method'] == 'domain':
+        RaceContext.rhui.emit_priority_message(__("Starting Plugin Installation..."))
+        try:
+            RaceContext.plugin_manager.download_plugin(data['domain'])
+            RaceContext.rhui.emit_plugin_repo()
+            RaceContext.rhui.emit_priority_message(__("Plugin Installation Succeeded. Please restart."))
+        except Exception as ex:
+            RaceContext.rhui.emit_priority_message(f'{__("Plugin Install failed")}: {__(ex)}')
+
+
 #
 # Program Functions
 #
@@ -3290,6 +3320,28 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     logger.info("Plugin '{}' not loaded ({})".format(plugin.name, plugin.load_issue))
 
         RaceContext.serverstate.plugins = plugin_modules
+
+        # Load plugin install manager
+        RaceContext.plugin_manager = PluginInstallationManager(Path("plugins/"))
+
+        try:
+            RaceContext.plugin_manager.load_local_plugin_data()
+        except (FileNotFoundError, TypeError):
+            print("Unable to load local plugins")
+            local_loaded = False
+        else:
+            local_loaded = True
+
+        try:
+            RaceContext.plugin_manager.load_remote_plugin_data()
+        except requests.Timeout:
+            print("Unable to load remote plugins")
+            remote_loaded = False
+        else:
+            remote_loaded = True
+
+        if local_loaded and remote_loaded:
+            RaceContext.plugin_manager.apply_update_statuses()
 
         if (not RHUtils.is_S32_BPill_board()) and RaceContext.serverconfig.get_item('GENERAL', 'FORCE_S32_BPILL_FLAG'):
             RHUtils.set_S32_BPill_boardFlag()
