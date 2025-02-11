@@ -184,6 +184,8 @@ class PluginInstallationManager:
             Path(self._plugin_dir).joinpath(domain), reload_required=True
         )
 
+        self.apply_update_statuses()
+
     def _download_and_install_plugin(
         self,
         repo: str,
@@ -224,6 +226,11 @@ class PluginInstallationManager:
 
         if plugin_dir.exists():
             shutil.rmtree(plugin_dir)
+
+        if domain in self._local_plugin_data:
+            del self._local_plugin_data[domain]
+
+        self.apply_update_statuses()
 
     def _install_plugin_data(self, domain: str, download: bytes) -> None:
         """
@@ -295,3 +302,31 @@ class PluginInstallationManager:
         """
 
         return self._remote_plugin_data
+
+    def install_from_upload(self, file: bytes) -> None:
+        """
+        Installs a plugin(s) from a zip file. The zip file's internal
+        structure needs to follow the internal structure defined by
+        the template plugin repo.
+
+        :param file: The zipfile as bytes
+        :raises zipfile.BadZipFile: Uploaded file is not a valid
+        zip file
+        :raises JSONDecodeError: JSON file is not valid
+        :raises KeyError: Domain not in manifest file
+        """
+        with zipfile.ZipFile(io.BytesIO(file), "r") as zip_data:
+            for file_ in zip_data.filelist:
+                name = file_.filename
+                if name.endswith("/manifest.json"):
+                    data: dict = json.loads(zip_data.read(file_))
+
+                    domain = data["domain"]
+                    self.delete_plugin_dir(domain)
+                    self._install_plugin_data(domain, file)
+
+                    self._read_plugin_data(
+                        Path(self._plugin_dir).joinpath(domain), reload_required=True
+                    )
+
+        self.apply_update_statuses()
