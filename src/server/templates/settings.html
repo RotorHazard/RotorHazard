@@ -1698,6 +1698,8 @@
 						status_el.append('<div class="">' + __('Not loaded') + ': ' + __(plugin.load_issue) + '</div>');
 					}
 
+					status_el.append('<button class="delete-plugin" data-id="' + plugin.id + '">' + __('Delete') + '</button>');
+
 					/*
 					if (plugin.enabled) {
 						status_el.append('<button class="disable">' + __('Disable') + '</button>');
@@ -1716,6 +1718,24 @@
 				var list_el = $('<p>').text(__('No external plugins loaded.'));
 			}
 			wrap_el.append(list_el);
+		});
+
+		$(document).on("click", '.delete-plugin', function (event) {
+			plugin_to_delete = $(this).data('id');
+			$.magnificPopup.open({
+				items: {
+					src: '#plugin-delete-confirm'
+				},
+				type: 'inline'
+			});
+		});
+
+		$(document).on("click", '#delete-plugin', function (event) {
+			$.magnificPopup.close();
+			var data = {
+				domain: plugin_to_delete,
+			};
+			socket.emit('plugin_delete', data);
 		});
 	});
 
@@ -2214,6 +2234,15 @@
 		</div>
 		<div id="plugin-list">
 			<p>{{ __('Loading...') }}</p>
+		</div>
+
+		<div id="plugin-delete-confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('There is no undo available for this action. Restart is required.') }}</p>
+				<p><button class="btn-danger" id="delete-plugin">{{ __('Delete') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
 		</div>
 	</div>
 </div>

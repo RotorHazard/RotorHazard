@@ -2535,13 +2535,23 @@ def set_vrx_node(data):
 @catchLogExceptionsWrapper
 def on_plugin_install(data):
     if data['method'] == 'domain':
-        RaceContext.rhui.emit_priority_message(__("Starting Plugin Installation..."))
+        RaceContext.rhui.emit_priority_message(__("Starting plugin installation..."))
         try:
             RaceContext.plugin_manager.download_plugin(data['domain'])
             RaceContext.rhui.emit_plugin_repo()
-            RaceContext.rhui.emit_priority_message(__("Plugin Installation Succeeded. Please restart."))
+            RaceContext.rhui.emit_priority_message(__("Plugin installation succeeded. Please restart."))
         except Exception as ex:
-            RaceContext.rhui.emit_priority_message(f'{__("Plugin Install failed")}: {__(ex)}')
+            RaceContext.rhui.emit_priority_message(f'{__("Plugin install failed")}: {__(ex)}')
+
+@SOCKET_IO.on('plugin_delete')
+@catchLogExceptionsWrapper
+def on_plugin_delete(data):
+    if 'domain' in data and data['domain']:
+        try:
+            RaceContext.plugin_manager.delete_plugin_dir(data['domain'])
+            RaceContext.rhui.emit_priority_message(__("Plugin deletion succeeded. Please restart."))
+        except Exception as ex:
+            RaceContext.rhui.emit_priority_message(f'{__("Plugin deletion failed")}: {__(ex)}')
 
 
 #
