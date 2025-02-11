@@ -7,7 +7,6 @@ import io
 import json
 import shutil
 import zipfile
-import copy
 from enum import IntEnum
 from pathlib import Path
 from typing import Any, Union
@@ -15,6 +14,7 @@ from typing import Any, Union
 import requests
 from gevent import pool
 from packaging import version
+
 
 class _PluginStatus(IntEnum):
     """
@@ -62,6 +62,8 @@ class PluginInstallationManager:
 
             del plugin["manifest"]
 
+            plugin["reload_required"] = False
+
             self._remote_plugin_data.update({plugin["domain"]: plugin})
 
     def load_local_plugin_data(self) -> None:
@@ -74,16 +76,24 @@ class PluginInstallationManager:
         pool_ = pool.Pool(10)
         pool_.map(self._read_plugin_data, self._plugin_dir.iterdir())
 
-    def _read_plugin_data(self, plugin_path: Path) -> None:
+    def _read_plugin_data(
+        self, plugin_path: Path, *, reload_required: bool = False
+    ) -> None:
         """
         Read the manifest data from an installed plugin
 
         :param plugin_path: The path of the plugin
-        :return: The loaded manifest data
+        :param reload_required: Whether the system needs to reload to enable the
+        plugin or not
         """
         manifest_path = plugin_path.joinpath("manifest.json")
+
+        if not manifest_path.exists():
+            return
+
         with open(manifest_path, "r", encoding="utf-8") as file:
             data = json.load(file)
+            data["reload_required"] = reload_required
 
             if "domain" in data:
                 data_ = {data["domain"]: data}
@@ -142,29 +152,37 @@ class PluginInstallationManager:
         :raises ValueError: Lacking remote data
         :param allow_prerelease: Update to prerelease version, defaults to False
         """
-        for plugin_data in self._remote_plugin_data.values():
-            if domain == plugin_data.get("domain"):
-                break
-        else:
-            raise ValueError("Plugin was not found")
+        try:
+            plugin_data = self._remote_plugin_data[domain]
+        except KeyError as ex:
+            raise ValueError("Plugin data was not found") from ex
 
         repo = plugin_data.get("repository")
-        version_ = plugin_data.get("last_version")
+        last_version = plugin_data.get("last_version")
         pre_version = plugin_data.get("last_prerelease")
 
-        zip_release = plugin_data.get("zip_release ")
+        zip_release = plugin_data.get("zip_release")
         zip_filename = plugin_data.get("zip_filename")
 
-        if version_ is not None and pre_version is not None and allow_prerelease:
-            if version.parse(version_) < version.parse(pre_version):
-                version_ = pre_version
-
-        if repo is not None and version_ is not None:
-            self._download_and_install_plugin(
-                repo, version_, domain, zip_release, zip_filename
-            )
+        if last_version is not None and pre_version is not None and allow_prerelease:
+            if version.parse(last_version) < version.parse(pre_version):
+                download_version = pre_version
+            else:
+                download_version = last_version
         else:
+            download_version = last_version
+
+        if repo is None or download_version is None:
             raise ValueError("Plugin metadata is not valid")
+
+        self._download_and_install_plugin(
+            repo, download_version, domain, zip_release, zip_filename
+        )
+
+        plugin_data["reload_required"] = True
+        self._read_plugin_data(
+            Path(self._plugin_dir).joinpath(domain), reload_required=True
+        )
 
     def _download_and_install_plugin(
         self,
@@ -192,21 +210,22 @@ class PluginInstallationManager:
 
         response = self._session.get(url, timeout=10)
 
-        self._delete_plugin_dir(domain)
+        self.delete_plugin_dir(domain)
         self._install_plugin_data(domain, response.content)
 
-    def _delete_plugin_dir(self, domain: str) -> None:
+    def delete_plugin_dir(self, domain: str) -> None:
         """
-        Generate a clean directory to install the plugin into.
+        Removes a plugin's directory from the plugin folder. Used to
+        uninstall plugins.
 
-        :param plugin_dir: The plugin directory to setup
+        :param plugin_dir: The plugin domain to clean
         """
         plugin_dir = Path(self._plugin_dir).joinpath(domain)
-        
+
         if plugin_dir.exists():
             shutil.rmtree(plugin_dir)
 
-    def _install_plugin_data(self, domain: str, download: bytes):
+    def _install_plugin_data(self, domain: str, download: bytes) -> None:
         """
         Installs downloaded plugin data to the domain's folder
 
@@ -218,9 +237,9 @@ class PluginInstallationManager:
 
         with zipfile.ZipFile(io.BytesIO(download), "r") as zip_data:
             for file in zip_data.filelist:
-                fname = file.filename
+                name = file.filename
 
-                if fname.find(identifier) != -1 and not fname.endswith(identifier):
+                if name.find(identifier) != -1 and not name.endswith((identifier, "/")):
                     save_stem = file.filename.split(identifier)[-1]
                     save_name = plugin_dir.joinpath(save_stem)
 
@@ -228,8 +247,7 @@ class PluginInstallationManager:
                     if directory:
                         os.makedirs(directory, exist_ok=True)
 
-                    with open(save_name, "wb") as file_:
-                        file_.write(zip_data.read(file))
+                    save_name.write_bytes(zip_data.read(file))
 
     def _update_with_check(self, data: dict) -> None:
         """
@@ -251,11 +269,14 @@ class PluginInstallationManager:
                     self.download_plugin(domain, allow_prerelease=True)
 
     def mass_update_plugins(
-        self, *, prerelease_mapping: Union[dict[str, bool] , None] = None
+        self, *, prerelease_mapping: Union[dict[str, bool], None] = None
     ) -> None:
         """
         Update all avaliable plugins. Only updates plugins if they are already
         installed.
+
+        The mapping for this fucntion should be in the form of
+        {str(domain) : bool(allow_prerelease_install)}
         """
         if prerelease_mapping is not None:
             self._prerelease_mapping = prerelease_mapping
