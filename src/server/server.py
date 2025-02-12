@@ -3332,7 +3332,11 @@ def rh_program_initialize(reg_endpoints_flag=True):
         RaceContext.serverstate.plugins = plugin_modules
 
         # Load plugin install manager
-        RaceContext.plugin_manager = PluginInstallationManager(Path("plugins/"))
+        plugin_dir = Path(DATA_DIR).joinpath("plugins")
+        if not plugin_dir.exists():
+            plugin_dir.mkdir()
+
+        RaceContext.plugin_manager = PluginInstallationManager(plugin_dir)
 
         try:
             RaceContext.plugin_manager.load_local_plugin_data()
