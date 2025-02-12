@@ -240,7 +240,7 @@ class PluginInstallationManager:
         :param download: The downloaded content
         """
         plugin_dir = Path(self._plugin_dir).joinpath(domain)
-        identifier = f"custom_plugins/{domain}/"
+        identifier = f"{domain}/"
 
         with zipfile.ZipFile(io.BytesIO(download), "r") as zip_data:
             for file in zip_data.filelist:
@@ -316,12 +316,9 @@ class PluginInstallationManager:
         :raises KeyError: Domain not in manifest file
         """
         with zipfile.ZipFile(io.BytesIO(file), "r") as zip_data:
-            for file_ in zip_data.filelist:
-                name = file_.filename
+            for name in zip_data.namelist():
                 if name.endswith("/manifest.json"):
-                    data: dict = json.loads(zip_data.read(file_))
-
-                    domain = data["domain"]
+                    domain = Path(name).parent.stem
                     self.delete_plugin_dir(domain)
                     self._install_plugin_data(domain, file)
 
