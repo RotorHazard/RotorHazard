@@ -1737,6 +1737,22 @@
 			};
 			socket.emit('plugin_delete', data);
 		});
+
+		$('#import_plugin_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#upload_plugin').prop('disabled', false);
+			}
+		});
+
+		$(document).on('click', '#upload_plugin', function (event) {
+			var data = {
+				method: 'upload',
+				source_data: $('#import_plugin_file').prop('files')[0]
+			};
+			socket.emit('plugin_install', data);
+			$('#import_plugin_file').val("");
+			$('#upload_plugin').prop('disabled', true);
+		});
 	});
 
 </script>
@@ -2232,6 +2248,19 @@
 		<div class="control-set">
 			<a href="/plugins" class="button-like">{{ __('Browse Plugin Directory (online only)') }}</a>
 		</div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="import_plugin_file">{{ __('Plugin Zipfile') }}</label>
+					<p class="desc">{{ __('Max 50MB') }}</p>
+				</div>
+				<input type="file" id="import_plugin_file" />
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="upload_plugin" disabled="disabled">{{ __('Import Plugin') }}</button>
+		</div>
+
 		<div id="plugin-list">
 			<p>{{ __('Loading...') }}</p>
 		</div>

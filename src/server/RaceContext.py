@@ -291,3 +291,6 @@ class ServerState:
 
     # enable processing of Evt.ALL events when Evt.HEARTBEAT is triggered
     enable_heartbeat_event = False
+
+    # flag if restart is needed (after plugin install, etc.)
+    restart_required = False

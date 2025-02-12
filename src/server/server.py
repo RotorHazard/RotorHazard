@@ -2534,14 +2534,22 @@ def set_vrx_node(data):
 @SOCKET_IO.on('plugin_install')
 @catchLogExceptionsWrapper
 def on_plugin_install(data):
-    if data['method'] == 'domain':
-        RaceContext.rhui.emit_priority_message(__("Starting plugin installation..."))
-        try:
+    plugin_id = 'unknown'
+    try:
+        if data['method'] == 'domain':
+            plugin_id = data['domain']
             RaceContext.plugin_manager.download_plugin(data['domain'])
-            RaceContext.rhui.emit_plugin_repo()
-            RaceContext.rhui.emit_priority_message(__("Plugin installation succeeded. Please restart."))
-        except Exception as ex:
-            RaceContext.rhui.emit_priority_message(f'{__("Plugin install failed")}: {__(ex)}')
+        elif data['method'] == 'upload':
+            plugin_id = '(uploaded file)'
+            RaceContext.plugin_manager.install_from_upload(data['source_data'])
+        RaceContext.serverstate.restart_required = True
+        # TODO: update local plugin list & remote status
+        RaceContext.rhui.emit_plugin_repo()
+        RaceContext.rhui.emit_priority_message(__("Plugin installation succeeded. Please restart."))
+        logger.info("Installed plugin {}".format(plugin_id))
+    except Exception as ex:
+        RaceContext.rhui.emit_priority_message(f'{__("Plugin install failed")}: {__(ex)}')
+        logger.info("Failed to install plugin {}".format(plugin_id))
 
 @SOCKET_IO.on('plugin_delete')
 @catchLogExceptionsWrapper
@@ -2549,9 +2557,13 @@ def on_plugin_delete(data):
     if 'domain' in data and data['domain']:
         try:
             RaceContext.plugin_manager.delete_plugin_dir(data['domain'])
+            RaceContext.serverstate.restart_required = True
+            # TODO: update local plugin list
             RaceContext.rhui.emit_priority_message(__("Plugin deletion succeeded. Please restart."))
+            logger.info("Removed plugin {}".format(data['domain']))
         except Exception as ex:
             RaceContext.rhui.emit_priority_message(f'{__("Plugin deletion failed")}: {__(ex)}')
+            logger.info("Failed to delete plugin {}".format(data['domain']))
 
 
 #
