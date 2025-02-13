@@ -3150,8 +3150,12 @@ def load_plugin(plugin):
         plugin.load_issue = "disabled"
         return False
 
+    if plugin.is_bundled:
+        plugin_base = 'bundled_plugins'
+    else:
+        plugin_base = 'plugins'
     try:
-        with open(F'{plugin.dir}/plugins/{plugin.name}/manifest.json', 'r') as f:
+        with open(F'{plugin.dir}/{plugin_base}/{plugin.name}/manifest.json', 'r') as f:
             meta = json.load(f)
 
         if isinstance(meta, dict):
@@ -3179,7 +3183,7 @@ def load_plugin(plugin):
         return False
 
     try:
-        plugin.module = importlib.import_module('plugins.' + plugin.name)
+        plugin.module = importlib.import_module(F'{plugin_base}.{plugin.name}')
         if not plugin.module.__file__:
             plugin.load_issue = "unable to load file"
             return False
@@ -3289,20 +3293,19 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # Plugin handling
         plugin_modules = []
-        if os.path.isdir(PROGRAM_DIR + '/plugins'):
-            dirs = [f.name for f in os.scandir(PROGRAM_DIR + '/plugins') if f.is_dir()]
+        if os.path.isdir(PROGRAM_DIR + '/bundled_plugins'):
+            dirs = [f.name for f in os.scandir(PROGRAM_DIR + '/bundled_plugins') if f.is_dir()]
             for name in dirs:
                 plugin_modules.append(plugin_class(name, PROGRAM_DIR, True))
         else:
             logger.warning('No bundled plugins directory found.')
 
-        if PROGRAM_DIR != DATA_DIR:
-            if os.path.isdir(DATA_DIR + '/plugins'):
-                dirs = [f.name for f in os.scandir(DATA_DIR + '/plugins') if f.is_dir()]
-                for name in dirs:
-                    plugin_modules.append(plugin_class(name, DATA_DIR, False))
-            else:
-                logger.info('No user plugins directory found.')
+        if os.path.isdir(DATA_DIR + '/plugins'):
+            dirs = [f.name for f in os.scandir(DATA_DIR + '/plugins') if f.is_dir()]
+            for name in dirs:
+                plugin_modules.append(plugin_class(name, DATA_DIR, False))
+        else:
+            logger.info('No user plugins directory found.')
 
         for plugin in plugin_modules:
             if load_plugin(plugin):
