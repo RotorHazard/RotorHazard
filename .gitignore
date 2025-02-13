@@ -29,3 +29,6 @@ venv
 # User files, except the README
 /src/server/static/user/*
 !/src/server/static/user/README.md
+
+# User plugins folder
+/src/server/plugins/*
