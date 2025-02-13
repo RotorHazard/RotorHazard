@@ -56,15 +56,27 @@ class PluginInstallationManager:
             "https://rh-data.dutchdronesquad.nl/v1/plugin/data.json", timeout=5
         )
 
-        for plugin in dict(data.json()).values():
-            for key, value in dict(plugin["manifest"]).items():
-                plugin[key] = value
+        pool_ = pool.Pool(10)
+        pool_.map(self._fetch_remote_plugin_data, dict(data.json()).values())
 
-            del plugin["manifest"]
+    def _fetch_remote_plugin_data(self, plugin_data: dict):
 
-            plugin["reload_required"] = False
+        del plugin_data["manifest"]
 
-            self._remote_plugin_data.update({plugin["domain"]: plugin})
+        plugin_data["reload_required"] = False
+
+        data = self._session.get(
+            (
+                f"https://raw.githubusercontent.com/{plugin_data['repository']}"
+                f"/refs/tags/{plugin_data['last_version']}/custom_plugins/"
+                f"{plugin_data['domain']}/manifest.json"
+            ),
+            timeout=5,
+        )
+
+        plugin_data.update(data.json())
+
+        self._remote_plugin_data.update({plugin_data["domain"]: plugin_data})
 
     def load_local_plugin_data(self) -> None:
         """
@@ -303,11 +315,23 @@ class PluginInstallationManager:
 
         return self._remote_plugin_data
 
+    def _install_from_upload(self, file: bytes, domain: str) -> None:
+        """
+        Do the work of installing the plugin from a zip file.
+
+        :param file: The zip file to use for the install
+        :param domain: The domain to install the plugin under
+        """
+
+        self.delete_plugin_dir(domain)
+        self._install_plugin_data(domain, file)
+
+        path = Path(self._plugin_dir).joinpath(domain)
+        self._read_plugin_data(path, reload_required=True)
+
     def install_from_upload(self, file: bytes) -> None:
         """
-        Installs a plugin(s) from a zip file. The zip file's internal
-        structure needs to follow the internal structure defined by
-        the template plugin repo.
+        Installs a plugin(s) from a zip file.
 
         :param file: The zipfile as bytes
         :raises zipfile.BadZipFile: Uploaded file is not a valid
@@ -316,14 +340,22 @@ class PluginInstallationManager:
         :raises KeyError: Domain not in manifest file
         """
         with zipfile.ZipFile(io.BytesIO(file), "r") as zip_data:
+            manifest_found = False
+            init_domain = None
+
             for name in zip_data.namelist():
                 if name.endswith("/manifest.json"):
+                    manifest_found = True
                     domain = Path(name).parent.stem
-                    self.delete_plugin_dir(domain)
-                    self._install_plugin_data(domain, file)
+                    self._install_from_upload(file, domain)
 
-                    self._read_plugin_data(
-                        Path(self._plugin_dir).joinpath(domain), reload_required=True
-                    )
+                elif name.endswith("/__init__.py"):
+                    init_domain = Path(name).parent.stem
+
+            if not manifest_found and init_domain is not None:
+                self._install_from_upload(file, init_domain)
+
+            elif not manifest_found:
+                raise ValueError("Invalid uploaded plugin")
 
         self.apply_update_statuses()
