@@ -6,7 +6,6 @@
 import logging
 from eventmanager import Evt
 from led_event_manager import LEDEffect, Color, effect_delay
-import gevent
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class BitmapEffects():
                         return
 
                     c = col
-                    if args['RHAPI'].config.get_item('LED', 'INVERTED_PANEL_ROWS'):
+                    if args['RHAPI'].config.get('LED', 'INVERTED_PANEL_ROWS'):
                         if row % 2 == 0:
                             c = (panel_w - 1) - col
 
@@ -48,10 +47,10 @@ class BitmapEffects():
                 img = Image.open(bitmap['image'])
                 delay = bitmap['delay']
 
-                panel_w = args['RHAPI'].config.get_item('LED', 'LED_COUNT') // args['RHAPI'].config.get_item('LED', 'LED_ROWS')
-                panel_h = args['RHAPI'].config.get_item('LED', 'LED_ROWS')
+                panel_w = args['RHAPI'].config.get('LED', 'LED_COUNT', as_int=True) // args['RHAPI'].config.get('LED', 'LED_ROWS', as_int=True)
+                panel_h = args['RHAPI'].config.get('LED', 'LED_ROWS', as_int=True)
 
-                if args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE') % 2:
+                if args['RHAPI'].config.get('LED', 'PANEL_ROTATE', as_int=True) % 2:
                     output_w = panel_h
                     output_h = panel_w
                 else:
@@ -72,7 +71,7 @@ class BitmapEffects():
                 pad_left = int((output_w - size[0]) / 2)
                 pad_top = int((output_h - size[1]) / 2)
                 output_img.paste(img, (pad_left, pad_top))
-                output_img = output_img.rotate(90 * args['RHAPI'].config.get_item('LED', 'PANEL_ROTATE'), expand=True)
+                output_img = output_img.rotate(90 * args['RHAPI'].config.get('LED', 'PANEL_ROTATE', as_int=True), expand=True)
 
                 setPixels(output_img, panel_w)
                 strip.show()

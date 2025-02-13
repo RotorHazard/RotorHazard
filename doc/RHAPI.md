@@ -1352,6 +1352,35 @@ Hardware interface information. Returns `list[Node]`.
 
 
 
+## Persistent Configuration
+
+View information stored in server configuration and persistent (non-event, non-database) storage. Data is organized in sections and then by key. You may register custom sections and store data in them, which is kept persistently and outside of the event database. These methods are accessed via `RHAPI.config` 
+
+### All Properties and Methods
+
+#### config.register_section(section):
+Registers a custom data section and allows data to be stored and retrieved. Using during `initialize()`. No return value.
+- `section` (string): name of section item is within
+
+#### config.get_all:
+_Read only_
+Returns the entire current configuration set.
+
+#### config.get(section, name, as_int=False):
+Value of item in section with the provided name. Returns the option value.
+- `section` (string): name of section item is within
+- `name` (string): name of option to retrieve
+- `as_int` _(optional)_ (boolean): Return value as integer instead of string
+
+#### config.set(section, name, value):
+	return self._racecontext.serverconfig.set_item(section, item, value)
+Set value for the item with provided name in section. No return value.
+- `section` (string): name of section item is within
+- `name` (string): name of option to alter
+- `value` (string): new value for option
+
+
+
 ## Sensors Interface
 
 View data collected by environmental sensors such as temperature, voltage, and current.
@@ -1377,7 +1406,7 @@ Individual sensor data. Returns `Sensor`.
 
 
 
-## Server
+## Server State
 
 Information and functions relating to server state.
 These methods are accessed via `RHAPI.server` 

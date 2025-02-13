@@ -94,6 +94,24 @@ var rhui = {
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
+		} else if (settings.field_type == 'date') {
+			var field = $('<input>')
+				.attr('type', 'date')
+
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'time') {
+			var field = $('<input>')
+				.attr('type', 'time')
+
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'datetime') {
+			var field = $('<input>')
+				.attr('type', 'datetime-local')
+
+			wrapper.append(labelWrap);
+			wrapper.append(field);
 		} else {
 			console.log('fieldtype not supported');
 			return false;
