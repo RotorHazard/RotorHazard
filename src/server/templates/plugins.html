@@ -47,6 +47,10 @@
 				var directory_top_el = $('#plugin-list')
 					.empty();
 
+				for (var i in plugins_by_category) {
+					plugins_by_category[i].plugins = [];
+				}
+
 				for (var i in rotorhazard.plugins.remote) {
 					var plugin = rotorhazard.plugins.remote[i];
 

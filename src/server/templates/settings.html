@@ -1745,6 +1745,7 @@
 		});
 
 		$(document).on('click', '#upload_plugin', function (event) {
+			$.magnificPopup.close();
 			var data = {
 				method: 'upload',
 				source_data: $('#import_plugin_file').prop('files')[0]
@@ -2246,23 +2247,23 @@
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
+			<a href="#plugin-uploader" class="button-like open-mfp-popup">{{ __('Upload') }}</a>
 			<a href="/plugins" class="button-like">{{ __('Browse Plugin Directory (online only)') }}</a>
-		</div>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="import_plugin_file">{{ __('Plugin Zipfile') }}</label>
-					<p class="desc">{{ __('Max 50MB') }}</p>
-				</div>
-				<input type="file" id="import_plugin_file" />
-			</li>
-		</ol>
-		<div class="control-set">
-			<button id="upload_plugin" disabled="disabled">{{ __('Import Plugin') }}</button>
 		</div>
 
 		<div id="plugin-list">
 			<p>{{ __('Loading...') }}</p>
+		</div>
+
+		<div id="plugin-uploader" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Upload Plugin') }}</h2>
+			<div class="popup-content">
+				<p><label for="import_plugin_file">{{ __('Plugin Zipfile') }} {{ __('Max 50MB') }}</label><br />
+				<input type="file" id="import_plugin_file" /></p>
+
+				<p><button id="upload_plugin" disabled="disabled">{{ __('Import Plugin') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
 		</div>
 
 		<div id="plugin-delete-confirm" class="priority-message-interrupt mfp-hide popup">
