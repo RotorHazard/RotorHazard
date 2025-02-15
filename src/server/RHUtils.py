@@ -76,6 +76,43 @@ def format_phonetic_time_to_str(millis, timeformat='{m} {s}.{d}'):
     else:
         return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
+# Formats the given seconds value to a time-duration string in the form MM:SS:mmm
+def format_secs_to_duration_str(secs_val):
+    total_ms = int(secs_val * 1000 + 0.5)  # round to nearest ms
+    total_secs = total_ms // 1000
+    total_int_secs = int(total_secs)
+    mins_val = int(total_int_secs // 60)
+    mins_str = str(mins_val)
+    secs_str = str(int(total_int_secs % 60))
+    ms_str = str(int(total_ms % 1000)).zfill(3)
+    if ms_str[-1] == '0':  # remove trailing zeros (if not in tenths position)
+        ms_str = ms_str[0:-1]
+        if ms_str[-1] == '0':
+            ms_str = ms_str[0:-1]
+    return "{}:{}.{}".format(mins_str, secs_str.zfill(2), ms_str)
+
+# Parses the given time-duration string (in the form MM:SS:mmm) to seconds; returns None if parsing error
+def parse_duration_str_to_secs(dur_str):
+    try:
+        dur_str = str(dur_str)
+        if dur_str:
+            p = dur_str.rfind(':')
+            secs_str = dur_str[p+1:]
+            if p <= 0:
+                secs_val = float(secs_str)
+            else:
+                rem_str = dur_str[0:p]
+                p = rem_str.rfind(':')
+                if p <= 0:
+                    secs_val = float(secs_str) + (int(rem_str[p+1:]) * 60)
+                else:
+                    secs_val = float(secs_str) + (int(rem_str[p+1:]) * 60) + (int(rem_str[0:p]) * 3600)
+            total_ms = int(secs_val * 1000 + 0.5)  # round to nearest ms
+            return round(total_ms / 1000, 3)
+    except:
+        pass
+    return None
+
 
 # Previous (now deprecated) versions of time-formatting functions:
 

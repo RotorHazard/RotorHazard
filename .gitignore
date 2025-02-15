@@ -30,7 +30,5 @@ venv
 /src/server/static/user/*
 !/src/server/static/user/README.md
 
-# Plugins, except bundled and README
+# User plugins folder
 /src/server/plugins/*
-!/src/server/plugins/rh_*
-!/src/server/plugins/README.md

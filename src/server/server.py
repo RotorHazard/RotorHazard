@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.3.0-dev.2" # Public release version code
-SERVER_API = 45 # Server API version
+SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -184,6 +184,7 @@ HardwareHelpers = {}
 UI_server_messages = {}
 Auth_succeeded_flag = False
 
+SERVER_PROCESS_RESTART_FLAG = False
 HEARTBEAT_THREAD = None
 BACKGROUND_THREADS_ENABLED = True
 HEARTBEAT_DATA_RATE_FACTOR = 5
@@ -1164,6 +1165,7 @@ def on_add_heat(data=None):
     else:
         RaceContext.rhdata.add_heat()
     RaceContext.rhui.emit_heat_data()
+    RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('duplicate_heat')
 @catchLogExcWithDBWrapper
@@ -1194,13 +1196,18 @@ def on_activate_heat(data):
 def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RaceContext.rhdata.alter_heat(data)
-    if RaceContext.race.current_heat == heat.id:  # if current heat was altered then update heat data
-        RaceContext.race.set_heat(heat.id, silent=True)
-    RaceContext.rhui.emit_heat_data(noself=True)
-    if ('name' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
-        RaceContext.rhui.emit_result_data() # live update rounds page
-        message = __('Alterations made to heat: {0}').format(heat.display_name)
-        RaceContext.rhui.emit_priority_message(message, False)
+    if not data.get('coop_data_flag', False):  # if only co-op data modified then skip rest of heat-data handling
+        if RaceContext.race.current_heat == heat.id:  # if current heat was altered then update heat data
+            RaceContext.race.set_heat(heat.id, silent=True)
+        RaceContext.rhui.emit_heat_data(noself=True)
+        if ('name' in data or 'pilot' in data or 'class' in data) and len(altered_race_list):
+            RaceContext.rhui.emit_result_data() # live update rounds page
+            message = __('Alterations made to heat: {0}').format(heat.display_name)
+            RaceContext.rhui.emit_priority_message(message, False)
+    else:        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+        RaceContext.rhui.emit_heat_data()
+    RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('delete_heat')
 @catchLogExcWithDBWrapper
@@ -1214,6 +1221,7 @@ def on_delete_heat(data):
         if RaceContext.race.current_heat == heat_id:  # if current heat was deleted then drop to practice mode (avoids dynamic heat calculation)
             RaceContext.race.set_heat(RHUtils.HEAT_ID_NONE)
         RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('add_race_class')
 @catchLogExcWithDBWrapper
@@ -1816,6 +1824,20 @@ def on_reboot_pi(*args):
     else:
         logger.warning("Not executing system reboot command because not RPi")
 
+@SOCKET_IO.on('restart_server')
+def on_restart_server():
+    '''Re-execute the current process.'''
+    global SERVER_PROCESS_RESTART_FLAG
+    SERVER_PROCESS_RESTART_FLAG = True
+    if RaceContext.cluster:
+        RaceContext.cluster.emit('restart_server')
+    RaceContext.rhui.emit_priority_message(__('Server is restarting.'), True, caller='shutdown')
+    logger.info('Restarting server process')
+    Events.trigger(Evt.SHUTDOWN)
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+
 @SOCKET_IO.on('kill_server')
 @catchLogExceptionsWrapper
 def on_kill_server(*args):
@@ -1900,6 +1922,9 @@ def on_set_race_format(data):
         race_format_val = data['race_format']
         RaceContext.race.format = RaceContext.rhdata.get_raceFormat(race_format_val)
 
+        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+
         Events.trigger(Evt.RACE_FORMAT_SET, {
             'race_format': race_format_val,
             })
@@ -1931,10 +1956,14 @@ def on_alter_race_format(data):
 
     if race_format != False:
         RaceContext.race.format = race_format
+        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+        RaceContext.rhui.emit_format_data()
+        RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_status()
         RaceContext.rhui.emit_current_laps()
 
         if 'format_name' in data:
-            RaceContext.rhui.emit_format_data()
             RaceContext.rhui.emit_class_data()
 
         if len(race_list):
@@ -1948,12 +1977,19 @@ def on_alter_race_format(data):
 @catchLogExcWithDBWrapper
 def on_delete_race_format(data):
     '''Delete race format'''
-    format_id = data['format_id']
-    result = RaceContext.rhdata.delete_raceFormat(format_id)
-
-    if result:
-        first_raceFormat = RaceContext.rhdata.get_first_raceFormat()
-        RaceContext.race.format = first_raceFormat
+    format_id = data.get('format_id', 0)
+    if RaceContext.rhdata.delete_raceFormat(format_id):
+        # if current race format was deleted then select previous race format in list, or first if not found
+        if RaceContext.race.format and hasattr(RaceContext.race.format, 'id') and \
+                                        RaceContext.race.format.id == format_id:
+            new_raceFormat = RaceContext.rhdata.get_raceFormat(format_id - 1 if format_id > 0 else 0)
+            if not new_raceFormat:
+                new_raceFormat = RaceContext.rhdata.get_first_raceFormat()
+            RaceContext.race.format = new_raceFormat
+        # keep time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+        RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_status()
         RaceContext.rhui.emit_current_laps()
         RaceContext.rhui.emit_format_data()
     else:
@@ -2250,6 +2286,7 @@ def on_confirm_heat(data):
 def on_set_current_heat(data):
     '''Update the current heat variable and data.'''
     RaceContext.race.set_heat(data['heat'])
+    RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -3140,7 +3177,7 @@ def check_requirements():
                 header='Warning', subclass='none')
     except:
         logger.exception("Error checking package requirements")
-    
+
 
 class plugin_class():
     def __init__(self, name, dir, is_bundled):
@@ -3159,8 +3196,12 @@ def load_plugin(plugin):
         plugin.load_issue = "disabled"
         return False
 
+    if plugin.is_bundled:
+        plugin_base = 'bundled_plugins'
+    else:
+        plugin_base = 'plugins'
     try:
-        with open(F'{plugin.dir}/plugins/{plugin.name}/manifest.json', 'r') as f:
+        with open(F'{plugin.dir}/{plugin_base}/{plugin.name}/manifest.json', 'r') as f:
             meta = json.load(f)
 
         if isinstance(meta, dict):
@@ -3188,7 +3229,7 @@ def load_plugin(plugin):
         return False
 
     try:
-        plugin.module = importlib.import_module('plugins.' + plugin.name)
+        plugin.module = importlib.import_module(F'{plugin_base}.{plugin.name}')
         if not plugin.module.__file__:
             plugin.load_issue = "unable to load file"
             return False
@@ -3270,6 +3311,14 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
     gevent.sleep(2)  # allow system shutdown command to run before program exit
     log.close_logging()
 
+    if SERVER_PROCESS_RESTART_FLAG:
+        args = sys.argv[:]
+        args.insert(0, sys.executable)
+        if sys.platform == 'win32':
+            args = ['"%s"' % arg for arg in args]
+        print('Respawning %s' % ' '.join(args))
+        os.execv(sys.executable, args)
+
 @catchLogExceptionsWrapper
 def rh_program_initialize(reg_endpoints_flag=True):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
@@ -3290,20 +3339,19 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # Plugin handling
         plugin_modules = []
-        if os.path.isdir(PROGRAM_DIR + '/plugins'):
-            dirs = [f.name for f in os.scandir(PROGRAM_DIR + '/plugins') if f.is_dir()]
+        if os.path.isdir(PROGRAM_DIR + '/bundled_plugins'):
+            dirs = [f.name for f in os.scandir(PROGRAM_DIR + '/bundled_plugins') if f.is_dir()]
             for name in dirs:
                 plugin_modules.append(plugin_class(name, PROGRAM_DIR, True))
         else:
             logger.warning('No bundled plugins directory found.')
 
-        if PROGRAM_DIR != DATA_DIR:
-            if os.path.isdir(DATA_DIR + '/plugins'):
-                dirs = [f.name for f in os.scandir(DATA_DIR + '/plugins') if f.is_dir()]
-                for name in dirs:
-                    plugin_modules.append(plugin_class(name, DATA_DIR, False))
-            else:
-                logger.info('No user plugins directory found.')
+        if os.path.isdir(DATA_DIR + '/plugins'):
+            dirs = [f.name for f in os.scandir(DATA_DIR + '/plugins') if f.is_dir()]
+            for name in dirs:
+                plugin_modules.append(plugin_class(name, DATA_DIR, False))
+        else:
+            logger.info('No user plugins directory found.')
 
         for plugin in plugin_modules:
             if load_plugin(plugin):
@@ -3573,7 +3621,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                                                                             staging_delay_tones=0,
                                                                             number_laps_win=0,
                                                                             win_condition=WinCondition.NONE,
-                                                                            team_racing_mode=False,
+                                                                            team_racing_mode=0,
                                                                             start_behavior=0,
                                                                             points_method=None)
 
@@ -3622,6 +3670,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # make event actions available to cluster/secondary timers
         RaceContext.cluster.setEventActionsObj(EventActionsObj)
+
+        # put time fields in the current race in sync with the current race format
+        RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
 
 RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
 RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions

@@ -1490,6 +1490,11 @@ ol.heat-edit-list>li {
 	display: block;
 }
 
+.heats label.coop_best_field {
+	font-size: 1.2em;
+	margin: 0 0.5rem 0 0;
+}
+
 .pilots {
 	padding: 0;
 	list-style: none;

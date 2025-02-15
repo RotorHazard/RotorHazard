@@ -21,7 +21,7 @@ import Results
 from time import monotonic
 from eventmanager import Evt
 from filtermanager import Flt
-from RHRace import RaceStatus, WinCondition, StagingTones
+from RHRace import RaceStatus, WinCondition, RacingMode, StagingTones
 from Database import ProgramMethod, HeatAdvanceType, RoundType, HeatStatus
 
 from FlaskAppObj import APP
@@ -77,18 +77,18 @@ class RHData():
             self._OptionsCache[setting.option_name] = setting.option_value
 
     # General
-    def db_init(self, nofill=False):
+    def db_init(self, nofill=False, migrateDbApi=None):
         # Creates tables from database classes/models
         try:
             Database.initialize()
             Database.create_db_all()
-            self.reset_all(nofill) # Fill with defaults
+            self.reset_all(nofill, migrateDbApi) # Fill with defaults
             return True
         except Exception as ex:
             logger.error('Error creating database: ' + str(ex))
             return False
 
-    def do_reset_all(self, nofill):
+    def do_reset_all(self, nofill, migrateDbApi):
         self.reset_pilots()
         if nofill:
             self.reset_heats(nofill=True)
@@ -96,17 +96,18 @@ class RHData():
             self.reset_heats()
         self.clear_race_data()
         self.reset_profiles()
-        self.reset_raceFormats()
+        # (if older DB then co-op race formats will be added after recovery)
+        self.reset_raceFormats(migrateDbApi is None or migrateDbApi >= 46)
         self.reset_raceClasses()
         self.reset_options()
 
-    def reset_all(self, nofill=False):
+    def reset_all(self, nofill=False, migrateDbApi=None):
         try:
-            self.do_reset_all(nofill)
+            self.do_reset_all(nofill, migrateDbApi)
         except Exception as ex:
             logger.warning("Doing DB session rollback and retry after error: {}".format(ex))
             Database.DB_session.rollback()
-            self.do_reset_all(nofill)
+            self.do_reset_all(nofill, migrateDbApi)
 
     def commit(self):
         try:
@@ -360,6 +361,15 @@ class RHData():
             'stage_2': False,
         }
 
+        migrate_db_api = 0  # default to delta5 or very old RH versions
+        options_query_data = None
+        pilot_query_data = None
+        heat_query_data = None
+        heatNode_query_data = None
+        raceFormat_query_data = None
+        profiles_query_data = None
+        raceClass_query_data = None
+
         # stage 0: collect data from file
         try:
             logger.info('Recovering data from previous database')
@@ -371,7 +381,6 @@ class RHData():
 
             options_query_data = self.get_legacy_table_data(engine, metadata, 'global_settings')
 
-            migrate_db_api = 0 # delta5 or very old RH versions
             if options_query_data:
                 for row in options_query_data:
                     if row['option_name'] == 'server_api':
@@ -468,7 +477,7 @@ class RHData():
         if "startup" in kwargs:
             self.backup_db_file(False)  # rename and move DB file
 
-        self.db_init(nofill=True)
+        self.db_init(nofill=True, migrateDbApi=migrate_db_api)
 
         # stage 1: recover pilots, heats, heatnodes, format, profile, class, options
         if recover_status['stage_0'] == True:
@@ -494,7 +503,7 @@ class RHData():
 
                     # build list of heat meta
                     heat_extracted_meta = []
-                    if len(heat_query_data):
+                    if heat_query_data and len(heat_query_data):
                         for row in heat_query_data:
                             if 'node_index' in row:
                                 if row['node_index'] == 0:
@@ -626,9 +635,12 @@ class RHData():
                         'staging_delay_tones': 0,
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS,
-                        'team_racing_mode': False,
+                        'team_racing_mode': RacingMode.INDIVIDUAL,
                         'points_method': None
                     })
+                    if migrate_db_api < 46:
+                        self.add_coopRaceFormats()
+                        logger.info("Added co-op race formats")
                 else:
                     self.reset_raceFormats()
 
@@ -1238,6 +1250,10 @@ class RHData():
             heat.status = data['status']
         if 'active' in data:
             heat.active = data['active']
+        if 'coop_best_time' in data:
+            heat.coop_best_time = RHUtils.parse_duration_str_to_secs(data['coop_best_time'])
+        if 'coop_num_laps' in data:
+            heat.coop_num_laps = data['coop_num_laps']
 
         heat.auto_name = self.get_heat_auto_name(heat)
 
@@ -1761,6 +1777,21 @@ class RHData():
             if not matched_flag:
                 return False
         return True
+
+    # Fetches co-op race values stored via heat in database and loads them into the given RHRace object
+    def get_heat_coop_values(self, heat_or_id, rh_race_obj):
+        heat_obj = self.resolve_heat_from_heat_or_id(heat_or_id)
+        if heat_obj and rh_race_obj:
+            rh_race_obj.coop_best_time = heat_obj.coop_best_time
+            rh_race_obj.coop_num_laps = heat_obj.coop_num_laps
+
+    # Update co-op race values stored via heat in database (if modified)
+    def update_heat_coop_values(self, heat_or_id, coop_best_time, coop_num_laps):
+        heat_obj = self.resolve_heat_from_heat_or_id(heat_or_id)
+        if heat_obj and (coop_best_time != heat_obj.coop_best_time or coop_num_laps != heat_obj.coop_num_laps):
+            heat_obj.coop_best_time = coop_best_time
+            heat_obj.coop_num_laps = coop_num_laps
+            self.commit()
 
     # Race Classes
     def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):
@@ -2440,7 +2471,7 @@ class RHData():
             start_delay_max_ms=1000,
             number_laps_win=0,
             win_condition=0,
-            team_racing_mode=False,
+            team_racing_mode=RacingMode.INDIVIDUAL,
             start_behavior=0,
             points_method=None)
 
@@ -2468,7 +2499,7 @@ class RHData():
             if 'number_laps_win' in init:
                 race_format.number_laps_win = init['number_laps_win']
             if 'team_racing_mode' in init:
-                race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
+                race_format.team_racing_mode = int(init['team_racing_mode']) if init['team_racing_mode'] else RacingMode.INDIVIDUAL
             if 'points_method' in init:
                 race_format.points_method = init['points_method']
 
@@ -2554,7 +2585,7 @@ class RHData():
         if 'number_laps_win' in data:
             race_format.number_laps_win = data['number_laps_win'] if isinstance(data['number_laps_win'], int) else 0
         if 'team_racing_mode' in data:
-            race_format.team_racing_mode = True if data['team_racing_mode'] else False
+            race_format.team_racing_mode = int(data['team_racing_mode']) if data['team_racing_mode'] else RacingMode.INDIVIDUAL
         if 'points_method' in data:
             if data['points_method']:
                 if race_format.points_method:
@@ -2660,7 +2691,7 @@ class RHData():
         self.commit()
         return True
 
-    def reset_raceFormats(self):
+    def reset_raceFormats(self, addCoopFlag=True):
         self.clear_raceFormats()
         self.add_format({
             'format_name': self.__("2:00 Standard Race"),
@@ -2673,7 +2704,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2688,7 +2719,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2703,7 +2734,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2718,7 +2749,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 3,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2733,7 +2764,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.NONE,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2748,7 +2779,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2763,7 +2794,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2778,7 +2809,7 @@ class RHData():
             'staging_delay_tones': 0,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_LAPS,
-            'team_racing_mode': False,
+            'team_racing_mode': RacingMode.INDIVIDUAL,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2793,7 +2824,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2808,7 +2839,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 7,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2823,7 +2854,7 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
@@ -2838,14 +2869,48 @@ class RHData():
             'staging_delay_tones': 2,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_CONSECUTIVE,
-            'team_racing_mode': True,
+            'team_racing_mode': RacingMode.TEAM_ENABLED,
             'start_behavior': 0,
             'points_method': None
             })
+        if addCoopFlag:
+            self.add_coopRaceFormats()
 
         self.commit()
         logger.info("Database reset race formats")
         return True
+
+    def add_coopRaceFormats(self):
+        self.add_format({
+            'format_name': self.__("Co-op Fastest Time to 7 Laps"),
+            'unlimited_time': 1,
+            'race_time_sec': 0,
+            'lap_grace_sec': -1,
+            "staging_fixed_tones": 3,
+            'start_delay_min_ms': 1000,
+            'start_delay_max_ms': 0,
+            'staging_delay_tones': 2,
+            'number_laps_win': 7,
+            'win_condition': WinCondition.FIRST_TO_LAP_X,
+            'team_racing_mode': RacingMode.COOP_ENABLED,
+            'start_behavior': 0,
+            'points_method': None
+        })
+        self.add_format({
+            'format_name': self.__("Co-op Most Laps in 2:30"),
+            'unlimited_time': 0,
+            'race_time_sec': 150,
+            'lap_grace_sec': -1,
+            "staging_fixed_tones": 3,
+            'start_delay_min_ms': 1000,
+            'start_delay_max_ms': 0,
+            'staging_delay_tones': 2,
+            'number_laps_win': 0,
+            'win_condition': WinCondition.MOST_PROGRESS,
+            'team_racing_mode': RacingMode.COOP_ENABLED,
+            'start_behavior': 0,
+            'points_method': None
+        })
 
     # Race Format Attributes
     def get_raceformat_attribute(self, raceformat_or_id, name):
@@ -3514,20 +3579,21 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
 def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
     if '%' in text:
         race_results = rhapi.race.results
+        heat_data = None
 
         # %HEAT% : Current heat name or ID value
         if '%HEAT%' in text:
             if 'heat_id' in args:
-                heat = rhapi.db.heat_by_id(args['heat_id'])
+                heat_data = rhapi.db.heat_by_id(args['heat_id'])
             else:
-                heat = rhapi.db.heat_by_id(rhapi.race.heat)
+                heat_data = rhapi.db.heat_by_id(rhapi.race.heat)
 
             heat_name = None
-            if heat:
+            if heat_data:
                 if spoken_flag:
-                    heat_name = heat.display_name_short
+                    heat_name = heat_data.display_name_short
                 else:
-                    heat_name = heat.display_name
+                    heat_name = heat_data.display_name
 
             if not heat_name:
                 heat_name = rhapi.__('None')
@@ -3602,10 +3668,10 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
         # %RACE_FORMAT% : Current race format
         if '%RACE_FORMAT%' in text:
             format_obj = rhapi.race.raceformat
-            if format_obj:
-                text = text.replace('%RACE_FORMAT%', format_obj.name)
-                text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
-                text = text.replace('/', ' ')
+            fmt_str = getattr(format_obj, 'name', '') if format_obj else ''
+            text = text.replace('%RACE_FORMAT%', fmt_str)
+            text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
+            text = text.replace('/', ' ')
 
         # %PILOTS% : List of pilot callsigns (read out slower)
         if '%PILOTS%' in text:
@@ -3655,32 +3721,32 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                     # %TOTAL_TIME% : Total time since start of race for pilot
                     text = text.replace('%TOTAL_TIME%', RHUtils.format_phonetic_time_to_str( \
                         result.get('total_time_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('total_time', '')))
+                                            if spoken_flag else str(result.get('total_time', '')))
 
                     # %TOTAL_TIME_LAPS%: Total time since start of first lap for pilot
                     text = text.replace('%TOTAL_TIME_LAPS%', RHUtils.format_phonetic_time_to_str( \
                         result.get('total_time_laps_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('total_time_laps', '')))
+                                            if spoken_flag else str(result.get('total_time_laps', '')))
 
                     # %LAST_LAP% : Last lap time for pilot
                     text = text.replace('%LAST_LAP%', RHUtils.format_phonetic_time_to_str( \
                         result.get('last_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('last_lap', '')))
+                                            if spoken_flag else str(result.get('last_lap', '')))
 
                     # %AVERAGE_LAP% : Average lap time for pilot
                     text = text.replace('%AVERAGE_LAP%', RHUtils.format_phonetic_time_to_str( \
                         result.get('average_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('average_lap', '')))
+                                            if spoken_flag else str(result.get('average_lap', '')))
 
                     # %FASTEST_LAP% : Fastest lap time
                     text = text.replace('%FASTEST_LAP%', RHUtils.format_phonetic_time_to_str( \
                         result.get('fastest_lap_raw'), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                        if spoken_flag else str(result.get('fastest_lap', '')))
+                                            if spoken_flag else str(result.get('fastest_lap', '')))
 
                     if '%TIME_BEHIND' in text:
                         behind_str = RHUtils.format_phonetic_time_to_str( \
                             result.get('time_behind_raw', ''), rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                            if spoken_flag else str(result.get('time_behind', ''))
+                                                if spoken_flag else str(result.get('time_behind', ''))
                         pos_bhind_str = ''
                         if behind_str:
                             # %TIME_BEHIND% : Amount of time behind race leader
@@ -3783,6 +3849,50 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                         delay_sec_holder.append(float(num_str))
                     text = text[(len(num_str)+vlen):].strip()
 
+        # %COOP_RACE_INFO% : Co-op race mode information (target time or laps)
+        if '%COOP_RACE_INFO%' in text:
+            format_obj = rhapi.race.raceformat
+            info_str = ''
+            if format_obj and format_obj.team_racing_mode == RacingMode.COOP_ENABLED:
+                if not heat_data:
+                    if 'heat_id' in args:
+                        heat_data = rhapi.db.heat_by_id(args['heat_id'])
+                    else:
+                        heat_data = rhapi.db.heat_by_id(rhapi.race.heat)
+                if heat_data:
+                    if format_obj.win_condition == WinCondition.FIRST_TO_LAP_X:
+                        if heat_data.coop_best_time and heat_data.coop_best_time > 0.001:
+                            c_time_ms = int(round(heat_data.coop_best_time,1)*1000)
+                            c_time_str = RHUtils.format_phonetic_time_to_str(c_time_ms, \
+                                        rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                                        if spoken_flag else RHUtils.format_time_to_str(c_time_ms, \
+                                                            rhapi.config.get_item('UI', 'timeFormat'))
+                            info_str = rhapi.__('target time is') + ' ' + c_time_str
+                        else:
+                            info_str = rhapi.__('benchmark race')
+                    else:
+                        if heat_data.coop_num_laps and heat_data.coop_num_laps > 0:
+                            info_str = rhapi.__('target laps is') + ' ' + str(heat_data.coop_num_laps)
+                        else:
+                            info_str = rhapi.__('benchmark race')
+            text = text.replace('%COOP_RACE_INFO%', info_str)
+
+        # %COOP_RACE_LAP_TOTALS% : Pilot lap counts for race in co-op mode
+        if '%COOP_RACE_LAP_TOTALS%' in text:
+            format_obj = rhapi.race.raceformat
+            totals_str = ''
+            if format_obj and format_obj.team_racing_mode == RacingMode.COOP_ENABLED:
+                if not leaderboard:
+                    lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
+                    leaderboard = race_results.get(lboard_name, [])
+                totals_str = getPilotLapsStr(rhapi, ' , ', spoken_flag, leaderboard)
+            text = text.replace('%COOP_RACE_LAP_TOTALS%', totals_str)
+
+        # %RACE_RESULT% : Race result status message (race winner or co-op result)
+        if '%RACE_RESULT%' in text:
+            result_str = rhapi.race.phonetic_status_msg if spoken_flag else rhapi.race.status_message
+            text = text.replace('%RACE_RESULT%', result_str if result_str else '')
+
     return text
 
 def heatNodeSorter( x):
@@ -3826,6 +3936,24 @@ def getPilotFreqsStr(rhapi, sep_str, spoken_flag):
                         else:
                             pilots_str += sep_str
                         pilots_str += text + ': ' + freq
+    return pilots_str
+
+def getPilotLapsStr(rhapi, sep_str, spoken_flag, leaderboard):
+    pilots_str = ''
+    first_flag = True
+    for result in leaderboard:
+        pilot_obj = rhapi.db.pilot_by_id(result.get('pilot_id'))
+        if pilot_obj:
+            text = pilot_obj.spoken_callsign if spoken_flag else pilot_obj.display_callsign
+            if text:
+                lap_count = result.get('laps')
+                if lap_count:
+                    if first_flag:
+                        first_flag = False
+                    else:
+                        pilots_str += sep_str
+                    pilots_str += text + ' ' + rhapi.__('had') + ' ' + str(lap_count) + ' ' + \
+                                      (rhapi.__('laps') if str(lap_count) != '1' else rhapi.__('lap'))
     return pilots_str
 
 def get_position_place_str(rhapi, pos_str):

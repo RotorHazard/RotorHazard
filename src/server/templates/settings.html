@@ -856,7 +856,7 @@
 			rotorhazard.voice_split_timer = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
-		
+
 		$('#voice_race_leader').change(function (event) {
 			rotorhazard.voice_race_leader = parseInt($(this).val());
 			rotorhazard.saveData();
@@ -1167,6 +1167,11 @@
 
 		$('button#reboot_pi').click(function (event) {
 			socket.emit('reboot_pi');
+		});
+
+		$('button#restart_server').click(function (event) {
+			socket.emit('restart_server');
+			return false;
 		});
 
 		$('button#kill_server').click(function (event) {
@@ -1928,7 +1933,7 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -1938,7 +1943,7 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -1948,7 +1953,7 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -1964,11 +1969,12 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+						<label for="voice_team_lap_count">{{ __('Team/Co-op Lap Total') }}</label>
 					</div>
 					<select id="voice_team_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('On Team Races') }}</option>
+						<option value="1">{{ __('On Team/Co-op Races') }}</option>
+						<option value="2">{{ __('On Team/Co-op Races (short call)') }}</option>
 					</select>
 				</li>
 				<li>
@@ -2226,6 +2232,7 @@
 			<button data-mfp-src="#shutdown_confirm" class="btn-danger open-mfp-popup">{{ __('Shut Down') }}</button>
 			<button data-mfp-src="#reboot_confirm" class="btn-danger open-mfp-popup">{{ __('Reboot') }}</button>
 			{% endif %}
+			<a href="#restart_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Restart') }}</a>
 			{% if Debug %}
 			<button data-mfp-src="#kill_server_confirm" class="btn-danger open-mfp-popup">{{ __('Kill Server') }}</button>
 			{% endif %}
@@ -2239,7 +2246,7 @@
 		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Shut down server?') }}</p>
+				<p>{{ __('Shut down server hardware?') }}</p>
 				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
@@ -2248,7 +2255,7 @@
 		<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Reboot server?') }}</p>
+				<p>{{ __('Reboot server hardware?') }}</p>
 				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
@@ -2259,6 +2266,15 @@
 			<div class="popup-content">
 				<p>{{ __('Terminate RotorHazard server?') }}</p>
 				<p><button class="btn-danger" id="kill_server">{{ __('Kill Server') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="restart_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>Alert</h2>
+			<div class="popup-content">
+				<p>{{ __('Restart RotorHazard server process?') }}</p>
+				<p><button class="btn-danger" id="restart_server">{{ __('Restart') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
