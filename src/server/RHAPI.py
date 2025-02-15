@@ -1060,6 +1060,14 @@ class RaceAPI():
         return self._racecontext.race.race_status
 
     @property
+    def status_message(self):
+        return self._racecontext.race.status_message
+
+    @property
+    def phonetic_status_msg(self):
+        return self._racecontext.race.phonetic_status_msg
+
+    @property
     def stage_time_internal(self):
         return self._racecontext.race.stage_time_monotonic
 
@@ -1109,6 +1117,11 @@ class RaceAPI():
     @callWithDatabaseWrapper
     def team_results(self):
         return self._racecontext.race.get_team_results()
+
+    @property
+    @callWithDatabaseWrapper
+    def coop_results(self):
+        return self._racecontext.race.get_coop_results()
 
     @property
     def win_status(self):

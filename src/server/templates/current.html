@@ -16,6 +16,7 @@
 	var request_time;
 	var request_pi_time;
 	var resume_check = true;
+	var leaderboard_current_flag = true;
 
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
@@ -181,6 +182,18 @@
 			}
 		}
 
+		function any_laps_recorded() {
+			if (current_laps && 'node_index' in current_laps) {
+				for (var node_i in current_laps.node_index) {
+					if ('laps' in current_laps.node_index[node_i] &&
+							current_laps.node_index[node_i].laps.length > 0) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
@@ -192,6 +205,7 @@
 
 		socket.on('race_status', function (msg) {
 			rotorhazard.event.race_status = msg;
+			rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
 
 			switch (msg.race_status) {
 				case 1: // Race running
@@ -200,6 +214,10 @@
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					if (msg.show_init_time_flag) {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
 					if (resume_check) {
 						race_kickoff(msg);
 					}
@@ -224,6 +242,16 @@
 					$('body').removeClass('race-stopped');
 					$('body').addClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					if (msg.show_init_time_flag) {
+						if ((!leaderboard_current_flag) || (!any_laps_recorded())) {
+							rotorhazard.timer.deferred.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+							rotorhazard.timer.race.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+						}
+					} else {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
+					rotorhazard.timer.deferred.renderHTMLandUpdate();
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}
@@ -419,11 +447,12 @@
 				} else {
 					$('.current-heat').html(msg.current.displayname);
 				}
-
 				$('#next-race').slideDown();
+				leaderboard_current_flag = false;
 			} else {
 				var race = msg.current;
 				$('#next-race').slideUp();
+				leaderboard_current_flag = true;
 			}
 
 			if (race.round) {
@@ -462,30 +491,34 @@
 					var ttstext = '';
 	
 					if (rotorhazard.voice_callsign == 1 ||
-								(rotorhazard.voice_callsign == 2 && (!msg.team_name))) {
+								(rotorhazard.voice_callsign == 2 && (!msg.team_phonetic))) {
 						ttstext = msg.callsign;
 						if (msg.pilot)
 							ttstext = msg.pilot;
 					}
 	
 					if (rotorhazard.voice_lap_count == 1 ||
-								(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
+								(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_phonetic))) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
 						ttstext += __l('Lap') + " " + msg.lap;
 					}
 	
 					if (rotorhazard.voice_lap_time == 1 ||
-								(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
+								(rotorhazard.voice_lap_time == 2 && (!msg.team_phonetic))) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
 						ttstext += msg.phonetic;
 					}
 	
-					if (msg.team_name && msg.team_laps && rotorhazard.voice_team_lap_count != 0) {
+					if (msg.team_phonetic && rotorhazard.voice_team_lap_count != 0) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
-						ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
+						if (rotorhazard.voice_team_lap_count == 2 && msg.team_short_phonetic) {
+							ttstext += msg.team_short_phonetic;
+						} else {
+							ttstext += msg.team_phonetic;
+						}
 					}
 	
 					if (ttstext.length > 0) {
@@ -493,7 +526,7 @@
 							if (rotorhazard.beep_race_leader_lap) {
 								speak(LEADER_FLAG_CHAR);
 							}
-							if (rotorhazard.voice_race_leader && (!msg.team_name)) {
+							if (rotorhazard.voice_race_leader && (!msg.team_phonetic)) {
 								setTimeout(callout_current_leader, (rotorhazard.voice_race_leader * 1000), (msg.pilot ? msg.pilot : msg.callsign));
 							}
 						}
@@ -858,7 +891,7 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -868,7 +901,7 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -878,7 +911,7 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -894,11 +927,12 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+						<label for="voice_team_lap_count">{{ __('Team/Co-op Lap Total') }}</label>
 					</div>
 					<select id="voice_team_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('On Team Races') }}</option>
+						<option value="1">{{ __('On Team/Co-op Races') }}</option>
+						<option value="2">{{ __('On Team/Co-op Races (short call)') }}</option>
 					</select>
 				</li>
 				<li>

@@ -679,7 +679,7 @@ Race formats are represented with the `RaceFormat` class, which has the followin
 - `staging_delay_tones` (int): Whether to play staging tones each second during random delay phase
 - `number_laps_win` (int): Number of laps used to declare race winner, if > 0
 - `win_condition` (int): Condition used to determine race winner and race ranking
-- `team_racing_mode` (boolean): Whether local simultaneous team racing mode will be used
+- `team_racing_mode` (int): Racing mode, 0 for individual, 1 for team, 2 for co-op
 - `start_behavior` (int): Handling of first crossing
 - `points_method` (String): JSON-serialized arguments for points algorithm
 
@@ -745,7 +745,7 @@ Add a new race format to the database. Returns the new `RaceFormat`.
 - `start_behavior` _(optional)_ (int): First crossing behavior for new race format
 - `win_condition` _(optional)_ (int): Win condition for new race format
 - `number_laps_win` _(optional)_ (int): Lap count setting for new race format
-- `team_racing_mode` _(optional)_ (boolean): Team racing setting for new race format
+- `team_racing_mode` _(optional)_ (int): Racing mode, 0 for individual, 1 for team, 2 for co-op
 - `points_method` _(optional)_ (string): JSON-serialized arguments for new race format
 
 #### db.raceformat_duplicate(source_format_or_id)
@@ -766,7 +766,7 @@ Alter race format data. Returns tuple of this `RaceFormat` and affected races as
 - `start_behavior` _(optional)_ (int): First crossing behavior for new race format
 - `win_condition` _(optional)_ (int): Win condition for new race format
 - `number_laps_win` _(optional)_ (int): Lap count setting for new race format
-- `team_racing_mode` _(optional)_ (boolean): Team racing setting for new race format
+- `team_racing_mode` _(optional)_ (int): Racing mode, 0 for individual, 1 for team, 2 for co-op
 - `points_method` _(optional)_ (string): JSON-serialized arguments for new race format
 - `points_settings`  _(optional)_ (dict): arguments to pass to class ranking
 - `attributes` _(optional)_ (dict): Attributes to alter, attribute values assigned to respective keys

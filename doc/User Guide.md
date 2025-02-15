@@ -179,7 +179,9 @@ _Win Condition_ determines how the timer calls out the winner of the race, the i
 * __Fastest 3 Consecutive Laps__: Considers all laps a pilot has completed and uses the three consecutive laps with the fastest combined time.
 * __None__: Does not declare a winner under any circumstance. Heats generated from a class with this condition will be assigned randomly.
 
-_Team Racing Mode_ activates alternate scoring for additional race formats. Win conditions in team racing mode differ somewhat:
+__Team/Co-op Racing Mode__ provides access to racing modes in which pilots may compete together in groups. 
+
+__Team Racing__ allows groups of pilots to complete as teams. The team for each pilot may be set in the 'Pilots' section. Win conditions in team racing mode differ somewhat:
 * __Most Laps in Fastest Time__: Teams are judged on combined lap count of all members and how long it took to complete those laps.
 * __Most Laps Only__: Teams are judged on total combined lap count of all members.
 * __Most Laps Only with Overtime__: Teams are judged on total combined lap count of all members. If tied when time expires, the first team (of those tied) to add a lap becomes the winner.
@@ -189,6 +191,13 @@ _Team Racing Mode_ activates alternate scoring for additional race formats. Win 
 
 With _Fastest Lap_ and _Fastest 3 Consecutive Laps_, teams with differing numbers of pilots can compete together fairly.
 
+__Co-op Racing__ allows all pilots in a race to work as a cooperative group to improve their combined performance. Pilots of varying abilities can race together, with everyone contributing and working on improving their skills. There are two versions of co-op racing, described below. In both versions, all pilots in the current heat race together as a group. In the first race, a benchmark performance is set, and in each race after that the group attempts to improve and achieve a new best performance. 
+
+* _Co-op Fastest Time to X Laps_: The group attempts to complete the given number of laps (X) in the fastest time. When this racing format is enabled (on the 'Run' page), the current "Co-op Best Time" value will be shown with the heat settings for the group (in the "Classes and Heats" section on the 'Format' page), and the value may be altered or cleared there.  
+
+* _Co-op Most Laps in X:XX_: The group attempts to complete the most number of laps in the given race time (X:XX). When this racing format is enabled (on the 'Run' page), the current "Co-op Best # of Laps" value will be shown with the heat settings for the group (in the "Classes and Heats" section on the 'Format' page), and the value may be altered or cleared there.
+
+The "%COOP_RACE_INFO%" and "%COOP_RACE_LAP_TOTALS%" variables can be used in callouts with co-op races, see the [Event Actions](#event-actions) section for descriptions. 
 
 #### Data Management
 
@@ -218,7 +227,7 @@ All audio controls are local to the browser and device where you set them, inclu
 
 Voice select chooses the text-to-speech engine. Available selections are provided by the web browser and operating system.
 
-Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Clock" announcement will periodically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
+Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Clock" announcement will periodically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team/Co-op Lap Total" applies when "Team Racing Mode" or "Co-op Racing Mode" is enabled, and configures whether or not the lap total for the pilot group is announced on each lap. The "On Team/Co-op Races (short call)" option will result in a short version of the callout (simply "Lap X").
 
 Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Volume" controls race start and end signals.
 
@@ -272,8 +281,11 @@ The variables listed below may be used for the  effects.
 | %FREQS%                   | List of pilot callsigns and frequency assignments                       |
 | %LEADER%                  | Callsign of pilot currently leading race                                |
 | %LEADER_CALL%             | Callsign of pilot currently leading race, in the form "NAME is leading" |
-| %SPLIT_TIME%              | Split time for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)  |
-| %SPLIT_SPEED%             | Split speed for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc) |
+| %SPLIT_TIME%              | Split time for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)          |
+| %SPLIT_SPEED%             | Split speed for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)         |
+| %RACE_RESULT%             | Race result status message (race winner or co-op result)                |
+| %COOP_RACE_INFO%          | Co-op race mode information (target time or laps)                       |
+| %COOP_RACE_LAP_TOTALS%    | Pilot lap counts for race in co-op mode                                 |
 | %CURRENT_TIME_AP%         | Current time (12-hour clock)                                            |
 | %CURRENT_TIME_24%         | Current time (24-hour clock)                                            |
 | %CURRENT_TIME_SECS_AP%    | Current time, with seconds (12-hour clock)                              |
@@ -319,7 +331,7 @@ Once a race has concluded, you must choose "Save Laps" or "Discard Laps" before 
 
 (The spacebar can also be used as a hotkey for the Start, Stop and Save functions.)
 
-The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. _Audio Control_ and _LED Control_ are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
+The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team/Co-op Racing Mode. _Audio Control_ and _LED Control_ are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
 
 The Callout panel may be used to configure voice callouts, which can be triggered by clicking on the "play" button or hitting the associated hot-key sequence.  (For instance, hitting Ctl+Alt+1 will trigger the first voice callout.)  Many of the variables listed under "Event Actions" may be used on these callouts.
 
