@@ -1127,6 +1127,10 @@ class RHUI():
             current_heat['auto_frequency'] = heat.auto_frequency
             current_heat['active'] = heat.active
             current_heat['next_round'] = self._racecontext.rhdata.get_max_round(heat.id)
+            current_heat['coop_best_time'] = RHUtils.format_secs_to_duration_str(heat.coop_best_time) \
+                if isinstance(heat.coop_best_time, (int, float)) and \
+                   heat.coop_best_time >= 0.001 else ''
+            current_heat['coop_num_laps'] = heat.coop_num_laps
 
             current_heat['slots'] = []
 
@@ -1446,6 +1450,12 @@ class RHUI():
             'heat_class': heat_class,
         }
         if self._racecontext.race.current_heat:
+
+            emit_payload['coop_best_time'] = RHUtils.format_secs_to_duration_str(heat_data.coop_best_time) \
+                if isinstance(heat_data.coop_best_time, (int, float)) and \
+                   heat_data.coop_best_time >= 0.001 else ''
+            emit_payload['coop_num_laps'] = heat_data.coop_num_laps
+
             if heat_class:
                 race_class = self._racecontext.rhdata.get_raceClass(heat_class)
                 if race_class.round_type == RoundType.GROUPED:

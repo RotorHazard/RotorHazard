@@ -1409,7 +1409,6 @@
 					.addClass(`heat-ui--coop-time-control--heat-${heat.id}`)
 					.appendTo(el);
 				var label = $(document.createElement('label'))
-					.addClass('coop_best_field')
 					.text(__('Co-op Best Time'))
 					.appendTo(heat_coop_time_control);
 				var heat_coop_time = $(document.createElement('input'))
@@ -1424,7 +1423,6 @@
 					.addClass(`heat-ui--coop-laps-control--heat-${heat.id}`)
 					.appendTo(el);
 				var label = $(document.createElement('label'))
-					.addClass('coop_best_field')
 					.text(__('Co-op Best # of Laps'))
 					.appendTo(heat_coop_laps_control);
 				var heat_coop_laps = $(document.createElement('input'))
@@ -1432,7 +1430,7 @@
 					.prop('type', 'number')
 					.prop('step', 1)
 					.prop('min', 0)
-					.addClass('set_heat_coop_best_laps')
+					.addClass('set_heat_coop_num_laps')
 					.data('heat', heat.id)
 					.prependTo(label);
 
@@ -1777,7 +1775,7 @@
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == heat.class_id});
 				var format_id = race_class.format;
 			} else {
-				var format_id = rotorhazard.event.race_status.race_format_id;
+				var format_id = 0;
 			}
 
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
