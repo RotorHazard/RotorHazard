@@ -103,8 +103,12 @@
 		</nav>
 	</header>
 
-	<aside>
-		<div class="socket-warning" style="display:none">{{ __('Server connection lost') }}</div>
+	<aside class="socket-warning" style="display:none">
+		{{ __('Server connection lost') }}
+	</aside>
+
+	<aside class="restart-warning" {% if not restart_flag %}style="display:none"{% endif %}>
+		{{ __('Restart required. RotorHazard may not function as expected.') }} <a href="#restart_confirm" class="admin-hide btn-danger button-like open-mfp-popup">{{ __('Restart') }}</a>
 	</aside>
 
 	<!--Child template content-->
@@ -128,6 +132,15 @@
 		<h2>{{ __("About RotorHazard") }}</h2>
 		<div class="popup-content">
 			{{ serverInfo['about_html'] | safe }}
+		</div>
+	</div>
+
+	<div id="restart_confirm" class="priority-message-interrupt mfp-hide popup">
+		<h2>Alert</h2>
+		<div class="popup-content">
+			<p>{{ __('Restart RotorHazard server process?') }}</p>
+			<p><button class="btn-danger" id="restart_server">{{ __('Restart') }}</button>
+			<button class="cancel">{{ __('Cancel') }}</button></p>
 		</div>
 	</div>
 </body>

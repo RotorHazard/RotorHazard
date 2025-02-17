@@ -5,6 +5,7 @@ import Config
 import RHRace
 import RHTimeFns
 import logging
+from eventmanager import Evt
 from led_event_manager import NoLEDManager
 
 logger = logging.getLogger(__name__)
@@ -294,3 +295,9 @@ class ServerState:
 
     # flag if restart is needed (after plugin install, etc.)
     restart_required = False
+
+    def set_restart_required(self):
+        if not self.restart_required:
+            self.restart_required = True
+            self._racecontext.events.trigger(Evt.RESTART_REQUIRED, {})
+            self._racecontext.rhui.emit_restart_required()

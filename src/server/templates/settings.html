@@ -1169,11 +1169,6 @@
 			socket.emit('reboot_pi');
 		});
 
-		$('button#restart_server').click(function (event) {
-			socket.emit('restart_server');
-			return false;
-		});
-
 		$('button#kill_server').click(function (event) {
 			socket.emit('kill_server');
 		});
@@ -2327,15 +2322,6 @@
 			<div class="popup-content">
 				<p>{{ __('Terminate RotorHazard server?') }}</p>
 				<p><button class="btn-danger" id="kill_server">{{ __('Kill Server') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<div id="restart_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>Alert</h2>
-			<div class="popup-content">
-				<p>{{ __('Restart RotorHazard server process?') }}</p>
-				<p><button class="btn-danger" id="restart_server">{{ __('Restart') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>

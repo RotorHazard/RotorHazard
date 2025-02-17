@@ -1587,3 +1587,7 @@ class RHUI():
             pass
         # if node freq does not match then just return frequency
         return "{}".format(freq_val)
+
+    def emit_restart_required(self, **params):
+        ''' Emits restart required message to all clients '''
+        self._socket.emit('restart_required')

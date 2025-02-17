@@ -792,6 +792,24 @@ main {
 	z-index: 10000;
 }
 
+/* Reset warning */
+
+.restart-warning {
+	text-align: center;
+	padding: 1rem 0.25rem;
+	border: solid 0.125em hsl(23.1, 64.6%, 37.6%);
+	background: hsl(41.1, 86.2%, 54.5%);
+	background: -moz-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%, hsl(23.1, 64.6%, 37.6%) 100%);
+	background: -webkit-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
+	background: linear-gradient(to bottom, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
+	color: #000;
+	width: 100%;
+	position: sticky;
+	top: 0;
+	width: 100%;
+	z-index: 9000;
+}
+
 /* Home */
 
 .page-home .header h1 {

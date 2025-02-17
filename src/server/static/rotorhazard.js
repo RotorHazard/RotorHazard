@@ -1691,6 +1691,16 @@ jQuery(document).ready(function($){
 		location.reload();
 	});
 
+	// server restart
+	$('button#restart_server').click(function (event) {
+		socket.emit('restart_server');
+		return false;
+	});
+
+	socket.on('restart_required', function (msg) {
+		$('.restart-warning').slideDown();
+	});
+
 	// load needed data from server when required
 	socket.on('load_all', function (msg) {
 		if (typeof(data_dependencies) != "undefined") {
