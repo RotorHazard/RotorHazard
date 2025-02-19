@@ -33,17 +33,26 @@ class PluginInstallationManager:
     Plugin installation and update management
     """
 
-    _session = requests.Session()
-    _remote_plugin_data: dict[str, dict] = {}
-    _local_plugin_data: dict[str, Any] = {}
-    _prerelease_mapping: dict[str, bool] = {}
+    _session: requests.Session
+    _remote_plugin_data: dict[str, dict]
+    _local_plugin_data: dict[str, Any]
+    _prerelease_mapping: dict[str, bool]
+    _categories: list[str]
+    update_avaliable: bool = False
 
     def __init__(self, plugin_dir: Path):
 
         if not plugin_dir.exists():
             raise FileNotFoundError(f"{plugin_dir} does not exist")
-        elif not plugin_dir.is_dir():
+
+        if not plugin_dir.is_dir():
             raise TypeError(f"{plugin_dir} is not a directory")
+
+        self._session = requests.Session()
+        self._remote_plugin_data = {}
+        self._local_plugin_data = {}
+        self._prerelease_mapping = {}
+        self._categories = []
 
         self._plugin_dir = plugin_dir
         self.load_local_plugin_data()
@@ -58,6 +67,16 @@ class PluginInstallationManager:
 
         pool_ = pool.Pool(10)
         pool_.map(self._fetch_remote_plugin_data, dict(data.json()).values())
+
+        data = self._session.get(
+            (
+                "https://raw.githubusercontent.com/dutchdronesquad/"
+                "rh-community-store/refs/heads/main/categories.json"
+            ),
+            timeout=5,
+        )
+
+        self._categories = data.json()
 
     def _fetch_remote_plugin_data(self, plugin_data: dict):
 
@@ -106,6 +125,7 @@ class PluginInstallationManager:
         with open(manifest_path, "r", encoding="utf-8") as file:
             data = json.load(file)
             data["reload_required"] = reload_required
+            data["update_status"] = _PluginStatus.NO_UPDATE
 
             if "domain" in data:
                 data_ = {data["domain"]: data}
@@ -143,9 +163,15 @@ class PluginInstallationManager:
             local_version_ = version.parse(local_version)
 
             if remote_version_ > local_version_ and remote_version_.is_prerelease:
-                plugin_data["update_status"] = _PluginStatus.PRE_RELEASE_UPDATE
+                plugin_data["update_status"] = local_data["update_status"] = (
+                    _PluginStatus.PRE_RELEASE_UPDATE
+                )
+                self.update_avaliable = True
             elif remote_version_ > local_version_:
-                plugin_data["update_status"] = _PluginStatus.RELEASE_UPDATE
+                plugin_data["update_status"] = local_data["update_status"] = (
+                    _PluginStatus.RELEASE_UPDATE
+                )
+                self.update_avaliable = True
             else:
                 plugin_data["update_status"] = _PluginStatus.NO_UPDATE
 

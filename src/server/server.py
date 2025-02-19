@@ -146,6 +146,7 @@ from eventmanager import Evt, EventManager
 from filtermanager import FilterManager
 
 # Plugin manager
+import requests
 from util.plugin_installation import PluginInstallationManager
 
 # LED imports
@@ -3376,7 +3377,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         try:
             RaceContext.plugin_manager.load_local_plugin_data()
-        except (FileNotFoundError, TypeError):
+        except (FileNotFoundError, TypeError, json.JSONDecodeError):
             print("Unable to load local plugins")
             local_loaded = False
         else:
