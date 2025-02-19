@@ -512,6 +512,17 @@ def render_settings():
                            is_raspberry_pi=RHUtils.is_sys_raspberry_pi(),
                            Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
+@APP.route('/advanced-settings')
+@requires_auth
+def render_advanced_settings():
+    '''Route to settings page.'''
+    return render_template('advanced-settings.html',
+                           serverInfo=RaceContext.serverstate.template_info_dict,
+                           getOption=RaceContext.rhdata.get_option,
+                           getConfig=RaceContext.serverconfig.get_item,
+                           __=__,
+                           Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''

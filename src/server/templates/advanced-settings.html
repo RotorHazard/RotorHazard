@@ -1,0 +1,371 @@
+{% extends "layout.html" %} {% block title %}{{ __('Advanced Settings') }}{% endblock %} {% block head %}
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='showdown-1.9.1/showdown.min.js') }}"></script>
+
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language'
+	];
+
+	$(document).ready(function () {
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (var i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+
+			$('#set_voice_string_language').empty();
+			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="">English</option>')
+			for (var i = 0; i < msg.languages.length; i++) {
+				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
+
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_language').selectedIndex = 0;
+			}
+		});
+
+		// set admin flag
+		rotorhazard.admin = true;
+		rotorhazard.saveData();
+		$('nav li').removeClass('admin-hide');
+
+		socket.on('update_server_messages', function (str) {
+			$('#server_messages').html(str);
+		});
+
+		socket.on('set_option', function (msg) {
+			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
+		});
+
+		$(document).on('change', '.set-option', function (event) {
+			var data = {
+				option: $(this).data('option'),
+				value: $(this).val()
+			};
+			socket.emit('set_option', data);
+		});
+
+		socket.on('set-config', function (msg) {
+			$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+		});
+
+		$(document).on('change', '.set-config', function (event) {
+			value = $(this).val();
+			if ($(this).data('type') == 'boolean' ) {
+				if (value == 'true') {
+					value = true;
+				} else {
+					value = false;
+				}
+			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
+				value = Number(value);
+			}
+
+			var data = {
+				section: $(this).data('section'),
+				key: $(this).data('key'),
+				value: value
+			};
+			socket.emit('set_config', data);
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+<main class="page-settings">
+
+<div class="server-messages" id="server_messages">
+	{% if server_messages %}
+		{{ server_messages | safe }}
+	{% endif %}
+</div>
+
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Logging') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-log-console-stream">{{ __('Console Stream') }}</label>
+				</div>
+				<input type="text" id="set-log-console-stream" class="set-config" data-section="LOGGING" data-key="CONSOLE_STREAM" value="{{ getConfig('LOGGING', 'CONSOLE_STREAM') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-log-level-console">{{ __('Console Log Level') }}</label>
+				</div>
+				<select id="set-log-level-console" class="set-config" data-section="LOGGING" data-key="CONSOLE_LEVEL">
+					<option value="NONE" {{'selected' if getConfig('LOGGING', 'CONSOLE_LEVEL')=='NONE'}}>{{ __('None') }}</option>
+					<option value="ERROR" {{'selected' if getConfig('LOGGING', 'CONSOLE_LEVEL')=='ERROR'}}>{{ __('Error') }}</option>
+					<option value="WARNING" {{'selected' if getConfig('LOGGING', 'CONSOLE_LEVEL')=='WARNING'}}>{{ __('Warning') }}</option>
+					<option value="INFO" {{'selected' if getConfig('LOGGING', 'CONSOLE_LEVEL')=='INFO'}}>{{ __('Info') }}</option>
+					<option value="DEBUG" {{'selected' if getConfig('LOGGING', 'CONSOLE_LEVEL')=='DEBUG'}}>{{ __('Debug') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-log-level-system">{{ __('System Log Level') }}</label>
+				</div>
+				<select id="set-log-level-system" class="set-config" data-section="LOGGING" data-key="SYSLOG_LEVEL">
+					<option value="NONE" {{'selected' if getConfig('LOGGING', 'SYSLOG_LEVEL')=='NONE'}}>{{ __('None') }}</option>
+					<option value="ERROR" {{'selected' if getConfig('LOGGING', 'SYSLOG_LEVEL')=='ERROR'}}>{{ __('Error') }}</option>
+					<option value="WARNING" {{'selected' if getConfig('LOGGING', 'SYSLOG_LEVEL')=='WARNING'}}>{{ __('Warning') }}</option>
+					<option value="INFO" {{'selected' if getConfig('LOGGING', 'SYSLOG_LEVEL')=='INFO'}}>{{ __('Info') }}</option>
+					<option value="DEBUG" {{'selected' if getConfig('LOGGING', 'SYSLOG_LEVEL')=='DEBUG'}}>{{ __('Debug') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-log-level-file">{{ __('Logfile Level') }}</label>
+				</div>
+				<select id="set-log-level-file" class="set-config" data-section="LOGGING" data-key="FILELOG_LEVEL">
+					<option value="NONE" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='NONE'}}>{{ __('None') }}</option>
+					<option value="ERROR" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='ERROR'}}>{{ __('Error') }}</option>
+					<option value="WARNING" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='WARNING'}}>{{ __('Warning') }}</option>
+					<option value="INFO" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='INFO'}}>{{ __('Info') }}</option>
+					<option value="DEBUG" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='DEBUG'}}>{{ __('Debug') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-log-file-retention">{{ __('Logfile Retention') }}</label>
+				</div>
+				<input type="number" id="set-log-file-retention" class="set-config" data-section="LOGGING" data-key="FILELOG_NUM_KEEP" value="{{ getConfig('LOGGING', 'FILELOG_NUM_KEEP') }}" min="-1">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-sensor-data-rate">{{ __('Sensor Log Rate') }}</label>
+				</div>
+				<input type="number" id="set-sensor-data-rate" class="set-config" data-section="GENERAL" data-key="LOG_SENSORS_DATA_RATE" value="{{ getConfig('GENERAL', 'LOG_SENSORS_DATA_RATE') }}" min="1">
+			</li>
+		</ol>
+	</div>
+</div>
+
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('LED Hardware') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-led-count">{{ __('Count') }}</label>
+				</div>
+				<input type="number" id="set-led-count" class="set-config" data-section="LED" data-key="LED_COUNT" value="{{ getConfig('LED', 'LED_COUNT') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-rows">{{ __('Panel Rows') }}</label>
+				</div>
+				<input type="number" id="set-led-rows" class="set-config" data-section="LED" data-key="LED_ROWS" value="{{ getConfig('LED', 'LED_ROWS') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-panel-rotate">{{ __('Panel Rotation') }}</label>
+				</div>
+				<select id="set-led-panel-rotate" class="set-config" data-section="LED" data-key="PANEL_ROTATE" data-type="int">
+					<option value="0" {{'selected' if getConfig('LED', 'PANEL_ROTATE')==0}}>{{ __('None') }}</option>
+					<option value="1" {{'selected' if getConfig('LED', 'PANEL_ROTATE')==1}}>{{ __('90°') }}</option>
+					<option value="2" {{'selected' if getConfig('LED', 'PANEL_ROTATE')==2}}>{{ __('180°') }}</option>
+					<option value="3" {{'selected' if getConfig('LED', 'PANEL_ROTATE')==3}}>{{ __('270°') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-panel-row-invert">{{ __('Panel Row Inversion') }}</label>
+				</div>
+				<select id="set-led-panel-row-invert" class="set-config" data-section="LED" data-key="INVERTED_PANEL_ROWS" data-type="boolean">
+					<option value="false" {{'selected' if getConfig('LED', 'INVERTED_PANEL_ROWS')==false}}>{{ __('LTR (false)') }}</option>
+					<option value="true" {{'selected' if getConfig('LED', 'INVERTED_PANEL_ROWS')==true}}>{{ __('Even Rows Inverted (true)') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-gpio">{{ __('GPIO Pin') }}</label>
+				</div>
+				<input type="number" id="set-led-gpio" class="set-config" data-section="LED" data-key="LED_GPIO" value="{{ getConfig('LED', 'LED_GPIO') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-frequency">{{ __('Frequency (Hz)') }}</label>
+				</div>
+				<input type="number" id="set-led-frequency" class="set-config" data-section="LED" data-key="LED_FREQ_HZ" value="{{ getConfig('LED', 'LED_FREQ_HZ') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-dma">{{ __('DMA') }}</label>
+				</div>
+				<input type="number" id="set-led-dma" class="set-config" data-section="LED" data-key="LED_DMA" value="{{ getConfig('LED', 'LED_DMA') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-invert">{{ __('Inverted Control Signal') }}</label>
+				</div>
+				<select id="set-led-invert" class="set-config" data-section="LED" data-key="LED_INVERT" data-type="boolean">
+					<option value="true" {{'selected' if getConfig('LED', 'LED_INVERT')==true}}>{{ __('Inverted') }}</option>
+					<option value="false" {{'selected' if getConfig('LED', 'LED_INVERT')==false}}>{{ __('Normal') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-channel">{{ __('Channel') }}</label>
+				</div>
+				<input type="number" id="set-led-channel" class="set-config" data-section="LED" data-key="LED_CHANNEL" value="{{ getConfig('LED', 'LED_CHANNEL') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-strip-type">{{ __('Strip Type') }}</label>
+				</div>
+				<select id="set-led-strip-type" class="set-config" data-section="LED" data-key="LED_STRIP">
+					<option value="BGR" {{'selected' if getConfig('LED', 'LED_STRIP')=='BGR'}}>{{ __('BGR') }}</option>
+					<option value="BRG" {{'selected' if getConfig('LED', 'LED_STRIP')=='BRG'}}>{{ __('BRG') }}</option>
+					<option value="GBR" {{'selected' if getConfig('LED', 'LED_STRIP')=='GBR'}}>{{ __('GBR') }}</option>
+					<option value="GRB" {{'selected' if getConfig('LED', 'LED_STRIP')=='GRB'}}>{{ __('GRB') }}</option>
+					<option value="RBG" {{'selected' if getConfig('LED', 'LED_STRIP')=='RBG'}}>{{ __('RBG') }}</option>
+					<option value="RGB" {{'selected' if getConfig('LED', 'LED_STRIP')=='RGB'}}>{{ __('RGB') }}</option>
+					<option value="RGBW" {{'selected' if getConfig('LED', 'LED_STRIP')=='RGBW'}}>{{ __('RGBW') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-serial-port">{{ __('Serial Controller Port') }}</label>
+				</div>
+				<input type="text" id="set-led-serial-port" class="set-config" data-section="LED" data-key="SERIAL_CTRLR_PORT" value="{{ getConfig('LED', 'SERIAL_CTRLR_PORT') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-led-serial-baud">{{ __('Serial Controller BAUD') }}</label>
+				</div>
+				<input type="number" id="set-led-serial-baud" class="set-config" data-section="LED" data-key="SERIAL_CTRLR_BAUD" value="{{ getConfig('LED', 'SERIAL_CTRLR_BAUD') }}" min="0">
+			</li>
+		</ol>
+	</div>
+</div>
+
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Hardware') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-i2c-bus">{{ __('I2C Bus') }}</label>
+				</div>
+				<input type="number" id="set-i2c-bus" class="set-config" data-section="HARDWARE" data-key="I2C_BUS" value="{{ getConfig('HARDWARE', 'I2C_BUS') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-force-s32-bpill">{{ __('Force STM32 BPill') }}</label>
+				</div>
+				<select id="set-force-s32-bpill" class="set-config" data-section="GENERAL" data-key="FORCE_S32_BPILL_FLAG" data-type="boolean">
+					<option value="true" {{'selected' if getConfig('GENERAL', 'FORCE_S32_BPILL_FLAG')==true}}>{{ __('Inverted') }}</option>
+					<option value="false" {{'selected' if getConfig('GENERAL', 'FORCE_S32_BPILL_FLAG')==false}}>{{ __('Normal') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-shutdown-gpio">{{ __('Shutdown Button GPIO Pin') }}</label>
+				</div>
+				<input type="number" id="set-shutdown-gpio" class="set-config" data-section="GENERAL" data-key="SHUTDOWN_BUTTON_GPIOPIN" value="{{ getConfig('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-shutdown-button-delay">{{ __('Shutdown Button Delay (ms)') }}</label>
+				</div>
+				<input type="number" id="set-shutdown-button-delay" class="set-config" data-section="GENERAL" data-key="SHUTDOWN_BUTTON_DELAYMS" value="{{ getConfig('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS') }}" min="-1">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-node-update-url">{{ __('Node Update URL Override') }}</label>
+				</div>
+				<input type="text" id="set-node-update-url" class="set-config" data-section="GENERAL" data-key="DEF_NODE_FWUPDATE_URL" value="{{ getConfig('GENERAL', 'DEF_NODE_FWUPDATE_URL') }}">
+			</li>
+
+		</ol>
+	</div>
+</div>
+
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('HTTP Server') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-http-port">{{ __('HTTP Port') }}</label>
+				</div>
+				<input type="number" id="set-http-port" class="set-config" data-section="GENERAL" data-key="HTTP_PORT" value="{{ getConfig('GENERAL', 'HTTP_PORT') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-cors-hosts">{{ __('CORS Allowed Hosts') }}</label>
+				</div>
+				<input type="text" id="set-cors-hosts" class="set-config" data-section="GENERAL" data-key="CORS_ALLOWED_HOSTS" value="{{ getConfig('GENERAL', 'CORS_ALLOWED_HOSTS') }}">
+			</li>
+		</ol>
+	</div>
+</div>
+
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Miscellaneous') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-debug-mode">{{ __('Server Debug Mode') }}</label>
+				</div>
+				<select id="set-debug-mode" class="set-config" data-section="GENERAL" data-key="DEBUG" data-type="boolean">
+					<option value="true" {{'selected' if getConfig('GENERAL', 'DEBUG')==true}}>{{ __('Debug') }}</option>
+					<option value="false" {{'selected' if getConfig('GENERAL', 'DEBUG')==false}}>{{ __('Normal') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-backup-retention">{{ __('Database Backup Retention') }}</label>
+				</div>
+				<input type="number" id="set-backup-retention" class="set-config" data-section="GENERAL" data-key="DB_AUTOBKP_NUM_KEEP" value="{{ getConfig('GENERAL', 'DB_AUTOBKP_NUM_KEEP') }}" min="-1">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-sync-delay">{{ __('Race Sync Allowance') }}</label>
+				</div>
+				<input type="number" id="set-sync-delay" class="set-config" data-section="GENERAL" data-key="RACE_START_DELAY_EXTRA_SECS" value="{{ getConfig('GENERAL', 'RACE_START_DELAY_EXTRA_SECS') }}" min="0" step="0.01">
+			</li>
+		</ol>
+	</div>
+</div>
+<!--
+{
+  "GENERAL": {
+    "SECONDARIES": [
+      {
+        "address": "mrvtpanel.local",
+        "mode": "mirror",
+        "timeout": 300
+      }
+    ],
+    "SECONDARY_TIMEOUT": 300,
+    "SERIAL_PORTS": [],
+  },
+  "SENSORS": {},
+}
+-->
+
+</main>
+{% endblock %}
