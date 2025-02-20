@@ -4,9 +4,11 @@ Plugin installation management
 
 import os
 import io
+import sys
 import json
 import shutil
 import zipfile
+import subprocess
 from enum import IntEnum
 from pathlib import Path
 from typing import Any, Union
@@ -288,11 +290,30 @@ class PluginInstallationManager:
                     save_stem = file.filename.split(identifier)[-1]
                     save_name = plugin_dir.joinpath(save_stem)
 
-                    directory = os.path.dirname(save_name)
-                    if directory:
+                    if directory := os.path.dirname(save_name):
                         os.makedirs(directory, exist_ok=True)
 
-                    save_name.write_bytes(zip_data.read(file))
+                    file_data = zip_data.read(file)
+                    save_name.write_bytes(file_data)
+
+                    if name.endswith("manifest.json"):
+                        self._install_dependencies(file_data)
+
+    def _install_dependencies(self, manifest: bytes) -> None:
+        """
+        Loads the manifest data and install the dependencies
+        through pip
+
+        :param manifest: Manifest file as bytes
+        """
+
+        manifest_: dict = json.loads(manifest)
+        depends = manifest_.get("dependencies", None)
+
+        if depends is not None:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", *depends], check=True
+            )
 
     def _update_with_check(self, data: dict) -> None:
         """
