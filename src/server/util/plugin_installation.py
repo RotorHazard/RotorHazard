@@ -8,13 +8,12 @@ import sys
 import json
 import shutil
 import zipfile
-import subprocess
 from enum import IntEnum
 from pathlib import Path
 from typing import Any, Union
 
 import requests
-from gevent import pool
+from gevent import subprocess, pool
 from packaging import version
 
 
