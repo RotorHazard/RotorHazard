@@ -6,7 +6,13 @@
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
-		'language'
+		'language',
+		{
+			'type': 'config',
+			'value': {
+				'GENERAL': ['SERIAL_PORTS']
+			}
+		}
 	];
 
 	$(document).ready(function () {
@@ -42,8 +48,11 @@
 			$('#server_messages').html(str);
 		});
 
-		socket.on('set_option', function (msg) {
-			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
+		socket.on('option_update', function (msg) {
+			for (var opt in msg.options) {
+				var value = msg.options[opt];
+				$('.set_option[data-option="' + opt +'"]').val(value);
+			}
 		});
 
 		$(document).on('change', '.set-option', function (event) {
@@ -54,8 +63,18 @@
 			socket.emit('set_option', data);
 		});
 
-		socket.on('set-config', function (msg) {
-			$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+		socket.on('config_update', function (msg) {
+			for (var section in msg.config) {
+				for (var key in msg.config[section]) {
+					var value = msg.config[section][key];
+
+					if (section == 'GENERAL' && key == 'SERIAL_PORTS') {
+						display_serial_port_ui(value);
+					} else {
+						$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
+					}
+				}
+			}
 		});
 
 		$(document).on('change', '.set-config', function (event) {
@@ -77,16 +96,159 @@
 			};
 			socket.emit('set_config', data);
 		});
+
+		function display_serial_port_ui(ports) {
+			if ($('#serial-port-ui').length) {
+				var serial_ui = $('#serial-port-ui');
+			} else {
+				$('#serial-port-setup').empty();
+				$(document.createElement('h3'))
+					.text(__('Serial Ports'))
+					.appendTo('#serial-port-setup');
+				var serial_ui = $(document.createElement('ol'))
+					.prop('id', 'serial-port-ui')
+					.addClass('form')
+					.appendTo('#serial-port-setup');
+			}
+
+			if ($(`#serial-port--new`).length) {
+				$(`#serial-port--new input`).val('');
+			} else {
+				field = $(document.createElement('li'))
+					.prop('id', `serial-port--new`)
+					.appendTo(serial_ui);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('New Port') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-serial-config')
+					.appendTo(field);
+			}
+
+			serial_ui.find('li').not('#serial-port--new').addClass('flagged');
+
+			for (var i in ports) {
+				var port = ports[i];
+
+				if ($(`#serial-port--${i}`).length) {
+					var item_el = $(`#serial-port--${i}`)
+						.removeClass('flagged');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `serial-port--${i}`)
+						.appendTo(serial_ui);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( `${__('Port')} ${parseInt(i)+1}`)
+						.appendTo(item_el);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-serial-config')
+						.appendTo(item_el);
+				}
+				item_el.find('input').val(port);
+			}
+			serial_ui.find('li.flagged').remove();
+		};
+
+		$(document).on('change', '.set-serial-config', function (event) {
+			var values = [];
+			$('.set-serial-config').each(function(){
+				if ($(this).val()) {
+					values.push($(this).val());
+				}
+			});
+
+			var data = {
+				section: 'GENERAL',
+				key: 'SERIAL_PORTS',
+				value: values
+			};
+			socket.emit('set_config', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'GENERAL': ['SERIAL_PORTS']
+					}
+				}]
+			});
+		});
 	});
 
 </script>
 {% endblock %} {% block content %}
-<main class="page-settings">
+<main class="page-advanced-settings">
 
-<div class="server-messages" id="server_messages">
-	{% if server_messages %}
-		{{ server_messages | safe }}
-	{% endif %}
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Hardware') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-i2c-bus">{{ __('I2C Bus') }}</label>
+				</div>
+				<input type="number" id="set-i2c-bus" class="set-config" data-section="HARDWARE" data-key="I2C_BUS" value="{{ getConfig('HARDWARE', 'I2C_BUS') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-force-s32-bpill">{{ __('Force STM32 BPill') }}</label>
+				</div>
+				<select id="set-force-s32-bpill" class="set-config" data-section="GENERAL" data-key="FORCE_S32_BPILL_FLAG" data-type="boolean">
+					<option value="true" {{'selected' if getConfig('GENERAL', 'FORCE_S32_BPILL_FLAG')==true}}>{{ __('True') }}</option>
+					<option value="false" {{'selected' if getConfig('GENERAL', 'FORCE_S32_BPILL_FLAG')==false}}>{{ __('False') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-shutdown-gpio">{{ __('Shutdown Button GPIO Pin') }}</label>
+				</div>
+				<input type="number" id="set-shutdown-gpio" class="set-config" data-section="GENERAL" data-key="SHUTDOWN_BUTTON_GPIOPIN" value="{{ getConfig('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-shutdown-button-delay">{{ __('Shutdown Button Delay (ms)') }}</label>
+				</div>
+				<input type="number" id="set-shutdown-button-delay" class="set-config" data-section="GENERAL" data-key="SHUTDOWN_BUTTON_DELAYMS" value="{{ getConfig('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS') }}" min="-1">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-node-update-url">{{ __('Node Update URL Override') }}</label>
+				</div>
+				<input type="text" id="set-node-update-url" class="set-config" data-section="GENERAL" data-key="DEF_NODE_FWUPDATE_URL" value="{{ getConfig('GENERAL', 'DEF_NODE_FWUPDATE_URL') }}">
+			</li>
+		</ol>
+		<div id="serial-port-setup">
+			{{ __('Loading...') }}
+		</div>
+	</div>
+</div>
+
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('HTTP Server') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-http-port">{{ __('HTTP Port') }}</label>
+				</div>
+				<input type="number" id="set-http-port" class="set-config" data-section="GENERAL" data-key="HTTP_PORT" value="{{ getConfig('GENERAL', 'HTTP_PORT') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-cors-hosts">{{ __('CORS Allowed Hosts') }}</label>
+				</div>
+				<input type="text" id="set-cors-hosts" class="set-config" data-section="GENERAL" data-key="CORS_ALLOWED_HOSTS" value="{{ getConfig('GENERAL', 'CORS_ALLOWED_HOSTS') }}">
+			</li>
+		</ol>
+	</div>
 </div>
 
 <div class="panel collapsing">
@@ -256,72 +418,6 @@
 
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Hardware') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set-i2c-bus">{{ __('I2C Bus') }}</label>
-				</div>
-				<input type="number" id="set-i2c-bus" class="set-config" data-section="HARDWARE" data-key="I2C_BUS" value="{{ getConfig('HARDWARE', 'I2C_BUS') }}" min="0">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set-force-s32-bpill">{{ __('Force STM32 BPill') }}</label>
-				</div>
-				<select id="set-force-s32-bpill" class="set-config" data-section="GENERAL" data-key="FORCE_S32_BPILL_FLAG" data-type="boolean">
-					<option value="true" {{'selected' if getConfig('GENERAL', 'FORCE_S32_BPILL_FLAG')==true}}>{{ __('Inverted') }}</option>
-					<option value="false" {{'selected' if getConfig('GENERAL', 'FORCE_S32_BPILL_FLAG')==false}}>{{ __('Normal') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set-shutdown-gpio">{{ __('Shutdown Button GPIO Pin') }}</label>
-				</div>
-				<input type="number" id="set-shutdown-gpio" class="set-config" data-section="GENERAL" data-key="SHUTDOWN_BUTTON_GPIOPIN" value="{{ getConfig('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN') }}" min="0">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set-shutdown-button-delay">{{ __('Shutdown Button Delay (ms)') }}</label>
-				</div>
-				<input type="number" id="set-shutdown-button-delay" class="set-config" data-section="GENERAL" data-key="SHUTDOWN_BUTTON_DELAYMS" value="{{ getConfig('GENERAL', 'SHUTDOWN_BUTTON_DELAYMS') }}" min="-1">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set-node-update-url">{{ __('Node Update URL Override') }}</label>
-				</div>
-				<input type="text" id="set-node-update-url" class="set-config" data-section="GENERAL" data-key="DEF_NODE_FWUPDATE_URL" value="{{ getConfig('GENERAL', 'DEF_NODE_FWUPDATE_URL') }}">
-			</li>
-
-		</ol>
-	</div>
-</div>
-
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('HTTP Server') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set-http-port">{{ __('HTTP Port') }}</label>
-				</div>
-				<input type="number" id="set-http-port" class="set-config" data-section="GENERAL" data-key="HTTP_PORT" value="{{ getConfig('GENERAL', 'HTTP_PORT') }}" min="0">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set-cors-hosts">{{ __('CORS Allowed Hosts') }}</label>
-				</div>
-				<input type="text" id="set-cors-hosts" class="set-config" data-section="GENERAL" data-key="CORS_ALLOWED_HOSTS" value="{{ getConfig('GENERAL', 'CORS_ALLOWED_HOSTS') }}">
-			</li>
-		</ol>
-	</div>
-</div>
-
-<div class="panel collapsing">
-	<div class="panel-header">
 		<h2>{{ __('Miscellaneous') }}</h2>
 	</div>
 	<div class="panel-content">
@@ -343,29 +439,13 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set-sync-delay">{{ __('Race Sync Allowance') }}</label>
+					<label for="set-sync-delay">{{ __('Sync Allowance (s)') }}</label>
 				</div>
 				<input type="number" id="set-sync-delay" class="set-config" data-section="GENERAL" data-key="RACE_START_DELAY_EXTRA_SECS" value="{{ getConfig('GENERAL', 'RACE_START_DELAY_EXTRA_SECS') }}" min="0" step="0.01">
 			</li>
 		</ol>
 	</div>
 </div>
-<!--
-{
-  "GENERAL": {
-    "SECONDARIES": [
-      {
-        "address": "mrvtpanel.local",
-        "mode": "mirror",
-        "timeout": 300
-      }
-    ],
-    "SECONDARY_TIMEOUT": 300,
-    "SERIAL_PORTS": [],
-  },
-  "SENSORS": {},
-}
--->
 
 </main>
 {% endblock %}

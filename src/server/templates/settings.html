@@ -27,6 +27,13 @@
 		'backups_list',
 		'exporter_list',
 		'plugin_list',
+		{
+			'type': 'config',
+			'value': [
+				{'GENERAL': 'SECONDARIES'},
+				{'SENSORS': ''},
+			]
+		}
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
@@ -1211,14 +1218,31 @@
 		});
 
 		socket.on('set_config', function (msg) {
-			$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			if (msg.section == 'GENERAL' && msg.key == 'SECONDARIES') {
+				display_secondary_ui(msg);
+			} else if (msg.section == 'SENSORS') {
+				display_sensors_ui(msg);
+			} else {
+				$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			}
 		});
 
 		$(document).on('change', '.set-config', function (event) {
+			value = $(this).val();
+			if ($(this).data('type') == 'boolean' ) {
+				if (value == 'true') {
+					value = true;
+				} else {
+					value = false;
+				}
+			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
+				value = Number(value);
+			}
+
 			var data = {
 				section: $(this).data('section'),
 				key: $(this).data('key'),
-				value: $(this).val()
+				value: value
 			};
 			socket.emit('set_config', data);
 		});
@@ -1722,6 +1746,68 @@
 			}
 			wrap_el.append(list_el);
 		});
+
+		// Secondaries
+		function display_secondary_ui(msg) {
+			if ($('#secondary-ui').length) {
+				var serial_ui = $('#secondary-ui');
+			} else {
+				var serial_ui = $(document.createElement('ul'))
+					.prop('id', 'secondary-ui')
+					.appendTo('#secondary-setup');
+			}
+
+			/*
+		      {
+		        "address": "mrvtpanel.local",
+		        "mode": "mirror",
+		        "timeout": 300
+		      }
+		    */
+		}
+
+		$(document).on('change', '.set-secondary-config', function (event) {
+			/*
+		      {
+		        "address": "mrvtpanel.local",
+		        "mode": "mirror",
+		        "timeout": 300
+		      }
+		    */
+			/* $('#secondary-ui') */
+			value = null;
+
+			var data = {
+				section: 'GENERAL',
+				key: 'SECONDARIES',
+				value: value
+			};
+			socket.emit('set_config', data);
+		}
+
+		// Sensors
+		function display_sensors_ui(msg) {
+			if ($('#sensor-ui').length) {
+				var serial_ui = $('#sensor-ui');
+			} else {
+				var serial_ui = $(document.createElement('ul'))
+					.prop('id', 'sensor-ui')
+					.appendTo('.sensor-setup');
+			}
+
+		}
+
+		$(document).on('change', '.set-sensors-config', function (event) {
+			/* $('#sensor-ui') */
+			value = null;
+
+			var data = {
+				section: 'SENSORS',
+				key: '',
+				value: value
+			};
+			socket.emit('set_config', data);
+		}
 	});
 
 </script>
@@ -2359,19 +2445,44 @@
 	</div>
 </div>
 
-<!-- Status -->
+<!-- Cluster -->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Status') }}</h2>
+		<h2>{{ __('Timer Cluster') }}</h2>
 	</div>
 	<div class="panel-content">
 		<h3>{{ __('Cluster Status') }}</h3>
 		<div id="cluster-status" class="control-set">
 			<p>No cluster status available.</p>
 		</div>
-		<h3>{{ __('Environment Status') }}</h3>
-		<div id="env-data-table" class="control-set">
-			<p>No environment status available.</p>
+		<h3>{{ __('Settings') }}</h3>
+		<div class="secondary-setup">
+			{{ __('Loading...') }}
+		</div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-secondary-timeout">{{ __('Connection Timeout') }}</label>
+				</div>
+				<input type="number" id="set-secondary-timeout" class="set-config" data-section="GENERAL" data-key="SECONDARY_TIMEOUT" value="{{ getConfig('GENERAL', 'SECONDARY_TIMEOUT') }}" min="0">
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!-- Sensors -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Environment Sensors') }}</h2>
+	</div>
+	<div class="panel-content">
+		<h3>{{ __('Cluster Status') }}</h3>
+		<div id="cluster-status" class="control-set">
+			<p>No cluster status available.</p>
+		</div>
+		<h3>{{ __('Settings') }}</h3>
+		<div class="sensor-setup">
+			{{ __('Loading...') }}
 		</div>
 	</div>
 </div>

@@ -838,6 +838,8 @@ def on_load_data(data):
         if isinstance(load_type, dict):
             if load_type['type'] == 'ui':
                 RaceContext.rhui.emit_ui(load_type['value'], nobroadcast=True)
+            if load_type['type'] == 'config':
+                RaceContext.rhui.emit_config_update(load_type['value'], nobroadcast=True)
         elif load_type == 'node_data':
             RaceContext.rhui.emit_node_data(nobroadcast=True)
         elif load_type == 'environmental_data':
