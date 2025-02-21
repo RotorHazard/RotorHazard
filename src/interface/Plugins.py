@@ -7,7 +7,6 @@ from collections import UserList
 
 logger = logging.getLogger(__name__)
 
-
 def search_modules(prefix=None, suffix=None):
     plugin_modules = []
     for loader, name, ispkg in pkgutil.iter_modules():  #pylint: disable=unused-variable
