@@ -29,10 +29,10 @@
 		'plugin_list',
 		{
 			'type': 'config',
-			'value': [
-				{'GENERAL': 'SECONDARIES'},
-				{'SENSORS': ''},
-			]
+			'value': {
+				'GENERAL': ['SECONDARIES'],
+				'SENSORS': [],
+			}
 		}
 	];
 
@@ -1217,6 +1217,24 @@
 			socket.emit('set_option', data);
 		});
 
+		socket.on('config_update', function (msg) {
+			for (var section in msg.config) {
+				if (section == 'SENSORS') {
+					display_sensors_ui(msg.config[section]);
+				} else {
+					for (var key in msg.config[section]) {
+						var value = msg.config[section][key];
+
+						if (section == 'GENERAL' && key == 'SECONDARIES') {
+							display_secondary_ui(value);
+						} else {
+							$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
+						}
+					}
+				}
+			}
+		});
+
 		socket.on('set_config', function (msg) {
 			if (msg.section == 'GENERAL' && msg.key == 'SECONDARIES') {
 				display_secondary_ui(msg);
@@ -1748,42 +1766,202 @@
 		});
 
 		// Secondaries
-		function display_secondary_ui(msg) {
+		function display_secondary_ui(secondaries) {
 			if ($('#secondary-ui').length) {
-				var serial_ui = $('#secondary-ui');
+				var secondary_ui = $('#secondary-ui');
 			} else {
-				var serial_ui = $(document.createElement('ul'))
+				var secondary_ui = $(document.createElement('ul'))
 					.prop('id', 'secondary-ui')
 					.appendTo('#secondary-setup');
 			}
 
-			/*
-		      {
-		        "address": "mrvtpanel.local",
-		        "mode": "mirror",
-		        "timeout": 300
-		      }
-		    */
+			if ($(`#secondary--new`).length) {
+				$(`#secondary--new input`).val('');
+			} else {
+				field = $(document.createElement('li'))
+					.prop('id', `secondary--new`)
+					.appendTo(secondary_ui);
+				$(document.createElement('h4'))
+					.text( __('New Secondary') )
+					.appendTo(field);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('Address') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-secondary-config')
+					.data('property', 'address')
+					.appendTo(field);
+			}
+
+			secondary_ui.children('li').not('#secondary--new').addClass('flagged');
+
+			for (var i in secondaries) {
+				var secondary = secondaries[i];
+
+				if ($(`#secondary--${i}`).length) {
+					var item_el = $(`#secondary--${i}`)
+						.removeClass('flagged');
+					var address_field = item_el.find('.set-secondary-address');
+					var mode_field = item_el.find('.set-secondary-mode');
+					var fields = item_el.children('ol');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `secondary--${i}`)
+						.appendTo(secondary_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Secondary')} ${parseInt(i)+1}` )
+						.appendTo(item_el);
+
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-address')
+						.appendTo(field);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Mode') )
+						.appendTo(field);
+					var mode_field = $(document.createElement('select'))
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-mode')
+						.appendTo(field);
+					$(document.createElement('option'))
+						.prop('value', 'split')
+						.text( __('Split') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'mirror')
+						.text( __('Mirror') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'action')
+						.text( __('Action') )
+						.appendTo(mode_field);
+				}
+				address_field.val(secondary.address);
+				if (mode_field) {
+					if (secondary.mode) {
+						mode_field.val(secondary.mode);
+					} else {
+						mode_field.val('split');
+					}
+				}
+
+				display_secondary_dynamic_field_ui(secondary, fields);
+			}
+			secondary_ui.find('li.flagged').remove();
+		}
+
+		function display_secondary_dynamic_field_ui(fields, el) {
+			el.find('li:nth-child(n+3)').remove();
+
+			var field_el = $(document.createElement('li'))
+				.appendTo(el);
+			var label = $(document.createElement('input'))
+				.prop('type', 'text')
+				.prop('placeholder', __('key') )
+				.addClass('label-block')
+				.addClass('set-secondary-config')
+				.addClass('set-secondary-dynamic-key')
+				.appendTo(field_el);
+			$(document.createElement('input'))
+				.prop('type', 'text')
+				.prop('placeholder', __('value') )
+				.addClass('set-secondary-config')
+				.addClass('set-secondary-dynamic-value')
+				.appendTo(field_el);
+
+			for (var i in fields) {
+				if (i != 'address' && i != 'mode') {
+					var field = fields[i];
+					var field_el = $(document.createElement('li'))
+						.appendTo(el);
+					var label = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('label-block')
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-dynamic-key')
+						.val(i)
+						.appendTo(field_el);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-dynamic-value')
+						.val(field)
+						.appendTo(field_el);
+				}
+			}
 		}
 
 		$(document).on('change', '.set-secondary-config', function (event) {
-			/*
-		      {
-		        "address": "mrvtpanel.local",
-		        "mode": "mirror",
-		        "timeout": 300
-		      }
-		    */
-			/* $('#secondary-ui') */
-			value = null;
+			var secondaries = [];
+			$('#secondary--new').find('input').each(function(){
+				if ($(this).val()) {
+					secondaries.push({
+						address: $(this).val()
+					});
+					$(this).empty();
+				}
+			});
+
+			$('#secondary-ui').children().each(function(){
+				var values = {};
+				secondary_el = $(this);
+
+				var addr = secondary_el.find('.set-secondary-address')
+				if (addr) {
+					values.address = addr.val();
+				}
+
+				var mode = secondary_el.find('.set-secondary-mode')
+				if (mode) {
+					values.mode = mode.val();
+				}
+
+				secondary_el.find('.set-secondary-dynamic-key').each(function(){
+					form_el = $(this);
+					value_el = form_el.siblings('.set-secondary-dynamic-value')
+					if (form_el.val()) {
+						values[form_el.val()] = (value_el.val());
+					}
+				})
+
+				if (values?.address) {
+					secondaries.push(values);
+				}
+			});
 
 			var data = {
 				section: 'GENERAL',
 				key: 'SECONDARIES',
-				value: value
+				value: secondaries
 			};
 			socket.emit('set_config', data);
-		}
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'GENERAL': ['SECONDARIES']
+					}
+				}]
+			});
+		});
 
 		// Sensors
 		function display_sensors_ui(msg) {
@@ -1794,6 +1972,60 @@
 					.prop('id', 'sensor-ui')
 					.appendTo('.sensor-setup');
 			}
+
+			if ($('#serial-port-ui').length) {
+				var serial_ui = $('#serial-port-ui');
+			} else {
+				$('#serial-port-setup').empty();
+				$(document.createElement('h3'))
+					.text(__('Serial Ports'))
+					.appendTo('#serial-port-setup');
+				var serial_ui = $(document.createElement('ol'))
+					.prop('id', 'serial-port-ui')
+					.addClass('form')
+					.appendTo('#serial-port-setup');
+			}
+
+			if ($(`#serial-port--new`).length) {
+				$(`#serial-port--new input`).val('');
+			} else {
+				field = $(document.createElement('li'))
+					.prop('id', `serial-port--new`)
+					.appendTo(serial_ui);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('New Port') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-serial-config')
+					.appendTo(field);
+			}
+
+			serial_ui.find('li').not('#serial-port--new').addClass('flagged');
+
+			for (var i in ports) {
+				var port = ports[i];
+
+				if ($(`#serial-port--${i}`).length) {
+					var item_el = $(`#serial-port--${i}`)
+						.removeClass('flagged');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `serial-port--${i}`)
+						.appendTo(serial_ui);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( `${__('Port')} ${parseInt(i)+1}`)
+						.appendTo(item_el);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-serial-config')
+						.appendTo(item_el);
+				}
+				item_el.find('input').val(port);
+			}
+			serial_ui.find('li.flagged').remove();
 
 		}
 
@@ -1807,7 +2039,7 @@
 				value: value
 			};
 			socket.emit('set_config', data);
-		}
+		});
 	});
 
 </script>
@@ -2456,7 +2688,7 @@
 			<p>No cluster status available.</p>
 		</div>
 		<h3>{{ __('Settings') }}</h3>
-		<div class="secondary-setup">
+		<div id="secondary-setup">
 			{{ __('Loading...') }}
 		</div>
 		<ol class="form">
@@ -2476,12 +2708,12 @@
 		<h2>{{ __('Environment Sensors') }}</h2>
 	</div>
 	<div class="panel-content">
-		<h3>{{ __('Cluster Status') }}</h3>
-		<div id="cluster-status" class="control-set">
-			<p>No cluster status available.</p>
+		<h3>{{ __('Environment Status') }}</h3>
+		<div id="env-data-table" class="control-set">
+			<p>No environment status available.</p>
 		</div>
 		<h3>{{ __('Settings') }}</h3>
-		<div class="sensor-setup">
+		<div id="sensor-setup">
 			{{ __('Loading...') }}
 		</div>
 	</div>
