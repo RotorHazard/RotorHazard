@@ -193,9 +193,9 @@ With _Fastest Lap_ and _Fastest 3 Consecutive Laps_, teams with differing number
 
 __Co-op Racing__ allows all pilots in a race to work as a cooperative group to improve their combined performance. Pilots of varying abilities can race together, with everyone contributing and working on improving their skills. There are two versions of co-op racing, described below. In both versions, all pilots in the current heat race together as a group. In the first race, a benchmark performance is set, and in each race after that the group attempts to improve and achieve a new best performance. 
 
-* _Co-op Fastest Time to X Laps_: The group attempts to complete the given number of laps (X) in the fastest time. When this racing format is enabled (on the 'Run' page), the current "Co-op Best Time" value will be shown with the heat settings for the group (in the "Classes and Heats" section on the 'Format' page), and the value may be altered or cleared there.  
+* _Co-op Fastest Time to X Laps_: The group attempts to complete the given number of laps (X) in the fastest time. When this racing format is enabled (on the 'Run' page), the current "Co-op Best Time" value will be shown in the "Race Management" section, and the value may be altered or cleared there.  
 
-* _Co-op Most Laps in X:XX_: The group attempts to complete the most number of laps in the given race time (X:XX). When this racing format is enabled (on the 'Run' page), the current "Co-op Best # of Laps" value will be shown with the heat settings for the group (in the "Classes and Heats" section on the 'Format' page), and the value may be altered or cleared there.
+* _Co-op Most Laps in X:XX_: The group attempts to complete the most number of laps in the given race time (X:XX). When this racing format is enabled (on the 'Run' page), the current "Co-op Best # of Laps" value will be shown in the "Race Management" section, and the value may be altered or cleared there.
 
 The "%COOP_RACE_INFO%" and "%COOP_RACE_LAP_TOTALS%" variables can be used in callouts with co-op races, see the [Event Actions](#event-actions) section for descriptions. 
 

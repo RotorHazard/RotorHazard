@@ -1403,37 +1403,6 @@
 					.data('heat', heat.id)
 					.prependTo(label);
 
-				// Co-op mode
-				var heat_coop_time_control = $(document.createElement('div'))
-					.addClass('coop-time-control')
-					.addClass(`heat-ui--coop-time-control--heat-${heat.id}`)
-					.appendTo(el);
-				var label = $(document.createElement('label'))
-					.text(__('Co-op Best Time'))
-					.appendTo(heat_coop_time_control);
-				var heat_coop_time = $(document.createElement('input'))
-					.addClass(`heat-ui--coop-time--heat-${heat.id}`)
-					.prop('type', 'text')
-					.addClass('set_heat_coop_best_time')
-					.data('heat', heat.id)
-					.prependTo(label);
-
-				var heat_coop_laps_control = $(document.createElement('div'))
-					.addClass('coop-laps-control')
-					.addClass(`heat-ui--coop-laps-control--heat-${heat.id}`)
-					.appendTo(el);
-				var label = $(document.createElement('label'))
-					.text(__('Co-op Best # of Laps'))
-					.appendTo(heat_coop_laps_control);
-				var heat_coop_laps = $(document.createElement('input'))
-					.addClass(`heat-ui--coop-laps--heat-${heat.id}`)
-					.prop('type', 'number')
-					.prop('step', 1)
-					.prop('min', 0)
-					.addClass('set_heat_coop_num_laps')
-					.data('heat', heat.id)
-					.prependTo(label);
-
 				// Dynamic Controls
 				var heat_controls = $(document.createElement('div'))
 					.addClass('dynamic-controls')
@@ -1479,10 +1448,6 @@
 				var heat_delete = $(el).find(`.heat-ui--delete--heat-${heat.id}`);
 				var heat_slots = $(el).find(`.heat-ui--slot-list--heat-${heat.id}`);
 				var heat_autofrequency = $(el).find(`.heat-ui--auto-frequency--heat-${heat.id}`);
-				var heat_coop_time_control = $(el).find(`.heat-ui--coop-time-control--heat-${heat.id}`);
-				var heat_coop_time = $(el).find(`.heat-ui--coop-time--heat-${heat.id}`);
-				var heat_coop_laps_control = $(el).find(`.heat-ui--coop-laps-control--heat-${heat.id}`);
-				var heat_coop_laps = $(el).find(`.heat-ui--coop-laps--heat-${heat.id}`);
 				var heat_plan_revert = $(el).find(`.heat-ui--plan-revert--heat-${heat.id}`);
 				var heat_plan_calc = $(el).find(`.heat-ui--plan-calc--heat-${heat.id}`);
 			}
@@ -1766,33 +1731,6 @@
 			heat_autofrequency
 				.prop('checked', heat.auto_frequency)
 				.prop('disabled', locked)
-
-			// Co-op mode
-			heat_coop_time.val(heat.coop_best_time ? String(heat.coop_best_time) : '')
-			heat_coop_laps.val(heat.coop_num_laps ? String(heat.coop_num_laps) : '');
-
-			if (heat.class_id) {
-				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == heat.class_id});
-				var format_id = race_class.format;
-			} else {
-				var format_id = 0;
-			}
-
-			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
-			if (rf && rf.team_racing_mode == RACING_MODE_COOP) {
-				if (rf.win_condition == 2) {
-					// if First to X Laps
-					heat_coop_time_control.prop('hidden', false);
-					heat_coop_laps_control.prop('hidden', true);
-				} else if (rf.win_condition == 1 || rf.win_condition == 5 || rf.win_condition == 6) {
-					// if Most Laps in Fastest Time | Most Laps Only | Most Laps Only with Overtime
-					heat_coop_time_control.prop('hidden', true);
-					heat_coop_laps_control.prop('hidden', false);
-				}
-			} else {
-				heat_coop_time_control.prop('hidden', true);
-				heat_coop_laps_control.prop('hidden', true);
-			}
 
 			// Dynamic Controls
 
@@ -2079,26 +2017,6 @@
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), heat);
 			});
-		});
-
-		$(document).on("change", '.set_heat_coop_best_time', function (event) {
-			var heat_id = parseInt($(this).data('heat'));
-			var data = {
-				heat: heat_id,
-				coop_best_time: $(this).val(),
-				coop_data_flag: true  // set flag to indicate only co-op data was modified
-			};
-			socket.emit('alter_heat', data);
-		});
-
-		$(document).on("change", '.set_heat_coop_num_laps', function (event) {
-			var heat_id = parseInt($(this).data('heat'));
-			var data = {
-				heat: heat_id,
-				coop_num_laps: parseInt($(this).val()),
-				coop_data_flag: true  // set flag to indicate only co-op data was modified
-			};
-			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("focus", '.set_heat_attr', function(){
@@ -2630,7 +2548,6 @@
 				$('#set_points_params').html(svg_asset.gear);
 
 				display_format();
-				display_unclassified_heats();  // update to show/hide fields for co-op racing mode
 			}
 		}
 
@@ -2741,7 +2658,6 @@
 		$('#set_race_format').change(function (event) {
 			current_format = $('#set_race_format').val();
 			display_format();
-			display_unclassified_heats();  // update to show/hide fields for co-op racing mode
 
 		});
 
@@ -2905,7 +2821,6 @@
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 			rf.win_condition = win_condition;
 			update_race_format_ui();
-			display_unclassified_heats();  // update to show/hide fields for co-op racing mode
 		})
 
 		$('#set_number_laps_win').change(function (event) {
@@ -2932,7 +2847,6 @@
 
 			var rf = rotorhazard.event.race_formats.find(obj => {return obj.id == format_id});
 			rf.team_racing_mode = team_racing_mode;
-			display_unclassified_heats();  // update to show/hide fields for co-op racing mode
 		})
 
 		$('#set_points_method').change(function (event) {

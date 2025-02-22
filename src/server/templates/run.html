@@ -1612,21 +1612,21 @@
 				var format = rotorhazard.event.race_formats.find(obj => {return obj.id == rotorhazard.event.race_status.race_format_id})
 
 				if (rotorhazard.event.race_status.race_heat_id && format.team_racing_mode == RACING_MODE_COOP) {
-					$('#race_format_options').prop('hidden', false);
 					if (format.win_condition == 2) {
 						// if First to X Laps
-						$('.coop-time-control').prop('hidden', false);
-						$('.coop-laps-control').prop('hidden', true);
-					} else if (format.win_condition == 1 || rf.win_condition == 5 || rf.win_condition == 6) {
+						$('#coop-time-control').prop('hidden', false);
+						$('#coop-laps-control').prop('hidden', true);
+					} else if (format.win_condition == 1 || format.win_condition == 5 || format.win_condition == 6) {
 						// if Most Laps in Fastest Time | Most Laps Only | Most Laps Only with Overtime
-						$('.coop-time-control').prop('hidden', true);
-						$('.coop-laps-control').prop('hidden', false);
+						$('#coop-time-control').prop('hidden', true);
+						$('#coop-laps-control').prop('hidden', false);
 					} else {
-						$('.coop-time-control').prop('hidden', true);
-						$('.coop-laps-control').prop('hidden', true);
+						$('#coop-time-control').prop('hidden', true);
+						$('#coop-laps-control').prop('hidden', true);
 					}
 				} else {
-					$('#race_format_options').prop('hidden', true);
+					$('#coop-time-control').prop('hidden', true);
+					$('#coop-laps-control').prop('hidden', true);
 				}
 			}
 		}
@@ -2443,19 +2443,6 @@
 
 		<div class="race_status_message"></div>
 
-		<div id="race_format_options" hidden="hidden">
-			<div class="coop-time-control">
-				<label>{{ __('Co-op Best Time') }}
-					<input class="set_heat_coop_best_time" type="text" />
-				</label>
-			</div>
-			<div class="coop-laps-control">
-				<label>{{ __('Co-op Best # of Laps') }}
-					<input class="set_heat_coop_num_laps" type="number" step="1" min="0" />
-				</label>
-			</div>
-		</div>
-
 		<!--Display the current laps-->
 		<div class="race-results">
 			{% for node in nodes %}
@@ -2590,6 +2577,18 @@
 					<option value="0">{{ __('Highlight Short Laps') }}</option>
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
 				</select>
+			</li>
+			<li id="coop-laps-control" hidden="hidden">
+				<div class="label-block">
+					<label for="heat_coop_num_laps_id">{{ __('Co-op Best # of Laps') }}</label>
+				</div>
+				<input id="heat_coop_num_laps_id" class="set_heat_coop_num_laps" type="number" step="1" min="0" />
+			</li>
+			<li id="coop-time-control" hidden="hidden">
+				<div class="label-block">
+					<label for="heat_coop_best_time_id">{{ __('Co-op Best Time') }}</label>
+				</div>
+				<input id="heat_coop_best_time_id" class="set_heat_coop_best_time" type="text" />
 			</li>
 		</ol>
 	</div>
