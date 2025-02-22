@@ -2640,6 +2640,11 @@ button.color-picker {
 	opacity: 0.5;
 }
 
+.settings-list {
+	list-style: none;
+	padding: 0;
+}
+
 #plugin-list>ul {
 	margin: 0;
 	padding: 0;

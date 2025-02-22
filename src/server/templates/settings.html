@@ -1770,20 +1770,27 @@
 			if ($('#secondary-ui').length) {
 				var secondary_ui = $('#secondary-ui');
 			} else {
+				$('#secondary-setup').empty();
 				var secondary_ui = $(document.createElement('ul'))
 					.prop('id', 'secondary-ui')
+					.addClass('settings-list')
 					.appendTo('#secondary-setup');
 			}
 
 			if ($(`#secondary--new`).length) {
 				$(`#secondary--new input`).val('');
 			} else {
-				field = $(document.createElement('li'))
+				var item_el = $(document.createElement('li'))
 					.prop('id', `secondary--new`)
 					.appendTo(secondary_ui);
 				$(document.createElement('h4'))
 					.text( __('New Secondary') )
-					.appendTo(field);
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
+					.addClass('form')
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
 				$(document.createElement('label'))
 					.addClass('label-block')
 					.text( __('Address') )
@@ -1805,6 +1812,7 @@
 						.removeClass('flagged');
 					var address_field = item_el.find('.set-secondary-address');
 					var mode_field = item_el.find('.set-secondary-mode');
+					var new_field = item_el.find('.set-secondary-dynamic-new-key');
 					var fields = item_el.children('ol');
 				} else {
 					var item_el = $(document.createElement('li'))
@@ -1813,7 +1821,6 @@
 					$(document.createElement('h4'))
 						.text( `${__('Secondary')} ${parseInt(i)+1}` )
 						.appendTo(item_el);
-
 					var fields = $(document.createElement('ol'))
 						.addClass('form')
 						.appendTo(item_el);
@@ -1852,15 +1859,28 @@
 						.prop('value', 'action')
 						.text( __('Action') )
 						.appendTo(mode_field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.prop('placeholder', __('key') )
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-dynamic-key')
+						.addClass('set-secondary-dynamic-new-key')
+						.appendTo(new_field);
 				}
 				address_field.val(secondary.address);
-				if (mode_field) {
-					if (secondary.mode) {
-						mode_field.val(secondary.mode);
-					} else {
-						mode_field.val('split');
-					}
+				if (secondary.mode) {
+					mode_field.val(secondary.mode);
+				} else {
+					mode_field.val('split');
 				}
+				new_field.val();
 
 				display_secondary_dynamic_field_ui(secondary, fields);
 			}
@@ -1868,44 +1888,42 @@
 		}
 
 		function display_secondary_dynamic_field_ui(fields, el) {
-			el.find('li:nth-child(n+3)').remove();
+			els = el.children('.dynamic');
 
-			var field_el = $(document.createElement('li'))
-				.appendTo(el);
-			var label = $(document.createElement('input'))
-				.prop('type', 'text')
-				.prop('placeholder', __('key') )
-				.addClass('label-block')
-				.addClass('set-secondary-config')
-				.addClass('set-secondary-dynamic-key')
-				.appendTo(field_el);
-			$(document.createElement('input'))
-				.prop('type', 'text')
-				.prop('placeholder', __('value') )
-				.addClass('set-secondary-config')
-				.addClass('set-secondary-dynamic-value')
-				.appendTo(field_el);
+			els.addClass('flagged');
 
+			var index = 0;
 			for (var i in fields) {
 				if (i != 'address' && i != 'mode') {
 					var field = fields[i];
-					var field_el = $(document.createElement('li'))
-						.appendTo(el);
-					var label = $(document.createElement('input'))
-						.prop('type', 'text')
-						.addClass('label-block')
-						.addClass('set-secondary-config')
-						.addClass('set-secondary-dynamic-key')
-						.val(i)
-						.appendTo(field_el);
-					$(document.createElement('input'))
-						.prop('type', 'text')
-						.addClass('set-secondary-config')
-						.addClass('set-secondary-dynamic-value')
-						.val(field)
-						.appendTo(field_el);
+
+					if (els.length > index) {
+						var field_el = $(els[index]);
+						var key_el = field_el.children('.set-secondary-dynamic-key');
+						var value_el = field_el.children('.set-secondary-dynamic-value');
+					} else {
+						var field_el = $(document.createElement('li'))
+							.addClass('dynamic')
+							.appendTo(el);
+						var key_el = $(document.createElement('input'))
+							.prop('type', 'text')
+							.addClass('label-block')
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-key')
+							.appendTo(field_el);
+						var value_el = $(document.createElement('input'))
+							.prop('type', 'text')
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-value')
+							.appendTo(field_el);
+					}
+					field_el.removeClass('flagged');
+					key_el.val(i)
+					value_el.val(field)
+					index++;
 				}
 			}
+			els.children('.flagged').remove();
 		}
 
 		$(document).on('change', '.set-secondary-config', function (event) {
@@ -1934,10 +1952,15 @@
 				}
 
 				secondary_el.find('.set-secondary-dynamic-key').each(function(){
-					form_el = $(this);
-					value_el = form_el.siblings('.set-secondary-dynamic-value')
-					if (form_el.val()) {
-						values[form_el.val()] = (value_el.val());
+					key_el = $(this);
+					value_el = key_el.siblings('.set-secondary-dynamic-value')
+					if (key_el.val()) {
+						if (value_el.length) {
+							values[key_el.val()] = (value_el.val());
+						} else {
+							values[key_el.val()] = null;
+							key_el.val('');
+						}
 					}
 				})
 
@@ -1964,81 +1987,184 @@
 		});
 
 		// Sensors
-		function display_sensors_ui(msg) {
+		function display_sensors_ui(sensors) {
 			if ($('#sensor-ui').length) {
-				var serial_ui = $('#sensor-ui');
+				var sensor_ui = $('#sensor-ui');
 			} else {
-				var serial_ui = $(document.createElement('ul'))
+				$('#sensor-setup').empty();
+				var sensor_ui = $(document.createElement('ul'))
 					.prop('id', 'sensor-ui')
-					.appendTo('.sensor-setup');
+					.addClass('settings-list')
+					.appendTo('#sensor-setup');
 			}
 
-			if ($('#serial-port-ui').length) {
-				var serial_ui = $('#serial-port-ui');
+			if ($(`#sensor--new`).length) {
+				$(`#sensor--new input`).val('');
 			} else {
-				$('#serial-port-setup').empty();
-				$(document.createElement('h3'))
-					.text(__('Serial Ports'))
-					.appendTo('#serial-port-setup');
-				var serial_ui = $(document.createElement('ol'))
-					.prop('id', 'serial-port-ui')
+				var item_el = $(document.createElement('li'))
+					.prop('id', `sensor--new`)
+					.appendTo(sensor_ui);
+				$(document.createElement('h4'))
+					.text( __('New Sensor') )
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
 					.addClass('form')
-					.appendTo('#serial-port-setup');
-			}
-
-			if ($(`#serial-port--new`).length) {
-				$(`#serial-port--new input`).val('');
-			} else {
-				field = $(document.createElement('li'))
-					.prop('id', `serial-port--new`)
-					.appendTo(serial_ui);
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
 				$(document.createElement('label'))
 					.addClass('label-block')
-					.text( __('New Port') )
+					.text( __('Address') )
 					.appendTo(field);
 				$(document.createElement('input'))
 					.prop('type', 'text')
-					.addClass('set-serial-config')
+					.addClass('set-sensor-config')
+					.data('property', 'address')
 					.appendTo(field);
 			}
 
-			serial_ui.find('li').not('#serial-port--new').addClass('flagged');
+			sensor_ui.children('li').not('#sensor--new').addClass('flagged');
 
-			for (var i in ports) {
-				var port = ports[i];
+			var index = 1;
+			for (var key in sensors) {
+				var sensor = sensors[key];
 
-				if ($(`#serial-port--${i}`).length) {
-					var item_el = $(`#serial-port--${i}`)
+				if ($(`#sensor--${index}`).length) {
+					var item_el = $(`#sensor--${index}`)
 						.removeClass('flagged');
+					var address_field = item_el.find('.set-sensor-address');
+					var new_field = item_el.find('.set-sensor-dynamic-new-key');
+					var fields = item_el.children('ol');
 				} else {
 					var item_el = $(document.createElement('li'))
-						.prop('id', `serial-port--${i}`)
-						.appendTo(serial_ui);
+						.prop('id', `sensor--${index}`)
+						.appendTo(sensor_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Sensor')} ${index}` )
+						.appendTo(item_el);
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
 					$(document.createElement('label'))
 						.addClass('label-block')
-						.text( `${__('Port')} ${parseInt(i)+1}`)
-						.appendTo(item_el);
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-address')
+						.appendTo(field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
 					$(document.createElement('input'))
 						.prop('type', 'text')
-						.addClass('set-serial-config')
-						.appendTo(item_el);
+						.prop('placeholder', __('key') )
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.addClass('set-sensor-dynamic-new-key')
+						.appendTo(new_field);
 				}
-				item_el.find('input').val(port);
+				address_field.val(key);
+				new_field.val();
+
+				display_sensor_dynamic_field_ui(sensor, fields);
+				index++;
 			}
-			serial_ui.find('li.flagged').remove();
+			sensor_ui.find('li.flagged').remove();
 
 		}
 
-		$(document).on('change', '.set-sensors-config', function (event) {
-			/* $('#sensor-ui') */
-			value = null;
+		function display_sensor_dynamic_field_ui(fields, el) {
+			els = el.children('.dynamic');
+
+			els.addClass('flagged');
+
+			var index = 0;
+			for (var key in fields) {
+				var value = fields[key];
+
+				if (els.length > index) {
+					var field_el = $(els[index]);
+					var key_el = field_el.children('.set-sensor-dynamic-key');
+					var value_el = field_el.children('.set-sensor-dynamic-value');
+				} else {
+					var field_el = $(document.createElement('li'))
+						.addClass('dynamic')
+						.appendTo(el);
+					var key_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('label-block')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.appendTo(field_el);
+					var value_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-value')
+						.appendTo(field_el);
+				}
+				field_el.removeClass('flagged');
+				key_el.val(key)
+				value_el.val(value)
+				index++;
+			}
+			els.children('.flagged').remove();
+		}
+
+		$(document).on('change', '.set-sensor-config', function (event) {
+			var sensors = {};
+			$('#sensor--new').find('input').each(function(){
+				if ($(this).val()) {
+					sensors[$(this).val()] = {};
+					$(this).empty();
+				}
+			});
+
+			$('#sensor-ui').children().not('#sensor--new').each(function(){
+				var values = {};
+				sensor_el = $(this);
+
+				var addr = sensor_el.find('.set-sensor-address')?.val();
+				if (addr) {
+					sensor_el.find('.set-sensor-dynamic-key').each(function(){
+						key_el = $(this);
+						value_el = key_el.siblings('.set-sensor-dynamic-value')
+						if (key_el.val()) {
+							if (value_el.length) {
+								values[key_el.val()] = (value_el.val());
+							} else {
+								values[key_el.val()] = null;
+								key_el.val('');
+							}
+						}
+					})
+
+					sensors[addr] = values;
+				}
+			});
 
 			var data = {
 				section: 'SENSORS',
-				key: '',
-				value: value
+				value: sensors
 			};
-			socket.emit('set_config', data);
+			socket.emit('set_config_section', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'SENSORS': []
+					}
+				}]
+			});
 		});
 	});
 

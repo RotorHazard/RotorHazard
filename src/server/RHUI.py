@@ -444,11 +444,14 @@ class RHUI():
     def emit_config_update(self, settings, **params):
         config_vals = {}
         for section, items in settings.items():
-            for item in items:
-                if section not in config_vals:
-                    config_vals[section] = {}
+            if section == 'SENSORS':
+                config_vals['SENSORS'] = self._racecontext.serverconfig.get_section('SENSORS')
+            else:
+                for item in items:
+                    if section not in config_vals:
+                        config_vals[section] = {}
 
-                config_vals[section][item] = self._racecontext.serverconfig.get_item(section, item)
+                    config_vals[section][item] = self._racecontext.serverconfig.get_item(section, item)
 
         emit_payload = {
             'config': config_vals

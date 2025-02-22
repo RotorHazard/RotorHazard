@@ -268,6 +268,14 @@ class Config:
             return False
         return True
 
+    def set_section(self, section, value):
+        try:
+            self.config[section] = value
+            self.save_config()
+        except:
+            return False
+        return True
+
     def register_section(self, section):
         self.config_sections[section] = {}
         self.config[section] = {}

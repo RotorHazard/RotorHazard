@@ -2350,6 +2350,15 @@ def on_set_config(data):
         'value': data['value'],
         })
 
+@SOCKET_IO.on('set_config_section')
+@catchLogExceptionsWrapper
+def on_set_config_section(data):
+    RaceContext.serverconfig.set_section(data['section'], data['value'])
+    Events.trigger(Evt.CONFIG_SET, {
+        'section': data['section'],
+        'value': data['value'],
+        })
+
 @SOCKET_IO.on('set_consecutives_count')
 @catchLogExcWithDBWrapper
 def on_set_consecutives_count(data):
