@@ -14,7 +14,7 @@
 		'node_data',
 		'frequency_data',
 		'pilot_data',
-		'heat_data',
+		'heat_list',
 		'class_data',
 		'format_data',
 		'node_tuning',
@@ -545,6 +545,11 @@
 					freq.updateBlock(fObj, i);
 				}
 			}
+		});
+
+		socket.on('heat_list', function (msg) {
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
 		});
 
 		socket.on('heat_data', function (msg) {
@@ -1110,6 +1115,9 @@
 					.css('color', contrastColor(color));
 			}
 
+			$('.set_heat_coop_best_time').val(msg.coop_best_time ? String(msg.coop_best_time) : '');
+			$('.set_heat_coop_num_laps').val(msg.coop_num_laps ? String(msg.coop_num_laps) : '');
+
 			if (msg.heat_format) {
 				$('#set_race_format').val(msg.heat_format);
 				$('#set_race_format').prop('disabled', true);
@@ -1600,6 +1608,26 @@
 					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>')
 				}
 				$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
+
+				var format = rotorhazard.event.race_formats.find(obj => {return obj.id == rotorhazard.event.race_status.race_format_id})
+
+				if (rotorhazard.event.race_status.race_heat_id && format.team_racing_mode == RACING_MODE_COOP) {
+					if (format.win_condition == 2) {
+						// if First to X Laps
+						$('#coop-time-control').prop('hidden', false);
+						$('#coop-laps-control').prop('hidden', true);
+					} else if (format.win_condition == 1 || format.win_condition == 5 || format.win_condition == 6) {
+						// if Most Laps in Fastest Time | Most Laps Only | Most Laps Only with Overtime
+						$('#coop-time-control').prop('hidden', true);
+						$('#coop-laps-control').prop('hidden', false);
+					} else {
+						$('#coop-time-control').prop('hidden', true);
+						$('#coop-laps-control').prop('hidden', true);
+					}
+				} else {
+					$('#coop-time-control').prop('hidden', true);
+					$('#coop-laps-control').prop('hidden', true);
+				}
 			}
 		}
 
@@ -1609,6 +1637,24 @@
 			};
 			if ($(this).find('option').length > 1)
 				socket.emit('set_race_format', data);
+		});
+
+		$(document).on("change", '.set_heat_coop_best_time', function (event) {
+			var data = {
+				heat: rotorhazard.event.race_status.race_heat_id,
+				coop_best_time: $(this).val(),
+				coop_data_flag: true  // set flag to indicate only co-op data was modified
+			};
+			socket.emit('alter_heat', data);
+		});
+
+		$(document).on("change", '.set_heat_coop_num_laps', function (event) {
+			var data = {
+				heat: rotorhazard.event.race_status.race_heat_id,
+				coop_num_laps: parseInt($(this).val()),
+				coop_data_flag: true  // set flag to indicate only co-op data was modified
+			};
+			socket.emit('alter_heat', data);
 		});
 
 		/* Send Message */
@@ -2531,6 +2577,18 @@
 					<option value="0">{{ __('Highlight Short Laps') }}</option>
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
 				</select>
+			</li>
+			<li id="coop-laps-control" hidden="hidden">
+				<div class="label-block">
+					<label for="heat_coop_num_laps_id">{{ __('Co-op Best # of Laps') }}</label>
+				</div>
+				<input id="heat_coop_num_laps_id" class="set_heat_coop_num_laps" type="number" step="1" min="0" />
+			</li>
+			<li id="coop-time-control" hidden="hidden">
+				<div class="label-block">
+					<label for="heat_coop_best_time_id">{{ __('Co-op Best Time') }}</label>
+				</div>
+				<input id="heat_coop_best_time_id" class="set_heat_coop_best_time" type="text" />
 			</li>
 		</ol>
 	</div>

@@ -880,6 +880,131 @@ class RHUI():
         else:
             self._socket.emit('leaderboard', emit_payload)
 
+    def emit_expanded_heat(self, heat_id, **params):
+        '''Emits abbreviated heat data for more responsive UI.'''
+
+        attrs = []
+        types = {}
+        for attr in self.heat_attributes:
+            if not attr.private:
+                types[attr.name] = attr.field_type
+                attrs.append(attr.frontend_repr())
+
+        heat = self._racecontext.rhdata.get_heat(heat_id)
+        heat_payload = {}
+        heat_payload['id'] = heat.id
+        heat_payload['displayname'] = heat.display_name
+        heat_payload['name'] = heat.name
+        heat_payload['auto_name'] = heat.auto_name
+        heat_payload['class_id'] = heat.class_id
+        heat_payload['group_id'] = heat.group_id
+        heat_payload['order'] = heat.order
+        heat_payload['status'] = heat.status
+        heat_payload['auto_frequency'] = heat.auto_frequency
+        heat_payload['active'] = heat.active
+        heat_payload['next_round'] = self._racecontext.rhdata.get_max_round(heat.id)
+
+        heat_payload['slots'] = []
+        heatNodes = self._racecontext.rhdata.get_heatNodes_by_heat(heat.id)
+        def heatNodeSorter(x):
+            if not x.node_index:
+                return -1
+            return x.node_index
+        heatNodes.sort(key=heatNodeSorter)
+
+        is_dynamic = False
+        for heatNode in heatNodes:
+            current_node = {}
+            current_node['id'] = heatNode.id
+            current_node['node_index'] = heatNode.node_index
+            current_node['pilot_id'] = heatNode.pilot_id
+            # current_node['color'] = heatNode.color
+            current_node['method'] = heatNode.method
+            current_node['seed_rank'] = heatNode.seed_rank
+            current_node['seed_id'] = heatNode.seed_id
+            heat_payload['slots'].append(current_node)
+
+            if current_node['method'] == ProgramMethod.HEAT_RESULT or current_node['method'] == ProgramMethod.CLASS_RESULT:
+                is_dynamic = True
+
+        heat_payload['dynamic'] = is_dynamic
+        heat_payload['locked'] = bool(self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id))
+
+        heat_attributes = self._racecontext.rhdata.get_heat_attributes(heat)
+        for attr in heat_attributes:
+            if types.get(attr.name):
+                heat_payload[attr.name] = attr.value != '0' if types.get(attr.name) == UIFieldType.CHECKBOX else attr.value
+
+        emit_payload = {
+            'heat': heat_payload
+        }
+
+        emit_payload = self._filters.run_filters(Flt.EMIT_HEAT_EXPANDED, emit_payload)
+
+        if ('nobroadcast' in params):
+            emit('heat_expanded', emit_payload)
+        elif ('noself' in params):
+            emit('heat_expanded', emit_payload, broadcast=True, include_self=False)
+        else:
+            self._socket.emit('heat_expanded', emit_payload)
+
+
+    def emit_heat_list(self, **params):
+        '''Emits heat list.'''
+
+        heats = []
+        for heat in self._racecontext.rhdata.get_heats():
+            current_heat = {}
+            current_heat['id'] = heat.id
+            current_heat['displayname'] = heat.display_name
+            current_heat['class_id'] = heat.class_id
+            current_heat['group_id'] = heat.group_id
+            current_heat['order'] = heat.order
+            current_heat['status'] = heat.status
+            current_heat['active'] = heat.active
+            heats.append(current_heat)
+
+        emit_payload = {
+            'heats': heats,
+        }
+
+        emit_payload = self._filters.run_filters(Flt.EMIT_HEAT_LIST, emit_payload)
+
+        if ('nobroadcast' in params):
+            emit('heat_list', emit_payload)
+        elif ('noself' in params):
+            emit('heat_list', emit_payload, broadcast=True, include_self=False)
+        else:
+            self._socket.emit('heat_list', emit_payload)
+
+    def emit_class_list(self, **params):
+        '''Emits class list.'''
+
+        current_classes = []
+        for race_class in self._racecontext.rhdata.get_raceClasses():
+            current_class = {}
+            current_class['id'] = race_class.id
+            current_class['displayname'] = race_class.display_name
+            current_class['order'] = race_class.order
+            current_classes.append(current_class)
+
+        emit_payload = {
+            'classes': current_classes,
+        }
+
+        emit_payload = self._filters.run_filters(Flt.EMIT_CLASS_LIST, emit_payload)
+
+        if ('nobroadcast' in params):
+            emit('class_list', emit_payload)
+        elif ('noself' in params):
+            emit('class_list', emit_payload, broadcast=True, include_self=False)
+        else:
+            self._socket.emit('class_list', emit_payload)
+
+        if ('check_emit_small_event' in params):
+            if len(self._racecontext.rhdata.get_heats()) <= self._racecontext.serverconfig.get_item_int('UI', 'smallEventThreshold'):
+                self.emit_heat_data()
+
     def emit_heat_data(self, **params):
         '''Emits heat data.'''
 
@@ -956,6 +1081,104 @@ class RHUI():
             emit('heat_data', emit_payload, broadcast=True, include_self=False)
         else:
             self._socket.emit('heat_data', emit_payload)
+
+    def emit_heat_attribute_types(self, **params):
+        '''Emits heat attribute meta.'''
+
+        attrs = []
+        types = {}
+        for attr in self.heat_attributes:
+            if not attr.private:
+                types[attr.name] = attr.field_type
+                attrs.append(attr.frontend_repr())
+
+        emit_payload = {
+            'attributes': attrs
+        }
+
+        emit_payload = self._filters.run_filters(Flt.EMIT_HEAT_DATA, emit_payload)
+
+        if ('nobroadcast' in params):
+            emit('heat_attribute_types', emit_payload)
+        elif ('noself' in params):
+            emit('heat_attribute_types', emit_payload, broadcast=True, include_self=False)
+        else:
+            self._socket.emit('heat_attribute_types', emit_payload)
+
+    def emit_recent_heats(self, class_id, limit, **params):
+        '''Emits data of most recent heats class.'''
+
+        types = {}
+        for attr in self.heat_attributes:
+            if not attr.private:
+                types[attr.name] = attr.field_type
+
+        heats = []
+        for heat in self._racecontext.rhdata.get_recent_heats_by_class(class_id, limit):
+            current_heat = {}
+            current_heat['id'] = heat.id
+            current_heat['displayname'] = heat.display_name
+            current_heat['name'] = heat.name
+            current_heat['auto_name'] = heat.auto_name
+            current_heat['class_id'] = heat.class_id
+            current_heat['group_id'] = heat.group_id
+            current_heat['order'] = heat.order
+            current_heat['status'] = heat.status
+            current_heat['auto_frequency'] = heat.auto_frequency
+            current_heat['active'] = heat.active
+            current_heat['next_round'] = self._racecontext.rhdata.get_max_round(heat.id)
+            current_heat['coop_best_time'] = RHUtils.format_secs_to_duration_str(heat.coop_best_time) \
+                if isinstance(heat.coop_best_time, (int, float)) and \
+                   heat.coop_best_time >= 0.001 else ''
+            current_heat['coop_num_laps'] = heat.coop_num_laps
+
+            current_heat['slots'] = []
+
+            heatNodes = self._racecontext.rhdata.get_heatNodes_by_heat(heat.id)
+            def heatNodeSorter(x):
+                if not x.node_index:
+                    return -1
+                return x.node_index
+            heatNodes.sort(key=heatNodeSorter)
+
+            is_dynamic = False
+            for heatNode in heatNodes:
+                current_node = {}
+                current_node['id'] = heatNode.id
+                current_node['node_index'] = heatNode.node_index
+                current_node['pilot_id'] = heatNode.pilot_id
+                # current_node['color'] = heatNode.color
+                current_node['method'] = heatNode.method
+                current_node['seed_rank'] = heatNode.seed_rank
+                current_node['seed_id'] = heatNode.seed_id
+                current_heat['slots'].append(current_node)
+
+                if current_node['method'] == ProgramMethod.HEAT_RESULT or current_node['method'] == ProgramMethod.CLASS_RESULT:
+                    is_dynamic = True
+
+            current_heat['dynamic'] = is_dynamic
+            current_heat['locked'] = bool(self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id))
+
+            heat_attributes = self._racecontext.rhdata.get_heat_attributes(heat)
+            for attr in heat_attributes:
+                if types.get(attr.name):
+                    current_heat[attr.name] = attr.value != '0' if types.get(attr.name) == UIFieldType.CHECKBOX else attr.value
+
+            heats.append(current_heat)
+
+        emit_payload = {
+            'class': class_id,
+            'heats': heats,
+        }
+
+        emit_payload = self._filters.run_filters(Flt.EMIT_RECENT_HEAT_DATA, emit_payload)
+
+        if ('nobroadcast' in params):
+            emit('recent_heat_data', emit_payload)
+        elif ('noself' in params):
+            emit('recent_heat_data', emit_payload, broadcast=True, include_self=False)
+        else:
+            self._socket.emit('recent_heat_data', emit_payload)
 
     def emit_class_data(self, **params):
         '''Emits class data.'''
@@ -1052,6 +1275,39 @@ class RHUI():
         else:
             self._socket.emit('format_data', emit_payload)
 
+    def emit_pilot_list(self, **params):
+        '''Emits pilot data.'''
+        pilots_list = []
+
+        for pilot in self._racecontext.rhdata.get_pilots():
+            pilot_data = {
+                'pilot_id': pilot.id,
+                'callsign': pilot.callsign,
+                'team': pilot.team,
+                'name': pilot.name,
+                'color': pilot.color,
+            }
+            pilots_list.append(pilot_data)
+
+        if self._racecontext.serverconfig.get_item('UI', 'pilotSort') == 'callsign':
+            pilots_list.sort(key=lambda x: (x['callsign'].casefold(), x['name'].casefold()))
+        else:
+            pilots_list.sort(key=lambda x: (x['name'].casefold(), x['callsign'].casefold()))
+
+        emit_payload = {
+            'pilots': pilots_list,
+            'pilotSort': self._racecontext.serverconfig.get_item('UI', 'pilotSort'),
+        }
+
+        emit_payload = self._filters.run_filters(Flt.EMIT_PILOT_LIST, emit_payload)
+
+        if ('nobroadcast' in params):
+            emit('pilot_data', emit_payload)
+        elif ('noself' in params):
+            emit('pilot_data', emit_payload, broadcast=True, include_self=False)
+        else:
+            self._socket.emit('pilot_data', emit_payload)
+
     def emit_pilot_data(self, **params):
         '''Emits pilot data.'''
         pilots_list = []
@@ -1092,10 +1348,10 @@ class RHUI():
 
             pilots_list.append(pilot_data)
 
-            if self._racecontext.serverconfig.get_item('UI', 'pilotSort') == 'callsign':
-                pilots_list.sort(key=lambda x: (x['callsign'].casefold(), x['name'].casefold()))
-            else:
-                pilots_list.sort(key=lambda x: (x['name'].casefold(), x['callsign'].casefold()))
+        if self._racecontext.serverconfig.get_item('UI', 'pilotSort') == 'callsign':
+            pilots_list.sort(key=lambda x: (x['callsign'].casefold(), x['name'].casefold()))
+        else:
+            pilots_list.sort(key=lambda x: (x['name'].casefold(), x['callsign'].casefold()))
 
         emit_payload = {
             'pilots': pilots_list,
@@ -1111,8 +1367,6 @@ class RHUI():
             emit('pilot_data', emit_payload, broadcast=True, include_self=False)
         else:
             self._socket.emit('pilot_data', emit_payload)
-
-        self.emit_heat_data()
 
     def emit_seat_data(self, **params):
         """Emits seat data."""
@@ -1196,6 +1450,12 @@ class RHUI():
             'heat_class': heat_class,
         }
         if self._racecontext.race.current_heat:
+
+            emit_payload['coop_best_time'] = RHUtils.format_secs_to_duration_str(heat_data.coop_best_time) \
+                if isinstance(heat_data.coop_best_time, (int, float)) and \
+                   heat_data.coop_best_time >= 0.001 else ''
+            emit_payload['coop_num_laps'] = heat_data.coop_num_laps
+
             if heat_class:
                 race_class = self._racecontext.rhdata.get_raceClass(heat_class)
                 if race_class.round_type == RoundType.GROUPED:
