@@ -27,6 +27,13 @@
 		'backups_list',
 		'exporter_list',
 		'plugin_list',
+		{
+			'type': 'config',
+			'value': {
+				'GENERAL': ['SECONDARIES'],
+				'SENSORS': [],
+			}
+		}
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
@@ -1210,15 +1217,50 @@
 			socket.emit('set_option', data);
 		});
 
+		socket.on('config_update', function (msg) {
+			for (var section in msg.config) {
+				if (section == 'SENSORS') {
+					display_sensors_ui(msg.config[section]);
+				} else {
+					for (var key in msg.config[section]) {
+						var value = msg.config[section][key];
+
+						if (section == 'GENERAL' && key == 'SECONDARIES') {
+							display_secondary_ui(value);
+						} else {
+							$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
+						}
+					}
+				}
+			}
+		});
+
 		socket.on('set_config', function (msg) {
-			$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			if (msg.section == 'GENERAL' && msg.key == 'SECONDARIES') {
+				display_secondary_ui(msg);
+			} else if (msg.section == 'SENSORS') {
+				display_sensors_ui(msg);
+			} else {
+				$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			}
 		});
 
 		$(document).on('change', '.set-config', function (event) {
+			value = $(this).val();
+			if ($(this).data('type') == 'boolean' ) {
+				if (value == 'true') {
+					value = true;
+				} else {
+					value = false;
+				}
+			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
+				value = Number(value);
+			}
+
 			var data = {
 				section: $(this).data('section'),
 				key: $(this).data('key'),
-				value: $(this).val()
+				value: value
 			};
 			socket.emit('set_config', data);
 		});
@@ -1721,6 +1763,408 @@
 				var list_el = $('<p>').text(__('No external plugins loaded.'));
 			}
 			wrap_el.append(list_el);
+		});
+
+		// Secondaries
+		function display_secondary_ui(secondaries) {
+			if ($('#secondary-ui').length) {
+				var secondary_ui = $('#secondary-ui');
+			} else {
+				$('#secondary-setup').empty();
+				var secondary_ui = $(document.createElement('ul'))
+					.prop('id', 'secondary-ui')
+					.addClass('settings-list')
+					.appendTo('#secondary-setup');
+			}
+
+			if ($(`#secondary--new`).length) {
+				$(`#secondary--new input`).val('');
+			} else {
+				var item_el = $(document.createElement('li'))
+					.prop('id', `secondary--new`)
+					.appendTo(secondary_ui);
+				$(document.createElement('h4'))
+					.text( __('New Secondary') )
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
+					.addClass('form')
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('Address') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-secondary-config')
+					.data('property', 'address')
+					.appendTo(field);
+			}
+
+			secondary_ui.children('li').not('#secondary--new').addClass('flagged');
+
+			for (var i in secondaries) {
+				var secondary = secondaries[i];
+
+				if ($(`#secondary--${i}`).length) {
+					var item_el = $(`#secondary--${i}`)
+						.removeClass('flagged');
+					var address_field = item_el.find('.set-secondary-address');
+					var mode_field = item_el.find('.set-secondary-mode');
+					var new_field = item_el.find('.set-secondary-dynamic-new-key');
+					var fields = item_el.children('ol');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `secondary--${i}`)
+						.appendTo(secondary_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Secondary')} ${parseInt(i)+1}` )
+						.appendTo(item_el);
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-address')
+						.appendTo(field);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Mode') )
+						.appendTo(field);
+					var mode_field = $(document.createElement('select'))
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-mode')
+						.appendTo(field);
+					$(document.createElement('option'))
+						.prop('value', 'split')
+						.text( __('Split') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'mirror')
+						.text( __('Mirror') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'action')
+						.text( __('Action') )
+						.appendTo(mode_field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.prop('placeholder', __('key') )
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-dynamic-key')
+						.addClass('set-secondary-dynamic-new-key')
+						.appendTo(new_field);
+				}
+				address_field.val(secondary.address);
+				if (secondary.mode) {
+					mode_field.val(secondary.mode);
+				} else {
+					mode_field.val('split');
+				}
+				new_field.val();
+
+				display_secondary_dynamic_field_ui(secondary, fields);
+			}
+			secondary_ui.find('li.flagged').remove();
+		}
+
+		function display_secondary_dynamic_field_ui(fields, el) {
+			els = el.children('.dynamic');
+
+			els.addClass('flagged');
+
+			var index = 0;
+			for (var i in fields) {
+				if (i != 'address' && i != 'mode') {
+					var field = fields[i];
+
+					if (els.length > index) {
+						var field_el = $(els[index]);
+						var key_el = field_el.children('.set-secondary-dynamic-key');
+						var value_el = field_el.children('.set-secondary-dynamic-value');
+					} else {
+						var field_el = $(document.createElement('li'))
+							.addClass('dynamic')
+							.appendTo(el);
+						var key_el = $(document.createElement('input'))
+							.prop('type', 'text')
+							.addClass('label-block')
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-key')
+							.appendTo(field_el);
+						var value_el = $(document.createElement('input'))
+							.prop('type', 'text')
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-value')
+							.appendTo(field_el);
+					}
+					field_el.removeClass('flagged');
+					key_el.val(i)
+					value_el.val(field)
+					index++;
+				}
+			}
+			els.children('.flagged').remove();
+		}
+
+		$(document).on('change', '.set-secondary-config', function (event) {
+			var secondaries = [];
+			$('#secondary--new').find('input').each(function(){
+				if ($(this).val()) {
+					secondaries.push({
+						address: $(this).val()
+					});
+					$(this).empty();
+				}
+			});
+
+			$('#secondary-ui').children().each(function(){
+				var values = {};
+				secondary_el = $(this);
+
+				var addr = secondary_el.find('.set-secondary-address')
+				if (addr) {
+					values.address = addr.val();
+				}
+
+				var mode = secondary_el.find('.set-secondary-mode')
+				if (mode) {
+					values.mode = mode.val();
+				}
+
+				secondary_el.find('.set-secondary-dynamic-key').each(function(){
+					key_el = $(this);
+					value_el = key_el.siblings('.set-secondary-dynamic-value')
+					if (key_el.val()) {
+						if (value_el.length) {
+							values[key_el.val()] = (value_el.val());
+						} else {
+							values[key_el.val()] = null;
+							key_el.val('');
+						}
+					}
+				})
+
+				if (values?.address) {
+					secondaries.push(values);
+				}
+			});
+
+			var data = {
+				section: 'GENERAL',
+				key: 'SECONDARIES',
+				value: secondaries
+			};
+			socket.emit('set_config', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'GENERAL': ['SECONDARIES']
+					}
+				}]
+			});
+		});
+
+		// Sensors
+		function display_sensors_ui(sensors) {
+			if ($('#sensor-ui').length) {
+				var sensor_ui = $('#sensor-ui');
+			} else {
+				$('#sensor-setup').empty();
+				var sensor_ui = $(document.createElement('ul'))
+					.prop('id', 'sensor-ui')
+					.addClass('settings-list')
+					.appendTo('#sensor-setup');
+			}
+
+			if ($(`#sensor--new`).length) {
+				$(`#sensor--new input`).val('');
+			} else {
+				var item_el = $(document.createElement('li'))
+					.prop('id', `sensor--new`)
+					.appendTo(sensor_ui);
+				$(document.createElement('h4'))
+					.text( __('New Sensor') )
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
+					.addClass('form')
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('Address') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-sensor-config')
+					.data('property', 'address')
+					.appendTo(field);
+			}
+
+			sensor_ui.children('li').not('#sensor--new').addClass('flagged');
+
+			var index = 1;
+			for (var key in sensors) {
+				var sensor = sensors[key];
+
+				if ($(`#sensor--${index}`).length) {
+					var item_el = $(`#sensor--${index}`)
+						.removeClass('flagged');
+					var address_field = item_el.find('.set-sensor-address');
+					var new_field = item_el.find('.set-sensor-dynamic-new-key');
+					var fields = item_el.children('ol');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `sensor--${index}`)
+						.appendTo(sensor_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Sensor')} ${index}` )
+						.appendTo(item_el);
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-address')
+						.appendTo(field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.prop('placeholder', __('key') )
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.addClass('set-sensor-dynamic-new-key')
+						.appendTo(new_field);
+				}
+				address_field.val(key);
+				new_field.val();
+
+				display_sensor_dynamic_field_ui(sensor, fields);
+				index++;
+			}
+			sensor_ui.find('li.flagged').remove();
+
+		}
+
+		function display_sensor_dynamic_field_ui(fields, el) {
+			els = el.children('.dynamic');
+
+			els.addClass('flagged');
+
+			var index = 0;
+			for (var key in fields) {
+				var value = fields[key];
+
+				if (els.length > index) {
+					var field_el = $(els[index]);
+					var key_el = field_el.children('.set-sensor-dynamic-key');
+					var value_el = field_el.children('.set-sensor-dynamic-value');
+				} else {
+					var field_el = $(document.createElement('li'))
+						.addClass('dynamic')
+						.appendTo(el);
+					var key_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('label-block')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.appendTo(field_el);
+					var value_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-value')
+						.appendTo(field_el);
+				}
+				field_el.removeClass('flagged');
+				key_el.val(key)
+				value_el.val(value)
+				index++;
+			}
+			els.children('.flagged').remove();
+		}
+
+		$(document).on('change', '.set-sensor-config', function (event) {
+			var sensors = {};
+			$('#sensor--new').find('input').each(function(){
+				if ($(this).val()) {
+					sensors[$(this).val()] = {};
+					$(this).empty();
+				}
+			});
+
+			$('#sensor-ui').children().not('#sensor--new').each(function(){
+				var values = {};
+				sensor_el = $(this);
+
+				var addr = sensor_el.find('.set-sensor-address')?.val();
+				if (addr) {
+					sensor_el.find('.set-sensor-dynamic-key').each(function(){
+						key_el = $(this);
+						value_el = key_el.siblings('.set-sensor-dynamic-value')
+						if (key_el.val()) {
+							if (value_el.length) {
+								values[key_el.val()] = (value_el.val());
+							} else {
+								values[key_el.val()] = null;
+								key_el.val('');
+							}
+						}
+					})
+
+					sensors[addr] = values;
+				}
+			});
+
+			var data = {
+				section: 'SENSORS',
+				value: sensors
+			};
+			socket.emit('set_config_section', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'SENSORS': []
+					}
+				}]
+			});
 		});
 	});
 
@@ -2359,19 +2803,44 @@
 	</div>
 </div>
 
-<!-- Status -->
+<!-- Cluster -->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Status') }}</h2>
+		<h2>{{ __('Timer Cluster') }}</h2>
 	</div>
 	<div class="panel-content">
 		<h3>{{ __('Cluster Status') }}</h3>
 		<div id="cluster-status" class="control-set">
 			<p>No cluster status available.</p>
 		</div>
+		<h3>{{ __('Settings') }}</h3>
+		<div id="secondary-setup">
+			{{ __('Loading...') }}
+		</div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-secondary-timeout">{{ __('Connection Timeout') }}</label>
+				</div>
+				<input type="number" id="set-secondary-timeout" class="set-config" data-section="GENERAL" data-key="SECONDARY_TIMEOUT" value="{{ getConfig('GENERAL', 'SECONDARY_TIMEOUT') }}" min="0">
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!-- Sensors -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Environment Sensors') }}</h2>
+	</div>
+	<div class="panel-content">
 		<h3>{{ __('Environment Status') }}</h3>
 		<div id="env-data-table" class="control-set">
 			<p>No environment status available.</p>
+		</div>
+		<h3>{{ __('Settings') }}</h3>
+		<div id="sensor-setup">
+			{{ __('Loading...') }}
 		</div>
 	</div>
 </div>
@@ -2379,5 +2848,6 @@
 <!-- Custom UI -->
 <div id="custom-ui"></div>
 
+<p><a href="/advanced-settings">{{ __('Advanced Settings') }}</a>
 </main>
 {% endblock %}

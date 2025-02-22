@@ -441,6 +441,27 @@ class RHUI():
         else:
             self._socket.emit('option_update', emit_payload)
 
+    def emit_config_update(self, settings, **params):
+        config_vals = {}
+        for section, items in settings.items():
+            if section == 'SENSORS':
+                config_vals['SENSORS'] = self._racecontext.serverconfig.get_section('SENSORS')
+            else:
+                for item in items:
+                    if section not in config_vals:
+                        config_vals[section] = {}
+
+                    config_vals[section][item] = self._racecontext.serverconfig.get_item(section, item)
+
+        emit_payload = {
+            'config': config_vals
+        }
+
+        if ('nobroadcast' in params):
+            emit('config_update', emit_payload)
+        else:
+            self._socket.emit('config_update', emit_payload)
+
     def emit_heat_plan_result(self, new_heat_id, calc_result):
         heat = self._racecontext.rhdata.get_heat(new_heat_id)
         heatNodes = []
