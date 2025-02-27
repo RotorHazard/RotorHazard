@@ -1866,13 +1866,12 @@
 						.addClass('label-block')
 						.text( __('New Key') )
 						.appendTo(new_field);
-					$(document.createElement('input'))
-						.prop('type', 'text')
-						.prop('placeholder', __('key') )
+					var select_el = $(document.createElement('select'))
 						.addClass('set-secondary-config')
-						.addClass('set-secondary-dynamic-key')
 						.addClass('set-secondary-dynamic-new-key')
 						.appendTo(new_field);
+					secondary_options_els(select_el, true);
+
 				}
 				address_field.val(secondary.address);
 				if (secondary.mode) {
@@ -1885,6 +1884,36 @@
 				display_secondary_dynamic_field_ui(secondary, fields);
 			}
 			secondary_ui.find('li.flagged').remove();
+		}
+
+		function secondary_options_els (select_el, is_new=false) {
+			if (is_new) {
+				$(document.createElement('option'))
+					.text( `- ${__('Select Key')} -` )
+					.prop('value', '')
+					.appendTo(select_el);
+			} else {
+				$(document.createElement('option'))
+					.text( `- ${__('Remove Key')} -` )
+					.prop('value', '')
+					.appendTo(select_el);
+			}
+			$(document.createElement('option'))
+				.text( __('Distance') )
+				.prop('value', 'distance')
+				.appendTo(select_el);
+			$(document.createElement('option'))
+				.text( __('Callout') )
+				.prop('value', 'callout')
+				.appendTo(select_el);
+			$(document.createElement('option'))
+				.text( __('Query Interval') )
+				.prop('value', 'queryInterval')
+				.appendTo(select_el);
+			$(document.createElement('option'))
+				.text( __('Recieves Events') )
+				.prop('value', 'recEventsFlag')
+				.appendTo(select_el);
 		}
 
 		function display_secondary_dynamic_field_ui(fields, el) {
@@ -1900,26 +1929,97 @@
 					if (els.length > index) {
 						var field_el = $(els[index]);
 						var key_el = field_el.children('.set-secondary-dynamic-key');
-						var value_el = field_el.children('.set-secondary-dynamic-value');
+						var value_el = field_el.children('.set-secondary-dynamic-input');
+						var value_select_el = field_el.children('.set-secondary-dynamic-select');
 					} else {
 						var field_el = $(document.createElement('li'))
 							.addClass('dynamic')
 							.appendTo(el);
-						var key_el = $(document.createElement('input'))
-							.prop('type', 'text')
+						var key_el = $(document.createElement('select'))
 							.addClass('label-block')
 							.addClass('set-secondary-config')
 							.addClass('set-secondary-dynamic-key')
 							.appendTo(field_el);
+
+						secondary_options_els(key_el);
+
 						var value_el = $(document.createElement('input'))
-							.prop('type', 'text')
+							.prop('type', 'number')
+							.prop('step', '0.1')
 							.addClass('set-secondary-config')
-							.addClass('set-secondary-dynamic-value')
+							.addClass('set-secondary-dynamic-input')
+							.appendTo(field_el);
+						var value_select_el = $(document.createElement('select'))
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-select')
 							.appendTo(field_el);
 					}
 					field_el.removeClass('flagged');
-					key_el.val(i)
-					value_el.val(field)
+					if (i == 'distance') {
+						value_el.prop('hidden', false);
+						value_select_el.prop('hidden', true);
+						value_el.val(field);
+						value_select_el.val(null);
+					} else if (i == 'queryInterval') {
+						value_el.prop('hidden', false);
+						value_select_el.prop('hidden', true);
+						value_el.val(field);
+						value_select_el.val(null);
+					} else if (i == 'callout') {
+						value_select_el.empty();
+						$(document.createElement('option'))
+							.prop('value', null)
+							.text(`- ${__('No value')} -`)
+							.appendTo(value_select_el)
+						$(document.createElement('option'))
+							.prop('value', 'time')
+							.text(__('Time'))
+							.appendTo(value_select_el)
+						$(document.createElement('option'))
+							.prop('value', 'speed')
+							.text(__('Speed'))
+							.appendTo(value_select_el)
+						$(document.createElement('option'))
+							.prop('value', 'both')
+							.text(__('Time & Speed'))
+							.appendTo(value_select_el)
+						$(document.createElement('option'))
+							.prop('value', 'nameOnly')
+							.text(__('Name'))
+							.appendTo(value_select_el)
+						$(document.createElement('option'))
+							.prop('value', 'none')
+							.text(__('None'))
+							.appendTo(value_select_el)
+
+						value_el.prop('hidden', true);
+						value_select_el.prop('hidden', false);
+						value_el.val(null);
+						value_select_el.val(field);
+					} else if (i == 'recEventsFlag') {
+						value_select_el.empty();
+						$(document.createElement('option'))
+							.prop('value', null)
+							.text(`- ${__('No value')} -`)
+							.appendTo(value_select_el)
+						$(document.createElement('option'))
+							.prop('value', true)
+							.text(__('True'))
+							.appendTo(value_select_el)
+						$(document.createElement('option'))
+							.prop('value', false)
+							.text(__('False'))
+							.appendTo(value_select_el)
+
+						value_el.prop('hidden', true);
+						value_select_el.prop('hidden', false);
+						value_el.val(null);
+						value_select_el.val(field);
+					} else {
+						value_el.prop('hidden', true);
+						value_select_el.prop('hidden', true);
+					}
+					key_el.val(i);
 					index++;
 				}
 			}
@@ -1951,16 +2051,33 @@
 					values.mode = mode.val();
 				}
 
+				secondary_el.find('.set-secondary-dynamic-new-key').each(function(){
+					key_el = $(this);
+					key = key_el.val();
+					if (key) {
+						values[key] = null;
+						key_el.val('');
+					}
+				});
+
 				secondary_el.find('.set-secondary-dynamic-key').each(function(){
 					key_el = $(this);
-					value_el = key_el.siblings('.set-secondary-dynamic-value')
-					if (key_el.val()) {
-						if (value_el.length) {
-							values[key_el.val()] = (value_el.val());
-						} else {
-							values[key_el.val()] = null;
-							key_el.val('');
+					key = key_el.val();
+					if (key) {
+						if (key == 'distance') {
+							value_el = key_el.siblings('.set-secondary-dynamic-input');
+							value = Number(value_el.val());
+						} else if (key == 'queryInterval') {
+							value_el = key_el.siblings('.set-secondary-dynamic-input');
+							value = Number(value_el.val());
+						} else if (key == 'callout') {
+							value_el = key_el.siblings('.set-secondary-dynamic-select');
+							value = value_el.val();
+						} else if (key == 'recEventsFlag') {
+							value_el = key_el.siblings('.set-secondary-dynamic-select');
+							value = value_el.val();
 						}
+						values[key] = value;
 					}
 				})
 
@@ -2813,10 +2930,8 @@
 		<div id="cluster-status" class="control-set">
 			<p>No cluster status available.</p>
 		</div>
+
 		<h3>{{ __('Settings') }}</h3>
-		<div id="secondary-setup">
-			{{ __('Loading...') }}
-		</div>
 		<ol class="form">
 			<li>
 				<div class="label-block">
@@ -2825,6 +2940,9 @@
 				<input type="number" id="set-secondary-timeout" class="set-config" data-section="GENERAL" data-key="SECONDARY_TIMEOUT" value="{{ getConfig('GENERAL', 'SECONDARY_TIMEOUT') }}" min="0">
 			</li>
 		</ol>
+		<div id="secondary-setup">
+			{{ __('Loading...') }}
+		</div>
 	</div>
 </div>
 
