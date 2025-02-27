@@ -223,9 +223,6 @@
 				<input type="text" id="set-node-update-url" class="set-config" data-section="GENERAL" data-key="DEF_NODE_FWUPDATE_URL" value="{{ getConfig('GENERAL', 'DEF_NODE_FWUPDATE_URL') }}">
 			</li>
 		</ol>
-		<div id="serial-port-setup">
-			{{ __('Loading...') }}
-		</div>
 	</div>
 </div>
 
@@ -346,11 +343,11 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set-led-panel-row-invert">{{ __('Panel Row Inversion') }}</label>
+					<label for="set-led-panel-row-invert">{{ __('Panel Row Ordering') }}</label>
 				</div>
 				<select id="set-led-panel-row-invert" class="set-config" data-section="LED" data-key="INVERTED_PANEL_ROWS" data-type="boolean">
-					<option value="false" {{'selected' if getConfig('LED', 'INVERTED_PANEL_ROWS')==false}}>{{ __('LTR (false)') }}</option>
-					<option value="true" {{'selected' if getConfig('LED', 'INVERTED_PANEL_ROWS')==true}}>{{ __('Even Rows Inverted (true)') }}</option>
+					<option value="false" {{'selected' if getConfig('LED', 'INVERTED_PANEL_ROWS')==false}}>{{ __('All LTR (non-inverted)') }}</option>
+					<option value="true" {{'selected' if getConfig('LED', 'INVERTED_PANEL_ROWS')==true}}>{{ __('Even Rows RTL (inverted)') }}</option>
 				</select>
 			</li>
 			<li>

@@ -1911,7 +1911,7 @@
 				.prop('value', 'queryInterval')
 				.appendTo(select_el);
 			$(document.createElement('option'))
-				.text( __('Recieves Events') )
+				.text( __('Receives Events') )
 				.prop('value', 'recEventsFlag')
 				.appendTo(select_el);
 		}
@@ -2007,7 +2007,7 @@
 						value_el.val(null);
 						value_select_el.val(field);
 					} else if (i == 'recEventsFlag') {
-						key_el.text( __('Recieves Events') )
+						key_el.text( __('Receives Events') )
 						value_select_el.empty();
 						$(document.createElement('option'))
 							.prop('value', true)
@@ -2939,7 +2939,7 @@
 <!-- Cluster -->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Timer Cluster') }}</h2>
+		<h2>{{ __('Secondary Timers') }}</h2>
 	</div>
 	<div class="panel-content">
 		<h3>{{ __('Cluster Status') }}</h3>
