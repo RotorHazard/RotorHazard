@@ -423,6 +423,20 @@ class RHUI():
         else:
             self._socket.emit('plugin_list', emit_payload)
 
+    def emit_plugin_repo(self, **params):
+        plugin_data = self._racecontext.plugin_manager.get_display_data()
+        category_data = self._racecontext.plugin_manager.get_remote_categories()
+
+        emit_payload = {
+            'remote_categories': category_data,
+            'remote_data': plugin_data
+        }
+
+        if ('nobroadcast' in params):
+            emit('plugin_repo', emit_payload)
+        else:
+            self._socket.emit('plugin_repo', emit_payload)
+
     def emit_option_update(self, options, **params):
         option_vals = {}
         if isinstance(options, str):
@@ -1586,3 +1600,7 @@ class RHUI():
             pass
         # if node freq does not match then just return frequency
         return "{}".format(freq_val)
+
+    def emit_restart_required(self, **params):
+        ''' Emits restart required message to all clients '''
+        self._socket.emit('restart_required')

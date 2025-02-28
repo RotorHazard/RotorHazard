@@ -1068,6 +1068,7 @@ var rotorhazard = {
 	//
 	event: {}, // race data
 	options: {}, // server options
+	plugins: {}, // plugin data
 
 	language_strings: {},
 	interface_language: '',
@@ -1707,6 +1708,16 @@ jQuery(document).ready(function($){
 	// hard reset
 	socket.on('database_restore_done', function (msg) {
 		location.reload();
+	});
+
+	// server restart
+	$('button#restart_server').click(function (event) {
+		socket.emit('restart_server');
+		return false;
+	});
+
+	socket.on('restart_required', function (msg) {
+		$('.restart-warning').slideDown();
 	});
 
 	// load needed data from server when required

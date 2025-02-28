@@ -23,6 +23,7 @@ cffi==1.17.*
 # Other
 pyserial==3.5.*
 requests==2.32.*
+packaging==24.*
 
 # Pi IO
 smbus2==0.4.*
