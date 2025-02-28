@@ -423,10 +423,12 @@ class RHUI():
             self._socket.emit('plugin_list', emit_payload)
 
     def emit_plugin_repo(self, **params):
-        ui_data = self._racecontext.plugin_manager.get_display_data()
+        plugin_data = self._racecontext.plugin_manager.get_display_data()
+        category_data = self._racecontext.plugin_manager.get_remote_categories()
 
         emit_payload = {
-            'remote_data': ui_data
+            'remote_categories': category_data,
+            'remote_data': plugin_data
         }
 
         if ('nobroadcast' in params):

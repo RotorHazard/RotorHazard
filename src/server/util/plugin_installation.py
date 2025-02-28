@@ -361,6 +361,15 @@ class PluginInstallationManager:
 
         return self._remote_plugin_data
 
+    def get_remote_categories(self) -> dict[str, dict]:
+        """
+        Lists the categories fetched from the remote repository
+
+        :return: Compilation of categories
+        """
+
+        return self._categories
+
     def _install_from_upload(self, file: bytes, domain: str) -> None:
         """
         Do the work of installing the plugin from a zip file.

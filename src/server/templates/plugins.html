@@ -12,12 +12,7 @@
 	];
 
 	// Directory meta
-	var plugins_by_category = {
-		none: {
-			title: 'Uncategorized',
-			plugins: []
-		}
-	}
+	var plugins_by_category = []
 
 	// set up markdown converter
 	var converter = new showdown.Converter({
@@ -37,6 +32,18 @@
 
 		socket.on('plugin_repo', function(msg) {
 			rotorhazard.plugins.remote = msg.remote_data;
+			plugins_by_category = []
+			for (var i in msg.remote_categories) {
+				var cat = msg.remote_categories[i];
+				plugins_by_category.push({
+					title: __(cat),
+					plugins: []
+				});
+			}
+			plugins_by_category.push({
+				title: __('Uncategorized'),
+				plugins: []
+			});
 			display_plugin_list();
 		})
 
@@ -53,143 +60,147 @@
 
 				for (var i in rotorhazard.plugins.remote) {
 					var plugin = rotorhazard.plugins.remote[i];
+					var cat_item = plugins_by_category.find(obj => {return obj.name == plugin.category});
 
-					if (plugin?.category && plugin.category in plugins_by_category) {
-						plugins_by_category[plugin.category].plugins.push(plugin)
+					if (plugin?.category && cat_item) {
+						cat_item.plugins.push(plugin)
 					} else {
-						plugins_by_category.none.plugins.push(plugin)
+						plugins_by_category[plugins_by_category.length - 1].plugins.push(plugin)
 					}
 				}
 
 				for (var i in plugins_by_category) {
 					var cat = plugins_by_category[i];
-					var panel_el = $(document.createElement('div'))
-						.prop('id', `plugin-category--${i}`)
-						.addClass('panel')
-						.addClass('collapsing')
-						.addClass('active')
-						.appendTo(directory_top_el);
-					var panel_header_el = $(document.createElement('div'))
-						.addClass('panel-header')
-						.appendTo(panel_el);
-					var panel_header_h2_el = $(document.createElement('h2'))
-						.appendTo(panel_header_el);
-					var panel_header_h2_el = $(document.createElement('button'))
-						.addClass('no-style')
-						.text(__(cat.title))
-						.appendTo(panel_header_h2_el);
-					var panel_content_el = $(document.createElement('div'))
-						.addClass('panel-content')
-						.hide()
-						.appendTo(panel_el);
-					var cat_plugin_list_el = $(document.createElement('ul'))
-						.addClass('plugin-list')
-						.appendTo(panel_content_el);
+					if (cat.plugins.length) {
+						var panel_el = $(document.createElement('div'))
+							.prop('id', `plugin-category--${i}`)
+							.addClass('panel')
+							.addClass('collapsing')
+							.addClass('active')
+							.appendTo(directory_top_el);
+						var panel_header_el = $(document.createElement('div'))
+							.addClass('panel-header')
+							.appendTo(panel_el);
+						var panel_header_h2_el = $(document.createElement('h2'))
+							.appendTo(panel_header_el);
+						var panel_header_h2_el = $(document.createElement('button'))
+							.addClass('no-style')
+							.text(__(cat.title))
+							.appendTo(panel_header_h2_el);
+						var panel_content_el = $(document.createElement('div'))
+							.addClass('panel-content')
+							.hide()
+							.appendTo(panel_el);
+						var cat_plugin_list_el = $(document.createElement('ul'))
+							.addClass('plugin-list')
+							.appendTo(panel_content_el);
 
-					for (var ii in cat.plugins) {
-						var plugin = cat.plugins[ii];
+						for (var ii in cat.plugins) {
+							var plugin = cat.plugins[ii];
 
-						var plugin_el = $(document.createElement('li'))
-							.addClass('plugin');
+							var plugin_el = $(document.createElement('li'))
+								.addClass('plugin');
 
-						// Main Info
-						var main_info_el = $(document.createElement('div'))
-							.addClass('main-info')
-							.appendTo(plugin_el);
+							// Main Info
+							var main_info_el = $(document.createElement('div'))
+								.addClass('main-info')
+								.appendTo(plugin_el);
 
-						$(document.createElement('h3'))
-							.text(plugin.name)
-							.appendTo(main_info_el);
-
-						if (plugin.author) {
-							var author_el = $(document.createElement('div'))
-								.addClass('author')
+							$(document.createElement('h3'))
+								.text(plugin.name)
 								.appendTo(main_info_el);
-							if (plugin.author_uri) {
-								$(document.createElement('a'))
-									.prop('href', plugin.author_uri)
-									.text(plugin.author)
-									.appendTo(author_el);
-							} else {
-								author_el.text(plugin.author);
+
+							if (plugin.author) {
+								var author_el = $(document.createElement('div'))
+									.addClass('author')
+									.appendTo(main_info_el);
+								if (plugin.author_uri) {
+									$(document.createElement('a'))
+										.prop('href', plugin.author_uri)
+										.text(plugin.author)
+										.appendTo(author_el);
+								} else {
+									author_el.text(plugin.author);
+								}
 							}
-						}
 
-						if(plugin.last_version) {
-							$(document.createElement('div'))
-								.addClass('version')
-								.text(plugin.last_version)
-								.appendTo(main_info_el);
-						}
+							if(plugin.version) {
+								$(document.createElement('div'))
+									.addClass('version')
+									.text(plugin.version)
+									.appendTo(main_info_el);
+							}
 
-						if (plugin.repository) {
-							var link_el = $(document.createElement('div'))
-								.addClass('repository')
+							if (plugin.repository) {
+								var link_el = $(document.createElement('div'))
+									.addClass('repository')
+									.appendTo(details_el);
+								$(document.createElement('a'))
+									.prop('href', `https://github.com/${plugin.repository}`)
+									.text(plugin.repository)
+									.appendTo(main_info_el);
+							}
+
+							// Details
+							var details_el = $(document.createElement('div'))
+								.addClass('details')
+								.appendTo(plugin_el);
+
+							var description_el = $(document.createElement('div'))
+								.addClass('description')
 								.appendTo(details_el);
-							$(document.createElement('a'))
-								.prop('href', `https://github.com/${plugin.repository}`)
-								.text(plugin.repository)
-								.appendTo(main_info_el);
+							if (plugin.description) {
+								var md_output = converter.makeHtml(plugin.description);
+								description_el.html(md_output);
+							} else {
+								description_el.text(__('not provided'));
+							}
+
+							if (plugin.info_uri) {
+								var link_el = $(document.createElement('div'))
+									.addClass('website')
+									.appendTo(details_el);
+								$(document.createElement('a'))
+									.prop('href', plugin.info_uri)
+									.text(__('website'))
+									.appendTo(link_el);
+							}
+
+							if (plugin.license_uri) {
+								var link_el = $(document.createElement('div'))
+									.addClass('license')
+									.appendTo(details_el);
+								$(document.createElement('a'))
+									.prop('href', plugin.license_uri)
+									.text(__('license'))
+									.appendTo(link_el);
+							} else if (plugin.license) {
+								$(document.createElement('div'))
+									.addClass('license')
+									.text(plugin.license)
+									.appendTo(details_el);
+							}
+
+							// Status/Actions
+							var status_el = $(document.createElement('div'))
+								.addClass('status')
+								.appendTo(plugin_el);
+
+							var install_btn = $(document.createElement('button'))
+									.addClass('install_plugin')
+									.data('domain', plugin.domain)
+									.text(__('Install'))
+									.appendTo(status_el);
+
+							if (plugin.update_status == 5) {
+								install_btn.text(__('Reinstall'))
+							} else if ([3, 4].includes(plugin.update_status)) {
+								install_btn.text(__('Update'))
+							}
+
+							cat_plugin_list_el.append(plugin_el);
 						}
 
-						// Details
-						var details_el = $(document.createElement('div'))
-							.addClass('details')
-							.appendTo(plugin_el);
-
-						var description_el = $(document.createElement('div'))
-							.addClass('description')
-							.appendTo(details_el);
-						if (plugin.description) {
-							var md_output = converter.makeHtml(plugin.description);
-							description_el.html(md_output);
-						} else {
-							description_el.text(__('not provided'));
-						}
-
-						if (plugin.info_uri) {
-							var link_el = $(document.createElement('div'))
-								.addClass('website')
-								.appendTo(details_el);
-							$(document.createElement('a'))
-								.prop('href', plugin.info_uri)
-								.text(__('website'))
-								.appendTo(link_el);
-						}
-
-						if (plugin.license_uri) {
-							var link_el = $(document.createElement('div'))
-								.addClass('license')
-								.appendTo(details_el);
-							$(document.createElement('a'))
-								.prop('href', plugin.license_uri)
-								.text(__('license'))
-								.appendTo(link_el);
-						} else if (plugin.license) {
-							$(document.createElement('div'))
-								.addClass('license')
-								.text(plugin.license)
-								.appendTo(details_el);
-						}
-
-						// Status/Actions
-						var status_el = $(document.createElement('div'))
-							.addClass('status')
-							.appendTo(plugin_el);
-
-						var install_btn = $(document.createElement('button'))
-								.addClass('install_plugin')
-								.data('domain', plugin.domain)
-								.text(__('Install'))
-								.appendTo(status_el);
-
-						if (plugin.update_status == 5) {
-							install_btn.text(__('Reinstall'))
-						} else if ([3, 4].includes(plugin.update_status)) {
-							install_btn.text(__('Update'))
-						}
-
-						cat_plugin_list_el.append(plugin_el);
 					}
 				}
 			}
