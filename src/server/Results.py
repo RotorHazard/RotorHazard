@@ -36,7 +36,7 @@ class RaceClassRankManager():
     def registerMethod(self, method):
         if isinstance(method, RaceClassRankMethod):
             if method.name in self.methods:
-                logger.warning('Overwriting method "{0}"'.format(method['name']))
+                logger.warning('Overwriting method "{0}"'.format(method.name))
 
             self.methods[method.name] = method
         else:
@@ -84,7 +84,7 @@ class RacePointsManager():
     def registerMethod(self, method):
         if hasattr(method, 'name'):
             if method.name in self.methods:
-                logger.warning('Overwriting method "{0}"'.format(method['name']))
+                logger.warning('Overwriting method "{0}"'.format(method.name))
 
             self.methods[method.name] = method
         else:
