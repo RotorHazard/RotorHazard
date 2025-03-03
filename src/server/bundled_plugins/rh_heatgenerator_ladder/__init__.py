@@ -129,7 +129,13 @@ def generateBalancedHeats(rhapi, generate_args=None):
     heats = []
 
     for idx in range(total_heats):
-        heats.append(HeatPlan(letters[idx] + ' ' + suffix, []))
+        if idx < len(letters):
+            designator = letters[idx]
+        else:
+            n = idx // len(letters)
+            designator = f"{n}{letters[idx % len(letters)]}"
+
+        heats.append(HeatPlan(designator + ' ' + suffix, []))
 
     if 'seed_offset' in generate_args:
         seed_offset = max(int(generate_args['seed_offset']) - 1, 0)
