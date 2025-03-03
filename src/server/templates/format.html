@@ -662,10 +662,10 @@
 							.prop('value', '')
 							.text(__('From Race Format'))
 							.appendTo(field_select);
-						for (var j in rotorhazard.event.race_formats) {
+						for (var j in rotorhazard.raceclass_rank_methods) {
 							$(document.createElement('option'))
-								.prop('value', rotorhazard.event.race_formats[j].id)
-								.text(rotorhazard.event.race_formats[j].name)
+								.prop('value', rotorhazard.raceclass_rank_methods[j].name)
+								.text(rotorhazard.raceclass_rank_methods[j].label)
 								.appendTo(field_select);
 						}
 						field_select
