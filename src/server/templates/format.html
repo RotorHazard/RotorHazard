@@ -1111,8 +1111,11 @@
 
 		$(document).on("click", '#unlock_class', function (event) {
 			$.magnificPopup.close();
-			var race_class = $('[data-class_id=' + class_to_unlock + ']');
-			$(race_class).prop('disabled', false);
+			var el = $(`#race-class-${class_to_unlock}`);
+
+			el.children('.field').find('*').each(function(){
+				$(this).prop('disabled', false);
+			});
 		});
 
 		$('button#add_race_class').click(function (event) {
@@ -1371,7 +1374,7 @@
 					.addClass('unlock_heat')
 					.addClass('open-mfp-popup')
 					.data('id', heat.id)
-					.attr('data-mfp-src', '#class_unlock_confirm')
+					.attr('data-mfp-src', '#heat_unlock_confirm')
 					.html(svg_asset.lock)
 					.appendTo(heat_actions);
 				var heat_delete = $(document.createElement('button'))
@@ -2186,21 +2189,24 @@
 			socket.emit('delete_heat', data);
 		});
 
+		function heat_unlock(heat_id) {
+			var el = $(`.heat-ui--heat-${heat_id}`);
+			update_heat_ui(el, heat_id);
+
+			el.find('li').each(function(){
+				$(this).prop('hidden', false);
+				$(this).find('.set_pilot_position').prop('disabled', false);
+			});
+
+			freq.updateBlocks();
+		}
 		$(document).on("click", '.unlock_heat', function (event) {
 			heat_to_unlock = $(this).data('id');
 
 			if ($.magnificPopup.instance.isOpen) {
 				push_message( __('Modifying a locked heat retroactively changes saved race data.'));
 
-				var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_to_unlock });
-
-				var el = $('.rh-heat[data-heat="' + heat_to_unlock + '"]')
-				update_heat_ui(el, heat_to_unlock);
-
-				el.find('li').each(function(){
-					$(this).prop('hidden', false);
-					$(this).find('.set_pilot_position').prop('disabled', false);
-				});
+				heat_unlock(heat_to_unlock);
 			} else {
 				$.magnificPopup.open({
 					items: {
@@ -2213,20 +2219,7 @@
 
 		$(document).on("click", '#unlock_heat', function (event) {
 			$.magnificPopup.close();
-			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_to_unlock });
-
-			var el = $('.rh-heat[data-heat="' + heat_to_unlock + '"]')
-			update_heat_ui(el, heat_to_unlock);
-
-			el.find('li').each(function(){
-				$(this).prop('hidden', false);
-				$(this).find('.set_pilot_position').prop('disabled', false);
-			});
-
-			freq.updateBlocks();
-
-			// var heat_els = $('[data-heat=' + heat_to_unlock + ']');
-			// $(heat_els).prop('disabled', false);
+			heat_unlock(heat_to_unlock);
 		});
 
 		$(document).on("click", '.duplicate_heat', function (event) {
