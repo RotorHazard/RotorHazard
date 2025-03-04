@@ -1645,7 +1645,7 @@
 
 		// Plugins
 		socket.on('plugin_list', function (msg) {
-			msg.plugins.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+			// msg.plugins.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 
 			var wrap_el = $('#plugin-list');
 			wrap_el.empty();
@@ -1677,7 +1677,7 @@
 					if (plugin.description) {
 						details_el.append('<div class="description">' + plugin.description + '</div>');
 					} else {
-						details_el.append('<div class="description">(' + __('not provided') + ')</div>');
+						details_el.append('<div class="description"><em>(' + __('not provided') + ')</em></div>');
 					}
 
 					if (plugin.info_uri) {
@@ -1696,6 +1696,22 @@
 					} else {
 						plug_el.addClass('load-fail');
 						status_el.append('<div class="">' + __('Not loaded') + ': ' + __(plugin.load_issue) + '</div>');
+					}
+
+					if (plugin.update_status != null) {
+						var install_btn = $(document.createElement('button'))
+								.addClass('install_plugin')
+								.data('domain', plugin.id)
+								.prop('hidden', true)
+								.text(__('Update'))
+								.appendTo(status_el);
+
+						if (plugin.update_status == 5) {
+							install_btn.prop('hidden', false);
+							install_btn.text(__('Reinstall'))
+						} else if ([3, 4].includes(plugin.update_status)) {
+							install_btn.prop('hidden', false);
+						}
 					}
 
 					status_el.append('<button class="delete-plugin" data-id="' + plugin.id + '">' + __('Delete') + '</button>');
@@ -1718,6 +1734,14 @@
 				var list_el = $('<p>').text(__('No external plugins loaded.'));
 			}
 			wrap_el.append(list_el);
+		});
+
+		$(document).on('click', '.install_plugin', function (event) {
+			var data = {
+				method: 'domain',
+				domain: $(this).data('domain'),
+			};
+			socket.emit('plugin_install', data);
 		});
 
 		$(document).on("click", '.delete-plugin', function (event) {

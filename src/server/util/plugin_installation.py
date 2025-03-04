@@ -351,6 +351,16 @@ class PluginInstallationManager:
         pool_ = pool.Pool(10)
         pool_.map(self._update_with_check, remote_plugins)
 
+    def get_local_display_data(self) -> dict[str, dict]:
+        """
+        Generates a compilation of local plugin data for the
+        user interface
+
+        :return: Compilation of plugin data
+        """
+
+        return self._local_plugin_data
+
     def get_display_data(self) -> dict[str, dict]:
         """
         Generates a compilation of remote plugin data for the

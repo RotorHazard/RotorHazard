@@ -380,6 +380,7 @@ class RHUI():
 
     def emit_plugin_list(self, **params):
         plugins = self._racecontext.serverstate.plugins
+        manager_local_data = self._racecontext.plugin_manager.get_display_data()
 
         plugin_data = []
         for plugin in plugins:
@@ -396,6 +397,7 @@ class RHUI():
                     'required_rhapi_version': None,
                     'update_uri': None,
                     'text_domain': None,
+                    'update_status': None,
                 }
                 if plugin.meta:
                     for key, value in plugin.meta.items():
@@ -408,6 +410,9 @@ class RHUI():
                 plugin_info['enabled'] = plugin.enabled
                 plugin_info['loaded'] = plugin.loaded
                 plugin_info['load_issue'] = plugin.load_issue
+
+                if manager_local_data and plugin.name in manager_local_data:
+                    plugin_info['update_status'] = manager_local_data[plugin.name]['update_status']
 
                 plugin_data.append(plugin_info)
 
