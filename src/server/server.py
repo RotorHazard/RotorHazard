@@ -243,7 +243,7 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 def log_error_callback_fn(*args):
     if not is_ui_message_set("errors-logged"):
         set_ui_message("errors-logged",\
-                   __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                   f'{__("Error messages have been logged.")} <a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)',\
                    header="Notice", subclass="errors-logged")
         if Auth_succeeded_flag:
             SOCKET_IO.emit('update_server_messages', get_ui_server_messages_str())
@@ -3393,6 +3393,13 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         if local_loaded and remote_loaded:
             RaceContext.plugin_manager.apply_update_statuses()
+            if RaceContext.plugin_manager.update_avaliable:
+                set_ui_message(
+                    'plugins',
+                    __("One or more plugins have updates available."),
+                    header='Notice',
+                    subclass='updates-available'
+                )
 
         if (not RHUtils.is_S32_BPill_board()) and RaceContext.serverconfig.get_item('GENERAL', 'FORCE_S32_BPILL_FLAG'):
             RHUtils.set_S32_BPill_boardFlag()
