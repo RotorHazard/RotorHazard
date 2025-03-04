@@ -1899,12 +1899,12 @@
 					.appendTo(select_el);
 			}
 			$(document.createElement('option'))
-				.text( __('Distance') )
-				.prop('value', 'distance')
-				.appendTo(select_el);
-			$(document.createElement('option'))
 				.text( __('Callout') )
 				.prop('value', 'callout')
+				.appendTo(select_el);
+			$(document.createElement('option'))
+				.text( __('Distance') )
+				.prop('value', 'distance')
 				.appendTo(select_el);
 			$(document.createElement('option'))
 				.text( __('Query Interval') )
@@ -1913,6 +1913,10 @@
 			$(document.createElement('option'))
 				.text( __('Receives Events') )
 				.prop('value', 'recEventsFlag')
+				.appendTo(select_el);
+			$(document.createElement('option'))
+				.text( __('Timeout') )
+				.prop('value', 'timeout')
 				.appendTo(select_el);
 		}
 
@@ -1970,6 +1974,14 @@
 						value_select_el.val(null);
 					} else if (i == 'queryInterval') {
 						key_el.text( __('Query Interval') )
+						value_el.prop('hidden', false);
+						value_select_el.prop('hidden', true);
+						value_el.data('key', i);
+						value_select_el.data('key', null);
+						value_el.val(field);
+						value_select_el.val(null);
+					} else if (i == 'timeout') {
+						key_el.text( __('Timeout') )
 						value_el.prop('hidden', false);
 						value_select_el.prop('hidden', true);
 						value_el.data('key', i);
@@ -2087,6 +2099,8 @@
 						if (key == 'distance') {
 							value = Number($(this).val());
 						} else if (key == 'queryInterval') {
+							value = Number($(this).val());
+						} else if (key == 'timeout') {
 							value = Number($(this).val());
 						} else if (key == 'callout') {
 							value = $(this).val();
@@ -2948,14 +2962,6 @@
 		</div>
 
 		<h3>{{ __('Settings') }}</h3>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set-secondary-timeout">{{ __('Connection Timeout') }}</label>
-				</div>
-				<input type="number" id="set-secondary-timeout" class="set-config" data-section="GENERAL" data-key="SECONDARY_TIMEOUT" value="{{ getConfig('GENERAL', 'SECONDARY_TIMEOUT') }}" min="0">
-			</li>
-		</ol>
 		<div id="secondary-setup">
 			{{ __('Loading...') }}
 		</div>
