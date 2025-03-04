@@ -109,6 +109,7 @@ class Evt:
     CONFIG_SET = 'configSet'
     MESSAGE_STANDARD = 'messageStandard'
     MESSAGE_INTERRUPT = 'messageInterrupt'
+    RESTART_REQUIRED = 'restartRequired'
     # Event setup
     FREQUENCY_SET = 'frequencySet'
     ENTER_AT_LEVEL_SET = 'enterAtLevelSet'
