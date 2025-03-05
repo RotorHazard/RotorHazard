@@ -1766,6 +1766,34 @@
 		});
 
 		// Secondaries
+		var secondary_options = [
+			['callout', __('Callout'), [
+				['time', __('Time')],
+				['speed', __('Speed')],
+				['both', __('Time & Speed')],
+				['nameOnly', __('Name')],
+				['none', __('None')]
+			], 'none'],
+			['distance', __('Distance'), 'numeric', 0],
+			['queryInterval', __('Query Interval'), 'numeric', 0],
+			['recEventsFlag', __('Receives Events'), 'boolean', false],
+			['timeout', __('Timeout'), 'numeric', 0],
+			['event', __('Event'), 'text', ''],
+			['effect', __('Effect'), 'text', ''],
+			['text', __('Text'), 'text', ''],
+			['toneDuration', __('Tone Duration'), 'numeric', 0],
+			['toneFrequency', __('Tone Frequency'), 'numeric', 0],
+			['toneVolume', __('Tone Volume'), 'numeric', 0],
+			['toneType', __('Tone Type'), [
+				['square', __('Square')],
+				['sine', __('Sine')],
+				['sawtooth', __('Sawtooth')],
+				['triangle', __('Triangle')]
+			], 'square'],
+			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 0]
+		]
+		secondary_options.sort((a, b) => a[1].localeCompare(b[1]));
+
 		function display_secondary_ui(secondaries) {
 			if ($('#secondary-ui').length) {
 				var secondary_ui = $('#secondary-ui');
@@ -1870,8 +1898,7 @@
 						.addClass('set-secondary-config')
 						.addClass('set-secondary-dynamic-new-key')
 						.appendTo(new_field);
-					secondary_options_els(select_el, true);
-
+					secondary_options_els(select_el);
 				}
 				address_field.val(secondary.address);
 				if (secondary.mode) {
@@ -1886,38 +1913,18 @@
 			secondary_ui.find('li.flagged').remove();
 		}
 
-		function secondary_options_els (select_el, is_new=false) {
-			if (is_new) {
+		function secondary_options_els (select_el) {
+			$(document.createElement('option'))
+				.text( `- ${__('Select Key')} -` )
+				.prop('value', '')
+				.appendTo(select_el);
+
+			for (var idx in secondary_options) {
 				$(document.createElement('option'))
-					.text( `- ${__('Select Key')} -` )
-					.prop('value', '')
-					.appendTo(select_el);
-			} else {
-				$(document.createElement('option'))
-					.text( `- ${__('Remove Key')} -` )
-					.prop('value', '')
+					.text( secondary_options[idx][1] )
+					.prop('value', secondary_options[idx][0])
 					.appendTo(select_el);
 			}
-			$(document.createElement('option'))
-				.text( __('Callout') )
-				.prop('value', 'callout')
-				.appendTo(select_el);
-			$(document.createElement('option'))
-				.text( __('Distance') )
-				.prop('value', 'distance')
-				.appendTo(select_el);
-			$(document.createElement('option'))
-				.text( __('Query Interval') )
-				.prop('value', 'queryInterval')
-				.appendTo(select_el);
-			$(document.createElement('option'))
-				.text( __('Receives Events') )
-				.prop('value', 'recEventsFlag')
-				.appendTo(select_el);
-			$(document.createElement('option'))
-				.text( __('Timeout') )
-				.prop('value', 'timeout')
-				.appendTo(select_el);
 		}
 
 		function display_secondary_dynamic_field_ui(fields, el) {
@@ -1951,7 +1958,7 @@
 							.appendTo(field_el);
 						var value_el = $(document.createElement('input'))
 							.prop('type', 'number')
-							.prop('step', '0.1')
+							.prop('step', 'any')
 							.addClass('set-secondary-config')
 							.addClass('set-secondary-dynamic-value')
 							.addClass('set-secondary-dynamic-input')
@@ -1964,85 +1971,84 @@
 					}
 
 					field_el.removeClass('flagged');
-					if (i == 'distance') {
-						key_el.text( __('Distance') )
-						value_el.prop('hidden', false);
-						value_select_el.prop('hidden', true);
-						value_el.data('key', i);
-						value_select_el.data('key', null);
-						value_el.val(field);
-						value_select_el.val(null);
-					} else if (i == 'queryInterval') {
-						key_el.text( __('Query Interval') )
-						value_el.prop('hidden', false);
-						value_select_el.prop('hidden', true);
-						value_el.data('key', i);
-						value_select_el.data('key', null);
-						value_el.val(field);
-						value_select_el.val(null);
-					} else if (i == 'timeout') {
-						key_el.text( __('Timeout') )
-						value_el.prop('hidden', false);
-						value_select_el.prop('hidden', true);
-						value_el.data('key', i);
-						value_select_el.data('key', null);
-						value_el.val(field);
-						value_select_el.val(null);
-					} else if (i == 'callout') {
-						key_el.text( __('Callout') )
-						value_select_el.empty();
-						$(document.createElement('option'))
-							.prop('value', 'time')
-							.text(__('Time'))
-							.appendTo(value_select_el)
-						$(document.createElement('option'))
-							.prop('value', 'speed')
-							.text(__('Speed'))
-							.appendTo(value_select_el)
-						$(document.createElement('option'))
-							.prop('value', 'both')
-							.text(__('Time & Speed'))
-							.appendTo(value_select_el)
-						$(document.createElement('option'))
-							.prop('value', 'nameOnly')
-							.text(__('Name'))
-							.appendTo(value_select_el)
-						$(document.createElement('option'))
-							.prop('value', 'none')
-							.text(__('None'))
-							.appendTo(value_select_el)
 
-						value_el.prop('hidden', true);
-						value_select_el.prop('hidden', false);
-						value_el.data('key', null);
-						value_select_el.data('key', i);
-						value_el.val(null);
-						value_select_el.val(field);
-					} else if (i == 'recEventsFlag') {
-						key_el.text( __('Receives Events') )
-						value_select_el.empty();
-						$(document.createElement('option'))
-							.prop('value', true)
-							.text(__('True'))
-							.appendTo(value_select_el)
-						$(document.createElement('option'))
-							.prop('value', false)
-							.text(__('False'))
-							.appendTo(value_select_el)
-
-						value_el.prop('hidden', true);
-						value_select_el.prop('hidden', false);
-						value_el.data('key', null);
-						value_select_el.data('key', i);
-						value_el.val(null);
-						value_select_el.val(field);
+					opt = secondary_options.find(obj => {return obj[0] == i});
+					if (opt) {
+						key_el.text( opt[1] );
+						if (opt[2] == 'numeric') {
+							value_el
+								.prop('hidden', false)
+								.prop('type', 'number')
+								.data('key', i)
+								.val(field);
+							value_select_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+						} else if ( opt[2] == 'boolean' ){
+							value_select_el.empty();
+							$(document.createElement('option'))
+								.prop('value', 1)
+								.text(__('True'))
+								.appendTo(value_select_el)
+							$(document.createElement('option'))
+								.prop('value', 0)
+								.text(__('False'))
+								.appendTo(value_select_el)
+							value_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+							value_select_el
+								.prop('hidden', false)
+								.data('key', i);
+							if (field === true) {
+								value_select_el.val(1);
+							} else if (field === false) {
+								value_select_el.val(0);
+							} else {
+								value_select_el.val(null);
+							}
+						} else if ( Array.isArray(opt[2]) ){
+							value_select_el.empty();
+							for (var o in opt[2]) {
+								$(document.createElement('option'))
+									.prop('value', opt[2][o][0])
+									.text( opt[2][o][1] )
+									.appendTo(value_select_el);
+							}
+							value_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+							value_select_el
+								.prop('hidden', false)
+								.data('key', i)
+								.val(field);
+						} else {
+							// text
+							value_el
+								.prop('hidden', false)
+								.prop('type', 'text')
+								.data('key', i)
+								.val(field);
+							value_select_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+						}
 					} else {
-						// unknown key
-						key_el.text(i)
-						value_el.prop('hidden', false);
-						value_select_el.prop('hidden', true);
-						value_el.data('key', i);
-						value_select_el.data('key', null);
+						// text
+						key_el.text( i );
+						value_el
+							.prop('hidden', false)
+							.prop('type', 'text')
+							.data('key', i)
+							.val(field);
+						value_select_el
+							.prop('hidden', true)
+							.data('key', null)
+							.val(null);
 					}
 					index++;
 				}
@@ -2088,7 +2094,12 @@
 					key_el = $(this);
 					key = key_el.val();
 					if (key) {
-						values[key] = null;
+						opt = secondary_options.find(obj => {return obj[0] == key});
+						if (opt) {
+							values[key] = opt[3];
+						} else {
+							values[key] = null;
+						}
 						key_el.val('');
 					}
 				});
@@ -2096,15 +2107,24 @@
 				secondary_el.find('.set-secondary-dynamic-value').each(function(){
 					key = $(this).data('key');
 					if (key) {
-						if (key == 'distance') {
-							value = Number($(this).val());
-						} else if (key == 'queryInterval') {
-							value = Number($(this).val());
-						} else if (key == 'timeout') {
-							value = Number($(this).val());
-						} else if (key == 'callout') {
-							value = $(this).val();
-						} else if (key == 'recEventsFlag') {
+						opt = secondary_options.find(obj => {return obj[0] == key});
+						if (opt) {
+							if (opt[2] == 'numeric') {
+								value = Number($(this).val());
+							} else if ( opt[2] == 'boolean' ){
+								if ($(this).val() == '1') {
+									value = true;
+								} else if ($(this).val() == '0') {
+									value = false;
+								} else {
+									value = null;
+								}
+							} else if ( Array.isArray(opt[2]) ){
+								value = $(this).val();
+							} else {
+								value = $(this).val();
+							}
+						} else {
 							value = $(this).val();
 						}
 						values[key] = value;
