@@ -38,6 +38,10 @@
 	display: none !important;
 }
 
+.uifield-password {
+	-webkit-text-security: disc;
+}
+
 html {
 	background: #fff;1
 	color: #000;

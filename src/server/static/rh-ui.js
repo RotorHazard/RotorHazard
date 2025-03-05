@@ -60,7 +60,8 @@ var rhui = {
 			wrapper.append(field);
 		} else if (settings.field_type == 'password') {
 			var field = $('<input>')
-				.attr('type', 'password')
+				.attr('type', 'text')
+				.addClass('uifield-password')
 				.attr('placeholder', settings.placeholder);
 
 			wrapper.append(labelWrap);
