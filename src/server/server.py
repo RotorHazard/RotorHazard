@@ -512,6 +512,17 @@ def render_settings():
                            is_raspberry_pi=RHUtils.is_sys_raspberry_pi(),
                            Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
+@APP.route('/advanced-settings')
+@requires_auth
+def render_advanced_settings():
+    '''Route to settings page.'''
+    return render_template('advanced-settings.html',
+                           serverInfo=RaceContext.serverstate.template_info_dict,
+                           getOption=RaceContext.rhdata.get_option,
+                           getConfig=RaceContext.serverconfig.get_item,
+                           __=__,
+                           Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
@@ -827,6 +838,8 @@ def on_load_data(data):
         if isinstance(load_type, dict):
             if load_type['type'] == 'ui':
                 RaceContext.rhui.emit_ui(load_type['value'], nobroadcast=True)
+            if load_type['type'] == 'config':
+                RaceContext.rhui.emit_config_update(load_type['value'], nobroadcast=True)
         elif load_type == 'node_data':
             RaceContext.rhui.emit_node_data(nobroadcast=True)
         elif load_type == 'environmental_data':
@@ -2358,6 +2371,15 @@ def on_set_config(data):
     Events.trigger(Evt.CONFIG_SET, {
         'section': data['section'],
         'key': data['key'],
+        'value': data['value'],
+        })
+
+@SOCKET_IO.on('set_config_section')
+@catchLogExceptionsWrapper
+def on_set_config_section(data):
+    RaceContext.serverconfig.set_section(data['section'], data['value'])
+    Events.trigger(Evt.CONFIG_SET, {
+        'section': data['section'],
         'value': data['value'],
         })
 
