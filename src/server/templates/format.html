@@ -375,6 +375,7 @@
 				rotorhazard.event.classes.sort((a, b) => b.order - a.order || b.id - a.id);
 				rotorhazard.event.heats.sort((a, b) => b.order - a.order || b.id - a.id);
 				if (rotorhazard.event.classes.length) {
+					var class_els = [];
 					for (var i in rotorhazard.event.classes) {
 						var race_class = rotorhazard.event.classes[i];
 
@@ -598,6 +599,8 @@
 							el = $(`#race-class-${race_class.id}`);
 						}
 
+						class_els.push(el);
+
 						var locked = race_class.locked;
 						var active_race = false;
 						if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_class_id == race_class.id) {
@@ -820,7 +823,12 @@
 
 						socket.emit('get_class_recents', {'class_id': race_class.id});
 					}
+
+					for (var i in class_els) {
+						classlist.append(class_els[i]);
+					}
 				}
+
 				freq.updateBlocks();
 				init_popup_generics();
 			}
@@ -1118,7 +1126,7 @@
 			});
 		});
 
-		$('button#add_race_class').click(function (event) {
+		$(document).on("click", '#add_race_class', function (event) {
 			socket.emit('add_race_class');
 		});
 
@@ -1243,6 +1251,7 @@
 							.appendTo(el);
 					}
 					for (var i in heats_by_group) {
+						var heat_els = [];
 						if (groups_el.children(`.heat-edit-list`).length) {
 							var heats_el = $(groups_el.children(`.heat-edit-list`)[0]);
 						} else {
@@ -1261,11 +1270,16 @@
 							var heat_el = heat_ui(heats_el, heat)
 								.removeClass('flagged');
 							heats_el.append(heat_el);
+							heat_els.push(heat_el);
 						}
 						heats_el.find('.flagged').remove();
+						for (var i in heat_els) {
+							heats_el.append(heat_els[i]);
+						}
 					}
 					el.append(groups_el);
 				} else {
+					var heat_els = [];
 					if (el.children(`.heat-edit-list`).length) {
 						var heats_el = $(el.children(`.heat-edit-list`)[0]);
 					} else {
@@ -1279,11 +1293,15 @@
 					for (var i in heats) {
 						var heat = heats[i];
 						if (heat.class_id == race_class.id) {
-							heat_ui(heats_el, heat)
-								.removeClass('flagged');
+							var heat_el = heat_ui(heats_el, heat);
+								heat_el.removeClass('flagged');
+							heat_els.push(heat_el);
 						}
 					}
 					heats_el.find('.flagged').remove();
+					for (var i in heat_els) {
+						heats_el.append(heat_els[i]);
+					}
 				}
 				freq.updateBlocks();
 			} else {
