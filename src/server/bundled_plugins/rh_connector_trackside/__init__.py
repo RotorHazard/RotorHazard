@@ -74,11 +74,24 @@ class TracksideConnector():
         if arg.get('p'):
             heat = self._rhapi.db.heat_add()
             self._rhapi.db.heat_alter(heat.id, name="TrackSide Heat {}".format(heat.id))
+
             slots = self._rhapi.db.slots_by_heat(heat.id)
             slot_list = []
 
             ts_pilot_callsigns = arg.get('p')
             ts_pilot_ids = arg.get('p_id')
+
+            race_number = arg.get('race_number')
+            round_number = arg.get('round_number')
+            race_name = arg.get('race_name')
+            bracket = arg.get('bracket')
+
+            if race_number > 0:
+                if bracket == 'None':
+                    self._rhapi.db.heat_alter(heat.id, name="Heat {} · Round {} · Race {}".format(self._rhapi.race.heat, round_number, race_number))
+                else:
+                    self._rhapi.db.heat_alter(heat.id, name="Heat {} · Bracket · {} Round {} · Race {}".format(self._rhapi.race.heat, bracket, round_number, race_number))
+
             rh_pilots = self._rhapi.db.pilots
             added_pilot = False
             for idx, ts_pilot_callsign in enumerate(ts_pilot_callsigns):
