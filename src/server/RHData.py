@@ -435,8 +435,6 @@ class RHData():
                 "eventDescription",
                 "ledEffects",
                 "ledBrightness",
-                "ledColorNodes",
-                "ledColorFreqs",
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
                 "voiceCallouts",
