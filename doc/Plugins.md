@@ -467,14 +467,21 @@ An `RHUI.UIField` object defines a frontend user interface for collecting data. 
 - `field_type` (UIFieldType), one of:
     - `UIFieldType.TEXT`
     - `UIFieldType.BASIC_INT`
+    - `UIFieldType.NUMBER`
+    - `UIFieldType.RANGE`
     - `UIFieldType.SELECT`
     - `UIFieldType.CHECKBOX`
+    - `UIFieldType.PASSWORD`
     - `UIFieldType.DATE`
     - `UIFieldType.TIME`
     - `UIFieldType.DATETIME`
+    - `UIFieldType.EMAIL`
+    - `UIFieldType.TEL`
+    - `UIFieldType.URL`
 - `value` _optional_ (any): Default value for field
 - `desc` _optional_ (string): additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
 - `private` _optional_ (boolean): Prevent automatically generated UI
+- `html_attributes` _optional_ (dict): attribute values passed to HTML to control browser-based validation, such as `min`, `max`, `step`, `minlength`, `maxlength`, `pattern`; only valid values for each field type will be added
 
 If `field_type` is `TEXT`
 

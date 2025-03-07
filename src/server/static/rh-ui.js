@@ -4,6 +4,7 @@ var rhui = {
 		var settings = {
 			data: {},
 			desc: null,
+			html_attributes: {},
 			fieldClass: null,
 			field_type: null,
 			genericOption: null,
@@ -17,7 +18,9 @@ var rhui = {
 		}
 
 		for (item in settings) {
-			settings[item] = field_options[item];
+			if (field_options[item] != null) {
+				settings[item] = field_options[item];
+			}
 		}
 
 		return settings;
@@ -55,7 +58,15 @@ var rhui = {
 			var field = $('<input>')
 				.attr('type', 'text')
 				.attr('placeholder', settings.placeholder);
-
+			if ('minlength' in settings.html_attributes) {
+				field.attr('minlength', settings.html_attributes.minlength)
+			}
+			if ('maxlength' in settings.html_attributes) {
+				field.attr('maxlength', settings.html_attributes.maxlength)
+			}
+			if ('pattern' in settings.html_attributes) {
+				field.attr('pattern', settings.html_attributes.pattern)
+			}
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'password') {
@@ -63,7 +74,15 @@ var rhui = {
 				.attr('type', 'text')
 				.addClass('uifield-password')
 				.attr('placeholder', settings.placeholder);
-
+			if ('minlength' in settings.html_attributes) {
+				field.attr('minlength', settings.html_attributes.minlength)
+			}
+			if ('maxlength' in settings.html_attributes) {
+				field.attr('maxlength', settings.html_attributes.maxlength)
+			}
+			if ('pattern' in settings.html_attributes) {
+				field.attr('pattern', settings.html_attributes.pattern)
+			}
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'basic_int') {
@@ -73,7 +92,38 @@ var rhui = {
 				.attr('max', 999)
 				.attr('step', 1)
 				.attr('placeholder', settings.placeholder);
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'number') {
+			var field = $('<input>')
+				.attr('type', 'number')
+				.attr('placeholder', settings.placeholder);
 
+			if ('min' in settings.html_attributes) {
+				field.attr('min', settings.html_attributes.min)
+			}
+			if ('max' in settings.html_attributes) {
+				field.attr('max', settings.html_attributes.max)
+			}
+			if ('step' in settings.html_attributes) {
+				field.attr('step', settings.html_attributes.step)
+			}
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'range') {
+			var field = $('<input>')
+				.attr('type', 'range')
+				.attr('placeholder', settings.placeholder);
+
+			if ('min' in settings.html_attributes) {
+				field.attr('min', settings.html_attributes.min)
+			}
+			if ('max' in settings.html_attributes) {
+				field.attr('max', settings.html_attributes.max)
+			}
+			if ('step' in settings.html_attributes) {
+				field.attr('step', settings.html_attributes.step)
+			}
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'select') {
@@ -90,31 +140,103 @@ var rhui = {
 			if (!settings.value) {
 				settings.value = settings.options[0].name;
 			}
-
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'checkbox') {
 			var field = $('<input>')
 				.attr('type', 'checkbox')
-
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'date') {
 			var field = $('<input>')
 				.attr('type', 'date')
 
+			if ('min' in settings.html_attributes) {
+				field.attr('min', settings.html_attributes.min)
+			}
+			if ('max' in settings.html_attributes) {
+				field.attr('max', settings.html_attributes.max)
+			}
+			if ('step' in settings.html_attributes) {
+				field.attr('step', settings.html_attributes.step)
+			}
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'time') {
 			var field = $('<input>')
 				.attr('type', 'time')
 
+			if ('min' in settings.html_attributes) {
+				field.attr('min', settings.html_attributes.min)
+			}
+			if ('max' in settings.html_attributes) {
+				field.attr('max', settings.html_attributes.max)
+			}
+			if ('step' in settings.html_attributes) {
+				field.attr('step', settings.html_attributes.step)
+			}
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else if (settings.field_type == 'datetime') {
 			var field = $('<input>')
 				.attr('type', 'datetime-local')
 
+			if ('min' in settings.html_attributes) {
+				field.attr('min', settings.html_attributes.min)
+			}
+			if ('max' in settings.html_attributes) {
+				field.attr('max', settings.html_attributes.max)
+			}
+			if ('step' in settings.html_attributes) {
+				field.attr('step', settings.html_attributes.step)
+			}
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'email') {
+			var field = $('<input>')
+				.attr('type', 'email')
+				.attr('placeholder', settings.placeholder);
+
+			if ('minlength' in settings.html_attributes) {
+				field.attr('minlength', settings.html_attributes.minlength)
+			}
+			if ('maxlength' in settings.html_attributes) {
+				field.attr('maxlength', settings.html_attributes.maxlength)
+			}
+			if ('pattern' in settings.html_attributes) {
+				field.attr('pattern', settings.html_attributes.pattern)
+			}
+			if ('multiple' in settings.html_attributes) {
+				field.prop('multiple', true);
+			}
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'tel') {
+			var field = $('<input>')
+				.attr('type', 'tel')
+			if ('minlength' in settings.html_attributes) {
+				field.attr('minlength', settings.html_attributes.minlength)
+			}
+			if ('maxlength' in settings.html_attributes) {
+				field.attr('maxlength', settings.html_attributes.maxlength)
+			}
+			if ('pattern' in settings.html_attributes) {
+				field.attr('pattern', settings.html_attributes.pattern)
+			}
+			wrapper.append(labelWrap);
+			wrapper.append(field);
+		} else if (settings.field_type == 'url') {
+			var field = $('<input>')
+				.attr('type', 'url')
+			if ('minlength' in settings.html_attributes) {
+				field.attr('minlength', settings.html_attributes.minlength)
+			}
+			if ('maxlength' in settings.html_attributes) {
+				field.attr('maxlength', settings.html_attributes.maxlength)
+			}
+			if ('pattern' in settings.html_attributes) {
+				field.attr('pattern', settings.html_attributes.pattern)
+			}
 			wrapper.append(labelWrap);
 			wrapper.append(field);
 		} else {
