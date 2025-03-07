@@ -390,6 +390,7 @@ class RHUI():
                     'author': None,
                     'author_uri': None,
                     'description': None,
+                    'documentation_uri': None,
                     'info_uri': None,
                     'license': None,
                     'license_uri': None,

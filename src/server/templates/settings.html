@@ -1680,6 +1680,10 @@
 						details_el.append('<div class="description"><em>(' + __('not provided') + ')</em></div>');
 					}
 
+					if (plugin.documentation_uri) {
+						details_el.append('<div class="documentation"><a href="' + plugin.documentation_uri + '">' + __('documentation') + '</a></div>');
+					}
+
 					if (plugin.info_uri) {
 						details_el.append('<div class="website"><a href="' + plugin.info_uri + '">' + __('website') + '</a></div>');
 					}
