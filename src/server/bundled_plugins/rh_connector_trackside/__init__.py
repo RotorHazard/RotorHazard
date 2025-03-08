@@ -68,7 +68,8 @@ class TracksideConnector():
         self.enabled = True
 
         if self._rhapi.race.status != RaceStatus.READY:
-            self._rhapi.race.stop(doSave=True) # Stop and save in one operation, which triggers Save and Clear
+            self._rhapi.race.stop() #doSave executes asynchronously, but we need it done now
+            self._rhapi.race.save()
 
         if arg.get('p'):
             heat = self._rhapi.db.heat_add()
@@ -138,7 +139,7 @@ class TracksideConnector():
             self._rhapi.ui.socket_broadcast('ts_lap_data', payload)
 
     def race_stop(self, arg=None):
-        self._rhapi.race.stop(doSave=True) # Stop and save in one operation, which triggers Save and Clear
+        self._rhapi.race.stop()
 
     def laps_save(self, args):
         race_id = args.get('race_id')
