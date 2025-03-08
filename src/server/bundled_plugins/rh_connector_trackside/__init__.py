@@ -74,7 +74,6 @@ class TracksideConnector():
         if arg.get('p'):
             heat = self._rhapi.db.heat_add()
             self._rhapi.db.heat_alter(heat.id, name="TrackSide Heat {}".format(heat.id))
-
             slots = self._rhapi.db.slots_by_heat(heat.id)
             slot_list = []
 
