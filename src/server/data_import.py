@@ -25,7 +25,7 @@ class DataImportManager():
     def register_importer(self, importer):
         if isinstance(importer, DataImporter):
             if importer.name in self._importers:
-                logger.warning('Overwriting data importer "{0}"'.format(importer['name']))
+                logger.warning('Overwriting data importer "{0}"'.format(importer.name))
 
             importer.add_racecontext(self._racecontext)
 

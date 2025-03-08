@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.3.0-dev.3" # Public release version code
+RELEASE_VERSION = "4.3.0-dev.4" # Public release version code
 SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -512,6 +512,17 @@ def render_settings():
                            is_raspberry_pi=RHUtils.is_sys_raspberry_pi(),
                            Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
 
+@APP.route('/advanced-settings')
+@requires_auth
+def render_advanced_settings():
+    '''Route to settings page.'''
+    return render_template('advanced-settings.html',
+                           serverInfo=RaceContext.serverstate.template_info_dict,
+                           getOption=RaceContext.rhdata.get_option,
+                           getConfig=RaceContext.serverconfig.get_item,
+                           __=__,
+                           Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
@@ -827,6 +838,8 @@ def on_load_data(data):
         if isinstance(load_type, dict):
             if load_type['type'] == 'ui':
                 RaceContext.rhui.emit_ui(load_type['value'], nobroadcast=True)
+            if load_type['type'] == 'config':
+                RaceContext.rhui.emit_config_update(load_type['value'], nobroadcast=True)
         elif load_type == 'node_data':
             RaceContext.rhui.emit_node_data(nobroadcast=True)
         elif load_type == 'environmental_data':
@@ -835,14 +848,22 @@ def on_load_data(data):
             RaceContext.rhui.emit_frequency_data(nobroadcast=True)
             if Use_imdtabler_jar_flag:
                 heartbeat_thread_function.imdtabler_flag = True
+        elif load_type == 'heat_list':
+            RaceContext.rhui.emit_heat_list(nobroadcast=True)
         elif load_type == 'heat_data':
             RaceContext.rhui.emit_heat_data(nobroadcast=True)
+        elif load_type == 'heat_attribute_types':
+            RaceContext.rhui.emit_heat_attribute_types(nobroadcast=True)
         elif load_type == 'seat_data':
             RaceContext.rhui.emit_seat_data(nobroadcast=True)
+        elif load_type == 'class_list':
+            RaceContext.rhui.emit_class_list(nobroadcast=True)
         elif load_type == 'class_data':
             RaceContext.rhui.emit_class_data(nobroadcast=True)
         elif load_type == 'format_data':
             RaceContext.rhui.emit_format_data(nobroadcast=True)
+        elif load_type == 'pilot_list':
+            RaceContext.rhui.emit_pilot_list(nobroadcast=True)
         elif load_type == 'pilot_data':
             RaceContext.rhui.emit_pilot_data(nobroadcast=True)
         elif load_type == 'result_data':
@@ -1131,6 +1152,18 @@ def on_set_scan(data):
         gevent.sleep(0.100)  # pause/spawn to get clear of heartbeat actions for scanner
         gevent.spawn(restore_node_frequency, node_index)
 
+@SOCKET_IO.on('expand_heat')
+@catchLogExcWithDBWrapper
+def on_expand_heat(data):
+    if data and 'heat' in data:
+        RaceContext.rhui.emit_expanded_heat(data['heat'])
+
+@SOCKET_IO.on('get_class_recents')
+@catchLogExcWithDBWrapper
+def on_get_class_recents(data):
+    if data and 'class_id' in data:
+        RaceContext.rhui.emit_recent_heats(data['class_id'], 6) # TODO: Place var in UI Config
+
 @SOCKET_IO.on('add_heat')
 @catchLogExcWithDBWrapper
 def on_add_heat(data=None):
@@ -1255,6 +1288,7 @@ def on_add_pilot(*args):
     '''Adds the next available pilot id number in the database.'''
     RaceContext.rhdata.add_pilot()
     RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('alter_pilot')
 @catchLogExcWithDBWrapper
@@ -1263,6 +1297,7 @@ def on_alter_pilot(data):
     _pilot, race_list = RaceContext.rhdata.alter_pilot(data)
 
     RaceContext.rhui.emit_pilot_data(noself=True) # Settings page, new pilot settings
+    RaceContext.rhui.emit_heat_data()
 
     if 'callsign' in data or 'team_name' in data:
         RaceContext.rhui.emit_heat_data() # Settings page, new pilot callsign in heats
@@ -1301,6 +1336,7 @@ def on_set_seat_color(data):
     RaceContext.serverconfig.set_item('LED', 'seatColors', seat_colors)
     RaceContext.race.updateSeatColors()
     RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_heat_data()
     RaceContext.rhui.emit_seat_data()
 
     Events.trigger(Evt.CONFIG_SET, {
@@ -1316,6 +1352,7 @@ def on_reset_seat_color(*args):
     RaceContext.serverconfig.set_item('LED', 'seatColors', [])
     RaceContext.race.updateSeatColors()
     RaceContext.rhui.emit_pilot_data()
+    RaceContext.rhui.emit_heat_data()
     RaceContext.rhui.emit_seat_data()
 
     Events.trigger(Evt.CONFIG_SET, {
@@ -2334,6 +2371,15 @@ def on_set_config(data):
     Events.trigger(Evt.CONFIG_SET, {
         'section': data['section'],
         'key': data['key'],
+        'value': data['value'],
+        })
+
+@SOCKET_IO.on('set_config_section')
+@catchLogExceptionsWrapper
+def on_set_config_section(data):
+    RaceContext.serverconfig.set_section(data['section'], data['value'])
+    Events.trigger(Evt.CONFIG_SET, {
+        'section': data['section'],
         'value': data['value'],
         })
 

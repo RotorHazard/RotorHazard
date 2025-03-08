@@ -435,8 +435,6 @@ class RHData():
                 "eventDescription",
                 "ledEffects",
                 "ledBrightness",
-                "ledColorNodes",
-                "ledColorFreqs",
                 "startThreshLowerAmount",
                 "startThreshLowerDuration",
                 "voiceCallouts",
@@ -1048,6 +1046,9 @@ class RHData():
 
     def get_heats_by_class(self, class_id):
         return Database.Heat.query.filter_by(class_id=class_id).all()
+
+    def get_recent_heats_by_class(self, class_id, limit):
+        return Database.Heat.query.filter_by(class_id=class_id).order_by(Database.Heat.id.desc()).limit(limit).all()
 
     def get_first_heat(self):
         return Database.Heat.query.first()

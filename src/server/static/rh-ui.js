@@ -1,6 +1,6 @@
 
 var rhui = {
-	buildField: function(field_options) {
+	_modelField: function (field_options) {
 		var settings = {
 			data: {},
 			desc: null,
@@ -19,6 +19,11 @@ var rhui = {
 		for (item in settings) {
 			settings[item] = field_options[item];
 		}
+
+		return settings;
+	},
+	buildField: function(field_options) {
+		var settings = this._modelField(field_options);
 
 		if (settings.wrapperEl) {
 			var wrapper = $('<' + settings.wrapperEl + '>');
@@ -55,7 +60,8 @@ var rhui = {
 			wrapper.append(field);
 		} else if (settings.field_type == 'password') {
 			var field = $('<input>')
-				.attr('type', 'password')
+				.attr('type', 'text')
+				.addClass('uifield-password')
 				.attr('placeholder', settings.placeholder);
 
 			wrapper.append(labelWrap);
@@ -90,7 +96,6 @@ var rhui = {
 		} else if (settings.field_type == 'checkbox') {
 			var field = $('<input>')
 				.attr('type', 'checkbox')
-				.prop('checked', settings.value);
 
 			wrapper.append(labelWrap);
 			wrapper.append(field);
@@ -119,7 +124,6 @@ var rhui = {
 
 		field.addClass(settings.fieldClass)
 			.attr('id', settings.id)
-			.val(settings.value);
 
 		if (settings.genericOption) {
 			field.addClass('set-option')
@@ -130,19 +134,21 @@ var rhui = {
 			field.data(idx, settings.data[idx])
 		}
 
+		this.updateField(field_options, field);
 		return wrapper
 	},
-	buildQuickbuttons: function(btn_list) {
-		var btn_list_el = $('<div class="control-set">');
-		for (var idx in btn_list) {
-			btn_el = $('<button>')
-				.addClass('quickbutton')
-				.text(btn_list[idx].label)
-				.data('btn_id', btn_list[idx].name)
+	updateField: function(field_options, element) {
+		var settings = this._modelField(field_options);
 
-			btn_list_el.append(btn_el)
+		if (settings.field_type == 'checkbox') {
+			element.prop('checked', settings.value);
+		} else {
+			element.val(settings.value);
 		}
-		return btn_list_el
+
+		for (var idx in settings.data) {
+			element.data(idx, settings.data[idx])
+		}
 	},
 	getFieldVal: function(element) {
 		var el = $(element);
@@ -155,6 +161,18 @@ var rhui = {
 		}
 
 		return value;
+	},
+	buildQuickbuttons: function(btn_list) {
+		var btn_list_el = $('<div class="control-set">');
+		for (var idx in btn_list) {
+			btn_el = $('<button>')
+				.addClass('quickbutton')
+				.text(btn_list[idx].label)
+				.data('btn_id', btn_list[idx].name)
+
+			btn_list_el.append(btn_el)
+		}
+		return btn_list_el
 	}
 }
 

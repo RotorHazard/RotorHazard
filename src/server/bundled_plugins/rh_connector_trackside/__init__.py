@@ -163,8 +163,7 @@ class TracksideConnector():
                             'lap_time': lap.lap_time,
                             'lap_time_formatted': lap.lap_time_formatted,
                             'lap_time_stamp': lap.lap_time_stamp,
-                        })
-                    laps = json.dumps(laps)
+                        })    
                     break
             else:
                 return False
