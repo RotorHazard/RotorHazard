@@ -502,17 +502,23 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 ```
 
 ### Metadata
-Plugin authors are strongly encouraged to declare metadata. In your plugin folder, create the JSON-formatted file `manifest.json` with the following keys. Keys may be omitted or `null`, but some keys are required for the plugin to be downloadable within the UI (see Community Plugins documentation).
+Plugin authors are strongly encouraged to declare metadata. In your plugin folder, create the JSON-formatted file `manifest.json` using any of the following keys. Currently, keys may be omitted or `null` if not applicable, but some may become required in future versions.
 
-- `name`: The name of your plugin
-- `author`: The plugin author's name
+Basic metadata keys include:
+- `name`: the name of your plugin
+- `author`: the plugin author's name
 - `author_uri`: valid HTTP link to the author's website
+- `dependencies`: list of [python package requirement specifiers](https://pip.pypa.io/en/stable/reference/requirement-specifiers/)
 - `description`: short description of the plugin's function
 - `documentation_uri`: valid HTTP link to the plugin's documentation
 - `info_uri`: valid HTTP link to a website about the plugin
 - `license`: name of the plugin's license
 - `license_uri`: valid HTTP link to the plugin's license information
-- `version`: a version identifier for the plugin's own code
-- `required_rhapi_version`: the minimum RHAPI version required to run the plugin, such as "1.1" 
+- `required_rhapi_version`: the minimum RHAPI version required to run the plugin, such as "1.1"
+- `version`: a version identifier for the plugin's own code ([semver-formatted](https://semver.org/), ideally)
+- `zip_filename`: filename of zip package, if separately required for distribution (`null` for GitHub releases)
 - `update_uri`: (not yet implemented)
 - `text_domain`: (not yet implemented)
+
+#### Community Plugins
+Community Plugins can be found, installed, and can be updated entirely through the RotorHazard UI. For a plugin to be included in this section, a manifest is required. Some keys or format of keys are restricted, and additional keys such as `domain` and `category` are also defined. See [Community Plugins documentation](https://rotorhazard.github.io/community-plugins/) for more information. 
