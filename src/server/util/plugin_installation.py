@@ -200,7 +200,6 @@ class PluginInstallationManager:
         last_version = plugin_data.get("last_version")
         pre_version = plugin_data.get("last_prerelease")
 
-        zip_release = plugin_data.get("zip_release")
         zip_filename = plugin_data.get("zip_filename")
 
         if last_version is not None and pre_version is not None and allow_prerelease:
@@ -215,7 +214,7 @@ class PluginInstallationManager:
             raise ValueError("Plugin metadata is not valid")
 
         self._download_and_install_plugin(
-            repo, download_version, domain, zip_release, zip_filename
+            repo, download_version, domain, zip_filename
         )
 
         plugin_data["reload_required"] = True
@@ -230,7 +229,6 @@ class PluginInstallationManager:
         repo: str,
         version_: str,
         domain: str,
-        zip_release: Union[bool, None],
         zip_filename: Union[str, None],
     ) -> None:
         """
@@ -242,7 +240,7 @@ class PluginInstallationManager:
         :param domain: The domain identifier of the plugin
         """
 
-        if zip_release and zip_filename is not None:
+        if zip_filename is not None:
             url = (
                 f"https://github.com/{repo}/releases/download/{version_}/{zip_filename}"
             )
