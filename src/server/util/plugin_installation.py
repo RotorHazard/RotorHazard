@@ -41,7 +41,7 @@ class PluginInstallationManager:
     _categories: list[str]
     update_avaliable: bool = False
 
-    def __init__(self, plugin_dir: Path):
+    def __init__(self, plugin_dir: Path, remote_config):
 
         if not plugin_dir.exists():
             raise FileNotFoundError(f"{plugin_dir} does not exist")
@@ -58,23 +58,22 @@ class PluginInstallationManager:
         self._plugin_dir = plugin_dir
         self.load_local_plugin_data()
 
+        self._remote_data_uri = remote_config['data_uri']
+        self._remote_category_uri = remote_config['categories_uri']
+
     def load_remote_plugin_data(self):
         """
         Load remote plugin data
         """
         data = self._session.get(
-            "https://rh-data.dutchdronesquad.nl/v1/plugin/data.json", timeout=5
+            self._remote_data_uri, timeout=5
         )
 
         pool_ = pool.Pool(10)
         pool_.map(self._fetch_remote_plugin_data, dict(data.json()).values())
 
         data = self._session.get(
-            (
-                "https://raw.githubusercontent.com/dutchdronesquad/"
-                "rh-community-store/refs/heads/main/categories.json"
-            ),
-            timeout=5,
+            self._remote_category_uri, timeout=5,
         )
 
         self._categories = data.json()

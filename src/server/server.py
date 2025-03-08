@@ -3373,7 +3373,11 @@ def rh_program_initialize(reg_endpoints_flag=True):
         if not plugin_dir.exists():
             plugin_dir.mkdir()
 
-        RaceContext.plugin_manager = PluginInstallationManager(plugin_dir)
+        remote_config = {
+            'data_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_DATA_URI'),
+            'categories_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_CATEGORIES_URI')
+        }
+        RaceContext.plugin_manager = PluginInstallationManager(plugin_dir, remote_config)
 
         try:
             RaceContext.plugin_manager.load_local_plugin_data()
