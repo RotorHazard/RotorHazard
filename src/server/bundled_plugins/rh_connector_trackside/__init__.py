@@ -140,6 +140,7 @@ class TracksideConnector():
 
     def race_stop(self, arg=None):
         self._rhapi.race.stop()
+        self._rhapi.race.save()
 
     def laps_save(self, args):
         race_id = args.get('race_id')
