@@ -87,7 +87,7 @@ class TracksideConnector():
             bracket = arg.get('bracket')
 
             if race_number > 0:
-                if bracket == 'None':
+                if not bracket:
                     self._rhapi.db.heat_alter(heat.id, name="Heat {} · Round {} · Race {}".format(self._rhapi.race.heat, round_number, race_number))
                 else:
                     self._rhapi.db.heat_alter(heat.id, name="Heat {} · Bracket · {} Round {} · Race {}".format(self._rhapi.race.heat, bracket, round_number, race_number))
