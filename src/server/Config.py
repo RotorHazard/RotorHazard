@@ -130,11 +130,8 @@ class Config:
         self.config['LOGGING']['CONSOLE_STREAM'] = "stdout"
 
         # plugin defaults
-        self.config['PLUGINS']['REMOTE_DATA_URI'] = "https://rhcp.hazardcreative.com/v1/plugin/data.json"
-        self.config['PLUGINS']['REMOTE_CATEGORIES_URI'] = (
-            "https://raw.githubusercontent.com/rotorhazard/"
-            "community-plugins/refs/heads/main/categories.json"
-        )
+        self.config['PLUGINS']['REMOTE_DATA_URI'] = None
+        self.config['PLUGINS']['REMOTE_CATEGORIES_URI'] = None
 
         self.InitResultStr = None
         self.InitResultLogLevel = logging.INFO

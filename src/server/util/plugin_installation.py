@@ -58,8 +58,14 @@ class PluginInstallationManager:
         self._plugin_dir = plugin_dir
         self.load_local_plugin_data()
 
-        self._remote_data_uri = remote_config['data_uri']
-        self._remote_category_uri = remote_config['categories_uri']
+        data_uri = remote_config.get('data_uri', None)
+        if data_uri is None:
+            data_uri = 'https://rhcp.hazardcreative.com/v1/plugin/data.json'
+        self._remote_data_uri = data_uri
+        categories_uri = remote_config.get('categories_uri', None)
+        if categories_uri is None:
+            categories_uri = 'https://rhcp.hazardcreative.com/v1/plugin/categories.json'
+        self._remote_category_uri = categories_uri
 
     def load_remote_plugin_data(self):
         """
