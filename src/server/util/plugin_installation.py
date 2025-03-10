@@ -79,23 +79,9 @@ class PluginInstallationManager:
         self._categories = data.json()
 
     def _fetch_remote_plugin_data(self, plugin_data: dict):
-
-        del plugin_data["manifest"]
-
         plugin_data["reload_required"] = False
 
-        data = self._session.get(
-            (
-                f"https://raw.githubusercontent.com/{plugin_data['repository']}"
-                f"/refs/tags/{plugin_data['last_version']}/custom_plugins/"
-                f"{plugin_data['domain']}/manifest.json"
-            ),
-            timeout=5,
-        )
-
-        plugin_data.update(data.json())
-
-        self._remote_plugin_data.update({plugin_data["domain"]: plugin_data})
+        self._remote_plugin_data.update({plugin_data["manifest"]["domain"]: plugin_data})
 
     def load_local_plugin_data(self) -> None:
         """

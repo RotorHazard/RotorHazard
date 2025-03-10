@@ -2703,6 +2703,7 @@ ul.plugin-list>li {
 	padding: 0.25rem;
 }
 
+.plugin-list .details .repository,
 .plugin-list .details .documentation,
 .plugin-list .details .website,
 .plugin-list .details .license {
