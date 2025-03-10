@@ -124,7 +124,7 @@ class ServerTest(unittest.TestCase):
             'start_delay_max_ms': 4000,
             'number_laps_win': 5,
             'win_condition': 0,
-            'team_racing_mode': True
+            'team_racing_mode': 1
         }
         self.client.emit('alter_race_format', data)
         resp = self.get_response('format_data')

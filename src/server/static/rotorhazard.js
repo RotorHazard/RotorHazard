@@ -3,9 +3,9 @@ var sound_beep = $('#sound_beep')[0];
 var sound_stage = $('#sound_stage')[0];
 
 // bitmask values for 'phonetic_split_call' function
-const SPLMSK_PILOT_NAME = 0x01
-const SPLMSK_SPLIT_ID = 0x02
-const SPLMSK_SPLIT_TIME = 0x04
+const SPLMSK_PILOT_NAME = 0x01;
+const SPLMSK_SPLIT_ID = 0x02;
+const SPLMSK_SPLIT_TIME = 0x04;
 
 // minimum value in logarithmic volume range and limit value for "zero" volume
 const MIN_LOG_VOLUME = 0.01;
@@ -16,9 +16,13 @@ const LEADER_FLAG_CHAR = 'L';
 const WINNER_FLAG_CHAR = 'W';
 
 // Display sync warning above (ms)
-const SYNC_WARNING_THRESHOLD_1 = 2
-const SYNC_WARNING_THRESHOLD_3 = 10
-const SYNC_WARNING_THRESHOLD_10 = 60
+const SYNC_WARNING_THRESHOLD_1 = 2;
+const SYNC_WARNING_THRESHOLD_3 = 10;
+const SYNC_WARNING_THRESHOLD_10 = 60;
+
+const RACING_MODE_INDV = 0;   // INDIVIDUAL
+const RACING_MODE_TEAM = 1;   // TEAM_ENABLED
+const RACING_MODE_COOP = 2;   // COOP_ENABLED
 
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
@@ -757,6 +761,7 @@ function timerModel() {
 	this.time_staging_tenths = null; // staging-relative time
 	this.count_up = false; // use fixed-length timer
 	this.duration_tenths = 0; // fixed-length duration, in tenths
+	this.initial_disp_tenths = null; // time value to show before start
 	this.has_looped = false; // prevent expire callbacks until timer runs 1 loop
 	this.allow_expire = false; // prevent multiple expire callbacks
 
@@ -940,22 +945,32 @@ function timerModel() {
 		if (self.callbacks.stop instanceof Function) {
 			self.callbacks.stop(this);
 		}
+		this.time = 0;  // clear to make sure sure 'Ready' message doesn't get stuck showing on timer
 	}
 
 	this.renderHTML = function() {
+		var active_time_tenths = 0;
 		if (this.local_zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
-			return '--:--';
+			if (this.initial_disp_tenths) {
+				active_time_tenths = this.initial_disp_tenths;
+			} else {
+				return '--:--';
+			}
+		} else {
+			this.initial_disp_tenths = null;
 		}
 
 		if (this.hidden_staging && this.time < 0) {
 			return __l('Ready');
 		}
 
-		var active_time_tenths = this.time_tenths;
+		if (!active_time_tenths) {
+			active_time_tenths = this.time_tenths;
 
-		// hold timer during prestage
-		if (this.phased_staging && this.time_staging_tenths < 0) {
-			active_time_tenths = Math.trunc((this.local_staging_start_time - this.local_zero_time) / 100);
+			// hold timer during prestage
+			if (this.phased_staging && this.time_staging_tenths < 0) {
+				active_time_tenths = Math.trunc((this.local_staging_start_time - this.local_zero_time) / 100);
+			}
 		}
 
 		var active_time_s = Math.trunc(active_time_tenths / 10);
@@ -981,6 +996,10 @@ function timerModel() {
 		} else {
 			return sign + minute + ':' + second + '.' + decimal;
 		}
+	}
+
+	this.renderHTMLandUpdate = function() {
+		$('.time-display').html(this.renderHTML());
 	}
 }
 
@@ -1721,7 +1740,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		var display_type = 'by_race_time';
 	if (typeof(meta) === 'undefined') {
 		var meta = new Object;
-		meta.team_racing_mode = false;
+		meta.team_racing_mode = RACING_MODE_INDV;
 		meta.start_behavior = 0;
 		meta.consecutives_count = 0;
 		meta.primary_leaderboard = null;
@@ -1745,7 +1764,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 	var header_row = $('<tr>');
 	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
 	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
-	if (meta.team_racing_mode) {
+	if (meta.team_racing_mode == RACING_MODE_TEAM) {
 		header_row.append('<th class="team">' + __('Team') + '</th>');
 	}
 	if (display_starts == true) {
@@ -1790,7 +1809,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
-		if (meta.team_racing_mode) {
+		if (meta.team_racing_mode == RACING_MODE_TEAM) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
 		}
 		if (display_starts == true) {
@@ -1910,16 +1929,21 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 		display_type = 'by_race_time';
 	if (typeof(meta) === 'undefined') {
 		meta = new Object;
-		meta.team_racing_mode = true;
+		meta.team_racing_mode = RACING_MODE_TEAM;
 		meta.consecutives_count = 0;
 	}
+	var coop_flag = (leaderboard.length == 1 && leaderboard[0].name == "Group")
 
 	var twrap = $('<div class="responsive-wrap">');
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
 	var header_row = $('<tr>');
-	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
-	header_row.append('<th class="team">' + __('Team') + '</th>');
+	if (coop_flag) {
+		header_row.append('<th class="team">' + __('Co-op') + '</th>');
+	} else {
+		header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
+		header_row.append('<th class="team">' + __('Team') + '</th>');
+	}
 	header_row.append('<th class="contribution">' + __('Contributors') + '</th>');
 	if (display_type == 'by_race_time') {
 		header_row.append('<th class="laps">' + __('Laps') + '</th>');
@@ -1938,7 +1962,9 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 
 	for (var i in leaderboard) {
 		var row = $('<tr>');
-		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
+		if (!coop_flag) {
+			row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
+		}
 		row.append('<td class="team">'+ leaderboard[i].name +'</td>');
 		row.append('<td class="contribution">'+ leaderboard[i].contributing + '/' + leaderboard[i].members + '</td>');
 		if (display_type == 'by_race_time') {
@@ -1986,7 +2012,7 @@ function build_ranking(ranking) {
 	var header_row = $('<tr>');
 	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
 	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
-	if ('team_racing_mode' in meta && meta.team_racing_mode) {
+	if ('team_racing_mode' in meta && meta.team_racing_mode == RACING_MODE_TEAM) {
 		header_row.append('<th class="team">' + __('Team') + '</th>');
 	}
 	for (var f in meta.rank_fields) {
@@ -2003,7 +2029,7 @@ function build_ranking(ranking) {
 
 		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
-		if ('team_racing_mode' in meta && meta.team_racing_mode) {
+		if ('team_racing_mode' in meta && meta.team_racing_mode == RACING_MODE_TEAM) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
 		}
 		for (var f in meta.rank_fields) {

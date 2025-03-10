@@ -14,7 +14,7 @@
 		'node_data',
 		'frequency_data',
 		'pilot_data',
-		'heat_data',
+		'heat_list',
 		'class_data',
 		'format_data',
 		'node_tuning',
@@ -388,6 +388,10 @@
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					if (msg.show_init_time_flag) {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
 					if (resume_check) {
 						race_kickoff(msg);
 					}
@@ -439,7 +443,16 @@
 					$('body').addClass('race-new');
 					$('.timing-clock').removeClass('staging');
 					rotorhazard.timer.race.stop();
-					rotorhazard.timer.race.renderHTML();
+					if (msg.show_init_time_flag) {
+						if (!any_laps_recorded()) {
+							rotorhazard.timer.deferred.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+							rotorhazard.timer.race.initial_disp_tenths = rotorhazard.timer.race.duration_tenths;
+						}
+					} else {
+						rotorhazard.timer.deferred.initial_disp_tenths = null;
+						rotorhazard.timer.race.initial_disp_tenths = null;
+					}
+					rotorhazard.timer.deferred.renderHTMLandUpdate();
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}
@@ -532,6 +545,11 @@
 					freq.updateBlock(fObj, i);
 				}
 			}
+		});
+
+		socket.on('heat_list', function (msg) {
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
 		});
 
 		socket.on('heat_data', function (msg) {
@@ -973,31 +991,35 @@
 					var ttstext = '';
 	
 					if (rotorhazard.voice_callsign == 1 ||
-								(rotorhazard.voice_callsign == 2 && (!msg.team_name))) {
+								(rotorhazard.voice_callsign == 2 && (!msg.team_phonetic))) {
 						if (msg.callsign)
 							ttstext = msg.callsign;
 						if (msg.pilot)
 							ttstext = msg.pilot;
 					}
 	
-					if (rotorhazard.voice_lap_count == 1 ||
-								(rotorhazard.voice_lap_count == 2 && msg.lap && (!msg.team_name))) {
+					if (msg.lap && (rotorhazard.voice_lap_count == 1 ||
+								(rotorhazard.voice_lap_count == 2 && (!msg.team_phonetic)))) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
 						ttstext += __l('Lap') + " " + msg.lap;
 					}
 	
 					if (rotorhazard.voice_lap_time == 1 ||
-								(rotorhazard.voice_lap_time == 2 && (!msg.team_name))) {
+								(rotorhazard.voice_lap_time == 2 && (!msg.team_phonetic))) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
 						ttstext += msg.phonetic;
 					}
 	
-					if (msg.team_name && msg.team_laps && rotorhazard.voice_team_lap_count != 0) {
+					if (msg.team_phonetic && rotorhazard.voice_team_lap_count != 0) {
 						if (ttstext.length > 0)
 							ttstext += ", ";
-						ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
+						if (rotorhazard.voice_team_lap_count == 2 && msg.team_short_phonetic) {
+							ttstext += msg.team_short_phonetic;
+						} else {
+							ttstext += msg.team_phonetic;
+						}
 					}
 	
 					if (ttstext.length > 0) {
@@ -1005,7 +1027,7 @@
 							if (rotorhazard.beep_race_leader_lap) {
 								speak(LEADER_FLAG_CHAR);
 							}
-							if (rotorhazard.voice_race_leader && (!msg.team_name)) {
+							if (rotorhazard.voice_race_leader && (!msg.team_phonetic)) {
 								setTimeout(callout_current_leader, (rotorhazard.voice_race_leader * 1000), (msg.pilot ? msg.pilot : msg.callsign), false);
 							}
 						}
@@ -1092,6 +1114,9 @@
 					.css('background-color', color)
 					.css('color', contrastColor(color));
 			}
+
+			$('.set_heat_coop_best_time').val(msg.coop_best_time ? String(msg.coop_best_time) : '');
+			$('.set_heat_coop_num_laps').val(msg.coop_num_laps ? String(msg.coop_num_laps) : '');
 
 			if (msg.heat_format) {
 				$('#set_race_format').val(msg.heat_format);
@@ -1583,6 +1608,26 @@
 					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>')
 				}
 				$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
+
+				var format = rotorhazard.event.race_formats.find(obj => {return obj.id == rotorhazard.event.race_status.race_format_id})
+
+				if (rotorhazard.event.race_status.race_heat_id && format.team_racing_mode == RACING_MODE_COOP) {
+					if (format.win_condition == 2) {
+						// if First to X Laps
+						$('#coop-time-control').prop('hidden', false);
+						$('#coop-laps-control').prop('hidden', true);
+					} else if (format.win_condition == 1 || format.win_condition == 5 || format.win_condition == 6) {
+						// if Most Laps in Fastest Time | Most Laps Only | Most Laps Only with Overtime
+						$('#coop-time-control').prop('hidden', true);
+						$('#coop-laps-control').prop('hidden', false);
+					} else {
+						$('#coop-time-control').prop('hidden', true);
+						$('#coop-laps-control').prop('hidden', true);
+					}
+				} else {
+					$('#coop-time-control').prop('hidden', true);
+					$('#coop-laps-control').prop('hidden', true);
+				}
 			}
 		}
 
@@ -1592,6 +1637,24 @@
 			};
 			if ($(this).find('option').length > 1)
 				socket.emit('set_race_format', data);
+		});
+
+		$(document).on("change", '.set_heat_coop_best_time', function (event) {
+			var data = {
+				heat: rotorhazard.event.race_status.race_heat_id,
+				coop_best_time: $(this).val(),
+				coop_data_flag: true  // set flag to indicate only co-op data was modified
+			};
+			socket.emit('alter_heat', data);
+		});
+
+		$(document).on("change", '.set_heat_coop_num_laps', function (event) {
+			var data = {
+				heat: rotorhazard.event.race_status.race_heat_id,
+				coop_num_laps: parseInt($(this).val()),
+				coop_data_flag: true  // set flag to indicate only co-op data was modified
+			};
+			socket.emit('alter_heat', data);
 		});
 
 		/* Send Message */
@@ -2515,6 +2578,18 @@
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
 				</select>
 			</li>
+			<li id="coop-laps-control" hidden="hidden">
+				<div class="label-block">
+					<label for="heat_coop_num_laps_id">{{ __('Co-op Best # of Laps') }}</label>
+				</div>
+				<input id="heat_coop_num_laps_id" class="set_heat_coop_num_laps" type="number" step="1" min="0" />
+			</li>
+			<li id="coop-time-control" hidden="hidden">
+				<div class="label-block">
+					<label for="heat_coop_best_time_id">{{ __('Co-op Best Time') }}</label>
+				</div>
+				<input id="heat_coop_best_time_id" class="set_heat_coop_best_time" type="text" />
+			</li>
 		</ol>
 	</div>
 </div>
@@ -2564,7 +2639,7 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2574,7 +2649,7 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2584,7 +2659,7 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2600,11 +2675,12 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+						<label for="voice_team_lap_count">{{ __('Team/Co-op Lap Total') }}</label>
 					</div>
 					<select id="voice_team_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('On Team Races') }}</option>
+						<option value="1">{{ __('On Team/Co-op Races') }}</option>
+						<option value="2">{{ __('On Team/Co-op Races (short call)') }}</option>
 					</select>
 				</li>
 				<li>

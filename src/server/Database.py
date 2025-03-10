@@ -99,6 +99,8 @@ class Heat(Base):
     auto_frequency = DB.Column(DB.Boolean, nullable=False)
     group_id = DB.Column(DB.Integer, nullable=False)
     active = DB.Column(DB.Boolean, nullable=False, default=True)
+    coop_best_time = DB.Column(DB.Float, nullable=True, default=0.0)  # best time achieved in co-op racing mode (seconds)
+    coop_num_laps = DB.Column(DB.Integer, nullable=True, default=0)   # best # of laps in co-op racing mode
 
     # DEPRECATED: compatibility for 'note' property / renamed to 'name'
     @property
@@ -392,7 +394,7 @@ class RaceFormat(Base):
     staging_delay_tones = DB.Column('staging_tones', DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
     win_condition = DB.Column(DB.Integer, nullable=False)
-    team_racing_mode = DB.Column(DB.Boolean, nullable=False)
+    team_racing_mode = DB.Column(DB.Integer, nullable=False)
     start_behavior = DB.Column(DB.Integer, nullable=False)
     points_method = DB.Column(DB.String, nullable=True)
 

@@ -27,6 +27,13 @@
 		'backups_list',
 		'exporter_list',
 		'plugin_list',
+		{
+			'type': 'config',
+			'value': {
+				'GENERAL': ['SECONDARIES'],
+				'SENSORS': [],
+			}
+		}
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
@@ -1205,15 +1212,50 @@
 			socket.emit('set_option', data);
 		});
 
+		socket.on('config_update', function (msg) {
+			for (var section in msg.config) {
+				if (section == 'SENSORS') {
+					display_sensors_ui(msg.config[section]);
+				} else {
+					for (var key in msg.config[section]) {
+						var value = msg.config[section][key];
+
+						if (section == 'GENERAL' && key == 'SECONDARIES') {
+							display_secondary_ui(value);
+						} else {
+							$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
+						}
+					}
+				}
+			}
+		});
+
 		socket.on('set_config', function (msg) {
-			$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			if (msg.section == 'GENERAL' && msg.key == 'SECONDARIES') {
+				display_secondary_ui(msg);
+			} else if (msg.section == 'SENSORS') {
+				display_sensors_ui(msg);
+			} else {
+				$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			}
 		});
 
 		$(document).on('change', '.set-config', function (event) {
+			value = $(this).val();
+			if ($(this).data('type') == 'boolean' ) {
+				if (value == 'true') {
+					value = true;
+				} else {
+					value = false;
+				}
+			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
+				value = Number(value);
+			}
+
 			var data = {
 				section: $(this).data('section'),
 				key: $(this).data('key'),
-				value: $(this).val()
+				value: value
 			};
 			socket.emit('set_config', data);
 		});
@@ -1782,6 +1824,575 @@
 			$('#import_plugin_file').val("");
 			$('#upload_plugin').prop('disabled', true);
 		});
+
+		// Secondaries
+		var secondary_options = [
+			['callout', __('Callout'), [
+				['time', __('Time')],
+				['speed', __('Speed')],
+				['both', __('Time & Speed')],
+				['nameOnly', __('Name')],
+				['none', __('None')]
+			], 'none'],
+			['distance', __('Distance'), 'numeric', 0],
+			['queryInterval', __('Query Interval'), 'numeric', 0],
+			['recEventsFlag', __('Receives Events'), 'boolean', false],
+			['timeout', __('Timeout'), 'numeric', 0],
+			['event', __('Event'), 'text', ''],
+			['effect', __('Effect'), 'text', ''],
+			['text', __('Text'), 'text', ''],
+			['toneDuration', __('Tone Duration'), 'numeric', 0],
+			['toneFrequency', __('Tone Frequency'), 'numeric', 0],
+			['toneVolume', __('Tone Volume'), 'numeric', 0],
+			['toneType', __('Tone Type'), [
+				['square', __('Square')],
+				['sine', __('Sine')],
+				['sawtooth', __('Sawtooth')],
+				['triangle', __('Triangle')]
+			], 'square'],
+			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 0]
+		]
+		secondary_options.sort((a, b) => a[1].localeCompare(b[1]));
+
+		function display_secondary_ui(secondaries) {
+			if ($('#secondary-ui').length) {
+				var secondary_ui = $('#secondary-ui');
+			} else {
+				$('#secondary-setup').empty();
+				var secondary_ui = $(document.createElement('ul'))
+					.prop('id', 'secondary-ui')
+					.addClass('settings-list')
+					.appendTo('#secondary-setup');
+			}
+
+			if ($(`#secondary--new`).length) {
+				$(`#secondary--new input`).val('');
+			} else {
+				var item_el = $(document.createElement('li'))
+					.prop('id', `secondary--new`)
+					.appendTo(secondary_ui);
+				$(document.createElement('h4'))
+					.text( __('New Secondary') )
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
+					.addClass('form')
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('Address') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-secondary-config')
+					.data('property', 'address')
+					.appendTo(field);
+			}
+
+			secondary_ui.children('li').not('#secondary--new').addClass('flagged');
+
+			for (var i in secondaries) {
+				var secondary = secondaries[i];
+
+				if ($(`#secondary--${i}`).length) {
+					var item_el = $(`#secondary--${i}`)
+						.removeClass('flagged');
+					var address_field = item_el.find('.set-secondary-address');
+					var mode_field = item_el.find('.set-secondary-mode');
+					var new_field = item_el.find('.set-secondary-dynamic-new-key');
+					var fields = item_el.children('ol');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `secondary--${i}`)
+						.appendTo(secondary_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Secondary')} ${parseInt(i)+1}` )
+						.appendTo(item_el);
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-address')
+						.appendTo(field);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Mode') )
+						.appendTo(field);
+					var mode_field = $(document.createElement('select'))
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-mode')
+						.appendTo(field);
+					$(document.createElement('option'))
+						.prop('value', 'split')
+						.text( __('Split') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'mirror')
+						.text( __('Mirror') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'action')
+						.text( __('Action') )
+						.appendTo(mode_field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
+					var select_el = $(document.createElement('select'))
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-dynamic-new-key')
+						.appendTo(new_field);
+					secondary_options_els(select_el);
+				}
+				address_field.val(secondary.address);
+				if (secondary.mode) {
+					mode_field.val(secondary.mode);
+				} else {
+					mode_field.val('split');
+				}
+				new_field.val();
+
+				display_secondary_dynamic_field_ui(secondary, fields);
+			}
+			secondary_ui.find('li.flagged').remove();
+		}
+
+		function secondary_options_els (select_el) {
+			$(document.createElement('option'))
+				.text( `- ${__('Select Key')} -` )
+				.prop('value', '')
+				.appendTo(select_el);
+
+			for (var idx in secondary_options) {
+				$(document.createElement('option'))
+					.text( secondary_options[idx][1] )
+					.prop('value', secondary_options[idx][0])
+					.appendTo(select_el);
+			}
+		}
+
+		function display_secondary_dynamic_field_ui(fields, el) {
+			els = el.children('.dynamic');
+
+			els.addClass('flagged');
+
+			var index = 0;
+			for (var i in fields) {
+				if (i != 'address' && i != 'mode') {
+					var field = fields[i];
+
+					if (els.length > index) {
+						var field_el = $(els[index]);
+						var key_el = field_el.children('.set-secondary-dynamic-key');
+						var value_el = field_el.children('.set-secondary-dynamic-input');
+						var value_select_el = field_el.children('.set-secondary-dynamic-select');
+					} else {
+						var field_el = $(document.createElement('li'))
+							.addClass('dynamic')
+							.appendTo(el);
+						var key_el = $(document.createElement('label'))
+							.addClass('label-block')
+							.addClass('set-secondary-dynamic-key')
+							.appendTo(field_el);
+
+						$(document.createElement('button'))
+							.addClass('delete-secondary-dynamic-key')
+							.addClass('btn-danger')
+							.html('&#215;')
+							.appendTo(field_el);
+						var value_el = $(document.createElement('input'))
+							.prop('type', 'number')
+							.prop('step', 'any')
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-value')
+							.addClass('set-secondary-dynamic-input')
+							.appendTo(field_el);
+						var value_select_el = $(document.createElement('select'))
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-value')
+							.addClass('set-secondary-dynamic-select')
+							.appendTo(field_el);
+					}
+
+					field_el.removeClass('flagged');
+
+					opt = secondary_options.find(obj => {return obj[0] == i});
+					if (opt) {
+						key_el.text( opt[1] );
+						if (opt[2] == 'numeric') {
+							value_el
+								.prop('hidden', false)
+								.prop('type', 'number')
+								.data('key', i)
+								.val(field);
+							value_select_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+						} else if ( opt[2] == 'boolean' ){
+							value_select_el.empty();
+							$(document.createElement('option'))
+								.prop('value', 1)
+								.text(__('True'))
+								.appendTo(value_select_el)
+							$(document.createElement('option'))
+								.prop('value', 0)
+								.text(__('False'))
+								.appendTo(value_select_el)
+							value_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+							value_select_el
+								.prop('hidden', false)
+								.data('key', i);
+							if (field === true) {
+								value_select_el.val(1);
+							} else if (field === false) {
+								value_select_el.val(0);
+							} else {
+								value_select_el.val(null);
+							}
+						} else if ( Array.isArray(opt[2]) ){
+							value_select_el.empty();
+							for (var o in opt[2]) {
+								$(document.createElement('option'))
+									.prop('value', opt[2][o][0])
+									.text( opt[2][o][1] )
+									.appendTo(value_select_el);
+							}
+							value_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+							value_select_el
+								.prop('hidden', false)
+								.data('key', i)
+								.val(field);
+						} else {
+							// text
+							value_el
+								.prop('hidden', false)
+								.prop('type', 'text')
+								.data('key', i)
+								.val(field);
+							value_select_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+						}
+					} else {
+						// text
+						key_el.text( i );
+						value_el
+							.prop('hidden', false)
+							.prop('type', 'text')
+							.data('key', i)
+							.val(field);
+						value_select_el
+							.prop('hidden', true)
+							.data('key', null)
+							.val(null);
+					}
+					index++;
+				}
+			}
+			els.children('.flagged').remove();
+		}
+
+		$(document).on('change', '.set-secondary-config', function (event) {
+			set_secondary_config();
+		});
+
+		$(document).on('click', '.delete-secondary-dynamic-key', function (event) {
+			$(this).siblings('.set-secondary-dynamic-value').data('key', null);
+			set_secondary_config();
+		});
+
+		function set_secondary_config() {
+			var secondaries = [];
+			$('#secondary--new').find('input').each(function(){
+				if ($(this).val()) {
+					secondaries.push({
+						address: $(this).val()
+					});
+					$(this).empty();
+				}
+			});
+
+			$('#secondary-ui').children().each(function(){
+				var values = {};
+				secondary_el = $(this);
+
+				var addr = secondary_el.find('.set-secondary-address')
+				if (addr) {
+					values.address = addr.val();
+				}
+
+				var mode = secondary_el.find('.set-secondary-mode')
+				if (mode) {
+					values.mode = mode.val();
+				}
+
+				secondary_el.find('.set-secondary-dynamic-new-key').each(function(){
+					key_el = $(this);
+					key = key_el.val();
+					if (key) {
+						opt = secondary_options.find(obj => {return obj[0] == key});
+						if (opt) {
+							values[key] = opt[3];
+						} else {
+							values[key] = null;
+						}
+						key_el.val('');
+					}
+				});
+
+				secondary_el.find('.set-secondary-dynamic-value').each(function(){
+					key = $(this).data('key');
+					if (key) {
+						opt = secondary_options.find(obj => {return obj[0] == key});
+						if (opt) {
+							if (opt[2] == 'numeric') {
+								value = Number($(this).val());
+							} else if ( opt[2] == 'boolean' ){
+								if ($(this).val() == '1') {
+									value = true;
+								} else if ($(this).val() == '0') {
+									value = false;
+								} else {
+									value = null;
+								}
+							} else if ( Array.isArray(opt[2]) ){
+								value = $(this).val();
+							} else {
+								value = $(this).val();
+							}
+						} else {
+							value = $(this).val();
+						}
+						values[key] = value;
+					}
+				})
+
+				if (values?.address) {
+					secondaries.push(values);
+				}
+			});
+
+			var data = {
+				section: 'GENERAL',
+				key: 'SECONDARIES',
+				value: secondaries
+			};
+			socket.emit('set_config', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'GENERAL': ['SECONDARIES']
+					}
+				}]
+			});
+		};
+
+		// Sensors
+		function display_sensors_ui(sensors) {
+			if ($('#sensor-ui').length) {
+				var sensor_ui = $('#sensor-ui');
+			} else {
+				$('#sensor-setup').empty();
+				var sensor_ui = $(document.createElement('ul'))
+					.prop('id', 'sensor-ui')
+					.addClass('settings-list')
+					.appendTo('#sensor-setup');
+			}
+
+			if ($(`#sensor--new`).length) {
+				$(`#sensor--new input`).val('');
+			} else {
+				var item_el = $(document.createElement('li'))
+					.prop('id', `sensor--new`)
+					.appendTo(sensor_ui);
+				$(document.createElement('h4'))
+					.text( __('New Sensor') )
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
+					.addClass('form')
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('Address') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-sensor-config')
+					.data('property', 'address')
+					.appendTo(field);
+			}
+
+			sensor_ui.children('li').not('#sensor--new').addClass('flagged');
+
+			var index = 1;
+			for (var key in sensors) {
+				var sensor = sensors[key];
+
+				if ($(`#sensor--${index}`).length) {
+					var item_el = $(`#sensor--${index}`)
+						.removeClass('flagged');
+					var address_field = item_el.find('.set-sensor-address');
+					var new_field = item_el.find('.set-sensor-dynamic-new-key');
+					var fields = item_el.children('ol');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `sensor--${index}`)
+						.appendTo(sensor_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Sensor')} ${index}` )
+						.appendTo(item_el);
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-address')
+						.appendTo(field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.prop('placeholder', __('key') )
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.addClass('set-sensor-dynamic-new-key')
+						.appendTo(new_field);
+				}
+				address_field.val(key);
+				new_field.val();
+
+				display_sensor_dynamic_field_ui(sensor, fields);
+				index++;
+			}
+			sensor_ui.find('li.flagged').remove();
+
+		}
+
+		function display_sensor_dynamic_field_ui(fields, el) {
+			els = el.children('.dynamic');
+
+			els.addClass('flagged');
+
+			var index = 0;
+			for (var key in fields) {
+				var value = fields[key];
+
+				if (els.length > index) {
+					var field_el = $(els[index]);
+					var key_el = field_el.children('.set-sensor-dynamic-key');
+					var value_el = field_el.children('.set-sensor-dynamic-value');
+				} else {
+					var field_el = $(document.createElement('li'))
+						.addClass('dynamic')
+						.appendTo(el);
+					var key_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('label-block')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.appendTo(field_el);
+					var value_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-value')
+						.appendTo(field_el);
+				}
+				field_el.removeClass('flagged');
+				key_el.val(key)
+				value_el.val(value)
+				index++;
+			}
+			els.children('.flagged').remove();
+		}
+
+		$(document).on('change', '.set-sensor-config', function (event) {
+			var sensors = {};
+			$('#sensor--new').find('input').each(function(){
+				if ($(this).val()) {
+					sensors[$(this).val()] = {};
+					$(this).empty();
+				}
+			});
+
+			$('#sensor-ui').children().not('#sensor--new').each(function(){
+				var values = {};
+				sensor_el = $(this);
+
+				var addr = sensor_el.find('.set-sensor-address')?.val();
+				if (addr) {
+					sensor_el.find('.set-sensor-dynamic-key').each(function(){
+						key_el = $(this);
+						value_el = key_el.siblings('.set-sensor-dynamic-value')
+						if (key_el.val()) {
+							if (value_el.length) {
+								values[key_el.val()] = (value_el.val());
+							} else {
+								values[key_el.val()] = null;
+								key_el.val('');
+							}
+						}
+					})
+
+					sensors[addr] = values;
+				}
+			});
+
+			var data = {
+				section: 'SENSORS',
+				value: sensors
+			};
+			socket.emit('set_config_section', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'SENSORS': []
+					}
+				}]
+			});
+		});
 	});
 
 </script>
@@ -1993,7 +2604,7 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2003,7 +2614,7 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2013,7 +2624,7 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2029,11 +2640,12 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+						<label for="voice_team_lap_count">{{ __('Team/Co-op Lap Total') }}</label>
 					</div>
 					<select id="voice_team_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('On Team Races') }}</option>
+						<option value="1">{{ __('On Team/Co-op Races') }}</option>
+						<option value="2">{{ __('On Team/Co-op Races (short call)') }}</option>
 					</select>
 				</li>
 				<li>
@@ -2434,19 +3046,37 @@
 	</div>
 </div>
 
-<!-- Status -->
+<!-- Cluster -->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Status') }}</h2>
+		<h2>{{ __('Secondary Timers') }}</h2>
 	</div>
 	<div class="panel-content">
 		<h3>{{ __('Cluster Status') }}</h3>
 		<div id="cluster-status" class="control-set">
 			<p>No cluster status available.</p>
 		</div>
+
+		<h3>{{ __('Settings') }}</h3>
+		<div id="secondary-setup">
+			{{ __('Loading...') }}
+		</div>
+	</div>
+</div>
+
+<!-- Sensors -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Environment Sensors') }}</h2>
+	</div>
+	<div class="panel-content">
 		<h3>{{ __('Environment Status') }}</h3>
 		<div id="env-data-table" class="control-set">
 			<p>No environment status available.</p>
+		</div>
+		<h3>{{ __('Settings') }}</h3>
+		<div id="sensor-setup">
+			{{ __('Loading...') }}
 		</div>
 	</div>
 </div>
@@ -2454,5 +3084,6 @@
 <!-- Custom UI -->
 <div id="custom-ui"></div>
 
+<p><a href="/advanced-settings">{{ __('Advanced Settings') }}</a>
 </main>
 {% endblock %}

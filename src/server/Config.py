@@ -51,8 +51,6 @@ class Config:
         # LED effect configuration
         self.config['LED']['ledEffects'] = ''
         self.config['LED']['ledBrightness'] = 32
-        self.config['LED']['ledColorNodes'] = ''
-        self.config['LED']['ledColorFreqs'] = ''
         self.config['LED']['ledColorMode'] = ''
         self.config['LED']['seatColors'] = [
             "#0022ff",  # Blue
@@ -157,8 +155,6 @@ class Config:
             migrateItem('pilotSort', 'UI'),
             migrateItem('ledEffects', 'LED'),
             migrateItem('ledBrightness', 'LED'),
-            migrateItem('ledColorNodes', 'LED'),
-            migrateItem('ledColorFreqs', 'LED'),
             migrateItem('startThreshLowerAmount', 'TIMING'),
             migrateItem('startThreshLowerDuration', 'TIMING'),
             migrateItem('calibrationMode', 'TIMING'),
@@ -272,6 +268,14 @@ class Config:
     def set_item(self, section, key, value):
         try:
             self.config[section][key] = value
+            self.save_config()
+        except:
+            return False
+        return True
+
+    def set_section(self, section, value):
+        try:
+            self.config[section] = value
             self.save_config()
         except:
             return False

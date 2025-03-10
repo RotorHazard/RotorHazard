@@ -679,7 +679,7 @@ Race formats are represented with the `RaceFormat` class, which has the followin
 - `staging_delay_tones` (int): Whether to play staging tones each second during random delay phase
 - `number_laps_win` (int): Number of laps used to declare race winner, if > 0
 - `win_condition` (int): Condition used to determine race winner and race ranking
-- `team_racing_mode` (boolean): Whether local simultaneous team racing mode will be used
+- `team_racing_mode` (int): Racing mode, 0 for individual, 1 for team, 2 for co-op
 - `start_behavior` (int): Handling of first crossing
 - `points_method` (String): JSON-serialized arguments for points algorithm
 
@@ -745,7 +745,7 @@ Add a new race format to the database. Returns the new `RaceFormat`.
 - `start_behavior` _(optional)_ (int): First crossing behavior for new race format
 - `win_condition` _(optional)_ (int): Win condition for new race format
 - `number_laps_win` _(optional)_ (int): Lap count setting for new race format
-- `team_racing_mode` _(optional)_ (boolean): Team racing setting for new race format
+- `team_racing_mode` _(optional)_ (int): Racing mode, 0 for individual, 1 for team, 2 for co-op
 - `points_method` _(optional)_ (string): JSON-serialized arguments for new race format
 
 #### db.raceformat_duplicate(source_format_or_id)
@@ -766,7 +766,7 @@ Alter race format data. Returns tuple of this `RaceFormat` and affected races as
 - `start_behavior` _(optional)_ (int): First crossing behavior for new race format
 - `win_condition` _(optional)_ (int): Win condition for new race format
 - `number_laps_win` _(optional)_ (int): Lap count setting for new race format
-- `team_racing_mode` _(optional)_ (boolean): Team racing setting for new race format
+- `team_racing_mode` _(optional)_ (int): Racing mode, 0 for individual, 1 for team, 2 for co-op
 - `points_method` _(optional)_ (string): JSON-serialized arguments for new race format
 - `points_settings`  _(optional)_ (dict): arguments to pass to class ranking
 - `attributes` _(optional)_ (dict): Attributes to alter, attribute values assigned to respective keys
@@ -896,6 +896,15 @@ ID of races with attribute matching the specified attribute/value combination. R
 - `name` (string): attribute to match
 - `value` (string): value to match
 
+#### db.race_add(round_id, heat_id, class_id, format_id, start_time, start_time_formatted)
+Add a saved race directly in the database. Returns `SavedRaceMeta`.
+- `round_id` (int): round number
+- `heat_id` (int): ID of associated heat
+- `class_id` (int): ID of associated race class, or `CLASS_ID_NONE`
+- `format_id` (int): ID of associated race format
+- `start_time` (int): Internal (monotonic) time value of race start
+- `start_time_formatted` (string): Human-readable time of race start
+
 #### db.race_alter(race_id, attributes=None)
 Alter race data. Supports only custom attributes. No return value.
 - `race_id` (int): ID of race to alter
@@ -937,6 +946,17 @@ A single pilot run record, retrieved by ID. Returns `SavedPilotRace`.
 Pilot run records matching the provided saved race ID. Returns `list[SavedPilotRace]`.
 - `race_id` (int): ID of saved race used to retrieve pilot runs
 
+#### db.pilotrun_add(race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps)
+Add a `SavedPilotRace` directly in the database. Laps must be added during creation. Returns `SavedPilotRace`.
+- `race_id` (int): ID of associated saved race
+- `node_index` (int): Seat number
+- `pilot_id` (int): ID of associated pilot
+- `history_values` (string): JSON-serialized raw RSSI data
+- `history_times` (string): JSON-serialized timestamps for raw RSSI data 
+- `enter_at` (int): Gate enter calibration point
+- `exit_at` (int): Gate exit calibration point
+- `frequency` (int): Active frequency for this seat at race time
+- `laps` (list[Crossing]): List of `Crossing` objects to add to this run
 
 ### Saved Race &rarr; Pilot Run &rarr; Laps
 Laps store data related to start gate crossings. Each pilot run may have one or more laps associated with it. When displaying laps, be sure to reference the associated race format.

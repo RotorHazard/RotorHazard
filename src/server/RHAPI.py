@@ -738,6 +738,24 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_savedRaceMetas_by_raceClass(raceclass_id)
 
     @callWithDatabaseWrapper
+    def race_add(self, round_id, heat_id, class_id, format_id, start_time, start_time_formatted):
+        data = {}
+
+        for name, value in [
+            ('round_id', round_id),
+            ('heat_id', heat_id),
+            ('class_id', class_id),
+            ('format_id', format_id),
+            ('start_time', start_time),
+            ('start_time_formatted', start_time_formatted)
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            return self._racecontext.rhdata.add_savedRaceMeta(data)
+
+    @callWithDatabaseWrapper
     def race_alter(self, race_id, attributes=None):
         data = {}
 
@@ -770,6 +788,26 @@ class DatabaseAPI():
     @callWithDatabaseWrapper
     def pilotruns_by_race(self, race_id):
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
+
+    def pilotrun_add(self, race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps):
+        data = {}
+
+        for name, value in [
+            ('race_id', race_id),
+            ('pilot_id', pilot_id),
+            ('history_values', history_values),
+            ('history_times', history_times),
+            ('enter_at', enter_at),
+            ('exit_at', exit_at),
+            ('frequency', frequency),
+            ('laps', laps),
+            ]:
+            if value is not None:
+                data[name] = value
+
+        if data:
+            return self._racecontext.rhdata.add_race_data({node_index: data})
+
 
     # Race -> Pilot Run -> Laps
 
@@ -1060,6 +1098,14 @@ class RaceAPI():
         return self._racecontext.race.race_status
 
     @property
+    def status_message(self):
+        return self._racecontext.race.status_message
+
+    @property
+    def phonetic_status_msg(self):
+        return self._racecontext.race.phonetic_status_msg
+
+    @property
     def stage_time_internal(self):
         return self._racecontext.race.stage_time_monotonic
 
@@ -1109,6 +1155,11 @@ class RaceAPI():
     @callWithDatabaseWrapper
     def team_results(self):
         return self._racecontext.race.get_team_results()
+
+    @property
+    @callWithDatabaseWrapper
+    def coop_results(self):
+        return self._racecontext.race.get_coop_results()
 
     @property
     def win_status(self):

@@ -22,7 +22,7 @@ class DataExportManager():
     def register_exporter(self, exporter):
         if isinstance(exporter, DataExporter):
             if exporter.name in self._exporters:
-                logger.warning('Overwriting data exporter "{0}"'.format(exporter['name']))
+                logger.warning('Overwriting data exporter "{0}"'.format(exporter.name))
 
             self._exporters[exporter.name] = exporter
         else:
