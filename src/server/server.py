@@ -75,8 +75,9 @@ PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 if __name__ == '__main__' and len(sys.argv) > 1 and CMDARG_DATA_DIR in sys.argv:
     data_dir_arg_idx = sys.argv.index(CMDARG_DATA_DIR) + 1
     if data_dir_arg_idx < len(sys.argv):
-        if os.path.exists(sys.argv[data_dir_arg_idx]):
-            os.chdir(sys.argv[data_dir_arg_idx])
+        data_path = os.path.expanduser(sys.argv[data_dir_arg_idx])  # expand '~' to user-home directory
+        if os.path.exists(data_path):
+            os.chdir(data_path)
         else:
             print("Unable to find given data location: {0}".format(sys.argv[data_dir_arg_idx]))
             sys.exit(1)
@@ -85,18 +86,21 @@ if __name__ == '__main__' and len(sys.argv) > 1 and CMDARG_DATA_DIR in sys.argv:
         sys.exit(1)
 else:
     try:
-        with open(PROGRAM_DIR + '/datapath.ini', 'r') as f:
-            data_path = f.readline().strip()
-            if os.path.exists(data_path):
-                os.chdir(data_path)
-            else:
-                print("datapath.ini points to an invalid system location.")
-                sys.exit(1)
+        datapath_ini_path_str = os.path.join(PROGRAM_DIR, 'datapath.ini')
+        with open(datapath_ini_path_str, 'r') as f:
+            data_path = os.path.expanduser(f.readline().strip())  # expand '~' to user-home directory
+            if len(data_path) > 0:
+                if os.path.exists(data_path):
+                    os.chdir(data_path)
+                else:
+                    print('"{}" file points to an invalid system location: "{}"'.\
+                          format(datapath_ini_path_str, data_path))
+                    sys.exit(1)
     except IOError:
         # missing file is valid
         pass
     except Exception as ex:
-        print("datapath.ini is invalid; error is: " + str(ex))
+        print('Error processing "{}" file: {}'.format(datapath_ini_path_str, ex))
         sys.exit(1)
 
 DATA_DIR = os.getcwd()
@@ -3334,12 +3338,21 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
     log.close_logging()
 
     if SERVER_PROCESS_RESTART_FLAG:
-        args = sys.argv[:]
-        args.insert(0, sys.executable)
-        if sys.platform == 'win32':
-            args = ['"%s"' % arg for arg in args]
-        print('Respawning %s' % ' '.join(args))
-        os.execv(sys.executable, args)
+        try:
+            args = []
+            for arg in sys.argv:
+                if len(args) > 0 and arg == CMDARG_LAUNCH_B_STR:
+                    break    # don't include "--launchb" arguments
+                args.append(arg)
+            if len(args) > 0 and not os.path.exists(args[0]):  # if not finding "server.py" then
+                args[0] = os.path.join(PROGRAM_DIR, args[0])   # prepend program-dir path
+            args.insert(0, sys.executable)
+            if sys.platform == 'win32':
+                args = ['"%s"' % arg for arg in args]
+            print('Respawning %s' % ' '.join(args))
+            os.execv(sys.executable, args)
+        except Exception as ex:
+            print("Error restarting server: " + str(ex))
 
 @catchLogExceptionsWrapper
 def rh_program_initialize(reg_endpoints_flag=True):
