@@ -163,6 +163,55 @@ class Config:
             migrateItem('actions', 'USER'),
         ]
 
+        self._restart_required_keys = {
+            'LED': [
+                'LED_COUNT',
+                'LED_GPIO',
+                'LED_FREQ_HZ',
+                'LED_DMA',
+                'LED_INVERT',
+                'LED_CHANNEL',
+                'LED_STRIP',
+                'LED_ROWS',
+                'SERIAL_CTRLR_PORT',
+                'SERIAL_CTRLR_BAUD'
+            ],
+            'HARDWARE': [
+                'I2C_BUS'
+            ],
+            'GENERAL' : [
+                'HTTP_PORT',
+                'SECONDARIES',
+                'SECONDARY_TIMEOUT',
+                'DEBUG',
+                'CORS_ALLOWED_HOSTS',
+                'FORCE_S32_BPILL_FLAG',
+                'DEF_NODE_FWUPDATE_URL',
+                'SHUTDOWN_BUTTON_GPIOPIN',
+                'SHUTDOWN_BUTTON_DELAYMS',
+                'DB_AUTOBKP_NUM_KEEP',
+                'RACE_START_DELAY_EXTRA_SECS',
+                'LOG_SENSORS_DATA_RATE',
+                'SERIAL_PORTS',
+                'LAST_MODIFIED_TIME'
+            ],
+            'SECRETS': [
+                'ADMIN_USERNAME',
+                'ADMIN_PASSWORD'
+            ],
+            'LOGGING': [
+                'CONSOLE_LEVEL',
+                'SYSLOG_LEVEL',
+                'FILELOG_LEVEL',
+                'FILELOG_NUM_KEEP',
+                'CONSOLE_STREAM'
+            ],
+            'PLUGINS': [
+                'REMOTE_DATA_URI',
+                'REMOTE_CATEGORIES_URI'
+            ],
+        }
+
         # override defaults above with config from file
         try:
             with open(self.filename, 'r') as f:
@@ -229,7 +278,7 @@ class Config:
     def migrate_legacy_db_keys(self):
         for item in self.migrations:
             if self._racecontext.rhdata.get_option(item.source):
-                self._racecontext.serverconfig.set_item(
+                self.set_item(
                     item.section,
                     item.dest,
                     self._racecontext.rhdata.get_option(item.source)
@@ -242,6 +291,17 @@ class Config:
     def logInitResultMessage(self):
         if self.InitResultStr:
             logger.log(self.InitResultLogLevel, self.InitResultStr)
+
+    def check_restart_flag(self, section, key=None):
+        if key:
+            try:
+                if key in self._restart_required_keys[section]:
+                    self._racecontext.serverstate.set_restart_required()
+            except:
+                pass
+        else:
+            if section in self._restart_required_keys:
+                self._racecontext.serverstate.set_restart_required()
 
     def get_item(self, section, key):
         try:
@@ -268,6 +328,7 @@ class Config:
     def set_item(self, section, key, value):
         try:
             self.config[section][key] = value
+            self.check_restart_flag(section, key)
             self.save_config()
         except:
             return False
@@ -276,6 +337,7 @@ class Config:
     def set_section(self, section, value):
         try:
             self.config[section] = value
+            self.check_restart_flag(section)
             self.save_config()
         except:
             return False
