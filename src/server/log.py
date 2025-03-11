@@ -356,6 +356,8 @@ def wait_for_queue_empty():
 
 def close_logging():
     try:
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
         global queued_handler_obj
         if queued_handler_obj:
             queued_handler_obj.close()
