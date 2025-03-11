@@ -27,12 +27,17 @@ APP.app_context().push()
 class UIFieldType(Enum):
     TEXT = "text"
     BASIC_INT = "basic_int"
+    NUMBER = "number"
+    RANGE = "range"
     SELECT = "select"
     CHECKBOX = "checkbox"
     PASSWORD = "password"
     DATE = "date"
     TIME = "time"
     DATETIME = "datetime"
+    EMAIL = "email"
+    TEL = "tel"
+    URL = "url"
 
 @dataclass
 class UIFieldSelectOption():
@@ -50,6 +55,7 @@ class UIField():
     options: List[UIFieldSelectOption] = None
     order: int = 0 # not implemented
     private: bool = False
+    html_attributes: dict = None
 
     def frontend_repr(self):
         return {
@@ -61,6 +67,7 @@ class UIField():
             'placeholder': self.placeholder,
             'options': [asdict(option) for option in self.options] if self.options else None,
             'order': self.order,
+            'html_attributes': self.html_attributes
         }
 
 @dataclass
