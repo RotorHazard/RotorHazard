@@ -182,18 +182,13 @@ class Config:
             'GENERAL' : [
                 'HTTP_PORT',
                 'SECONDARIES',
-                'SECONDARY_TIMEOUT',
-                'DEBUG',
                 'CORS_ALLOWED_HOSTS',
                 'FORCE_S32_BPILL_FLAG',
                 'DEF_NODE_FWUPDATE_URL',
                 'SHUTDOWN_BUTTON_GPIOPIN',
                 'SHUTDOWN_BUTTON_DELAYMS',
                 'DB_AUTOBKP_NUM_KEEP',
-                'RACE_START_DELAY_EXTRA_SECS',
-                'LOG_SENSORS_DATA_RATE',
                 'SERIAL_PORTS',
-                'LAST_MODIFIED_TIME'
             ],
             'SECRETS': [
                 'ADMIN_USERNAME',
@@ -210,6 +205,7 @@ class Config:
                 'REMOTE_DATA_URI',
                 'REMOTE_CATEGORIES_URI'
             ],
+            'SENSORS': []
         }
 
         # override defaults above with config from file
