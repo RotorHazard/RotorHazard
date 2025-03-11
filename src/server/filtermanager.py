@@ -111,3 +111,4 @@ class Flt:
     LEADERBOARD_SORT_AND_RANK = 'leaderboardSortAndRank'
     GAP_INFO = 'gapInfo'
 
+    CALIBRATION_FALLBACK = 'calibrationFallback'

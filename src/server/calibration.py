@@ -5,6 +5,7 @@ import json
 import RHUtils
 from eventmanager import Evt
 from RHUtils import catchLogExceptionsWrapper
+from filtermanager import Flt
 
 logger = logging.getLogger(__name__)
 
@@ -192,9 +193,15 @@ class Calibration:
 
         # fallback
         logger.debug('Node {0} calibration: no calibration hints found, no change'.format(node.index+1))
-        return {
+        context = {
+            'seat_index': seat_index,
+            'pilot': pilot,
             'enter_at_level': node.enter_at_level,
             'exit_at_level': node.exit_at_level
         }
-
+        context = self._racecontext.filters.run_filters(Flt.CALIBRATION_FALLBACK, context)
+        return {
+            'enter_at_level': context['enter_at_level'],
+            'exit_at_level': context['exit_at_level']
+        }
     
