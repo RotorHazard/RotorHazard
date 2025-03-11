@@ -120,6 +120,7 @@ import socket
 import random
 import string
 import json
+from pathlib import Path
 
 RHUtils.checkPythonVersion(MIN_PYTHON_MAJOR_VERSION, MIN_PYTHON_MINOR_VERSION)
 
@@ -142,7 +143,11 @@ import util.stm32loader as stm32loader
 from eventmanager import Evt, EventManager
 
 # Filter manager
-from filtermanager import Flt, FilterManager
+from filtermanager import FilterManager
+
+# Plugin manager
+import requests
+from util.plugin_installation import PluginInstallationManager
 
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern
@@ -238,7 +243,7 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 def log_error_callback_fn(*args):
     if not is_ui_message_set("errors-logged"):
         set_ui_message("errors-logged",\
-                   __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                   f'{__("Error messages have been logged.")} <a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)',\
                    header="Notice", subclass="errors-logged")
         if Auth_succeeded_flag:
             SOCKET_IO.emit('update_server_messages', get_ui_server_messages_str())
@@ -405,6 +410,14 @@ def requires_auth(f):
 def render_template(template_name_or_list, **context):
     try:
         check_log_error_alert()
+        context.update({
+            'serverInfo': RaceContext.serverstate.template_info_dict,
+            'getOption': RaceContext.rhdata.get_option,
+            'getConfig': RaceContext.serverconfig.get_item,
+            '__': __,
+            'Debug': RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'),
+            'restart_flag': RaceContext.serverstate.restart_required
+        })
         return templating.render_template(template_name_or_list, **context)
     except Exception:
         logger.exception("Exception in render_template")
@@ -426,25 +439,24 @@ def render_index():
     if RaceContext.serverconfig.config_file_status == 0:
         return redirect("/first-run", code=302)
 
-    return render_template('home.html', serverInfo=RaceContext.serverstate.template_info_dict,
-                           getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+    return render_template('home.html')
 
 @APP.route('/first-run')
 @requires_auth
 def render_welcome():
     '''Route to first-run (admin) setup.'''
     RaceContext.serverconfig.config_file_status = 1
-    return render_template('first-run.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
+    return render_template('first-run.html')
 
 @APP.route('/event')
 def render_event():
     '''Route to heat summary page.'''
-    return render_template('event.html', num_nodes=RaceContext.race.num_nodes, serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
+    return render_template('event.html', num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
-    return render_template('results.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+    return render_template('results.html')
 
 @APP.route('/run')
 @requires_auth
@@ -459,7 +471,7 @@ def render_run():
                 'index': idx
             })
 
-    return render_template('run.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('run.html',
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
         vrx_enabled=RaceContext.vrx_manager.isEnabled(),
         num_nodes=RaceContext.race.num_nodes,
@@ -478,7 +490,7 @@ def render_current():
                 'index': idx
             })
 
-    return render_template('current.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('current.html',
         num_nodes=RaceContext.race.num_nodes,
         nodes=nodes,
         cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
@@ -487,21 +499,21 @@ def render_current():
 @requires_auth
 def render_marshal():
     '''Route to race management page.'''
-    return render_template('marshal.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('marshal.html',
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/format')
 @requires_auth
 def render_format():
     '''Route to settings page.'''
-    return render_template('format.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
-        num_nodes=RaceContext.race.num_nodes, Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+    return render_template('format.html',
+        num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/settings')
 @requires_auth
 def render_settings():
     '''Route to settings page.'''
-    return render_template('settings.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('settings.html',
                            led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
                            led_events_enabled=RaceContext.led_manager.isEnabled(),
                            vrx_enabled=RaceContext.vrx_manager.isEnabled(),
@@ -509,8 +521,7 @@ def render_settings():
                            server_messages=get_ui_server_messages_str(),
                            cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
                            node_fw_updatable=(RaceContext.interface.get_fwupd_serial_name()!=None),
-                           is_raspberry_pi=RHUtils.is_sys_raspberry_pi(),
-                           Debug=RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'))
+                           is_raspberry_pi=RHUtils.is_sys_raspberry_pi())
 
 @APP.route('/advanced-settings')
 @requires_auth
@@ -526,34 +537,34 @@ def render_advanced_settings():
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
-    return render_template('streams.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('streams.html',
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/stream/results')
 def render_stream_results():
     '''Route to current race leaderboard stream.'''
-    return render_template('streamresults.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('streamresults.html',
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/stream/node/<int:node_id>')
 def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
     use_inactive_nodes = 'true' if request.args.get('use_inactive_nodes') else 'false'
-    return render_template('streamnode.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('streamnode.html',
         node_id=node_id-1, use_inactive_nodes=use_inactive_nodes
     )
 
 @APP.route('/stream/class/<int:class_id>')
 def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
-    return render_template('streamclass.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('streamclass.html',
         class_id=class_id
     )
 
 @APP.route('/stream/heat/<int:heat_id>')
 def render_stream_heat(heat_id):
     '''Route to heat display for streaming.'''
-    return render_template('streamheat.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('streamheat.html',
         num_nodes=RaceContext.race.num_nodes,
         heat_id=heat_id
     )
@@ -563,27 +574,33 @@ def render_stream_heat(heat_id):
 def render_scanner():
     '''Route to scanner page.'''
 
-    return render_template('scanner.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('scanner.html',
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/decoder')
 @requires_auth
 def render_decoder():
     '''Route to race management page.'''
-    return render_template('decoder.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('decoder.html',
         num_nodes=RaceContext.race.num_nodes)
 
 @APP.route('/imdtabler')
 def render_imdtabler():
     '''Route to IMDTabler page.'''
-    return render_template('imdtabler.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
+    return render_template('imdtabler.html')
 
 @APP.route('/updatenodes')
 @requires_auth
 def render_updatenodes():
     '''Route to update nodes page.'''
-    return render_template('updatenodes.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__, \
+    return render_template('updatenodes.html',
                            fw_src_str=getDefNodeFwUpdateUrl())
+
+@APP.route('/plugins')
+@requires_auth
+def render_plugin_manager():
+    '''Route to settings page.'''
+    return render_template('plugins.html')
 
 # Debug Routes
 
@@ -591,13 +608,13 @@ def render_updatenodes():
 @requires_auth
 def render_hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
+    return render_template('hardwarelog.html')
 
 @APP.route('/database')
 @requires_auth
 def render_database():
     '''Route to database page.'''
-    return render_template('database.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__,
+    return render_template('database.html',
         pilots=RaceContext.rhdata.get_pilots(),
         heats=RaceContext.rhdata.get_heats(),
         heatnodes=RaceContext.rhdata.get_heatNodes(),
@@ -612,7 +629,7 @@ def render_database():
 @requires_auth
 def render_vrxstatus():
     '''Route to VRx status debug page.'''
-    return render_template('vrxstatus.html', serverInfo=RaceContext.serverstate.template_info_dict, getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item, __=__)
+    return render_template('vrxstatus.html')
 
 # Documentation Viewer
 
@@ -631,12 +648,7 @@ def render_viewDocs():
                     docPath = translated_path
             with io.open(docPath, 'r', encoding="utf-8") as f:
                 doc = f.read()
-            return templating.render_template('viewdocs.html',
-                serverInfo=RaceContext.serverstate.template_info_dict,
-                getOption=RaceContext.rhdata.get_option, getConfig=RaceContext.serverconfig.get_item,
-                __=__,
-                doc=doc
-                )
+            return templating.render_template('viewdocs.html', doc=doc)
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
@@ -920,6 +932,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_race_points_method_list()
         elif load_type == 'plugin_list':
             RaceContext.rhui.emit_plugin_list(nobroadcast=True)
+        elif load_type == 'plugin_repo':
+            RaceContext.rhui.emit_plugin_repo(nobroadcast=True)
         elif load_type == 'cluster_status':
             RaceContext.rhui.emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -2597,6 +2611,41 @@ def set_vrx_node(data):
     else:
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
 
+@SOCKET_IO.on('plugin_install')
+@catchLogExceptionsWrapper
+def on_plugin_install(data):
+    plugin_id = 'unknown'
+    try:
+        if data['method'] == 'domain':
+            plugin_id = data['domain']
+            RaceContext.plugin_manager.download_plugin(data['domain'])
+        elif data['method'] == 'upload':
+            plugin_id = '(uploaded file)'
+            RaceContext.plugin_manager.install_from_upload(data['source_data'])
+        RaceContext.serverstate.set_restart_required()
+        # TODO: update local plugin list & remote status
+        RaceContext.rhui.emit_plugin_repo()
+        RaceContext.rhui.emit_priority_message(__("Plugin installation succeeded. Please restart."))
+        logger.info("Installed plugin {}".format(plugin_id))
+    except Exception as ex:
+        RaceContext.rhui.emit_priority_message(f'{__("Plugin install failed")}: {__(ex)}')
+        logger.info("Failed to install plugin {}".format(plugin_id))
+
+@SOCKET_IO.on('plugin_delete')
+@catchLogExceptionsWrapper
+def on_plugin_delete(data):
+    if 'domain' in data and data['domain']:
+        try:
+            RaceContext.plugin_manager.delete_plugin_dir(data['domain'])
+            RaceContext.serverstate.set_restart_required()
+            # TODO: update local plugin list
+            RaceContext.rhui.emit_priority_message(__("Plugin deletion succeeded. Please restart."))
+            logger.info("Removed plugin {}".format(data['domain']))
+        except Exception as ex:
+            RaceContext.rhui.emit_priority_message(f'{__("Plugin deletion failed")}: {__(ex)}')
+            logger.info("Failed to delete plugin {}".format(data['domain']))
+
+
 #
 # Program Functions
 #
@@ -3387,6 +3436,43 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     logger.info("Plugin '{}' not loaded ({})".format(plugin.name, plugin.load_issue))
 
         RaceContext.serverstate.plugins = plugin_modules
+
+        # Load plugin install manager
+        plugin_dir = Path(DATA_DIR).joinpath("plugins")
+        if not plugin_dir.exists():
+            plugin_dir.mkdir()
+
+        remote_config = {
+            'data_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_DATA_URI'),
+            'categories_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_CATEGORIES_URI')
+        }
+        RaceContext.plugin_manager = PluginInstallationManager(plugin_dir, remote_config)
+
+        try:
+            RaceContext.plugin_manager.load_local_plugin_data()
+        except (FileNotFoundError, TypeError, json.JSONDecodeError):
+            print("Unable to load local plugins")
+            local_loaded = False
+        else:
+            local_loaded = True
+
+        try:
+            RaceContext.plugin_manager.load_remote_plugin_data()
+        except requests.Timeout:
+            print("Unable to load remote plugins")
+            remote_loaded = False
+        else:
+            remote_loaded = True
+
+        if local_loaded and remote_loaded:
+            RaceContext.plugin_manager.apply_update_statuses()
+            if RaceContext.plugin_manager.update_avaliable:
+                set_ui_message(
+                    'plugins',
+                    __("One or more plugins have updates available."),
+                    header='Notice',
+                    subclass='updates-available'
+                )
 
         if (not RHUtils.is_S32_BPill_board()) and RaceContext.serverconfig.get_item('GENERAL', 'FORCE_S32_BPILL_FLAG'):
             RHUtils.set_S32_BPill_boardFlag()

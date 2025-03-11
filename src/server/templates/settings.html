@@ -1176,11 +1176,6 @@
 			socket.emit('reboot_pi');
 		});
 
-		$('button#restart_server').click(function (event) {
-			socket.emit('restart_server');
-			return false;
-		});
-
 		$('button#kill_server').click(function (event) {
 			socket.emit('kill_server');
 		});
@@ -1692,13 +1687,13 @@
 
 		// Plugins
 		socket.on('plugin_list', function (msg) {
-			msg.plugins.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+			// msg.plugins.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 
 			var wrap_el = $('#plugin-list');
 			wrap_el.empty();
 
 			if (msg.plugins.length) {
-				var list_el = $('<ul>');
+				var list_el = $('<ul class="plugin-list">');
 				for (var idx in msg.plugins) {
 					var plugin = msg.plugins[idx];
 					var plug_el = $('<li>');
@@ -1724,7 +1719,11 @@
 					if (plugin.description) {
 						details_el.append('<div class="description">' + plugin.description + '</div>');
 					} else {
-						details_el.append('<div class="description">(' + __('not provided') + ')</div>');
+						details_el.append('<div class="description"><em>(' + __('not provided') + ')</em></div>');
+					}
+
+					if (plugin.documentation_uri) {
+						details_el.append('<div class="documentation"><a href="' + plugin.documentation_uri + '">' + __('documentation') + '</a></div>');
 					}
 
 					if (plugin.info_uri) {
@@ -1745,6 +1744,24 @@
 						status_el.append('<div class="">' + __('Not loaded') + ': ' + __(plugin.load_issue) + '</div>');
 					}
 
+					if (plugin.update_status != null) {
+						var install_btn = $(document.createElement('button'))
+								.addClass('install_plugin')
+								.data('domain', plugin.id)
+								.prop('hidden', true)
+								.text(__('Update'))
+								.appendTo(status_el);
+
+						if (plugin.update_status == 5) {
+							install_btn.prop('hidden', false);
+							install_btn.text(__('Reinstall'))
+						} else if ([3, 4].includes(plugin.update_status)) {
+							install_btn.prop('hidden', false);
+						}
+					}
+
+					status_el.append('<button class="delete-plugin" data-id="' + plugin.id + '">' + __('Delete') + '</button>');
+
 					/*
 					if (plugin.enabled) {
 						status_el.append('<button class="disable">' + __('Disable') + '</button>');
@@ -1763,6 +1780,49 @@
 				var list_el = $('<p>').text(__('No external plugins loaded.'));
 			}
 			wrap_el.append(list_el);
+		});
+
+		$(document).on('click', '.install_plugin', function (event) {
+			var data = {
+				method: 'domain',
+				domain: $(this).data('domain'),
+			};
+			socket.emit('plugin_install', data);
+		});
+
+		$(document).on("click", '.delete-plugin', function (event) {
+			plugin_to_delete = $(this).data('id');
+			$.magnificPopup.open({
+				items: {
+					src: '#plugin-delete-confirm'
+				},
+				type: 'inline'
+			});
+		});
+
+		$(document).on("click", '#delete-plugin', function (event) {
+			$.magnificPopup.close();
+			var data = {
+				domain: plugin_to_delete,
+			};
+			socket.emit('plugin_delete', data);
+		});
+
+		$('#import_plugin_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#upload_plugin').prop('disabled', false);
+			}
+		});
+
+		$(document).on('click', '#upload_plugin', function (event) {
+			$.magnificPopup.close();
+			var data = {
+				method: 'upload',
+				source_data: $('#import_plugin_file').prop('files')[0]
+			};
+			socket.emit('plugin_install', data);
+			$('#import_plugin_file').val("");
+			$('#upload_plugin').prop('disabled', true);
 		});
 
 		// Secondaries
@@ -2826,8 +2886,33 @@
 		<h2>{{ __('Plugins') }}</h2>
 	</div>
 	<div class="panel-content">
+		<div class="control-set">
+			<a href="#plugin-uploader" class="button-like open-mfp-popup">{{ __('Upload') }}</a>
+			<a href="/plugins" class="button-like" disabled>{{ __('Browse Community Plugins (online only)') }}</a>
+		</div>
+
 		<div id="plugin-list">
 			<p>{{ __('Loading...') }}</p>
+		</div>
+
+		<div id="plugin-uploader" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Upload Plugin') }}</h2>
+			<div class="popup-content">
+				<p><label for="import_plugin_file">{{ __('Plugin Zipfile') }} {{ __('Max 50MB') }}</label><br />
+				<input type="file" id="import_plugin_file" /></p>
+
+				<p><button id="upload_plugin" disabled="disabled">{{ __('Import Plugin') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="plugin-delete-confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('There is no undo available for this action. Restart is required.') }}</p>
+				<p><button class="btn-danger" id="delete-plugin">{{ __('Delete') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
 		</div>
 	</div>
 </div>
@@ -2877,15 +2962,6 @@
 			<div class="popup-content">
 				<p>{{ __('Terminate RotorHazard server?') }}</p>
 				<p><button class="btn-danger" id="kill_server">{{ __('Kill Server') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<div id="restart_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>Alert</h2>
-			<div class="popup-content">
-				<p>{{ __('Restart RotorHazard server process?') }}</p>
-				<p><button class="btn-danger" id="restart_server">{{ __('Restart') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>

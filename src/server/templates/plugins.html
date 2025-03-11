@@ -1,0 +1,248 @@
+{% extends "layout.html" %} {% block title %}{{ __('Community Plugins') }}{% endblock %} {% block head %}
+
+<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+
+{% endblock %} {% block content %}
+<script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'plugin_list',
+		'plugin_repo'
+	];
+
+	// Directory meta
+	var plugins_by_category = []
+
+	// set up markdown converter
+	var converter = new showdown.Converter({
+		ghCodeBlocks: true,
+		ghCompatibleHeaderId: true,
+		literalMidWordUnderscores: true,
+		simpleLineBreaks: true,
+		headerLevelStart: 4
+	});
+
+	$(document).ready(function () {
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		socket.on('plugin_repo', function(msg) {
+			rotorhazard.plugins.remote = msg.remote_data;
+			plugins_by_category = []
+			for (var i in msg.remote_categories) {
+				var cat = msg.remote_categories[i];
+				plugins_by_category.push({
+					title: __(cat),
+					plugins: []
+				});
+			}
+			plugins_by_category.push({
+				title: __('Uncategorized'),
+				plugins: []
+			});
+			display_plugin_list();
+		})
+
+		function display_plugin_list() {
+			if (rotorhazard.plugins.remote) {
+				var directory_top_el = $('#plugin-list')
+					.empty();
+
+				for (var i in plugins_by_category) {
+					plugins_by_category[i].plugins = [];
+				}
+
+				for (var i in rotorhazard.plugins.remote) {
+					var plugin = rotorhazard.plugins.remote[i];
+					var categorized = false;
+					for (var ii in plugin.manifest.category) {
+						var cat_item = plugins_by_category.find(obj => {return obj.title == plugin.manifest.category[ii]});
+						if (cat_item) {
+							cat_item.plugins.push(plugin);
+							categorized = true;
+						}
+					}
+
+					if (!categorized) {
+						plugins_by_category[plugins_by_category.length - 1].plugins.push(plugin)
+					}
+				}
+
+				for (var i in plugins_by_category) {
+					var cat = plugins_by_category[i];
+					if (cat.plugins.length) {
+						var panel_el = $(document.createElement('div'))
+							.prop('id', `plugin-category--${i}`)
+							.addClass('panel')
+							.addClass('collapsing')
+							.addClass('active')
+							.appendTo(directory_top_el);
+						var panel_header_el = $(document.createElement('div'))
+							.addClass('panel-header')
+							.appendTo(panel_el);
+						var panel_header_h2_el = $(document.createElement('h2'))
+							.appendTo(panel_header_el);
+						var panel_header_h2_el = $(document.createElement('button'))
+							.addClass('no-style')
+							.text(__(cat.title))
+							.appendTo(panel_header_h2_el);
+						var panel_content_el = $(document.createElement('div'))
+							.addClass('panel-content')
+							.hide()
+							.appendTo(panel_el);
+						var cat_plugin_list_el = $(document.createElement('ul'))
+							.addClass('plugin-list')
+							.appendTo(panel_content_el);
+
+						for (var ii in cat.plugins) {
+							var plugin = cat.plugins[ii];
+
+							var plugin_el = $(document.createElement('li'))
+								.addClass('plugin');
+
+							// Main Info
+							var main_info_el = $(document.createElement('div'))
+								.addClass('main-info')
+								.appendTo(plugin_el);
+
+							$(document.createElement('h3'))
+								.text(plugin.manifest.name)
+								.appendTo(main_info_el);
+
+							if (plugin.manifest.author) {
+								var author_el = $(document.createElement('div'))
+									.addClass('author')
+									.appendTo(main_info_el);
+								if (plugin.manifest.author_uri) {
+									$(document.createElement('a'))
+										.prop('href', plugin.manifest.author_uri)
+										.text(plugin.manifest.author)
+										.appendTo(author_el);
+								} else {
+									author_el.text(plugin.manifest.author);
+								}
+							}
+
+							if(plugin.manifest.version) {
+								$(document.createElement('div'))
+									.addClass('version')
+									.text(plugin.manifest.version)
+									.appendTo(main_info_el);
+							}
+
+							// Details
+							var details_el = $(document.createElement('div'))
+								.addClass('details')
+								.appendTo(plugin_el);
+
+							var description_el = $(document.createElement('div'))
+								.addClass('description')
+								.appendTo(details_el);
+							if (plugin.manifest.description) {
+								var md_output = converter.makeHtml(plugin.manifest.description);
+								description_el.html(md_output);
+							} else {
+								description_el.text(__('not provided'));
+							}
+
+							if (plugin.repository) {
+								var link_el = $(document.createElement('div'))
+									.addClass('repository')
+									.appendTo(details_el);
+								$(document.createElement('a'))
+									.prop('href', `https://github.com/${plugin.repository}`)
+									.text( __('plugin repository') )
+									.appendTo(link_el);
+							}
+
+							if (plugin.manifest.documentation_uri) {
+								var link_el = $(document.createElement('div'))
+									.addClass('documentation')
+									.appendTo(details_el);
+								$(document.createElement('a'))
+									.prop('href', plugin.manifest.documentation_uri)
+									.text(__('documentation'))
+									.appendTo(link_el);
+							}
+
+							if (plugin.manifest.info_uri) {
+								var link_el = $(document.createElement('div'))
+									.addClass('website')
+									.appendTo(details_el);
+								$(document.createElement('a'))
+									.prop('href', plugin.manifest.info_uri)
+									.text(__('website'))
+									.appendTo(link_el);
+							}
+
+							if (plugin.manifest.license_uri) {
+								var link_el = $(document.createElement('div'))
+									.addClass('license')
+									.appendTo(details_el);
+								$(document.createElement('a'))
+									.prop('href', plugin.manifest.license_uri)
+									.text(__('license'))
+									.appendTo(link_el);
+							} else if (plugin.manifest.license) {
+								$(document.createElement('div'))
+									.addClass('license')
+									.text(plugin.manifest.license)
+									.appendTo(details_el);
+							}
+
+							// Status/Actions
+							var status_el = $(document.createElement('div'))
+								.addClass('status')
+								.appendTo(plugin_el);
+
+							var install_btn = $(document.createElement('button'))
+									.addClass('install_plugin')
+									.data('domain', plugin.domain)
+									.text(__('Install'))
+									.appendTo(status_el);
+
+							if (plugin.update_status == 5) {
+								install_btn.text(__('Reinstall'))
+							} else if ([3, 4].includes(plugin.update_status)) {
+								install_btn.text(__('Update'))
+							}
+
+							cat_plugin_list_el.append(plugin_el);
+						}
+
+					}
+				}
+			}
+		}
+
+		$(document).on('click', '.install_plugin', function (event) {
+			var data = {
+				method: 'domain',
+				domain: $(this).data('domain'),
+			};
+			socket.emit('plugin_install', data);
+		});
+
+	});
+</script>
+
+<main class="page-plugins">
+
+<div class="panel">
+	<div class="panel-content">
+		<h1>Community Plugins</h1>
+		<p>Extend the functionality of your timer by installing plugins. All plugins listed in the directory are free to use and open-source.</p>
+		<p>Learn about <a href="#">contributing to the directory &#10132;&#xFE0E;</a>.</p>
+	</div>
+</div>
+
+<div id="plugin-list">
+	<p>{{ __("Loading...") }}</p>
+</div>
+
+</main>
+{% endblock %}
