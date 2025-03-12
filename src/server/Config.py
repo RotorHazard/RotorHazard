@@ -184,7 +184,6 @@ class Config:
                 'SECONDARIES',
                 'CORS_ALLOWED_HOSTS',
                 'FORCE_S32_BPILL_FLAG',
-                'DEF_NODE_FWUPDATE_URL',
                 'SHUTDOWN_BUTTON_GPIOPIN',
                 'SHUTDOWN_BUTTON_DELAYMS',
                 'DB_AUTOBKP_NUM_KEEP',
