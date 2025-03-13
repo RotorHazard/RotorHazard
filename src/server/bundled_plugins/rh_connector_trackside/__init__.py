@@ -87,20 +87,17 @@ class TracksideConnector():
 
             if race_number > 0:
                 if bracket:
-                    self._rhapi.db.heat_alter(heat.id, name="{} {} {} {} {} {} {} {} {} {}".format(
+                    # Example output: "Heat 1 · Bracket · Round 2 · Race 3"
+                    self._rhapi.db.heat_alter(heat.id, name="{} {} · {} · {} {} · {} {}".format(
                         self._rhapi.__("Heat"), heat.id,
-                        self._rhapi.__("·"), 
                         self._rhapi.__("Bracket"),
-                        self._rhapi.__("·"),
                         self._rhapi.__("Round"), round_number,
-                        self._rhapi.__("·"),
                         self._rhapi.__("Race"), race_number))
                 else:
-                    self._rhapi.db.heat_alter(heat.id, name="{} {} {} {} {} {} {} {}".format(
+                    # Example output: "Heat 1 · Round 2 · Race 3" 
+                    self._rhapi.db.heat_alter(heat.id, name="{} {} · {} {} · {} {}".format(
                         self._rhapi.__("Heat"), heat.id,
-                        self._rhapi.__("·"),
                         self._rhapi.__("Round"), round_number,
-                        self._rhapi.__("·"), 
                         self._rhapi.__("Race"), race_number))
 
             rh_pilots = self._rhapi.db.pilots
