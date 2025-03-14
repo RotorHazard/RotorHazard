@@ -308,6 +308,16 @@
 				</div>
 				<input type="number" id="set-sensor-data-rate" class="set-config" data-section="GENERAL" data-key="LOG_SENSORS_DATA_RATE" value="{{ getConfig('GENERAL', 'LOG_SENSORS_DATA_RATE') }}" min="1">
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-event-event-verbosity">{{ __('Event Log Verbosity (debug only)') }}</label>
+				</div>
+				<select id="set-event-event-verbosity" class="set-config" data-section="LOGGING" data-key="EVENTS" data-type="int">
+					<option value="0" {{'selected' if getConfig('LOGGING', 'EVENTS')==0}}>{{ __('None') }}</option>
+					<option value="1" {{'selected' if getConfig('LOGGING', 'EVENTS')==1}}>{{ __('On/Off') }}</option>
+					<option value="2" {{'selected' if getConfig('LOGGING', 'EVENTS')==2}}>{{ __('All') }}</option>
+				</select>
+			</li>
 		</ol>
 	</div>
 </div>
