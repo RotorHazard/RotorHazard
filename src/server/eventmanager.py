@@ -21,7 +21,8 @@ class EventManager:
         self._racecontext = racecontext
 
     def on(self, event, name, handler_fn, default_args=None, priority=200, unique=False):
-        logger.debug("eventmanager.on, event={}, name='{}', priority={}, unique={}, default_args: {}".\
+        if self._racecontext.serverconfig.get_item('LOGGING', 'EVENTS') >= 1:
+            logger.debug("eventmanager.on, event={}, name='{}', priority={}, unique={}, default_args: {}".\
                      format(event, name, priority, unique, str(default_args)[:80]))
         if default_args == None:
             default_args = {}
@@ -41,7 +42,8 @@ class EventManager:
         return True
 
     def off(self, event, name):
-        logger.debug("eventmanager.off, event={}, name='{}'".format(event, name))
+        if self._racecontext.serverconfig.get_item('LOGGING', 'EVENTS') >= 1:
+            logger.debug("eventmanager.off, event={}, name='{}'".format(event, name))
         if event not in self.events:
             return True
 
@@ -55,8 +57,9 @@ class EventManager:
         return True
 
     def trigger(self, event, evt_args=None):
-#        if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
-#            logger.debug("eventmanager.trigger, event={}, evt_args: {}".format(event, str(evt_args)[:80]))
+        if logger.getEffectiveLevel() <= logging.DEBUG and \
+            self._racecontext.serverconfig.get_item('LOGGING', 'EVENTS') >= 2:  # if DEBUG msgs actually being logged
+            logger.debug("eventmanager.trigger, event={}, evt_args: {}".format(event, str(evt_args)[:80]))
         evt_list = []
         if event in self.eventOrder:
             for name in self.eventOrder[event]:
@@ -83,9 +86,10 @@ class EventManager:
                 else:
                     threadName = name
 
-#                if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
-#                    logger.debug("eventmanager.trigger calling handler for event={}, name='{}', priority={}".\
-#                                 format(event, name, handler['priority']))
+                if logger.getEffectiveLevel() <= logging.DEBUG and \
+                    self._racecontext.serverconfig.get_item('LOGGING', 'EVENTS') >= 2:  # if DEBUG msgs actually being logged
+                    logger.debug("eventmanager.trigger calling handler for event={}, name='{}', priority={}".\
+                                 format(event, name, handler['priority']))
 
                 if handler['priority'] < 100:
                     self.run_handler(handler['handler_fn'], args)

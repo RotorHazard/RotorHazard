@@ -126,6 +126,7 @@ class Config:
         self.config['LOGGING']['FILELOG_LEVEL'] = "INFO"
         self.config['LOGGING']['FILELOG_NUM_KEEP'] = 30
         self.config['LOGGING']['CONSOLE_STREAM'] = "stdout"
+        self.config['LOGGING']['EVENTS'] = 1
 
         # plugin defaults
         self.config['PLUGINS']['REMOTE_DATA_URI'] = None
