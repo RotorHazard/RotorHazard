@@ -56,6 +56,8 @@ class UIField():
     order: int = 0 # not implemented
     private: bool = False
     html_attributes: dict = None
+    persistent_section: str = None
+    persistent_restart: bool = False
 
     def frontend_repr(self):
         return {
@@ -67,7 +69,8 @@ class UIField():
             'placeholder': self.placeholder,
             'options': [asdict(option) for option in self.options] if self.options else None,
             'order': self.order,
-            'html_attributes': self.html_attributes
+            'html_attributes': self.html_attributes,
+            'section': self.persistent_section
         }
 
 @dataclass
@@ -220,6 +223,8 @@ class RHUI():
                 break
         else:
             self._general_settings.append(GeneralSetting(field.name, field, panel, order))
+        if field.persistent_restart:
+            self._racecontext.serverconfig.flag_restart_key(field.persistent_section, field.name)
         return self._general_settings
 
     @property

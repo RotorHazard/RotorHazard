@@ -282,6 +282,12 @@ class Config:
         if self.InitResultStr:
             logger.log(self.InitResultLogLevel, self.InitResultStr)
 
+    def flag_restart_key(self, section, key):
+        if section not in self._restart_required_keys:
+            self._restart_required_keys[section] = []
+        if key not in self._restart_required_keys[section]:
+            self._restart_required_keys[section].append(key)
+
     def check_restart_flag(self, section, key=None):
         if key:
             try:

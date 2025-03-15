@@ -202,9 +202,9 @@
 
 						settings.wrapperEl = 'li';
 						settings.fieldClass = 'set_ui_option';
-						settings.id = 'genericOption_' + settings.name;
 						settings.data = {
 							field: settings.name,
+							section: settings.section
 						}
 
 						var field = rhui.buildField(settings);
