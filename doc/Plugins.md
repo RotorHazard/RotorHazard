@@ -460,7 +460,9 @@ The `import_fn` receives as arguments:
 
 ### UI Fields
 
-An `RHUI.UIField` object defines a frontend user interface for collecting data. Data is stored in the event by default, or in persistent configuration if the `persistent_section` key is used. Fields are defined in the following format:
+An `RHUI.UIField` object defines a frontend user interface for collecting data. Data is stored in the event by default, or in persistent configuration if the `persistent_section` key is used. If persistent configuration is used, custom sections should be defined using `RHAPI.config.register_section`.
+
+Fields are defined in the following format:
 
 - `name` (string): internal identifier for this parameter
 - `label` (string): text that appears in the RotorHazard frontend interface
