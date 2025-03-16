@@ -29,7 +29,6 @@ class Config:
             'LOGGING': {},
             'SENSORS': {},
             'PLUGINS': {},
-            'VRX_CONTROL': {}  # Deprecated
         }
 
         self.config = copy.copy(self.config_sections)
@@ -62,11 +61,6 @@ class Config:
             "#00ffdd",  # Teal
             "#aaaaaa",  # White
         ]
-
-        # Legacy Video Receiver Configuration (DEPRECATED)
-        self.config['VRX_CONTROL']['HOST'] = 'localhost'  # MQTT broker IP Address
-        self.config['VRX_CONTROL']['ENABLED'] = False
-        self.config['VRX_CONTROL']['OSD_LAP_HEADER'] = 'L'
 
         # hardware default configurations
         self.config['HARDWARE']['I2C_BUS'] = 1
