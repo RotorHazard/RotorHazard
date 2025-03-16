@@ -72,13 +72,31 @@ class TracksideConnector():
             self._rhapi.race.save()
 
         if arg.get('p'):
-            heat = self._rhapi.db.heat_add()
-            self._rhapi.db.heat_alter(heat.id, name="TrackSide Heat {}".format(heat.id))
-            slots = self._rhapi.db.slots_by_heat(heat.id)
-            slot_list = []
-
             ts_pilot_callsigns = arg.get('p')
             ts_pilot_ids = arg.get('p_id')
+            race_number = arg.get('race_number')
+            round_number = arg.get('round_number')
+            bracket = arg.get('bracket')
+
+            heat = self._rhapi.db.heat_add()
+            if race_number and race_number > 0:
+                if bracket:
+                    heat_name = "{} {}: {} {} · {} {} · {} {}".format(
+                        self._rhapi.__("Heat"), heat.id,
+                        self._rhapi.__("Bracket"), bracket,
+                        self._rhapi.__("Round"), round_number,
+                        self._rhapi.__("Race"), race_number)
+                else:
+                    heat_name = "{} {}: {} {} · {} {}".format(
+                        self._rhapi.__("Heat"), heat.id,
+                        self._rhapi.__("Round"), round_number,
+                        self._rhapi.__("Race"), race_number)
+            else:
+                heat_name = "TrackSide {} {}".format(self._rhapi.__("Heat"), heat.id)
+
+            self._rhapi.db.heat_alter(heat.id, name=heat_name)
+            slots = self._rhapi.db.slots_by_heat(heat.id)
+            slot_list = []
             rh_pilots = self._rhapi.db.pilots
             added_pilot = False
             for idx, ts_pilot_callsign in enumerate(ts_pilot_callsigns):
