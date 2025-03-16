@@ -6,6 +6,7 @@ from time import monotonic
 from RHRace import RaceStatus
 from eventmanager import Evt
 from RHUI import UIField, UIFieldType, UIFieldSelectOption
+from RHUtils import HEAT_ID_NONE
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class TracksideConnector():
 
         self._rhapi.ui.socket_listen('ts_race_stage', self.race_stage)
         self._rhapi.ui.socket_listen('ts_race_stop', self.race_stop)
+        self._rhapi.ui.socket_listen('ts_race_abort', self.race_abort)
 
         self._rhapi.fields.register_race_attribute(UIField('trackside_race_ID', "FPVTrackSide Race ID", UIFieldType.TEXT, private=True))
         self._rhapi.fields.register_pilot_attribute(UIField('trackside_pilot_ID', "Trackside Pilot ID", UIFieldType.TEXT, private=True))
@@ -140,6 +142,14 @@ class TracksideConnector():
 
     def race_stop(self, arg=None):
         self._rhapi.race.stop()
+
+    def race_abort(self, arg=None):
+        self._rhapi.race.clear()
+        current_heat = self._rhapi.race.heat
+        all_heats = self._rhapi.db.heats
+        self._rhapi.race.heat = HEAT_ID_NONE
+        self._rhapi.db.heat_delete(current_heat)
+        self._rhapi.ui.broadcast_heats()
 
     def laps_save(self, args):
         race_id = args.get('race_id')
