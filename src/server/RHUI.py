@@ -56,6 +56,8 @@ class UIField():
     order: int = 0 # not implemented
     private: bool = False
     html_attributes: dict = None
+    persistent_section: str = None
+    persistent_restart: bool = False
 
     def frontend_repr(self):
         return {
@@ -67,7 +69,8 @@ class UIField():
             'placeholder': self.placeholder,
             'options': [asdict(option) for option in self.options] if self.options else None,
             'order': self.order,
-            'html_attributes': self.html_attributes
+            'html_attributes': self.html_attributes,
+            'section': self.persistent_section
         }
 
 @dataclass
@@ -213,13 +216,29 @@ class RHUI():
 
     # General Settings
     def register_general_setting(self, field:UIField, panel=None, order=0):
+        if field.name.startswith('__'):
+            logger.error(f"UIField '{field.name}' ignored; may not start with '__'")
+            return self._general_settings
+
+        if field.persistent_section:
+            field_internal_id = f'__{field.persistent_section}_{field.name}'
+            if not self._racecontext.serverconfig.item_exists(field.persistent_section, field.name):
+                self._racecontext.serverconfig.set_item(field.persistent_section, field.name, field.value)
+            if field.persistent_restart:
+                self._racecontext.serverconfig.flag_restart_key(field.persistent_section, field.name)
+        else:
+            field_internal_id = field.name
+            if not self._racecontext.rhdata.option_exists(field.name):
+                self._racecontext.rhdata.set_option(field.name, field.value)
+
         for idx, setting in enumerate(self._general_settings):
-            if setting.name == field.name:
-                self._general_settings[idx] = GeneralSetting(field.name, field, panel, order)
-                logger.debug(F'Redefining setting "{field.name}"')
+            if setting.name == field_internal_id:
+                self._general_settings[idx] = GeneralSetting(field_internal_id, field, panel, order)
+                logger.debug(F'Redefining setting "{field_internal_id}"')
                 break
         else:
-            self._general_settings.append(GeneralSetting(field.name, field, panel, order))
+            self._general_settings.append(GeneralSetting(field_internal_id, field, panel, order))
+
         return self._general_settings
 
     @property

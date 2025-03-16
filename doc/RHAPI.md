@@ -236,14 +236,14 @@ These methods are accessed via `RHAPI.fields`
 
 
 ### Options
-Options are simple storage variables which persist to the database and can be presented  to users through frontend UI. Each option takes a single value.
+Options are simple storage variables which persist to the database and can be presented to users through frontend UI. Each option takes a single value.
 
 #### fields.options
 _Read only_
-Provide a list of options registered by plugins. Does not include built-in options.
+Provide a list of options registered by plugins. Does not include built-in options or fields registered as persistent configuration.
 
 #### fields.register_option(field, panel=None, order=0)
-Register an option and optioanlly assign it to be desiplayed on a UI panel.
+Register an option and optionally assign it to be displayed on a UI panel.
 
 - `field` (UIField): See [UI Fields](Plugins.md#ui-fields)
 - `panel` _optional_ (string): `name` of panel previously registered with `ui.register_panel`
