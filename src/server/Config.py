@@ -29,7 +29,6 @@ class Config:
             'LOGGING': {},
             'SENSORS': {},
             'PLUGINS': {},
-            'VRX_CONTROL': {}  # Deprecated
         }
 
         self.config = copy.copy(self.config_sections)
@@ -62,11 +61,6 @@ class Config:
             "#00ffdd",  # Teal
             "#aaaaaa",  # White
         ]
-
-        # Legacy Video Receiver Configuration (DEPRECATED)
-        self.config['VRX_CONTROL']['HOST'] = 'localhost'  # MQTT broker IP Address
-        self.config['VRX_CONTROL']['ENABLED'] = False
-        self.config['VRX_CONTROL']['OSD_LAP_HEADER'] = 'L'
 
         # hardware default configurations
         self.config['HARDWARE']['I2C_BUS'] = 1
@@ -288,6 +282,12 @@ class Config:
         if self.InitResultStr:
             logger.log(self.InitResultLogLevel, self.InitResultStr)
 
+    def flag_restart_key(self, section, key):
+        if section not in self._restart_required_keys:
+            self._restart_required_keys[section] = []
+        if key not in self._restart_required_keys[section]:
+            self._restart_required_keys[section].append(key)
+
     def check_restart_flag(self, section, key=None):
         if key:
             try:
@@ -298,6 +298,9 @@ class Config:
         else:
             if section in self._restart_required_keys:
                 self._racecontext.serverstate.set_restart_required()
+
+    def item_exists(self, section, key):
+        return True if section in self.config and key in self.config[section] else False
 
     def get_item(self, section, key):
         try:

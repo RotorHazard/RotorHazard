@@ -3409,6 +3409,9 @@ class RHData():
     def get_options(self):
         return Database.GlobalSettings.query.all()
 
+    def option_exists(self, option):
+        return True if option in self._OptionsCache else False
+
     def get_option(self, option, default_value=None):
         try:
             val = self._OptionsCache[option]

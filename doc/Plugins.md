@@ -460,9 +460,11 @@ The `import_fn` receives as arguments:
 
 ### UI Fields
 
-An `RHUI.UIField` object defines a frontend user interface for collecting data. It is defined in the following format:
+An `RHUI.UIField` object defines a frontend user interface for collecting data. Data is stored in the event by default, or in persistent configuration if the `persistent_section` key is used. If persistent configuration is used, custom sections should be defined using `RHAPI.config.register_section`.
 
-- `name` (string): internal identifier for this parameter
+Fields are defined in the following format:
+
+- `name` (string): internal identifier for this parameter; may not begin with `__`
 - `label` (string): text that appears in the RotorHazard frontend interface
 - `field_type` (UIFieldType), one of:
     - `UIFieldType.TEXT`
@@ -482,6 +484,8 @@ An `RHUI.UIField` object defines a frontend user interface for collecting data. 
 - `desc` _optional_ (string): additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
 - `private` _optional_ (boolean): Prevent automatically generated UI
 - `html_attributes` _optional_ (dict): attribute values passed to HTML to control browser-based validation, such as `min`, `max`, `step`, `minlength`, `maxlength`, `pattern`; only valid values for each field type will be added
+- `persistent_section`: If defined, this field will save to the server's persistent configuration using the provided input for section; if omitted or `None`, data will save to the event
+- `persistent_section`: If set to `True` and `persistent_section` is used, the server will prompt the user to restart the server when this field is altered
 
 If `field_type` is `TEXT`
 

@@ -201,7 +201,7 @@
 
 							var install_btn = $(document.createElement('button'))
 									.addClass('install_plugin')
-									.data('domain', plugin.domain)
+									.data('domain', plugin.manifest.domain)
 									.text(__('Install'))
 									.appendTo(status_el);
 

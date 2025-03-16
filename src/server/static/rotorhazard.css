@@ -33,6 +33,19 @@
 			 url('fonts/Barlow-BoldItalic.woff2') format('woff2'),
 			 url('fonts/Barlow-BoldItalic.woff') format('woff');
 }
+/*
+z-index:
+100000	screen-reader-text
+600		socket-warning
+500		Dropdowns
+400		restart-warning
+300		banner-msg
+200		message-notification
+150		nav-main
+100		actions
+10		channel-block
+1		rssi-graph button
+*/
 
 [hidden] {
 	display: none !important;
@@ -568,7 +581,7 @@ ol.form li+li {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	z-index: 900;
+	z-index: 300;
 	display: none;
 	border-bottom-color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
 	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
@@ -675,7 +688,7 @@ nav>ul>li>ul {
 	opacity: 0;
 	transition: 0.1s linear opacity;
 	min-width: 18em;
-	z-index: 1000;
+	z-index: 500;
 	background: #000;
 	color: #fff;
 }
@@ -721,7 +734,7 @@ nav>ul>li>ul li {
 	#nav-main {
 		display: none;
 		position: absolute;
-		z-index: 100;
+		z-index: 150;
 		left: 0;
 		right: 0;
 		background: #000;
@@ -793,7 +806,7 @@ main {
 	position: fixed;
 	top: 0;
 	width: 100%;
-	z-index: 10000;
+	z-index: 600;
 }
 
 /* Reset warning */
@@ -811,7 +824,7 @@ main {
 	position: sticky;
 	top: 0;
 	width: 100%;
-	z-index: 9000;
+	z-index: 400;
 }
 
 /* Home */
@@ -1665,7 +1678,7 @@ ol.heat-edit-list>li {
 	top: 0.25rem;
 	right: 0.25em;
 	font-size: 0.9rem;
-	z-index: 90;
+	z-index: 100;
 }
 
 .actions button {
@@ -2820,7 +2833,7 @@ ul.plugin-list>li {
 	bottom: 0.5rem;
 	left: 0.5rem;
 	width: auto;
-	z-index: 950;
+	z-index: 200;
 	padding: 0.5rem;
 	min-width: 2em;
 	text-align: center;
