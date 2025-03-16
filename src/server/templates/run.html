@@ -1611,7 +1611,7 @@
 
 				var format = rotorhazard.event.race_formats.find(obj => {return obj.id == rotorhazard.event.race_status.race_format_id})
 
-				if (rotorhazard.event.race_status.race_heat_id && format.team_racing_mode == RACING_MODE_COOP) {
+				if (rotorhazard.event.race_status.race_heat_id && format?.team_racing_mode == RACING_MODE_COOP) {
 					if (format.win_condition == 2) {
 						// if First to X Laps
 						$('#coop-time-control').prop('hidden', false);
