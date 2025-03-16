@@ -247,8 +247,8 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 def log_error_callback_fn(*args):
     if not is_ui_message_set("errors-logged"):
         set_ui_message("errors-logged",\
-                   f'{__("Error messages have been logged.")} <a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)',\
-                   header="Notice", subclass="errors-logged")
+                   __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                   header=__("Notice"), subclass="errors-logged")
         if Auth_succeeded_flag:
             SOCKET_IO.emit('update_server_messages', get_ui_server_messages_str())
     if check_log_error_alert():  # show alert popup if not previously shown
@@ -3115,7 +3115,7 @@ def _do_init_rh_interface():
                 set_ui_message(
                     'mock',
                     __("Server is using simulated (mock) nodes"),
-                    header='Notice',
+                    header=__('Notice'),
                     subclass='in-use'
                     )
             else:
@@ -3196,7 +3196,7 @@ def reportServerInfo():
                 msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
                           " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                           __("its processor.")
-            set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
+            set_ui_message('node-old', msgStr, header=__('Notice'), subclass='api-low')
         elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
             logger.warning('** WARNING: Node firmware is newer than this server version supports **')
             set_ui_message('node-newer',
@@ -3483,7 +3483,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 set_ui_message(
                     'plugins',
                     __("One or more plugins have updates available."),
-                    header='Notice',
+                    header=__('Notice'),
                     subclass='updates-available'
                 )
 
@@ -3593,7 +3593,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     set_ui_message(
                         'secondary',
                         __("Mirror secondaries must be last; ignoring part of secondary configuration"),
-                        header='Notice',
+                        header=__('Notice'),
                         subclass='mirror'
                     )
                     break

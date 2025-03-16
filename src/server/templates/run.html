@@ -1753,13 +1753,20 @@
 
 		socket.on('environmental_data', function (msg) {
 			var env_table_html = '';
-			for (i=0; i<msg.length; i++) {
+			for (var i=0; i<msg.length; i++) {
 				var sensor = msg[i];
 				var name = Object.keys(sensor)[0];
 				var data = sensor[name];
 				var values = '';
 				var br = '';
-				for (var reading in data) {
+
+				//The display order of the readings
+				var displayOrder = ['voltage', 'current', 'power', 'capacity', 'temperature', 'humidity', 'pressure'];
+				var readingsToDisplay = displayOrder.filter(function (reading) {
+					return data.hasOwnProperty(reading);
+				});
+
+				readingsToDisplay.forEach(function (reading) {
 					var value = data[reading].value;
 					var units = data[reading].units;
 					values += br;
@@ -1769,21 +1776,22 @@
 						values += __('Current: ') + Number(value).toFixed(0)+units;
 					} else if(reading == 'power') {
 						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'capacity') {
+						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else if(reading == 'temperature') {
 						values += __('Temperature: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'humidity') {
 						values += __('Humidity: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'pressure') {
 						values += __('Pressure: ') + Number(value).toFixed(1)+units;
-					} else if(reading == 'capacity') {
-						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else {
 						values += __('Unknown: ') + value;
 					}
 					br = '<br/>';
-				}
+				});
+
 				env_table_html += '<tr>';
-				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + __(name) + '</td>';
 				env_table_html += '<td>' + values + '</td>';
 				env_table_html += '</tr>';
 			}
@@ -2601,7 +2609,7 @@
 	</div>
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
-		<input type="text" id="message_body" maxlength="256" placeholder="Message"></p>
+		<input type="text" id="message_body" maxlength="256" placeholder="{{ __('Message') }}"></p>
 		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>

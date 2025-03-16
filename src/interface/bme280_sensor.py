@@ -16,15 +16,15 @@ class BME280Sensor(I2CSensor):
     def readData(self):
         self.data = bme280.sample(self.i2c_helper.i2c, self.address)
 
-    @Reading(units='°C')
+    @Reading(units=' °C')
     def temperature(self):
         return self.data.temperature
 
-    @Reading(units='hPa')
+    @Reading(units=' hPa')
     def pressure(self):
         return self.data.pressure
 
-    @Reading(units='%rH')
+    @Reading(units=' %rH')
     def humidity(self):
         return self.data.humidity
 
