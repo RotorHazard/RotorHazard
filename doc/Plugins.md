@@ -464,7 +464,7 @@ An `RHUI.UIField` object defines a frontend user interface for collecting data. 
 
 Fields are defined in the following format:
 
-- `name` (string): internal identifier for this parameter
+- `name` (string): internal identifier for this parameter; may not begin with `__`
 - `label` (string): text that appears in the RotorHazard frontend interface
 - `field_type` (UIFieldType), one of:
     - `UIFieldType.TEXT`

@@ -247,7 +247,7 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 def log_error_callback_fn(*args):
     if not is_ui_message_set("errors-logged"):
         set_ui_message("errors-logged",\
-                   f'{__("Error messages have been logged.")} <a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)',\
+                   f'{__("Error messages have been logged.")} (<a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)',\
                    header="Notice", subclass="errors-logged")
         if Auth_succeeded_flag:
             SOCKET_IO.emit('update_server_messages', get_ui_server_messages_str())

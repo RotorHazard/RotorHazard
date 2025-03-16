@@ -299,6 +299,9 @@ class Config:
             if section in self._restart_required_keys:
                 self._racecontext.serverstate.set_restart_required()
 
+    def item_exists(self, section, key):
+        return True if section in self.config and key in self.config[section] else False
+
     def get_item(self, section, key):
         try:
             return self.config[section][key]
