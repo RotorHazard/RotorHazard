@@ -1136,11 +1136,29 @@ class RaceAPI():
 
     @property
     def laps_raw(self):
-        return dataclasses.asdict(self._racecontext.race.node_laps)
+        payload = []
+        for node_idx, laps in self._racecontext.race.node_laps.items():
+            if len(laps):
+                laps_list = []
+                for lap in laps:
+                    laps_list.append(dataclasses.asdict(lap))
+                payload.append(laps_list)
+            else:
+                payload.append([])
+        return payload
 
     @property
     def laps_active_raw(self, filter_late_laps=False):
-        return self._racecontext.race.get_active_laps(filter_late_laps)
+        payload = []
+        for node_idx, laps in self._racecontext.race.get_active_laps(filter_late_laps).items():
+            if len(laps):
+                laps_list = []
+                for lap in laps:
+                    laps_list.append(dataclasses.asdict(lap))
+                payload.append(laps_list)
+            else:
+                payload.append([])
+        return payload
 
     def lap_add(self, seat_index, timestamp):
         seat = self._racecontext.interface.nodes[seat_index]
