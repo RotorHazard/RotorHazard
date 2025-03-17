@@ -23,15 +23,15 @@ class INA219Sensor(I2CSensor):
         self._power = self.device.power()
         self.device.sleep()
 
-    @Reading(units='V')
+    @Reading(units=' V')
     def voltage(self):
         return self._voltage
 
-    @Reading(units='mA')
+    @Reading(units=' mA')
     def current(self):
         return self._current
 
-    @Reading(units='mW')
+    @Reading(units=' mW')
     def power(self):
         return self._power
 

@@ -15,7 +15,7 @@ class TemperatureSensor(Sensor):
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
             self._temp = float(f.read())/1000.0
 
-    @Reading(units='°C')
+    @Reading(units=' °C')
     def temperature(self):
         return self._temp
 
@@ -34,19 +34,19 @@ class BatterySensor(Sensor):
         with open('/sys/class/power_supply/battery/capacity', 'r') as f:
             self._capacity = float(f.read())
 
-    @Reading(units='°C')
+    @Reading(units=' °C')
     def temperature(self):
         return self._temp
 
-    @Reading(units='A')
+    @Reading(units=' A')
     def current(self):
         return self._current
 
-    @Reading(units='V')
+    @Reading(units=' V')
     def voltage(self):
         return self._voltage
 
-    @Reading(units='Ah')
+    @Reading(units=' Ah')
     def capacity(self):
         return self._capacity
 
