@@ -319,10 +319,13 @@ class RHUI():
     # General Emits
     def emit_frontend_load(self, **params):
         '''Emits reload command.'''
+        payload = {
+            'server_instance_token': self._racecontext.serverstate.server_instance_token
+        }
         if ('nobroadcast' in params):
-            emit('load_all')
+            emit('load_all', payload)
         else:
-            self._socket.emit('load_all')
+            self._socket.emit('load_all', payload)
 
     def emit_ui(self, page, **params):
         '''Emits UI objects'''
