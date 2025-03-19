@@ -228,6 +228,8 @@ class ServerState:
     _mtonic_to_epoch_millis_offset = None
     _program_start_epoch_formatted = None
     _program_start_time_formatted = None
+    # token used for tracking server restart from frontend
+    _server_instance_token = None
 
     @property
     def program_start_epoch_time(self):
@@ -246,6 +248,14 @@ class ServerState:
     @program_start_mtonic.setter
     def program_start_mtonic(self, value):
         self._program_start_mtonic = value
+
+    @property
+    def server_instance_token(self):
+        return self._server_instance_token
+
+    @server_instance_token.setter
+    def server_instance_token(self, value):
+        self._server_instance_token = value
 
     @property
     def mtonic_to_epoch_millis_offset(self):

@@ -172,6 +172,7 @@ from HeatGenerator import HeatGeneratorManager
 RaceContext = RaceContext.RaceContext()
 RHAPI = RHAPI.RHAPI(RaceContext)
 
+RaceContext.serverstate.server_instance_token = random.random()
 RaceContext.serverstate.program_start_epoch_time = _program_start_epoch_time
 RaceContext.serverstate.program_start_mtonic = _program_start_mtonic
 RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.program_start_epoch_time - \
