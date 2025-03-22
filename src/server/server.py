@@ -64,6 +64,7 @@ import signal
 import werkzeug
 
 from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
+from flask.blueprints import Blueprint
 from flask_socketio import SocketIO, emit
 
 PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -639,6 +640,14 @@ def render_plugin_manager():
     '''Route to settings page.'''
     return render_template('plugins.html')
 
+'''User's shared folder.'''
+APP.register_blueprint(Blueprint(
+    'user', __name__,
+    static_url_path='/shared',
+    static_folder=os.path.join(DATA_DIR, 'shared')
+    ))
+
+
 # Debug Routes
 
 @APP.route('/hardwarelog')
@@ -685,7 +694,7 @@ def render_viewDocs():
                     docPath = translated_path
             with io.open(docPath, 'r', encoding="utf-8") as f:
                 doc = f.read()
-            return templating.render_template('viewdocs.html', doc=doc)
+            return render_template('viewdocs.html', doc=doc)
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
