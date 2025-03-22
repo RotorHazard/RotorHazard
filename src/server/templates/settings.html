@@ -2393,6 +2393,10 @@
 				}]
 			});
 		});
+
+		$(document).on('click', '.datadir-handler', function (event) {
+			socket.emit('datadir_handler', {'method': $(this).data('method')});
+		});
 	});
 
 </script>

@@ -210,6 +210,7 @@ RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.
 RaceContext.serverstate.data_dir = DATA_DIR
 RaceContext.serverstate.program_dir = PROGRAM_DIR
 RaceContext.serverstate.implicit_program_dir_flag = implicit_program_dir_flag
+RaceContext.serverstate.do_rhdata_migrate_flag = False
 
 Events = EventManager(RaceContext)
 RaceContext.events = Events
@@ -1894,11 +1895,28 @@ def on_restart_server():
     SERVER_PROCESS_RESTART_FLAG = True
     if RaceContext.cluster:
         RaceContext.cluster.emit('restart_server')
-    RaceContext.rhui.emit_priority_message(__('Server is restarting.'), True, caller='shutdown')
+    if not RaceContext.serverstate.do_rhdata_migrate_flag:
+        RaceContext.rhui.emit_priority_message(__('Server is restarting.'), True, caller='shutdown')
     logger.info('Restarting server process')
     Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
+    if RaceContext.serverstate.do_rhdata_migrate_flag:
+        Database.close_database()
+        log.close_logging()
+        migrate_result = RHUtils.migrate_data_dir(PROGRAM_DIR, os.path.expanduser('~/rh-data'))
+        if migrate_result is True:
+            RaceContext.rhui.emit_priority_message("{0} {1}".format(
+                    __('Migration Successful.'),
+                    __('Server is restarting.')
+                ), True, caller='shutdown')
+        else:
+            SERVER_PROCESS_RESTART_FLAG = False
+            RaceContext.rhui.emit_priority_message('{0}<br /><br /><small>{1}: {2}<small>'.format(
+                    __('Errors encountered during migration. Please reset RotorHazard with a clean installation.'),
+                    __('Debug'),
+                    migrate_result
+                ), True, caller='shutdown')
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
 
 @SOCKET_IO.on('kill_server')
@@ -2680,6 +2698,18 @@ def on_plugin_delete(data):
         except Exception as ex:
             RaceContext.rhui.emit_priority_message(f'{__("Plugin deletion failed")}: {__(ex)}')
             logger.info("Failed to delete plugin {}".format(data['domain']))
+
+@SOCKET_IO.on('datadir_handler')
+@catchLogExcWithDBWrapper
+def on_datadir_handler(data):
+    method = data['method']
+    if method:
+        if method == 'migrate':
+            RaceContext.serverstate.do_rhdata_migrate_flag = True
+            on_restart_server()
+        elif method == 'explicit_program':
+            if RHUtils.write_datapath_file(PROGRAM_DIR, PROGRAM_DIR):
+                on_restart_server()
 
 
 #
@@ -3828,6 +3858,26 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # put time fields in the current race in sync with the current race format
         RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+
+        # display notice if implicitly using program dir as data dir
+        if RaceContext.serverstate.implicit_program_dir_flag:
+            set_ui_message(
+                'implicit-data-dir',
+                '{} {}{}{} {}{}{} {} {}{}{}'.format(
+                    __("User data should be stored separately from program data."),
+                    '<a href="/docs?d=Software Setup.md#the-data-directory">',
+                    __("Why?"),
+                    "</a>",
+                    '<br /><button class="datadir-handler" data-method="migrate">',
+                    __("Migrate user data to <code>~/rh-data</code> (recommended)"),
+                    '</button>',
+                    "|",
+                    '<button class="datadir-handler" data-method="explicit_program">',
+                    __("Keep user data in program directory"),
+                    '</button>'
+                ),
+                header='Notice'
+            )
 
 RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
 RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions
