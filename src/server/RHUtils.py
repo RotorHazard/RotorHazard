@@ -511,24 +511,28 @@ def migrate_data_dir(source_dir_path, dest_dir_path):
         os.makedirs(dest_dir_path, exist_ok=True)
         for file_name in files:
             source_file_path = os.path.join(source_dir_path, file_name)
+            dest_file_path = os.path.join(dest_dir_path, file_name)
             if os.path.isdir(source_file_path):
-                os.mkdir(source_file_path)
+                os.mkdir(dest_file_path)
                 for subdir_file_name in os.listdir(source_file_path):
                     subdir_file_path = os.path.join(source_file_path, subdir_file_name)
                     if f'{file_name}/{subdir_file_name}' not in exceptions:
-                        os.rename(subdir_file_path, os.path.join(dest_dir_path, source_file_path))
+                        os.rename(subdir_file_path, os.path.join(dest_file_path, subdir_file_name))
             elif os.path.isfile(source_file_path):
-                os.rename(source_file_path, os.path.join(dest_dir_path, file_name))
+                os.rename(source_file_path, dest_file_path)
 
         rh_user_dir = os.path.join(source_dir_path, 'static/user')
         if os.path.isdir(rh_user_dir):
             os.rename(rh_user_dir, os.path.join(dest_dir_path, 'shared'))
     except Exception as ex:
-        logger.error(f"Unable to migrate data directory: {ex}")
-        return False
-
+        return ex
     return True
 
-def write_datapath_file(dir):
-    with open(os.path.join(PROGRAM_DIR, 'datapath.ini'), 'w') as f:
-        f.write(dir)
+def write_datapath_file(data_dir, program_dir):
+    try:
+        with open(os.path.join(program_dir, 'datapath.ini'), 'w') as f:
+            f.write(data_dir)
+    except Exception as ex:
+        logger.error(f"Unable to write datapath.ini: {ex}")
+        return False
+    return True
