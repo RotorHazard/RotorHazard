@@ -2393,6 +2393,10 @@
 				}]
 			});
 		});
+
+		$(document).on('click', '.datadir-handler', function (event) {
+			socket.emit('datadir_handler', {'method': $(this).data('method')});
+		});
 	});
 
 </script>
@@ -3009,7 +3013,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set_timer_logo">{{ __('Timer Logo') }}</label>
-					<p class="desc">{{ __('File path relative to RotorHazard/server/static/user') }}</p>
+					<p class="desc">{{ __('File path relative to <data>/shared/') }}</p>
 				</div>
 				<input type="text" id="set_timer_logo" class="set-config" data-section="UI" data-key="timerLogo" value="{{ getConfig('UI', 'timerLogo') }}" placeholder="group-logo.png">
 			</li>
