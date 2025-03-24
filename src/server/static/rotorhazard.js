@@ -1733,6 +1733,10 @@ jQuery(document).ready(function($){
 		}
 	});
 
+	socket.on('refresh_page', function (msg) {
+		location.reload(true);
+	});
+
 	// store language strings
 	socket.on('all_languages', function (msg) {
 		rotorhazard.language_strings = msg.languages;

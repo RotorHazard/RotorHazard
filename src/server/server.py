@@ -339,6 +339,10 @@ def get_ui_server_messages_str():
         server_messages_formatted = '<ul>' + server_messages_formatted + '</ul>'
     return server_messages_formatted
 
+def clear_ui_message(mainclass):
+    if mainclass in UI_server_messages:
+        UI_server_messages.pop(mainclass)
+
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
 #  and the database session is cleaned up on exit (prevents DB-file handles left open).
@@ -2719,7 +2723,8 @@ def on_datadir_handler(data):
             on_restart_server()
         elif method == 'explicit_program':
             if RHUtils.write_datapath_file(PROGRAM_DIR, PROGRAM_DIR):
-                on_restart_server()
+                clear_ui_message('implicit-data-dir')
+                RaceContext.rhui.emit_refresh_page()
 
 
 #

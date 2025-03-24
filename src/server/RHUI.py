@@ -1920,3 +1920,7 @@ class RHUI():
     def emit_restart_required(self, **params):
         ''' Emits restart required message to all clients '''
         self._socket.emit('restart_required')
+
+    def emit_refresh_page(self, **params):
+        ''' Emits refresh-page message '''
+        self._socket.emit('refresh_page')
