@@ -64,34 +64,39 @@ import signal
 import werkzeug
 
 from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
+from flask.blueprints import Blueprint
 from flask_socketio import SocketIO, emit
 
 PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-# determine data location, with priority to:
-# 1 --data command-line arg
-# 2 datapath.ini
-# 3 current working dir
+# determine data location
+DATA_DIR = None
+CONFIG_FILE_NAME = 'config.json'
+implicit_program_dir_flag = False
+
+# 1: --data command-line arg
 if __name__ == '__main__' and len(sys.argv) > 1 and CMDARG_DATA_DIR in sys.argv:
     data_dir_arg_idx = sys.argv.index(CMDARG_DATA_DIR) + 1
     if data_dir_arg_idx < len(sys.argv):
         data_path = os.path.expanduser(sys.argv[data_dir_arg_idx])  # expand '~' to user-home directory
         if os.path.exists(data_path):
-            os.chdir(data_path)
+            DATA_DIR = data_path
         else:
             print("Unable to find given data location: {0}".format(sys.argv[data_dir_arg_idx]))
             sys.exit(1)
     else:
         print("Usage: python server.py --data {0}".format(CMDARG_DATA_DIR))
         sys.exit(1)
-else:
+
+# 2: datapath.ini
+if not DATA_DIR:
     try:
         datapath_ini_path_str = os.path.join(PROGRAM_DIR, 'datapath.ini')
         with open(datapath_ini_path_str, 'r') as f:
             data_path = os.path.expanduser(f.readline().strip())  # expand '~' to user-home directory
             if len(data_path) > 0:
                 if os.path.exists(data_path):
-                    os.chdir(data_path)
+                    DATA_DIR = data_path
                 else:
                     print('"{}" file points to an invalid system location: "{}"'.\
                           format(datapath_ini_path_str, data_path))
@@ -103,7 +108,34 @@ else:
         print('Error processing "{}" file: {}'.format(datapath_ini_path_str, ex))
         sys.exit(1)
 
-DATA_DIR = os.getcwd()
+# 3: ~/rh-data, if exists
+if not DATA_DIR:
+    data_path = os.path.expanduser("~/rh-data")
+    if os.path.isdir(data_path):
+        DATA_DIR = data_path
+
+# 4: Implicit run from PROGRAM_DIR
+# If "config.json" exists in PROGRAM_DIR, use PROGRAM_DIR as data dir and prompt user with a choice:
+if not DATA_DIR:
+    if os.path.exists(os.path.join(PROGRAM_DIR, CONFIG_FILE_NAME)):
+        DATA_DIR = PROGRAM_DIR
+        implicit_program_dir_flag = True
+
+# 5: If CWD contains config use CWD
+if not DATA_DIR:
+    if os.path.exists(os.path.join(os.getcwd(), CONFIG_FILE_NAME)):
+        DATA_DIR = os.getcwd()
+
+# 6: ~/rh-data, creating as needed
+if not DATA_DIR:
+    try:
+        os.makedirs(os.path.expanduser("~/rh-data"), exist_ok=True)
+    except OSError:
+        print("Unable to access or create ~/rh-data and no alternate path specified")
+        sys.exit(1)
+    DATA_DIR = os.path.expanduser("~/rh-data")
+
+os.chdir(DATA_DIR)
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -179,6 +211,8 @@ RaceContext.serverstate.mtonic_to_epoch_millis_offset = RaceContext.serverstate.
                                                         1000.0*RaceContext.serverstate.program_start_mtonic
 RaceContext.serverstate.data_dir = DATA_DIR
 RaceContext.serverstate.program_dir = PROGRAM_DIR
+RaceContext.serverstate.implicit_program_dir_flag = implicit_program_dir_flag
+RaceContext.serverstate.do_rhdata_migrate_flag = False
 
 Events = EventManager(RaceContext)
 RaceContext.events = Events
@@ -607,6 +641,14 @@ def render_plugin_manager():
     '''Route to settings page.'''
     return render_template('plugins.html')
 
+'''User's shared folder.'''
+APP.register_blueprint(Blueprint(
+    'user', __name__,
+    static_url_path='/shared',
+    static_folder=os.path.join(DATA_DIR, 'shared')
+    ))
+
+
 # Debug Routes
 
 @APP.route('/hardwarelog')
@@ -653,7 +695,7 @@ def render_viewDocs():
                     docPath = translated_path
             with io.open(docPath, 'r', encoding="utf-8") as f:
                 doc = f.read()
-            return templating.render_template('viewdocs.html', doc=doc)
+            return render_template('viewdocs.html', doc=doc)
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
@@ -1863,11 +1905,28 @@ def on_restart_server():
     SERVER_PROCESS_RESTART_FLAG = True
     if RaceContext.cluster:
         RaceContext.cluster.emit('restart_server')
-    RaceContext.rhui.emit_priority_message(__('Server is restarting.'), True, caller='shutdown')
+    if not RaceContext.serverstate.do_rhdata_migrate_flag:
+        RaceContext.rhui.emit_priority_message(__('Server is restarting.'), True, caller='shutdown')
     logger.info('Restarting server process')
     Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
+    if RaceContext.serverstate.do_rhdata_migrate_flag:
+        Database.close_database()
+        log.close_logging()
+        migrate_result = RHUtils.migrate_data_dir(PROGRAM_DIR, os.path.expanduser('~/rh-data'))
+        if migrate_result is True:
+            RaceContext.rhui.emit_priority_message("{0} {1}".format(
+                    __('Migration Successful.'),
+                    __('Server is restarting.')
+                ), True, caller='shutdown')
+        else:
+            SERVER_PROCESS_RESTART_FLAG = False
+            RaceContext.rhui.emit_priority_message('{0}<br /><br /><small>{1}: {2}<small>'.format(
+                    __('Errors encountered during migration. Please reset RotorHazard with a clean installation.'),
+                    __('Debug'),
+                    migrate_result
+                ), True, caller='shutdown')
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
 
 @SOCKET_IO.on('kill_server')
@@ -2650,6 +2709,18 @@ def on_plugin_delete(data):
             RaceContext.rhui.emit_priority_message(f'{__("Plugin deletion failed")}: {__(ex)}')
             logger.info("Failed to delete plugin {}".format(data['domain']))
 
+@SOCKET_IO.on('datadir_handler')
+@catchLogExcWithDBWrapper
+def on_datadir_handler(data):
+    method = data['method']
+    if method:
+        if method == 'migrate':
+            RaceContext.serverstate.do_rhdata_migrate_flag = True
+            on_restart_server()
+        elif method == 'explicit_program':
+            if RHUtils.write_datapath_file(PROGRAM_DIR, PROGRAM_DIR):
+                on_restart_server()
+
 
 #
 # Program Functions
@@ -3413,7 +3484,8 @@ def rh_program_initialize(reg_endpoints_flag=True):
         logger.debug('Program started at {:.0f}, time={}'.format(RaceContext.serverstate.program_start_epoch_time, \
                                                                  RHTimeFns.epochMsToFormattedStr(RaceContext.serverstate.program_start_epoch_time)))
         RHUtils.idAndLogSystemInfo()
-        logger.info('User home: {0}'.format(os.path.expanduser('~')))
+        logger.info('Virtual Environment: {0}'.format(os.environ.get('VIRTUAL_ENV')))
+        logger.info('Program path: {0}'.format(PROGRAM_DIR))
         logger.info('Data path: {0}'.format(DATA_DIR))
 
         check_requirements()
@@ -3796,6 +3868,26 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # put time fields in the current race in sync with the current race format
         RaceContext.race.set_race_format_time_fields(RaceContext.race.format, RaceContext.race.current_heat)
+
+        # display notice if implicitly using program dir as data dir
+        if RaceContext.serverstate.implicit_program_dir_flag:
+            set_ui_message(
+                'implicit-data-dir',
+                '{} {}{}{} {}{}{} {} {}{}{}'.format(
+                    __("User data should be stored separately from program data."),
+                    '<a href="/docs?d=Software Setup.md#the-data-directory">',
+                    __("Why?"),
+                    "</a>",
+                    '<br /><button class="datadir-handler" data-method="migrate">',
+                    __("Migrate user data to <code>~/rh-data</code> (recommended)"),
+                    '</button>',
+                    "|",
+                    '<button class="datadir-handler" data-method="explicit_program">',
+                    __("Keep user data in program directory"),
+                    '</button>'
+                ),
+                header='Notice'
+            )
 
 RHAPI.race._frequencyset_set = on_set_profile # TODO: Refactor management functions
 RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management functions

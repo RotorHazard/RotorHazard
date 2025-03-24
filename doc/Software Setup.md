@@ -2,6 +2,7 @@
 
 - [Introduction](#introduction)
 - [Install RotorHazard on a Raspberry Pi](#install-rotorhazard-on-a-raspberry-pi)
+- [The Data Directory](#the-data-directory)
 - [Running the RotorHazard Server](#running-the-rotorhazard-server)
 - [RotorHazard Node Code](#rotorhazard-node-code)
 - [Enable Port Forwarding](#enable-port-forwarding)
@@ -151,11 +152,53 @@ pip install -r requirements.txt
 ```
 
 ### 8. Configuration File
-When the RotorHazard server is run for the first time, it will create (in the data directory) a "config.json" file.
+When the RotorHazard server is run for the first time, it will create (in the data directory) a `config.json` file.
 
-The "config.json" file may be edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running (otherwise the changes will be overwritten). When the server starts up, if it detects that the "config.json" has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
+As of RotorHazard 4.3, it is not necessary to hand-edit this file. All settings can be modified within the frontend user interface. The `config.json` file may be directly edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running, otherwise the changes will be overwritten. When the server starts up, if it detects that the `config.json` has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
 
-Note that the contents of the "config.json" file must in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+The contents of the "config.json" file must be in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+
+----------------------------------------------------------------------------
+
+## The Data Directory
+
+It is recommended that users store their data in a separate data directory from the program files. This allows users to upgrade without manually copying files—simply replace the program directory with the new version. Prior to v4.3, RotorHazard would store these files in the program directory. If you start a server that was previously run this way, RotorHazard will offer to attempt a migration for you.
+
+The data directory may contain:
+
+* Event database (`/database.db`)
+* Archived events and event database backups
+* Configurtaion file (`/config.json`)
+* Server logs (`/logs/`)
+* A public front-end–accessible directory (`/shared/`)
+* User-installed plugins (`/plugins/`) 
+
+You may also wish to store your Python Virtual Environment here, and plugins may store additional files. The default data directory is `~/rh-data`, but any other location may be set.
+
+### Setting the Data Directory
+
+There are several options to specify your data directory, following an order of priority. Once a selection has been made, the other options are ignored.
+
+#### 1: `--data` command-line arg
+If you specify `--data <path>` on the command line when running the server, the location specified with `<path>` will be used.
+
+#### 2: `datapath.ini`
+If a `datapath.ini` file exists in the program directory and the location is valid, it will be used. If you ask RotorHazard to continue running in the program directory, it will write this file so the prompt does not reappear. Note that this method prevents some of the benefits of keeping data separate.
+
+#### 3: `~/rh-data`, if it exists
+If the `rh-data` directory exists in your operating system home/user directory, it will be used.
+
+#### 4: Implicit run from program directory
+If `config.json` exists in the program directory, the program direcotry will be used. The server will display a prompt on the `settings` page with a choice to migrate to `~/rh-data`.
+
+#### 5: CWD contains config use CWD
+if the current working directory of the operating system contains a `config.json` file, the current working directory will be used.
+
+#### 6: Creating `~/rh-data`
+The server will attempt to create `~/rh-data` and use it.
+
+If the data directory cannot be selected, the server will not start.
+
 
 ----------------------------------------------------------------------------
 

@@ -130,7 +130,7 @@ class RHData():
             Database.DB_session.close()
             return True
         except Exception as ex:
-            logger.error('Error closing to database: ' + str(ex))
+            logger.error('Error closing database: ' + str(ex))
             return False
 
     def clean(self):
