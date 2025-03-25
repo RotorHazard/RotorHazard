@@ -11,8 +11,7 @@
 
 # RH Database and backups
 *.db
-/src/server/db_bkp/*
-!/src/server/db_bkp/README.md
+/src/server/db_bkp
 
 # Local system configuration
 /src/server/config*.json
