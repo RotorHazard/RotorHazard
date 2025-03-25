@@ -1563,9 +1563,10 @@ def on_backup_database(*args):
 @catchLogExcWithDBWrapper
 def on_download_database(data):
     '''Download selected event database file.'''
-    if data and data['event_file']:
-        db_file = data['event_file']
-        download_database(db_file)
+    if type(data) is dict:
+        db_file = data.get('event_file')
+        if db_file and db_file!= '-':
+            download_database(db_file)
 
 def download_database(db_file):
     # read DB data and convert to Base64

@@ -2977,11 +2977,13 @@
 				$('#database_list').val($('#database_list option').last().val());
 				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', false);
 				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', false);
+				$('#download_database').prop('disabled', false);
 			} else {
 				$('#database_list').append('<option value="-">' + __('No Saved Databases') + '</option>');
 				$('#database_list').prop('disabled', true);
 				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', true);
 				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', true);
+				$('#download_database').prop('disabled', true);
 			}
 		});
 
@@ -3445,7 +3447,7 @@
 		<div class="control-set">
 			<button data-mfp-src="#database_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Event') }}</button>
 			<button data-mfp-src="#database_delete_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Delete Event') }}</button>
-			<button id="download_database">{{ __('Download Event Database') }}</button>
+			<button id="download_database" disabled="disabled">{{ __('Download Event Database') }}</button>
 		</div>
 
 		<div id="database_archive_new_confirm" class="priority-message-interrupt mfp-hide popup">
