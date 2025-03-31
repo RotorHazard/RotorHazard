@@ -136,6 +136,7 @@ if not DATA_DIR:
     DATA_DIR = os.path.expanduser("~/rh-data")
 
 os.chdir(DATA_DIR)
+sys.path.insert(0, DATA_DIR)
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -3550,7 +3551,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         try:
             RaceContext.plugin_manager.load_remote_plugin_data()
-        except requests.Timeout:
+        except (requests.Timeout, requests.ConnectionError):
             print("Unable to load remote plugins")
             remote_loaded = False
         else:
