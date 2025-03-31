@@ -8,10 +8,12 @@ class ANSIPixel:
     def __init__(self, count, rows=1):
         '''Constructor'''
         self.pixels = [0 for _i in range(count)]
-        if self.width < 1:
-            self.width = 1
+        if rows < 1:
+            self.width = count
+            self.height = 1
         else:
             self.width = count//rows
+            self.height = rows
 
     def begin(self):
         init(autoreset=True)
