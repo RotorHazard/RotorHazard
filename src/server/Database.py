@@ -447,7 +447,19 @@ def initialize(db_uri=None):
     if db_uri:
         DB_URI = db_uri
     global DB_engine
-    DB_engine = create_engine(DB_URI, pool_size=DB_POOL_SIZE, max_overflow=DB_MAX_OVERFLOW)
+    DB_engine = create_engine(DB_URI, pool_size=DB_POOL_SIZE, max_overflow=DB_MAX_OVERFLOW, 
+                            connect_args={
+                                'check_same_thread': False,  # Required for SQLite with multiple threads
+                                'timeout': 30,  # Connection timeout in seconds
+                                'isolation_level': None,  # Let SQLAlchemy handle transactions
+                                'cached_statements': 100,  # Cache prepared statements
+                                'foreign_keys': 'ON',  # Enable foreign key constraints
+                                'journal_mode': 'WAL',  # Use Write-Ahead Logging
+                                'cache_size': -10000,  # Use 10MB of memory for cache (negative value means KB)
+                                'synchronous': 'FULL',  # Maximum safety for power loss scenarios
+                                'busy_timeout': 5000,  # Wait up to 5 seconds when database is locked
+                                'mmap_size': 268435456,  # 256MB memory map for better performance
+                            })
     global DB_session
     DB_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, \
                                              bind=DB_engine, expire_on_commit=False))
