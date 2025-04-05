@@ -453,13 +453,21 @@ def initialize(db_uri=None):
                                 'timeout': 30,  # Connection timeout in seconds
                                 'isolation_level': None,  # Let SQLAlchemy handle transactions
                                 'cached_statements': 100,  # Cache prepared statements
-                                'foreign_keys': 'ON',  # Enable foreign key constraints
-                                'journal_mode': 'WAL',  # Use Write-Ahead Logging
-                                'cache_size': -10000,  # Use 10MB of memory for cache (negative value means KB)
-                                'synchronous': 'FULL',  # Maximum safety for power loss scenarios
-                                'busy_timeout': 5000,  # Wait up to 5 seconds when database is locked
-                                'mmap_size': 268435456,  # 256MB memory map for better performance
                             })
+    
+    # Set SQLite PRAGMAs after connection
+    def set_pragmas(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA cache_size=-10000")
+        cursor.execute("PRAGMA synchronous=FULL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
+    
+    from sqlalchemy import event
+    event.listen(DB_engine, 'connect', set_pragmas)
+    
     global DB_session
     DB_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, \
                                              bind=DB_engine, expire_on_commit=False))
