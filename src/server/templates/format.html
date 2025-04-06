@@ -1242,28 +1242,32 @@
 						}
 					}
 
-					if (el.children(`.groups`).length) {
-						var groups_el = $(el.children(`.groups`)[0]);
+					if (el.children(`.group--${i}`).length) {
+						el.children(`.group`).addClass('flagged');
 					} else {
 						el.empty();
-						var groups_el = $(document.createElement('div'))
-							.addClass('groups')
-							.appendTo(el);
 					}
-					for (var i in heats_by_group) {
-						var heat_els = [];
-						if (groups_el.children(`.heat-edit-list`).length) {
-							var heats_el = $(groups_el.children(`.heat-edit-list`)[0]);
+
+					for (var i = heats_by_group.length - 1; i >= 0; i--) {
+						if (el.children(`.group--${i}`).length) {
+							var group_el = $(el.children(`.group--${i}`)[0]);
+							var heats_el = $(group_el.children(`.heat-edit-list`)[0]);
 						} else {
-							groups_el.empty();
+							var group_el = $(document.createElement('div'))
+								.addClass('group')
+								.addClass(`group--${i}`)
+								.appendTo(el);
 							$(document.createElement('p'))
 								.text(`${__('Round')} ${parseInt(i)+1}`)
-								.appendTo(groups_el);
+								.appendTo(group_el);
 							var heats_el = $(document.createElement('ol'))
 								.addClass('heats')
 								.addClass('heat-edit-list')
-								.appendTo(groups_el);
+								.appendTo(group_el);
 						}
+						el.append(group_el);
+
+						var heat_els = [];
 						heats_el.children().addClass('flagged');
 						for (var j in heats_by_group[i]) {
 							var heat = heats_by_group[i][j];
@@ -1272,12 +1276,11 @@
 							heats_el.append(heat_el);
 							heat_els.push(heat_el);
 						}
-						heats_el.find('.flagged').remove();
-						for (var i in heat_els) {
-							heats_el.append(heat_els[i]);
+						for (var j in heat_els) {
+							heats_el.append(heat_els[j]);
 						}
 					}
-					el.append(groups_el);
+					el.find('.flagged').remove();
 				} else {
 					var heat_els = [];
 					if (el.children(`.heat-edit-list`).length) {
