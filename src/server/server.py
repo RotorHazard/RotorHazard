@@ -1755,6 +1755,9 @@ def on_reset_database(data):
         RaceContext.rhdata.set_option('eventDescription', "")
         RaceContext.rhui.emit_option_update(['eventName', 'eventDescription'])
 
+    # Add plugin-registered setting defaults to DB
+    RaceContext.rhui.init_setting_defaults()
+
     emit('reset_confirm')
 
     Events.trigger(Evt.DATABASE_RESET)
@@ -3744,6 +3747,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
             except Exception as ex:
                 logger.warning('Clearing all data after recovery failure:  ' + str(ex))
                 db_reset()
+
+        # Add plugin-registered setting defaults to DB
+        RaceContext.rhui.init_setting_defaults()
 
         # Create LED object with appropriate configuration
         global LedStripObj

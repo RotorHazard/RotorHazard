@@ -228,8 +228,6 @@ class RHUI():
                 self._racecontext.serverconfig.flag_restart_key(field.persistent_section, field.name)
         else:
             field_internal_id = field.name
-            if not self._racecontext.rhdata.option_exists(field.name):
-                self._racecontext.rhdata.set_option(field.name, field.value)
 
         for idx, setting in enumerate(self._general_settings):
             if setting.name == field_internal_id:
@@ -240,6 +238,12 @@ class RHUI():
             self._general_settings.append(GeneralSetting(field_internal_id, field, panel, order))
 
         return self._general_settings
+
+    def init_setting_defaults(self):
+        for setting in self._general_settings:
+            field = setting.field
+            if not self._racecontext.rhdata.option_exists(field.name):
+                self._racecontext.rhdata.set_option(field.name, field.value)
 
     @property
     def general_settings(self):
