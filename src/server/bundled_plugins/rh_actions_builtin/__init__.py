@@ -20,7 +20,11 @@ class ActionsBuiltin():
             if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
                 self._rhapi.ui.message_speak(text)
             else:
-                gevent.spawn_later(delay_sec_holder[0], self._rhapi.ui.message_speak, text)
+                if isinstance(text, str):
+                    gevent.spawn_later(delay_sec_holder[0], self._rhapi.ui.message_speak, text)
+                else:
+                    for i, piece in enumerate(text):
+                        gevent.spawn_later(delay_sec_holder[0]*(i+1), self._rhapi.ui.message_speak, piece)
 
     def messageEffect(self, action, args):
         if 'text' in action:
