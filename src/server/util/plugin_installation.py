@@ -194,7 +194,8 @@ class PluginInstallationManager:
         last_version = plugin_data.get("last_version")
         pre_version = plugin_data.get("last_prerelease")
 
-        zip_filename = plugin_data.get("zip_filename")
+        manifest: dict = plugin_data["manifest"]
+        zip_filename = manifest.get("zip_filename")
 
         if last_version is not None and pre_version is not None and allow_prerelease:
             if version.parse(last_version) < version.parse(pre_version):
