@@ -3181,24 +3181,11 @@
 			<button data-mfp-src="#reset_settings_to_defaults_confirm" class="open-mfp-popup">{{ __('Reset All Settings to Defaults') }}</button>
 		</div>
 
-		<h3>{{ __('Import') }}</h3>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="select_load_settings_file">{{ __('Select Settings File to Load') }}: </label>
-				</div>
-				<input type="file" id="select_load_settings_file" accept=".json" />
-			</li>
-		</ol>
-		<div class="control-set">
-			<button data-mfp-src="#settings_load_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Load Settings') }}</button>
-		</div>
-
 		<h3>{{ __('Manage Files') }}</h3>
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="cfg_files_list">{{ __('Backup Settings Files:') }}</label>
+					<label for="cfg_files_list">{{ __('Saved Settings Files:') }}</label>
 				</div>
 				<select id="cfg_files_list" disabled="disabled">
 					<option value="-">{{ __('No Saved Settings Files') }}</option>
@@ -3241,6 +3228,19 @@
 				<p><button class="btn-danger" id="load_cfg_file">{{ __('Load Settings') }}</button>
 					<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
+		</div>
+
+		<h3>{{ __('Import File') }}</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="select_load_settings_file">{{ __('Select Settings File to Load') }}: </label>
+				</div>
+				<input type="file" id="select_load_settings_file" accept=".json" />
+			</li>
+		</ol>
+		<div class="control-set">
+			<button data-mfp-src="#settings_load_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Load Settings') }}</button>
 		</div>
 	</div>
 </div>
