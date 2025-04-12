@@ -509,6 +509,14 @@ def migrate_data_dir(source_dir_path, dest_dir_path):
         return False
 
     try:
+        for file_name in os.listdir(source_dir_path):
+            if file_name.startswith('config_bkp_') and file_name.endswith('.json'):
+                cfgdir_file_path = os.path.join(source_dir_path, 'cfg_bkp')
+                os.rename(file_name, os.path.join(cfgdir_file_path, file_name))
+    except Exception as ex:
+        return ex
+
+    try:
         os.makedirs(dest_dir_path, exist_ok=True)
         for file_name in files:
             source_file_path = os.path.join(source_dir_path, file_name)
