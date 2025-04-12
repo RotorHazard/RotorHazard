@@ -5,6 +5,7 @@ import copy
 import logging
 import json
 import shutil
+import filecmp
 import time
 import os
 from datetime import datetime
@@ -12,11 +13,11 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class Config:
-    def __init__(self, racecontext, filename='config.json'):
+    def __init__(self, racecontext, config_file_name, cfg_bkp_dir_name):
         self._racecontext = racecontext
-        self.filename = filename
+        self.config_file_name = config_file_name
+        self.cfg_bkp_dir_name = cfg_bkp_dir_name
         self.config_file_status = None
-        self._backup_run = False
 
         self.config_sections = {
             'SECRETS': {},
@@ -204,7 +205,7 @@ class Config:
 
         # override defaults above with config from file
         try:
-            with open(self.filename, 'r') as f:
+            with open(self.config_file_name, 'r') as f:
                 external_config = json.load(f)
 
             self.migrate_legacy_config_early(external_config)
@@ -215,7 +216,7 @@ class Config:
                     self.config.update({key:external_config[key]})
 
             self.config_file_status = 1
-            self.InitResultStr = "Using configuration file '{0}'".format(self.filename)
+            self.InitResultStr = "Using configuration file '{0}'".format(self.config_file_name)
             self.InitResultLogLevel = logging.INFO
         except IOError:
             self.config_file_status = 0
@@ -226,7 +227,7 @@ class Config:
             self.InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
             self.InitResultLogLevel = logging.ERROR
 
-        self.check_backup_config_file()
+        self.check_backup_config_file(True)
         self.migrate_legacy_config()
 
     def migrate_legacy_config_early(self, external_config):
@@ -348,47 +349,69 @@ class Config:
 
     def clean_config(self):
         if self.config.keys() == self.config_sections.keys():
-            return
-
+            return False
         logger.info("Change in registered configuration sections detected")
         self.backup_config_file()
-
         config_cleaned = {}
         for item in self.config_sections:
             if item in self.config:
                 config_cleaned[item] = copy.deepcopy(self.config[item])
         self.config = config_cleaned
+        return True
 
     def save_config(self):
         self.config['GENERAL']['LAST_MODIFIED_TIME'] = int(time.time())
-        with open(self.filename, 'w') as f:
+        with open(self.config_file_name, 'w') as f:
             f.write(json.dumps(self.config, indent=2))
 
     # if config file does not contain 'LAST_MODIFIED_TIME' item or time
     #  does not match file-modified timestamp then create backup of file
-    def check_backup_config_file(self):
+    def check_backup_config_file(self, initial_chk_flag=False):
         try:
-            if os.path.exists(self.filename):
+            if os.path.exists(self.config_file_name):
                 last_modified_time = self.get_item_int('GENERAL', 'LAST_MODIFIED_TIME')
-                file_modified_time = int(os.path.getmtime(self.filename))
-                if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
-                    logger.info("External configuration file modification detected")
-                    self.backup_config_file()
+                file_modified_time = int(os.path.getmtime(self.config_file_name))
+                time_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d_%H%M%S')
+                (fname_str, fext_str) = os.path.splitext(self.config_file_name)
+                bkp_file_name = "{}_bkp_{}{}".format(fname_str, time_str, fext_str)
+                # put backup file in 'cfg_bkp' directory (create it if needed)
+                if not os.path.exists(self.cfg_bkp_dir_name):
+                    os.makedirs(self.cfg_bkp_dir_name)
+                bkp_file_path = os.path.join(self.cfg_bkp_dir_name, bkp_file_name)
+                if initial_chk_flag:
+                    if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
+                        logger.info("External configuration file modification detected")
+                        self.backup_config_file(bkp_file_path)
+                # only save if backup with same date/time and content not already present
+                elif (not os.path.exists(bkp_file_path)) or (not self.compare_config_file(bkp_file_path)):
+                    self.backup_config_file(bkp_file_path)
+                else:
+                    logger.debug("Not backing up config because backup-config file with same date/time already present")
+                return bkp_file_name
         except Exception as ex:
             logger.warning("Error in 'check_backup_config_file()':  {}".format(ex))
+        return ""
 
-    def backup_config_file(self):
-        if not self._backup_run:
-            try:
-                file_modified_time = int(os.path.getmtime(self.filename))
-                time_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d_%H%M%S')
-                (fname_str, fext_str) = os.path.splitext(self.filename)
-                bkp_file_name = "{}_bkp_{}{}".format(fname_str, time_str, fext_str)
-                logger.info("Making backup of configuration file, name: {}".format(bkp_file_name))
-                shutil.copy2(self.filename, bkp_file_name)
-                self._backup_run = True
-            except Exception as ex:
-                logger.warning("Error in 'backup_config_file()':  {}".format(ex))
+    def backup_config_file(self, bkp_file_path):
+        try:
+            logger.info("Making backup of configuration file, name: {}".format(bkp_file_path))
+            shutil.copy2(self.config_file_name, bkp_file_path)
+        except Exception as ex:
+            logger.warning("Error in 'backup_config_file()':  {}".format(ex))
+
+    def restore_config_file(self, bkp_file_path):
+        try:
+            logger.info("Restoring configuration file, name: {}".format(bkp_file_path))
+            shutil.copy2(bkp_file_path, self.config_file_name)
+        except Exception as ex:
+            logger.warning("Error in 'restore_config_file()':  {}".format(ex))
+
+    def compare_config_file(self, bkp_file_path):
+        try:
+            return filecmp.cmp(self.config_file_name, bkp_file_path)
+        except Exception as ex:
+            logger.warning("Error in 'compare_config_file()':  {}".format(ex))
+            return False
 
     def get_sharable_config(self):
         sharable_config = copy.deepcopy(self.config)

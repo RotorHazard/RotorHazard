@@ -11,7 +11,7 @@ from led_event_manager import NoLEDManager
 logger = logging.getLogger(__name__)
 
 class RaceContext():
-    def __init__(self):
+    def __init__(self, config_file_name, cfg_bkp_dir_name):
         self.interface = None
         self.sensors = None
         self.cluster = None
@@ -39,7 +39,7 @@ class RaceContext():
         self.race_points_manager = None
         self.plugin_manager = None
 
-        self.serverconfig = Config.Config(self)
+        self.serverconfig = Config.Config(self, config_file_name, cfg_bkp_dir_name)
         self.serverstate = ServerState(self)
 
     def branch_race_obj(self):
@@ -309,5 +309,8 @@ class ServerState:
     def set_restart_required(self):
         if not self.restart_required:
             self.restart_required = True
+            self._racecontext.serverconfig.check_backup_config_file()
             self._racecontext.events.trigger(Evt.RESTART_REQUIRED, {})
-            self._racecontext.rhui.emit_restart_required()
+            if self._racecontext.rhui:
+                self._racecontext.rhui.emit_upd_cfg_files_list()
+                self._racecontext.rhui.emit_restart_required()

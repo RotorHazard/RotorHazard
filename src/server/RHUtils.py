@@ -484,6 +484,7 @@ def migrate_data_dir(source_dir_path, dest_dir_path):
         'config.json',
         'database.db',
         'logs',
+        'cfg_bkp',
         'db_bkp',
         'plugins'
     ]

@@ -16,6 +16,7 @@
 # Local system configuration
 /src/server/config*.json
 /src/tests/config*.json
+/src/server/cfg_bkp
 datapath.ini
 
 # Run logs

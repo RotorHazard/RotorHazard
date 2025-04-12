@@ -24,7 +24,7 @@
 		'led_effect_setup',
 		'cluster_status',
 		'vrx_list',
-		'backups_list',
+		'upd_cfg_files_list',
 		'exporter_list',
 		'plugin_list',
 		{
@@ -1198,6 +1198,89 @@
 			var byteArray = new Uint8Array(byteNumbers);
 			// construct blob from byte array and initiate browser save-as
 			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
+
+		$('button#backup_settings').click(function (event) {
+			socket.emit('backup_settings');
+		});
+
+		$('button#download_settings').click(function (event) {
+			socket.emit('download_settings');
+		});
+
+		socket.on('send_config_file', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
+
+		socket.on('upd_cfg_files_list', function (msg) {
+			$('#cfg_files_list').empty();
+			if ('cfg_files' in msg && msg.cfg_files && msg.cfg_files.length) {
+				for (file in msg.cfg_files) {
+					cfgfile = msg.cfg_files[file];
+					$('#cfg_files_list').append('<option value="' + cfgfile + '">' + cfgfile + '</option>');
+				}
+				$('#cfg_files_list').prop('disabled', false);
+				$('#cfg_files_list').val($('#cfg_files_list option').last().val());
+				$('button[data-mfp-src="#settings_restore_confirm"]').prop('disabled', false);
+				$('button[data-mfp-src="#settings_delete_confirm"]').prop('disabled', false);
+			} else {
+				$('#cfg_files_list').append('<option value="-">' + __('No Saved Settings Files') + '</option>');
+				$('#cfg_files_list').prop('disabled', true);
+				$('button[data-mfp-src="#settings_restore_confirm"]').prop('disabled', true);
+				$('button[data-mfp-src="#settings_delete_confirm"]').prop('disabled', true);
+			}
+		});
+
+		$('button#reset_cfg_file_to_defaults').click(function (event) {
+			$.magnificPopup.close();
+			socket.emit('reset_settings_to_defaults');
+		});
+
+		$('button#restore_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				cfg_file: $('#cfg_files_list').val()
+			};
+			socket.emit('restore_cfg_file', data);
+		});
+
+		$('button#delete_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				cfg_file: $('#cfg_files_list').val()
+			};
+			socket.emit('delete_cfg_file', data);
+		});
+
+		$('#select_load_settings_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('button[data-mfp-src="#settings_load_confirm"]').prop('disabled', false);
+			}
+		});
+
+		$('button#load_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			file_obj = $('#select_load_settings_file').prop('files')[0]
+			if (file_obj) {
+				try {
+					var data = {
+						file_data: file_obj,
+						file_name: file_obj.name
+					};
+					socket.emit('load_cfg_file', data);
+					$('#select_load_settings_file').val('');
+				} catch(ex) {
+					console.error("Error loading settings file: " + ex)
+				}
+			}
 		});
 
 		socket.on('set_option', function (msg) {
@@ -3081,6 +3164,72 @@
 		<h3>{{ __('Settings') }}</h3>
 		<div id="sensor-setup">
 			{{ __('Loading...') }}
+		</div>
+	</div>
+</div>
+
+<!-- Save/Load Settings -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Backup/Restore Settings') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<div>
+				<button class="button" id="backup_settings">{{ __('Backup Settings') }}</button> &nbsp;
+				<button class="button" id="download_settings">{{ __('Download Settings') }}</button> &nbsp;
+				<button data-mfp-src="#reset_settings_to_defaults_confirm" class="open-mfp-popup">{{ __('Reset All Settings to Defaults') }}</button>
+			</div>
+
+			<ol class="form">
+				<li>
+					<div class="label-block">
+						<label for="cfg_files_list">{{ __('Backup Settings Files:') }}</label>
+					</div>
+					<select id="cfg_files_list" disabled="disabled">
+						<option value="-">{{ __('No Saved Settings Files') }}</option>
+					</select>
+					<button data-mfp-src="#settings_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Settings File') }}</button>
+					<button data-mfp-src="#settings_delete_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Delete Settings File') }}</button>
+				</li>
+			</ol>
+			<div>
+				<label for="select_load_settings_file"><span style="font-weight:bold">{{ __('Select Settings File to Load') }}: </span></label>
+				<input type="file" id="select_load_settings_file" accept=".json" />
+				<button data-mfp-src="#settings_load_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Load Settings') }}</button>
+			</div>
+			<div id="reset_settings_to_defaults_confirm" class="priority-message-interrupt mfp-hide popup">
+				<h2>{{ __('Alert') }}</h2>
+				<div class="popup-content">
+					<p>{{ __('All settings will be reset to default values and the server will restart. Are you sure?') }}</p>
+					<p><button class="btn-danger" id="reset_cfg_file_to_defaults">{{ __('Reset Settings to Defaults') }}</button>
+						<button class="cancel">{{ __('Cancel') }}</button></p>
+				</div>
+			</div>
+			<div id="settings_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+				<h2>{{ __('Alert') }}</h2>
+				<div class="popup-content">
+					<p>{{ __('All settings will be overwritten and the server will restart. Are you sure?') }}</p>
+					<p><button class="btn-danger" id="restore_cfg_file">{{ __('Restore Settings') }}</button>
+						<button class="cancel">{{ __('Cancel') }}</button></p>
+				</div>
+			</div>
+			<div id="settings_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+				<h2>{{ __('Alert') }}</h2>
+				<div class="popup-content">
+					<p>{{ __('Deleted settings files are not recoverable. Are you sure?') }}</p>
+					<p><button class="btn-danger" id="delete_cfg_file">{{ __('Delete File') }}</button>
+						<button class="cancel">{{ __('Cancel') }}</button></p>
+				</div>
+			</div>
+			<div id="settings_load_confirm" class="priority-message-interrupt mfp-hide popup">
+				<h2>{{ __('Alert') }}</h2>
+				<div class="popup-content">
+					<p>{{ __('All settings will be overwritten and the server will restart. Are you sure?') }}</p>
+					<p><button class="btn-danger" id="load_cfg_file">{{ __('Load Settings') }}</button>
+						<button class="cancel">{{ __('Cancel') }}</button></p>
+				</div>
+			</div>
 		</div>
 	</div>
 </div>
