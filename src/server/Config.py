@@ -8,6 +8,7 @@ import shutil
 import filecmp
 import time
 import os
+import glob
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -348,24 +349,37 @@ class Config:
         self.config[section] = {}
 
     def clean_config(self):
-        if self.config.keys() == self.config_sections.keys():
+        try:
+            if self.config.keys() == self.config_sections.keys():
+                # if LAST_MODIFIED_TIME does not match timestamp on file then trigger save to synchronize them
+                last_modified_time = self.get_item_int('GENERAL', 'LAST_MODIFIED_TIME')
+                file_modified_time = int(os.path.getmtime(self.config_file_name)) \
+                                             if os.path.exists(self.config_file_name) else 0
+                if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
+                    logger.debug("Configuration LAST_MODIFIED_TIME does not match timestamp on file; triggering config save")
+                    return True
+                return False
+            logger.info("Change in registered configuration sections detected")
+            self.backup_config_file()
+            config_cleaned = {}
+            for item in self.config_sections:
+                if item in self.config:
+                    config_cleaned[item] = copy.deepcopy(self.config[item])
+            self.config = config_cleaned
+            return True
+        except:
+            logger.exception("Error in 'clean_config()'")
             return False
-        logger.info("Change in registered configuration sections detected")
-        self.backup_config_file()
-        config_cleaned = {}
-        for item in self.config_sections:
-            if item in self.config:
-                config_cleaned[item] = copy.deepcopy(self.config[item])
-        self.config = config_cleaned
-        return True
 
     def save_config(self):
         self.config['GENERAL']['LAST_MODIFIED_TIME'] = int(time.time())
         with open(self.config_file_name, 'w') as f:
             f.write(json.dumps(self.config, indent=2))
 
-    # if config file does not contain 'LAST_MODIFIED_TIME' item or time
-    #  does not match file-modified timestamp then create backup of file
+    # if 'initial_chk_flag'==True and config file does not contain 'LAST_MODIFIED_TIME' item
+    #   or time does not match file-modified timestamp then create backup of file
+    # if 'initial_chk_flag'==False and a backup file matching current settings does not exist
+    #   then create one
     def check_backup_config_file(self, initial_chk_flag=False):
         try:
             if os.path.exists(self.config_file_name):
@@ -382,8 +396,18 @@ class Config:
                     if file_modified_time > 0 and abs(file_modified_time - last_modified_time) > 5:
                         logger.info("External configuration file modification detected")
                         self.backup_config_file(bkp_file_path)
+                        return
                 # only save if backup with same date/time and content not already present
-                elif (not os.path.exists(bkp_file_path)) or (not self.compare_config_file(bkp_file_path)):
+                if (not os.path.exists(bkp_file_path)) or (not self.compare_config_file(bkp_file_path)):
+                    if initial_chk_flag:
+                        # don't back up config (at startup) if backup-config file(s) with same date
+                        #  is already present (to prevent having too many auto-generated backup files)
+                        date_str = datetime.fromtimestamp(file_modified_time).strftime('%Y%m%d')
+                        f_name = "{}_bkp_{}*{}".format(fname_str, date_str, fext_str)
+                        chk_file_path = os.path.join(self.cfg_bkp_dir_name, f_name)
+                        if len(glob.glob(chk_file_path)) > 0:
+                            logger.debug("Not backing up config (at startup) because backup-config file(s) with same date already present")
+                            return
                     self.backup_config_file(bkp_file_path)
                 else:
                     logger.debug("Not backing up config because backup-config file with same date/time already present")
