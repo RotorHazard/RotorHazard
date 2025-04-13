@@ -3896,7 +3896,7 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
 
         # %PILOTS_INTERVAL_#_SECS% : List of pilot callsigns separated by an interval of given number of seconds
         # cannot be used with other string formats
-        if '%PILOTS_INTERVAL_' in text:
+        if isinstance(text, str) and text.startswith('%PILOTS_INTERVAL_'):
             num_str = text[17:]
             pos = num_str.find('_SECS%')
             vlen = 24

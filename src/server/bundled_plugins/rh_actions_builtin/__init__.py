@@ -15,12 +15,12 @@ class ActionsBuiltin():
 
     def speakEffect(self, action, args):
         if 'text' in action:
-            delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" provided
+            delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" or %PILOTS_INTERVAL_#_SECS% provided
             text = RHData.doReplace(self._rhapi, action['text'], args, True, delay_sec_holder)
             if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
                 self._rhapi.ui.message_speak(text)
             else:
-                if isinstance(text, str):
+                if not isinstance(text, list):
                     gevent.spawn_later(delay_sec_holder[0], self._rhapi.ui.message_speak, text)
                 else:
                     for i, piece in enumerate(text):

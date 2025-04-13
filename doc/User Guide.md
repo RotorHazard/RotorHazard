@@ -291,6 +291,7 @@ The variables listed below may be used for the  effects.
 | %CURRENT_TIME_SECS_AP%    | Current time, with seconds (12-hour clock)                              |
 | %CURRENT_TIME_SECS_24%    | Current time, with seconds (24-hour clock)                              |
 | %DELAY_#_SECS%            | Delay voice callout by given number of seconds                          |
+| %PILOTS_INTERVAL_#_SECS%  | List of callsigns separated by interval seconds (must be only variable) |
 
 #### LED Effects
 Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.

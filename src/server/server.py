@@ -2606,8 +2606,16 @@ def reload_callouts(*args):
 @SOCKET_IO.on('play_callout_text')
 @catchLogExcWithDBWrapper
 def play_callout_text(data):
-    message = RHData.doReplace(RHAPI, data['callout'], {}, True)
-    RaceContext.rhui.emit_phonetic_text(message)
+    delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" or %PILOTS_INTERVAL_#_SECS% provided
+    message = RHData.doReplace(RHAPI, data['callout'], {}, True, delay_sec_holder)
+    if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
+        RaceContext.rhui.emit_phonetic_text(message)
+    else:
+        if not isinstance(message, list):
+            gevent.spawn_later(delay_sec_holder[0], RaceContext.rhui.emit_phonetic_text, message)
+        else:
+            for i, piece in enumerate(message):
+                gevent.spawn_later(delay_sec_holder[0]*(i+1), RaceContext.rhui.emit_phonetic_text, piece)
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
