@@ -9,6 +9,7 @@ from flask import request
 from flask_socketio import emit
 from eventmanager import Evt
 import json
+import os
 import subprocess
 import re
 from collections import OrderedDict
@@ -1928,3 +1929,21 @@ class RHUI():
     def emit_refresh_page(self, **params):
         ''' Emits refresh-page message '''
         self._socket.emit('refresh_page')
+
+    def emit_upd_cfg_files_list(self):
+        '''Update List of database files in cfg_bkp'''
+        if not os.path.exists(self._racecontext.serverconfig.cfg_bkp_dir_name):
+            emit_payload = {
+                'cfg_files': None
+            }
+        else:
+            files = []
+            for (_, _, filenames) in os.walk(self._racecontext.serverconfig.cfg_bkp_dir_name):
+                files.extend(filenames)
+                break
+            files.sort(key=str.casefold)
+            files = list(filter(lambda x: x.endswith(".json"), files))
+            emit_payload = {
+                'cfg_files': files
+            }
+        self._socket.emit('upd_cfg_files_list', emit_payload)

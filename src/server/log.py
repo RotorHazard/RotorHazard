@@ -456,7 +456,7 @@ def delete_old_log_files(num_keep_val, lfname, lfext, err_str):
 
 
 def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=None, boot_config_file="/boot/firmware/config.txt", \
-                         alt_boot_config_file="/boot/config.txt"):
+                         alt_boot_config_file="/boot/config.txt", cfg_bkp_dir_name="cfg_bkp"):
     zip_file_obj = None
     try:
         if os.path.exists(LOG_DIR_NAME):
@@ -492,6 +492,15 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
                     zip_file_obj.write(server_file, 'server.py')
             except Exception:
                 logger.exception("Error adding files to log-files .zip file")
+            try:
+                # include configuration backup files
+                if cfg_bkp_dir_name:
+                    for root, dirs, files in os.walk(cfg_bkp_dir_name):  #pylint: disable=unused-variable
+                        if root == cfg_bkp_dir_name:  # don't include sub-directories
+                            for fname in files:
+                                zip_file_obj.write(os.path.join(root, fname))
+            except Exception:
+                logger.exception("Error adding configuration backup files to .zip file")
             try:
                 # include current audio settings
                 if outData:

@@ -72,6 +72,7 @@ PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 # determine data location
 DATA_DIR = None
 CONFIG_FILE_NAME = 'config.json'
+CFG_BKP_DIR_NAME = 'cfg_bkp'
 implicit_program_dir_flag = False
 
 # 1: --data command-line arg
@@ -202,7 +203,7 @@ from VRxControl import VRxControlManager
 from HeatGenerator import HeatGeneratorManager
 
 # Create shared context
-RaceContext = RaceContext.RaceContext()
+RaceContext = RaceContext.RaceContext(CONFIG_FILE_NAME, CFG_BKP_DIR_NAME)
 RHAPI = RHAPI.RHAPI(RaceContext)
 
 RaceContext.serverstate.server_instance_token = random.random()
@@ -247,7 +248,7 @@ if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
         sys.exit(0)
     if CMDARG_ZIP_LOGS_STR in sys.argv:
-        log.create_log_files_zip(logger, RaceContext.serverconfig.filename, DB_FILE_NAME, PROGRAM_DIR)
+        log.create_log_files_zip(logger, RaceContext.serverconfig.config_file_name, DB_FILE_NAME, PROGRAM_DIR)
         sys.exit(0)
     if CMDARG_VIEW_DB_STR in sys.argv:
         viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
@@ -972,6 +973,8 @@ def on_load_data(data):
             RaceContext.rhui.emit_vrx_list(nobroadcast=True)
         elif load_type == 'backups_list':
             on_list_backups()
+        elif load_type == 'upd_cfg_files_list':
+            RaceContext.rhui.emit_upd_cfg_files_list()
         elif load_type == 'exporter_list':
             RaceContext.rhui.emit_exporter_list()
         elif load_type == 'importer_list':
@@ -1969,7 +1972,7 @@ def on_set_log_level(data):
 @catchLogExceptionsWrapper
 def on_download_logs(data):
     '''Download logs (as .zip file).'''
-    zip_path_name = log.create_log_files_zip(logger, RaceContext.serverconfig.filename, DB_FILE_NAME, PROGRAM_DIR, data)
+    zip_path_name = log.create_log_files_zip(logger, RaceContext.serverconfig.config_file_name, DB_FILE_NAME, PROGRAM_DIR, data)
     RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME)
     if zip_path_name:
         RHUtils.checkSetFileOwnerPi(zip_path_name)
@@ -1987,6 +1990,102 @@ def on_download_logs(data):
             SOCKET_IO.emit(data['emit_fn_name'], emit_payload)
         except Exception:
             logger.exception("Error downloading logs-zip file")
+
+@SOCKET_IO.on('backup_settings')
+@catchLogExceptionsWrapper
+def on_backup_settings(*args):
+    '''Make backup copy of config-settings file.'''
+    bkp_file_name = RaceContext.serverconfig.check_backup_config_file()
+    RaceContext.rhui.emit_upd_cfg_files_list()
+    if bkp_file_name:
+        RaceContext.rhui.emit_priority_message(__('Current settings saved to backup file: ') + str(bkp_file_name))
+
+@SOCKET_IO.on('download_settings')
+@catchLogExceptionsWrapper
+def on_download_settings(*args):
+    '''Make backup copy of config-settings file and download it.'''
+    bkp_file_name = RaceContext.serverconfig.check_backup_config_file()
+    RaceContext.rhui.emit_upd_cfg_files_list()
+    if bkp_file_name:
+        bkp_file_path = os.path.join(CFG_BKP_DIR_NAME, bkp_file_name)
+        # read configuration data and convert to Base64
+        with open(bkp_file_path, mode='rb') as file_obj:
+            file_content = file_obj.read()
+        file_content = base64.encodebytes(file_content).decode()
+        emit_payload = {
+            'file_name': bkp_file_name,
+            'file_data' : file_content
+        }
+        emit('send_config_file', emit_payload)
+
+@SOCKET_IO.on('reset_settings_to_defaults')
+@catchLogExcWithDBWrapper
+def on_reset_settings_to_defaults(*args):
+    '''Reset settings to default values.'''
+    on_backup_settings()
+    logger.info("Deleting settings file to reset to defaults")
+    os.remove(RaceContext.serverconfig.config_file_name)
+    logger.info("Restarting server to activate default settings file")
+    on_restart_server()
+
+@SOCKET_IO.on('restore_cfg_file')
+@catchLogExcWithDBWrapper
+def on_restore_cfg_file(data):
+    '''Restore config-settings-backup file.'''
+    if 'cfg_file' in data:
+        cfg_file = data['cfg_file']
+        cfg_path = os.path.join(CFG_BKP_DIR_NAME, cfg_file)
+        if os.path.exists(cfg_path):
+            RaceContext.serverconfig.check_backup_config_file()
+            try:  # check if file contains parsable data
+                with open(cfg_path, 'r') as f:
+                    config_obj = json.load(f)
+                if (not config_obj) or len(config_obj) <= 0:
+                    raise RuntimeError("No settings data found in file")
+            except Exception as ex:
+                logger.info("Error restoring settings file: {}".format(ex))
+                msg_str = __('Error restoring settings file: ') + str(ex)
+                RaceContext.rhui.emit_priority_message(msg_str, True)
+                return
+            RaceContext.serverconfig.restore_config_file(cfg_path)
+            logger.info("Restarting server to activate restored settings file")
+            on_restart_server()
+        else:
+            logger.warning("Unable to restore cfg file '{0}': File does not exist".format(cfg_path))
+
+@SOCKET_IO.on('delete_cfg_file')
+@catchLogExcWithDBWrapper
+def on_delete_cfg_file(data):
+    '''Delete config-settings-backup file.'''
+    if 'cfg_file' in data:
+        cfg_file = data['cfg_file']
+        cfg_path = os.path.join(CFG_BKP_DIR_NAME, cfg_file)
+        if os.path.exists(cfg_path):
+            logger.info("Deleting cfg file '{0}'".format(cfg_path))
+            os.remove(cfg_path)
+            RaceContext.rhui.emit_upd_cfg_files_list()
+        else:
+            logger.warning("Unable to delete cfg file '{0}': File does not exist".format(cfg_path))
+
+@SOCKET_IO.on('load_cfg_file')
+@catchLogExcWithDBWrapper
+def on_load_cfg_file(data):
+    '''Load config-settings-backup file.'''
+    if 'file_data' in data:
+        RaceContext.serverconfig.check_backup_config_file()
+        try:
+            logger.info("Loading settings file: {}".format(data.get('file_name')))
+            config_obj = json.loads(data['file_data'])
+            if (not config_obj) or len(config_obj) <= 0:
+                raise RuntimeError("No settings data found in file")
+            with open(RaceContext.serverconfig.config_file_name, 'w') as f:
+                f.write(json.dumps(config_obj, indent=2))
+            logger.info("Restarting server to activate loaded settings file")
+            on_restart_server()
+        except Exception as ex:
+            logger.info("Error loading settings file: {}".format(ex))
+            msg_str = __('Error loading settings file: ') + str(ex)
+            RaceContext.rhui.emit_priority_message(msg_str, True)
 
 @SOCKET_IO.on("set_min_lap")
 @catchLogExcWithDBWrapper
@@ -3407,8 +3506,8 @@ def load_plugin(plugin):
 
 @catchLogExceptionsWrapper
 def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), argv_arr=None):
-    RaceContext.serverconfig.clean_config()
-    RaceContext.serverconfig.save_config()
+    if RaceContext.serverconfig.clean_config():
+        RaceContext.serverconfig.save_config()
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
         if not RaceContext.serverconfig.get_item('SECRETS', 'SECRET_KEY'):
             new_key = ''.join(random.choice(string.ascii_letters) for _ in range(50))
