@@ -493,7 +493,6 @@ def migrate_data_dir(source_dir_path, dest_dir_path):
         'plugins/rh_class_rank_best_x_rounds',
         'plugins/rh_class_rank_cumulative_points',
         'plugins/rh_class_rank_heat_pos',
-        'plugins/rh_connector_trackside',
         'plugins/rh_data_export_csv',
         'plugins/rh_data_export_json',
         'plugins/rh_data_import_json',
