@@ -248,7 +248,7 @@ if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
         sys.exit(0)
     if CMDARG_ZIP_LOGS_STR in sys.argv:
-        log.create_log_files_zip(logger, RaceContext.serverconfig.filename, DB_FILE_NAME, PROGRAM_DIR)
+        log.create_log_files_zip(logger, RaceContext.serverconfig.config_file_name, DB_FILE_NAME, PROGRAM_DIR)
         sys.exit(0)
     if CMDARG_VIEW_DB_STR in sys.argv:
         viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
@@ -1972,7 +1972,7 @@ def on_set_log_level(data):
 @catchLogExceptionsWrapper
 def on_download_logs(data):
     '''Download logs (as .zip file).'''
-    zip_path_name = log.create_log_files_zip(logger, RaceContext.serverconfig.filename, DB_FILE_NAME, PROGRAM_DIR, data)
+    zip_path_name = log.create_log_files_zip(logger, RaceContext.serverconfig.config_file_name, DB_FILE_NAME, PROGRAM_DIR, data)
     RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME)
     if zip_path_name:
         RHUtils.checkSetFileOwnerPi(zip_path_name)
