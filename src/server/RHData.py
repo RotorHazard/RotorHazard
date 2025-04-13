@@ -3894,6 +3894,23 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             result_str = rhapi.race.phonetic_status_msg if spoken_flag else rhapi.race.status_message
             text = text.replace('%RACE_RESULT%', result_str if result_str else '')
 
+        # %PILOTS_INTERVAL_#_SECS% : List of pilot callsigns separated by an interval of given number of seconds
+        # cannot be used with other string formats
+        if '%PILOTS_INTERVAL_' in text:
+            num_str = text[17:]
+            pos = num_str.find('_SECS%')
+            vlen = 24
+            if pos < 0:
+                pos = num_str.find('_SEC%')
+                vlen -= 1
+            if pos > 0:
+                num_str = num_str[:pos]
+                if num_str.replace('.','',1).isdigit():
+                    if isinstance(delay_sec_holder, list):
+                        delay_sec_holder.clear()
+                        delay_sec_holder.append(float(num_str))
+                        text = getPilotsListStr(rhapi, ' . ', spoken_flag).split(' . ')
+
     return text
 
 def heatNodeSorter( x):
