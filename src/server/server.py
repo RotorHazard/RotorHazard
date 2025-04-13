@@ -3645,19 +3645,27 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         try:
             RaceContext.plugin_manager.load_local_plugin_data()
-        except (FileNotFoundError, TypeError, json.JSONDecodeError):
-            print("Unable to load local plugins")
+        except:
+            logger.exception("Unable to load local plugins")
             local_loaded = False
         else:
             local_loaded = True
 
         try:
-            RaceContext.plugin_manager.load_remote_plugin_data()
-        except (requests.Timeout, requests.ConnectionError):
-            print("Unable to load remote plugins")
+            any_remote_flag = False
+            for plugin in RaceContext.serverstate.plugins:
+                if not plugin.is_bundled:
+                    any_remote_flag = True
+                    break
+            if any_remote_flag:
+                logger.info("Querying plugins server for updates")
+                RaceContext.plugin_manager.load_remote_plugin_data()
+                remote_loaded = True
+            else:
+                remote_loaded = False
+        except:
+            logger.exception("Unable to load remote plugins")
             remote_loaded = False
-        else:
-            remote_loaded = True
 
         if local_loaded and remote_loaded:
             RaceContext.plugin_manager.apply_update_statuses()

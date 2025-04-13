@@ -467,6 +467,15 @@ class RHUI():
         plugin_data = self._racecontext.plugin_manager.get_display_data()
         category_data = self._racecontext.plugin_manager.get_remote_categories()
 
+        if not category_data or len(category_data) == 0:
+            try:
+                logger.info("Querying plugins server for updates")
+                self._racecontext.plugin_manager.load_remote_plugin_data()
+                category_data = self._racecontext.plugin_manager.get_remote_categories()
+                self._racecontext.plugin_manager.apply_update_statuses()
+            except:
+                logger.exception("Unable to load remote plugins")
+
         emit_payload = {
             'remote_categories': category_data,
             'remote_data': plugin_data
