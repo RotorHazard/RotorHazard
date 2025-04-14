@@ -360,7 +360,7 @@ class Config:
                     return True
                 return False
             logger.info("Change in registered configuration sections detected")
-            self.backup_config_file()
+            self.check_backup_config_file()
             config_cleaned = {}
             for item in self.config_sections:
                 if item in self.config:
