@@ -359,6 +359,16 @@ sudo apt-get install libopenjp2-7-dev
 - If your multiline panel image requires rotation, use `PANEL_ROTATE` with the number of 90-degree CCW rotations needed (0..3). 
 - If alternating lines appear jumbled, try setting `INVERTED_PANEL_ROWS` to `true`.
 
+#### Raspberry Pi 5
+
+When the hardware is a Raspberry Pi 5, the '[rpi5-ws2812](https://github.com/niklasr22/rpi5-ws2812)' library is used (because the '[rpi-ws281x](https://github.com/jgarff/rpi_ws281x)' library does not support the Pi 5). This library should cover most use cases, but the following LED configuration parameters are not supported (and will be ignored):
+- GPIO Pin (only GPIO10 supported)
+- Strip Type (only GRB supported)
+- Frequency
+- DMA
+- Inverted Control Signal
+- Channel
+
 #### LED Controller
 
 An alternative to the above methods is to use an LED Controller module, which may be connected to a USB port on any computer that is running the RotorHazard Server. See the [LED Controller repository](https://github.com/RotorHazard/LEDCtrlr) for details on how to wire and program an Arduino board as an LED controller.

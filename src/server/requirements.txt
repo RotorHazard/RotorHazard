@@ -32,5 +32,6 @@ packaging==24.*
 smbus2==0.4.*
 RPi.GPIO==0.7.*
 rpi-ws281x==4.3.*
+rpi5-ws2812==0.1.*
 pi-ina219==1.4.*
 RPi.bme280==0.2.*
