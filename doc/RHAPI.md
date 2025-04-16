@@ -1379,7 +1379,7 @@ View information stored in server configuration and persistent (non-event, non-d
 ### All Properties and Methods
 
 #### config.register_section(section):
-Registers a custom data section and allows data to be stored and retrieved. Using during `initialize()`. No return value.
+Registers a custom data section and allows data to be stored and retrieved. Use during `initialize()`. No return value.
 - `section` (string): name of section item is within
 
 #### config.get_all:

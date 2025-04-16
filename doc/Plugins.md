@@ -485,7 +485,7 @@ Fields are defined in the following format:
 - `private` _optional_ (boolean): Prevent automatically generated UI
 - `html_attributes` _optional_ (dict): attribute values passed to HTML to control browser-based validation, such as `min`, `max`, `step`, `minlength`, `maxlength`, `pattern`; only valid values for each field type will be added
 - `persistent_section`: If defined, this field will save to the server's persistent configuration using the provided input for section; if omitted or `None`, data will save to the event
-- `persistent_section`: If set to `True` and `persistent_section` is used, the server will prompt the user to restart the server when this field is altered
+- `persistent_restart`: If set to `True` and `persistent_section` is used, the server will prompt the user to restart the server when this field is altered
 
 If `field_type` is `TEXT`
 
