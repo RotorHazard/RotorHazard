@@ -263,7 +263,7 @@ class RHUI():
 
     def get_panel_settings(self, name):
         payload = []
-        for setting in self.general_settings:
+        for setting in self._general_settings:
             if setting.panel == name:
                 payload.append(setting)
 

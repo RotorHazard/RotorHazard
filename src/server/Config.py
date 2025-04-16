@@ -346,7 +346,8 @@ class Config:
 
     def register_section(self, section):
         self.config_sections[section] = {}
-        self.config[section] = {}
+        if not self.config[section]:
+            self.config[section] = {}
 
     def clean_config(self):
         try:
