@@ -346,7 +346,11 @@ class RHUI():
                 for setting in self.get_panel_settings(panel.name):
                     field = setting.field.frontend_repr()
 
-                    db_val = self._racecontext.rhdata.get_option(setting.name)
+                    if setting.field.persistent_section:
+                        db_val = self._racecontext.serverconfig.get_item(setting.field.persistent_section, setting.field.name)
+                    else:
+                        db_val = self._racecontext.rhdata.get_option(setting.field.name)
+
                     if db_val is not None:
                         field['value'] = db_val != '0' if setting.field.field_type is UIFieldType.CHECKBOX else db_val
 
