@@ -176,6 +176,7 @@ from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
+from interface_mapper import InterfaceMapper, InterfaceType
 
 # Events manager
 from eventmanager import Evt, EventManager
@@ -3264,13 +3265,14 @@ def shutdown_button_long_press():
     on_shutdown_pi()
 
 def _do_init_rh_interface():
+    RaceContext.interface = InterfaceMapper()
     try:
         rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
-            RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, \
-                                            isS32BPillFlag=RHUtils.is_S32_BPill_board(), **HardwareHelpers)
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, \
+                                            isS32BPillFlag=RHUtils.is_S32_BPill_board(), **HardwareHelpers), InterfaceType.RH)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
             if RaceContext.interface and ((not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0) and \
@@ -3298,7 +3300,7 @@ def _do_init_rh_interface():
         if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
             if (not RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) or len(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) <= 0:
                 interfaceModule = importlib.import_module('MockInterface')
-                RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **HardwareHelpers)
+                RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **HardwareHelpers), InterfaceType.RH)
                 for node in RaceContext.interface.nodes:  # put mock nodes at latest API level
                     node.api_level = NODE_API_BEST
                 set_ui_message(
@@ -3335,7 +3337,6 @@ def _do_init_rh_interface():
         RaceContext.interface.pass_record_callback = pass_record_callback
         RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
         RaceContext.interface.node_crossing_callback = node_crossing_callback
-        RaceContext.rhui._interface = RaceContext.interface  #pylint: disable=protected-access
         return True
     except:
         logger.exception("Error initializing RH interface")
