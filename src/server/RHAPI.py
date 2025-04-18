@@ -1376,6 +1376,9 @@ class ServerAPI():
     def enable_heartbeat_event(self):
         self._racecontext.serverstate.enable_heartbeat_event = True
 
+    def set_min_mocks(self, mocks):
+        self._racecontext.serverstate.mock_nodes = mocks
+
     @property
     def info(self):
         return self._racecontext.serverstate.info_dict

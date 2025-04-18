@@ -1,7 +1,6 @@
 '''Interface mapping abstraction'''
 
 import logging
-import sys
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -28,11 +27,17 @@ class InterfaceMapper:
         self._interfaces = []
         self._nodemap = []
 
-    def add_interface(self, interface, if_type:InterfaceType):
+    def add_interface(self, interface, if_type:InterfaceType, args=None):
         interface.pass_record_callback = self.pass_record_callback
         interface.new_enter_or_exit_at_callback = self.new_enter_or_exit_at_callback
         interface.node_crossing_callback = self.node_crossing_callback
         self._interfaces.append(InterfaceMeta(interface, if_type))
+
+        if if_type == InterfaceType.MOCK:
+            for node in interface.nodes:  # put mock nodes at latest API level
+                node.api_level = args['api_level']
+
+
         for idx, node in enumerate(interface.nodes):
             self._nodemap.append(
                 NodeMap(

@@ -16,6 +16,7 @@ CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill process
 CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
 CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
 CMDARG_DATA_DIR = '--data'               # use given dir as data location
+CMDARG_MIN_MOCKS = '--mock-nodes'        # add at least this many mock nodes
 
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
@@ -3297,40 +3298,50 @@ def _do_init_rh_interface():
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
-        if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
-            if (not RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) or len(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) <= 0:
-                interfaceModule = importlib.import_module('MockInterface')
-                RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **HardwareHelpers), InterfaceType.RH)
-                for node in RaceContext.interface.nodes:  # put mock nodes at latest API level
-                    node.api_level = NODE_API_BEST
-                set_ui_message(
-                    'mock',
-                    __("Server is using simulated (mock) nodes"),
-                    header='Notice',
-                    subclass='in-use'
-                    )
-            else:
-                try:
-                    importlib.import_module('serial')
-                    if RaceContext.interface:
-                        if not (getattr(RaceContext.interface, "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
-                            logger.info("Unable to initialize serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
-                            logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
-                            # enter serial port name so it's available for node firmware update
-                            if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
-                                RaceContext.interface.set_mock_fwupd_serial_obj(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
-                                set_ui_message('stm32', \
-                                     __("Server is unable to communicate with node processor") + ". " + \
-                                          __("If an S32_BPill board is connected, you may attempt to") + \
-                                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                          __("its processor."), \
-                                    header='Warning', subclass='no-comms')
-                    else:
-                        logger.info("Unable to initialize specified serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
-                        return False  # unable to open serial port
-                except ImportError:
-                    logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
-                    return False
+
+        if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'):
+            try:
+                importlib.import_module('serial')
+                if RaceContext.interface:
+                    if not (getattr(RaceContext.interface,
+                                    "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
+                        logger.info("Unable to initialize serial node(s): {0}".format(
+                            RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                        logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
+                        # enter serial port name so it's available for node firmware update
+                        if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
+                            RaceContext.interface.set_mock_fwupd_serial_obj(
+                                RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
+                            set_ui_message('stm32', \
+                                           __("Server is unable to communicate with node processor") + ". " + \
+                                           __("If an S32_BPill board is connected, you may attempt to") + \
+                                           " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                           __("its processor."), \
+                                           header='Warning', subclass='no-comms')
+                else:
+                    logger.info("Unable to initialize specified serial node(s): {0}".format(
+                        RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                    return False  # unable to open serial port
+            except ImportError:
+                logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                return False
+
+        num_mocks = max(RaceContext.serverconfig.get_item_int('GENERAL', 'MOCK_NODES'), RaceContext.serverstate.mock_nodes, os.environ.get('RH_NODES', 0), 0)
+
+        if num_mocks > 0:
+            interfaceModule = importlib.import_module('MockInterface')
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, num_nodes=num_mocks, **HardwareHelpers), InterfaceType.MOCK,
+                {
+                    'api_level': NODE_API_BEST,
+                    'num_nodes': num_mocks
+                })
+            # set_ui_message(
+            #     'mock',
+            #     __("Server is using simulated (mock) nodes"),
+            #     header='Notice',
+            #     subclass='in-use'
+            #     )
+
 
         RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # save number of nodes found
         # set callback functions invoked by interface module
@@ -3739,6 +3750,10 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 HardwareHelpers[helper.__name__] = helper.create(RaceContext.serverconfig)
             except Exception as ex:
                 logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
+
+        if len(sys.argv) > 0 and CMDARG_MIN_MOCKS in sys.argv:
+            min_mocks_arg_idx = sys.argv.index(CMDARG_MIN_MOCKS) + 1
+            RaceContext.serverstate.mock_nodes = int(sys.argv[min_mocks_arg_idx])
 
         initRhResultFlag = initialize_rh_interface()
         if not initRhResultFlag:

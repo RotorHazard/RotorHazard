@@ -83,6 +83,7 @@ class ServerState:
 
     # PLUGIN STATUS
     plugins = None
+    mock_nodes = 0
 
     @property
     def info_dict(self):
