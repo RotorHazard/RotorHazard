@@ -37,7 +37,6 @@ class InterfaceMapper:
             for node in interface.nodes:  # put mock nodes at latest API level
                 node.api_level = args['api_level']
 
-
         for idx, node in enumerate(interface.nodes):
             self._nodemap.append(
                 NodeMap(
@@ -120,28 +119,28 @@ class InterfaceMapper:
 
     def send_status_message(self, msgTypeVal, msgDataVal):
         for iface in self._interfaces:
-            iface.interface.send_status_message()
-        return False # TODO: Return value
+            if iface.type == InterfaceType.RH:
+                return iface.interface.send_status_message()
 
     def send_shutdown_button_state(self, stateVal):
         for iface in self._interfaces:
-            iface.interface.send_shutdown_button_state()
-        return False # TODO: Return value
+            if iface.type == InterfaceType.RH:
+                return iface.interface.send_shutdown_button_state()
 
     def send_shutdown_started_message(self):
         for iface in self._interfaces:
-            iface.interface.send_shutdown_started_message()
-        return False # TODO: Return value
+            if iface.type == InterfaceType.RH:
+                return iface.interface.send_shutdown_started_message()
 
     def send_server_idle_message(self):
         for iface in self._interfaces:
-            iface.interface.send_server_idle_message()
-        return False # TODO: Return value
+            if iface.type == InterfaceType.RH:
+                return iface.interface.send_server_idle_message()
 
     def get_fwupd_serial_name(self):
         for iface in self._interfaces:
-            iface.interface.get_fwupd_serial_name()
-        return None # TODO: Return value
+            if iface.type == InterfaceType.RH:
+                return iface.interface.get_fwupd_serial_name()
 
     def close_fwupd_serial_port(self):
         for iface in self._interfaces:
@@ -162,11 +161,10 @@ class InterfaceMapper:
 
     def get_intf_error_report_str(self, **kwargs):
         for iface in self._interfaces:
-            iface.interface.get_intf_error_report_str(**kwargs)
-        return None # TODO: Return value
+            if iface.type == InterfaceType.RH:
+                return iface.interface.get_intf_error_report_str(**kwargs)
 
-
-
+    # From Base
 
     def get_lap_source_str(self, source_idx):
         return self._interfaces[0].get_lap_source_str(source_idx)
@@ -220,8 +218,3 @@ class InterfaceMapper:
                 else:
                     json[key] = val
         return json
-
-    def set_frequency(self, node_index, frequency):
-        mapped_node = self._nodemap[node_index]
-        local_index = mapped_node.index
-        return mapped_node.interface.set_frequency(local_index, frequency)
