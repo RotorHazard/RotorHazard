@@ -3266,7 +3266,6 @@ def shutdown_button_long_press():
     on_shutdown_pi()
 
 def _do_init_rh_interface():
-    RaceContext.interface = InterfaceMapper()
     try:
         rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
         try:
@@ -3623,6 +3622,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # RotorHazard events dispatch
         Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
+
+        # Create interface mapping
+        RaceContext.interface = InterfaceMapper()
 
         # Plugin handling
         plugin_modules = []

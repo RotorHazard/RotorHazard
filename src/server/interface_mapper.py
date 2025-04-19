@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 class InterfaceType:
     MOCK = 0
     RH = 1
+    RHAPI = 2
 
 @dataclass
 class NodeMap:

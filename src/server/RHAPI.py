@@ -13,6 +13,7 @@ import logging
 import RHUtils
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
+from interface_mapper import InterfaceType
 
 logger = logging.getLogger(__name__)
 
@@ -1272,6 +1273,8 @@ class HardwareInterfaceAPI():
     def seats(self):
         return self._racecontext.interface.nodes
 
+    def add(self, interface):
+        return self._racecontext.interface.add_interface(interface, InterfaceType.RHAPI)
 
 #
 # Server Config
