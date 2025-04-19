@@ -202,6 +202,7 @@ class RHData():
             RHUtils.checkSetFileOwnerPi(bkp_name)
         except Exception:
             logger.exception('Error backing up database file')
+            return None
         return bkp_name
 
     def delete_old_db_autoBkp_files(self, num_keep_val, prefix_str, DB_AUTOBKP_NUM_KEEP_STR):
