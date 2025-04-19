@@ -4004,7 +4004,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     '<a href="/docs?d=Software Setup.md#the-data-directory">',
                     __("Why?"),
                     "</a>",
-                    '<br /><button class="datadir-handler" data-method="migrate">',
+                    '<br /><button data-mfp-src="#migrate_confirm" class="open-mfp-popup">',
                     __("Migrate user data to <code>~/rh-data</code> (recommended)"),
                     '</button>',
                     "|",

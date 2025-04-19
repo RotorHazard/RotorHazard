@@ -259,9 +259,21 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set-log-console-stream">{{ __('Console Stream') }}</label>
+					<label for="set-log-level-file">{{ __('Logfile Level') }}</label>
 				</div>
-				<input type="text" id="set-log-console-stream" class="set-config" data-section="LOGGING" data-key="CONSOLE_STREAM" value="{{ getConfig('LOGGING', 'CONSOLE_STREAM') }}">
+				<select id="set-log-level-file" class="set-config" data-section="LOGGING" data-key="FILELOG_LEVEL">
+					<option value="NONE" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='NONE'}}>{{ __('None') }}</option>
+					<option value="ERROR" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='ERROR'}}>{{ __('Error') }}</option>
+					<option value="WARNING" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='WARNING'}}>{{ __('Warning') }}</option>
+					<option value="INFO" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='INFO'}}>{{ __('Info') }}</option>
+					<option value="DEBUG" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='DEBUG'}}>{{ __('Debug') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-log-file-retention">{{ __('Logfile Retention (days)') }}</label>
+				</div>
+				<input type="number" id="set-log-file-retention" class="set-config" data-section="LOGGING" data-key="FILELOG_NUM_KEEP" value="{{ getConfig('LOGGING', 'FILELOG_NUM_KEEP') }}" min="-1">
 			</li>
 			<li>
 				<div class="label-block">
@@ -277,6 +289,12 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set-log-console-stream">{{ __('Console Stream') }}</label>
+				</div>
+				<input type="text" id="set-log-console-stream" class="set-config" data-section="LOGGING" data-key="CONSOLE_STREAM" value="{{ getConfig('LOGGING', 'CONSOLE_STREAM') }}">
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set-log-level-system">{{ __('System Log Level') }}</label>
 				</div>
 				<select id="set-log-level-system" class="set-config" data-section="LOGGING" data-key="SYSLOG_LEVEL">
@@ -286,24 +304,6 @@
 					<option value="INFO" {{'selected' if getConfig('LOGGING', 'SYSLOG_LEVEL')=='INFO'}}>{{ __('Info') }}</option>
 					<option value="DEBUG" {{'selected' if getConfig('LOGGING', 'SYSLOG_LEVEL')=='DEBUG'}}>{{ __('Debug') }}</option>
 				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set-log-level-file">{{ __('Logfile Level') }}</label>
-				</div>
-				<select id="set-log-level-file" class="set-config" data-section="LOGGING" data-key="FILELOG_LEVEL">
-					<option value="NONE" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='NONE'}}>{{ __('None') }}</option>
-					<option value="ERROR" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='ERROR'}}>{{ __('Error') }}</option>
-					<option value="WARNING" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='WARNING'}}>{{ __('Warning') }}</option>
-					<option value="INFO" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='INFO'}}>{{ __('Info') }}</option>
-					<option value="DEBUG" {{'selected' if getConfig('LOGGING', 'FILELOG_LEVEL')=='DEBUG'}}>{{ __('Debug') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set-log-file-retention">{{ __('Logfile Retention') }}</label>
-				</div>
-				<input type="number" id="set-log-file-retention" class="set-config" data-section="LOGGING" data-key="FILELOG_NUM_KEEP" value="{{ getConfig('LOGGING', 'FILELOG_NUM_KEEP') }}" min="-1">
 			</li>
 			<li>
 				<div class="label-block">
@@ -443,15 +443,15 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set-backup-retention">{{ __('Database Backup Retention') }}</label>
+					<label for="set-backup-retention">{{ __('Database Backup Retention (days)') }}</label>
 				</div>
 				<input type="number" id="set-backup-retention" class="set-config" data-section="GENERAL" data-key="DB_AUTOBKP_NUM_KEEP" value="{{ getConfig('GENERAL', 'DB_AUTOBKP_NUM_KEEP') }}" min="-1">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set-sync-delay">{{ __('Sync Allowance (s)') }}</label>
+					<label for="set-sync-delay">{{ __('Race Start Delay (seconds)') }}</label>
 				</div>
-				<input type="number" id="set-sync-delay" class="set-config" data-section="GENERAL" data-key="RACE_START_DELAY_EXTRA_SECS" value="{{ getConfig('GENERAL', 'RACE_START_DELAY_EXTRA_SECS') }}" min="0" step="0.01">
+				<input type="number" id="set-sync-delay" class="set-config" data-section="GENERAL" data-key="RACE_START_DELAY_EXTRA_SECS" value="{{ getConfig('GENERAL', 'RACE_START_DELAY_EXTRA_SECS') }}" min="0.9" max="99.9" step="0.01">
 			</li>
 		</ol>
 	</div>

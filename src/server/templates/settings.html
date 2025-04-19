@@ -1920,7 +1920,7 @@
 			['distance', __('Distance'), 'numeric', 0],
 			['queryInterval', __('Query Interval'), 'numeric', 0],
 			['recEventsFlag', __('Receives Events'), 'boolean', false],
-			['timeout', __('Timeout'), 'numeric', 0],
+			['timeout', __('Timeout (seconds)'), 'numeric', 0],
 			['event', __('Event'), 'text', ''],
 			['effect', __('Effect'), 'text', ''],
 			['text', __('Text'), 'text', ''],
@@ -2490,6 +2490,15 @@
 	{% if server_messages %}
 		{{ server_messages | safe }}
 	{% endif %}
+</div>
+
+<div id="migrate_confirm" class="priority-message-interrupt mfp-hide popup">
+	<h2>{{ __('Alert') }}</h2>
+	<div class="popup-content">
+		<p>{{ __('User data will be migrated and the server will restart. Are you sure?') }}</p>
+		<p><button class="datadir-handler" data-method="migrate">{{ __('Migrate Data') }}</button>
+			<button class="cancel">{{ __('Cancel') }}</button></p>
+	</div>
 </div>
 
 <!--Frequency Setup-->
