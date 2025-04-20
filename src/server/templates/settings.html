@@ -1228,13 +1228,20 @@
 					$('#cfg_files_list').append('<option value="' + cfgfile + '">' + cfgfile + '</option>');
 				}
 				$('#cfg_files_list').prop('disabled', false);
-				$('#cfg_files_list').val($('#cfg_files_list option').last().val());
+				var select_file = msg.select_file;
+				if (select_file) {
+					$('#cfg_files_list').val(select_file);
+				} else {
+					$('#cfg_files_list').val($('#cfg_files_list option').last().val());
+				}
 				$('button[data-mfp-src="#settings_restore_confirm"]').prop('disabled', false);
+				$('#rename_settings_btn').prop('disabled', false);
 				$('button[data-mfp-src="#settings_delete_confirm"]').prop('disabled', false);
 			} else {
 				$('#cfg_files_list').append('<option value="-">' + __('No Saved Settings Files') + '</option>');
 				$('#cfg_files_list').prop('disabled', true);
 				$('button[data-mfp-src="#settings_restore_confirm"]').prop('disabled', true);
+				$('#rename_settings_btn').prop('disabled', true);
 				$('button[data-mfp-src="#settings_delete_confirm"]').prop('disabled', true);
 			}
 		});
@@ -1250,6 +1257,34 @@
 				cfg_file: $('#cfg_files_list').val()
 			};
 			socket.emit('restore_cfg_file', data);
+		});
+
+		$('#rename_settings_btn').click(function (event) {
+			$('#new_cfg_file_name').val($('#cfg_files_list').val());  // default to current filename
+			$.magnificPopup.open({
+				items: {
+					src: '#settings_rename_popup'
+				},
+				type: 'inline'
+			});
+			// set focus and select text on 'input' field on popup window
+			setTimeout("document.getElementById('new_cfg_file_name').focus()", 100);
+			setTimeout("document.getElementById('new_cfg_file_name').select()", 110);
+		});
+
+		$('#rename_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				cfg_file: $('#cfg_files_list').val(),
+				new_name: $('#new_cfg_file_name').val()
+			};
+			socket.emit('rename_cfg_file', data);
+		});
+
+		$("#new_cfg_file_name").keyup(function(event) {
+			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+				$("#rename_cfg_file").click();
+			}
 		});
 
 		$('button#delete_cfg_file').click(function (event) {
@@ -3202,7 +3237,8 @@
 			</li>
 		</ol>
 		<div class="control-set">
-			<button data-mfp-src="#settings_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Settings File') }}</button>
+			<button data-mfp-src="#settings_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Settings File') }}</button> &nbsp;
+			<button id="rename_settings_btn" disabled="disabled">{{ __('Rename Settings File') }}</button> &nbsp;
 			<button data-mfp-src="#settings_delete_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Delete Settings File') }}</button>
 		</div>
 
@@ -3219,6 +3255,19 @@
 			<div class="popup-content">
 				<p>{{ __('All settings will be overwritten and the server will restart. Are you sure?') }}</p>
 				<p><button class="btn-danger" id="restore_cfg_file">{{ __('Restore Settings') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+		<div id="settings_rename_popup" class="mfp-hide popup">
+			<h2>{{ __('Rename Settings File') }}</h2>
+			<div class="popup-content">
+				<p>
+					<div class="label-block">
+						<label for="new_cfg_file_name">{{ __('Enter New File Name:') }}</label>
+					</div>
+					<input type="text" id="new_cfg_file_name">
+				</p>
+				<p><button class="button" id="rename_cfg_file">{{ __('Rename File') }}</button>
 					<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
