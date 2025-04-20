@@ -13,6 +13,7 @@ import random
 import numbers
 import functools
 import traceback
+import shutil
 import util.RH_GPIO as RH_GPIO
 
 logger = logging.getLogger(__name__)
@@ -525,13 +526,15 @@ def migrate_data_dir(source_dir_path, dest_dir_path):
                 for subdir_file_name in os.listdir(source_file_path):
                     subdir_file_path = os.path.join(source_file_path, subdir_file_name)
                     if f'{file_name}/{subdir_file_name}' not in exceptions:
-                        os.rename(subdir_file_path, os.path.join(dest_file_path, subdir_file_name))
+                        shutil.move(subdir_file_path, os.path.join(dest_file_path, subdir_file_name))
+                if len(os.listdir(source_file_path)) == 0:
+                    os.rmdir(source_file_path)
             elif os.path.isfile(source_file_path):
-                os.rename(source_file_path, dest_file_path)
+                shutil.move(source_file_path, dest_file_path)
 
         rh_user_dir = os.path.join(source_dir_path, 'static/user')
         if os.path.isdir(rh_user_dir):
-            os.rename(rh_user_dir, os.path.join(dest_dir_path, 'shared'))
+            shutil.move(rh_user_dir, os.path.join(dest_dir_path, 'shared'))
     except Exception as ex:
         return ex
     return True
