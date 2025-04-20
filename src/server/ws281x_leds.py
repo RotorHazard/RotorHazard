@@ -73,9 +73,9 @@ def get_pixel_interface(config, brightness, *args, **kwargs):
         logger.debug("Result of attempting to initialize 'rpi_ws281x' library:  '{}'".format(ex))
 
     try:
-        import rpi5_ws2812
-        from rpi5_ws2812.ws2812 import WS2812SpiDriver as rpi5_WS2812SpiDriver
-        from rpi5_ws2812.ws2812 import Color as rpi5_ws2812_Color
+        import rpi5_ws2812  #pylint: disable=import-error
+        from rpi5_ws2812.ws2812 import WS2812SpiDriver as rpi5_WS2812SpiDriver  #pylint: disable=import-error
+        from rpi5_ws2812.ws2812 import Color as rpi5_ws2812_Color  #pylint: disable=import-error
         rpi5_strip = rpi5_WS2812SpiDriver(spi_bus=0, spi_device=0, led_count=config['LED_COUNT']).get_strip()
 
         # emulate 'rpi_ws281x' functions:
