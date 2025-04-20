@@ -3886,6 +3886,8 @@ def rh_program_initialize(reg_endpoints_flag=True):
                             try:
                                 ledModule = importlib.import_module('ANSI_leds')
                                 LedStripObj = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                                # revert reassignment of stdout (done in 'log.py') so that ANSI_leds can output to console
+                                sys.stdout = sys.__stdout__
                             except ImportError:
                                 ledModule = None
                                 logger.info('LED: disabled (no modules available)')
