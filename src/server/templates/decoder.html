@@ -177,14 +177,21 @@
 				}
 			});
 			socket.on('environmental_data', function (msg) {
-				env_table_html = '';
-				for (i=0; i<msg.length; i++) {
+				var env_table_html = '';
+				for (var i=0; i<msg.length; i++) {
 					var sensor = msg[i];
 					var name = Object.keys(sensor)[0];
 					var data = sensor[name];
 					var values = '';
 					var br = '';
-					for (var reading in data) {
+
+					//The display order of the readings
+					var displayOrder = ['voltage', 'current', 'power', 'capacity', 'temperature', 'humidity', 'pressure'];
+					var readingsToDisplay = displayOrder.filter(function (reading) {
+						return data.hasOwnProperty(reading);
+					});
+
+					readingsToDisplay.forEach(function (reading) {
 						var value = data[reading].value;
 						var units = data[reading].units;
 						values += br;
@@ -194,6 +201,8 @@
 							values += __('Current: ') + Number(value).toFixed(0)+units;
 						} else if(reading == 'power') {
 							values += __('Power: ') + Number(value).toFixed(0)+units;
+						} else if(reading == 'capacity') {
+							values += __('Capacity: ') + Number(value).toFixed(0)+units;
 						} else if(reading == 'temperature') {
 							values += __('Temperature: ') + Number(value).toFixed(1)+units;
 						} else if(reading == 'humidity') {
@@ -204,7 +213,8 @@
 							values += __('Unknown: ') + value;
 						}
 						br = '<br/>';
-					}
+					});
+					
 					env_table_html += '<tr>';
 					env_table_html += '<td>' + name + '</td>';
 					env_table_html += '<td>' + values + '</td>';
