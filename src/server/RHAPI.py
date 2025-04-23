@@ -203,6 +203,8 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
+    def register_variable(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
+        return self._racecontext.rhui.register_ui_variable(field, getter_fn, setter_fn, args, panel, order)
 
 #
 # Database Access

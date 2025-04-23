@@ -2571,6 +2571,14 @@ def on_set_config_section(data):
         'value': data['value'],
         })
 
+@SOCKET_IO.on('set_ui_variable')
+@catchLogExcWithDBWrapper
+def on_set_ui_variable(data):
+    for var in RaceContext.rhui.ui_variables:
+        if data['name'] == var.name:
+            var.setter_fn(data['value'], var.args)
+            break
+
 @SOCKET_IO.on('set_consecutives_count')
 @catchLogExcWithDBWrapper
 def on_set_consecutives_count(data):

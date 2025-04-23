@@ -90,6 +90,16 @@ class GeneralSetting():
     order: int = 0
 
 @dataclass
+class UIVariable():
+    name: str
+    field: UIField
+    getter_fn: callable
+    setter_fn: callable
+    args: dict
+    panel: str = None
+    order: int = 0
+
+@dataclass
 class QuickButton():
     panel: str
     name: str
@@ -122,6 +132,7 @@ class RHUI():
         self._raceformat_attributes = []
         self._ui_panels = []
         self._general_settings = []
+        self._ui_variables = []
         self._quickbuttons = []
         self._markdowns = []
 
@@ -250,7 +261,17 @@ class RHUI():
     def general_settings(self):
         return self._general_settings
 
-    # button
+    # UI Variables
+    def register_ui_variable(self, field:UIField, value_var, setter_fn, args=None, panel=None, order=0):
+        field_internal_id = field.name
+        self._ui_variables.append(UIVariable(field_internal_id, field, value_var, setter_fn, args, panel, order))
+        return self._ui_variables
+
+    @property
+    def ui_variables(self):
+        return self._ui_variables
+
+    # Quickbuttons
     def register_quickbutton(self, panel, name, label, fn, args=None):
         for idx, button in enumerate(self._quickbuttons):
             if button.name == name:
@@ -262,10 +283,16 @@ class RHUI():
         return self._quickbuttons
 
     def get_panel_settings(self, name):
-        payload = []
+        payload = {
+            'settings': [],
+            'variables': []
+        }
         for setting in self._general_settings:
             if setting.panel == name:
-                payload.append(setting)
+                payload['settings'].append(setting)
+        for variable in self._ui_variables:
+            if variable.panel == name:
+                payload['variables'].append(variable)
 
         return payload
 
@@ -342,8 +369,10 @@ class RHUI():
 
         for panel in self.ui_panels:
             if panel.page == page:
+                panel_settings = self.get_panel_settings(panel.name)
+
                 settings = []
-                for setting in self.get_panel_settings(panel.name):
+                for setting in panel_settings['settings']:
                     field = setting.field.frontend_repr()
 
                     if setting.field.persistent_section:
@@ -355,6 +384,12 @@ class RHUI():
                         field['value'] = db_val != '0' if setting.field.field_type is UIFieldType.CHECKBOX else db_val
 
                     settings.append(field)
+
+                variables = []
+                for var in panel_settings['variables']:
+                    field = var.field.frontend_repr()
+                    field['value'] = var.getter_fn()
+                    variables.append(field)
 
                 buttons = []
                 for button in self.get_panel_quickbuttons(panel.name):
@@ -378,6 +413,7 @@ class RHUI():
                         'open': panel.open,
                     },
                     'settings': settings,
+                    'variables': variables,
                     'quickbuttons': buttons,
                     'markdowns': markdowns
                 })
