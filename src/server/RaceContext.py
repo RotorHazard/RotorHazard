@@ -7,6 +7,7 @@ import RHTimeFns
 import logging
 from eventmanager import Evt
 from led_event_manager import NoLEDManager
+from interface_mapper import InterfaceType
 
 logger = logging.getLogger(__name__)
 
@@ -128,30 +129,41 @@ class ServerState:
         return self._info_html
 
     def build_info(self):
+        self.has_rh_interface = False
+        self.has_other_interface = False
         # Node API levels
         node_api_level = 0
         node_api_match = True
         node_api_lowest = 0
         node_api_levels = [None]
 
-        info_node = self._racecontext.interface.get_info_node_obj()
-        if info_node:
-            if info_node.api_level:
-                node_api_level = info_node.api_level
-                node_api_lowest = node_api_level
-                if len(self._racecontext.interface.nodes):
-                    node_api_levels = []
-                    for node in self._racecontext.interface.nodes:
-                        node_api_levels.append(node.api_level)
-                        if node.api_level != node_api_level:
-                            node_api_match = False
-                        if node.api_level < node_api_lowest:
-                            node_api_lowest = node.api_level
-                    # if multi-node and all api levels same then only include one entry
-                    if node_api_match and self._racecontext.interface.nodes[0].multi_node_index >= 0:
-                        node_api_levels = node_api_levels[0:1]
-                else:
-                    node_api_levels = [node_api_level]
+        rh_interface = False
+        for mapped_interface in self._racecontext.interface.mapped_interfaces:
+            if mapped_interface.type == InterfaceType.RH:
+                self.has_rh_interface = True
+                rh_interface = mapped_interface.interface
+            else:
+                self.has_other_interface = True
+
+        if rh_interface:
+            info_node = rh_interface.get_info_node_obj()
+            if info_node:
+                if info_node.api_level:
+                    node_api_level = info_node.api_level
+                    node_api_lowest = node_api_level
+                    if len(rh_interface.nodes):
+                        node_api_levels = []
+                        for node in rh_interface.nodes:
+                            node_api_levels.append(node.api_level)
+                            if node.api_level != node_api_level:
+                                node_api_match = False
+                            if node.api_level < node_api_lowest:
+                                node_api_lowest = node.api_level
+                        # if multi-node and all api levels same then only include one entry
+                        if node_api_match and rh_interface.nodes[0].multi_node_index >= 0:
+                            node_api_levels = node_api_levels[0:1]
+                    else:
+                        node_api_levels = [node_api_level]
 
         self.node_api_match = node_api_match
         self.node_api_lowest = node_api_lowest

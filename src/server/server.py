@@ -3291,9 +3291,6 @@ def _do_init_rh_interface():
                         subclass='no-library'
                         )
                 RaceContext.race.num_nodes = 0
-                RaceContext.interface.pass_record_callback = pass_record_callback
-                RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-                RaceContext.interface.node_crossing_callback = node_crossing_callback
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
@@ -3343,10 +3340,6 @@ def _do_init_rh_interface():
 
 
         RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # save number of nodes found
-        # set callback functions invoked by interface module
-        RaceContext.interface.pass_record_callback = pass_record_callback
-        RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-        RaceContext.interface.node_crossing_callback = node_crossing_callback
         return True
     except:
         logger.exception("Error initializing RH interface")
@@ -3363,6 +3356,11 @@ def initialize_rh_interface():
             header='Warning',
             subclass='none'
             )
+    RaceContext.interface.pass_record_callback = pass_record_callback
+    RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
+    RaceContext.interface.node_crossing_callback = node_crossing_callback
+    RaceContext.interface.add_callbacks()
+    RaceContext.interface.reindex_nodes()
     return True
 
 # Create and save server/node information
@@ -3376,32 +3374,33 @@ def buildServerInfo():
 # Log server/node information
 def reportServerInfo():
     logger.debug("Server info:  " + json.dumps(RaceContext.serverstate.info_dict))
-    if RaceContext.serverstate.node_api_match is False:
-        logger.info('** WARNING: Node API mismatch **')
-        set_ui_message('node-match',
-            __("Node versions do not match and may not function similarly"), header='Warning')
-    if RaceContext.race.num_nodes > 0:
-        if RaceContext.serverstate.node_api_lowest < NODE_API_SUPPORTED:
-            logger.info('** WARNING: Node firmware is out of date and may not function properly **')
-            msgStr = __("Node firmware is out of date and may not function properly")
-            if RaceContext.interface.get_fwupd_serial_name() != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
-            set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
-        elif RaceContext.serverstate.node_api_lowest < NODE_API_BEST:
-            logger.info('** NOTICE: Node firmware update is available **')
-            msgStr = __("Node firmware update is available")
-            if RaceContext.interface.get_fwupd_serial_name() != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
-            set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
-        elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
-            logger.warning('** WARNING: Node firmware is newer than this server version supports **')
-            set_ui_message('node-newer',
-                __("Node firmware is newer than this server version and may not function properly"),
-                header='Warning', subclass='api-high')
+    if not RaceContext.serverstate.has_other_interface:
+        if RaceContext.serverstate.node_api_match is False:
+            logger.info('** WARNING: Node API mismatch **')
+            set_ui_message('node-match',
+                __("Node versions do not match and may not function similarly"), header='Warning')
+        if RaceContext.race.num_nodes > 0:
+            if RaceContext.serverstate.node_api_lowest < NODE_API_SUPPORTED:
+                logger.info('** WARNING: Node firmware is out of date and may not function properly **')
+                msgStr = __("Node firmware is out of date and may not function properly")
+                if RaceContext.interface.get_fwupd_serial_name() != None:
+                    msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
+                              " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                              __("its processor.")
+                set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
+            elif RaceContext.serverstate.node_api_lowest < NODE_API_BEST:
+                logger.info('** NOTICE: Node firmware update is available **')
+                msgStr = __("Node firmware update is available")
+                if RaceContext.interface.get_fwupd_serial_name() != None:
+                    msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
+                              " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                              __("its processor.")
+                set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
+            elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
+                logger.warning('** WARNING: Node firmware is newer than this server version supports **')
+                set_ui_message('node-newer',
+                    __("Node firmware is newer than this server version and may not function properly"),
+                    header='Warning', subclass='api-high')
 
 def check_req_entry(req_line, entry):
     try:
