@@ -1428,6 +1428,9 @@ class ServerAPI():
     def data_dir(self):
         return self._racecontext.serverstate.data_dir
 
+    def set_restart_required(self):
+        return self._racecontext.serverstate.set_restart_required()
+
 #
 # Filters
 #
