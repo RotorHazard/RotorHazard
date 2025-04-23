@@ -1943,11 +1943,12 @@ class RHUI():
         ''' Emits refresh-page message '''
         self._socket.emit('refresh_page')
 
-    def emit_upd_cfg_files_list(self):
+    def emit_upd_cfg_files_list(self, select_cfg_file=None):
         '''Update List of database files in cfg_bkp'''
         if not os.path.exists(self._racecontext.serverconfig.cfg_bkp_dir_name):
             emit_payload = {
-                'cfg_files': None
+                'cfg_files': None,
+                'select_file': None
             }
         else:
             files = []
@@ -1957,6 +1958,7 @@ class RHUI():
             files.sort(key=str.casefold)
             files = list(filter(lambda x: x.endswith(".json"), files))
             emit_payload = {
-                'cfg_files': files
+                'cfg_files': files,
+                'select_file': select_cfg_file
             }
         self._socket.emit('upd_cfg_files_list', emit_payload)
