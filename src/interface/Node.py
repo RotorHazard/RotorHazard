@@ -3,6 +3,8 @@
 class Node:
     '''Node class represents the arduino/rx pair.'''
     def __init__(self):
+        self.provider = None
+        self.provider_type = None
         self.api_level = 0
         self.api_valid_flag = False
         self.index = -1
