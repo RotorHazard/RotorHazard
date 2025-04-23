@@ -1541,13 +1541,18 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update race (retroactively via marshaling).'''
 
-    _race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
+    race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    message = __('A race has been reassigned to {0}').format(new_heat.display_name)
-    RaceContext.rhui.emit_priority_message(message, False)
+    if race_meta or new_heat:
+        message = __('A race has been reassigned to {0}').format(new_heat.display_name)
+        RaceContext.rhui.emit_priority_message(message, False)
 
-    RaceContext.rhui.emit_race_list(nobroadcast=True)
-    RaceContext.rhui.emit_result_data()
+        RaceContext.rhui.emit_race_list(nobroadcast=True)
+        RaceContext.rhui.emit_result_data()
+    else:
+        message = __('No reassignment made: destination heat same as source')
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+
 
 @SOCKET_IO.on('backup_database')
 @catchLogExcWithDBWrapper
