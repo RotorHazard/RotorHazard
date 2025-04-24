@@ -99,10 +99,10 @@ class InterfaceMapper:
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_frequency(self, node_index, frequency, band, channel):
         mapped_node = self._node_map[node_index]
         local_index = mapped_node.index
-        return mapped_node.interface.set_frequency(local_index, frequency)
+        return mapped_node.interface.set_frequency(local_index, frequency, band, channel)
 
     def transmit_enter_at_level(self, node, level):
         for mapped_node in self._node_map:

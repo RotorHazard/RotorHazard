@@ -685,9 +685,10 @@ class DatabaseAPI():
 
             if set_id == self._racecontext.race.profile.id:
                 self._racecontext.race.profile = result
-                for idx, value in enumerate(json.loads(result.frequencies)['f']):
+                freqs = json.loads(result.frequencies)
+                for idx, value in enumerate(freqs['f']):
                     if idx < self._racecontext.race.num_nodes:
-                        self._racecontext.interface.set_frequency(idx, value)
+                        self._racecontext.interface.set_frequency(idx, value, freqs['b'][idx], freqs['c'][idx])
                 self._racecontext.rhui.emit_frequency_data()
 
             return result

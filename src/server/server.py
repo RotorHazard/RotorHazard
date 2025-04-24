@@ -1042,7 +1042,7 @@ def on_set_frequency(data):
         })
     RaceContext.race.profile = profile
 
-    RaceContext.interface.set_frequency(node_index, frequency)
+    RaceContext.interface.set_frequency(node_index, frequency, band, channel)
 
     RaceContext.race.clear_results()
 
@@ -1130,7 +1130,7 @@ def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     logger.debug("Sending frequency values to nodes: " + str(freqs["f"]))
     for idx in range(RaceContext.race.num_nodes):
-        RaceContext.interface.set_frequency(idx, freqs["f"][idx])
+        RaceContext.interface.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
 
         RaceContext.race.clear_results()
 
@@ -1147,7 +1147,9 @@ def restore_node_frequency(node_index):
     gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
     profile_freqs = json.loads(RaceContext.race.profile.frequencies)
     freq = profile_freqs["f"][node_index]
-    RaceContext.interface.set_frequency(node_index, freq)
+    band = profile_freqs["b"][node_index]
+    channel = profile_freqs["c"][node_index]
+    RaceContext.interface.set_frequency(node_index, freq, band, channel)
     logger.info('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
 
 @SOCKET_IO.on('set_enter_at_level')
@@ -3082,7 +3084,7 @@ def assign_frequencies():
     freqs = json.loads(profile.frequencies)
 
     for idx in range(RaceContext.race.num_nodes):
-        RaceContext.interface.set_frequency(idx, freqs["f"][idx])
+        RaceContext.interface.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
         RaceContext.race.clear_results()
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
