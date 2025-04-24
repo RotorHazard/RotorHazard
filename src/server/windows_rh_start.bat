@@ -11,17 +11,15 @@ echo.
 
 REM Check if venv directory exists
 if not exist venv\ (
-    echo RH Win Launcher: No virtual enviroment detected, the launcher will install the required packages
+    echo RH Win Launcher: No virtual enviroment detected, the launcher will install the required packages...
     python -m venv venv
 	call venv\Scripts\activate
-	pause
 	pip install -r reqsNonPi.txt
 ) else (
     echo RH Win Launcher: Virtual environment exists. 
 	echo RH Win Launcher: If you get ModuleNotFoundError: No module named errors delete the venv folder and re-run this script
 	echo.
 	call venv\Scripts\activate
-	pause
 )
 
 REM Run the server script
