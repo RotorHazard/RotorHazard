@@ -9,7 +9,7 @@ echo.
 
 python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo Python is not installed or not in PATH, please install python and re-run this script
+    echo RH Win Launcher: Python is not installed or not in PATH, please install python from the Microsoft store and re-run this script
 	pause
 	exit /b 1
 )
