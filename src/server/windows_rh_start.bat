@@ -6,6 +6,14 @@ echo RotorHazard Windows Launcher
 echo.
 echo ############################
 echo.
+
+python --version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo Python is not installed or not in PATH, please install python and re-run this script
+	pause
+	exit /b 1
+)
+
 echo RH Win Launcher: Once the server is running go to localhost:5000 in a browser to use RotorHazard
 echo.
 
