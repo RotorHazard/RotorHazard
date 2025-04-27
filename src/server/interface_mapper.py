@@ -175,10 +175,10 @@ class InterfaceMapper:
         for iface in self._interface_map:
             iface.interface.set_intf_error_report_percent_limit(percentVal)
 
-    def get_intf_error_report_str(self, **kwargs):
+    def get_intf_error_report_str(self, *args, **kwargs):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
-                return iface.interface.get_intf_error_report_str(**kwargs)
+                return iface.interface.get_intf_error_report_str(*args, **kwargs)
 
     # From Base
 
