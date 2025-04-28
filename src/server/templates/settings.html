@@ -50,7 +50,7 @@
 			}
 
 			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="match-timer">' + '{{ __("(Match Timer Language)") }}' + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
 			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
@@ -346,7 +346,7 @@
 				});
 					
 				env_table_html += '<tr>';
-				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + __(name) + '</td>';
 				env_table_html += '<td>' + values + '</td>';
 				env_table_html += '</tr>';
 			}
@@ -3176,7 +3176,7 @@
 	<div class="panel-content">
 		<h3>{{ __('Environment Status') }}</h3>
 		<div id="env-data-table" class="control-set">
-			<p>No environment status available.</p>
+			<p>{{ __('No environment status available.') }}</p>
 		</div>
 		<h3>{{ __('Settings') }}</h3>
 		<div id="sensor-setup">

@@ -137,7 +137,7 @@
 			}
 
 			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="match-timer">' + '{{ __("(Match Timer Language)") }}' + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
 			for (i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
@@ -1791,7 +1791,7 @@
 				});
 					
 				env_table_html += '<tr>';
-				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + __(name) + '</td>';
 				env_table_html += '<td>' + values + '</td>';
 				env_table_html += '</tr>';
 			}
@@ -2609,7 +2609,7 @@
 	</div>
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
-		<input type="text" id="message_body" maxlength="256" placeholder="Message"></p>
+		<input type="text" id="message_body" maxlength="256" placeholder="{{ __('Message') }}"></p>
 		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>

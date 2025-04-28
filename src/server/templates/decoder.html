@@ -216,7 +216,7 @@
 					});
 					
 					env_table_html += '<tr>';
-					env_table_html += '<td>' + name + '</td>';
+					env_table_html += '<td>' + __(name) + '</td>';
 					env_table_html += '<td>' + values + '</td>';
 					env_table_html += '</tr>';
 				}
@@ -964,7 +964,7 @@
 				</div>
 
 				<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
-					<h2>Alert</h2>
+					<h2>{{ __('Alert') }}</h2>
 					<div class="popup-content">
 						<p>{{ __('Shut down server?') }}</p>
 						<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
@@ -973,7 +973,7 @@
 				</div>
 
 				<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
-					<h2>Alert</h2>
+					<h2>{{ __('Alert') }}</h2>
 					<div class="popup-content">
 						<p>{{ __('Reboot server?') }}</p>
 						<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
