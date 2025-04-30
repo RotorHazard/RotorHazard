@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.3.0-dev.5" # Public release version code
+RELEASE_VERSION = "4.3.0-dev.6" # Public release version code
 SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -1541,13 +1541,18 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update race (retroactively via marshaling).'''
 
-    _race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
+    race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    message = __('A race has been reassigned to {0}').format(new_heat.display_name)
-    RaceContext.rhui.emit_priority_message(message, False)
+    if race_meta or new_heat:
+        message = __('A race has been reassigned to {0}').format(new_heat.display_name)
+        RaceContext.rhui.emit_priority_message(message, False)
 
-    RaceContext.rhui.emit_race_list(nobroadcast=True)
-    RaceContext.rhui.emit_result_data()
+        RaceContext.rhui.emit_race_list(nobroadcast=True)
+        RaceContext.rhui.emit_result_data()
+    else:
+        message = __('No reassignment made: destination heat same as source')
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+
 
 @SOCKET_IO.on('backup_database')
 @catchLogExcWithDBWrapper
@@ -1994,9 +1999,11 @@ def on_download_logs(data):
 def on_backup_settings(*args):
     '''Make backup copy of config-settings file.'''
     bkp_file_name = RaceContext.serverconfig.check_backup_config_file()
-    RaceContext.rhui.emit_upd_cfg_files_list()
     if bkp_file_name:
+        RaceContext.rhui.emit_upd_cfg_files_list(bkp_file_name)
         RaceContext.rhui.emit_priority_message(__('Current settings saved to backup file: ') + str(bkp_file_name))
+    else:
+        RaceContext.rhui.emit_upd_cfg_files_list()
 
 @SOCKET_IO.on('download_settings')
 @catchLogExceptionsWrapper
@@ -2051,6 +2058,30 @@ def on_restore_cfg_file(data):
         else:
             logger.warning("Unable to restore cfg file '{0}': File does not exist".format(cfg_path))
 
+@SOCKET_IO.on('rename_cfg_file')
+@catchLogExcWithDBWrapper
+def on_rename_cfg_file(data):
+    '''Rename config-settings-backup file.'''
+    if 'cfg_file' in data and 'new_name' in data:
+        cfg_file = data['cfg_file']
+        new_name = data['new_name']
+        if new_name and new_name != cfg_file:
+            cfg_path = os.path.join(CFG_BKP_DIR_NAME, cfg_file)
+            logger.info("Renaming cfg file '{}' to '{}'".format(cfg_path, new_name))
+            try:
+                os.rename(cfg_path, os.path.join(CFG_BKP_DIR_NAME, new_name))
+                RaceContext.rhui.emit_upd_cfg_files_list(new_name)
+            except FileNotFoundError as ex:
+                logger.warning("Unable to rename cfg file: {}".format(ex))
+                msg_str = __('Error renaming settings file; new name may be invalid')
+                RaceContext.rhui.emit_priority_message(msg_str, True)
+                RaceContext.rhui.emit_upd_cfg_files_list()
+            except Exception as ex:
+                logger.warning("Unable to rename cfg file: {}".format(ex))
+                msg_str = __('Error renaming settings file: ') + str(ex)
+                RaceContext.rhui.emit_priority_message(msg_str, True)
+                RaceContext.rhui.emit_upd_cfg_files_list()
+
 @SOCKET_IO.on('delete_cfg_file')
 @catchLogExcWithDBWrapper
 def on_delete_cfg_file(data):
@@ -2058,12 +2089,14 @@ def on_delete_cfg_file(data):
     if 'cfg_file' in data:
         cfg_file = data['cfg_file']
         cfg_path = os.path.join(CFG_BKP_DIR_NAME, cfg_file)
-        if os.path.exists(cfg_path):
-            logger.info("Deleting cfg file '{0}'".format(cfg_path))
+        logger.info("Deleting cfg file '{0}'".format(cfg_path))
+        try:
             os.remove(cfg_path)
-            RaceContext.rhui.emit_upd_cfg_files_list()
-        else:
-            logger.warning("Unable to delete cfg file '{0}': File does not exist".format(cfg_path))
+        except Exception as ex:
+            logger.warning("Unable to delete cfg file: {}".format(ex))
+            msg_str = __('Error deleting settings file: ') + str(ex)
+            RaceContext.rhui.emit_priority_message(msg_str, True)
+        RaceContext.rhui.emit_upd_cfg_files_list()
 
 @SOCKET_IO.on('load_cfg_file')
 @catchLogExcWithDBWrapper
@@ -2081,7 +2114,7 @@ def on_load_cfg_file(data):
             logger.info("Restarting server to activate loaded settings file")
             on_restart_server()
         except Exception as ex:
-            logger.info("Error loading settings file: {}".format(ex))
+            logger.warning("Error loading settings file: {}".format(ex))
             msg_str = __('Error loading settings file: ') + str(ex)
             RaceContext.rhui.emit_priority_message(msg_str, True)
 
