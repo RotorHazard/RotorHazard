@@ -62,6 +62,7 @@ import importlib
 import functools
 import signal
 import werkzeug
+import urllib3
 
 from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
 from flask.blueprints import Blueprint
@@ -3702,8 +3703,11 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 remote_loaded = True
             else:
                 remote_loaded = False
+        except IOError or OSError or urllib3.exceptions.HTTPError as ex:
+            logger.info("Unable to query plugins server at startup (no internet access?): {}".format(ex))
+            remote_loaded = False
         except:
-            logger.exception("Unable to load remote plugins")
+            logger.exception("Error querying plugins server at startup")
             remote_loaded = False
 
         if local_loaded and remote_loaded:

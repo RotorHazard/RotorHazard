@@ -11,6 +11,7 @@ from eventmanager import Evt
 import json
 import os
 import subprocess
+import urllib3
 import re
 from collections import OrderedDict
 import gevent
@@ -477,8 +478,10 @@ class RHUI():
                 self._racecontext.plugin_manager.load_remote_plugin_data()
                 category_data = self._racecontext.plugin_manager.get_remote_categories()
                 self._racecontext.plugin_manager.apply_update_statuses()
+            except IOError or OSError or urllib3.exceptions.HTTPError as ex:
+                logger.info("Unable to query plugins server (no internet access?): {}".format(ex))
             except:
-                logger.exception("Unable to load remote plugins")
+                logger.exception("Error querying plugins server")
 
         emit_payload = {
             'remote_categories': category_data,
