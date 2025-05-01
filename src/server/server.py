@@ -3353,7 +3353,7 @@ def _do_init_rh_interface():
                                           __("If an S32_BPill board is connected, you may attempt to") + \
                                           " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                                           __("its processor."), \
-                                    header='Warning', subclass='no-comms')
+                                    header=__('Warning'), subclass='no-comms')
                     else:
                         logger.info("Unable to initialize specified serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
                         return False  # unable to open serial port
