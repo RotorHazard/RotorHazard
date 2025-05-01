@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -e ../src/server/requirements.txt ]; then
     pip install --upgrade --no-cache-dir -r ../src/server/requirements.txt
