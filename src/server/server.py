@@ -238,7 +238,7 @@ HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
+IMDTABLER_JAR_NAME =  PROGRAM_DIR + '/static/IMDTabler.jar'
 NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 
 # check if 'log' directory owned by 'root' and change owner to 'pi' user if so
@@ -4005,7 +4005,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 except Exception:
                     logger.exception('Error checking IMDTabler:  ')
         else:
-            logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+            logger.warning('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
         # VRx Controllers
         RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=RaceContext.serverconfig.get_section('VRX_CONTROL'))
