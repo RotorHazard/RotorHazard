@@ -85,7 +85,7 @@ def get_pixel_interface(config, brightness, *args, **kwargs):
         rpi5_strip.setPixelColor = lambda i, val : rpi5_strip.set_pixel_color(i,
                                        rpi5_ws2812_Color((val >> 16), ((val >> 8) & 255), (val & 255)))
         rpi5_strip.setBrightness = lambda val : rpi5_strip.set_brightness(val / 100.0)
-        rpi5_strip.getBrightness = lambda : rpi5_strip.get_brightness * 100.0
+        rpi5_strip.getBrightness = lambda : rpi5_strip.get_brightness() * 100.0
 
         def _get_rpi5_pix_clr(i):
             val = rpi5_strip._pixels[i]
