@@ -1,0 +1,5 @@
+rpi5-ws2812: WS2812 interface for the Raspberry Pi 5
+
+From GitHub repository: https://github.com/niklasr22/rpi5-ws2812
+
+Code by niklasr22: https://github.com/niklasr22
