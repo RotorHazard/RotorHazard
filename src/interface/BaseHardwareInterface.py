@@ -116,7 +116,7 @@ class BaseHardwareInterface(object):
                 item = upd_list[0]
                 node = item[0]
                 if node.node_lap_id != -1 and callable(self.pass_record_callback):    # (node, lap_time_absolute)
-                    self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  #pylint: disable=not-callable
+                    self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME, node.pass_peak_rssi)  #pylint: disable=not-callable
                 node.node_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
@@ -124,7 +124,7 @@ class BaseHardwareInterface(object):
                 for item in upd_list:
                     node = item[0]
                     if node.node_lap_id != -1 and callable(self.pass_record_callback):    # (node, lap_time_absolute)
-                        self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  #pylint: disable=not-callable
+                        self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME, node.pass_peak_rssi)  #pylint: disable=not-callable
                     node.node_lap_id = item[1]  # new_lap_id
 
     #

@@ -3015,8 +3015,8 @@ def ms_from_program_start():
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-def pass_record_callback(node, lap_timestamp_absolute, source):
-    RaceContext.race.pass_invoke_func_queue_obj.put(RaceContext.race.add_lap, node, lap_timestamp_absolute, source)
+def pass_record_callback(node, lap_timestamp_absolute, source, **kwargs):
+    RaceContext.race.pass_invoke_func_queue_obj.put(RaceContext.race.add_lap, node, lap_timestamp_absolute, source, **kwargs)
 
 @catchLogExcWithDBWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
