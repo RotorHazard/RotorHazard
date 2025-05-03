@@ -3043,7 +3043,7 @@
 			"Pilots in class": "赛程中的飞手",
 			"Pitch": "音调",
 			"Play": "播放",
-			"Plugin install failed": "插件安装成功",
+			"Plugin install failed": "插件安装失败",
 			"Plugin installation succeeded. Please restart.": "插件安装成功。请重启。",
 			"plugin repository": "插件仓库地址",
 			"Plugin Zipfile": "插件Zip文件",
