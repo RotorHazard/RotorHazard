@@ -208,9 +208,22 @@
 						}
 
 						var field = rhui.buildField(settings);
-
 						form_el.append(field);
 					}
+
+					for (var f_idx in panel.variables) {
+						var settings = { ...panel.variables[f_idx] };
+
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_variable';
+						settings.data = {
+							field: settings.name,
+						}
+
+						var field = rhui.buildField(settings);
+						form_el.append(field);
+					}
+
 					panel_content_el.append(form_el);
 					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
 
@@ -255,6 +268,18 @@
 				};
 				socket.emit('set_option', data);
 			}
+		});
+
+		$(document).on('change', '.set_ui_variable', function (event) {
+			var field = $(this).data('field');
+			var section = $(this).data('section');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				name: field,
+				value: value
+			};
+			socket.emit('set_ui_variable', data);
 		});
 
 		socket.on('heartbeat', function (msg) {

@@ -35,6 +35,7 @@ class Crossing(dict):
     deleted: bool = False
     late_lap: bool = False
     invalid: bool = False
+    peak_rssi: int = None
     def __bool__(self):
         return True  # always evaluate object as 'True', even if underlying dict is empty
 
@@ -732,7 +733,7 @@ class RHRace():
             self._racecontext.rhui.emit_result_data()
 
     @catchLogExceptionsWrapper
-    def add_lap(self, node, lap_timestamp_absolute, source):
+    def add_lap(self, node, lap_timestamp_absolute, source, **kwargs):
         '''Handles pass records from the nodes.'''
         APP.app_context().push()
 
@@ -896,6 +897,7 @@ class RHRace():
                                 lap_data.source = source
                                 lap_data.deleted = lap_late_flag  # delete if lap pass is after race winner declared
                                 lap_data.late_lap = lap_late_flag
+                                lap_data.peak_rssi = kwargs.get('peak', None)
 
                                 self.node_laps[node.index].append(lap_data)
 
@@ -1002,6 +1004,7 @@ class RHRace():
                                 lap_data.source = source
                                 lap_data.deleted = True
                                 lap_data.invalid = True
+                                lap_data.peak_rssi = kwargs.get('peak', None)
 
                                 self.node_laps[node.index].append(lap_data)
                         else:

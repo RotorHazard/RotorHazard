@@ -222,6 +222,12 @@
 				</div>
 				<input type="text" id="set-node-update-url" class="set-config" data-section="GENERAL" data-key="DEF_NODE_FWUPDATE_URL" value="{{ getConfig('GENERAL', 'DEF_NODE_FWUPDATE_URL') }}">
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-mock-nodes">{{ __('Mock Nodes (minimum)') }}</label>
+				</div>
+				<input type="number" id="set-mock-nodes" class="set-config" data-section="GENERAL" data-key="MOCK_NODES" value="{{ getConfig('GENERAL', 'MOCK_NODES') }}" min="0">
+			</li>
 		</ol>
 		<div id="serial-port-setup">
 			{{ __('Loading...') }}

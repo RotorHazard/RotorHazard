@@ -32,7 +32,7 @@ class MockInterface(BaseHardwareInterface):
         self.nodes = [] # Array to hold each node object
         self.data = []
         # i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
-        for index in range(int(os.environ.get('RH_NODES', '8'))):
+        for index in range(int(kwargs['num_nodes'])):
             node = Node() # New node instance
             node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
             node.index = index
@@ -137,7 +137,7 @@ class MockInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_frequency(self, node_index, frequency, *_args):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
         if frequency:
