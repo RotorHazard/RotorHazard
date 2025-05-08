@@ -730,6 +730,7 @@
 			$.magnificPopup.close();
 			var data = {
 				heat_id: parseInt($(this).data('heat_id')),
+				source: 'run',
 			};
 			socket.emit('confirm_heat_plan', data);
 		});
