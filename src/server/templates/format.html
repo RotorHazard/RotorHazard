@@ -1169,7 +1169,7 @@
 				for (var i in msg.heats) {
 					var new_heat = msg.heats[i];
 					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
-					Object.assign(heat, list_heat);
+					Object.assign(heat, new_heat);
 					rotorhazard.event.heats.push(new_heat);
 				}
 			} else {
