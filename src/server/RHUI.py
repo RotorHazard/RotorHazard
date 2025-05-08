@@ -571,7 +571,7 @@ class RHUI():
 
         emit_payload = self._filters.run_filters(Flt.EMIT_HEAT_PLAN, emit_payload)
 
-        self._socket.emit('heat_plan_result', emit_payload)
+        emit('heat_plan_result', emit_payload)
 
     def emit_race_stage(self, payload):
         self._socket.emit('stage_ready', payload)
