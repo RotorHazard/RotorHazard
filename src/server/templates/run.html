@@ -15,6 +15,7 @@
 		'frequency_data',
 		'pilot_data',
 		'heat_list',
+		'current_heat',
 		'class_data',
 		'format_data',
 		'node_tuning',
@@ -563,7 +564,7 @@
 		});
 
 		function display_heats() {
-			if (rotorhazard.event.heats && rotorhazard.event.classes) {
+			if (rotorhazard.current_heat != undefined && rotorhazard.event.heats && rotorhazard.event.classes) {
 				$('#set_current_heat').empty();
 
 				var opt = $('<option value="0">');
@@ -627,9 +628,7 @@
 					$('#set_current_heat').append($('#set_current_heat optgroup[data-id="0"]'));
 				}
 
-				socket.emit('load_data', {'load_types': [
-					'current_heat',
-				]});
+				update_current_heat_ui();
 			}
 		}
 
@@ -1100,12 +1099,22 @@
 
 		socket.on('current_heat', function (msg) {
 			rotorhazard.current_heat = msg.current_heat;
-			$('#set_current_heat').val(msg.current_heat);
-
 			rotorhazard.current_heatNodes = msg.heatNodes;
+			rotorhazard.current_heat_format = msg.heat_format;
+			rotorhazard.current_heat_next_round = msg.next_round;
+			rotorhazard.current_heat_coop_best_time = msg.coop_best_time;
+			rotorhazard.current_heat_coop_num_laps = msg.coop_num_laps;
+			display_heats();
+		});
 
-			for (var idx in msg.heatNodes) {
-				hn = msg.heatNodes[idx];
+		function update_current_heat_ui() {
+			var heat = rotorhazard.current_heat;
+			var heatNodes = rotorhazard.current_heatNodes;
+			var format = rotorhazard.current_heat_format;
+
+			$('#set_current_heat').val(heat);
+			for (var idx in heatNodes) {
+				hn = heatNodes[idx];
 				cs = $('.callsign_' + idx)
 				cs.html(hn.callsign ? hn.callsign : __('-None-'));
 
@@ -1115,24 +1124,24 @@
 					.css('color', contrastColor(color));
 			}
 
-			$('.set_heat_coop_best_time').val(msg.coop_best_time ? String(msg.coop_best_time) : '');
-			$('.set_heat_coop_num_laps').val(msg.coop_num_laps ? String(msg.coop_num_laps) : '');
+			$('.set_heat_coop_best_time').val(rotorhazard.current_heat_coop_best_time ? String(rotorhazard.current_heat_coop_best_time) : '');
+			$('.set_heat_coop_num_laps').val(rotorhazard.current_heat_coop_num_laps ? String(rotorhazard.current_heat_coop_num_laps) : '');
 
-			if (msg.heat_format) {
-				$('#set_race_format').val(msg.heat_format);
+			if (format) {
+				$('#set_race_format').val(format);
 				$('#set_race_format').prop('disabled', true);
 			} else {
 				$('#set_race_format').prop('disabled', false);
 			}
 
-			if (msg.current_heat === 0) {
+			if (heat === 0) {
 				$('#practice-warning').show();
 				$('#next-round').hide();
 			} else {
 				$('#practice-warning').hide();
-				$('#next-round').text(__("Round") + " " + msg.next_round).show();
+				$('#next-round').text(__("Round") + " " + rotorhazard.current_heat_next_round).show();
 			}
-		});
+		}
 
 		socket.on('stop_timer', function (msg) {
 			rotorhazard.timer.stopAll();
