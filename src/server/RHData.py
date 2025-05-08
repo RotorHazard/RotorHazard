@@ -1334,12 +1334,19 @@ class RHData():
 
         # update current race
         if heat_id == self._racecontext.race.current_heat:
-            if not heat.active:
+            heat_nodes = self.get_heatNodes_by_heat(heat_id)
+            is_dynamic = False
+            for heatNode in heat_nodes:
+                if heatNode.method not in [ProgramMethod.NONE, ProgramMethod.ASSIGN]:
+                    is_dynamic = True
+                    break
+
+            if not heat.active or (is_dynamic and heat.status != HeatStatus.CONFIRMED):
                 self._racecontext.race.set_heat(RHUtils.HEAT_ID_NONE, mute_event=mute_event)
             else:
                 self._racecontext.race.node_pilots = {}
                 self._racecontext.race.node_teams = {}
-                for heatNode in self.get_heatNodes_by_heat(heat_id):
+                for heatNode in heat_nodes:
                     self._racecontext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
                     if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
