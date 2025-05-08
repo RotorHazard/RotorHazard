@@ -111,6 +111,9 @@ class TracksideConnector():
                     else:
                         if rh_pilot.callsign == ts_pilot_callsign:
                             pilot = rh_pilot
+                            self._rhapi.db.pilot_alter(pilot.id, attributes={
+                                'trackside_pilot_ID': ts_id
+                            })
                             break
                 else:
                     new_pilot = self._rhapi.db.pilot_add(name=ts_pilot_callsign, callsign=ts_pilot_callsign)
