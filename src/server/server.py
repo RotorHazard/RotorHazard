@@ -3468,7 +3468,7 @@ def check_requirements():
         if num_mismatched > 0:
             logger.warning(__('Try "pip install --upgrade --no-cache-dir -r {}"'.format(req_file_name)))
             set_ui_message('check_reqs',
-                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>".format(req_file_name)),
+                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>").format(req_file_name),
                 header='Warning', subclass='none')
     except:
         logger.exception("Error checking package requirements")
