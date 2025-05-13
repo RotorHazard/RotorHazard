@@ -78,7 +78,7 @@
 			}
 
 			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="match-timer">' + '{{ __("(Match Timer Language)") }}' + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
 			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
