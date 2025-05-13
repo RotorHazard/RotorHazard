@@ -296,6 +296,122 @@
 			socket.emit('set_consecutives_count', data);
 		});
 
+		var pilot_selector = {
+			token: null,
+			option_els: [],
+			option_els_none: [],
+			seed: function() {
+				this.token = window.performance.now();
+				this.option_els = [];
+				this.option_els_none = [
+					$(document.createElement('option'))
+						.text(`-${__('None')}-`)
+						.val(0)
+				];
+
+				for (var i in rotorhazard.event.pilots) {
+					var pilot = rotorhazard.event.pilots[i];
+					if (rotorhazard.options.pilotSort == 'callsign') {
+						var select_pilot_text = `${pilot.callsign} (${pilot.name})`;
+					} else {
+						var select_pilot_text = `${pilot.name} (${pilot.callsign})`;
+					}
+					var el = $(document.createElement('option'))
+						.text(select_pilot_text)
+						.val(pilot.pilot_id);
+					this.option_els.push(el);
+					this.option_els_none.push(el);
+				}
+			},
+			get_option_els: function() {
+				var payload = [];
+				for (var i in this.option_els) {
+					payload.push(this.option_els[i].clone());
+				}
+				return payload;
+			},
+			get_option_els_none: function() {
+				var payload = [];
+				for (var i in this.option_els_none) {
+					payload.push(this.option_els_none[i].clone());
+				}
+				return payload;
+			}
+		}
+
+		var heat_selector = {
+			token: null,
+			option_els: [],
+			option_els_none: [],
+			seed: function() {
+				this.token = window.performance.now();
+				this.option_els = [];
+				this.option_els_none = [
+					$(document.createElement('option'))
+						.text(`-${__('None')}-`)
+						.val(0)
+				];
+				for (var i in rotorhazard.event.heats) {
+					var h = rotorhazard.event.heats[i];
+					var el = $(document.createElement('option'))
+						.text(h.displayname)
+						.val(h.id);
+					this.option_els.push(el);
+					this.option_els_none.push(el);
+				}
+			},
+			get_option_els: function() {
+				var payload = [];
+				for (var i in this.option_els) {
+					payload.push(this.option_els[i].clone());
+				}
+				return payload;
+			},
+			get_option_els_none: function() {
+				var payload = [];
+				for (var i in this.option_els_none) {
+					payload.push(this.option_els_none[i].clone());
+				}
+				return payload;
+			}
+		}
+
+		var raceclass_selector = {
+			token: null,
+			option_els: [],
+			option_els_none: [],
+			seed: function() {
+				this.token = window.performance.now();
+				this.option_els = [];
+				this.option_els_none = [
+					$(document.createElement('option'))
+						.text(`-${__('None')}-`)
+						.val(0)
+				];
+				for (var i in rotorhazard.event.classes) {
+					var c = rotorhazard.event.classes[i];
+					var el = $(document.createElement('option'))
+						.text(c.displayname)
+						.val(c.id);
+					this.option_els.push(el);
+					this.option_els_none.push(el);
+				}
+			},
+			get_option_els: function() {
+				var payload = [];
+				for (var i in this.option_els) {
+					payload.push(this.option_els[i].clone());
+				}
+				return payload;
+			},
+			get_option_els_none: function() {
+				var payload = [];
+				for (var i in this.option_els_none) {
+					payload.push(this.option_els_none[i].clone());
+				}
+				return payload;
+			}
+		}
 		/* Classes */
 		function update_class_selectors() {
 			var class_data = rotorhazard.event.classes;
@@ -333,12 +449,14 @@
 
 		socket.on('class_list', function (msg) {
 			rotorhazard.event.classes = msg.classes;
+			raceclass_selector.seed();
 			update_class_selectors();
 		});
 
 		socket.on('class_data', function (msg) {
 			rotorhazard.event.classes = msg.classes;
 			rotorhazard.event.raceclass_attributes = msg.attributes;
+			raceclass_selector.seed();
 			display_classes();
 			update_class_selectors();
 			freq.updateBlocks();
@@ -1175,6 +1293,7 @@
 			} else {
 				rotorhazard.event.heats = msg.heats;
 			}
+			heat_selector.seed();
 			display_classes();
 			display_unclassified_heats();
 			if (rotorhazard.generators) {
@@ -1192,6 +1311,7 @@
 		socket.on('heat_data', function (msg) {
 			rotorhazard.event.heats = msg.heats;
 			rotorhazard.event.heat_attributes = msg.attributes;
+			heat_selector.seed();
 			display_classes();
 			display_unclassified_heats();
 			if (rotorhazard.generators) {
@@ -2295,6 +2415,7 @@
 				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 			}
 
+			pilot_selector.seed();
 			display_pilots();
 			display_classes();
 			display_unclassified_heats();
