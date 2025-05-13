@@ -472,6 +472,7 @@
 
 				if ($('#class-list').length) {
 					var classlist = $('#class-list');
+					classlist.children().addClass('flagged');
 				} else {
 					var classlist = $(document.createElement('ol'))
 						.prop('id', 'class-list');
@@ -493,10 +494,12 @@
 				rotorhazard.event.classes.sort((a, b) => b.order - a.order || b.id - a.id);
 				rotorhazard.event.heats.sort((a, b) => b.order - a.order || b.id - a.id);
 				if (rotorhazard.event.classes.length) {
-					var class_els = [];
+					var last_el = null;
+					var element_idx = 0;
+					classlist.children().addClass('flagged');
+
 					for (var i in rotorhazard.event.classes) {
 						var race_class = rotorhazard.event.classes[i];
-
 						var el;
 						if (!$(`#race-class-${race_class.id}`).length) {
 							el = $('<li>').prop('id', `race-class-${race_class.id}`);
@@ -712,12 +715,27 @@
 
 							el.append(field);
 
-							classlist.append(el);
+							if (classlist.children().length) {
+								if (last_el) {
+									last_el.after(el);
+								} else {
+									classlist.prepend(el);
+								}
+							} else {
+								classlist.append(el);
+							}
 						} else {
+							while (classlist.children().length < element_idx + 1) {
+								if (classlist.children()[element_idx].prop('id') == `race-class-${race_class.id}`) {
+									element_idx++;
+									break;
+								} else {
+									element_idx++;
+								}
+							}
 							el = $(`#race-class-${race_class.id}`);
+							el.removeClass('flagged');
 						}
-
-						class_els.push(el);
 
 						var locked = race_class.locked;
 						var active_race = false;
@@ -940,11 +958,11 @@
 						}
 
 						socket.emit('get_class_recents', {'class_id': race_class.id});
+
+						last_el = el;
 					}
 
-					for (var i in class_els) {
-						classlist.append(class_els[i]);
-					}
+					classlist.children('.flagged').remove();
 				}
 
 				freq.updateBlocks();
@@ -1372,6 +1390,7 @@
 						if (el.children(`.group--${i}`).length) {
 							var group_el = $(el.children(`.group--${i}`)[0]);
 							var heats_el = $(group_el.children(`.heat-edit-list`)[0]);
+							heats_el.children().addClass('flagged');
 						} else {
 							var group_el = $(document.createElement('div'))
 								.addClass('group')
@@ -1388,7 +1407,6 @@
 						el.append(group_el);
 
 						var heat_els = [];
-						heats_el.children().addClass('flagged');
 						for (var j in heats_by_group[i]) {
 							var heat = heats_by_group[i][j];
 							var heat_el = heat_ui(heats_el, heat)
@@ -1405,6 +1423,7 @@
 					var heat_els = [];
 					if (el.children(`.heat-edit-list`).length) {
 						var heats_el = $(el.children(`.heat-edit-list`)[0]);
+						heats_el.children().addClass('flagged');
 					} else {
 						el.empty();
 						var heats_el = $(document.createElement('ol'))
@@ -1412,19 +1431,41 @@
 							.addClass('heat-edit-list')
 							.appendTo(el);
 					}
-					heats_el.children().addClass('flagged');
+
+					var last_el = null;
+					var element_idx = 0;
+
 					for (var i in heats) {
 						var heat = heats[i];
+
 						if (heat.class_id == race_class.id) {
-							var heat_el = heat_ui(heats_el, heat);
+							if (!$(heats_el).children(`.heat-ui--heat-${heat.id}`).length) {
+								var heat_el = heat_ui(heats_el, heat);
+
+								if (heats_el.children().length) {
+									if (last_el) {
+										last_el.after(heat_el);
+									} else {
+										heats_el.prepend(heat_el);
+									}
+								} else {
+									heats_el.append(heat_el);
+								}
+							} else {
+								while (heats_el.children().length < element_idx + 1) {
+									if (heats_el.children()[element_idx].hasClass(`.heat-ui--heat-${heat.id}`)) {
+										element_idx++;
+										break;
+									} else {
+										element_idx++;
+									}
+								}
+								var heat_el = heat_ui(heats_el, heat);
 								heat_el.removeClass('flagged');
-							heat_els.push(heat_el);
+							}
 						}
 					}
 					heats_el.find('.flagged').remove();
-					for (var i in heat_els) {
-						heats_el.append(heat_els[i]);
-					}
 				}
 				freq.updateBlocks();
 			} else {
@@ -1773,100 +1814,97 @@
 				slot_channel.attr('data-node', slot.node_index);
 
 				// method
-				if (slot.method > 0) {
-					slot_method.val(slot.method);
-				} else {
-					slot_method.val(0);
+				if (slot_method.val() != slot.method ?? "") {
+					if (slot.method > 0) {
+						slot_method.val(slot.method);
+					} else {
+						slot_method.val(0);
+					}
 				}
 				slot_method.prop('disabled', locked);
 
 				// method:heat
-				slot_method_heat.empty();
-				$(document.createElement('option'))
-					.text(`-${__('None')}-`)
-					.val(0)
-					.appendTo(slot_method_heat);
-				for (var k in rotorhazard.event.heats) {
-					var h = rotorhazard.event.heats[k];
-					$(document.createElement('option'))
-						.text(h.displayname)
-						.val(h.id)
-						.appendTo(slot_method_heat);
-				}
-				if (slot.method == 1 && slot.seed_id) {
-					var heat_arr = Array.from(slot_method_heat[0].options)
-					var selected_heat = heat_arr.find(obj => {return obj.value == slot.seed_id});
-					if (!selected_heat) {
-						slot_method_heat.addClass('value-invalid');
-						$(document.createElement('option'))
-							.html(`&#9888;&#xFE0E; ${__('Deleted Heat')} (${slot.seed_id})`)
-							.attr('data-valid', 'false')
-							.val(slot.seed_id)
-							.appendTo(slot_method_heat);
+				if (slot_method_heat.val() != slot.seed_id ?? "") {
+					if (slot_method_heat.data('token') != heat_selector.token) {
+						slot_method_heat.empty();
+						var opts = heat_selector.get_option_els_none();
+						for (var opt_idx in opts)	{
+							slot_method_heat.append(opts[opt_idx]);
+						}
+						slot_method_heat.data('token', heat_selector.token);
 					}
 
-					slot_method_heat.val(slot.seed_id);
-				} else {
-					slot_method_heat.val(0);
+					if (slot.method == 1 && slot.seed_id) {
+						var heat_arr = Array.from(slot_method_heat[0].options)
+						var selected_heat = heat_arr.find(obj => {return obj.value == slot.seed_id});
+						if (!selected_heat) {
+							slot_method_heat.addClass('value-invalid');
+							$(document.createElement('option'))
+								.html(`&#9888;&#xFE0E; ${__('Deleted Heat')} (${slot.seed_id})`)
+								.attr('data-valid', 'false')
+								.val(slot.seed_id)
+								.appendTo(slot_method_heat);
+						}
+
+						slot_method_heat.val(slot.seed_id);
+					} else {
+						slot_method_heat.val(0);
+					}
 				}
 				slot_method_heat.prop('disabled', locked);
 
 				// method:class
-				slot_method_class.empty();
-				$(document.createElement('option'))
-					.text(`-${__('None')}-`)
-					.val(0)
-					.appendTo(slot_method_class);
-				for (var k in rotorhazard.event.classes) {
-					var c = rotorhazard.event.classes[k];
-					$(document.createElement('option'))
-						.text(c.displayname)
-						.val(c.id)
-						.appendTo(slot_method_class);
-				}
-				if (slot.method == 2 && slot.seed_id) {
-					var class_arr = Array.from(slot_method_class[0].options)
-					var selected_class = class_arr.find(obj => {return obj.value == slot.seed_id});
-					if (!selected_class) {
-						slot_method_class.addClass('value-invalid');
-						$(document.createElement('option'))
-							.html(`&#9888;&#xFE0E; ${__('Deleted Class')} (${slot.seed_id})`)
-							.attr('data-valid', 'false')
-							.val(slot.seed_id)
-							.appendTo(slot_method_class);
+				if (slot_method_class.val() != slot.seed_id ?? "") {
+					if (slot_method_class.data('token') != raceclass_selector.token) {
+						slot_method_class.empty();
+						var opts = raceclass_selector.get_option_els_none();
+						for (var opt_idx in opts)	{
+							slot_method_class.append(opts[opt_idx]);
+						}
+						slot_method_class.data('token', raceclass_selector.token);
+
 					}
 
-					slot_method_class.val(slot.seed_id);
-				} else {
-					slot_method_class.val(0);
+					if (slot.method == 2 && slot.seed_id) {
+						var class_arr = Array.from(slot_method_class[0].options)
+						var selected_class = class_arr.find(obj => {return obj.value == slot.seed_id});
+						if (!selected_class) {
+							slot_method_class.addClass('value-invalid');
+							$(document.createElement('option'))
+								.html(`&#9888;&#xFE0E; ${__('Deleted Class')} (${slot.seed_id})`)
+								.attr('data-valid', 'false')
+								.val(slot.seed_id)
+								.appendTo(slot_method_class);
+						}
+
+						slot_method_class.val(slot.seed_id);
+					} else {
+						slot_method_class.val(0);
+					}
 				}
 				slot_method_class.prop('disabled', locked);
 
 				// method:rank
-				slot_method_rank.val(slot.seed_rank);
+				if (slot_method_rank.val() != slot.seed_rank ?? "") {
+					slot_method_rank.val(slot.seed_rank);
+				}
 				slot_method_rank.prop('disabled', locked);
 
 				// method:pilot
-				slot_method_pilot.empty();
-				$(document.createElement('option'))
-					.text(`-${__('None')}-`)
-					.val(0)
-					.appendTo(slot_method_pilot);
-				for (var k in rotorhazard.event.pilots) {
-					var pilot = rotorhazard.event.pilots[k];
-					if (rotorhazard.options.pilotSort == 'callsign') {
-						var select_pilot_text = `${pilot.callsign} (${pilot.name})`;
-					} else {
-						var select_pilot_text = `${pilot.name} (${pilot.callsign})`;
+				if (slot_method_pilot.data('token') != pilot_selector.token) {
+					slot_method_pilot.empty();
+					var opts = pilot_selector.get_option_els_none();
+					for (var opt_idx in opts)	{
+						slot_method_pilot.append(opts[opt_idx]);
 					}
-					$(document.createElement('option'))
-						.text(select_pilot_text)
-						.val(pilot.pilot_id)
-						.appendTo(slot_method_pilot);
+					slot_method_pilot.data('token', pilot_selector.token);
 				}
-				slot_method_pilot.val(heatpilot);
-				if (slot.method == -1 || !heatpilot) {
-					slot_method_pilot.val(0);
+
+				if (slot_method_pilot.val() != heatpilot) {
+					slot_method_pilot.val(heatpilot);
+					if (slot.method == -1 || !heatpilot) {
+						slot_method_pilot.val(0);
+					}
 				}
 				slot_method_pilot.prop('disabled', locked);
 			}
