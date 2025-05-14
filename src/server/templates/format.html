@@ -2066,8 +2066,8 @@
 				heat: heat_id,
 				slot_id: slot_id,
 				method: method,
-				seed_heat_id: parseInt($(this).val()),
-				seed_class_id: parseInt($(this).val())
+				seed_heat_id: 0,
+				seed_class_id: 0
 			};
 			socket.emit('alter_heat', data);
 
@@ -2075,6 +2075,7 @@
 			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_id});
 			var slot_idx = rotorhazard.event.heats[heat_idx].slots.findIndex(obj => {return obj.id == slot_id});
 			rotorhazard.event.heats[heat_idx].slots[slot_idx].method = method;
+			rotorhazard.event.heats[heat_idx].slots[slot_idx].seed_id = 0;
 
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), rotorhazard.event.heats[heat_idx]);
