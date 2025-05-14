@@ -1369,106 +1369,55 @@
 						round_type: 0
 					}
 				}
-				if (race_class.round_type == 1) {
-					var heats_by_group = [];
-					for (var i in heats) {
-						heat = heats[i];
-						if (heat.class_id == race_class.id) {
-							var group = heat.group_id == null ? -1 : heat.group_id;
-							if (!heats_by_group[group]) {
-								heats_by_group[group] = []
-							};
-							heats_by_group[group].push(heat);
-						}
-					}
 
-					if (el.children(`.group--${i}`).length) {
-						el.children(`.group`).addClass('flagged');
-					} else {
-						el.empty();
-					}
-
-					for (var i = heats_by_group.length - 1; i >= 0; i--) {
-						if (el.children(`.group--${i}`).length) {
-							var group_el = $(el.children(`.group--${i}`)[0]);
-							var heats_el = $(group_el.children(`.heat-edit-list`)[0]);
-							heats_el.children().addClass('flagged');
-						} else {
-							var group_el = $(document.createElement('div'))
-								.addClass('group')
-								.addClass(`group--${i}`)
-								.appendTo(el);
-							$(document.createElement('p'))
-								.text(`${__('Round')} ${parseInt(i)+1}`)
-								.appendTo(group_el);
-							var heats_el = $(document.createElement('ol'))
-								.addClass('heats')
-								.addClass('heat-edit-list')
-								.appendTo(group_el);
-						}
-						el.append(group_el);
-
-						var heat_els = [];
-						for (var j in heats_by_group[i]) {
-							var heat = heats_by_group[i][j];
-							var heat_el = heat_ui(heats_el, heat)
-								.removeClass('flagged');
-							heats_el.append(heat_el);
-							heat_els.push(heat_el);
-						}
-						for (var j in heat_els) {
-							heats_el.append(heat_els[j]);
-						}
-					}
-					el.find('.flagged').remove();
+				var heat_els = [];
+				if (el.children(`.heat-edit-list`).length) {
+					var heats_el = $(el.children(`.heat-edit-list`)[0]);
+					heats_el.children().addClass('flagged');
 				} else {
-					var heat_els = [];
-					if (el.children(`.heat-edit-list`).length) {
-						var heats_el = $(el.children(`.heat-edit-list`)[0]);
-						heats_el.children().addClass('flagged');
-					} else {
-						el.empty();
-						var heats_el = $(document.createElement('ol'))
-							.addClass('heats')
-							.addClass('heat-edit-list')
-							.appendTo(el);
-					}
+					el.empty();
+					var heats_el = $(document.createElement('ol'))
+						.addClass('heats')
+						.addClass('heat-edit-list')
+						.appendTo(el);
+				}
 
-					var last_el = null;
-					var element_idx = 0;
+				var last_el = null;
+				var element_idx = 0;
 
-					for (var i in heats) {
-						var heat = heats[i];
+				for (var i in heats) {
+					var heat = heats[i];
 
-						if (heat.class_id == race_class.id) {
-							if (!$(heats_el).children(`.heat-ui--heat-${heat.id}`).length) {
-								var heat_el = heat_ui(heats_el, heat);
+					if (heat.class_id == race_class.id) {
+						if (!$(heats_el).children(`.heat-ui--heat-${heat.id}`).length) {
+							var heat_el = heat_ui(heats_el, heat);
 
-								if (heats_el.children().length) {
-									if (last_el) {
-										last_el.after(heat_el);
-									} else {
-										heats_el.prepend(heat_el);
-									}
+							if (heats_el.children().length) {
+								if (last_el) {
+									last_el.after(heat_el);
 								} else {
-									heats_el.append(heat_el);
+									heats_el.prepend(heat_el);
 								}
 							} else {
-								while (heats_el.children().length < element_idx + 1) {
-									if (heats_el.children()[element_idx].hasClass(`.heat-ui--heat-${heat.id}`)) {
-										element_idx++;
-										break;
-									} else {
-										element_idx++;
-									}
-								}
-								var heat_el = heat_ui(heats_el, heat);
-								heat_el.removeClass('flagged');
+								heats_el.append(heat_el);
 							}
+						} else {
+							while (heats_el.children().length < element_idx + 1) {
+								if (heats_el.children()[element_idx].hasClass(`.heat-ui--heat-${heat.id}`)) {
+									element_idx++;
+									break;
+								} else {
+									element_idx++;
+								}
+							}
+							var heat_el = heat_ui(heats_el, heat);
+							heat_el.removeClass('flagged');
 						}
 					}
-					heats_el.find('.flagged').remove();
+					last_el = heat_el;
 				}
+				heats_el.find('.flagged').remove();
+
 				freq.updateBlocks();
 			} else {
 				el.html('<p>' + __('No heats') + '</p>');
@@ -1506,6 +1455,12 @@
 
 		function heat_ui(parent_el, heat) {
 			var el;
+			if (heat.class_id) {
+				var heat_class = rotorhazard.event.classes.find(obj => {return obj.id == heat.class_id});
+			} else {
+				var heat_class = null;
+			}
+
 			if (!$(parent_el).children(`.heat-ui--heat-${heat.id}`).length) {
 				el = $(document.createElement('li'))
 					.addClass(`heat-ui--heat-${heat.id}`)
@@ -1517,6 +1472,12 @@
 				var heat_header = $(document.createElement('h4'))
 					.text(`${__('Heat')} ${heat.id}`)
 				el.append(heat_header);
+
+				// Round
+				var heat_round = $(document.createElement('p'))
+					.addClass(`heat-ui--round--heat-${heat.id}`)
+					.addClass(`heat-round-group`)
+				el.append(heat_round);
 
 				// Name
 				var heat_name = $(document.createElement('input'))
@@ -1627,6 +1588,7 @@
 				}
 			} else {
 				el = $(parent_el).children(`.heat-ui--heat-${heat.id}`);
+				var heat_round = $(el).find(`.heat-ui--round--heat-${heat.id}`);
 				var heat_name = $(el).find(`.heat-ui--name--heat-${heat.id}`);
 				var heat_deactivate = $(el).find(`.heat-ui--deactivate--heat-${heat.id}`);
 				var heat_activate = $(el).find(`.heat-ui--activate--heat-${heat.id}`);
@@ -1659,6 +1621,16 @@
 				.val(heat.name)
 				.prop('placeholder', `${__('Name')} (${placeholder_name})`)
 
+			// Round
+			heat_round
+				.text(`${__('Round')} ${heat.group_id + 1}`)
+
+			if (heat.class_id && heat_class.round_type) {
+				heat_round.prop('hidden', false);
+			} else {
+				heat_round.prop('hidden', true);
+			}
+
 			// Actions
 			heat_deactivate
 				.prop('title', `${__('Deactivate')} ${heat.displayname}`);
@@ -1680,7 +1652,7 @@
 						.prop('hidden', false);
 					heat_activate
 						.prop('hidden', true);
-				} else if (!heat.class_id || !heat.class_id.round_type) {
+				} else if (!heat.class_id || !heat_class.round_type) {
 					heat_deactivate
 						.prop('hidden', true);
 					heat_activate
