@@ -1339,16 +1339,18 @@
 		});
 
 		socket.on('recent_heat_data', function (msg) {
-			for (var idx in msg.heats) {
-				var heat = msg.heats[idx];
-				var heat_arr_index = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat.id});
-				if (heat_arr_index != undefined) {
-					rotorhazard.event.heats[heat_arr_index] = heat;
-				} else {
-					rotorhazard.event.heats.push(heat);
+			if(rotorhazard.event.heats) {
+				for (var idx in msg.heats) {
+					var heat = msg.heats[idx];
+					var heat_arr_index = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat.id});
+					if (heat_arr_index != undefined) {
+						rotorhazard.event.heats[heat_arr_index] = heat;
+					} else {
+						rotorhazard.event.heats.push(heat);
+					}
 				}
+				display_recents(msg.class, msg.heats);
 			}
-			display_recents(msg.class, msg.heats);
 		});
 
 		function display_recents(class_id, heats) {
@@ -1824,7 +1826,7 @@
 				slot_method.prop('disabled', locked);
 
 				// method:heat
-				if (slot_method_heat.val() != slot.seed_id ?? "") {
+				if (slot.method == 1) {
 					if (slot_method_heat.data('token') != heat_selector.token) {
 						slot_method_heat.empty();
 						var opts = heat_selector.get_option_els_none();
@@ -1834,16 +1836,29 @@
 						slot_method_heat.data('token', heat_selector.token);
 					}
 
-					if (slot.method == 1 && slot.seed_id) {
-						var heat_arr = Array.from(slot_method_heat[0].options)
-						var selected_heat = heat_arr.find(obj => {return obj.value == slot.seed_id});
+					var invalid_el_exists = false;
+					slot_method_heat.find('[data-valid=false]').each( function(opt_index) {
+						var opt_el = $(this);
+						if (opt_el.val() != slot.seed_id) {
+							opt_el.remove();
+						} else {
+							invalid_el_exists = true;
+						}
+					});
+
+					if (slot.seed_id) {
+						var selected_heat = rotorhazard.event.heats.find(obj => {return obj.id == slot.seed_id});
 						if (!selected_heat) {
 							slot_method_heat.addClass('value-invalid');
-							$(document.createElement('option'))
-								.html(`&#9888;&#xFE0E; ${__('Deleted Heat')} (${slot.seed_id})`)
-								.attr('data-valid', 'false')
-								.val(slot.seed_id)
-								.appendTo(slot_method_heat);
+							if (!invalid_el_exists) {
+								$(document.createElement('option'))
+									.html(`&#9888;&#xFE0E; ${__('Deleted Heat')} (${slot.seed_id})`)
+									.attr('data-valid', 'false')
+									.val(slot.seed_id)
+									.appendTo(slot_method_heat);
+							}
+						} else {
+							slot_method_heat.removeClass('value-invalid');
 						}
 
 						slot_method_heat.val(slot.seed_id);
@@ -1854,7 +1869,7 @@
 				slot_method_heat.prop('disabled', locked);
 
 				// method:class
-				if (slot_method_class.val() != slot.seed_id ?? "") {
+				if (slot.method == 2) {
 					if (slot_method_class.data('token') != raceclass_selector.token) {
 						slot_method_class.empty();
 						var opts = raceclass_selector.get_option_els_none();
@@ -1862,19 +1877,31 @@
 							slot_method_class.append(opts[opt_idx]);
 						}
 						slot_method_class.data('token', raceclass_selector.token);
-
 					}
 
-					if (slot.method == 2 && slot.seed_id) {
-						var class_arr = Array.from(slot_method_class[0].options)
-						var selected_class = class_arr.find(obj => {return obj.value == slot.seed_id});
+					var invalid_el_exists = false;
+					slot_method_class.find('[data-valid=false]').each( function(opt_index) {
+						var opt_el = $(this);
+						if (opt_el.val() != slot.seed_id) {
+							opt_el.remove();
+						} else {
+							invalid_el_exists = true;
+						}
+					});
+
+					if (slot.seed_id) {
+						var selected_class = rotorhazard.event.classes.find(obj => {return obj.id == slot.seed_id});
 						if (!selected_class) {
 							slot_method_class.addClass('value-invalid');
-							$(document.createElement('option'))
-								.html(`&#9888;&#xFE0E; ${__('Deleted Class')} (${slot.seed_id})`)
-								.attr('data-valid', 'false')
-								.val(slot.seed_id)
-								.appendTo(slot_method_class);
+							if (!invalid_el_exists) {
+								$(document.createElement('option'))
+									.html(`&#9888;&#xFE0E; ${__('Deleted Class')} (${slot.seed_id})`)
+									.attr('data-valid', 'false')
+									.val(slot.seed_id)
+									.appendTo(slot_method_class);
+							}
+						} else {
+							slot_method_class.removeClass('value-invalid');
 						}
 
 						slot_method_class.val(slot.seed_id);
