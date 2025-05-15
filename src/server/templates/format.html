@@ -1327,7 +1327,18 @@
 		});
 
 		socket.on('heat_data', function (msg) {
-			rotorhazard.event.heats = msg.heats;
+			if (rotorhazard.event.heats) {
+				var existing_heat_data = rotorhazard.event.heats;
+				rotorhazard.event.heats = [];
+				for (var i in msg.heats) {
+					var new_heat = msg.heats[i];
+					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
+					Object.assign(heat, new_heat);
+					rotorhazard.event.heats.push(new_heat);
+				}
+			} else {
+				rotorhazard.event.heats = msg.heats;
+			}
 			rotorhazard.event.heat_attributes = msg.attributes;
 			heat_selector.seed();
 			display_classes();
@@ -1344,6 +1355,7 @@
 					var heat = msg.heats[idx];
 					var heat_arr_index = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat.id});
 					if (heat_arr_index != undefined) {
+						Object.assign(heat, rotorhazard.event.heats[heat_arr_index]);
 						rotorhazard.event.heats[heat_arr_index] = heat;
 					} else {
 						rotorhazard.event.heats.push(heat);
@@ -1447,6 +1459,7 @@
 
 		socket.on('heat_expanded', function (msg) {
 			var heat_arr_index = rotorhazard.event.heats.findIndex(obj => {return obj.id == msg.heat.id});
+			Object.assign(msg.heat, rotorhazard.event.heats[heat_arr_index]);
 			rotorhazard.event.heats[heat_arr_index] = msg.heat;
 			$('#heat_edit_form').empty();
 			heat_ui($('#heat_edit_form'), msg.heat);
@@ -1517,7 +1530,6 @@
 					.addClass('btn-warning')
 					.addClass('unlock')
 					.addClass('unlock_heat')
-					.addClass('open-mfp-popup')
 					.data('id', heat.id)
 					.attr('data-mfp-src', '#heat_unlock_confirm')
 					.html(svg_asset.lock)
@@ -1607,7 +1619,7 @@
 				el.removeClass('is-confirmed');
 			}
 
-			var locked = heat.locked;
+			var locked = heat.manual_unlock ? false : heat.locked;
 			var active_race = false
 			if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_heat_id == heat.id) {
 				active_race = true;
@@ -2372,6 +2384,10 @@
 		function heat_unlock(heat_id) {
 			var el = $(`.heat-ui--heat-${heat_id}`);
 			update_heat_ui(el, heat_id);
+
+			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
+			heat.locked = false;
+			heat.manual_unlock = true;
 
 			el.find('li').each(function(){
 				$(this).prop('hidden', false);
