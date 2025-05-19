@@ -3328,7 +3328,35 @@ def _do_init_rh_interface():
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
         if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
-            if (not RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) or len(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) <= 0:
+            if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'):
+                ports_str = str(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'))
+                if len(ports_str) > 0:
+                    try:
+                        importlib.import_module('serial')
+                        if RaceContext.interface:
+                            if not (getattr(RaceContext.interface, "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
+                                logger.info("Unable to initialize serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                                logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
+                                # enter serial port name so it's available for node firmware update
+                                if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
+                                    RaceContext.interface.set_mock_fwupd_serial_obj(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
+                                    set_ui_message('stm32', \
+                                                   __("Server is unable to communicate with node processor") + ". " + \
+                                                   __("If an S32_BPill board is connected, you may attempt to") + \
+                                                   " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                                   __("its processor."), \
+                                                   header='Warning', subclass='no-comms')
+                        else:
+                            logger.warning("Unable to initialize configured serial node(s): {0}".format(ports_str))
+                            set_ui_message('serial', \
+                                           __("Unable to initialize configured serial node(s):") + " " + ports_str, \
+                                           header='Warning', subclass='no-conn')
+                    except ImportError:
+                        logger.warn("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                        set_ui_message('serial', \
+                                       __("Unable to import library for serial node(s) - is 'pyserial' installed?"), \
+                                       header='Warning', subclass='import-err')
+            if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
                 interfaceModule = importlib.import_module('MockInterface')
                 RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **HardwareHelpers)
                 for node in RaceContext.interface.nodes:  # put mock nodes at latest API level
@@ -3339,29 +3367,6 @@ def _do_init_rh_interface():
                     header='Notice',
                     subclass='in-use'
                     )
-            else:
-                try:
-                    importlib.import_module('serial')
-                    if RaceContext.interface:
-                        if not (getattr(RaceContext.interface, "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
-                            logger.info("Unable to initialize serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
-                            logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
-                            # enter serial port name so it's available for node firmware update
-                            if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
-                                RaceContext.interface.set_mock_fwupd_serial_obj(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
-                                set_ui_message('stm32', \
-                                     __("Server is unable to communicate with node processor") + ". " + \
-                                          __("If an S32_BPill board is connected, you may attempt to") + \
-                                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                          __("its processor."), \
-                                    header='Warning', subclass='no-comms')
-                    else:
-                        logger.info("Unable to initialize specified serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
-                        return False  # unable to open serial port
-                except ImportError:
-                    logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
-                    return False
-
         RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # save number of nodes found
         # set callback functions invoked by interface module
         RaceContext.interface.pass_record_callback = pass_record_callback
