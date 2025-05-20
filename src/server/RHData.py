@@ -1394,12 +1394,17 @@ class RHData():
                         heat = Database.Heat.query.first()
                         if heat.id != 1:
                             heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+                            heat_attributes = Database.HeatAttribute.query.filter_by(id=heat.id).all()
 
                             if not self.savedRaceMetas_has_heat(heat.id):
                                 logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat.id))
                                 heat.id = 1
                                 for heatnode in heatnodes:
                                     heatnode.heat_id = heat.id
+
+                                for attribute in heat_attributes:
+                                    attribute.id = heat.id
+
                                 # self.commit()  # 'set_option()' below will do call to 'commit()'
                                 self._racecontext.race.current_heat = 1
                                 self.set_option('currentHeat', self._racecontext.race.current_heat)
