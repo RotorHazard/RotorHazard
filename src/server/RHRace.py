@@ -74,6 +74,7 @@ class RHRace():
         self.node_finished_effect = {}  # True if effect for pilot-finished for node has been triggered
         self.node_fin_effect_wait_count = 0  # number of finished effects waiting for all crossings completed
         self.any_races_started = False
+        self.save_status = False
         # concluded
         self.end_time = 0 # Monotonic, updated when race is stopped
         # leaderboard/cache
@@ -586,6 +587,10 @@ class RHRace():
     @catchLogExceptionsWrapper
     def do_save_actions(self):
         '''Save current laps data to the database.'''
+        if self.save_status:
+            return
+
+        self.save_status = True
         with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
             if self.current_heat == RHUtils.HEAT_ID_NONE:
                 self.discard_laps(saved=True)
@@ -1250,6 +1255,7 @@ class RHRace():
         '''Clear the current laps table.'''
         self._racecontext.branch_race_obj()
         self.db_id = None
+        self.save_status = False
         self.reset_current_laps() # Clear out the current laps table
         logger.info('Current laps cleared')
 
