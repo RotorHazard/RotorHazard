@@ -1711,6 +1711,7 @@
 					});
 			}
 
+			$(heat_slots).children().addClass('flagged');
 			for (j in heat.slots) {
 				var slot = heat.slots[j];
 				var heatpilot = heat.slots[j].pilot_id;
@@ -1796,6 +1797,7 @@
 					var slot_method_class = $(slot_el).find(`.heat-ui--method-class--slot-${slot.id}`);
 					var slot_method_rank = $(slot_el).find(`.heat-ui--method-rank--slot-${slot.id}`);
 					var slot_method_pilot = $(slot_el).find(`.heat-ui--method-pilot--slot-${slot.id}`);
+					slot_el.removeClass('flagged');
 				}
 
 				// channel
@@ -1921,6 +1923,7 @@
 				}
 				slot_method_pilot.prop('disabled', locked);
 			}
+			$(heat_slots).children('flagged').remove();
 
 			// Auto-frequency
 			heat_autofrequency
