@@ -591,134 +591,135 @@ class RHRace():
                 self.discard_laps(saved=True)
                 return False
 
-            if self.race_winner_pilot_id != RHUtils.PILOT_ID_NONE:
-                self.prev_race_winner_name = self.race_winner_name
-                self.prev_race_winner_phonetic = self.race_winner_phonetic
-                self.prev_race_winner_pilot_id = self.race_winner_pilot_id
+            if self.db_id is None:
+                if self.race_winner_pilot_id != RHUtils.PILOT_ID_NONE:
+                    self.prev_race_winner_name = self.race_winner_name
+                    self.prev_race_winner_phonetic = self.race_winner_phonetic
+                    self.prev_race_winner_pilot_id = self.race_winner_pilot_id
 
-            if self._racecontext.cluster:
-                self._racecontext.cluster.emitToSplits('save_laps')
+                if self._racecontext.cluster:
+                    self._racecontext.cluster.emitToSplits('save_laps')
 
-            heat = self._racecontext.rhdata.get_heat(self.current_heat)
+                heat = self._racecontext.rhdata.get_heat(self.current_heat)
 
-            # Clear caches
-            heat_result = self._racecontext.rhdata.get_results_heat(self.current_heat)
-            if heat.class_id:
-                class_result = self._racecontext.rhdata.get_results_raceClass(heat.class_id)
-            event_result = self._racecontext.rhdata.get_results_event()
+                # Clear caches
+                heat_result = self._racecontext.rhdata.get_results_heat(self.current_heat)
+                if heat.class_id:
+                    class_result = self._racecontext.rhdata.get_results_raceClass(heat.class_id)
+                event_result = self._racecontext.rhdata.get_results_event()
 
-            token = monotonic()
-            self._racecontext.rhdata.clear_results_heat(self.current_heat, token)
-            self._racecontext.rhdata.clear_results_raceClass(heat.class_id, token)
-            self._racecontext.rhdata.clear_results_event(token)
+                token = monotonic()
+                self._racecontext.rhdata.clear_results_heat(self.current_heat, token)
+                self._racecontext.rhdata.clear_results_raceClass(heat.class_id, token)
+                self._racecontext.rhdata.clear_results_event(token)
 
-            # Get the last saved round for the current heat
-            max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
+                # Get the last saved round for the current heat
+                max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
 
-            if max_round is None:
-                max_round = 0
-            # Loop through laps to copy to saved races
-            profile = self.profile
-            profile_freqs = json.loads(profile.frequencies)
+                if max_round is None:
+                    max_round = 0
+                # Loop through laps to copy to saved races
+                profile = self.profile
+                profile_freqs = json.loads(profile.frequencies)
 
-            new_race_data = {
-                'round_id': max_round+1,
-                'heat_id': self.current_heat,
-                'class_id': heat.class_id,
-                'format_id': self.format.id if hasattr(self.format, 'id') else RHUtils.FORMAT_ID_NONE,
-                'start_time': self.start_time_monotonic,
-                'start_time_formatted': self.start_time_formatted,
-                }
+                new_race_data = {
+                    'round_id': max_round+1,
+                    'heat_id': self.current_heat,
+                    'class_id': heat.class_id,
+                    'format_id': self.format.id if hasattr(self.format, 'id') else RHUtils.FORMAT_ID_NONE,
+                    'start_time': self.start_time_monotonic,
+                    'start_time_formatted': self.start_time_formatted,
+                    }
 
-            new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
-            self.db_id = new_race.id
+                new_race = self._racecontext.rhdata.add_savedRaceMeta(new_race_data)
+                self.db_id = new_race.id
 
-            race_data = {}
+                race_data = {}
 
-            for node_index in range(self.num_nodes):
-                if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                    pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node_index)
+                for node_index in range(self.num_nodes):
+                    if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                        pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node_index)
 
-                    if pilot_id is not None:
-                        race_data[node_index] = {
-                            'race_id': new_race.id,
-                            'pilot_id': pilot_id,
-                            'history_values': json.dumps(self._racecontext.interface.nodes[node_index].history_values),
-                            'history_times': json.dumps(self._racecontext.interface.nodes[node_index].history_times),
-                            'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
-                            'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
-                            'frequency': self._racecontext.interface.nodes[node_index].frequency,
-                            'laps': self.node_laps[node_index]
-                            }
+                        if pilot_id is not None:
+                            race_data[node_index] = {
+                                'race_id': new_race.id,
+                                'pilot_id': pilot_id,
+                                'history_values': json.dumps(self._racecontext.interface.nodes[node_index].history_values),
+                                'history_times': json.dumps(self._racecontext.interface.nodes[node_index].history_times),
+                                'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
+                                'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
+                                'frequency': self._racecontext.interface.nodes[node_index].frequency,
+                                'laps': self.node_laps[node_index]
+                                }
 
-                        self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {
-                            'b': profile_freqs["b"][node_index],
-                            'c': profile_freqs["c"][node_index],
-                            'f': profile_freqs["f"][node_index]
-                            })
+                            self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {
+                                'b': profile_freqs["b"][node_index],
+                                'c': profile_freqs["c"][node_index],
+                                'f': profile_freqs["f"][node_index]
+                                })
 
-            self._racecontext.rhdata.add_race_data(race_data)
+                self._racecontext.rhdata.add_race_data(race_data)
 
-            self._racecontext.events.trigger(Evt.LAPS_SAVE, {
-                'race_id': new_race.id,
-                })
+                self._racecontext.events.trigger(Evt.LAPS_SAVE, {
+                    'race_id': new_race.id,
+                    })
 
-            logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
+                logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
 
-            if self.format.team_racing_mode == RacingMode.COOP_ENABLED:
-                self._racecontext.rhdata.update_heat_coop_values(heat, self.coop_best_time, self.coop_num_laps)
-                # keep time fields in the current race in sync with the current race format
-                self.set_race_format_time_fields(self.format, self.current_heat)
-                self._racecontext.rhui.emit_heat_data()    # update displayed values
-                self._racecontext.rhui.emit_race_status()
+                if self.format.team_racing_mode == RacingMode.COOP_ENABLED:
+                    self._racecontext.rhdata.update_heat_coop_values(heat, self.coop_best_time, self.coop_num_laps)
+                    # keep time fields in the current race in sync with the current race format
+                    self.set_race_format_time_fields(self.format, self.current_heat)
+                    self._racecontext.rhui.emit_heat_data()    # update displayed values
+                    self._racecontext.rhui.emit_race_status()
 
-            result = self.get_results()
-            if heat_result:
-                self._racecontext.rhdata.set_results_heat(heat, token,
-                    Results.build_incremental(self._racecontext, result, heat_result))
-            else:
-                self._racecontext.rhdata.get_results_heat(self.current_heat)
-
-            if heat.class_id:
-                if class_result:
-                    self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
-                        Results.build_incremental(self._racecontext, result, class_result))
+                result = self.get_results()
+                if heat_result:
+                    self._racecontext.rhdata.set_results_heat(heat, token,
+                        Results.build_incremental(self._racecontext, result, heat_result))
                 else:
-                    self._racecontext.rhdata.get_results_raceClass(heat.class_id)
+                    self._racecontext.rhdata.get_results_heat(self.current_heat)
 
-            if event_result:
-                self._racecontext.rhdata.set_results_event(token,
-                    Results.build_incremental(self._racecontext, result, event_result))
-            else:
-                self._racecontext.rhdata.get_results_event()
+                if heat.class_id:
+                    if class_result:
+                        self._racecontext.rhdata.set_results_raceClass(heat.class_id, token,
+                            Results.build_incremental(self._racecontext, result, class_result))
+                    else:
+                        self._racecontext.rhdata.get_results_raceClass(heat.class_id)
 
-            self.discard_laps(saved=True) # Also clear the current laps
+                if event_result:
+                    self._racecontext.rhdata.set_results_event(token,
+                        Results.build_incremental(self._racecontext, result, event_result))
+                else:
+                    self._racecontext.rhdata.get_results_event()
 
-            regen_heat = False
-            if heat.class_id:
-                raceclass = self._racecontext.rhdata.get_raceClass(heat.class_id)
-                if raceclass.round_type == RoundType.GROUPED:
-                    if raceclass.rounds == 0 or heat.group_id + 1 < raceclass.rounds:
-                        # Regenerate to new heat + group
-                        regen_heat = self._racecontext.rhdata.duplicate_heat(heat, new_heat_name=heat.name, group_id=heat.group_id + 1)
+                self.discard_laps(saved=True) # Also clear the current laps
 
-                    # Deactivate current heat
-                    self._racecontext.rhdata.alter_heat({
-                        'heat': heat.id,
-                        'active': False
-                    }, mute_event=True if regen_heat is False else True)
+                regen_heat = False
+                if heat.class_id:
+                    raceclass = self._racecontext.rhdata.get_raceClass(heat.class_id)
+                    if raceclass.round_type == RoundType.GROUPED:
+                        if raceclass.rounds == 0 or heat.group_id + 1 < raceclass.rounds:
+                            # Regenerate to new heat + group
+                            regen_heat = self._racecontext.rhdata.duplicate_heat(heat, new_heat_name=heat.name, group_id=heat.group_id + 1)
 
-                    self._racecontext.rhui.emit_heat_data()
+                        # Deactivate current heat
+                        self._racecontext.rhdata.alter_heat({
+                            'heat': heat.id,
+                            'active': False
+                        }, mute_event=True if regen_heat is False else True)
 
-            next_heat = self._racecontext.rhdata.get_next_heat_id(heat, regen_heat)
+                        self._racecontext.rhui.emit_heat_data()
 
-            if next_heat is not heat.id:
-                self.set_heat(next_heat)
+                next_heat = self._racecontext.rhdata.get_next_heat_id(heat, regen_heat)
 
-            # spawn thread for updating results caches
-            gevent.spawn(self.rebuild_page_cache)
+                if next_heat is not heat.id:
+                    self.set_heat(next_heat)
 
-            self._racecontext.rhui.emit_race_saved(new_race, race_data)
+                # spawn thread for updating results caches
+                gevent.spawn(self.rebuild_page_cache)
+
+                self._racecontext.rhui.emit_race_saved(new_race, race_data)
 
     def rebuild_page_cache(self):
         self._racecontext.pagecache.set_valid(False)
