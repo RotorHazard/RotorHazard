@@ -493,478 +493,475 @@
 
 				rotorhazard.event.classes.sort((a, b) => b.order - a.order || b.id - a.id);
 				rotorhazard.event.heats.sort((a, b) => b.order - a.order || b.id - a.id);
-				if (rotorhazard.event.classes.length) {
-					var last_el = null;
-					var element_idx = 0;
-					classlist.children().addClass('flagged');
 
-					for (var i in rotorhazard.event.classes) {
-						var race_class = rotorhazard.event.classes[i];
-						var el;
-						if (!$(`#race-class-${race_class.id}`).length) {
-							el = $('<li>').prop('id', `race-class-${race_class.id}`);
+				var last_el = null;
+				var element_idx = 0;
+				classlist.children().addClass('flagged');
 
-							var header = $(document.createElement('h3'))
-								.text(`${__('Class')} ${race_class.id}`)
-							el.append(header);
+				for (var i in rotorhazard.event.classes) {
+					var race_class = rotorhazard.event.classes[i];
+					var el;
+					if (!$(`#race-class-${race_class.id}`).length) {
+						el = $('<li>').prop('id', `race-class-${race_class.id}`);
 
-							// Name
-							var field = $(document.createElement('input'))
-								.prop('id', `name--race-class-${race_class.id}`)
-								.prop('type', 'text')
-								.prop('placeholder', `${__('Name')} (${__('Class')} ${race_class.id})`)
-								.prop('maxlength', 80)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_name');
-							el.append(field);
-
-							// Actions
-							var field = $(document.createElement('div'))
-								.addClass('actions');
-							$(document.createElement('button'))
-								.prop('id', `duplicate--race-class-${race_class.id}`)
-								.data('id', race_class.id)
-								.addClass('duplicate')
-								.addClass('duplicate_class')
-								.text('+')
-								.appendTo(field);
-							$(document.createElement('button'))
-								.prop('id', `unlock--race-class-${race_class.id}`)
-								.addClass('btn-warning')
-								.addClass('unlock')
-								.addClass('unlock_class')
-								.addClass('open-mfp-popup')
-								.data('id', race_class.id)
-								.attr('data-mfp-src', '#class_unlock_confirm')
-								.html(svg_asset.lock)
-								.appendTo(field);
-							$(document.createElement('button'))
-								.prop('id', `delete--race-class-${race_class.id}`)
-								.data('id', race_class.id)
-								.addClass('btn-danger')
-								.addClass('delete_class')
-								.html('&#215;')
-								.appendTo(field);
-							el.append(field);
-
-							// Description
-							var desc_input = $(document.createElement('textarea'))
-								.prop('id', `description--race-class-${race_class.id}`)
-								.prop('placeholder', `${__('Class Description')} (${__('Accepts Markdown')})`)
-								.prop('maxlength', 256)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_description');
-							el.append(desc_input);
-
-							// Format
-							var field = $(document.createElement('div'))
-								.addClass('field')
-								.addClass('field-format');
-							$(document.createElement('label'))
-								.prop('for', `format--race-class-${race_class.id}`)
-								.text(__('Race Format'))
-								.appendTo(field);
-							var field_select = $(document.createElement('select'))
-								.prop('id', `format--race-class-${race_class.id}`)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_format');
-							field.append(field_select);
-							el.append(field);
-
-							// Ranking
-							var field = $(document.createElement('div'))
-								.addClass('field')
-								.addClass('field-ranking');
-							$(document.createElement('label'))
-								.prop('for', `ranking--race-class-${race_class.id}`)
-								.text(__('Ranking'))
-								.appendTo(field);
-							var field_select = $(document.createElement('select'))
-								.prop('id', `ranking--race-class-${race_class.id}`)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_ranking');
-							field.append(field_select);
-
-							$(document.createElement('button'))
-								.prop('id', `ranking-params--race-class-${race_class.id}`)
-								.prop('title', __('Ranking Settings'))
-								.addClass('open-ranking-params')
-								.data('class_id', race_class.id)
-								.html(svg_asset.gear)
-								.appendTo(field);
-							el.append(field);
-
-							// Round type
-							var field = $(document.createElement('div'))
-								.addClass('field')
-								.addClass('field-round-type');
-							$(document.createElement('label'))
-								.prop('for', `round-type--race-class-${race_class.id}`)
-								.text(__('Round Type'))
-								.appendTo(field);
-							var field_select = $(document.createElement('select'))
-								.prop('id', `round-type--race-class-${race_class.id}`)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_round_type');
-							$(document.createElement('option'))
-								.prop('value', 0)
-								.text(__('Count races per heat'))
-								.appendTo(field_select);
-							$(document.createElement('option'))
-								.prop('value', 1)
-								.text(__('Generate heat groups'))
-								.appendTo(field_select);
-							field.append(field_select);
-							el.append(field);
-
-							// Rounds
-							var field = $(document.createElement('div'))
-								.addClass('field')
-								.addClass('field-rounds');
-							$(document.createElement('label'))
-								.prop('for', `rounds--race-class-${race_class.id}`)
-								.text(__('Rounds'))
-								.appendTo(field);
-							$(document.createElement('input'))
-								.prop('id', `rounds--race-class-${race_class.id}`)
-								.prop('type', 'number')
-								.prop('step', 1)
-								.prop('min', 0)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_rounds')
-								.appendTo(field);
-							el.append(field);
-
-							// Advance type
-							var field = $(document.createElement('div'))
-								.addClass('field')
-								.addClass('field-advance');
-							$(document.createElement('label'))
-								.prop('for', `heat-advance--race-class-${race_class.id}`)
-								.text(__('Advance Heat'))
-								.appendTo(field);
-							var field_select = $(document.createElement('select'))
-								.prop('id', `heat-advance--race-class-${race_class.id}`)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_heat_advance');
-							field.append(field_select);
-							el.append(field);
-
-							// Order
-							var field = $(document.createElement('input'))
-								.prop('id', `order--race-class-${race_class.id}`)
-								.prop('type', 'number')
-								.prop('hidden', true)
-								.prop('step', 1)
-								.prop('min', 0)
-								.data('class_id', race_class.id)
-								.addClass('set_race_class_order');
-							el.append(field);
-
-							// Attributes
-							var field = $(document.createElement('div'))
-								.prop('id', `attributes--race-class-${race_class.id}`)
-								.addClass('attrs');
-							el.append(field);
-
-							// Heat List
-							var field = $(document.createElement('div'))
-								.addClass('heat-edit-selectors');
-							var field_select = $(document.createElement('select'))
-								.prop('id', `heat-selector--race-class-${race_class.id}`)
-								.data('class_id', race_class.id)
-								.addClass('class-heat-list');
-							field.append(field_select);
-
-							$(document.createElement('button'))
-								.prop('id', `edit-heat--race-class-${race_class.id}`)
-								.data('class_id', race_class.id)
-								.addClass('open-heat-editor')
-								.text(__('Edit Heat') )
-								.appendTo(field);
-
-							var field_select = $(document.createElement('select'))
-								.prop('id', `group-selector--race-class-${race_class.id}`)
-								.data('class_id', race_class.id)
-								.addClass('class-group-list');
-							field.append(field_select);
-
-							$(document.createElement('button'))
-								.prop('id', `add-heat--race-class-${race_class.id}`)
-								.data('id', race_class.id)
-								.addClass('add_heat')
-								.text(__('Add Heat'))
-								.appendTo(field);
-
-							el.append(field);
-
-							// Recent Heats
-							var field = $(document.createElement('div'))
-								.prop('id', `recent-heats--race-class-${race_class.id}`)
-								.addClass('recents');
-							$(document.createElement('h4'))
-								.text(__('Recent Heats'))
-								.appendTo(field);
-							var field_data = $(document.createElement('div'))
-								.prop('id', `recent-heat-data--race-class-${race_class.id}`)
-								.addClass('heat-data')
-								.appendTo(field);
-							$(document.createElement('p'))
-								.text(__('Loading...'))
-								.appendTo(field_data);
-
-							el.append(field);
-
-							if (classlist.children().length) {
-								if (last_el) {
-									last_el.after(el);
-								} else {
-									classlist.prepend(el);
-								}
-							} else {
-								classlist.append(el);
-							}
-						} else {
-							while (classlist.children().length < element_idx + 1) {
-								if (classlist.children()[element_idx].prop('id') == `race-class-${race_class.id}`) {
-									element_idx++;
-									break;
-								} else {
-									element_idx++;
-								}
-							}
-							el = $(`#race-class-${race_class.id}`);
-							el.removeClass('flagged');
-						}
-
-						var locked = race_class.locked;
-						var active_race = false;
-						if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_class_id == race_class.id) {
-							active_race = true;
-							locked = true;
-						}
+						var header = $(document.createElement('h3'))
+							.text(`${__('Class')} ${race_class.id}`)
+						el.append(header);
 
 						// Name
-						$(`#name--race-class-${race_class.id}`)
-							.val(race_class.name);
+						var field = $(document.createElement('input'))
+							.prop('id', `name--race-class-${race_class.id}`)
+							.prop('type', 'text')
+							.prop('placeholder', `${__('Name')} (${__('Class')} ${race_class.id})`)
+							.prop('maxlength', 80)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_name');
+						el.append(field);
 
 						// Actions
-						$(`#duplicate--race-class-${race_class.id}`)
-							.prop('title', `${__('Duplicate')} ${race_class.displayname}`);
-						$(`#unlock--race-class-${race_class.id}`)
-							.prop('title', `${__('Unlock')} ${race_class.displayname}`);
-						$(`#delete--race-class-${race_class.id}`)
-							.prop('title', `${__('Delete')} ${race_class.displayname}`);
+						var field = $(document.createElement('div'))
+							.addClass('actions');
+						$(document.createElement('button'))
+							.prop('id', `duplicate--race-class-${race_class.id}`)
+							.data('id', race_class.id)
+							.addClass('duplicate')
+							.addClass('duplicate_class')
+							.text('+')
+							.appendTo(field);
+						$(document.createElement('button'))
+							.prop('id', `unlock--race-class-${race_class.id}`)
+							.addClass('btn-warning')
+							.addClass('unlock')
+							.addClass('unlock_class')
+							.addClass('open-mfp-popup')
+							.data('id', race_class.id)
+							.attr('data-mfp-src', '#class_unlock_confirm')
+							.html(svg_asset.lock)
+							.appendTo(field);
+						$(document.createElement('button'))
+							.prop('id', `delete--race-class-${race_class.id}`)
+							.data('id', race_class.id)
+							.addClass('btn-danger')
+							.addClass('delete_class')
+							.html('&#215;')
+							.appendTo(field);
+						el.append(field);
 
-						if (locked) {
-							$(`#delete--race-class-${race_class.id}`)
-								.prop('hidden', true);
-							if (!active_race) {
-								$(`#unlock--race-class-${race_class.id}`)
-									.prop('hidden', false);
+						// Description
+						var desc_input = $(document.createElement('textarea'))
+							.prop('id', `description--race-class-${race_class.id}`)
+							.prop('placeholder', `${__('Class Description')} (${__('Accepts Markdown')})`)
+							.prop('maxlength', 256)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_description');
+						el.append(desc_input);
+
+						// Format
+						var field = $(document.createElement('div'))
+							.addClass('field')
+							.addClass('field-format');
+						$(document.createElement('label'))
+							.prop('for', `format--race-class-${race_class.id}`)
+							.text(__('Race Format'))
+							.appendTo(field);
+						var field_select = $(document.createElement('select'))
+							.prop('id', `format--race-class-${race_class.id}`)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_format');
+						field.append(field_select);
+						el.append(field);
+
+						// Ranking
+						var field = $(document.createElement('div'))
+							.addClass('field')
+							.addClass('field-ranking');
+						$(document.createElement('label'))
+							.prop('for', `ranking--race-class-${race_class.id}`)
+							.text(__('Ranking'))
+							.appendTo(field);
+						var field_select = $(document.createElement('select'))
+							.prop('id', `ranking--race-class-${race_class.id}`)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_ranking');
+						field.append(field_select);
+
+						$(document.createElement('button'))
+							.prop('id', `ranking-params--race-class-${race_class.id}`)
+							.prop('title', __('Ranking Settings'))
+							.addClass('open-ranking-params')
+							.data('class_id', race_class.id)
+							.html(svg_asset.gear)
+							.appendTo(field);
+						el.append(field);
+
+						// Round type
+						var field = $(document.createElement('div'))
+							.addClass('field')
+							.addClass('field-round-type');
+						$(document.createElement('label'))
+							.prop('for', `round-type--race-class-${race_class.id}`)
+							.text(__('Round Type'))
+							.appendTo(field);
+						var field_select = $(document.createElement('select'))
+							.prop('id', `round-type--race-class-${race_class.id}`)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_round_type');
+						$(document.createElement('option'))
+							.prop('value', 0)
+							.text(__('Count races per heat'))
+							.appendTo(field_select);
+						$(document.createElement('option'))
+							.prop('value', 1)
+							.text(__('Generate heat groups'))
+							.appendTo(field_select);
+						field.append(field_select);
+						el.append(field);
+
+						// Rounds
+						var field = $(document.createElement('div'))
+							.addClass('field')
+							.addClass('field-rounds');
+						$(document.createElement('label'))
+							.prop('for', `rounds--race-class-${race_class.id}`)
+							.text(__('Rounds'))
+							.appendTo(field);
+						$(document.createElement('input'))
+							.prop('id', `rounds--race-class-${race_class.id}`)
+							.prop('type', 'number')
+							.prop('step', 1)
+							.prop('min', 0)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_rounds')
+							.appendTo(field);
+						el.append(field);
+
+						// Advance type
+						var field = $(document.createElement('div'))
+							.addClass('field')
+							.addClass('field-advance');
+						$(document.createElement('label'))
+							.prop('for', `heat-advance--race-class-${race_class.id}`)
+							.text(__('Advance Heat'))
+							.appendTo(field);
+						var field_select = $(document.createElement('select'))
+							.prop('id', `heat-advance--race-class-${race_class.id}`)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_heat_advance');
+						field.append(field_select);
+						el.append(field);
+
+						// Order
+						var field = $(document.createElement('input'))
+							.prop('id', `order--race-class-${race_class.id}`)
+							.prop('type', 'number')
+							.prop('hidden', true)
+							.prop('step', 1)
+							.prop('min', 0)
+							.data('class_id', race_class.id)
+							.addClass('set_race_class_order');
+						el.append(field);
+
+						// Attributes
+						var field = $(document.createElement('div'))
+							.prop('id', `attributes--race-class-${race_class.id}`)
+							.addClass('attrs');
+						el.append(field);
+
+						// Heat List
+						var field = $(document.createElement('div'))
+							.addClass('heat-edit-selectors');
+						var field_select = $(document.createElement('select'))
+							.prop('id', `heat-selector--race-class-${race_class.id}`)
+							.data('class_id', race_class.id)
+							.addClass('class-heat-list');
+						field.append(field_select);
+
+						$(document.createElement('button'))
+							.prop('id', `edit-heat--race-class-${race_class.id}`)
+							.data('class_id', race_class.id)
+							.addClass('open-heat-editor')
+							.text(__('Edit Heat') )
+							.appendTo(field);
+
+						var field_select = $(document.createElement('select'))
+							.prop('id', `group-selector--race-class-${race_class.id}`)
+							.data('class_id', race_class.id)
+							.addClass('class-group-list');
+						field.append(field_select);
+
+						$(document.createElement('button'))
+							.prop('id', `add-heat--race-class-${race_class.id}`)
+							.data('id', race_class.id)
+							.addClass('add_heat')
+							.text(__('Add Heat'))
+							.appendTo(field);
+
+						el.append(field);
+
+						// Recent Heats
+						var field = $(document.createElement('div'))
+							.prop('id', `recent-heats--race-class-${race_class.id}`)
+							.addClass('recents');
+						$(document.createElement('h4'))
+							.text(__('Recent Heats'))
+							.appendTo(field);
+						var field_data = $(document.createElement('div'))
+							.prop('id', `recent-heat-data--race-class-${race_class.id}`)
+							.addClass('heat-data')
+							.appendTo(field);
+						$(document.createElement('p'))
+							.text(__('Loading...'))
+							.appendTo(field_data);
+
+						el.append(field);
+
+						if (classlist.children().length) {
+							if (last_el) {
+								last_el.after(el);
 							} else {
-								$(`#unlock--race-class-${race_class.id}`)
-									.prop('hidden', true);
+								classlist.prepend(el);
 							}
+						} else {
+							classlist.append(el);
+						}
+					} else {
+						while (classlist.children().length < element_idx + 1) {
+							if (classlist.children()[element_idx].prop('id') == `race-class-${race_class.id}`) {
+								element_idx++;
+								break;
+							} else {
+								element_idx++;
+							}
+						}
+						el = $(`#race-class-${race_class.id}`);
+						el.removeClass('flagged');
+					}
+
+					var locked = race_class.locked;
+					var active_race = false;
+					if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_class_id == race_class.id) {
+						active_race = true;
+						locked = true;
+					}
+
+					// Name
+					$(`#name--race-class-${race_class.id}`)
+						.val(race_class.name);
+
+					// Actions
+					$(`#duplicate--race-class-${race_class.id}`)
+						.prop('title', `${__('Duplicate')} ${race_class.displayname}`);
+					$(`#unlock--race-class-${race_class.id}`)
+						.prop('title', `${__('Unlock')} ${race_class.displayname}`);
+					$(`#delete--race-class-${race_class.id}`)
+						.prop('title', `${__('Delete')} ${race_class.displayname}`);
+
+					if (locked) {
+						$(`#delete--race-class-${race_class.id}`)
+							.prop('hidden', true);
+						if (!active_race) {
+							$(`#unlock--race-class-${race_class.id}`)
+								.prop('hidden', false);
 						} else {
 							$(`#unlock--race-class-${race_class.id}`)
 								.prop('hidden', true);
-							$(`#delete--race-class-${race_class.id}`)
-								.prop('hidden', false);
 						}
+					} else {
+						$(`#unlock--race-class-${race_class.id}`)
+							.prop('hidden', true);
+						$(`#delete--race-class-${race_class.id}`)
+							.prop('hidden', false);
+					}
 
-						// Description
-						$(`#description--race-class-${race_class.id}`)
-							.val(race_class.description);
+					// Description
+					$(`#description--race-class-${race_class.id}`)
+						.val(race_class.description);
 
-						// Format
-						var field_select = $(`#format--race-class-${race_class.id}`)
-							.prop('disabled', locked)
-							.empty();
+					// Format
+					var field_select = $(`#format--race-class-${race_class.id}`)
+						.prop('disabled', locked)
+						.empty();
+					$(document.createElement('option'))
+						.prop('value', 0)
+						.text(`- ${__('Unrestricted')} -`)
+						.appendTo(field_select);
+					for (var j in rotorhazard.event.race_formats) {
+						$(document.createElement('option'))
+							.prop('value', rotorhazard.event.race_formats[j].id)
+							.text(rotorhazard.event.race_formats[j].name)
+							.appendTo(field_select);
+					}
+					field_select.val(race_class.format);
+
+					// Ranking
+					var field_select = $(`#ranking--race-class-${race_class.id}`)
+						.prop('disabled', locked)
+						.empty();
+					$(document.createElement('option'))
+						.prop('value', '')
+						.text(__('From Race Format'))
+						.appendTo(field_select);
+					for (var j in rotorhazard.raceclass_rank_methods) {
+						$(document.createElement('option'))
+							.prop('value', rotorhazard.raceclass_rank_methods[j].name)
+							.text(rotorhazard.raceclass_rank_methods[j].label)
+							.appendTo(field_select);
+					}
+					field_select
+						.val(race_class.win_condition);
+
+					var field_options = $(`#ranking-params--race-class-${race_class.id}`)
+						.prop('disabled', locked);
+					var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
+					if (rank_method && rank_method.settings) {
+						field_options.prop('hidden', false);
+					} else {
+						field_options.prop('hidden', true);
+					}
+
+					// Round type
+					$(`#round-type--race-class-${race_class.id}`)
+						.val(race_class.round_type)
+						.prop('disabled', locked);
+
+					// Rounds
+					$(`#rounds--race-class-${race_class.id}`)
+						.val(race_class.rounds)
+
+					// Advance type
+					var field_select = $(`#heat-advance--race-class-${race_class.id}`)
+						.empty();
+					$(document.createElement('option'))
+						.prop('value', 1)
+						.text(__('Always'))
+						.appendTo(field_select);
+					$(document.createElement('option'))
+						.prop('value', 2)
+						.text(__('After All Rounds'))
+						.appendTo(field_select);
+					if (race_class.round_type != 1) {
 						$(document.createElement('option'))
 							.prop('value', 0)
-							.text(`- ${__('Unrestricted')} -`)
+							.text(__('Never'))
 							.appendTo(field_select);
-						for (var j in rotorhazard.event.race_formats) {
-							$(document.createElement('option'))
-								.prop('value', rotorhazard.event.race_formats[j].id)
-								.text(rotorhazard.event.race_formats[j].name)
-								.appendTo(field_select);
-						}
-						field_select.val(race_class.format);
+					}
+					field_select
+						.val(race_class.heat_advance_type);
 
-						// Ranking
-						var field_select = $(`#ranking--race-class-${race_class.id}`)
-							.prop('disabled', locked)
-							.empty();
-						$(document.createElement('option'))
-							.prop('value', '')
-							.text(__('From Race Format'))
-							.appendTo(field_select);
-						for (var j in rotorhazard.raceclass_rank_methods) {
-							$(document.createElement('option'))
-								.prop('value', rotorhazard.raceclass_rank_methods[j].name)
-								.text(rotorhazard.raceclass_rank_methods[j].label)
-								.appendTo(field_select);
-						}
-						field_select
-							.val(race_class.win_condition);
 
-						var field_options = $(`#ranking-params--race-class-${race_class.id}`)
-							.prop('disabled', locked);
-						var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
-						if (rank_method && rank_method.settings) {
-							field_options.prop('hidden', false);
-						} else {
-							field_options.prop('hidden', true);
+					// Order
+					$(`#order--race-class-${race_class.id}`)
+						.val(race_class.order)
+
+					// Attributes
+					var attrgroup_el = $(`#attributes--race-class-${race_class.id}`);
+					for (var attr_idx in rotorhazard.event.raceclass_attributes) {
+						var raceclass_attr = { ...rotorhazard.event.raceclass_attributes[attr_idx]};
+						raceclass_attr.fieldClass = 'set_raceclass_attr';
+						raceclass_attr.wrapperClass = 'custom_attr';
+						raceclass_attr.id = 'raceclassAttr_' + raceclass_attr.name + '_' + race_class.id;
+						raceclass_attr.data = {
+							'raceclass_id': race_class.id,
+							'attr': raceclass_attr.name,
 						}
 
-						// Round type
-						$(`#round-type--race-class-${race_class.id}`)
-							.val(race_class.round_type)
-							.prop('disabled', locked);
-
-						// Rounds
-						$(`#rounds--race-class-${race_class.id}`)
-							.val(race_class.rounds)
-
-						// Advance type
-						var field_select = $(`#heat-advance--race-class-${race_class.id}`)
-							.empty();
-						$(document.createElement('option'))
-							.prop('value', 1)
-							.text(__('Always'))
-							.appendTo(field_select);
-						$(document.createElement('option'))
-							.prop('value', 2)
-							.text(__('After All Rounds'))
-							.appendTo(field_select);
-						if (race_class.round_type != 1) {
-							$(document.createElement('option'))
-								.prop('value', 0)
-								.text(__('Never'))
-								.appendTo(field_select);
-						}
-						field_select
-							.val(race_class.heat_advance_type);
-
-
-						// Order
-						$(`#order--race-class-${race_class.id}`)
-							.val(race_class.order)
-
-						// Attributes
-						var attrgroup_el = $(`#attributes--race-class-${race_class.id}`);
-						for (var attr_idx in rotorhazard.event.raceclass_attributes) {
-							var raceclass_attr = { ...rotorhazard.event.raceclass_attributes[attr_idx]};
-							raceclass_attr.fieldClass = 'set_raceclass_attr';
-							raceclass_attr.wrapperClass = 'custom_attr';
-							raceclass_attr.id = 'raceclassAttr_' + raceclass_attr.name + '_' + race_class.id;
-							raceclass_attr.data = {
-								'raceclass_id': race_class.id,
-								'attr': raceclass_attr.name,
-							}
-
-							if (raceclass_attr.name in race_class) {
-								raceclass_attr.value = race_class[raceclass_attr.name]
-							}
-
-							attrgroup_el.html(rhui.buildField(raceclass_attr));
+						if (raceclass_attr.name in race_class) {
+							raceclass_attr.value = race_class[raceclass_attr.name]
 						}
 
-						// Heat List
-						var heatselect = $(`#heat-selector--race-class-${race_class.id}`)
-							.empty();
-						var heats_total = 0;
-						if (race_class.round_type == 1) {
-							var heats_by_group = [];
-							for (var i in rotorhazard.event.heats) {
-								heat = rotorhazard.event.heats[i];
-								if (heat.class_id == race_class.id) {
-									heats_total++;
-									var group = heat.group_id == null ? -1 : heat.group_id;
-									if (!heats_by_group[group]) {
-										heats_by_group[group] = []
-									};
-									heats_by_group[group].push(heat);
-								}
-							}
-							var groups = [];
-							for (var i in heats_by_group) {
-								groups.push(i);
-								var group_el = $(document.createElement('optgroup'))
-										.prop('label', `${__('Round')} ${parseInt(i)+1}`);
-								for (var j in heats_by_group[i]) {
-									var heat = heats_by_group[i][j];
-									$(document.createElement('option'))
-										.prop('value', heat.id)
-										.text(heat.displayname)
-										.appendTo(group_el);
-								}
-								heatselect.append(group_el);
-							}
-						} else {
-							for (var i in rotorhazard.event.heats) {
-								var heat = rotorhazard.event.heats[i];
-								if (heat.class_id == race_class.id) {
-									heats_total++;
-									$(document.createElement('option'))
-										.prop('value', heat.id)
-										.text(heat.displayname)
-										.appendTo(heatselect);
-								}
+						attrgroup_el.html(rhui.buildField(raceclass_attr));
+					}
+
+					// Heat List
+					var heatselect = $(`#heat-selector--race-class-${race_class.id}`)
+						.empty();
+					var heats_total = 0;
+					if (race_class.round_type == 1) {
+						var heats_by_group = [];
+						for (var i in rotorhazard.event.heats) {
+							heat = rotorhazard.event.heats[i];
+							if (heat.class_id == race_class.id) {
+								heats_total++;
+								var group = heat.group_id == null ? -1 : heat.group_id;
+								if (!heats_by_group[group]) {
+									heats_by_group[group] = []
+								};
+								heats_by_group[group].push(heat);
 							}
 						}
-						var heatedit = $(`#edit-heat--race-class-${race_class.id}`);
-						if (heats_total) {
-							heatselect.prop('disabled', false);
-							heatedit.prop('disabled', false);
-						} else {
-							heatselect.prop('disabled', true);
-							heatedit.prop('disabled', true);
-						}
-
-						var groupselect = $(`#group-selector--race-class-${race_class.id}`)
-						if (race_class.round_type == 1) {
-							groupselect.prop('hidden', false);
-
-							if (groups.length > 1) {
-								for (var i in groups) {
-									$(document.createElement('option'))
-										.prop('value', i)
-										.text(`${__('Round')} ${parseInt(i)+1}`)
-										.appendTo(groupselect);
-								}
-							} else {
-								groupselect.prop('disabled', true);
+						var groups = [];
+						for (var i in heats_by_group) {
+							groups.push(i);
+							var group_el = $(document.createElement('optgroup'))
+									.prop('label', `${__('Round')} ${parseInt(i)+1}`);
+							for (var j in heats_by_group[i]) {
+								var heat = heats_by_group[i][j];
 								$(document.createElement('option'))
-									.prop('value', 0)
-									.text(`${__('Round')} 1`)
+									.prop('value', heat.id)
+									.text(heat.displayname)
+									.appendTo(group_el);
+							}
+							heatselect.append(group_el);
+						}
+					} else {
+						for (var i in rotorhazard.event.heats) {
+							var heat = rotorhazard.event.heats[i];
+							if (heat.class_id == race_class.id) {
+								heats_total++;
+								$(document.createElement('option'))
+									.prop('value', heat.id)
+									.text(heat.displayname)
+									.appendTo(heatselect);
+							}
+						}
+					}
+					var heatedit = $(`#edit-heat--race-class-${race_class.id}`);
+					if (heats_total) {
+						heatselect.prop('disabled', false);
+						heatedit.prop('disabled', false);
+					} else {
+						heatselect.prop('disabled', true);
+						heatedit.prop('disabled', true);
+					}
+
+					var groupselect = $(`#group-selector--race-class-${race_class.id}`)
+					if (race_class.round_type == 1) {
+						groupselect.prop('hidden', false);
+
+						if (groups.length > 1) {
+							for (var i in groups) {
+								$(document.createElement('option'))
+									.prop('value', i)
+									.text(`${__('Round')} ${parseInt(i)+1}`)
 									.appendTo(groupselect);
 							}
 						} else {
-							groupselect.prop('hidden', true);
+							groupselect.prop('disabled', true);
+							$(document.createElement('option'))
+								.prop('value', 0)
+								.text(`${__('Round')} 1`)
+								.appendTo(groupselect);
 						}
-
-						// Recent Heats
-						var recents = $(`#recent-heats--race-class-${race_class.id}`);
-
-						if (heats_total > 6) {
-							$(document.createElement('button'))
-								.data('id', race_class.id)
-								.text(__('Load All'))
-								.addClass('load_all_heats')
-								.appendTo(/*???*/);
-						}
-
-						socket.emit('get_class_recents', {'class_id': race_class.id});
-
-						last_el = el;
+					} else {
+						groupselect.prop('hidden', true);
 					}
 
-					classlist.children('.flagged').remove();
-				}
+					// Recent Heats
+					var recents = $(`#recent-heats--race-class-${race_class.id}`);
 
+					if (heats_total > 6) {
+						$(document.createElement('button'))
+							.data('id', race_class.id)
+							.text(__('Load All'))
+							.addClass('load_all_heats')
+							.appendTo(/*???*/);
+					}
+
+					socket.emit('get_class_recents', {'class_id': race_class.id});
+
+					last_el = el;
+				}
+				classlist.children('.flagged').remove();
 				freq.updateBlocks();
 				init_popup_generics();
 			}
