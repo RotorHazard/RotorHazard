@@ -1334,12 +1334,19 @@ class RHData():
 
         # update current race
         if heat_id == self._racecontext.race.current_heat:
-            if not heat.active:
+            heat_nodes = self.get_heatNodes_by_heat(heat_id)
+            is_dynamic = False
+            for heatNode in heat_nodes:
+                if heatNode.method not in [ProgramMethod.NONE, ProgramMethod.ASSIGN]:
+                    is_dynamic = True
+                    break
+
+            if not heat.active or (is_dynamic and heat.status != HeatStatus.CONFIRMED):
                 self._racecontext.race.set_heat(RHUtils.HEAT_ID_NONE, mute_event=mute_event)
             else:
                 self._racecontext.race.node_pilots = {}
                 self._racecontext.race.node_teams = {}
-                for heatNode in self.get_heatNodes_by_heat(heat_id):
+                for heatNode in heat_nodes:
                     self._racecontext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
                     if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
@@ -1387,12 +1394,17 @@ class RHData():
                         heat = Database.Heat.query.first()
                         if heat.id != 1:
                             heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+                            heat_attributes = Database.HeatAttribute.query.filter_by(id=heat.id).all()
 
                             if not self.savedRaceMetas_has_heat(heat.id):
                                 logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat.id))
                                 heat.id = 1
                                 for heatnode in heatnodes:
                                     heatnode.heat_id = heat.id
+
+                                for attribute in heat_attributes:
+                                    attribute.id = heat.id
+
                                 # self.commit()  # 'set_option()' below will do call to 'commit()'
                                 self._racecontext.race.current_heat = 1
                                 self.set_option('currentHeat', self._racecontext.race.current_heat)

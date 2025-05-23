@@ -2495,7 +2495,6 @@ def on_calc_pilots(data):
 def on_calc_reset(data):
     data['status'] = Database.HeatStatus.PLANNED
     on_alter_heat(data)
-    RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('confirm_heat_plan')
 @catchLogExcWithDBWrapper
@@ -2509,7 +2508,7 @@ def on_confirm_heat(data):
         RaceContext.rhdata.resolve_slot_unset_nodes(data['heat_id'])
         RaceContext.rhui.emit_heat_data()
 
-        if RaceContext.race.race_status == RaceStatus.READY:
+        if data.get('source') == 'run' and RaceContext.race.race_status == RaceStatus.READY:
             RaceContext.race.set_heat(data['heat_id'], force=True)
 
 @SOCKET_IO.on('set_current_heat')
