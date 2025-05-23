@@ -290,7 +290,15 @@
 				for (var idx in rotorhazard.event.heats) {
 					var heat = rotorhazard.event.heats[idx];
 
-					$('#reassign-heat-selector').append('<option value="' + heat.id + '">' + heat.displayname + '</option>');
+					var opt = $(document.createElement('option'))
+						.prop('value', heat.id)
+						.text(heat.displayname);
+
+					if (!heat.active) {
+						opt.prop('disabled', true)
+					}
+
+					$('#reassign-heat-selector').append(opt);
 				}
 			}
 		}

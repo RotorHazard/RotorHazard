@@ -1548,6 +1548,7 @@ def on_alter_race(data):
         message = __('A race has been reassigned to {0}').format(new_heat.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
+        RaceContext.rhui.emit_heat_data()
         RaceContext.rhui.emit_race_list(nobroadcast=True)
         RaceContext.rhui.emit_result_data()
     else:
