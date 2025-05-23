@@ -405,7 +405,7 @@ def getFwfileProctypeStr(fileStr):
 def check_log_error_alert():
     if Auth_succeeded_flag and log.get_log_error_alert_flag():
         gevent.spawn_later(1.0, RaceContext.rhui.emit_priority_message,\
-                __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                f'{__("An error has occurred.")}<br /><a href="/hardwarelog?log_level=ERROR">{__("View error log")}</a>',\
                 True, False, True)  # admin_only=True
         return True
     return False
