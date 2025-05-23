@@ -3029,6 +3029,11 @@ class RHData():
 
         # clear round ids
         heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.round_id).all()
+
+        # abort if assigning to a grouped heat with existing race
+        if heat_races and new_class.round_type == RoundType.GROUPED:
+            return False, False
+
         race_meta.round_id = 0
         dummy_round_counter = -1
         for race in heat_races:
@@ -3063,10 +3068,8 @@ class RHData():
             race.round_id = round_counter
             round_counter += 1
 
-        if old_heat_races and old_class:
+        if old_class:
             if old_class.round_type == RoundType.GROUPED:
-                old_heat.active = False
-            else:
                 old_heat.active = True
 
         new_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id) \
@@ -3083,6 +3086,22 @@ class RHData():
                 new_heat.active = True
 
         self.commit()
+
+        # group priming
+        if new_class and new_class.round_type == RoundType.GROUPED:
+            self.duplicate_heat(new_heat, new_heat_name=new_heat.name, group_id=new_heat.group_id + 1)
+
+        # group cleaning
+        if old_class and old_class.round_type == RoundType.GROUPED:
+            matching_heats = []
+            old_class_heats = self.get_heats_by_class(old_class.id)
+            for heat in old_class_heats:
+                if heat.id != old_heat.id and heat.display_name_short == old_heat.display_name_short:
+                    races = self.get_savedRaceMetas_by_heat(heat.id)
+                    if len(races) < 1:
+                        matching_heats.append(heat)
+            for heat in matching_heats:
+                self.delete_heat(heat)
 
         # cache cleaning
         self._racecontext.pagecache.set_valid(False)

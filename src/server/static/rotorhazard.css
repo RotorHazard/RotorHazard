@@ -316,6 +316,11 @@ option {
 	color: var(--contrast_0_low);
 }
 
+option:disabled {
+	background: #999;
+	color: #333;
+}
+
 button:disabled, input:disabled, select:disabled {
 	border: solid 0.125em hsl(225, 1.8%, 43.5%);
 	color: hsl(225, 1.8%, 10%);
