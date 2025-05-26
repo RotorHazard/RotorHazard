@@ -3619,8 +3619,12 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
                 if len(args) > 0 and arg == CMDARG_LAUNCH_B_STR:
                     break    # don't include "--launchb" arguments
                 args.append(arg)
-            if len(args) > 0 and not os.path.exists(args[0]):  # if not finding "server.py" then
-                args[0] = os.path.join(PROGRAM_DIR, args[0])   # prepend program-dir path
+            if len(args) > 0:
+                arg0_new = os.path.join(PROGRAM_DIR, os.path.basename(args[0]))  # path for 'server.py'
+                if os.path.exists(arg0_new):
+                    args[0] = arg0_new
+                elif not os.path.exists(args[0]):                  # if not finding "server.py" then
+                    args[0] = os.path.join(PROGRAM_DIR, args[0])   # prepend program-dir path
             args.insert(0, sys.executable)
             if sys.platform == 'win32':
                 args = ['"%s"' % arg for arg in args]
