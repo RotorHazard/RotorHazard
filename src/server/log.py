@@ -489,7 +489,10 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
                     zip_file_obj.write(service_file, 'rotorhazard.service.txt')
                 server_file = os.path.join(program_dir_str,  'server.py')
                 if os.path.isfile(server_file):
-                    zip_file_obj.write(server_file, 'server.py')
+                    zip_file_obj.write(server_file, 'server.py.txt')
+                datapath_file = os.path.join(program_dir_str,  'datapath.ini')
+                if os.path.isfile(datapath_file):
+                    zip_file_obj.write(datapath_file, 'datapath.ini.txt')
             except Exception:
                 logger.exception("Error adding files to log-files .zip file")
             try:
