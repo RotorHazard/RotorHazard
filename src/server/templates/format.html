@@ -448,12 +448,39 @@
 		}
 
 		socket.on('class_list', function (msg) {
-			rotorhazard.event.classes = msg.classes;
+			if (rotorhazard.event.classes) {
+				var existing_class_data = rotorhazard.event.classes;
+				rotorhazard.event.classes = [];
+				for (var i in msg.classes) {
+					var new_class = msg.classes[i];
+					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
+					Object.assign(race_class, new_class);
+					rotorhazard.event.classes.push(new_class);
+				}
+			} else {
+				rotorhazard.event.classes = msg.classes;
+			}
+
 			raceclass_selector.seed();
 			update_class_selectors();
 		});
 
 		socket.on('class_data', function (msg) {
+			if (rotorhazard.event.classes) {
+				var existing_class_data = rotorhazard.event.classes;
+				rotorhazard.event.classes = [];
+				for (var i in msg.classes) {
+					var new_class = msg.classes[i];
+					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
+					if (race_class) {
+						Object.assign(race_class, new_class);
+					}
+					rotorhazard.event.classes.push(new_class);
+				}
+			} else {
+				rotorhazard.event.classes = msg.classes;
+			}
+
 			rotorhazard.event.classes = msg.classes;
 			rotorhazard.event.raceclass_attributes = msg.attributes;
 			raceclass_selector.seed();
@@ -737,7 +764,7 @@
 						el.removeClass('flagged');
 					}
 
-					var locked = race_class.locked;
+					var locked = race_class.manual_unlock ? false : race_class.locked;
 					var active_race = false;
 					if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_class_id == race_class.id) {
 						active_race = true;
@@ -759,18 +786,23 @@
 					if (locked) {
 						$(`#delete--race-class-${race_class.id}`)
 							.prop('hidden', true);
-						if (!active_race) {
-							$(`#unlock--race-class-${race_class.id}`)
-								.prop('hidden', false);
-						} else {
+						if (active_race) {
 							$(`#unlock--race-class-${race_class.id}`)
 								.prop('hidden', true);
+						} else {
+							$(`#unlock--race-class-${race_class.id}`)
+								.prop('hidden', false);
 						}
 					} else {
 						$(`#unlock--race-class-${race_class.id}`)
 							.prop('hidden', true);
-						$(`#delete--race-class-${race_class.id}`)
-							.prop('hidden', false);
+						if (race_class.manual_unlock) {
+							$(`#delete--race-class-${race_class.id}`)
+								.prop('hidden', true);
+						} else {
+							$(`#delete--race-class-${race_class.id}`)
+								.prop('hidden', false);
+						}
 					}
 
 					// Description
@@ -1254,9 +1286,11 @@
 			$.magnificPopup.close();
 			var el = $(`#race-class-${class_to_unlock}`);
 
-			el.children('.field').find('*').each(function(){
-				$(this).prop('disabled', false);
-			});
+			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == class_to_unlock});
+			race_class.locked = false;
+			race_class.manual_unlock = true;
+
+			display_classes();
 		});
 
 		$(document).on("click", '#add_race_class', function (event) {
@@ -1675,12 +1709,12 @@
 						.prop('hidden', true);
 				}
 
-				if (!active_race) {
-					heat_unlock
-						.prop('hidden', false);
-				} else {
+				if (active_race) {
 					heat_unlock
 						.prop('hidden', true);
+				} else {
+					heat_unlock
+						.prop('hidden', false);
 				}
 			} else {
 				heat_deactivate
@@ -1689,8 +1723,13 @@
 					.prop('hidden', true);
 				heat_unlock
 					.prop('hidden', true);
-				heat_delete
-					.prop('hidden', false);
+				if (heat.manual_unlock) {
+					heat_delete
+						.prop('hidden', true);
+				} else {
+					heat_delete
+						.prop('hidden', false);
+				}
 			}
 
 			// Slots
@@ -2391,13 +2430,11 @@
 			heat.locked = false;
 			heat.manual_unlock = true;
 
-			el.find('li').each(function(){
-				$(this).prop('hidden', false);
-				$(this).find('.set_pilot_position').prop('disabled', false);
-			});
+			heat_ui(el.parent(), heat);
 
 			freq.updateBlocks();
 		}
+
 		$(document).on("click", '.unlock_heat', function (event) {
 			heat_to_unlock = $(this).data('id');
 
