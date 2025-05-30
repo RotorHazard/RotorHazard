@@ -331,12 +331,15 @@ $.fn.setup_navigation = function(settings) {
 			}
 		} else if(e.keyCode == 13 || e.keyCode == 32) {
 			// If submenu is hidden, open it
-			e.preventDefault();
-			$(this).parent('li').find('ul[aria-hidden=true]')
+			var sub_items = $(this).parent('li').find('ul[aria-hidden=true]');
+			if (sub_items.length) {
+				e.preventDefault();
+				$(this).parent('li').find('ul[aria-hidden=true]')
 					.attr('aria-hidden', 'false')
 					.addClass(settings.menuHoverClass)
 					.find('a').attr('tabIndex',0)
 					.first().focus();
+			}
 		} else if(e.keyCode == 27) {
 			e.preventDefault();
 			$('.'+settings.menuHoverClass)

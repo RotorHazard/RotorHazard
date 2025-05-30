@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.3.0-dev.6" # Public release version code
+RELEASE_VERSION = "4.3.0-dev.7" # Public release version code
 SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -62,6 +62,7 @@ import importlib
 import functools
 import signal
 import werkzeug
+import urllib3
 
 from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
 from flask.blueprints import Blueprint
@@ -237,7 +238,7 @@ HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
+IMDTABLER_JAR_NAME =  PROGRAM_DIR + '/static/IMDTabler.jar'
 NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 
 # check if 'log' directory owned by 'root' and change owner to 'pi' user if so
@@ -404,7 +405,7 @@ def getFwfileProctypeStr(fileStr):
 def check_log_error_alert():
     if Auth_succeeded_flag and log.get_log_error_alert_flag():
         gevent.spawn_later(1.0, RaceContext.rhui.emit_priority_message,\
-                __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                f'{__("An error has occurred.")}<br /><a href="/hardwarelog?log_level=ERROR">{__("View error log")}</a>',\
                 True, False, True)  # admin_only=True
         return True
     return False
@@ -1547,6 +1548,7 @@ def on_alter_race(data):
         message = __('A race has been reassigned to {0}').format(new_heat.display_name)
         RaceContext.rhui.emit_priority_message(message, False)
 
+        RaceContext.rhui.emit_heat_data()
         RaceContext.rhui.emit_race_list(nobroadcast=True)
         RaceContext.rhui.emit_result_data()
     else:
@@ -2494,7 +2496,6 @@ def on_calc_pilots(data):
 def on_calc_reset(data):
     data['status'] = Database.HeatStatus.PLANNED
     on_alter_heat(data)
-    RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('confirm_heat_plan')
 @catchLogExcWithDBWrapper
@@ -2508,7 +2509,7 @@ def on_confirm_heat(data):
         RaceContext.rhdata.resolve_slot_unset_nodes(data['heat_id'])
         RaceContext.rhui.emit_heat_data()
 
-        if RaceContext.race.race_status == RaceStatus.READY:
+        if data.get('source') == 'run' and RaceContext.race.race_status == RaceStatus.READY:
             RaceContext.race.set_heat(data['heat_id'], force=True)
 
 @SOCKET_IO.on('set_current_heat')
@@ -3327,7 +3328,35 @@ def _do_init_rh_interface():
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
         if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
-            if (not RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) or len(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')) <= 0:
+            if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'):
+                ports_str = str(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'))
+                if len(ports_str) > 0:
+                    try:
+                        importlib.import_module('serial')
+                        if RaceContext.interface:
+                            if not (getattr(RaceContext.interface, "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
+                                logger.info("Unable to initialize serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                                logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
+                                # enter serial port name so it's available for node firmware update
+                                if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
+                                    RaceContext.interface.set_mock_fwupd_serial_obj(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
+                                    set_ui_message('stm32', \
+                                                   __("Server is unable to communicate with node processor") + ". " + \
+                                                   __("If an S32_BPill board is connected, you may attempt to") + \
+                                                   " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                                   __("its processor."), \
+                                                   header='Warning', subclass='no-comms')
+                        else:
+                            logger.warning("Unable to initialize configured serial node(s): {0}".format(ports_str))
+                            set_ui_message('serial', \
+                                           __("Unable to initialize configured serial node(s):") + " " + ports_str, \
+                                           header='Warning', subclass='no-conn')
+                    except ImportError:
+                        logger.warn("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                        set_ui_message('serial', \
+                                       __("Unable to import library for serial node(s) - is 'pyserial' installed?"), \
+                                       header='Warning', subclass='import-err')
+            if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
                 interfaceModule = importlib.import_module('MockInterface')
                 RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **HardwareHelpers)
                 for node in RaceContext.interface.nodes:  # put mock nodes at latest API level
@@ -3613,8 +3642,12 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
                 if len(args) > 0 and arg == CMDARG_LAUNCH_B_STR:
                     break    # don't include "--launchb" arguments
                 args.append(arg)
-            if len(args) > 0 and not os.path.exists(args[0]):  # if not finding "server.py" then
-                args[0] = os.path.join(PROGRAM_DIR, args[0])   # prepend program-dir path
+            if len(args) > 0:
+                arg0_new = os.path.join(PROGRAM_DIR, os.path.basename(args[0]))  # path for 'server.py'
+                if os.path.exists(arg0_new):
+                    args[0] = arg0_new
+                elif not os.path.exists(args[0]):                  # if not finding "server.py" then
+                    args[0] = os.path.join(PROGRAM_DIR, args[0])   # prepend program-dir path
             args.insert(0, sys.executable)
             if sys.platform == 'win32':
                 args = ['"%s"' % arg for arg in args]
@@ -3702,8 +3735,11 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 remote_loaded = True
             else:
                 remote_loaded = False
+        except IOError or OSError or urllib3.exceptions.HTTPError as ex:
+            logger.info("Unable to query plugins server at startup (no internet access?): {}".format(ex))
+            remote_loaded = False
         except:
-            logger.exception("Unable to load remote plugins")
+            logger.exception("Error querying plugins server at startup")
             remote_loaded = False
 
         if local_loaded and remote_loaded:
@@ -4001,7 +4037,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 except Exception:
                     logger.exception('Error checking IMDTabler:  ')
         else:
-            logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+            logger.warning('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
         # VRx Controllers
         RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=RaceContext.serverconfig.get_section('VRX_CONTROL'))

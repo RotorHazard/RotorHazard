@@ -1965,7 +1965,11 @@
 			['recEventsFlag', __('Receives Events'), 'boolean', false],
 			['timeout', __('Timeout (seconds)'), 'numeric', 0],
 			['event', __('Event'), 'text', ''],
-			['effect', __('Effect'), 'text', ''],
+			['effect', __('Effect'), [
+				['speak', __('Speak')],
+				['message', __('Message')],
+				['alert', __('Alert')],
+			], 'speak'],
 			['text', __('Text'), 'text', ''],
 			['toneDuration', __('Tone Duration'), 'numeric', 0],
 			['toneFrequency', __('Tone Frequency'), 'numeric', 0],
