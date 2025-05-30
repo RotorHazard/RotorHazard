@@ -3364,9 +3364,32 @@ def _do_init_rh_interface():
                 set_ui_message(
                     'mock',
                     __("Server is using simulated (mock) nodes"),
-                    header='Notice',
+                    header=__('Notice'),
                     subclass='in-use'
                     )
+            else:
+                try:
+                    importlib.import_module('serial')
+                    if RaceContext.interface:
+                        if not (getattr(RaceContext.interface, "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
+                            logger.info("Unable to initialize serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                            logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
+                            # enter serial port name so it's available for node firmware update
+                            if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
+                                RaceContext.interface.set_mock_fwupd_serial_obj(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
+                                set_ui_message('stm32', \
+                                     __("Server is unable to communicate with node processor") + ". " + \
+                                          __("If an S32_BPill board is connected, you may attempt to") + \
+                                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                          __("its processor."), \
+                                    header=__('Warning'), subclass='no-comms')
+                    else:
+                        logger.info("Unable to initialize specified serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                        return False  # unable to open serial port
+                except ImportError:
+                    logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                    return False
+
         RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # save number of nodes found
         # set callback functions invoked by interface module
         RaceContext.interface.pass_record_callback = pass_record_callback
@@ -3422,7 +3445,7 @@ def reportServerInfo():
                 msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
                           " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                           __("its processor.")
-            set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
+            set_ui_message('node-old', msgStr, header=__('Notice'), subclass='api-low')
         elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
             logger.warning('** WARNING: Node firmware is newer than this server version supports **')
             set_ui_message('node-newer',
@@ -3474,7 +3497,7 @@ def check_requirements():
         if num_mismatched > 0:
             logger.warning(__('Try "pip install --upgrade --no-cache-dir -r {}"'.format(req_file_name)))
             set_ui_message('check_reqs',
-                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>".format(req_file_name)),
+                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>").format(req_file_name),
                 header='Warning', subclass='none')
     except:
         logger.exception("Error checking package requirements")
@@ -3725,7 +3748,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 set_ui_message(
                     'plugins',
                     __("One or more plugins have updates available."),
-                    header='Notice',
+                    header=__('Notice'),
                     subclass='updates-available'
                 )
 
@@ -3835,7 +3858,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     set_ui_message(
                         'secondary',
                         __("Mirror secondaries must be last; ignoring part of secondary configuration"),
-                        header='Notice',
+                        header=__('Notice'),
                         subclass='mirror'
                     )
                     break
