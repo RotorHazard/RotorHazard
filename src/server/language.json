@@ -2589,6 +2589,7 @@
 			"Cannot perform operation on Node {0}: Not enough history": "无法在节点 {0} 上执行操作: 历史记录不足",
 			"Capacity: ": "容量: ",
 			"Capture": "捕获",
+			"Capture current RSSI": "捕获当前RSSI",
 			"Catch Missed Lap": "捕捉错过的圈",
 			"Channel": "频道",
 			"Channel and frequency": "频道和频率",
