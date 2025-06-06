@@ -3723,7 +3723,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         if local_loaded and remote_loaded:
             RaceContext.plugin_manager.apply_update_statuses()
-            if RaceContext.plugin_manager.update_avaliable:
+            if RaceContext.plugin_manager.update_available:
                 set_ui_message(
                     'plugins',
                     __("One or more plugins have updates available."),
