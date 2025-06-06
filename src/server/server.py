@@ -64,7 +64,7 @@ import signal
 import werkzeug
 import urllib3
 
-from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
+from flask import Flask, send_from_directory, request, make_response, Response, templating, redirect, abort, copy_current_request_context
 from flask.blueprints import Blueprint
 from flask_socketio import SocketIO, emit
 
@@ -464,7 +464,9 @@ def render_template(template_name_or_list, **context):
             'Debug': RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'),
             'restart_flag': RaceContext.serverstate.restart_required
         })
-        return templating.render_template(template_name_or_list, **context)
+        response = make_response(templating.render_template(template_name_or_list, **context))
+        response.cache_control.no_store = True
+        return response
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering template"

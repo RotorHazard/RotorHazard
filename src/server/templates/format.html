@@ -1388,10 +1388,15 @@
 					var heat = msg.heats[idx];
 					var heat_arr_index = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat.id});
 					if (heat_arr_index != undefined) {
-						Object.assign(heat, rotorhazard.event.heats[heat_arr_index]);
+						Object.assign(rotorhazard.event.heats[heat_arr_index], heat);
 						rotorhazard.event.heats[heat_arr_index] = heat;
 					} else {
 						rotorhazard.event.heats.push(heat);
+					}
+
+					var edit_form_el = $('#heat_edit_form').children(`.heat-ui--heat-${heat.id}`);
+					if (edit_form_el.length) {
+						heat_ui($('#heat_edit_form'), heat);
 					}
 				}
 				display_recents(msg.class, msg.heats);
@@ -1492,8 +1497,7 @@
 
 		socket.on('heat_expanded', function (msg) {
 			var heat_arr_index = rotorhazard.event.heats.findIndex(obj => {return obj.id == msg.heat.id});
-			Object.assign(msg.heat, rotorhazard.event.heats[heat_arr_index]);
-			rotorhazard.event.heats[heat_arr_index] = msg.heat;
+			Object.assign(rotorhazard.event.heats[heat_arr_index], msg.heat);
 			$('#heat_edit_form').empty();
 			heat_ui($('#heat_edit_form'), msg.heat);
 			freq.updateBlocks();
