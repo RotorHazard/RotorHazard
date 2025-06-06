@@ -145,7 +145,7 @@ class PluginInstallationManager:
         :return: Status of plugin install
         """
         remote_version = plugin_data.get("last_version")
-        domain: Union[str, None] = plugin_data.get("domain")
+        domain: Union[str, None] = plugin_data.get('manifest', {}).get('domain')
 
         if domain is not None and domain in self._local_plugin_data:
             local_data: dict[str, Any] = self._local_plugin_data[domain]
