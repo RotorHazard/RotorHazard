@@ -45,7 +45,7 @@
 
 		md_output = event_converter.makeHtml({{ getOption('eventDescription')|tojson }});
 		if (!md_output) {
-			md_output = '<p><em>(' + __('no description provided') + ')</em></p>';
+			md_output = '<p><em>(' + '{{ __("no description provided") }}' + ')</em></p>';
 		}
 		$('#description').html($(md_output));
 
