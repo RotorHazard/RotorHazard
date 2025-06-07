@@ -138,7 +138,7 @@
 			}
 
 			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="match-timer">' + '{{ __("(Match Timer Language)") }}' + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
 			for (i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
@@ -2485,7 +2485,7 @@
 					<div class="popup-content">
 
 						<div class="rssi-graph in-popup" data-node="{{ node.index }}">
-							<button class="pause_graph" data-node="{{ node.index }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><title>Pause</title><circle cx="8" cy="8" r="7.6" opacity=".8"/><path fill="#fff" d="M3.7 3.7H7v8.7H3.7z"/><path fill="#fff" d="M9 3.7h3.3v8.7H9z"/></svg></button>
+							<button class="pause_graph" data-node="{{ node.index }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><title>{{ __('Pause') }}</title><circle cx="8" cy="8" r="7.6" opacity=".8"/><path fill="#fff" d="M3.7 3.7H7v8.7H3.7z"/><path fill="#fff" d="M9 3.7h3.3v8.7H9z"/></svg></button>
 						</div>
 						<div class="crossing crossing_flag_{{ node.index }}"><span>{{ __('Clear') }}</span></div>
 
@@ -2611,7 +2611,7 @@
 	</div>
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
-		<input type="text" id="message_body" maxlength="256" placeholder="Message"></p>
+		<input type="text" id="message_body" maxlength="256" placeholder="{{ __('Message') }}"></p>
 		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>
