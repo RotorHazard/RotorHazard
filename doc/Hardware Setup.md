@@ -27,18 +27,7 @@ For direct wiring to the Pi: The pins in the green box is what were already used
 ![led wiring](img/GPIO.jpg)
 
 ### Additional Sensors
-Sensors (such as BME280 and INA219) may be attached to the I2C bus and power pins. See the '..._sensor.py' files in the "src/interface" directory for implementation examples. The sensors need to be specified in the "src/server/config.json" file -- in the sample configuration below, a BME280 sensor is configured at I2C address 0x76 (as "Climate") and a INA219 sensor is configured at address 0x40 (as "Battery").
-```
-    "SENSORS": {
-            "i2c:0x76": {
-                    "name": "Climate"
-            },
-            "i2c:0x40": {
-                    "name": "Battery",
-                    "max_current": 0.1
-            }
-    },
-```
+Sensors (such as BME280 and INA219) may be attached to the I2C bus and power pins. See the '..._sensor.py' files in the "src/interface" directory for implementation examples. Sensors need to be added to the server configuration on the _Settings_ page in the _Environment Sensors_ panel. Type the sensor's address into the `Address` input and complete the entry (click outside or use the tab key to defocus). A new `Sensor` section will be added. Add multiple items if desired, or clear the `Address` to remove. You can similarly add and remove key/value pairs to configure individual sensor types. All sensors support the `name` key, but individual sensors may use other keys. For example, a battery sensor may have a `max_current` configuration key.
 
 ### Multiple Timers
 Multiple RotorHazard timers may be connected together (i.e., for split timing and mirroring) -- see [doc/Cluster.md](Cluster.md).
