@@ -1953,7 +1953,7 @@
 				['none', __('None')]
 			], 'none'],
 			['distance', __('Distance'), 'numeric', 0],
-			['queryInterval', __('Query Interval'), 'numeric', 0],
+			['queryInterval', __('Query Interval'), 'numeric', 10],
 			['recEventsFlag', __('Receives Events'), 'boolean', false],
 			['timeout', __('Timeout (seconds)'), 'numeric', 0],
 			['event', __('Event'), 'text', ''],
@@ -1972,7 +1972,7 @@
 				['sawtooth', __('Sawtooth')],
 				['triangle', __('Triangle')]
 			], 'square'],
-			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 0]
+			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 10]
 		]
 		secondary_options.sort((a, b) => a[1].localeCompare(b[1]));
 

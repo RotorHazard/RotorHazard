@@ -132,15 +132,14 @@ sudo reboot
 
 ### 7. Install the RotorHazard Server
 
-Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code.
-
-In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands using a terminal window:
+To install the [latest sable release](https://github.com/RotorHazard/RotorHazard/releases/latest), enter the following commands:
 
 ```bash
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
+RH_VERSION=$(curl -s https://api.github.com/repos/rotorhazard/rotorhazard/releases/latest | sed -n -e 's/^.*"tag_name": "v\(.*\)".*$/\1/p');
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v$RH_VERSION -O temp.zip
 unzip temp.zip
-mv RotorHazard-1.2.3 RotorHazard
+mv RotorHazard-$RH_VERSION RotorHazard
 rm temp.zip
 ```
 
@@ -152,15 +151,16 @@ pip install -r requirements.txt
 ```
 
 ### 8. Configuration File
-When the RotorHazard server is run for the first time, it will create (in the data directory) a `config.json` file.
-
-As of RotorHazard 4.3, it is not necessary to hand-edit this file. All settings can be modified within the frontend user interface. The `config.json` file may be directly edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running, otherwise the changes will be overwritten. When the server starts up, if it detects that the `config.json` has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
+When the RotorHazard server is run for the first time, it will create a `config.json` file in the data directory. **As of RotorHazard 4.3, it is not necessary to hand-edit this file.** All settings can be modified within the frontend user interface. The `config.json` file may still be directly edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running, otherwise the changes will be overwritten. When the server starts up, if it detects that the `config.json` has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
 
 The contents of the "config.json" file must be in valid JSON format. A validator utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
 ----------------------------------------------------------------------------
 
 ## The Data Directory
+
+> [!TIP]
+> For typical installations, you may skip this section. Your data directory will reside in the "home" folder of the current user, at `~/rh-data`.
 
 It is recommended that users store their data in a separate data directory from the program files. This allows users to upgrade without manually copying files—simply replace the program directory with the new version. Prior to v4.3, RotorHazard would store these files in the program directory. If you start a server that was previously run this way, RotorHazard will offer to attempt a migration for you.
 
@@ -173,7 +173,7 @@ The data directory may contain:
 * A public front-end–accessible directory (`/shared/`)
 * User-installed plugins (`/plugins/`) 
 
-You may also wish to store your Python Virtual Environment here, and plugins may store additional files. The default data directory is `~/rh-data`, but any other location may be set.
+You may also wish to store your Python Virtual Environment here, and plugins may store additional files.
 
 ### Setting the Data Directory
 
@@ -189,9 +189,9 @@ If a `datapath.ini` file exists in the program directory and the location is val
 If the `rh-data` directory exists in your operating system home/user directory, it will be used.
 
 #### 4: Implicit run from program directory
-If `config.json` exists in the program directory, the program direcotry will be used. The server will display a prompt on the `settings` page with a choice to migrate to `~/rh-data`.
+If `config.json` exists in the program directory, the program directory will be used. The server will display a prompt on the `settings` page with a choice to migrate to `~/rh-data`.
 
-#### 5: CWD contains config use CWD
+#### 5: If CWD contains config, use CWD
 if the current working directory of the operating system contains a `config.json` file, the current working directory will be used.
 
 #### 6: Creating `~/rh-data`
@@ -298,7 +298,7 @@ The node-code version may be viewed in the Server Log, and via the "About RotorH
 ----------------------------------------------------------------------------
 
 ## Enable Port Forwarding
-The RotorHazard server defaults to port 5000, as this is necessary for some 3rd party integrations. While you can change the port via `HTTP_PORT` in the `config.json` file, a better approach is often to forward the web default port of 80 to 5000.
+The RotorHazard server defaults to port 5000, as this is necessary for some 3rd party integrations. While you can change the port in the server configuration (`GENERAL > HTTP_PORT`), a better approach is often to forward the web default port of 80 to 5000.
 
 By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and reusing it will cause problems. If port 80 is used directly via `HTTP_PORT`, the server may need to be run using the *sudo* command. With the following commands, the server runs on port 5000 but the system sends the traffic from port 80 to it.
 
@@ -324,25 +324,23 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 ### WS2812b LED Support
 
-Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is among the libraries installed via the `pip install -r requirements.txt` command.
+Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is among the libraries installed via the `pip install -r requirements.txt` command. LED configuration is changed from the _Advanced Settings_ page.
 
-The `LED_COUNT` value must be set in the `src/server/config.json` file (which must only be edited while the RotorHazard server is not running). The following items may be configured:
-```
-LED_COUNT:  Number of LED pixels in strip (or panel)
-LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
-LED_GPIO:  GPIO connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
-LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
-LED_DMA:  DMA channel to use for generating signal (default 10)
-LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
-LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
-LED_STRIP:  Strip type and color ordering (default is 'GRB')
-PANEL_ROTATE:  Optional panel-rotation value (default 0)
-INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default false)
-```
-`LED_GPIO` is not the hardware pin index.
-If specified, the `LED_STRIP` value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
+The `Count` value must be set to the Number of LED pixels connected. LEDs will not operate is this value is 0. The following items may also be configured:
 
-Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must connect LEDs to a different GPIO pin or run the server with `sudo`. If using a "rotorhazard.service" file to [start the server on boot](#start-on-boot), it may be run as root by leaving out the "User=pi" line.
+* `Panel Rows`: Number of rows in a multiline LED display panel. `Count` must be evenly divisible by this value.
+* `Panel Rotation`: Rotates panel images in 90° increments
+* `Panel Row Ordering`: Enables column inversion for even-numbered rows
+* `GPIO Number`: GPIO number which is connected to the pixels; this not the hardware pin index (default 10 uses SPI '/dev/spidev0.0')
+* `Frequency (Hz)`: LED signal frequency in hertz (usually 800000)
+* `DMA`: DMA channel to use for generating signal (default 10)
+* `Inverted Control Signal`: Inverts the control signal for use with NPN transistor level shift
+* `Channel`: Set to '1' for GPIOs 13, 19, 41, 45 or 53
+* `Strip Type`: Signal color ordering (default is 'GRB')
+* `Serial Controller Port`: Port identifier for an externally-connected [LED Controller](#led-controller)
+* `Serial Controller BAUD` : BAUD rate of communication to external controller
+
+Running LEDs from certain GPIOs (such as GPIO 18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must connect LEDs to a different GPIO or run the server with `sudo`. If using a "rotorhazard.service" file to [start the server on boot](#start-on-boot), it may be run as root by leaving out the "User=pi" line.
 
 See also the [WS2812b LED Support](Hardware%20Setup.md#ws2812b-led-support) section in [doc/Hardware Setup.md](Hardware%20Setup.md).
 
@@ -355,9 +353,9 @@ pip install pillow
 sudo apt-get install libopenjp2-7-dev
 ```
 
-- `LED_ROWS` **must be set** for multiline displays. 
-- If your multiline panel image requires rotation, use `PANEL_ROTATE` with the number of 90-degree CCW rotations needed (0..3). 
-- If alternating lines appear jumbled, try setting `INVERTED_PANEL_ROWS` to `true`.
+- `Panel Rows` **must be set** for multiline displays. 
+- If your multiline panel image requires rotation, use `Panel Rotation`. 
+- If alternating lines appear jumbled, try changing the `Panel Row Ordering`.
 
 #### Raspberry Pi 5
 
@@ -538,26 +536,17 @@ A "portable" version of the RotorHazard server, which can be useful for viewing 
 <a id="logging"></a>
 ## Logging
 
-The RotorHazard server generates "log" messages containing information about its operations. Below is a sample configuration for logging:
+The RotorHazard server generates "log" messages containing information about its operations. You may change log settings from the _Advanced Settings_ page.
 
-```
-    "LOGGING": {
-        "CONSOLE_LEVEL": "INFO",
-        "SYSLOG_LEVEL": "NONE",
-        "FILELOG_LEVEL": "INFO",
-        "FILELOG_NUM_KEEP": 30,
-        "CONSOLE_STREAM": "stdout"
-    }
-```
 The following log levels may be specified:  DEBUG, INFO, WARNING, WARN, ERROR, FATAL, CRITICAL, NONE
 
-If the FILELOG_LEVEL value is not NONE then the server will generate log files in the `src/server/logs` directory. A new log file is created each time the server starts, with each file having a unique name based on the current date and time (i.e., "rh_20200621_181239.log"). Setting FILELOG_LEVEL to DEBUG will result in more detailed log messages being stored in the log file, which can be useful when debugging problems.
+If the `Logfile Level` value is not NONE then the server will generate log files in the `[rh-data]/logs` directory. A new log file is created each time the server starts, with each file having a unique name based on the current date and time (i.e., "rh_20200621_181239.log"). Setting `Logfile Level` to DEBUG will result in more detailed log messages being stored in the log file, which can be useful when debugging problems.
 
-The FILELOG_NUM_KEEP value is the number of log files to keep; the rest will be deleted (oldest first).
+The `Logfile Retention` value is the number of log files to keep; the rest will be deleted (oldest first).
 
-The CONSOLE_STREAM value may be "stdout" or "stderr".
+The `Console Stream` value may be "stdout" or "stderr".
 
-If the SYSLOG_LEVEL value is not NONE then the server will send log messages to the logging utility built into the host operating system.
+If the `System Log Level` value is not NONE then the server will send log messages to the logging utility built into the host operating system.
 
 The current Server Log may be displayed via the "View Server Log" item in the drop-down menu. The displayed log is "live" in that it will update as new messages are generated. The log can be displayed in a separate window by clicking on the "View Server Log" menu item with the right-mouse button and selecting the "Open Link in New Window" (or similar) option.
 
