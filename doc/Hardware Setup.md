@@ -4,7 +4,24 @@ See the [RotorHazard Build Resources &#10132;&#xFE0E;](https://github.com/RotorH
 
 For general information on the Arduino-nodes version of the timer, see '[doc/Timer Build with Arduinos.md](Timer%20Build%20with%20Arduinos.md)'
 
-(If it seems like one or more RX5808 modules are not responding to frequency changes, if may be that they need the "SPI mod" -- see [here for more info](Timer%20Build%20with%20Arduinos.md#rx5808-video-receivers).)
+### RX5808 Video Receivers
+RotorHazard requires RX5808 modules to have SPI communication enabled in order to change channels. Some receivers arrive without this set up. If SPI is not enabled, the receivers will not listen or change channels correctly. If this happens, modify the RX5808 receivers to enable SPI support as follows:
+
+> [!IMPORTANT]
+> 
+> If RotorHazard is receiving video signal input but does not appear to be responding correctly when transmitters are powered on, do this modification. 
+
+> [!TIP]
+> 
+> It is safe—and generally necessary—to first install the module before knowing if this modification is needed.  
+
+Remove the shield from the RX5808, the shield is normally held on by a few spots of solder around the edges. Use some solder wick to remove the solder and free the shield from the receiver. Be careful not to damage any ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
+
+Remove the following resistor:
+
+![RX5808 spi mod](img/rx5808-new-top.jpg)
+
+The shield should be soldered back in place after removing the resistor.
 
 ### Add a Directional RF Shield
 A directional RF shield significantly improves the system's ability to reject false passes. See [RF shielding](Shielding%20and%20Course%20Position.md)
