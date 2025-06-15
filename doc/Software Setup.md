@@ -132,15 +132,12 @@ sudo reboot
 
 ### 7. Install the RotorHazard Server
 
-To install the [latest sable release](https://github.com/RotorHazard/RotorHazard/releases/latest), enter the following commands:
+To install the [latest stable release](https://github.com/RotorHazard/RotorHazard/releases/latest), enter the following commands:
 
 ```bash
 cd ~
-RH_VERSION=$(curl -s https://api.github.com/repos/rotorhazard/rotorhazard/releases/latest | sed -n -e 's/^.*"tag_name": "v\(.*\)".*$/\1/p');
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v$RH_VERSION -O temp.zip
-unzip temp.zip
-mv RotorHazard-$RH_VERSION RotorHazard
-rm temp.zip
+wget https://rotorhazard.com/install.sh
+sh install.sh
 ```
 
 Install the RotorHazard server dependencies (be patient, this may take a few minutes):
