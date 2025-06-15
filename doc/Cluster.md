@@ -2,94 +2,73 @@
 
 Additional RotorHazard timers may be attached as "secondary" units (as a cluster), interfaced via their network connection (i.e., WiFi).  The default mode is 'split' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is supported, in which the secondary timer will mirror the actions of the primary (for instance as an "LED-only" timer that displays the actions of the primary), and also an 'action' mode (see [below](#action-mode)).
 
-### Configuration
-
-An additional timer may be configured (in 'src/server/config.json' on the primary timer) under "GENERAL" with a "SECONDARIES" entry containing the address of the secondary timer; for example:
-```
-{
-	"GENERAL": {
-		... ,
-		"SECONDARIES": ["192.168.1.2:5000"]
-	}
-}
-```
-
-Multiple secondary timers may be specified as a list of addresses in track order:
-```
-{
-	"GENERAL": {
-		... ,
-		"SECONDARIES": ["192.168.1.2:5000", "192.168.1.3:5000"]
-	}
-}
-```
-
-Additional options may be configured, for example:
-```
-{
-	"GENERAL": {
-		... ,
-		"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 50, "callout": "speed"}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
-		"SECONDARY_TIMEOUT": 10
-	}
-}
-```
-* "address": The IP address and port for the secondary timer.
-* "mode": The mode for the timer ("split", "mirror", or "action").
-* "distance": The distance from the previous timer (used to calculate speed).
-* "callout":  Which value to be announced, "time", "speed", "both", "nameOnly" or "none".
-* "queryInterval": Number of seconds between heartbeat/query messages (default 10).
-* "recEventsFlag": Set 'true' to propogate timer events from primary (default 'false' for "split" timer, 'true' for "mirror" timer).
-* "SECONDARY_TIMEOUT": Maximum number of seconds to wait for connection to be established.
-
-*Note:* The `src/server/config.json` file must only be edited while the RotorHazard server is not running (otherwise the changes will be overwritten).
+## Secondary Configuration
 
 On the secondary timer, no configuration changes are needed. It may be necessary to log in to the web interface on the secondary timer and perform tuning adjustments.
 
+## Primary Configuration
+
+Additional timer connections may be configured from the `Settings` page. Open the `Secondary Timers` panel to begin. After modifying any parameters for Secondaries, a restart is required to apply the changes.
+
+On the primary timer, add a new connection by typing its address into the `Address` field under the `New Secondary` heading. Upon completing entry, (tab key or click elsewhere to de-select,) a new `Secondary` section will be created. You may add multiple secondary connections in the same way.
+
+After the `Secondary` section is created, you may add parameters to modify their behavior. Open the `New Key` dropdown and select an item. It will be immediately added to the parameter list below alongside an input where you can modify the value for the key.
+
+### Required parameters
+* `Address`: The IP address or hostname and optional port for the secondary timer. For example, `rhmirror.local` or `192.168.1.2:5000`
+* `Mode`: The mode for the timer: "split", "mirror", or "action"
+
+Clearing the `Address` field will remove the configuration for this Secondary completely.
+
+### Optional parameters
+
+* `Callout`:  Which value to be announced: time, speed, both time and speed, name, or none
+* `Distance`: The distance from the previous timer, which is used to calculate speed (see below)
+* `Query Interval`: Number of seconds between heartbeat/query messages (default 10)
+* `Receives Events`: Set 'true' to propagate timer events from primary (default 'false' for "split" timer, 'true' for "mirror" timer)
+* `Timeout (seconds)`: Maximum number of seconds to wait for connection to be established (default 300)
+
 To enable the announcement of split times, see the "*Secondary/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a secondary timer connects and disconnects, select the "*Secondary Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
 
-To configure a secondary timer to announce speed values, set the "distance" item to a value representing the distance from the previous split timer (or the primary timer). This value will be divided by the number of seconds elapsed since the pass on the previous timer. To have the speed units be announced in miles per hour, measure the distance in feet, divide it by 1.466 and set that as the "distance" value. For instance, if the timers are separated by 100 feet, set the "distance" value to 68.21 (for callouts in MPH). For metric values, setting the "distance" item to the number of meters * 3.6 should result in KM/H values.
+The type of value that is announced (time vs. speed) may be adjusted using the `Callout` item.
 
-The type of value that is announced (time vs. speed) may be adjusted using the "callout" item.
+To configure a secondary timer to announce speed values, set the `Distance` item to a value representing the distance from the previous split timer (or the primary timer). This value will be divided by the number of seconds elapsed since the pass on the previous timer. To have the speed units be announced in miles per hour, measure the distance in feet, divide it by 1.466 and set that as the "distance" value. For instance, if the timers are separated by 100 feet, set the "distance" value to 68.21 (for callouts in MPH). For metric values, setting the "distance" item to the number of meters * 3.6 should result in KM/H values.
 
 The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'primary' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
 
 A secondary timer may also be configured to play a tone, and to trigger events, for example:
-```
-	"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "split", "event": "Split time Pass",
-			"effect": "speak", "text": "%PILOT% split time is %SPLIT_TIME%"",
-		 	"toneDuration": 50, "toneFrequency": 400, "toneVolume": 100, "toneType": "square"}],
-```
 
-The name specified by the "event" parameter will appear as an item in the 'Event Actions' section on the 'Settings' page in the RotorHazard web GUI. If a matching event/action does not already exist then it will be created and populated with the values specified by the "event" and "effect" parameters (these values may be modified in the RotorHazard web GUI).
-* "event": The name of the event/action to be triggered
-* "effect": "speak" (the default), "message", "alert", or "none" (to have no action associated with the event)
-* "text": The text value for the effect (it may include substitution values like "%PILOT%")
+* `Mode`: Split
+* `Event`: Split time Pass
+* `Effect`: Speak
+* `Text`: %PILOT% split time is %SPLIT_TIME%
+* `Tone Duration`: 50
+* `Tone Frequency`: 400
+* `Tone Volume`: 100
+* `Tone Type`: Square
+
+The name specified by the `Event` parameter will appear as an item in the 'Event Actions' section on the 'Settings' page in the RotorHazard web GUI. If a matching event/action does not already exist then it will be created and populated with the values specified by the (optional) `Effect` and `Text` parameters (these values may be modified in the RotorHazard web GUI).
+
+* `Event`: The name of the event/action to be triggered
+* `Effect`: "Speak" (the default), "Message", "Alert", or "None" (to have no action associated with the event)
+* `Text`: The text value for the effect (it may include substitution values like "%PILOT%")
 
 See the '[Event Actions](../doc/User%20Guide.md#event-actions)' section in the [User Guide](../doc/User%20Guide.md) for the list of substitution values that may be specified.
 
 A tone may be configured to be played after each lap pass on the secondary timer:
-* "toneDuration": The length of the tone, in milliseconds (or 0 for no tone, the default)
-* "toneFrequency": The frequency of the tone, in hertz (or 0 for no tone, the default)
-* "toneVolume": The volume of the tone, from 0 to 100 (the default is 100)
-* "toneType": The sound type of the tone, one of: "square" (the default), "sine", "sawtooth", or "triangle"
+* `Tone Duration`: The length of the tone, in milliseconds (or 0 for no tone, the default)
+* `Tone Frequency`: The frequency of the tone, in hertz (or 0 for no tone, the default)
+* `Tone Volume`: The volume of the tone, from 0 to 100 (the default is 100)
+* `Tone Type`: The sound type of the tone, one of: "Square" (the default), "Sine", "Sawtooth", or "Triangle"
 
 
 ### Action Mode
 
-A secondary timer may be configured to operate in 'action' mode, where each lap pass on the timer triggers an event (and a configurable action/effect). Here is a basic sample configuration:
-```
-	"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "action", "event": "Action Gate Lap Pass"}],
-```
-Additional options may be configured:
-```
-	"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "action", "event": "Action Gate Lap Pass",
-			"effect": "speak", "text": "%PILOT% did action gate", "minRepeatSecs": 10,
-		 	"toneDuration": 50, "toneFrequency": 400, "toneVolume": 100, "toneType": "square"}],
-```
+A secondary timer may be configured to operate in 'action' mode, where each lap pass on the timer triggers an event (and a configurable action/effect).
+
 The event/effect/text and "tone..." options described above may also be configured for action-mode timers.
 
-* "minRepeatSecs": The minimum number of seconds allowed between repeated triggerings of the event/action (default is 10)
+* `Minimum Repeat (secs)`: The minimum number of seconds allowed between repeated triggerings of the event/action
 
 <br/>
 
@@ -119,7 +98,7 @@ A secondary can also be a primary, but sub-splits are not propagated upwards.
 
 <br/>
 
-### Clock Synchronization
+## Clock Synchronization
 
 The accuracy of reported split times will be higher if all timers have their clocks synchronized. Adding precision [real-time clock (RTC) devices](Real%20Time%20Clock.md) like the [DS3231](https://www.adafruit.com/product/3013) to all the timers can accomplish this, or NTP can be configured to operate between the timers as shown below.
 
@@ -142,7 +121,7 @@ On all timers:
 	sudo systemctl disable systemd-timesyncd
 	sudo service ntp restart
 
-### Wi-Fi based cluster
+## Wi-Fi based cluster
 
 If you want to use a Wi-Fi based cluster, instructions for setting up an access point (Wi-Fi hotspot) can be found at
 <https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md>.
