@@ -692,14 +692,14 @@ def render_vrxstatus():
 @APP.route('/docs')
 def render_viewDocs():
     '''Route to doc viewer.'''
-    folderBase = '../../doc/'
+    docBase = Path(PROGRAM_DIR).parent.parent.joinpath('doc')
     try:
         docfile = request.args.get('d')
-        docPath = werkzeug.security.safe_join(folderBase, docfile)
+        docPath = werkzeug.security.safe_join(docBase, docfile)
         if docPath:
             language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
             if language:
-                translated_path = werkzeug.security.safe_join(folderBase + language + '/', docfile)
+                translated_path = werkzeug.security.safe_join(docBase + language + '/', docfile)
                 if os.path.isfile(translated_path):
                     docPath = translated_path
             with io.open(docPath, 'r', encoding="utf-8") as f:
