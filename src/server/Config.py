@@ -186,10 +186,6 @@ class Config:
                 'DB_AUTOBKP_NUM_KEEP',
                 'SERIAL_PORTS',
             ],
-            'SECRETS': [
-                'ADMIN_USERNAME',
-                'ADMIN_PASSWORD'
-            ],
             'LOGGING': [
                 'CONSOLE_LEVEL',
                 'SYSLOG_LEVEL',
