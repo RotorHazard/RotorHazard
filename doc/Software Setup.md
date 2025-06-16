@@ -140,12 +140,7 @@ wget https://rotorhazard.com/install.sh
 sh install.sh
 ```
 
-Install the RotorHazard server dependencies (be patient, this may take a few minutes):
-
-```bash
-cd ~/RotorHazard/src/server
-pip install -r requirements.txt
-```
+(Note that the updates for the RotorHazard server Python dependencies may take a few minutes.)
 
 ### 8. Configuration File
 When the RotorHazard server is run for the first time, it will create a `config.json` file in the data directory. **As of RotorHazard 4.3, it is not necessary to hand-edit this file.** All settings can be modified within the frontend user interface. The `config.json` file may still be directly edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running, otherwise the changes will be overwritten. When the server starts up, if it detects that the `config.json` has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
@@ -395,26 +390,19 @@ Before updating, any currently-running RotorHazard server should be stopped. If 
 sudo systemctl stop rotorhazard
 ```
 
-To update an existing RotorHazard installation: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
-```
+To update to the [latest stable release](https://github.com/RotorHazard/RotorHazard/releases/latest), enter the following commands:
+
+```bash
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
-unzip temp.zip
-mv RotorHazard RotorHazard.old
-mv RotorHazard-1.2.3 RotorHazard
-rm temp.zip
-cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
-cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
+wget https://rotorhazard.com/update.sh
+sh update.sh
 ```
-The previous installation ends up in the 'RotorHazard.old' directory, which may be moved or deleted.
 
-For RotorHazard the minimum version of Python supported is 3.9. If the installed version is Python 3.7 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
+Note:
+* The updates for the RotorHazard server Python dependencies may take a few minutes
+* The previous "RotorHazard" directory will be archived as: "old/RotorHazard_YYYYMMDD_HHMMSS" (with the current date/time) 
 
-The RotorHazard server dependencies will also need to be updated (be patient, this command may take a few minutes):
-```
-cd ~/RotorHazard/src/server
-pip install --upgrade --no-cache-dir -r requirements.txt
-```
+For RotorHazard the minimum version of Python supported is 3.9. If the installed version is Python 3.8 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
 
 ----------------------------------------------------------------------------
 
