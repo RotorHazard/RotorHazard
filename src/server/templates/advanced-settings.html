@@ -206,7 +206,7 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set-shutdown-gpio">{{ __('Shutdown Button GPIO Pin') }}</label>
+					<label for="set-shutdown-gpio">{{ __('Shutdown Button GPIO Number') }}</label>
 				</div>
 				<input type="number" id="set-shutdown-gpio" class="set-config" data-section="GENERAL" data-key="SHUTDOWN_BUTTON_GPIOPIN" value="{{ getConfig('GENERAL', 'SHUTDOWN_BUTTON_GPIOPIN') }}" min="0">
 			</li>
@@ -271,7 +271,7 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set-log-file-retention">{{ __('Logfile Retention (days)') }}</label>
+					<label for="set-log-file-retention">{{ __('Logfile Retention (number)') }}</label>
 				</div>
 				<input type="number" id="set-log-file-retention" class="set-config" data-section="LOGGING" data-key="FILELOG_NUM_KEEP" value="{{ getConfig('LOGGING', 'FILELOG_NUM_KEEP') }}" min="-1">
 			</li>

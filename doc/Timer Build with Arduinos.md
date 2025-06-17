@@ -29,15 +29,7 @@
 ## Hardware Setup
 
 ### RX5808 Video Receivers
-RotorHazard requires RX5808 modules to have SPI communication enabled in order to change channels. Some receivers arrive without this set up. If SPI is not enabled, the receivers will not listen or change channels correctly. If this happens, modify the RX5808 receivers to enable SPI support as follows:
-
-Remove the shield from the RX5808, the shield is normally held on by a few spots of solder around the edges. Use some solder wick to remove the solder and free the shield from the receiver. Be careful not to damage any ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
-
-Remove the following resistor:
-
-![RX5808 spi mod](img/rx5808-new-top.jpg)
-
-The shield should be soldered back in place after removing the resistor.
+RX5808 modules may need a small hardware modification in order to change channels. See [General Hardware Setup](Hardware%20Setup.md#rx5808-video-receivers) for more information.
 
 ### Receiver Nodes
 Complete wiring connections between each Arduino and RX5808.
