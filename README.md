@@ -3,7 +3,7 @@
 # RotorHazard
 **FPV Race Timing and Event Management**
 
-Tracks 5.8GHz (video) signals broadcast by FPV racing drones and uses them for lap timing. Video receiver hardware listens on specified frequencies and communicates to a central server (usually a Raspberry pi). The server offers race organizer management, pilot/spectator information and results, is accessed with a web browser, and communicates with external systems. Supports up to 16 simultaneous racers.
+RotorHazard is an open-source timing and event management system for FPV drone racing. It tracks the video signals broadcast by race drones to trigger lap times, and processes them with a central server (usually a Raspberry Pi). The server's front-end web interface provides race organizer management, pilot/spectator information, and race results. Supports up to 16 simultaneous racers.
 
 > [!TIP]
 >Join a community to discuss RotorHazard: [Discord](https://discord.gg/ANKd2pzBKH) | [Facebook](https://www.facebook.com/groups/rotorhazard)
