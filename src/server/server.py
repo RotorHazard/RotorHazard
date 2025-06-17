@@ -3708,7 +3708,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 if not plugin.is_bundled:
                     any_remote_flag = True
                     break
-            if any_remote_flag:
+            if any_remote_flag and RaceContext.serverconfig.get_item('PLUGINS', 'UPDATE_BEHAVIOR') == 'check':
                 logger.info("Querying plugins server for updates")
                 RaceContext.plugin_manager.load_remote_plugin_data()
                 remote_loaded = True
