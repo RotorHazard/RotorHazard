@@ -32,3 +32,8 @@ venv
 
 # User plugins folder
 /src/server/plugins/*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
