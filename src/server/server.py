@@ -696,12 +696,14 @@ def render_viewDocs():
     try:
         docfile = request.args.get('d')
         docPath = werkzeug.security.safe_join(docBase, docfile)
+        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+        if language:
+            translated_base = werkzeug.security.safe_join(docBase, language)
+            translated_path = werkzeug.security.safe_join(translated_base, docfile)
+            if os.path.isfile(translated_path):
+                docPath = translated_path
+
         if docPath:
-            language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-            if language:
-                translated_path = werkzeug.security.safe_join(docBase + language + '/', docfile)
-                if os.path.isfile(translated_path):
-                    docPath = translated_path
             with io.open(docPath, 'r', encoding="utf-8") as f:
                 doc = f.read()
             return render_template('viewdocs.html', doc=doc)
@@ -709,20 +711,22 @@ def render_viewDocs():
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
 
-@APP.route('/img/<path:imgfile>')
-def render_viewImg(imgfile):
+@APP.route('/img/<path:img_filename>')
+def render_viewImg(img_filename):
     '''Route to img called within doc viewer.'''
-    folderBase = '../../doc/'
-    folderImg = 'img/'
-    imgPath = werkzeug.security.safe_join(folderImg, imgfile)
-    if imgPath:
-        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-        if language:
-            translated_path = werkzeug.security.safe_join(language + '/' + folderImg, imgfile)
-            if os.path.isfile(folderBase + translated_path):
-                imgPath = translated_path
-        if os.path.isfile(folderBase + imgPath):
-            return send_from_directory(folderBase, imgPath)
+    doc_base = Path(PROGRAM_DIR).parent.parent.joinpath('doc')
+    img_folder_name = 'img'
+    img_folder_path = werkzeug.security.safe_join(doc_base, img_folder_name)
+    language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+    if language:
+        translated_base = werkzeug.security.safe_join(doc_base, language)
+        translated_img_folder_path = werkzeug.security.safe_join(translated_base, img_folder_name)
+        translated_img_path = werkzeug.security.safe_join(translated_img_folder_path, img_filename)
+        if os.path.isfile(translated_img_path):
+            img_folder_path = translated_img_path
+    img_path = werkzeug.security.safe_join(img_folder_path, img_filename)
+    if os.path.isfile(img_path):
+        return send_from_directory(img_folder_path, img_filename)
     abort(404)
 
 # Redirect routes (Previous versions/Delta 5)
