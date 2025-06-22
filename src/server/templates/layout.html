@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="RotorHazard">
 	<meta name="google" content="notranslate">
-	<title>{% block title %}{% endblock %}: {{ getOption("timerName") }}</title>
+	<title>{% block title %}{% endblock %}: {{ getConfig('UI', 'timerName') }}</title>
 
 	<!-- Icons -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/static/image/apple-touch-icon.png">
@@ -31,11 +31,12 @@
 	<audio id="sound_winner" src="/static/audio/winner.mp3" type="audio/mp3"></audio>
 
 	<!-- Scripts -->
-	<script type="text/javascript" src="/static/jquery-3.2.1/jquery.min.js"></script>
+	<script type="text/javascript" src="/static/jquery-3.6.4/jquery-3.6.4.min.js"></script>
 	<script type="text/javascript" src="/static/articulate/articulate.min.js"></script>
-	<script type="text/javascript" src="/static/socket.io-2.2.0/socket.io.min.js"></script>
+	<script type="text/javascript" src="/static/socket.io-4.6.1/socket.io.min.js"></script>
 	<script type="text/javascript" src="/static/smoothie/smoothie.js"></script>
 	<script type="text/javascript" src="/static/magnific-1.1.0/magnific-inline-min.js"></script>
+	<script type="text/javascript" src="/static/rh-ui.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 	<script type="text/javascript" src="/static/svgasset.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 
@@ -47,18 +48,18 @@
 
 	/* CSS variables for interface adjustments */
 	html {
-		--hue_0: {{ getOption("hue_0") }};
-		--sat_0: {{ getOption("sat_0") }}%;
-		--lum_0_low: {{ getOption("lum_0_low") }}%;
-		--lum_0_high: {{ getOption("lum_0_high") }}%;
-		--contrast_0_low: {{ getOption("contrast_0_low") }};
-		--contrast_0_high: {{ getOption("contrast_0_high") }};
-		--hue_1: {{ getOption("hue_1") }};
-		--sat_1: {{ getOption("sat_1") }}%;
-		--lum_1_low: {{ getOption("lum_1_low") }}%;
-		--lum_1_high: {{ getOption("lum_1_high") }}%;
-		--contrast_1_low: {{ getOption("contrast_1_low") }};
-		--contrast_1_high: {{ getOption("contrast_1_high") }};
+		--hue_0: {{ getConfig('UI', "hue_0") }};
+		--sat_0: {{ getConfig('UI', "sat_0") }}%;
+		--lum_0_low: {{ getConfig('UI', "lum_0_low") }}%;
+		--lum_0_high: {{ getConfig('UI', "lum_0_high") }}%;
+		--contrast_0_low: {{ getConfig('UI', "contrast_0_low") }};
+		--contrast_0_high: {{ getConfig('UI', "contrast_0_high") }};
+		--hue_1: {{ getConfig('UI', "hue_1") }};
+		--sat_1: {{ getConfig('UI', "sat_1") }}%;
+		--lum_1_low: {{ getConfig('UI', "lum_1_low") }}%;
+		--lum_1_high: {{ getConfig('UI', "lum_1_high") }}%;
+		--contrast_1_low: {{ getConfig('UI', "contrast_1_low") }};
+		--contrast_1_high: {{ getConfig('UI', "contrast_1_high") }};
 	}
 
 	</style>
@@ -69,10 +70,9 @@
 <body>
 	<div id="banner-msg">
 		<div class="message"></div>
-		<button id="banner-dismiss" class="no-style">×<span class="screen-reader-text"> Close</span></button>
 	</div>
 	<header>
-		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getOption("timerName") }}</a></div>
+		<a href="/" id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> {{ getConfig('UI', 'timerName') }}</a>
 		<nav id="nav-main">
 			<ul>
 				<li><a href="/event">{{ __("Event") }}</a></li>
@@ -80,6 +80,7 @@
 				<li><a href="/current">{{ __("Current") }}</a></li>
 				<li class="admin-hide"><a href="/run">{{ __("Run") }}</a></li>
 				<li class="admin-hide"><a href="/marshal">{{ __("Marshal") }}</a></li>
+				<li class="admin-hide"><a href="/format">{{ __("Format") }}</a></li>
 				<li class="admin-hide"><a href="/settings">{{ __("Settings") }}</a></li>
 				<li class="extra">
 					<a href="#"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="-8 0 19.7 16"><title>Extended Menu</title><circle fill="currentColor" cx="1.85" cy="1.85" r="1.85"/><circle fill="currentColor" cx="1.85" cy="8" r="1.85"/><circle fill="currentColor" cx="1.85" cy="14.15" r="1.85"/></svg></a>
@@ -90,7 +91,7 @@
 
 						<li><a href="/imdtabler">{{ __("IMDTabler") }}</a></li>
 
-						{% if Debug %}<li><a href="/scanner">{{ __("Band Scanner") }}</a></li>{% endif %}
+						{% if Debug %}<li class="admin-hide"><a href="/scanner">{{ __("Band Scanner") }}</a></li>{% endif %}
 
 						<li><a href="/hardwarelog" class="admin-hide">{{ __('View Server Log') }}</a></li>
 
@@ -102,17 +103,44 @@
 		</nav>
 	</header>
 
+	<aside class="socket-warning" style="display:none">
+		{{ __('Server connection lost') }}
+	</aside>
+
+	<aside class="restart-warning" {% if not restart_flag %}style="display:none"{% endif %}>
+		{{ __('System settings modified. Restart to apply and avoid unexpected behavior.') }} <a href="#restart_confirm" class="admin-hide btn-danger button-like open-mfp-popup">{{ __('Restart') }}</a>
+	</aside>
+
 	<!--Child template content-->
 	{% block content %}{% endblock %}
 
 	<footer>
-		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
+		<p>{{ __('Powered by') }} <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
 	</footer>
+
+	<a id="message-notification" hidden href="#message-center" class="open-mfp-popup"><span class="screen-reader-text">Open</span> <span id="message-count">0</span> <span class="screen-reader-text">messages</span></a>
+
+	<div id="message-center" class="mfp-hide popup">
+		<h2>{{ __("Messages") }}</h2>
+		<div class="popup-content">
+			<button id="message-dismiss-all">{{ __('Dismiss All') }}</button>
+			<ol id="message-queue"></ol>
+		</div>
+	</div>
 
 	<div id="about" class="mfp-hide popup">
 		<h2>{{ __("About RotorHazard") }}</h2>
 		<div class="popup-content">
 			{{ serverInfo['about_html'] | safe }}
+		</div>
+	</div>
+
+	<div id="restart_confirm" class="priority-message-interrupt mfp-hide popup">
+		<h2>Alert</h2>
+		<div class="popup-content">
+			<p>{{ __('Restart RotorHazard server process?') }}</p>
+			<p><button class="btn-danger" id="restart_server">{{ __('Restart') }}</button>
+			<button class="cancel">{{ __('Cancel') }}</button></p>
 		</div>
 	</div>
 </body>

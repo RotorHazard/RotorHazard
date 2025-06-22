@@ -4,7 +4,7 @@
 
 ### Receiver Node(s) (this list makes one node, build up to eight)
 * 1 x [Arduino Nano](https://www.ebay.com/sch/i.html?_nkw=Arduino+Nano+V3.0+16M+5V+ATmega328P)
-* 1 x [RX5808 module](https://www.banggood.com/search/rx5808-module.html) with SPI mod (modules with date code 20120322 are known to work)
+* 1 x [RX5808 module](https://www.banggood.com/search/rx5808-module.html) with SPI mod (see below)
 * 3 x 1k ohm resistor
 * 1 x 100k ohm resistor
 * 26 AWG and 30 AWG silicone wire
@@ -29,14 +29,7 @@
 ## Hardware Setup
 
 ### RX5808 Video Receivers
-Make sure your receivers support SPI. *Most RX5808 modules on sale today already arrive with SPI enabled.* If they do not, modify the RX5808 receivers to enable SPI support as follows:
-
-Remove the shield from the RX5808, the shield is normally held on by a few spots of solder around the edges. Use some solder wick to remove the solder and free the shield from the receiver. Be careful not to damage any ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
-
-Remove the following resistor:
-![RX5808 spi mod](img/rx5808-new-top.jpg)
-
-The shield should be soldered back in place after removing the resistor.
+RX5808 modules may need a small hardware modification in order to change channels. See [General Hardware Setup](Hardware%20Setup.md#rx5808-video-receivers) for more information.
 
 ### Receiver Nodes
 Complete wiring connections between each Arduino and RX5808.
@@ -57,4 +50,4 @@ See Also:<br/>
 [doc/USB Nodes.md](USB%20Nodes.md)<br/>
 [doc/Software Setup.md](Software%20Setup.md)<br/>
 [doc/User Guide.md](User%20Guide.md)<br/>
-[Build Resources (PCB, etc)](../resources)
+[Build Resources (PCB, etc) &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources)

@@ -4,9 +4,13 @@
 	var data_dependencies = [
 		'all_languages',
 		'language',
+		{
+			'type': 'ui',
+			'value': 'marshal'
+		},
 		'heat_data',
 		'enter_and_exit_at_levels',
-		'race_formats',
+		'format_data',
 		'race_list'
 	];
 
@@ -21,17 +25,92 @@
 	var current_race_data = {};
 	var precalc_laps = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
+	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
 
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
-	if ('{{ getOption('startThreshLowerAmount') }}' != 'False') {
-		start_thresh_lower_amount = {{ getOption('startThreshLowerAmount') }};
+	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
+		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
 	}
-	if ('{{ getOption('startThreshLowerDuration') }}' != 'False') {
-		start_thresh_lower_duration = {{ getOption('startThreshLowerDuration') }};
+	if ('{{ getConfig('TIMING', 'startThreshLowerDuration') }}' != 'False') {
+		start_thresh_lower_duration = {{ getConfig('TIMING', 'startThreshLowerDuration') }};
 	}
 
 	$(document).ready(function () {
+		if ('{{ getConfig('TIMING', 'calibrationMode') }}' == '0') {
+			$('#load-transitions').prop('hidden', false);
+			$('#save-transitions').prop('hidden', false);
+		}
+
+		socket.on('ui', function (msg) {
+			if (msg.page == 'marshal') {
+				$('#custom-ui').empty();
+
+				for (var i in msg.panels) {
+					var panel = msg.panels[i];
+
+					var panel_el = $('<div class="panel collapsing active">');
+					var panel_header_el = $('<div class="panel-header">');
+					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+					var panel_content_el = $('<div class="panel-content">');
+
+					// panel open/close
+					if (panel.panel.open) {
+						panel_el.addClass('open');
+						panel_content_el.show();
+					} else {
+						panel_el.removeClass('open');
+						panel_content_el.hide();
+					}
+
+					var form_el = $('<ol class="form">');
+
+					for (var f_idx in panel.settings) {
+						var settings = { ...panel.settings[f_idx] };
+
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_option';
+						settings.id = 'genericOption_' + settings.name;
+						settings.data = {
+							field: settings.name,
+						}
+
+						var field = rhui.buildField(settings);
+
+						form_el.append(field);
+					}
+					panel_content_el.append(form_el);
+					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
+
+					panel_el.append(panel_header_el);
+					panel_el.append(panel_content_el);
+
+					$('#custom-ui').append(panel_el);
+				}
+			}
+		});
+
+		$(document).on('change', '.set_ui_option', function (event) {
+			var field = $(this).data('field');
+			var section = $(this).data('section');
+			var value = rhui.getFieldVal(this);
+
+			if (section) {
+				var data = {
+					section: section,
+					key: field,
+					value: value
+				};
+				socket.emit('set_config', data);
+			} else {
+				var data = {
+					option: field,
+					value: value
+				};
+				socket.emit('set_option', data);
+			}
+		});
+
 		var graph_canvas = document.getElementById('race-graph');
 		var context = graph_canvas.getContext('2d');
 		var graph = new SmoothieChart({
@@ -84,84 +163,145 @@
 			}
 		});
 
-		socket.on('race_formats', function (msg) {
-			rotorhazard.race_formats = msg;
+		socket.on('format_data', function (msg) {
+			rotorhazard.event.race_formats = msg.formats;
+			populate_race_list();
 		});
 
 		socket.on('race_list', function (msg) {
 			race_list = msg;
+			populate_race_list();
+		});
 
-			if (jQuery.isEmptyObject(race_list.heats)) {
-				$('.page-marshal>.panel>.panel-content').html('<p>' + __('There is no saved race data available to view.') + '</p>');
-				return false;
-			}
-
-			for (var heat in race_list.heats) {
-				for (var round in race_list.heats[heat].rounds) {
-					for (var pilotrace in race_list.heats[heat].rounds[round].pilotraces) {
-						race_list.heats[heat].rounds[round].pilotraces[pilotrace].minRSSI = Math.min.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) - 2;
-						race_list.heats[heat].rounds[round].pilotraces[pilotrace].maxRSSI = Math.max.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) + 2;
-					}
+		function populate_race_list() {
+			if (race_list.hasOwnProperty('heats') && rotorhazard.event.race_formats) {
+				if (jQuery.isEmptyObject(race_list.heats)) {
+					$('.page-marshal>.panel>.panel-content').html('<p>' + __('There is no saved race data available to view.') + '</p>');
+					return false;
 				}
-			}
 
-			// find most recent race
-			var prev_heat = null;
-			if (race_list_loaded) {
-				prev_heat = $('#selected_heat').val();
-			} else {
-				var newest_race = 0;
-				for (var heat in race_list.heats) {
-					for (var round in race_list.heats[heat].rounds) {
-						var race_time = race_list.heats[heat].rounds[round].start_time;
+				// find most recent race
+				var prev_heat = null;
+				if (race_list_loaded) {
+					prev_heat = $('#selected_heat').val();
+				} else {
+					var newest_race = 0;
+					for (var heat in race_list.heats) {
+						for (var round in race_list.heats[heat].rounds) {
+							var race_time = race_list.heats[heat].rounds[round].start_time;
 
-						if (newest_race < race_time) {
-							newest_race = race_time;
-							prev_heat = heat;
+							if (newest_race < race_time) {
+								newest_race = race_time;
+								prev_heat = heat;
+							}
 						}
 					}
 				}
-			}
 
-			$('#selected_heat').empty();
-			for (var heat_i in race_list.heats) {
-				var heat = race_list.heats[heat_i];
+				$('#selected_heat').empty();
+				for (var heat_i in race_list.heats) {
+					var heat = race_list.heats[heat_i];
 
-				if (heat.note) {
-					var heat_name = heat.note;
-				} else {
-					var heat_name = __('Heat') + ' ' + heat_i;
+					$('#selected_heat').append('<option value="' + heat_i + '">' + heat.displayname + '</option>');
 				}
 
-				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
+				if (!race_list_loaded) {
+					race_list_loaded = true;
+					$('.heat-selector').prop('disabled', false);
+					$('#selected_round').prop('disabled', false);
+					$('#selected_pilot').prop('disabled', false);
+				}
+				if (prev_heat) {
+					$('.heat-selector').val(prev_heat);
+					$('#selected_heat').trigger('change');
+				}
+			}
+		}
+
+		socket.on('race_details', function (msg) {
+			var racedetail = msg;
+
+			current_race_data.history_times = msg.history_times;
+			current_race_data.history_values = msg.history_values;
+			current_race_data.laps = msg.laps;
+			current_race_data.enter_at = msg.enter_at;
+			current_race_data.exit_at = msg.exit_at;
+
+			if (current_race_data.history_times.length) {
+				current_race_data.end_time = current_race_data.history_times[current_race_data.history_times.length - 1];
+				graph.options.minValue = Math.min.apply(null, current_race_data.history_values) - 2;
+				graph.options.maxValue = Math.max.apply(null, current_race_data.history_values) + 2;
+			} else {
+				current_race_data.end_time = current_race_data.start_time + 1
+				graph.options.minValue = current_race_data.exit_at;
+				graph.options.maxValue = current_race_data.enter_at;
 			}
 
-			if (!race_list_loaded) {
-				race_list_loaded = true;
-				$('.heat-selector').prop('disabled', false);
-				$('#selected_round').prop('disabled', false);
-				$('#selected_pilot').prop('disabled', false);
+			if (current_race_data.format_id > 0) {
+				current_race_data.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == current_race_data.format_id});
+			} else {
+				current_race_data.race_format = {
+					unlimited_time: false,
+					race_time_sec: null
+				};
 			}
-			if (prev_heat) {
-				$('.heat-selector').val(prev_heat);
-				$('#selected_heat').trigger('change');
+
+			// update header
+			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
+			$( "#selected_round option:selected" ).text() + ' / ' +
+			$( "#selected_pilot option:selected" ).text();
+			$('#race-title').html(header);
+
+			// fill enter/exit values
+			$('#enterat').val(current_race_data.enter_at);
+			$('#exitat').val(current_race_data.exit_at);
+
+			// prepare graph
+			rssi_series.data = [];
+			for (idx in current_race_data.history_times) {
+				var value = current_race_data.history_times[idx];
+				if (value == lastValue) {
+					rssi_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
+				} else {
+					rssi_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
+				}
+				var lastValue = value;
 			}
+			// Lap marker series lines drawn below the bottom of the graph
+			clearCrossings();
+			clearMarkedLap();
+			renderGraph();
+
+			// populate laps
+			displayLaps(current_race_data.laps);
+
+			enableUI();
+			return false;
 		});
 
 		socket.on('heat_data', function (msg) {
-			$("#reassign-heat-selector").empty();
-			for (var heat_i in msg.heats) {
-				var heats = msg.heats[heat_i];
-
-				if (heats.note) {
-					heat_name = heats.note
-				} else {
-					heat_name = __('Heat') + ' ' + heats.heat_id
-				}
-
-				$('#reassign-heat-selector').append('<option value="' + heat_i + '">' + heat_name + '</option>');
-			}
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
 		});
+
+		function display_heats() {
+			if (rotorhazard.event.heats) {
+				$("#reassign-heat-selector").empty();
+				for (var idx in rotorhazard.event.heats) {
+					var heat = rotorhazard.event.heats[idx];
+
+					var opt = $(document.createElement('option'))
+						.prop('value', heat.id)
+						.text(heat.displayname);
+
+					if (!heat.active) {
+						opt.prop('disabled', true)
+					}
+
+					$('#reassign-heat-selector').append(opt);
+				}
+			}
+		}
 
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
@@ -176,11 +316,18 @@
 
 			var heat = parseInt($(this).val());
 
-			for (var round_i in race_list.heats[heat].rounds) {
-				$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
+			if (1 in race_list.heats[heat].rounds && !(2 in race_list.heats[heat].rounds) ) {
+				$('#selected_round').append('<option value="1">-</option>');
+				$('#selected_round').val(1);
+				$('#selected_round').prop('hidden', true);
+			} else {
+				for (var round_i in race_list.heats[heat].rounds) {
+					$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
+				}
+				$('#selected_round').val(round_i);
+				$('#selected_round').prop('hidden', false);
 			}
 
-			$('#selected_round').val(round_i);
 			$('#selected_round option').each(function(){
 				if (this.value == prev_round) {
 					$('#selected_round').val(prev_round);
@@ -203,7 +350,25 @@
 
 			for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
 				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
-				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + ' (' + (pilotrace.node_index + 1) + ')</option>');
+				var pilotFreqInfo;
+				if (pilotrace.pilot_freq) {
+					if (pilotrace.pilot_freq.length <= 4) {
+						// if only freq provided then lookup band/channel in table and prepend them
+						var fObj = freq.findByFreq(pilotrace.pilot_freq);
+						if (fObj && fObj.band && fObj.channel) {
+							pilotFreqInfo = " - " + fObj.band + fObj.channel + " " + pilotrace.pilot_freq;
+						} else {
+							pilotFreqInfo = " - " + pilotrace.pilot_freq;
+						}
+					} else {  // if band/channel and freq provided then use them
+						pilotFreqInfo = " - " + pilotrace.pilot_freq;
+					}
+				} else {
+					pilotFreqInfo = ""
+				}
+				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' +
+				        pilotrace.pilot_id + '">' + pilotrace.callsign + ' (' +
+				        (pilotrace.node_index + 1) + ')' + pilotFreqInfo + '</option>');
 			}
 
 			$('#selected_pilot option').each(function(){
@@ -244,54 +409,14 @@
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;
 			current_race_data.race_id = race_list.heats[heat].rounds[round].race_id;
-			current_race_data.class_id = race_list.heats[heat].rounds[round].class_id;
+			current_race_data.class_id = race_list.heats[heat].class_id;
 			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
 			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
 			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
 
-			if (current_race_data.history_times.length) {
-				current_race_data.end_time = current_race_data.history_times[current_race_data.history_times.length - 1];
-				graph.options.minValue = current_race_data.minRSSI;
-				graph.options.maxValue = current_race_data.maxRSSI;
-			} else {
-				current_race_data.end_time = current_race_data.start_time + 1
-				graph.options.minValue = current_race_data.exit_at;
-				graph.options.maxValue = current_race_data.enter_at;
-			}
-
-			current_race_data.race_format = rotorhazard.race_formats[current_race_data.format_id];
-
-			// update header
-			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
-			$( "#selected_round option:selected" ).text() + ' / ' +
-			$( "#selected_pilot option:selected" ).text();
-			$('#race-title').html(header);
-
-			// fill enter/exit values
-			$('#enterat').val(current_race_data.enter_at);
-			$('#exitat').val(current_race_data.exit_at);
-
-			// prepare graph
-			rssi_series.data = [];
-			for (idx in current_race_data.history_times) {
-				var value = current_race_data.history_times[idx];
-				if (value == lastValue) {
-					rssi_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
-				} else {
-					rssi_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
-				}
-				var lastValue = value;
-			}
-			// Lap marker series lines drawn below the bottom of the graph
-			clearCrossings();
-			clearMarkedLap();
-			renderGraph();
-
-			// populate laps
-			displayLaps(current_race_data.laps);
-
-			enableUI();
-			return false;
+			socket.emit('get_pilotrace', {
+				'pilotrace_id': current_race_data.pilotrace_id,
+			});
 		}
 
 		function disableUI(lapsOnly=false) {
@@ -393,7 +518,7 @@
 
 					lapData.append('<td>' + lap_index + '</td>');
 					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getOption('timeFormat')|tojson }}) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td>');
 					lap_index++;
 				} else {
 					deleted_lap_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);
@@ -416,6 +541,12 @@
 					case 2:
 						lapData.append('<td>Recalc</td>');
 						break;
+					case 3:
+						lapData.append('<td>Automatic</td>');
+						break;
+					case 4:
+						lapData.append('<td>API (plugin)</td>');
+						break;
 				}
 
 				if (lap.deleted) {
@@ -424,7 +555,7 @@
 					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
 				}
 
-				if (!current_race_data.race_format.race_mode && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
+				if (!current_race_data.race_format.unlimited_time && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
 					lapData.addClass('after-time-expired');
 				}
 
@@ -457,13 +588,13 @@
 			});
 		}
 
-		$('#recalc').click(function(){
+		function recalc_race() {
 			precalc_laps = precalc_rx_data();
 			if (race_loaded) {
 				var laps = recalc_rx_data();
 				for (var lap_i in current_race_data.laps) {
 					var lap = current_race_data.laps[lap_i];
-					if (lap.source == 1) {
+					if (lap.source == 1 || lap.source == 4) { // LapSource.MANUAL = 1, LapSource.API = 4
 						laps.push(lap);
 					}
 				}
@@ -474,34 +605,79 @@
 				$('#laps').removeClass('invalid');
 				enableUI();
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
+			}
+		}
+
+		$('#enterat').on('input', function (event) {
+			if (Math.abs($('#enterat').val() - current_race_data.enter_at) == 1) {
+				validate_enter();  // handle long press of 'up' button on input widget
 			}
 		});
 
 		$('#enterat').change(function(){
-			$(this).val(Math.min($(this).val(), graph.options.maxValue));
-			$(this).val(Math.max($(this).val(), graph.options.minValue));
+			validate_enter();
+		});
+
+		function validate_enter() {
+			var rssi = $('#enterat').val();
+			var chk_val = Math.min(rssi, graph.options.maxValue);
+			chk_val = Math.max(chk_val, graph.options.minValue);
+			if (chk_val != rssi) {
+				if (chk_val < current_race_data.exit_at)  {
+					chk_val = current_race_data.exit_at;
+				}
+				rssi = chk_val;
+				$('#enterat').val(rssi);
+			}
+			if (rssi < current_race_data.exit_at)  {
+				current_race_data.exit_at = rssi;
+				$('#exitat').val(rssi);
+			}
 
 			clearMarkedLap();
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
 			precalc_laps = precalc_rx_data();
 			renderGraph();
+
+			recalc_race();
+		}
+
+		$('#exitat').on('input', function (event) {
+			if (Math.abs($('#exitat').val() - current_race_data.exit_at) == 1) {
+				validate_exit();  // handle long press of 'down' button on input widget
+			}
 		});
 
 		$('#exitat').change(function(){
-			$(this).val(Math.min($(this).val(), graph.options.maxValue));
-			$(this).val(Math.max($(this).val(), graph.options.minValue));
+			validate_exit()
+		});
+
+		function validate_exit() {
+			var rssi = $('#exitat').val();
+			var chk_val = Math.min(rssi, graph.options.maxValue);
+			chk_val = Math.max(chk_val, graph.options.minValue);
+			if (chk_val != rssi) {
+				if (chk_val > current_race_data.enter_at)  {
+					chk_val = current_race_data.enter_at;
+				}
+				rssi = chk_val;
+				$('#exitat').val(rssi);
+			}
+			if (rssi > current_race_data.enter_at)  {
+				current_race_data.enter_at = rssi
+				$('#enterat').val(rssi);
+			}
 
 			clearMarkedLap();
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
 			precalc_laps = precalc_rx_data();
 			renderGraph();
-		});
+
+			recalc_race();
+		}
 
 		function recalc_rx_data() {
 			return precalc_laps;
@@ -534,6 +710,7 @@
 				}
 			}
 
+			var last_lap_time_stamp = -Infinity;
 			for(var idx in current_race_data.history_values) {
 				var rssi = current_race_data.history_values[idx];
 				var time = current_race_data.history_times[idx];
@@ -567,16 +744,21 @@
 
 						if (lap_time_stamp > 0) { // reject passes before race start
 							var crossingEnd = time;
-							laps.push({
+							var lapdata = {
 								crossingStart: crossingStart,
 								crossingEnd: crossingEnd,
 								lap_time_stamp: lap_time_stamp, // zero stamp within race
 								source: 2, // recalc
 								deleted: false
-							});
+							};
+							if (min_lap_behavior && lap_time_stamp < last_lap_time_stamp + min_lap) {
+								lapdata.deleted = true;
+							}
+							laps.push(lapdata);
 						}
 						crossing = false;
 						peakRssi = 0;
+						last_lap_time_stamp = lap_time_stamp;
 					}
 				}
 			}
@@ -592,6 +774,17 @@
 						source: 2, // recalc
 						deleted: false
 					});
+			}
+
+			// auto-delete late laps
+			var finished = false;
+			for (var lap_i in laps) {
+				var lap = laps[lap_i];
+				if (finished) {
+					lap.deleted = true;
+				} else if (!current_race_data.race_format.unlimited_time && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
+					finished = true;
+				}
 			}
 
 			// redraw crossings
@@ -630,30 +823,33 @@
 					lap_index++;
 					var lastLap = lap;
 				} else {
-					lap.lap_time = '-';
+					lap.lap_time = 0;
 					lap.lap_time_formatted = '-';
 				}
 			}
 		}
 
 		$('#add-lap').click(function(){
-			if (race_loaded) {
-				current_race_data.laps.push({
-					crossingStart: 0,
-					crossingEnd: 0,
-					lap_time_stamp: parseInt($('#manual-lap-time').val() * 1000),
-					source: 1,
-					deleted: false
-				});
-				calc_lap_times(current_race_data.laps)
-				clearMarkedLap();
-				displayLaps(current_race_data.laps);
-				renderGraph();
-			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
+			lap_time_s = $('#manual-lap-time').val();
+
+			if (lap_time_s.length > 0) {
+				if (race_loaded) {
+					current_race_data.laps.push({
+						crossingStart: 0,
+						crossingEnd: 0,
+						lap_time_stamp: parseInt(lap_time_s * 1000),
+						source: 1,
+						deleted: false
+					});
+					calc_lap_times(current_race_data.laps)
+					clearMarkedLap();
+					displayLaps(current_race_data.laps);
+					renderGraph();
+				} else {
+					push_message(__('No race loaded'));
 				}
+			} else {
+				push_message(__('To add a lap manually, first specify lap time'));
 			}
 		});
 
@@ -673,10 +869,7 @@
 				displayLaps(laps);
 				renderGraph();
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -707,10 +900,7 @@
 				});
 				race_list_loaded = false
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -734,10 +924,7 @@
 				this_pilotrace.exit_at = current_race_data.exit_at;
 				this_pilotrace.laps = current_race_data.laps;
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -750,12 +937,9 @@
 				var node = current_race_data.node_index;
 				$('#enterat').val(rotorhazard.nodes[node].enter_at_level);
 				$('#exitat').val(rotorhazard.nodes[node].exit_at_level);
-				renderGraph();
+				recalc_race();
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -773,15 +957,9 @@
 					socket.emit('set_exit_at_level', data);
 				}
 
-				standard_message_queue.push(__('Enter/Exit points saved to active node'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('Enter/Exit points saved to active node'));
 			} else {
-				standard_message_queue.push(__('No race loaded'));
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
-				}
+				push_message(__('No race loaded'));
 			}
 		});
 
@@ -833,18 +1011,10 @@
 
 				if (adjustEnter) {
 					$('#enterat').val(rssi);
-					$('#enterat').trigger('change');
-					if (rssi < current_race_data.exit_at + 2)  {
-						$('#exitat').val(rssi - 2);
-						$('#exitat').trigger('change');
-					}
+					validate_enter();
 				} else {
 					$('#exitat').val(rssi);
-					$('#exitat').trigger('change');
-					if (rssi > current_race_data.enter_at - 2)  {
-						$('#enterat').val(rssi + 2);
-						$('#enterat').trigger('change');
-					}
+					validate_exit();
 				}
 			}
 		}
@@ -882,7 +1052,7 @@
 					}
 				});
 			} else {
-				$('#recalc').trigger('click');
+				recalc_race();
 			}
 		}
 
@@ -897,14 +1067,14 @@
 			if (!isTouchEvent) {
 				if (canDrag) {
 					handleGraphInteractionMove(evt);
-					$('#recalc').trigger('click');
+					recalc_race();
 				}
 			}
 		})
 		$(graph_canvas).on('mouseup', function(evt){
 			if (!isTouchEvent) {
 				if (isDragging) {
-					$('#recalc').trigger('click');
+					recalc_race();
 				} else {
 					handleGraphInteractionTap(evt);
 				}
@@ -920,7 +1090,7 @@
 					$('#enterat').trigger('change');
 					$('#exitat').val(startingExit);
 					$('#exitat').trigger('change');
-					$('#recalc').trigger('click');
+					recalc_race();
 				}
 			}
 			isTouchEvent = false;
@@ -951,7 +1121,7 @@
 			evt.preventDefault();
 			if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
 				if (isDragging) {
-					$('#recalc').trigger('click');
+					recalc_race();
 				} else {
 					handleGraphInteractionTap(evt);
 				}
@@ -963,7 +1133,7 @@
 			$('#enterat').trigger('change');
 			$('#exitat').val(startingExit);
 			$('#exitat').trigger('change');
-			$('#recalc').trigger('click');
+			recalc_race();
 			isTouchEvent = true;
 		});
 
@@ -1034,9 +1204,8 @@
 					<input type="number" id="enterat" value="" placeholder="{{ __('EnterAt') }}" disabled />
 					<label for="exitat" class="screen-reader-text">{{ __('ExitAt') }}</label>
 					<input type="number" id="exitat" value="" placeholder="{{ __('ExitAt') }}" disabled />
-					<button id="recalc" disabled>{{ __('Recalculate Race') }}</button>
-					<button id="load-transitions" disabled>{{ __('Load from Node') }}</button>
-					<button id="save-transitions" disabled>{{ __('Save to Node') }}</button>
+					<button id="load-transitions" hidden disabled>{{ __('Load from Node') }}</button>
+					<button id="save-transitions" hidden disabled>{{ __('Save to Node') }}</button>
 				</div>
 				<div class="control-block">
 					<h3>{{ __('Modify') }}</h3>
@@ -1061,6 +1230,9 @@
 		</div>
 	</div>
 </div>
+
+<!-- Custom UI -->
+<div id="custom-ui"></div>
 
 </main>
 {% endblock %}

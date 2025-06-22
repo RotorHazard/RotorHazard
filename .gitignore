@@ -1,9 +1,34 @@
-*.db
+# Compiled Python scripts
 *.pyc
-/src/server/config.json
-db_bkp
+
+# Development resources
+/.settings
+/.project
+/.pydevproject
+/RotorHazard.iml
+/.idea
 /src/libraries
+
+# RH Database and backups
+*.db
+/src/server/db_bkp
+
+# Local system configuration
+/src/server/config*.json
+/src/tests/config*.json
+/src/server/cfg_bkp
+datapath.ini
+
+# Run logs
 logs
+
+# Specific folders
+venv
+.venv
+
+# User files, except the README
 /src/server/static/user/*
 !/src/server/static/user/README.md
-/.settings
+
+# User plugins folder
+/src/server/plugins/*

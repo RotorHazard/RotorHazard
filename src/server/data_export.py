@@ -2,66 +2,58 @@
 # Data export handlers
 #
 
-#
-# Data exporters first collect data via their assembler function,
-# then pass that data through the formatter function before output.
-# PageCache is updated before export() is called and can be assumed accurate.
-#
-# name should be unique and acts as an identifier
-# label becomes visible in the UI and becomes translatable
-# formatter(data) should be used for final handling of file format
-# assembler(RHData, PageCache, Language) collects relevant data from timer
-#   before formatting.
-#
-
+from RHUtils import catchLogExceptionsWrapper, cleanVarName
+from eventmanager import Evt
 import logging
-from Plugins import Plugins  #pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
 class DataExportManager():
-    exporters = {}
+    def __init__(self, rhapi, events):
+        self._exporters = {}
 
-    def __init__(self, RHData, PageCache, Language):
-        self._RHData = RHData
-        self._PageCache = PageCache
-        self._Language = Language
-        self.readPlugins()
+        self._rhapi = rhapi
+        self._events = events
 
-    def readPlugins(self):
-        exporter_plugins = Plugins(prefix='data_export')
-        exporter_plugins.discover()
+        events.trigger(Evt.DATA_EXPORT_INITIALIZE, {
+            'register_fn': self.register_exporter
+            })
 
-        for exporter in exporter_plugins:
-            self.registerExporter(exporter)
+    def register_exporter(self, exporter):
+        if isinstance(exporter, DataExporter):
+            if exporter.name in self._exporters:
+                logger.warning('Overwriting data exporter "{0}"'.format(exporter.name))
 
-    def registerExporter(self, exporter):
-        if hasattr(exporter, 'name'):
-            if exporter.name in self.exporters:
-                logger.warning('Overwriting data exporter "{0}"'.format(exporter['name']))
-
-            self.exporters[exporter.name] = exporter
+            self._exporters[exporter.name] = exporter
         else:
             logger.warning('Invalid exporter')
 
-    def hasExporter(self, exporter_id):
-        if exporter_id in self.exporters:
-            return True
-        return False
+    @property
+    def exporters(self):
+        return self._exporters
 
-    def getExporters(self):
-        return self.exporters
-
+    @catchLogExceptionsWrapper
     def export(self, exporter_id):
-        return self.exporters[exporter_id].export(self._RHData, self._PageCache, self._Language)
+        result = self._exporters[exporter_id].export(self._rhapi)
+
+        if result:
+            self._events.trigger(Evt.DATABASE_EXPORT, result)
+        else:
+            logger.warning("Failed exporting data")
+        return result
 
 class DataExporter():
-    def __init__(self, name, label, formatterFn, assemblerFn):
-        self.name = name
-        self.label = label
-        self.formatter = formatterFn
-        self.assembler = assemblerFn
+    def __init__(self, label, formatter_fn, assembler_fn, name=None):
+        if name is None:
+            self.name = cleanVarName(label)
+        else:
+            self.name = name
 
-    def export(self, RHData, PageCache, Language):
-        data = self.assembler(RHData, PageCache, Language)
+        self.label = label
+        self.formatter = formatter_fn
+        self.assembler = assembler_fn
+
+    def export(self, rhapi):
+        data = self.assembler(rhapi)
         return self.formatter(data)
+

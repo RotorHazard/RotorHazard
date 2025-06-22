@@ -1,6 +1,6 @@
 import gevent
 import logging
-from monotonic import monotonic
+from time import monotonic
 
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
@@ -13,7 +13,9 @@ class BaseHardwareInterface(object):
     LAP_SOURCE_REALTIME = 0
     LAP_SOURCE_MANUAL = 1
     LAP_SOURCE_RECALC = 2
-    LAP_SOURCE_LABEL_STRS = ["realtime", "manual", "recalc"]
+    LAP_SOURCE_AUTOMATIC = 3
+    LAP_SOURCE_API = 4
+    LAP_SOURCE_LABEL_STRS = ["realtime", "manual", "recalc", "automatic", "API"]
 
     RACE_STATUS_READY = 0
     RACE_STATUS_STAGING = 3
@@ -113,16 +115,16 @@ class BaseHardwareInterface(object):
             if len(upd_list) == 1:  # list contains single item
                 item = upd_list[0]
                 node = item[0]
-                if node.node_lap_id != -1 and callable(self.pass_record_callback):
-                    gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
+                if node.node_lap_id != -1 and callable(self.pass_record_callback):    # (node, lap_time_absolute)
+                    self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  #pylint: disable=not-callable
                 node.node_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
                 upd_list.sort(key = lambda i: i[0].lap_timestamp)
                 for item in upd_list:
                     node = item[0]
-                    if node.node_lap_id != -1 and callable(self.pass_record_callback):
-                        gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
+                    if node.node_lap_id != -1 and callable(self.pass_record_callback):    # (node, lap_time_absolute)
+                        self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  #pylint: disable=not-callable
                     node.node_lap_id = item[1]  # new_lap_id
 
     #
@@ -133,7 +135,7 @@ class BaseHardwareInterface(object):
         node = self.nodes[node_index]
         node.lap_timestamp = monotonic() - (ms_val / 1000.0)
         node.enter_at_timestamp = node.exit_at_timestamp = 0
-        gevent.spawn(self.pass_record_callback, node, node.lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
+        self.pass_record_callback(node, node.lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)  #pylint: disable=not-callable
 
     def set_race_status(self, race_status):
         self.race_status = race_status

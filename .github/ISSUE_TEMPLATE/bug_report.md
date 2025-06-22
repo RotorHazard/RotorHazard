@@ -7,6 +7,9 @@ assignees: ''
 
 ---
 
+**Confirm the issue is with RotorHazard and not a plugin**
+Disable all 3rd party plugins and attempt to reproduce the problem. If the problem goes away, contact the plugin's author instead of submitting an issue here.
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 

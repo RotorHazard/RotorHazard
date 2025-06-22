@@ -2,15 +2,15 @@
 
 This document is primarily for developers.
 
-If you plan to contribute to RotorHazard by opening a [pull request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests) for a bugfix or feature, please read the following text before you start. This will help you in submitting your contribution in a form that has a good chance of being accepted.
+If you plan to contribute to RotorHazard by opening a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) for a bugfix or feature, please read the following text before you start. This will help you in submitting your contribution in a form that has a good chance of being accepted.
 
 ## Using git and GitHub
 
-Ensure you understand the GitHub workflow: [https://guides.github.com/introduction/flow/index.html](https://guides.github.com/introduction/flow/index.html)
+Ensure you understand the GitHub workflow: [https://docs.github.com/en/get-started/quickstart/github-flow](https://docs.github.com/en/get-started/quickstart/github-flow)
 
-Keep pull requests focused on one thing only, since this makes it easier to merge and test in a timely manner.
+Keep pull requests focused on one thing only, since this makes it easier to merge and test in a timely manner. A pull request should only make changes to the files that are needed for the modification.
 
-If you need help with pull requests there are guides on GitHub here: [https://help.github.com/articles/creating-a-pull-request](https://help.github.com/articles/creating-a-pull-request)
+If you need help with pull requests there are guides on GitHub here: [GitHub - Creating a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
 
 The main flow for a contributing is as follows:
 
@@ -47,11 +47,18 @@ When code is added to an existing file, the new code should follow what's alread
 
 If a PR is modifying functionality, try to avoid unnecessary whitespace changes (i.e., adding/removing trailing spaces or newlines), as this makes it harder to see the functional changes. Improvements to whitespace and code style should be implemented with PRs that do only those things.
 
-## Eclipse PyDev Project
+## Project Files
 
-The [Eclipse IDE](https://www.eclipse.org/eclipseide/) (with the [PyDev](https://www.pydev.org) extension) may be used to edit the Python source code -- the ".project" and ".pydevproject" files define the project, which may be loaded via "File | Open Projects from File System..." in Eclipse.
+The "project" directory contains sample project files for the [IntelliJ IDEA](https://www.jetbrains.com/idea) and [Eclipse IDE](https://www.eclipse.org/eclipseide/) editor/environments. To use them, copy the relevent files/directories to the top-most RotorHazard directory.
 
-The [PyLint](https://www.pylint.org) code analyzer is used to improve and reduce bugs in the code. All Python code in the project should be able to pass PyLint analysis with minimal errors and warnings. See the [PyLint install](https://www.pylint.org/#install) page for instructions on installation; on Windows the package may be installed via the command:  `python -m pip install pylint`
+For [IntelliJ IDEA](https://www.jetbrains.com/idea), the Python plugin needs to be installed, [see here for documentation](https://www.jetbrains.com/help/idea/plugin-overview.html). The "RotorHazard.iml" file and ".idea" directory define the project, which may be loaded via "File | Open" menu item. 
+The [JetBrains PyCharm IDE](https://www.jetbrains.com/pycharm) may also be used.
+
+For [Eclipse IDE](https://www.eclipse.org/eclipseide/), the [PyDev](https://www.pydev.org) extension needs to be installed. The ".project" and ".pydevproject" files define the project, which may be loaded via "File | Open Projects from File System..." in Eclipse.
+
+## PyLint
+
+The [PyLint](https://github.com/pylint-dev/pylint#pylint) code analyzer is used to improve and reduce bugs in the code. All Python code in the project should be able to pass PyLint analysis with minimal errors and warnings. On Windows the package may be installed via the command:  `python -m pip install pylint`
 
 See [here](https://www.pydev.org/manual_adv_pylint.html) for enabling PyLint code analysis on Eclipse with PyDev. With its default settings PyLint will flag more warnings than we want to deal with, so we disable some of them by navigating (in Eclipse) to "Preferences | PyDev | Editor | Code Analysis | PyLint" and entering the following into the box under "Arguments to pass to the pylint command":  `--disable=broad-except,bare-except,logging-not-lazy,logging-format-interpolation,global-statement,try-except-raise,unused-argument`
 

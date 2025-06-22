@@ -42,7 +42,7 @@ Idź do strony [Latest Release page](https://github.com/RotorHazard/RotorHazard/
 „Ostatnie wydania” i zobacz jaka jest aktualna wersja kodu. W komendach poniżej zastąp znaki "1.2.3" aktualną wersję kodu i wpisz następujące komendy:
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.2.3 -O temp.zip
 unzip temp.zip
 mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip

@@ -92,24 +92,22 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 * There have been reports that with some BPill modules the buzzer emits a constant tone -- a workaround for this is to wire the '+' side of the buzzer to +3.3V (J12) instead of +5V.  Using a different BPill module may also fix the issue.
 
-* The recommended method for installing the node firmware onto the BPill processor is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file on the RPi for the flash-update to succeed (see instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)').
+* The recommended method for installing the node firmware onto the BPill processor is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file on the RPi for the flash-update to succeed (see instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)'). A successful update should result in [messages like these](files/BluePillFlashingMsgs.txt) being displayed and logged.
 
 * If the initial programming of the BPill processor is unsuccessful, it may be necessary to use an [ST-Link](https://www.ebay.com/sch/i.html?_nkw=ST-Link) USB programming adapter. See the instructions in the first section of the '[src/node/readme_S32_BPill.md](../../src/node/readme_S32_BPill.md)' file and use step "[8b](../../src/node/readme_S32_BPill.md#s32stlink)" to do the flash-update.
 
 * The recommended enclosure is the [RotorHazard S32_BPill Case](../S32_BPill_case/README.md), which features mounting holes for a power button, [shutdown button](../../doc/Shutdown%20Button.md), and status LED.
 
 <a name="aboutblue"></a>
-### About Blue Pills and Black Pills
+### About Blue Pill Modules
 
 The "Blue Pill" is a module containing an STM32F1 processor and support components mounted on small board with two rows of 20-pin headers. The most common variant is what we're calling the "[Generic Blue Pill](https://stm32-base.org/boards/STM32F103C8T6-Blue-Pill)".
 
-[RobotDyn](https://robotdyn.com) has a version with several improvements (better parts, thinner board layout, etc), which they called a "[Black Pill](https://stm32-base.org/boards/STM32F103C8T6-RobotDyn-Black-Pill)". See [here for the RobotDyn page](https://robotdyn.com/stm32f103-stm32-arm-mini-system-dev-board-stm-firmware.html).
-
-We like the RobotDyn version more than the generics, but it has become difficult to acquire. In practice, any Blue Pill module with an STM32F103C8T6 processor and a compatible pin layout should work fine with the S32_BPill PCB. (Note: It needs to be the "C8" module; the STM32F103C6T6 module cannot be used because its available memory space is too small.)
+Any Blue Pill module with an STM32F103C8T6 processor and a compatible pin layout should work fine with the S32_BPill PCB. (Note: It needs to be the "C8" module; the STM32F103C6T6 module cannot be used because its available memory space is too small.)
 
 Seaching eBay for "[STM32F103C8T6 Blue Pill](https://www.ebay.com/sch/i.html?_nkw=STM32F103C8T6+Blue+Pill)" should lead to a number of good, cheap options for acquiring compatible modules.
 
-Note that there are other types of "Black Pill" modules out there with different pinouts. It is possible (with some tweaking) to use an STM32F4 ("Black Pill") module with the S32_BPill PCB; see [here for more information](stm32f4module.md).
+Note that there are other types of modules out there with different pinouts. It is possible (with some tweaking) to use an STM32F4 ("Black Pill") module with the S32_BPill PCB; see [here for more information](stm32f4module.md).
 
 <br>
 

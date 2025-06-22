@@ -1,29 +1,98 @@
 {
-	"GENERAL": {
-		"HTTP_PORT": 5500,
-		"SECRET_KEY": "secret!",
-		"ADMIN_USERNAME": "",
-		"ADMIN_PASSWORD": "",
-		"DEBUG": true,
-		"CORS_ALLOWED_HOSTS": "*",
-		"DB_AUTOBKP_NUM_KEEP": 30
-	},
-	"SENSORS": {
-	},
-	"SERIAL_PORTS": [],
-	"LED": {
-		"LED_COUNT": 0,
-		"LED_PIN": 10,
-		"LED_FREQ_HZ": 800000,
-		"LED_DMA": 10,
-		"LED_INVERT": false,
-		"LED_CHANNEL": 0
-	},
-	"LOGGING": {
-		"CONSOLE_LEVEL": "INFO",
-		"SYSLOG_LEVEL": "NONE",
-		"FILELOG_LEVEL": "INFO",
-		"FILELOG_NUM_KEEP": 30,
-		"CONSOLE_STREAM": "stdout"
-	}
+  "SECRETS": {
+    "ADMIN_USERNAME": "",
+    "ADMIN_PASSWORD": "",
+    "SECRET_KEY": "UlvuNoGkDfzPBToATEmewLMfbDXRVHdiroSqLvrJxuRfFIqIYd"
+  },
+  "GENERAL": {
+    "HTTP_PORT": 5500,
+    "SECONDARIES": [],
+    "SECONDARY_TIMEOUT": 300,
+    "DEBUG": true,
+    "CORS_ALLOWED_HOSTS": "*",
+    "FORCE_S32_BPILL_FLAG": false,
+    "DEF_NODE_FWUPDATE_URL": "",
+    "SHUTDOWN_BUTTON_GPIOPIN": 18,
+    "SHUTDOWN_BUTTON_DELAYMS": 2500,
+    "DB_AUTOBKP_NUM_KEEP": 30,
+    "RACE_START_DELAY_EXTRA_SECS": 0.9,
+    "LOG_SENSORS_DATA_RATE": 300,
+    "SERIAL_PORTS": [],
+    "LAST_MODIFIED_TIME": 1720935008
+  },
+  "TIMING": {
+    "startThreshLowerAmount": "0",
+    "startThreshLowerDuration": "0",
+    "calibrationMode": 1,
+    "MinLapBehavior": 0
+  },
+  "UI": {
+    "timerName": "RotorHazard",
+    "timerLogo": "",
+    "hue_0": "212",
+    "sat_0": "55",
+    "lum_0_low": "29.2",
+    "lum_0_high": "46.7",
+    "contrast_0_low": "#ffffff",
+    "contrast_0_high": "#ffffff",
+    "hue_1": "25",
+    "sat_1": "85.3",
+    "lum_1_low": "37.6",
+    "lum_1_high": "54.5",
+    "contrast_1_low": "#ffffff",
+    "contrast_1_high": "#000000",
+    "currentLanguage": "",
+    "timeFormat": "{m}:{s}.{d}",
+    "timeFormatPhonetic": "{m} {s}.{d}",
+    "pilotSort": "name"
+  },
+  "USER": {
+    "voiceCallouts": "",
+    "actions": "[]"
+  },
+  "HARDWARE": {
+    "I2C_BUS": 1
+  },
+  "LED": {
+    "LED_COUNT": 0,
+    "LED_GPIO": 10,
+    "LED_FREQ_HZ": 800000,
+    "LED_DMA": 10,
+    "LED_INVERT": false,
+    "LED_CHANNEL": 0,
+    "LED_STRIP": "GRB",
+    "LED_ROWS": 1,
+    "PANEL_ROTATE": 0,
+    "INVERTED_PANEL_ROWS": false,
+    "SERIAL_CTRLR_PORT": null,
+    "SERIAL_CTRLR_BAUD": 115200,
+    "ledEffects": "",
+    "ledBrightness": 32,
+    "ledColorNodes": "",
+    "ledColorFreqs": "",
+    "ledColorMode": "",
+    "seatColors": [
+      "#0022ff",
+      "#ff5500",
+      "#00ff22",
+      "#ff0055",
+      "#ddff00",
+      "#7700ff",
+      "#00ffdd",
+      "#aaaaaa"
+    ]
+  },
+  "LOGGING": {
+    "CONSOLE_LEVEL": "INFO",
+    "SYSLOG_LEVEL": "NONE",
+    "FILELOG_LEVEL": "INFO",
+    "FILELOG_NUM_KEEP": 30,
+    "CONSOLE_STREAM": "stdout"
+  },
+  "SENSORS": {},
+  "VRX_CONTROL": {
+    "HOST": "localhost",
+    "ENABLED": false,
+    "OSD_LAP_HEADER": "L"
+  }
 }

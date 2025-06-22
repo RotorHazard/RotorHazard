@@ -12,6 +12,7 @@
 * [Raspberry Pi Reference](Raspberry%20Pi%20Reference.md)
 
 ## Optional Features
+* [Plugins](Plugins.md)
 * [Split Timing Guide](Cluster.md)
 * [USB Nodes](USB%20Nodes.md)
 * [Video Receiver Control](Video%20Receiver.md)
@@ -23,6 +24,6 @@
 
 ---
 
-* [Build Resources (PCB, etc)](../resources/README.md)
+* [Build Resources (PCB, etc) &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources/README.md)
 * [Developer Documentation](Development.md)
 * <a href="https://github.com/RotorHazard/RotorHazard">RotorHazard on GitHub &#10132;&#xFE0E;</a>

@@ -3,9 +3,9 @@ var sound_beep = $('#sound_beep')[0];
 var sound_stage = $('#sound_stage')[0];
 
 // bitmask values for 'phonetic_split_call' function
-const SPLMSK_PILOT_NAME = 0x01
-const SPLMSK_SPLIT_ID = 0x02
-const SPLMSK_SPLIT_TIME = 0x04
+const SPLMSK_PILOT_NAME = 0x01;
+const SPLMSK_SPLIT_ID = 0x02;
+const SPLMSK_SPLIT_TIME = 0x04;
 
 // minimum value in logarithmic volume range and limit value for "zero" volume
 const MIN_LOG_VOLUME = 0.01;
@@ -15,8 +15,18 @@ const MAX_LOG_VOLUME = 1.0;
 const LEADER_FLAG_CHAR = 'L';
 const WINNER_FLAG_CHAR = 'W';
 
+// Display sync warning above (ms)
+const SYNC_WARNING_THRESHOLD_1 = 2;
+const SYNC_WARNING_THRESHOLD_3 = 10;
+const SYNC_WARNING_THRESHOLD_10 = 60;
+
+const RACING_MODE_INDV = 0;   // INDIVIDUAL
+const RACING_MODE_TEAM = 1;   // TEAM_ENABLED
+const RACING_MODE_COOP = 2;   // COOP_ENABLED
+
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
+var checkSpeakQueueCntr = 0;
 
 /* global functions */
 function supportsLocalStorage() {
@@ -25,6 +35,21 @@ function supportsLocalStorage() {
 	} catch(e){
 		return false;
 	}
+}
+
+// Returns the named URL-query parameter, or 'false' if not found
+//  From: https://stackoverflow.com/questions/19491336/how-to-get-url-parameter-using-jquery-or-plain-javascript
+function getUrlParameter(sParam) {
+	var sPageURL = window.location.search.substring(1);
+	var sURLVariables = sPageURL.split('&');
+	var sParameterName, i;
+	for (i = 0; i < sURLVariables.length; i++) {
+		sParameterName = sURLVariables[i].split('=');
+		if (sParameterName[0] === sParam) {
+			return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+		}
+	}
+	return false;
 }
 
 function median(arr){
@@ -94,11 +119,11 @@ function contrastColor(hexcolor) {
 }
 
 function rgbtoHex(rgb) {
-    rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-    function hex(x) {
-        return ("0" + parseInt(x).toString(16)).slice(-2);
-    }
-    return "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+	rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	function hex(x) {
+		return ("0" + parseInt(x).toString(16)).slice(-2);
+	}
+	return "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
 }
 
 function hslToHex(h, s, l) {
@@ -132,7 +157,9 @@ function hslToHex(h, s, l) {
 }
 
 function hexToHsl(hex) {
-	var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+	regex = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i
+	var result = regex.exec(hex);
+	if (result) {
 		r = parseInt(result[1], 16);
 		g = parseInt(result[2], 16);
 		b = parseInt(result[3], 16);
@@ -151,6 +178,11 @@ function hexToHsl(hex) {
 			}
 			h /= 6;
 		}
+	} else {
+		h = 0;
+		s = 0;
+		l = 0.5;
+	}
 	var HSL = new Object();
 	HSL['h']=h * 360;
 	HSL['s']=s * 100;
@@ -299,12 +331,15 @@ $.fn.setup_navigation = function(settings) {
 			}
 		} else if(e.keyCode == 13 || e.keyCode == 32) {
 			// If submenu is hidden, open it
-			e.preventDefault();
-			$(this).parent('li').find('ul[aria-hidden=true]')
+			var sub_items = $(this).parent('li').find('ul[aria-hidden=true]');
+			if (sub_items.length) {
+				e.preventDefault();
+				$(this).parent('li').find('ul[aria-hidden=true]')
 					.attr('aria-hidden', 'false')
 					.addClass(settings.menuHoverClass)
 					.find('a').attr('tabIndex',0)
 					.first().focus();
+			}
 		} else if(e.keyCode == 27) {
 			e.preventDefault();
 			$('.'+settings.menuHoverClass)
@@ -471,9 +506,10 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 			fadetime = 0;
 	
 		oscillator.start();
-		setTimeout(function(fade){
-			gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
-		}, duration, fadetime);
+		setTimeout(function(gNode, fade){
+			gNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
+		}, duration, gainNode, fadetime);
+
 		/*
 		setTimeout(function(){
 			oscillator.stop();
@@ -527,15 +563,11 @@ function playWinnerTone() {
 function doSpeak(obj) {
 	if (obj.startsWith(LEADER_FLAG_CHAR)) {
 		obj = obj.substring(1);
-		if (rotorhazard.beep_race_leader_lap) {
-			playLeaderTone();
-		}
+		playLeaderTone();
 	}
 	else if (obj.startsWith(WINNER_FLAG_CHAR)) {
 		obj = obj.substring(1);
-		if (rotorhazard.beep_race_winner_declared) {
-			playWinnerTone();
-		}
+		playWinnerTone();
 	}
 	if (rotorhazard.voice_volume && rotorhazard.voice_volume > MIN_LOG_VOL_LIM) {
 		if (obj.length > 0) {
@@ -556,6 +588,17 @@ function speak(obj, priority) {
 		speakObjsQueue.push(obj);
 	}
 };
+
+function initSpeak(event) {
+	if (event.type == "click") {
+		doSpeak(' ');
+		$('#audio-unlock').remove();
+	}
+}
+
+$(document).on('click', function(event){
+	initSpeak(event);
+});
 
 function __(text) {
 	// return translated string
@@ -690,9 +733,6 @@ nodeModel.prototype = {
 }
 
 /* Data model for timer */
-const TONES_NONE = 0;
-const TONES_ONE = 1;
-const TONES_ALL = 2;
 
 function timerModel() {
 	// interval control
@@ -709,16 +749,24 @@ function timerModel() {
 		'step': false,
 		'expire': false,
 	};
+	this.staging_cb_tic = null; // prevent double callbacks
 
 	this.running = false;
-	this.zero_time = null; // timestamp for timer's zero point
+	this.remote_zero_time = null; // timestamp for server's t=0 point (race start)
+	this.remote_staging_start_time = null; // timestamp for server's staging start time
+	this.local_zero_time = null; // timestamp for local T=0 point (race start)
+	this.local_staging_start_time = null; // timestamp for local staging start time
+	this.phased_staging = false; // timer counts independently in staging
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
-	this.staging_tones = TONES_ALL; // sound tones during staging
-	this.max_delay = Infinity; // don't sound more tones than this even if staging takes longer
-	this.time_s = false; // simplified relative time in seconds
+	this.staging_tones = 0; // sound tones during staging
+	this.time = null; // start-relative time in ms
+	this.time_tenths = null; // race-relative display time in tenths (inverts when counting down)
+	this.time_staging_tenths = null; // staging-relative time
 	this.count_up = false; // use fixed-length timer
-	this.duration = 0; // fixed-length duration, in seconds
-	this.allow_expire = false; // prevent expire callbacks until timer runs 1 loop
+	this.duration_tenths = 0; // fixed-length duration, in tenths
+	this.initial_disp_tenths = null; // time value to show before start
+	this.has_looped = false; // prevent expire callbacks until timer runs 1 loop
+	this.allow_expire = false; // prevent multiple expire callbacks
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -729,22 +777,28 @@ function timerModel() {
 	var self = this;
 
 	function step() { // timer control
-		var diff = window.performance.now() - self.zero_time;
+		var now = window.performance.now();
+		self.time = now - self.local_zero_time;
 		var continue_timer = true;
 
-		if (diff > self.interval / -2) {
+		self.time_staging_tenths = Math.round((now - self.local_staging_start_time) / 100);
+
+		if (self.time > self.interval / -2) {
 			// time is positive or zero
 			if (!self.count_up) {
-				var new_time_s = self.duration - (Math.round(diff / 100) / 10);
+				var new_time_tenths = self.duration_tenths - Math.round(self.time / 100);
 
-				if (new_time_s != self.time_s) { // prevent double callbacks
-					self.time_s = new_time_s;
+				if (new_time_tenths != self.time_tenths) { // prevent double callbacks
+					self.time_tenths = new_time_tenths;
 
-					if (self.time_s <= 0) {
-						continue_timer = false;
-						self.running = false;
-						if (self.allow_expire && self.callbacks.expire instanceof Function) {
+					if (self.time_tenths <= 0) {
+						// continue_timer = false;
+						// self.running = false;
+						if (self.has_looped && self.allow_expire && self.callbacks.expire instanceof Function) {
 							self.callbacks.expire(self);
+							self.allow_expire = false;
+						} else if (self.callbacks.step instanceof Function) {
+							self.callbacks.step(self);
 						}
 					} else {
 						if (self.callbacks.step instanceof Function) {
@@ -753,10 +807,10 @@ function timerModel() {
 					}
 				}
 			} else {
-				var new_time_s = Math.round(diff / 100) / 10;
+				var new_time_tenths = Math.round(self.time / 100);
 
-				if (new_time_s != self.time_s) { // prevent double callbacks
-					self.time_s = new_time_s;
+				if (new_time_tenths != self.time_tenths) { // prevent double callbacks
+					self.time_tenths = new_time_tenths;
 
 					if (self.callbacks.step instanceof Function) {
 						self.callbacks.step(self);
@@ -765,10 +819,10 @@ function timerModel() {
 			}
 		} else {
 			// negative
-			var new_time_s = Math.round(diff / 100) / 10;
+			var new_time_tenths = Math.round(self.time / 100);
 
-			if (new_time_s != self.time_s) { // prevent double callbacks
-				self.time_s = new_time_s;
+			if (new_time_tenths != self.time_tenths) { // prevent double callbacks
+				self.time_tenths = new_time_tenths;
 
 				if (self.callbacks.step instanceof Function) {
 					self.callbacks.step(self);
@@ -776,15 +830,17 @@ function timerModel() {
 			}
 		}
 
-		self.allow_expire = true;
+		self.has_looped = true;
 
 		if (continue_timer) {
-			var now = window.performance.now()
+			now = window.performance.now();
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
-				self.callbacks.self_resync(self);
-				self.start();
+				if (self.callbacks.self_resync instanceof Function) {
+					self.callbacks.self_resync(self);
+				}
+				self.continue();
 			} else {
 				self.get_next_step(now);
 				self.timeout = setTimeout(step, Math.max(0, self.next_interval - self.drift_correction));
@@ -798,9 +854,28 @@ function timerModel() {
 		}
 	}
 
+	function run_after_sync() {
+		// check for sync
+		if (self.local_zero_time != null) {
+			// initialize expiration allowance
+			now = window.performance.now();
+			self.allow_expire = (!self.count_up && now < self.local_zero_time);
+
+			// start timing loop
+			self.continue();
+
+			// do callback
+			if (self.callbacks.start instanceof Function) {
+				self.callbacks.start(self);
+			}
+		} else {
+			self.timeout = setTimeout(run_after_sync, 100);
+		}
+	}
+
 	this.get_next_step = function(now){
 		// find current differential
-		var diff = this.zero_time - now;
+		var diff = this.local_zero_time - now;
 
 		if (diff >= 0) {
 			// waiting for zero
@@ -819,24 +894,17 @@ function timerModel() {
 		}
 	}
 
-	this.start = function(remote_time_zero, local_remote_diiferential){
-		// reset simplified time and drift history
-		rotorhazard.timer.race.time_s = false;
-		this.drift_history = [];
-		this.drift_correction = 0;
+	this.start = function(server_start_time, server_staging_start_time=null){
+		// reset simplified time and staging callback
+		this.time_tenths = false;
+		this.staging_cb_tic = null;
 
-		// get sync if needed
-		if (typeof remote_time_zero !== "undefined" && typeof local_remote_diiferential !== "undefined") {
-			this.sync(remote_time_zero, local_remote_diiferential);
-		}
+		this.remote_zero_time = server_start_time;
+		this.remote_staging_start_time = server_staging_start_time;
+		this.sync(rotorhazard.server_time_differential);
 
-		// start timing loop
-		this.continue();
-
-		// do callback
-		if (self.callbacks.start instanceof Function) {
-			self.callbacks.start(this);
-		}
+		// begin timing once sync is established
+		run_after_sync();
 	}
 
 	this.continue = function(race_start_ms) {
@@ -852,14 +920,24 @@ function timerModel() {
 		this.running = true;
 	}
 
-	this.sync = function(remote_time_zero, local_remote_diiferential) {
-		// set local timer zero based on remote zero and calculated differential
-		if (local_remote_diiferential && remote_time_zero) {
-			// only valid with both components
-			this.zero_time = remote_time_zero - local_remote_diiferential;
-		} else {
-			// otherwise don't consider valid
-			this.zero_time = null;
+	this.sync = function() {
+		// set local timer based on remote and calculated differential
+		// only valid when both components provided
+		var local_remote_differential = rotorhazard.server_time_differential; // get diff from shared store
+
+		this.local_zero_time = null;
+		this.local_staging_start_time = null;
+		
+		if (local_remote_differential != null) {
+			if (this.remote_zero_time != null) {
+				this.local_zero_time = this.remote_zero_time - local_remote_differential;
+
+				if (this.remote_staging_start_time != null) {
+					this.local_staging_start_time = this.remote_staging_start_time - local_remote_differential;
+				} else {
+					this.local_staging_start_time = this.remote_zero_time - local_remote_differential;
+				}
+			}
 		}
 	}
 
@@ -870,47 +948,99 @@ function timerModel() {
 		if (self.callbacks.stop instanceof Function) {
 			self.callbacks.stop(this);
 		}
+		this.time = 0;  // clear to make sure sure 'Ready' message doesn't get stuck showing on timer
 	}
 
 	this.renderHTML = function() {
-		if (this.zero_time == null || typeof this.time_s != 'number' || !this.running) {
-			return '--:--';
+		var active_time_tenths = 0;
+		if (this.local_zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
+			if (this.initial_disp_tenths) {
+				active_time_tenths = this.initial_disp_tenths;
+			} else {
+				return '--:--';
+			}
+		} else {
+			this.initial_disp_tenths = null;
 		}
 
-		if (this.hidden_staging && this.time_s < 0) {
+		if (this.hidden_staging && this.time < 0) {
 			return __l('Ready');
 		}
 
-		if (this.time_s >= 0 && !this.count_up) {
-			var display_time = Math.abs(Math.ceil(this.time_s));
+		if (!active_time_tenths) {
+			active_time_tenths = this.time_tenths;
+
+			// hold timer during prestage
+			if (this.phased_staging && this.time_staging_tenths < 0) {
+				active_time_tenths = Math.trunc((this.local_staging_start_time - this.local_zero_time) / 100);
+			}
+		}
+
+		var active_time_s = Math.trunc(active_time_tenths / 10);
+		var display_time = Math.abs(active_time_s);
+
+		if (this.time < 0 && active_time_tenths < 0) {
+			var sign = '';
 		} else {
-			var display_time = Math.abs(Math.floor(this.time_s));
+			var sign = active_time_tenths >= 0 ? '' : '-';
 		}
 
 		var hour = Math.floor(display_time / 3600);
-		display_time = display_time - (hour * 3600);
+		display_time = display_time % 3600;
 		var minute = Math.floor(display_time / 60);
 		var second = display_time % 60;
+		var decimal = Math.abs(active_time_tenths % 10);
 
 		second = (second < 10) ? '0' + second : second; // Pad zero if under 10
 		minute = (minute < 10) ? '0' + minute : minute;
 
 		if (hour) {
-			return hour + ':' + minute + ':' + second;
+			return sign + hour + ':' + minute + ':' + second + '.' + decimal;
 		} else {
-			return minute + ':' + second;
+			return sign + minute + ':' + second + '.' + decimal;
 		}
+	}
+
+	this.renderHTMLandUpdate = function() {
+		$('.time-display').html(this.renderHTML());
+	}
+}
+
+function parseJsonStr(str) {
+	try {
+		var retVal = JSON.parse(str);
+		if (retVal == null) {
+  			throw 'Null data found';
+		}
+		return retVal;
+	} catch(ex) {
+		console.error('Error parsing data ("' + str + '") - ' + ex);
+		return null;
 	}
 }
 
 function parseIntOrBoolean(str) {
 	if (str == 'false') {
-		return 0
+		return 0;
 	}
 	if (str == 'true') {
-		return 1
+		return 1;
 	}
-	return JSON.parse(str)
+	try {
+		var retVal = JSON.parse(str);
+		if (retVal == null) {
+  			throw 'Null data found';
+		}
+		return retVal;
+	} catch(ex) {
+		console.error('Error parsing data ("' + str + '") int/bool - ' + ex);
+		return 0;
+	}
+}
+
+function parseIntDefault(str, defaultVal=0) {
+	var retVal = parseInt(str);
+	return isNaN(retVal) ? defaultVal : retVal;
 }
 
 /* rotorhazard object for local settings/storage */
@@ -930,7 +1060,7 @@ var rotorhazard = {
 		6: 'Most Laps Only with Overtime',
 		2: 'First to X Laps',
 		3: 'Fastest Lap',
-		4: 'Fastest 3 Consecutive Laps',
+		4: 'Fastest Consecutive Laps',
 		0: 'None',
 	},
 	stagingTones: {
@@ -938,6 +1068,11 @@ var rotorhazard = {
 		1: 'One',
 		0: 'None',
 	},
+	//
+	event: {}, // race data
+	options: {}, // server options
+	plugins: {}, // plugin data
+
 	language_strings: {},
 	interface_language: '',
 	// text-to-speech callout options
@@ -953,6 +1088,8 @@ var rotorhazard = {
 	voice_race_timer: 2, // speak race timer
 	voice_race_winner: 1, // speak race winner
 	voice_split_timer: 0, // split timer
+	voice_if_node_finished: 0, // call laps after pilot completed
+	voice_race_leader: 0, // speak race leader pilot name
 
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
@@ -965,7 +1102,7 @@ var rotorhazard = {
 	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
 
 	schedule_m: 0, //time in minutes for scheduled races
-	schedule_s: 10, //time in minutes for scheduled races
+	schedule_s: 10, //time in seconds for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
 
 	//display options
@@ -974,6 +1111,8 @@ var rotorhazard = {
 	display_time_first_pass: false, //shows the timestamp of the lap since the first pass was recorded
 	display_laps_reversed: false, //shows race laps in reverse order
 	display_chan_freq: true, //shows node channel and frequency (Current Race page only)
+	hide_graphs: false, //hides RSSI graphs on Run page
+	display_late_laps_cur: false, //shows "late" laps on Current Race page
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
@@ -988,9 +1127,11 @@ var rotorhazard = {
 
 	// all times in ms (decimal micros if available)
 	pi_time_request: false,
-	pi_time_diff: false,
-	race_start_pi: false,
-	pi_time_diff_samples: [], // stored previously acquired offsets
+	server_time_differential: null,
+	server_time_differential_samples: [], // stored previously acquired offsets
+	has_server_sync: false,
+	sync_within: Infinity,
+	winner_declared_flag: false,
 
 	timer: {
 		deferred: new timerModel(),
@@ -998,149 +1139,146 @@ var rotorhazard = {
 		stopAll: function() {
 			this.deferred.stop();
 			this.race.stop();
+		},
+		running: function() {
+			return (this.deferred.running || this.race.running);
 		}
 	},
+	rhStorageItems : [
+		{ name: 'rotorhazard.voice_string_language', getVal: function() {return rotorhazard.voice_string_language;}, setVal: function(val) {rotorhazard.voice_string_language = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_language', getVal: function() {return rotorhazard.voice_language;}, setVal: function(val) {rotorhazard.voice_language = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_volume', getVal: function() {return rotorhazard.voice_volume;}, setVal: function(val) {rotorhazard.voice_volume = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_rate', getVal: function() {return rotorhazard.voice_rate;}, setVal: function(val) {rotorhazard.voice_rate = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_pitch', getVal: function() {return rotorhazard.voice_pitch;}, setVal: function(val) {rotorhazard.voice_pitch = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_callsign', getVal: function() {return rotorhazard.voice_callsign;}, setVal: function(val) {rotorhazard.voice_callsign = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_lap_count', getVal: function() {return rotorhazard.voice_lap_count;}, setVal: function(val) {rotorhazard.voice_lap_count = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_team_lap_count', getVal: function() {return rotorhazard.voice_team_lap_count;}, setVal: function(val) {rotorhazard.voice_team_lap_count = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_lap_time', getVal: function() {return rotorhazard.voice_lap_time;}, setVal: function(val) {rotorhazard.voice_lap_time = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_race_timer', getVal: function() {return rotorhazard.voice_race_timer;}, setVal: function(val) {rotorhazard.voice_race_timer = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_race_winner', getVal: function() {return rotorhazard.voice_race_winner;}, setVal: function(val) {rotorhazard.voice_race_winner = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_if_node_finished', getVal: function() {return rotorhazard.voice_if_node_finished;}, setVal: function(val) {rotorhazard.voice_if_node_finished = parseIntOrBoolean(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_split_timer', getVal: function() {return rotorhazard.voice_split_timer;}, setVal: function(val) {rotorhazard.voice_split_timer = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.voice_race_leader', getVal: function() {return rotorhazard.voice_race_leader;}, setVal: function(val) {rotorhazard.voice_race_leader = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.tone_volume', getVal: function() {return rotorhazard.tone_volume;}, setVal: function(val) {rotorhazard.tone_volume = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_crossing_entered', getVal: function() {return rotorhazard.beep_crossing_entered;}, setVal: function(val) {rotorhazard.beep_crossing_entered = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_crossing_exited', getVal: function() {return rotorhazard.beep_crossing_exited;}, setVal: function(val) {rotorhazard.beep_crossing_exited = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_manual_lap_button', getVal: function() {return rotorhazard.beep_manual_lap_button;}, setVal: function(val) {rotorhazard.beep_manual_lap_button = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_race_leader_lap', getVal: function() {return rotorhazard.beep_race_leader_lap;}, setVal: function(val) {rotorhazard.beep_race_leader_lap = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_race_winner_declared', getVal: function() {return rotorhazard.beep_race_winner_declared;}, setVal: function(val) {rotorhazard.beep_race_winner_declared = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_cluster_connect', getVal: function() {return rotorhazard.beep_cluster_connect;}, setVal: function(val) {rotorhazard.beep_cluster_connect = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.use_mp3_tones', getVal: function() {return rotorhazard.use_mp3_tones;}, setVal: function(val) {rotorhazard.use_mp3_tones = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.beep_on_first_pass_button', getVal: function() {return rotorhazard.beep_on_first_pass_button;}, setVal: function(val) {rotorhazard.beep_on_first_pass_button = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.schedule_m', getVal: function() {return rotorhazard.schedule_m;}, setVal: function(val) {rotorhazard.schedule_m = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.schedule_s', getVal: function() {return rotorhazard.schedule_s;}, setVal: function(val) {rotorhazard.schedule_s = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.indicator_beep_volume', getVal: function() {return rotorhazard.indicator_beep_volume;}, setVal: function(val) {rotorhazard.indicator_beep_volume = parseJsonStr(val);}, isAudio: true },
+		{ name: 'rotorhazard.min_lap', getVal: function() {return rotorhazard.min_lap;}, setVal: function(val) {rotorhazard.min_lap = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.admin', getVal: function() {return rotorhazard.admin;}, setVal: function(val) {rotorhazard.admin = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.primaryPilot', getVal: function() {return rotorhazard.primaryPilot;}, setVal: function(val) {rotorhazard.primaryPilot = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.hide_graphs', getVal: function() {return rotorhazard.hide_graphs;}, setVal: function(val) {rotorhazard.hide_graphs = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_lap_id', getVal: function() {return rotorhazard.display_lap_id;}, setVal: function(val) {rotorhazard.display_lap_id = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_time_start', getVal: function() {return rotorhazard.display_time_start;}, setVal: function(val) {rotorhazard.display_time_start = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_time_first_pass', getVal: function() {return rotorhazard.display_time_first_pass;}, setVal: function(val) {rotorhazard.display_time_first_pass = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_laps_reversed', getVal: function() {return rotorhazard.display_laps_reversed;}, setVal: function(val) {rotorhazard.display_laps_reversed = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_chan_freq', getVal: function() {return rotorhazard.display_chan_freq;}, setVal: function(val) {rotorhazard.display_chan_freq = parseJsonStr(val);}, isAudio: false },
+		{ name: 'rotorhazard.display_late_laps_cur', getVal: function() {return rotorhazard.display_late_laps_cur;}, setVal: function(val) {rotorhazard.display_late_laps_cur = parseIntOrBoolean(val);}, isAudio: false }
+	],
 	saveData: function() {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
-		localStorage['rotorhazard.voice_string_language'] = JSON.stringify(this.voice_string_language);
-		localStorage['rotorhazard.voice_language'] = JSON.stringify(this.voice_language);
-		localStorage['rotorhazard.voice_volume'] = JSON.stringify(this.voice_volume);
-		localStorage['rotorhazard.voice_rate'] = JSON.stringify(this.voice_rate);
-		localStorage['rotorhazard.voice_pitch'] = JSON.stringify(this.voice_pitch);
-		localStorage['rotorhazard.voice_callsign'] = JSON.stringify(this.voice_callsign);
-		localStorage['rotorhazard.voice_lap_count'] = JSON.stringify(this.voice_lap_count);
-		localStorage['rotorhazard.voice_team_lap_count'] = JSON.stringify(this.voice_team_lap_count);
-		localStorage['rotorhazard.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
-		localStorage['rotorhazard.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
-		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
-		localStorage['rotorhazard.voice_split_timer'] = JSON.stringify(this.voice_split_timer);
-		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
-		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
-		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
-		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
-		localStorage['rotorhazard.beep_race_leader_lap'] = JSON.stringify(this.beep_race_leader_lap);
-		localStorage['rotorhazard.beep_race_winner_declared'] = JSON.stringify(this.beep_race_winner_declared);
-		localStorage['rotorhazard.beep_cluster_connect'] = JSON.stringify(this.beep_cluster_connect);
-		localStorage['rotorhazard.use_mp3_tones'] = JSON.stringify(this.use_mp3_tones);
-		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
-		localStorage['rotorhazard.schedule_m'] = JSON.stringify(this.schedule_m);
-		localStorage['rotorhazard.schedule_s'] = JSON.stringify(this.schedule_s);
-		localStorage['rotorhazard.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
-		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
-		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
-		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
-		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
-		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
-		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
-		localStorage['rotorhazard.display_laps_reversed'] = JSON.stringify(this.display_laps_reversed);
-		localStorage['rotorhazard.display_chan_freq'] = JSON.stringify(this.display_chan_freq);
+		for (var idx in this.rhStorageItems) {
+			var entry = this.rhStorageItems[idx];
+			localStorage[entry.name] = JSON.stringify(entry.getVal());
+		}
 		return true;
 	},
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
-			if (localStorage['rotorhazard.voice_string_language']) {
-				this.voice_string_language = JSON.parse(localStorage['rotorhazard.voice_string_language']);
-			}
-			if (localStorage['rotorhazard.voice_language']) {
-				this.voice_language = JSON.parse(localStorage['rotorhazard.voice_language']);
-			}
-			if (localStorage['rotorhazard.voice_volume']) {
-				this.voice_volume = JSON.parse(localStorage['rotorhazard.voice_volume']);
-			}
-			if (localStorage['rotorhazard.voice_rate']) {
-				this.voice_rate = JSON.parse(localStorage['rotorhazard.voice_rate']);
-			}
-			if (localStorage['rotorhazard.voice_pitch']) {
-				this.voice_pitch = JSON.parse(localStorage['rotorhazard.voice_pitch']);
-			}
-			if (localStorage['rotorhazard.voice_callsign']) {
-				this.voice_callsign = parseIntOrBoolean(localStorage['rotorhazard.voice_callsign']);
-			}
-			if (localStorage['rotorhazard.voice_lap_count']) {
-				this.voice_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_count']);
-			}
-			if (localStorage['rotorhazard.voice_team_lap_count']) {
-				this.voice_team_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_team_lap_count']);
-			}
-			if (localStorage['rotorhazard.voice_lap_time']) {
-				this.voice_lap_time = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_time']);
-			}
-			if (localStorage['rotorhazard.voice_race_timer']) {
-				this.voice_race_timer = parseIntOrBoolean(localStorage['rotorhazard.voice_race_timer']);
-			}
-			if (localStorage['rotorhazard.voice_race_winner']) {
-				this.voice_race_winner = parseIntOrBoolean(localStorage['rotorhazard.voice_race_winner']);
-			}
-			if (localStorage['rotorhazard.voice_split_timer']) {
-				this.voice_split_timer = JSON.parse(localStorage['rotorhazard.voice_split_timer']);
-			}
-			if (localStorage['rotorhazard.tone_volume']) {
-				this.tone_volume = JSON.parse(localStorage['rotorhazard.tone_volume']);
-			}
-			if (localStorage['rotorhazard.beep_crossing_entered']) {
-				this.beep_crossing_entered = JSON.parse(localStorage['rotorhazard.beep_crossing_entered']);
-			}
-			if (localStorage['rotorhazard.beep_crossing_exited']) {
-				this.beep_crossing_exited = JSON.parse(localStorage['rotorhazard.beep_crossing_exited']);
-			}
-			if (localStorage['rotorhazard.beep_manual_lap_button']) {
-				this.beep_manual_lap_button = JSON.parse(localStorage['rotorhazard.beep_manual_lap_button']);
-			}
-			if (localStorage['rotorhazard.beep_race_leader_lap']) {
-				this.beep_race_leader_lap = JSON.parse(localStorage['rotorhazard.beep_race_leader_lap']);
-			}
-			if (localStorage['rotorhazard.beep_race_winner_declared']) {
-				this.beep_race_winner_declared = JSON.parse(localStorage['rotorhazard.beep_race_winner_declared']);
-			}
-			if (localStorage['rotorhazard.beep_cluster_connect']) {
-				this.beep_cluster_connect = JSON.parse(localStorage['rotorhazard.beep_cluster_connect']);
-			}
-			if (localStorage['rotorhazard.use_mp3_tones']) {
-				this.use_mp3_tones = JSON.parse(localStorage['rotorhazard.use_mp3_tones']);
-			}
-			if (localStorage['rotorhazard.beep_on_first_pass_button']) {
-				this.beep_on_first_pass_button = JSON.parse(localStorage['rotorhazard.beep_on_first_pass_button']);
-			}
-			if (localStorage['rotorhazard.schedule_m']) {
-				this.schedule_m = JSON.parse(localStorage['rotorhazard.schedule_m']);
-			}
-			if (localStorage['rotorhazard.schedule_s']) {
-				this.schedule_s = JSON.parse(localStorage['rotorhazard.schedule_s']);
-			}
-			if (localStorage['rotorhazard.indicator_beep_volume']) {
-				this.indicator_beep_volume = JSON.parse(localStorage['rotorhazard.indicator_beep_volume']);
-			}
-			if (localStorage['rotorhazard.min_lap']) {
-				this.min_lap = JSON.parse(localStorage['rotorhazard.min_lap']);
-			}
-			if (localStorage['rotorhazard.admin']) {
-				this.admin = JSON.parse(localStorage['rotorhazard.admin']);
-			}
-			if (localStorage['rotorhazard.primaryPilot']) {
-				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
-			}
-			if (localStorage['rotorhazard.display_lap_id']) {
-				this.display_lap_id = JSON.parse(localStorage['rotorhazard.display_lap_id']);
-			}
-			if (localStorage['rotorhazard.display_time_start']) {
-				this.display_time_start = JSON.parse(localStorage['rotorhazard.display_time_start']);
-			}
-			if (localStorage['rotorhazard.display_time_first_pass']) {
-				this.display_time_first_pass = JSON.parse(localStorage['rotorhazard.display_time_first_pass']);
-			}
-			if (localStorage['rotorhazard.display_laps_reversed']) {
-				this.display_laps_reversed = JSON.parse(localStorage['rotorhazard.display_laps_reversed']);
-			}
-			if (localStorage['rotorhazard.display_chan_freq']) {
-				this.display_chan_freq = JSON.parse(localStorage['rotorhazard.display_chan_freq']);
+			for (var idx in this.rhStorageItems) {
+				var entry = this.rhStorageItems[idx];
+				if (localStorage[entry.name]) {
+					entry.setVal(localStorage[entry.name]);
+				}
 			}
 			return true;
 		}
 		return false;
 	},
-}
+	importAudioSettingsDataStr: function(dataStr) {
+		try {
+			if (dataStr) {
+				var lines_arr = dataStr.split("\n");
+				for (var line_idx in lines_arr) {
+					var line_str = lines_arr[line_idx];
+					if (line_str && line_str.length > 0 && line_str[0] != '#') {
+						var keyValArr = line_str.split("=");
+						if (keyValArr.length > 1) {
+							var matchedFlag = false;
+							for (var idx in rotorhazard.rhStorageItems) {
+								var entry = rotorhazard.rhStorageItems[idx];
+								if (entry.isAudio && keyValArr[0] == entry.name) {
+									entry.setVal(keyValArr[1]);
+									matchedFlag = true;
+									break;
+								}
+							}
+							if (!matchedFlag) {
+								console.error("Error importing audio settings; invalid key: " + keyValArr[0])
+							}
+						}
+					}
+				}
+				rotorhazard.saveData();
+				return true;
+			}
+		} catch(ex) {
+			console.error("Error importing audio settings: " + ex)
+		}
+		return false;
+	},
+	importAudioSettingsFile: function(fileNameStr, callBackFn) {
+		try {
+			var fr = new FileReader();
+			fr.onload = function () {
+				rotorhazard.importAudioSettingsDataStr(fr.result);
+				if (callBackFn) {
+					callBackFn();
+				}
+			}
+			fr.readAsText(fileNameStr);
+		} catch(ex) {
+			console.error("Error loading audio settings file: " + ex)
+		}
+	},
+	getAudioSettingsStr: function(date) {
+		var outData = "";
+		if (date) {
+			outData += "# RotorHazard Audio Settings " + this.getCurDateTimeLongStr(date) + "\n";
+		}
+		for (var idx in rotorhazard.rhStorageItems) {
+			var entry = rotorhazard.rhStorageItems[idx];
+			if (entry.isAudio) {
+				outData += entry.name + "=" + JSON.stringify(entry.getVal()) + "\n";
+			}
+		}
+		return outData;
+	},
+	getCurDateTimeLongStr: function(date) {
+		var options = { year: "numeric", month: "short", day: "numeric",
+						hour: "2-digit", minute: "2-digit", second: "2-digit" };
+		return date.toLocaleTimeString("en-us", options);
+	},
+	getCurDateTimeNumStr: function(date) {
+	function pad2(number) { return (number < 10 ? '0' : '') + number }
+	return date.getFullYear() + pad2(date.getMonth()) + pad2(date.getDay()) + '_' +
+			pad2(date.getHours()) + pad2(date.getMinutes()) + pad2(date.getSeconds());
+	},
+	loadDefaultAudioSettings: function() {
+		return rotorhazard.importAudioSettingsDataStr(defaultAudioSettingsStr);
+	},
+};
+
+var defaultAudioSettingsStr = rotorhazard.getAudioSettingsStr(null);
 
 // deferred timer callbacks (time until race)
 rotorhazard.timer.deferred.callbacks.start = function(timer){
@@ -1149,24 +1287,29 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 	}
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
+	if (rotorhazard.has_server_sync && timer.warn_until < window.performance.now()) {
+		$('.timing-clock .warning').hide();
+	}
 	if (rotorhazard.voice_race_timer != 0) {
-		if (timer.time_s < -3600 && !(timer.time_s % -3600)) { // 2+ hour callout
-			var hours = timer.time_s / -3600;
+		if (timer.time_tenths < -36000 && !(timer.time_tenths % -36000)) { // 2+ hour callout
+			var hours = timer.time_tenths / -36000;
 			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (timer.time_s == -3600) {
+		} else if (timer.time_tenths == -36000) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
-		} else if (timer.time_s == -1800) {
+		} else if (timer.time_tenths == -18000) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s > -60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
-			var minutes = timer.time_s / -60;
+		} else if (timer.time_tenths == -6000) {
+			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_tenths < -600 && timer.time_tenths >= -3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
+			var minutes = timer.time_tenths / -600;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s == -60) {
+		} else if (timer.time_tenths == -600) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
-		} else if (timer.time_s == -30) {
+		} else if (timer.time_tenths == -300) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_s == -10) {
+		} else if (timer.time_tenths == -100) {
 			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
-		}else if (timer.time_s == -5) {
+		}else if (timer.time_tenths == -50) {
 			speak('<div>' + __l('Next race begins in') + ' 5 ' + __l('Seconds') + '</div>', true);
 		}
 	}
@@ -1174,63 +1317,50 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.stop = function(timer){
+	$('.timing-clock .warning').hide();
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
+	rotorhazard.timer.deferred.stop();
 	$('.time-display').html(__('Wait'));
+}
+rotorhazard.timer.deferred.callbacks.self_resync = function(timer){
+	// display resync warning
+	if (rotorhazard.has_server_sync) {
+		$('.timing-clock .warning .value').text(__('recovery'));
+	}
+	timer.warn_until = window.performance.now() + 3000;
+	$('.timing-clock .warning').show();
 }
 
 // race/staging timer callbacks
+rotorhazard.timer.race.phased_staging = true;
+
 rotorhazard.timer.race.callbacks.start = function(timer){
 	$('.time-display').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
-	if (timer.staging_tones == TONES_ONE
-		&& timer.max_delay >= 1) {
-		// beep on start if single staging tone
-		if (rotorhazard.use_mp3_tones) {
-			play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-		}
-		else {
-			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		}
-	}
 }
+
 rotorhazard.timer.race.callbacks.step = function(timer){
-	if (timer.warn_until < window.performance.now()) {
+	if (rotorhazard.has_server_sync && timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_s < 0
-		&& timer.time_s >= -timer.max_delay) {
+	if (timer.time_tenths < 0) {
 		// time before race begins (staging)
-		if (timer.hidden_staging
-			&& timer.staging_tones == TONES_ALL) {
-			// beep every second during staging if timer is hidden
-			if (timer.time_s * 10 % 10 == 0) {
-				if (rotorhazard.use_mp3_tones) {
-					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-				}
-				else {
-					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-				}
+		if (timer.time_staging_tenths < (timer.staging_tones*10)
+			&& timer.time_staging_tenths >= 0
+			&& timer.time_staging_tenths % 10 == 0
+			&& timer.time_staging_tenths != timer.staging_cb_tic) {
+			timer.staging_cb_tic = timer.time_staging_tenths;
+			if (rotorhazard.use_mp3_tones) {
+				play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 			}
-		} else if (timer.time_s == -30
-			|| timer.time_s == -20
-			|| timer.time_s == -10) {
-			speak('<div>' + __l('Starting in') + ' ' + (-timer.time_s) + ' ' + __l('Seconds') + '</div>', true);
-		} else if (timer.staging_tones == TONES_ALL
-			&& timer.time_s >= -5) {
-			// staging beep for last 5 seconds before start
-			if (timer.time_s * 10 % 10 == 0) {
-				if (rotorhazard.use_mp3_tones) {
-					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-				}
-				else {
-					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-				}
+			else {
+				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 			}
 		}
-	} else if (timer.time_s == 0 ||
-		(!timer.count_up && timer.time_s == timer.duration)
+	} else if (timer.time_tenths == 0 ||
+		(!timer.count_up && timer.time_tenths == timer.duration_tenths)
 		) {
 		// play start tone
 		if (rotorhazard.use_mp3_tones) {
@@ -1241,8 +1371,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		}
 	} else {
 		if (!timer.count_up) {
-			if (timer.time_s <= 5) { // Final seconds
-				if (timer.time_s * 10 % 10 == 0) {
+			if (timer.time_tenths <= 50 && timer.time_tenths > 0) { // Final seconds
+				if (timer.time_tenths % 10 == 0) {
 					if (rotorhazard.use_mp3_tones) {
 						play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 					}
@@ -1250,7 +1380,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 					}
 				}
-			} else if (timer.time_s == 10) { // announce 10s only when counting down
+			} else if (timer.time_tenths == 100) { // announce 10s only when counting down
 				if (rotorhazard.voice_race_timer != 0)
 					speak('<div>10 ' + __l('Seconds') + '</div>', true);
 			}
@@ -1258,23 +1388,27 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 
 		if (rotorhazard.voice_race_timer == 1 ||
 				(rotorhazard.voice_race_timer == 2 && (!timer.count_up))) {
-			if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout (endurance)
-				var hours = timer.time_s / 3600;
+			if (timer.time_tenths > 36000 && !(timer.time_tenths % 36000)) { // 2+ hour callout (endurance)
+				var hours = timer.time_tenths / 36000;
 				speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
-			} else if (timer.time_s == 3600) {
+			} else if (timer.time_tenths == 36000) {
 				speak('<div>1 ' + __l('Hour') + '</div>', true);
-			} else if (timer.time_s == 1800) {
+			} else if (timer.time_tenths == 18000) {
 				speak('<div>30 ' + __l('Minutes') + '</div>', true);
-			} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
-				var minutes = timer.time_s / 60;
+			} else if (timer.time_tenths > 600 && timer.time_tenths <= 3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
+				var minutes = timer.time_tenths / 600;
 				speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
-			} else if (timer.time_s == 60) {
+			} else if (timer.time_tenths == 600) {
 				speak('<div>1 ' + __l('Minute') + '</div>', true);
-			} else if (timer.time_s == 30) {
+			} else if (timer.time_tenths == 300) {
 				speak('<div>30 ' + __l('Seconds') + '</div>', true);
 			}
 		}
 	}
+	$('.time-display').html(timer.renderHTML());
+}
+rotorhazard.timer.race.callbacks.stop = function(timer){
+	$('.timing-clock .warning').hide();
 	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
@@ -1289,6 +1423,9 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 }
 rotorhazard.timer.race.callbacks.self_resync = function(timer){
 	// display resync warning
+	if (rotorhazard.has_server_sync) {
+		$('.timing-clock .warning .value').text(__('recovery'));
+	}
 	timer.warn_until = window.performance.now() + 3000;
 	$('.timing-clock .warning').show();
 }
@@ -1297,12 +1434,21 @@ rotorhazard.timer.race.callbacks.self_resync = function(timer){
 var socket = false;
 var standard_message_queue = [];
 var interrupt_message_queue = [];
+var system_messages = [];
 
 function get_standard_message() {
 	if (rotorhazard.show_messages) {
 		msg = standard_message_queue[0];
 		$('#banner-msg .message').html(msg);
 		$('#banner-msg').slideDown();
+		setTimeout(function(){
+			$('#banner-msg').slideUp(400, function(){
+				standard_message_queue.shift()
+				if (standard_message_queue.length) {
+					get_standard_message()
+				}
+			});
+		}, 4000);
 	}
 }
 
@@ -1330,6 +1476,37 @@ function get_interrupt_message() {
 	}
 }
 
+function push_message(message, interrupt=false) {
+	system_messages.push(message);
+	if (interrupt) {
+		interrupt_message_queue.push(message);
+		if (interrupt_message_queue.length == 1) {
+			get_interrupt_message();
+		}
+	} else {
+		standard_message_queue.push(message);
+		if (standard_message_queue.length == 1) {
+			get_standard_message();
+		}
+	}
+
+	update_system_message_display();
+	$('#message-notification').prop('hidden', false);
+}
+
+function update_system_message_display() {
+	$('#message-count').html(system_messages.length);
+	$('#message-queue').empty();
+	if (system_messages.length) {
+		for (var m in system_messages) {
+			var sysmsg = system_messages[m];
+			$('#message-queue').append('<li><div class="message">' + sysmsg + '</div><button class="no-style">×<span class="screen-reader-text"> dismiss</span></button></li>');
+		}
+	} else {
+		$('#message-notification').prop('hidden', true);
+	}
+}
+
 function init_popup_generics() {
 	$('.open-mfp-popup').magnificPopup({
 		type:'inline',
@@ -1337,11 +1514,21 @@ function init_popup_generics() {
 	});
 }
 
-// restore local settings
-if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
-	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
+function get_default_articulate_voice() {
+	var voices = $().articulate('getVoices');
+	for (var i in voices) {
+		var voice = voices[i]
+		if (voice && voice.name && voice.name.includes && voice.name.includes('English')) {
+			return voice.name;
+		}
+	}
+	return null;
 }
+
+// restore local settings
+rotorhazard.voice_language = get_default_articulate_voice();  // set initial default voice
 rotorhazard.restoreData();
+
 
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
@@ -1452,14 +1639,10 @@ jQuery(document).ready(function($){
 		}
 	}
 
-	$(document).on('click', 'button', function(el){
-		this.blur();
-	});
-
 	// Popup generics
 	init_popup_generics();
 
-	$('.cancel').click(function() {
+	$(document).on('click', '.cancel', function(el) {
 		$.magnificPopup.close();
 	});
 
@@ -1475,29 +1658,42 @@ jQuery(document).ready(function($){
 		}
 	});
 
+	// display socket status
+	function socket_listener() {
+		if (socket.connected) {
+			$('.socket-warning').slideUp();
+		} else {
+			$('.socket-warning').slideDown();
+		}
+	}
+	setInterval(socket_listener, 1000);
+
 	// popup messaging
 	socket.on('priority_message', function (msg) {
-		if (msg.interrupt) {
-			interrupt_message_queue.push(msg.message);
-			if (interrupt_message_queue.length == 1) {
-				get_interrupt_message()
-			}
-		} else {
-			standard_message_queue.push(msg.message);
-			if (standard_message_queue.length == 1) {
-				get_standard_message()
-			}
+		if (!msg.admin_only || rotorhazard.admin) {
+			push_message(msg.message, msg.interrupt);
 		}
 	});
 
-	$(document).on('click', '#banner-msg', function(el){
-		$('#banner-msg').slideUp(400, function(){
-			standard_message_queue.shift()
-			if (standard_message_queue.length) {
-				get_standard_message()
-			}
-		});
+	socket.on('clear_priority_messages', function () {
+		clear_system_messages();
 	});
+
+	$(document).on('click', '#message-dismiss-all', function(el){
+		clear_system_messages();
+	});
+
+	$(document).on('click', '#message-queue button', function(el){
+		var index = $(this).parent().index();
+		system_messages.splice(index, 1);
+		update_system_message_display();
+	});
+
+	function clear_system_messages() {
+		system_messages = [];
+		update_system_message_display();
+		$.magnificPopup.close();
+	}
 
 	document.onkeyup = function(e) {
 		if (e.which == 27) {
@@ -1517,11 +1713,31 @@ jQuery(document).ready(function($){
 		location.reload();
 	});
 
+	// server restart
+	$('button#restart_server').click(function (event) {
+		socket.emit('restart_server');
+		return false;
+	});
+
+	socket.on('restart_required', function (msg) {
+		$('.restart-warning').slideDown();
+	});
+
 	// load needed data from server when required
 	socket.on('load_all', function (msg) {
+		if (rotorhazard.server_instance_token && rotorhazard.server_instance_token != msg.server_instance_token) {
+			location.reload(true);
+		} else {
+			rotorhazard.server_instance_token = msg.server_instance_token;
+		}
+
 		if (typeof(data_dependencies) != "undefined") {
 			socket.emit('load_data', {'load_types': data_dependencies});
 		}
+	});
+
+	socket.on('refresh_page', function (msg) {
+		location.reload(true);
 	});
 
 	// store language strings
@@ -1534,11 +1750,19 @@ jQuery(document).ready(function($){
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type, meta, display_starts=false) {
 	if (typeof(display_type) === 'undefined')
-		display_type = 'by_race_time';
+		var display_type = 'by_race_time';
 	if (typeof(meta) === 'undefined') {
-		meta = new Object;
-		meta.team_racing_mode = false;
+		var meta = new Object;
+		meta.team_racing_mode = RACING_MODE_INDV;
 		meta.start_behavior = 0;
+		meta.consecutives_count = 0;
+		meta.primary_leaderboard = null;
+	}
+
+	if (display_type == 'round') {
+		var show_points = true;
+	} else {
+		var show_points = false;
 	}
 
 	if (meta.start_behavior == 2) {
@@ -1553,7 +1777,7 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 	var header_row = $('<tr>');
 	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
 	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
-	if (meta.team_racing_mode) {
+	if (meta.team_racing_mode == RACING_MODE_TEAM) {
 		header_row.append('<th class="team">' + __('Team') + '</th>');
 	}
 	if (display_starts == true) {
@@ -1572,12 +1796,21 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="fast">' + __('Fastest') + '</th>');
+		if (display_type == 'by_fastest_lap') {
+			header_row.append('<th class="source">' + __('Source') + '</th>');
+		}
 	}
 	if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-		header_row.append('<th class="consecutive">' + __('3 Consecutive') + '</th>');
+		header_row.append('<th class="consecutive">' + __('Consecutive') + '</th>');
+		if (display_type == 'by_consecutives') {
+			header_row.append('<th class="source">' + __('Source') + '</th>');
+		}
+	}
+	if (show_points && 'primary_points' in meta) {
+		header_row.append('<th class="points">' + __('Points') + '</th>');
 	}
 	header.append(header_row);
 	table.append(header);
@@ -1587,9 +1820,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 	for (var i in leaderboard) {
 		var row = $('<tr>');
 
-		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
+		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
-		if (meta.team_racing_mode) {
+		if (meta.team_racing_mode == RACING_MODE_TEAM) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
 		}
 		if (display_starts == true) {
@@ -1625,49 +1858,78 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			var lap = leaderboard[i].fastest_lap;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
+
+			var el = $('<td class="fast">'+ lap +'</td>');
+
 			if (leaderboard[i].fastest_lap_source) {
 				var source = leaderboard[i].fastest_lap_source;
-				row.append('<td class="fast">'+ lap +'</td>');
-
-				if (source.note) {
-					var source_text = source.note
+				if (source.round) {
+					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
 				} else {
-					var source_text = __('Heat') + ' ' + source.heat;
+					var source_text = source.displayname;
 				}
-				source_text += ' / ' + __('Round') + ' ' + source.round;
-
-				row.data('source', source_text);
-				row.attr('title', source_text);
 			} else {
-				row.append('<td class="fast">'+ lap +'</td>');
+				var source_text = 'None';
 			}
 
+			if (display_type == 'heat') {
+				el.data('source', source_text);
+				el.attr('title', source_text);
+			}
+
+			if ('min_lap' in rotorhazard
+				&& rotorhazard.min_lap > 0
+				&& leaderboard[i].fastest_lap_raw > 0
+				&& (rotorhazard.min_lap * 1000) > leaderboard[i].fastest_lap_raw
+				) {
+				el.addClass('min-lap-warning');
+			}
+
+			row.append(el);
+
+			if (display_type == 'by_fastest_lap') {
+				row.append('<td class="source">'+ source_text +'</td>');
+			}
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-			var lap = leaderboard[i].consecutives;
-			if (!lap || lap == '0:00.000')
+			var data = leaderboard[i];
+			if (!data.consecutives || data.consecutives == '0:00.000') {
 				lap = '&#8212;';
+			} else {
+				lap = data.consecutives_base + '/' + data.consecutives;
+			}
+
+			var el = $('<td class="consecutive">'+ lap +'</td>');
+
 			if (leaderboard[i].consecutives_source) {
 				var source = leaderboard[i].consecutives_source;
-				row.append('<td class="consecutive">'+ lap +'</td>');
-
-				if (source.note) {
-					var source_text = source.note;
+				if (source.round) {
+					var source_text = source.displayname + ' / ' + __('Round') + ' ' + source.round;
 				} else {
-					var source_text = __('Heat') + ' ' + source.heat;
+					var source_text = source.displayname;
 				}
-				source_text += ' / ' + __('Round') + ' ' + source.round;
-
-				row.data('source', source_text);
-				row.attr('title', source_text);
 			} else {
-				row.append('<td class="consecutive">'+ lap +'</td>');
+				var source_text = 'None';
+			}
+
+			if (display_type == 'heat') {
+				el.data('source', source_text);
+				el.attr('title', source_text);
+			}
+
+			row.append(el);
+
+			if (display_type == 'by_consecutives') {
+				row.append('<td class="source">'+ source_text +'</td>');
 			}
 		}
 
+		if (show_points && 'primary_points' in meta) {
+			row.append('<td class="points">' + leaderboard[i].points + '</td>');
+		}
 		body.append(row);
 	}
 
@@ -1680,15 +1942,21 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 		display_type = 'by_race_time';
 	if (typeof(meta) === 'undefined') {
 		meta = new Object;
-		meta.team_racing_mode = true;
+		meta.team_racing_mode = RACING_MODE_TEAM;
+		meta.consecutives_count = 0;
 	}
+	var coop_flag = (leaderboard.length == 1 && leaderboard[0].name == "Group")
 
 	var twrap = $('<div class="responsive-wrap">');
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
 	var header_row = $('<tr>');
-	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
-	header_row.append('<th class="team">' + __('Team') + '</th>');
+	if (coop_flag) {
+		header_row.append('<th class="team">' + __('Co-op') + '</th>');
+	} else {
+		header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
+		header_row.append('<th class="team">' + __('Team') + '</th>');
+	}
 	header_row.append('<th class="contribution">' + __('Contributors') + '</th>');
 	if (display_type == 'by_race_time') {
 		header_row.append('<th class="laps">' + __('Laps') + '</th>');
@@ -1698,7 +1966,7 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 		header_row.append('<th class="fast">' + __('Average Fastest') + '</th>');
 	}
 	if (display_type == 'by_avg_consecutives') {
-		header_row.append('<th class="consecutive">' + __('Average 3 Consecutive') + '</th>');
+		header_row.append('<th class="consecutive">' + __('Average') + ' ' + meta.consecutives_count + ' ' + __('Consecutive') + '</th>');
 	}
 	header.append(header_row);
 	table.append(header);
@@ -1707,7 +1975,9 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 
 	for (var i in leaderboard) {
 		var row = $('<tr>');
-		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
+		if (!coop_flag) {
+			row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
+		}
 		row.append('<td class="team">'+ leaderboard[i].name +'</td>');
 		row.append('<td class="contribution">'+ leaderboard[i].contributing + '/' + leaderboard[i].members + '</td>');
 		if (display_type == 'by_race_time') {
@@ -1734,6 +2004,51 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 			row.append('<td class="consecutive">'+ lap +'</td>');
 		}
 
+		body.append(row);
+	}
+
+	table.append(body);
+	twrap.append(table);
+	return twrap;
+}
+function build_ranking(ranking) {
+	var leaderboard = ranking.ranking;
+	var meta = ranking.meta;
+
+	if (!leaderboard || !meta?.rank_fields) {
+		return $('<p>' + __(meta.method_label) + " " + __('did not produce a ranking.') + '</p>');
+	}
+
+	var twrap = $('<div class="responsive-wrap">');
+	var table = $('<table class="leaderboard">');
+	var header = $('<thead>');
+	var header_row = $('<tr>');
+	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
+	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
+	if ('team_racing_mode' in meta && meta.team_racing_mode == RACING_MODE_TEAM) {
+		header_row.append('<th class="team">' + __('Team') + '</th>');
+	}
+	for (var f in meta.rank_fields) {
+		field = meta.rank_fields[f];
+		header_row.append('<th class="' + field.name + '">' + __(field.label) + '</th>');
+	}
+	header.append(header_row);
+	table.append(header);
+
+	var body = $('<tbody>');
+
+	for (var i in leaderboard) {
+		var row = $('<tr>');
+
+		row.append('<td class="pos">'+ (leaderboard[i].position != null ? leaderboard[i].position : '-') +'</td>');
+		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
+		if ('team_racing_mode' in meta && meta.team_racing_mode == RACING_MODE_TEAM) {
+			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
+		}
+		for (var f in meta.rank_fields) {
+			field = meta.rank_fields[f];
+			row.append('<td class="' + field.name + '">' + leaderboard[i][field.name] + '</td>');
+		}
 		body.append(row);
 	}
 
@@ -1821,6 +2136,16 @@ var freq = {
 		S6: 5839,
 		S7: 5878,
 		S8: 5914,
+		O1: 5669,
+		O2: 5705,
+		O3: 5768,
+		O4: 5804,
+		O5: 5839,
+		O6: 5876,
+		O7: 5912,
+		Q1: 5677,
+		Q2: 5794,
+		Q3: 5902,
 	},
 	getFObjbyFData: function(fData) {
 		var keyNames = Object.keys(this.frequencies);
@@ -1957,12 +2282,14 @@ var freq = {
 	updateBlock: function(fObj, node_idx) {
 		// populate channel block
 		var channelBlock = $('.channel-block[data-node="' + node_idx + '"]');
-		if (fObj.frequency == 0) {
+		if (fObj === null || fObj.frequency == 0) {
 			channelBlock.children('.ch').html('—');
 			channelBlock.children('.fr').html('');
+			channelBlock.attr('title', '');
 		} else {
 			channelBlock.children('.ch').html(fObj.key);
 			channelBlock.children('.fr').html(fObj.frequency);
+			channelBlock.attr('title', fObj.frequency);
 		}
 	},
 	updateBlocks: function() {
@@ -1970,6 +2297,7 @@ var freq = {
 		for (var i in rotorhazard.nodes) {
 			this.updateBlock(rotorhazard.nodes[i].fObj, i);
 		}
+		this.updateBlock(null, null);
 	}
 }
 
@@ -1980,6 +2308,7 @@ color_picker_el.append('<div id="color-picker-swatch">');
 color_picker_el.append('<input type="range" id="color-picker-hue" min="0" max="359">');
 color_picker_el.append('<input type="range" id="color-picker-sat" min="0" max="100">');
 color_picker_el.append('<input type="range" id="color-picker-lum" min="25" max="100">');
+color_picker_el.append('<input type="text" id="color-picker-hex" maxlength="7">');
 color_picker_el.append('<button id="color-picker-confirm">' + __('Select') + '</button>');
 
 function color_picker(loadColor=false, callback=false) {
@@ -1994,6 +2323,7 @@ function color_picker(loadColor=false, callback=false) {
 		callbacks: {
 			open: function() {
 				if (loadColor) {
+					$('#color-picker-hex').val(loadColor)
 					hslObj = hexToHsl(loadColor)
 					$('#color-picker-hue').val(hslObj.h)
 					$('#color-picker-sat').val(hslObj.s)
@@ -2008,11 +2338,9 @@ function color_picker(loadColor=false, callback=false) {
 				$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
 			},
 			beforeClose: function() {
-				var hue = $('#color-picker-hue').val()
-				var sat = $('#color-picker-sat').val()
-				var lum = $('#color-picker-lum').val()
+				var hex = $('#color-picker-hex').val();
 				if (typeof callback === 'function') {
-					callback(hue, sat, lum);
+					callback(hex);
 				}
 			}
 		}
@@ -2021,13 +2349,48 @@ function color_picker(loadColor=false, callback=false) {
 
 $(document).on('input', '#color-picker-hue', function (event) {
 	$('html').css('--color-picker-hue', $('#color-picker-hue').val());
+	var hue = $('#color-picker-hue').val();
+	var sat = $('#color-picker-sat').val();
+	var lum = $('#color-picker-lum').val();
+	$('#color-picker-hex').val(hslToHex(hue, sat, lum));
 });
 
 $(document).on('input', '#color-picker-sat', function (event) {
 	$('html').css('--color-picker-sat', $('#color-picker-sat').val() + '%');
+	var hue = $('#color-picker-hue').val();
+	var sat = $('#color-picker-sat').val();
+	var lum = $('#color-picker-lum').val();
+	$('#color-picker-hex').val(hslToHex(hue, sat, lum));
 });
 
 $(document).on('input', '#color-picker-lum', function (event) {
+	$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
+	var hue = $('#color-picker-hue').val();
+	var sat = $('#color-picker-sat').val();
+	var lum = $('#color-picker-lum').val();
+	$('#color-picker-hex').val(hslToHex(hue, sat, lum));
+});
+
+$(document).on('change', '#color-picker-hex', function (event) {
+	var regex = /^(#?)([0-9A-F]{6})$/i;
+	var input = $('#color-picker-hex').val()
+	if (regex.test(input)) {
+		var loadColor = input.match(regex)[2];
+		hslObj = hexToHsl(loadColor)
+		$('#color-picker-hue').val(hslObj.h)
+		$('#color-picker-sat').val(hslObj.s)
+		$('#color-picker-lum').val(hslObj.l)
+		if (!input.match(regex)[1]) {
+			$('#color-picker-hex').val('#' + input);
+		}
+	} else {
+		$('#color-picker-hue').val(0);
+		$('#color-picker-sat').val(0);
+		$('#color-picker-lum').val(50);
+		$('#color-picker-hex').val('');
+	}
+	$('html').css('--color-picker-hue', $('#color-picker-hue').val());
+	$('html').css('--color-picker-sat', $('#color-picker-sat').val() + '%');
 	$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
 });
 

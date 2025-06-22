@@ -1,6 +1,8 @@
 # Real Time Clock
 
-The standard Raspberry Pi does not feature a real-time clock (RTC) -- when it has an internet connection the Pi will fetch the current date and time from an online server, but if an internet connection is not available when the Pi starts up, its date/time will be wrong.  (It will usually revert to the last date/time it was using, and go from there.)
+**Note:** These instructions are not compatible with the Raspberry Pi 5. The Pi 5 has an onboard real-time clock, so the recommended setup is to install a [backup battery](https://www.raspberrypi.com/documentation/computers/raspberry-pi-5.html#adding-a-backup-battery) onto the Pi 5 board (and not install an external RTC module). 
+
+The standard Raspberry Pi (before the Pi 5) does not feature a real-time clock (RTC) -- when it has an internet connection the Pi will fetch the current date and time from an online server, but if an internet connection is not available when the Pi starts up, its date/time will be wrong.  (It will usually revert to the last date/time it was using, and go from there.)
 
 Adding a real-time clock module addresses this problem.  The [DS3231](https://www.adafruit.com/product/3013) module is recommended, as it keeps very accurate time.  There are other, cheaper modules that will also do the job (albeit with less precision), such as the [PCF8523](https://www.adafruit.com/product/3295) and [DS1307](https://www.adafruit.com/product/3296).
 
@@ -8,7 +10,7 @@ The RTC module uses an onboard coin-cell battery ([CR1220](https://www.adafruit.
 
 ### Wiring
 
-If you're using an [S32_BPill PCB](../resources/S32_BPill_PCB/README.md), mounting points for two types of RTC modules are provided. For other PCBs, see below.
+If you're using an [S32_BPill PCB &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources/S32_BPill_PCB/README.md), mounting points for two types of RTC modules are provided. For other PCBs, see below.
 
 The RTC module connects to the Raspberry Pi via the I2C bus.  The following four pads on the RTC module need to be wired to the corresponding connections going to the Pi:  `Vin, GND, SCL, SDA`.  If using the DS3231 or PCF8523, the Vin pad can be wired to 3.3V or 5V.  For the DS1307 use 5V.  The other pads (besides those four) on the RTC module should be left unconnected.
 
@@ -16,7 +18,7 @@ Here is an example of wiring a DS3231 module via a Delta5 V2 PCB:
 
 ![DS3231 wiring](img/RH_DS3231_D5PCB.jpg)
 
-If you're using one of the newer (Arduino-based) [RotorHazard PCBs](../resources/PCB/README.md), there are several places on the board where these connections are available.
+If you're using one of the newer (Arduino-based) [RotorHazard PCBs &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources/PCB/README.md), there are several places on the board where these connections are available.
 
 ### Configuration
 

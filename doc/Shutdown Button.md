@@ -2,7 +2,7 @@
 
 ![Button and LED](img/RH_S32_BPill_SDButton.jpg)
 
-When the RotorHazard S32_BPill hardware is used, the standard setup is to have a shutdown button and a status (AUX) LED wired to the PCB. See the [RotorHazard S32_BPill Case Build Guide](../resources/S32_BPill_case/detailedCaseBuild.md) for details on the wiring. The S32_BPill PCB also supports a buzzer, which provides feedback sounds.
+When the RotorHazard S32_BPill hardware is used, the standard setup is to have a shutdown button and a status (AUX) LED wired to the PCB. See the [RotorHazard S32_BPill Case Build Guide &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources/S32_BPill_case/detailedCaseBuild.md) for details on the wiring. The S32_BPill PCB also supports a buzzer, which provides feedback sounds.
 
 For the shutdown features to operate correctly, the Raspberry Pi needs have its '/boot/config.txt' file configured as [described](Software%20Setup.md#s32btconfig) in the '[doc/Software Setup.md](Software%20Setup.md)' document.
 
@@ -18,7 +18,7 @@ When the RotorHazard server is running, the button, LED and buzzer will operate 
 
 * If a shutdown is initiated via the RotorHazard web GUI, the buzzer and LED feedback will be similar to what is described above.
 
-When the RotorHazard server is not running there will be less LED and buzzer feedback, but the button may still be used to shut down the system (as long as the '/boot/config.txt' file is configured as [described](Software%20Setup.md#s32btconfig)). In this case the button needs to be held in longer (5-10 seconds), until a buzzer beep is emitted and the LED is steady on. After that, the buzzer and LED feedback should be similar to what is described above.
+*The following applies when using a Raspberry Pi 4 or older (not Pi 5)*: When the RotorHazard server is not running there will be less LED and buzzer feedback, but the button may still be used to shut down the system (as long as the '/boot/config.txt' file is configured as [described](Software%20Setup.md#s32btconfig)). In this case the button needs to be held in longer (5-10 seconds), until a buzzer beep is emitted and the LED is steady on. After that, the buzzer and LED feedback should be similar to what is described above.
 
 ### Status (AUX) LED Patterns
 

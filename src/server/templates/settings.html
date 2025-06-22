@@ -1,31 +1,39 @@
 {% extends "layout.html" %} {% block title %}{{ __('Settings') }}{% endblock %} {% block head %}
 <script type="text/javascript" src="./static/Blob.js"></script>
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='showdown-1.9.1/showdown.min.js') }}"></script>
 
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
 		'language',
+		{
+			'type': 'ui',
+			'value': 'settings'
+		},
 		'node_data',
 		'environmental_data',
 		'frequency_data',
-		'heat_data',
-		'class_data',
-		'pilot_data',
-		'race_format',
 		'node_tuning',
 		'enter_and_exit_at_levels',
 		'start_thresh_lower_amount',
 		'start_thresh_lower_duration',
-		'min_lap',
-		'race_status',
-		'team_racing_mode',
+		'action_setup',
+		'event_actions',
 		'led_effects',
 		'led_effect_setup',
 		'cluster_status',
 		'vrx_list',
-		'backups_list',
+		'upd_cfg_files_list',
 		'exporter_list',
+		'plugin_list',
+		{
+			'type': 'config',
+			'value': {
+				'GENERAL': ['SECONDARIES'],
+				'SENSORS': [],
+			}
+		}
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
@@ -65,54 +73,68 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
-		$('#voice_callsign').val(rotorhazard.voice_callsign);
-		$('#voice_lap_count').val(rotorhazard.voice_lap_count);
-		$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
-		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
-		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
-		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
-		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
-		$().articulate('volume', rotorhazard.voice_volume);
-		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
-		$('#voice_volume_value').html($('#set_voice_volume').val());
-		$().articulate('rate', rotorhazard.voice_rate);
-		$('#voice_rate_value').html(rotorhazard.voice_rate.toFixed(2));
-		$('#set_voice_rate').val(rotorhazard.voice_rate);
-		$().articulate('pitch', rotorhazard.voice_pitch);
-		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
-		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
-		$('#set_tone_volume').val(volume_logsl.position(rotorhazard.tone_volume));
-		$('#tone_volume_value').html($('#set_tone_volume').val());
-		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
-		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
-		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
-		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
-		$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
-		$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
-		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
-		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
-		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
-		$('#indicator_volume_value').html($('#set_indicator_volume').val());
+		var populate_audio_settings = function() {
+			$('#voice_callsign').val(rotorhazard.voice_callsign);
+			$('#voice_lap_count').val(rotorhazard.voice_lap_count);
+			$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
+			$('#voice_lap_time').val(rotorhazard.voice_lap_time);
+			$('#voice_race_timer').val(rotorhazard.voice_race_timer);
+			$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+			$('#voice_if_node_finished').val(rotorhazard.voice_if_node_finished);
+			$('#voice_split_timer').val(rotorhazard.voice_split_timer);
+			$('#voice_race_leader').val(rotorhazard.voice_race_leader);
+			$().articulate('volume', rotorhazard.voice_volume);
+			$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
+			$('#voice_volume_value').html($('#set_voice_volume').val());
+			$().articulate('rate', rotorhazard.voice_rate);
+			$('#voice_rate_value').html(rotorhazard.voice_rate.toFixed(2));
+			$('#set_voice_rate').val(rotorhazard.voice_rate);
+			$().articulate('pitch', rotorhazard.voice_pitch);
+			$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
+			$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+			$('#set_tone_volume').val(volume_logsl.position(rotorhazard.tone_volume));
+			$('#tone_volume_value').html($('#set_tone_volume').val());
+			$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
+			$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
+			$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+			$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
+			$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
+			$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
+			$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
+			$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
+			$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
+			$('#indicator_volume_value').html($('#set_indicator_volume').val());
+			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
+			if (!rotorhazard.voice_language) {  // if no current default then select first English voice
+				rotorhazard.voice_language = get_default_articulate_voice();
+				rotorhazard.saveData();
+				if ($('#set_voice_language').children('option').length > 0) {
+					$('#set_voice_language').val(rotorhazard.voice_language);
+				}
+			} else {
+				if ($('#set_voice_language').children('option').length > 0) {
+					$('#set_voice_language').val(rotorhazard.voice_language);
+					if (!($('#set_voice_language').val())) {  // if no match then select first English voice
+						rotorhazard.voice_language = get_default_articulate_voice();
+						rotorhazard.saveData();
+						$('#set_voice_language').val(rotorhazard.voice_language);
+					}
+				}
+			}
+		};
+		populate_audio_settings();
 
-		if ('{{ getOption('ledBrightness') }}' != 'False') {
-			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+		if ('{{ getConfig('LED', 'ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getConfig('LED', 'ledBrightness') }} ));
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
-		if ('{{ getOption('calibrationMode') }}' == '1') {
+		if ('{{ getConfig('TIMING', 'calibrationMode') }}' == '1') {
 			$('#set_calibrationMode').val(1);
 		}
 
 		if ('{{ getOption('pilotSort') }}' == 'callsign') {
 			$('#set_pilotSort').val('callsign');
-		}
-
-		if ('{{ getOption('nextHeatBehavior') }}' == '1') {
-			$('#set_next_heat_behavior').val(1);
-		}
-
-		if (parseInt('{{ getOption('ledColorMode') }}')) {
-			$('#set_ledColorMode').val('{{ getOption('ledColorMode') }}');
 		}
 
 		$('#unlock_race_format_button').html(svg_asset.lock);
@@ -130,45 +152,108 @@
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
 
-		socket.on('race_status', function (msg) {
-			switch (msg.race_status) {
-				case 1: // Race running
-				case 2: // Race stopped, clear or save laps
-				case 3: // Race staging
-					$('#set_race_format').prop('disabled', true);
-					$('#add_race_format').prop('disabled', true);
-					$('#unlock_race_format_button').prop('disabled', true);
-					$('#delete_race_format_button').prop('disabled', true);
-					$('#set_format_name').prop('disabled', true);
-					$('#set_race_mode').prop('disabled', true);
-					$('#set_fix_race_time').prop('disabled', true);
-					$('#set_start_delay_min').prop('disabled', true);
-					$('#set_start_delay_max').prop('disabled', true);
-					$('#set_staging_tones').prop('disabled', true);
-					$('#set_start_behavior').prop('disabled', true);
-					$('#set_number_laps_win').prop('disabled', true);
-					$('#set_win_condition').prop('disabled', true);
-					$('#set_team_racing_mode').prop('disabled', true);
-					break;
-				default: // Waiting to start new race
-					$('#set_race_format').prop('disabled', false);
-					$('#add_race_format').prop('disabled', false);
-					$('#unlock_race_format_button').prop('disabled', false);
-					$('#delete_race_format_button').prop('disabled', false);
-					$('#set_format_name').prop('disabled', false);
-					$('#set_race_mode').prop('disabled', false);
-					$('#set_fix_race_time').prop('disabled', false);
-					$('#set_start_delay_min').prop('disabled', false);
-					$('#set_start_delay_max').prop('disabled', false);
-					$('#set_staging_tones').prop('disabled', false);
-					$('#set_start_behavior').prop('disabled', false);
-					$('#set_number_laps_win').prop('disabled', false);
-					$('#set_win_condition').prop('disabled', false);
-					$('#set_team_racing_mode').prop('disabled', false);
+		// set up markdown converter
+		var panel_converter = new showdown.Converter({
+			ghCodeBlocks: true,
+			ghCompatibleHeaderId: true,
+			literalMidWordUnderscores: true,
+			simpleLineBreaks: true,
+			headerLevelStart: 3
+		});
 
-					socket.emit('load_data', {'load_types': [
-						'race_format',
-					]});
+		socket.on('update_server_messages', function (str) {
+			$('#server_messages').html(str);
+		});
+
+		socket.on('ui', function (msg) {
+			if (msg.page == 'settings') {
+				$('#custom-ui').empty();
+
+				for (var i in msg.panels) {
+					var panel = msg.panels[i];
+
+					var panel_el = $('<div class="panel collapsing active">');
+					panel_el.attr('id', 'ui-custom-' + panel.panel.name);
+					var panel_header_el = $('<div class="panel-header">');
+					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+					var panel_content_el = $('<div class="panel-content">');
+
+					// panel open/close
+					if (panel.panel.open) {
+						panel_el.addClass('open');
+						panel_content_el.show();
+					} else {
+						panel_el.removeClass('open');
+						panel_content_el.hide();
+					}
+
+					// add markdown content
+					for (var md_idx in panel.markdowns) {
+						md_content = panel.markdowns[md_idx].desc;
+						md_output = panel_converter.makeHtml(md_content);
+						md_element = $('<div class="ui-md-el">').html(md_output);
+						panel_content_el.append(md_element);
+					}
+
+					var form_el = $('<ol class="form">');
+
+					for (var f_idx in panel.settings) {
+						var settings = { ...panel.settings[f_idx] };
+
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_option';
+						settings.data = {
+							field: settings.name,
+							section: settings.section
+						}
+
+						var field = rhui.buildField(settings);
+
+						form_el.append(field);
+					}
+					panel_content_el.append(form_el);
+					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
+
+					panel_el.append(panel_header_el);
+					panel_el.append(panel_content_el);
+
+					$('#custom-ui').append(panel_el);
+				}
+
+				// load panel state
+				for (var panel in rotorhazard.panelstates) {
+					var panel_obj = $('#' + panel);
+					var panelstate = rotorhazard.panelstates[panel];
+
+					if (panelstate) {
+						panel_obj.addClass('open');
+						panel_obj.children('.panel-content').stop().slideDown();
+					} else {
+						panel_obj.removeClass('open');
+						panel_obj.children('.panel-content').stop().slideUp();
+					}
+				}
+			}
+		});
+
+		$(document).on('change', '.set_ui_option', function (event) {
+			var field = $(this).data('field');
+			var section = $(this).data('section');
+			var value = rhui.getFieldVal(this);
+
+			if (section) {
+				var data = {
+					section: section,
+					key: field,
+					value: value
+				};
+				socket.emit('set_config', data);
+			} else {
+				var data = {
+					option: field,
+					value: value
+				};
+				socket.emit('set_option', data);
 			}
 		});
 
@@ -258,7 +343,7 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<h3>' + __('Environment Status') + '</h3><table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 			}
 		});
 
@@ -266,8 +351,6 @@
 			$('#cluster-status').empty();
 
 			if (msg.secondaries && msg.secondaries.length > 0) {
-				var cluster_header = $('<h3>' + __('Cluster Status') + '</h3>');
-
 				var cluster_body = $('<ul>');
 
 				for (i=0; i < msg.secondaries.length; i++) {
@@ -303,21 +386,8 @@
 					cluster_body.append(item);
 				}
 
-				$('#cluster-status').append(cluster_header).append(cluster_body);
+				$('#cluster-status').append(cluster_body);
 			}
-		});
-
-		/* Send Message */
-		$('button#send_message').click(function (event) {
-			var data = {
-				message: $('#message_body').val(),
-				interrupt: $('#message_interrupt').prop('checked')
-			};
-			socket.emit('broadcast_message', data);
-
-			$('#message_body').val('');
-			$('#message_interrupt').prop('checked', false);
-			return false;
 		});
 
 		/* Profiles */
@@ -344,12 +414,10 @@
 
 		$('button#add_profile').click(function (event) {
 			socket.emit('add_profile');
-			return false;
 		});
 
 		$('button#delete_profile').click(function (event) {
 			socket.emit('delete_profile');
-			return false;
 		});
 
 		$('#set_profile_name').change(function (event) {
@@ -374,7 +442,7 @@
 
 		function show_imd_rating(val) {
 			$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
-				  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+				  ': ' + val + ' &nbsp; <a href="/imdtabler">{{ __("View with IMDTabler") }}</a>');
 		};
 
 		function show_imd_rating_dashes() {
@@ -402,144 +470,136 @@
 
 		socket.on('vrx_list', function (msg) {
 			if (msg.enabled) {
-				vrx_by_node = {}
-
-				for (var vrx_id in msg.vrx) {
-					var vrx = msg.vrx[vrx_id]
-					if (vrx.device_type == 'rx' && vrx.valid_rx) {
-						seat_num = vrx.seat
-
-						if (!vrx_by_node[seat_num]) {
-							vrx_by_node[seat_num] = [];
-						}
-						vrx_by_node[seat_num].push(vrx_id)
-					}
-				}
+				devices_by_node = {}
 
 				// Frequency panel
-				for (i = 0; i < {{ num_nodes }}; i++) {
-					var header = $('.node[data-node=' + i + '] .vrx-header');
-					header.empty();
-
-					var locks = 0;
-					if (i in vrx_by_node) {
-						for (j in vrx_by_node[i]) {
-							var vrx_id = vrx_by_node[i][j];
-							var vrx = msg.vrx[vrx_id];
-							if (vrx.lock_status == 'L') {
-								locks++;
-							}
-						}
-
-						if (locks == vrx_by_node[i].length) {
-							header.removeClass('has-unlocked')
-						} else {
-							header.addClass('has-unlocked')
-						}
-
-						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
-					} else {
-						header.removeClass('has-unlocked')
-						header.append(__('VRx locks') + ': 0/0');
-					}
-				}
-
-				if (msg.connection) {
+				if (Object.keys(msg.devices).length) {
 					$('.vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Changes may cause pilots to lose video."));
-				} else {
-					$('.vrx-warning').empty();
-				}
 
-				// VRx Control Panel
-				if (msg.connection) {
+					// Devices by node
+					for (var device_id in msg.devices) {
+						var device = msg.devices[device_id]
+						if (device.ready) {
+							if (!devices_by_node[device.map.seat]) {
+								devices_by_node[device.map.seat] = [];
+							}
+							devices_by_node[device.map.seat].push(device_id)
+						}
+					}
+
+					for (i = 0; i < {{ num_nodes }}; i++) {
+						var header = $('.node[data-node=' + i + '] .vrx-header');
+						header.empty();
+
+						var locks = 0;
+						if (i in devices_by_node) {
+							for (j in devices_by_node[i]) {
+								var device_id = devices_by_node[i][j];
+								var device = msg.devices[device_id];
+								if (device.video_lock) {
+									locks++;
+								}
+							}
+
+							if (locks == devices_by_node[i].length) {
+								header.removeClass('has-unlocked')
+							} else {
+								header.addClass('has-unlocked')
+							}
+
+							header.append(__('VRx locks') + ': ' + locks + '/' + devices_by_node[i].length);
+						} else {
+							header.removeClass('has-unlocked')
+							header.append(__('VRx locks') + ': 0/0');
+						}
+					}
+
+					// VRx Control Panel
 					$('#vrx-control-setup').empty();
 
-					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
+					vrx_header = '<h3>' + __('Connected Devices') + '</h3>';
 
 					var vrx_list = $('<ul class="vrx-list">')
-					for (var vrx_id in msg.vrx) {
-						var vrx = msg.vrx[vrx_id]
-						if (vrx_id != 'VRxController') {
-							var li = $('<li>')
-							var table = $('<table>');
+					for (var device_id in msg.devices) {
+						var device = msg.devices[device_id]
+						var li = $('<li>')
+						var table = $('<table>');
 
-							table_items = {};
+						table_items = {};
 
-							table_items['ID'] = vrx_id;
+						table_items['ID'] = device_id;
+						table_items['Name'] = device.name;
+						table_items['Type'] = device.type;
 
-							if (vrx.device_name) {
-								table_items['Name'] = vrx.device_name;
-							}
+						if (device.connected) {
+							if (device.ready) {
+								table_items['Status'] = __("Ready");
 
-							if (vrx.device_type == 'rx') {
-								if (vrx.valid_rx) {
-									table_items['Status'] = __("Connected");
-
-									if ('seat' in vrx) {
-										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
-										for (var i = 0; i < {{ num_nodes }}; i++) {
-											var opt = '<option value="' + i + '"';
-											if (i == vrx.seat) {
-												opt += 'selected="selected"';
-											}
-											opt += '>' + (parseInt(i)+1) + '</option>';
-											selectbox += opt;
+								if ('map' in device) {
+									var selectbox = '<select class="vrx-node" data-vrx-id="' + device_id + '">'
+									for (var i = 0; i < {{ num_nodes }}; i++) {
+										var opt = '<option value="' + i + '"';
+										if (i == device.map.seat) {
+											opt += 'selected="selected"';
 										}
-										table_items['Seat'] = selectbox;
-									} else {
-										console.warn("No seat number available")
+										opt += '>' + (parseInt(i)+1) + '</option>';
+										selectbox += opt;
 									}
-
-									if ('cam_forced_or_auto' in vrx
-										&& 'chosen_camera_type' in vrx) {
-										var cam_labels = {
-											"A": __("Auto"),
-											"F": __("Forced")
-										}
-										var cam_types = {
-											"N": __("NTSC"),
-											"P": __("PAL")
-										}
-
-										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
-									} else {
-										console.log("No cam_forced_or_auto and chosen_camera_type in vrx")
-									}
-
-									if ('lock' in vrx) {
-										if(vrx.lock_status == 'L') {
-											table_items['Lock'] = __('Locked');
-										} else {
-											table_items['Lock'] = __('Unlocked');
-										}
-									} else {
-										console.warn("No lock in vrx")
-									}
-
+									table_items['Seat'] = selectbox;
 								} else {
-									table_items['Status'] = __("No receiver");
+									console.warn("No seat number available")
 								}
+
+								// CV2-specific items. TODO: Abstract to generic
+								if ('cam_forced_or_auto' in device.extended_properties
+									&& 'chosen_camera_type' in device.extended_properties) {
+									var cam_labels = {
+										"A": __("Auto"),
+										"F": __("Forced")
+									}
+									var cam_types = {
+										"N": __("NTSC"),
+										"P": __("PAL")
+									}
+
+									table_items['Format'] = cam_labels[device.extended_properties.cam_forced_or_auto] + ": " + cam_types[device.extended_properties.chosen_camera_type];
+								}
+
+								if ('video_lock' in device) {
+									if (device.video_lock) {
+										table_items['Lock'] = __('Locked');
+									} else {
+										table_items['Lock'] = __('Unlocked');
+									}
+								}
+
 							} else {
-								table_items['Status'] = __("No connection");
+								table_items['Status'] = __("Not Ready");
 							}
-
-							for (var item in table_items) {
-								if (item == 'ID' && vrx.ip) {
-									table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + vrx.ip + '">' + table_items[item] + '</a></td></tr>');
-								} else {
-									table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
-								}
-							}
-
-							li.append(table)
-							vrx_list.append(li);
+						} else {
+							table_items['Status'] = __("Unreachable");
 						}
+
+						for (var item in table_items) {
+							if (item == 'ID' && device.ip) {
+								table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + device.ip + '">' + table_items[item] + '</a></td></tr>');
+							} else {
+								table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+							}
+						}
+
+						li.append(table)
+						vrx_list.append(li);
 					}
 
 					$('#vrx-control-setup').append(vrx_header)
 					$('#vrx-control-setup').append(vrx_list)
 				} else {
-					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+					$('.vrx-warning').empty();
+
+					if (!Object.keys(msg.controllers).length) {
+						$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+					}
 				}
 			} else {
 				$('.vrx-warning').empty();
@@ -696,7 +756,6 @@
 			};
 			$('#set_enter_at_level_' + data.node_index).val('');
 			socket.emit('cap_enter_at_btn', data);
-			return false;
 		});
 
 		$('button.cap_exit_at_btn').click(function (event) {
@@ -705,7 +764,6 @@
 			};
 			$('#set_exit_at_level_' + data.node_index).val('');
 			socket.emit('cap_exit_at_btn', data);
-			return false;
 		});
 
 		socket.on('start_thresh_lower_amount', function (msg) {
@@ -713,7 +771,7 @@
 		});
 
 		$('#set_start_thresh_lower_amount').change(function (event) {
-			var start_thresh_lower_amount_val = parseInt($(this).val());
+			var start_thresh_lower_amount_val = parseIntDefault($(this).val());
 			var data = {
 				start_thresh_lower_amount: start_thresh_lower_amount_val
 			};
@@ -725,461 +783,18 @@
 		});
 
 		$('#set_start_thresh_lower_duration').change(function (event) {
-			var start_thresh_lower_duration_val = parseInt($(this).val());
+			var start_thresh_lower_duration_val = parseIntDefault($(this).val());
 			var data = {
 				start_thresh_lower_duration: start_thresh_lower_duration_val
 			};
 			socket.emit('set_start_thresh_lower_duration', data);
 		})
 
-		$('#set_next_heat_behavior').change(function (event) {
+		$(document).on("click", '.retry_secondary', function (event) {
 			var data = {
-				next_heat_behavior: parseInt($(this).val())
+				secondary_id: parseInt($(this).data('secondary_id'))
 			};
-			socket.emit('set_next_heat_behavior', data);
-		})
-
-		/* Heats */
-		socket.on('heat_data', function (msg) {
-			$(".heats").empty();
-			for (var i in msg.heats) {
-				var heats = msg.heats[i];
-
-				if (heats.note) {
-					heat_note = heats.note
-				} else {
-					heat_note = __('Heat') + ' ' + heats.heat_id
-				}
-
-				var el = $('<li>');
-
-				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
-
-				if (!heats.locked && Object.keys(msg.heats).length > 1) {
-					header.append('<button class="delete_heat btn-danger" data-id="' + heats.heat_id + '" title="Delete Heat ' + heats.heat_id + '">&#215;</button>');
-				}
-				el.append(header);
-
-				var input = $('<input type="text" id="heat-note-' + heats.heat_id + '" class="set_heat_note" data-heat="' + heats.heat_id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heats.heat_id + ')" maxlength="80">');
-				input.val(heats.note);
-				el.append(input);
-				var nodelist = $('<ol>');
-
-				// nodes
-				for (j in heats.pilots) {
-					var heatpilot = heats.pilots[j];
-					var slot = $('<li>');
-					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
-					var pilot = $('<div class="pilot-name">');
-					// pilot selectors
-					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
-					selectbox.append('<option value="0">None</option>')
-						for (var k in msg.pilot_data) {
-							if (msg.pilotSort == 'callsign') {
-								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
-
-							} else {
-								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].name + ' (' + msg.pilot_data[k].callsign + ')</option>')
-							}
-						}
-					selectbox.val(heatpilot);
-					selectbox.prop('disabled', heats.locked);
-					pilot.append(selectbox);
-					slot.append(pilot);
-					nodelist.append(slot);
-				}
-				el.append(nodelist);
-
-				// update class selector
-				if (msg.classes.length) {
-					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '" data-heat="' + heats.heat_id + '">')
-						selectbox.append('<option value="0">' + __('Unclassified') + '</option>')
-						for (var k in msg.classes) {
-							if (msg.classes[k].name) {
-								selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
-							} else {
-								selectbox.append('<option value="' + msg.classes[k].id + '">' + __('Class') + ' ' + msg.classes[k].id + '</option>')
-							}
-						}
-					if (heats.class_id > 0) {
-						selectbox.val(heats.class_id);
-					} else {
-						selectbox.val(0);
-					}
-					selectbox.prop('disabled', heats.locked);
-					el.append(selectbox);
-				}
-
-				if (heats.locked) {
-					el.append('<button class="btn-danger open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</button>');
-				}
-
-				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="' + __('Duplicate Heat') + ': ' + heat_note + '">+</button>');
-
-				el.appendTo($('.heats'));
-			}
-			freq.updateBlocks();
-			init_popup_generics();
-		});
-
-		$(document).on("change", '.set_heat_note', function (event) {
-			var data = {
-				heat: parseInt($(this).data('heat')),
-				note: $(this).val(),
-			};
-			socket.emit('alter_heat', data);
-		});
-
-		$(document).on("change", '.set_pilot_position', function (event) {
-			var data = {
-				heat: parseInt($(this).data('heat')),
-				node: parseInt($(this).data('node')),
-				pilot: parseInt($(this).val())
-			};
-			socket.emit('alter_heat', data);
-		});
-
-		$(document).on("change", '.set_heat_class', function (event) {
-			var data = {
-				heat: parseInt($(this).data('heat')),
-				class: $(this).val(),
-			};
-			socket.emit('alter_heat', data);
-		});
-
-		$('button#add_heat').click(function (event) {
-			socket.emit('add_heat');
-			return false;
-		});
-
-		$(document).on("click", '.delete_heat', function (event) {
-			var data = {
-				heat: parseInt($(this).data('id')),
-			};
-			socket.emit('delete_heat', data);
-		});
-
-		$(document).on("click", '.unlock_heat', function (event) {
-			heat_to_unlock = $(this).data('id');
-		});
-
-		$(document).on("click", '#unlock_heat', function (event) {
-			$.magnificPopup.close();
-			var heat = $('[data-heat=' + heat_to_unlock + ']');
-			$(heat).prop('disabled', false);
-		});
-
-		$(document).on("click", '.duplicate_heat', function (event) {
-			var data = {
-				heat: parseInt($(this).data('id')),
-			};
-			socket.emit('duplicate_heat', data);
-		});
-
-		$('button#generate_heats').click(function (event) {
-			var data = {
-				input_class: parseInt($('#generator_input_class').val()),
-				output_class: parseInt($('#generator_output_class').val()),
-				suffix: $('#generator_suffix').val(),
-				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
-			};
-			$('button#generate_heats').prop('disabled', true);
-			socket.emit('generate_heats', data);
-			return false;
-		});
-
-		socket.on('heat_generate_done', function (msg) {
-			$('button#generate_heats').prop('disabled', false);
-		});
-
-		/* Classes */
-		function update_class_selectors() {
-			var class_data = rotorhazard.class_data;
-
-			var input_val = $('#generator_input_class').val();
-			var output_val = $('#generator_output_class').val();
-
-			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
-			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
-
-			if (class_data.classes.length) {
-				for (var i in class_data.classes) {
-					var race_class = class_data.classes[i];
-
-					if (race_class.name) {
-						race_class_name = race_class.name
-					} else {
-						race_class_name = __('Class') + ' ' + race_class.id
-					}
-
-					if (race_class.name) {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
-					} else {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
-					}
-				}
-			}
-
-			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
-				$('#generator_input_class').val(input_val);
-			}
-			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
-				$('#generator_output_class').val(output_val);
-			}
-		}
-
-		socket.on('class_data', function (msg) {
-			rotorhazard.class_data = msg;
-
-			$(".race_classes").empty();
-
-			if (msg.classes.length) {
-				$('.race_classes').append('<p class="form-note">' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
-
-				var classlist = $('<ol>');
-				for (var i in msg.classes) {
-					var race_class = msg.classes[i];
-
-					if (race_class.name) {
-						race_class_name = race_class.name
-					} else {
-						race_class_name = __('Class') + ' ' + race_class.id
-					}
-
-					var el = $('<li>');
-					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
-
-					if (!race_class.locked) {
-						header.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
-					}
-					el.append(header);
-
-					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
-					input.val(race_class.name);
-					el.append(input);
-
-					var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + '" maxlength="256">');
-					input.val(race_class.description);
-					el.append(input);
-
-					var selectbox = $('<select class="set_race_class_format" id="class_format_' + race_class.id + '" data-class_id="' + race_class.id + '">')
-					selectbox.append('<option value="0">' + __('-None-') + '</option>')
-					for (var j in msg.formats) {
-						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
-					}
-					selectbox.val(race_class.format);
-					selectbox.prop('disabled', race_class.locked);
-					el.append(selectbox);
-
-					if (race_class.locked) {
-						el.append('<button class="btn-danger open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</button>');
-					}
-
-					el.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
-
-					el.appendTo(classlist);
-				}
-				classlist.appendTo($('.race_classes'));
-			} else {
-				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
-			}
-
-			init_popup_generics();
-			update_class_selectors();
-		});
-
-		$(document).on("change", '.set_race_class_name', function (event) {
-			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_name: $(this).val(),
-			};
-			socket.emit('alter_race_class', data);
-
-			for (var i in rotorhazard.class_data.classes) {
-				var race_class = rotorhazard.class_data.classes[i];
-				if (race_class['id'] == data.class_id) {
-					race_class.name = data.class_name;
-					break;
-				}
-			}
-			update_class_selectors();
-		});
-
-		$(document).on("change", '.set_race_class_format', function (event) {
-			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_format: $(this).val(),
-			};
-			socket.emit('alter_race_class', data);
-		});
-
-		$(document).on("change", '.set_race_class_description', function (event) {
-			var data = {
-				class_id: parseInt($(this).data('class_id')),
-				class_description: $(this).val(),
-			};
-			socket.emit('alter_race_class', data);
-		});
-
-		$(document).on("click", '.unlock_class', function (event) {
-			class_to_unlock = $(this).data('id');
-		});
-
-		$(document).on("click", '#unlock_class', function (event) {
-			$.magnificPopup.close();
-			var race_class = $('[data-class_id=' + class_to_unlock + ']');
-			$(race_class).prop('disabled', false);
-		});
-
-		$('button#add_race_class').click(function (event) {
-			socket.emit('add_race_class');
-			return false;
-		});
-
-		$(document).on("click", '.delete_class', function (event) {
-			var data = {
-				class: parseInt($(this).data('id')),
-			};
-			socket.emit('delete_class', data);
-		});
-
-		$(document).on("click", '.duplicate_class', function (event) {
-			var data = {
-				class: parseInt($(this).data('id')),
-			};
-			socket.emit('duplicate_race_class', data);
-		});
-
-		/* Pilots */
-		socket.on('pilot_data', function (msg) {
-			$(".pilots").empty();
-			for (var i in msg.pilots) {
-				var pilot = msg.pilots[i];
-				if (pilot.pilot_id != 0) {
-					var el = $('<li data-id="' + pilot.pilot_id + '">');
-					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-					el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
-					if ('color' in pilot) {
-						el.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
-						el.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
-					}
-					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-					el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
-					el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
-					var phonetic = $('<div class="phonetic">');
-					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
-					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
-					el.append(phonetic);
-					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
-					if (!pilot.locked) {
-						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
-					}
-
-					el.appendTo($('.pilots'));
-				}
-			}
-
-			msg.pilots.sort(function(a, b){
-				if (a.name < b.name)
-					return -1;
-				if (a.name > b.name)
-					return 1;
-				return 0;
-			});
-
-			$('.set_pilot_position').each(function(){
-				$(this).empty();
-
-				for (var i in msg.pilots) {
-					$(this).append('<option value="'+ msg.pilots[i].id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
-				}
-			});
-		});
-
-		$(document).on("focus", '.set_pilot_name', function(){
-			$(this).select();
-		});
-
-		$(document).on("change", '.set_pilot_name', function (event) {
-			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				name: $(this).val()
-			};
-			socket.emit('alter_pilot', data);
-		})
-
-		$(document).on("focus", '.set_pilot_callsign', function(){
-			$(this).select();
-		});
-
-		$(document).on("change", '.set_pilot_callsign', function (event) {
-			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				callsign: $(this).val()
-			};
-			socket.emit('alter_pilot', data);
-		})
-
-		$(document).on("click", '.set_pilot_color', function (event) {
-			pilot_id = parseInt($(event.target).data('pilot_id'));
-			src_hexcolor = $(event.target).data('color');
-
-			color_picker(src_hexcolor, function(h, s, l){
-				hexcolor = hslToHex(h, s, l)
-				var data = {
-					pilot_id: pilot_id,
-					color: hexcolor
-				};
-				socket.emit('alter_pilot', data);
-				$('#color_' + pilot_id).data('color', hexcolor).css('background-color', hexcolor);
-			})
-		})
-
-		$(document).on("change", '.set_pilot_team', function (event) {
-			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				team_name: $(this).val()
-			};
-			socket.emit('alter_pilot', data);
-		})
-
-		$(document).on("focus", '.set_pilot_phonetic', function(){
-			$(this).select();
-		});
-
-		$(document).on("change", '.set_pilot_phonetic', function (event) {
-			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				phonetic: $(this).val()
-			};
-			socket.emit('alter_pilot', data);
-		})
-
-		$(document).on("click", 'button.speak_pilot', function (event) {
-			var el = $(this).closest('li');
-			var callsign = el.find('.set_pilot_callsign').val()
-			var phonetic = el.find('.set_pilot_phonetic').val()
-
-			var ttstext = callsign;
-			if (phonetic)
-				ttstext = phonetic;
-
-			doSpeak('<div class="speech">' + ttstext + '</div>');
-			return false;
-		});
-
-		$('button#add_pilot').click(function (event) {
-			socket.emit('add_pilot');
-			return false;
-		});
-
-		$(document).on("click", '.delete_pilot', function (event) {
-			var data = {
-				pilot: parseInt($(this).data('id')),
-			};
-			socket.emit('delete_pilot', data);
+			socket.emit('retry_secondary', data);
 		});
 
 		/* Voice */
@@ -1198,6 +813,11 @@
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
 		$('#set_voice_language').val(rotorhazard.voice_language);
+		if (!($('#set_voice_language').val())) {  // if no match then select first English voice
+			rotorhazard.voice_language = get_default_articulate_voice();
+			rotorhazard.saveData();
+			$('#set_voice_language').val(rotorhazard.voice_language);
+		}
 
 		$('#set_voice_string_language').change(function (event) {
 			rotorhazard.voice_string_language = $(this).val();
@@ -1234,8 +854,18 @@
 			rotorhazard.saveData();
 		});
 
+		$('#voice_if_node_finished').change(function (event) {
+			rotorhazard.voice_if_node_finished = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
 		$('#voice_split_timer').change(function (event) {
 			rotorhazard.voice_split_timer = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
+		$('#voice_race_leader').change(function (event) {
+			rotorhazard.voice_race_leader = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
@@ -1340,7 +970,6 @@
 
 		$('#play_voice_test').click(function (event) {
 			doSpeak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
-			return false;
 		});
 
 		$("#voice_test_text").keyup(function(event) {
@@ -1349,328 +978,214 @@
 			}
 		});
 
-		/* Race Format */
-		socket.on('min_lap', function (msg) {
-			$('#set_min_lap').val(msg.min_lap);
-			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
-			rotorhazard.min_lap = msg.min_lap;
+		$('button#export_audio_settings').click(function (event) {
+			var date = new Date();
+			var outData = rotorhazard.getAudioSettingsStr(date);
+			saveAs(new Blob([outData], {type: "text/plain;charset=utf-8"}),
+					"rhAudioSettings_" + rotorhazard.getCurDateTimeNumStr(date) + ".cfg");
 		});
 
-		$('#set_min_lap').change(function (event) {
-			var min_lap_val = parseInt($(this).val());
-			rotorhazard.min_lap = min_lap_val;
-			var data = {
-				min_lap: min_lap_val
-			};
-			socket.emit('set_min_lap', data);
-		})
-
-		$('#set_min_lap_behavior').change(function (event) {
-			var data = {
-				min_lap_behavior: parseInt($(this).val())
-			};
-			socket.emit('set_min_lap_behavior', data);
-		})
-
-		$('#set_team_racing_mode').change(function (event) {
-			var data = {
-				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		function update_race_format_ui() {
-			var rf = rotorhazard.race_format;
-
-			$('#format-race-duration-field').toggle(rf.race_mode == 0);
-			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
-
-			var issues = []
-
-			if (rf.win_condition == 1 && rf.race_mode == 1) {
-				issues.push('"Most Laps in Fastest Time" is typically used with "Fixed Time"');
+		$('button#default_audio_settings').click(function (event) {
+			$.magnificPopup.close();
+			if (rotorhazard.loadDefaultAudioSettings()) {
+				populate_audio_settings();
 			}
+		});
 
-			if (rf.win_condition == 2 && rf.race_mode == 0) {
-				issues.push('"First to X Laps" is typically used with "No Time Limit"');
+		$('#select_audio_import_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#import_audio_settings').prop('disabled', false);
 			}
+		});
 
-			if (rf.win_condition == 6 && rf.race_mode == 1) {
-				issues.push('"Most Laps Only with Overtime" is typically used with "Fixed Time"');
+		$('button#import_audio_settings').click(function (event) {
+			if ($('#select_audio_import_file').prop('files')[0]) {
+				$('#import_audio_settings').prop('disabled', true);
+				rotorhazard.importAudioSettingsFile(
+							$('#select_audio_import_file').prop('files')[0], populate_audio_settings);
+				$('#select_audio_import_file').val('');
 			}
+		});
 
-			if (rf.start_behavior == 2 && rf.race_mode == 0) {
-				issues.push('"Staggered Start" is typically used with "No Time Limit"');
-			}
+		/* Event Actions */
 
-			if (issues.length) {
-				var output = $('<ul>')
-				for (item in issues) {
-					output.append('<li>' + __(issues[item]) + '</li>');
+		function updateActionList() {
+			if (rotorhazard.actions?.effects && rotorhazard.actions?.events && rotorhazard.actions?.list) {
+				$('button#add_action').prop('disabled', false);
+				var actionListObj = $('<ul>');
+				for (var idx in rotorhazard.actions.list) {
+					var action = rotorhazard.actions.list[idx]
+					actionListObj.append(buildActionItem(action['event'], action['effect'], idx));
 				}
-				$('#race_format_suggestions').html(output);
-			} else {
-				$('#race_format_suggestions').empty();
+				$('#actions').html(actionListObj);
 			}
 		}
 
-		socket.on('race_format', function (msg) {
-			rotorhazard.race_format = msg;
-
-			$('#set_race_format').empty();
-			for (var i = 0; i < msg.format_ids.length; i++) {
-				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
-			}
-			$('#unlock_race_format').toggle(msg.locked);
-			$('#delete_race_format_button').prop('disabled', msg.locked);
-			$('#set_race_format').val(msg.current_format);
-			$('#set_format_name').val(msg.format_name);
-			$('#set_format_name').prop('disabled', msg.locked);
-			$('#set_race_mode').val(msg.race_mode);
-			$('#set_race_mode').prop('disabled', msg.locked);
-			$('#set_fix_race_time').val(msg.race_time_sec);
-			$('#set_fix_race_time').prop('disabled', msg.locked);
-			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
-			$('#set_hide_stage_timer').prop('disabled', msg.locked);
-			$('#set_start_delay_min').val(msg.start_delay_min);
-			$('#set_start_delay_min').prop('disabled', msg.locked);
-			$('#set_start_delay_max').val(msg.start_delay_max);
-			$('#set_start_delay_max').prop('disabled', msg.locked);
-			$('#set_staging_tones').val(msg.staging_tones);
-			$('#set_staging_tones').prop('disabled', msg.locked);
-			$('#set_start_behavior').val(msg.start_behavior);
-			$('#set_start_behavior').prop('disabled', msg.locked);
-			$('#set_number_laps_win').val(msg.number_laps_win);
-			$('#set_number_laps_win').prop('disabled', msg.locked);
-			$('#set_win_condition').val(msg.win_condition);
-			$('#set_win_condition').prop('disabled', msg.locked);
-			$('#set_team_racing_mode').val(msg.team_racing_mode);
-			$('#set_team_racing_mode').prop('disabled', msg.locked);
-
-			update_race_format_ui();
-		});
-
-		$('#set_race_format').change(function (event) {
-			var data = {
-				race_format: $(this).val()
-			};
-			socket.emit('set_race_format', data);
-		});
-
-		$('button#add_race_format').click(function (event) {
-			socket.emit('add_race_format');
-			return false;
-		});
-
-		$(document).on("click", '#unlock_race_format', function (event) {
-			$.magnificPopup.close();
-			$('#race_formats *').prop('disabled', false);
-		});
-
-		$('button#delete_race_format').click(function (event) {
-			$.magnificPopup.close();
-			socket.emit('delete_race_format');
-			return false;
-		});
-
-		$('#set_format_name').change(function (event) {
-			var data = {
-				format_name: $(this).val()
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_race_mode').change(function (event) {
-			var data = {
-				race_mode: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-			rotorhazard.race_format.race_mode = parseInt($(this).val());
-			update_race_format_ui();
-		})
-
-		$('#set_fix_race_time').change(function (event) {
-			var data = {
-				race_time: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_start_delay_min').change(function (event) {
-			var data = {
-				start_delay_min: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_start_delay_max').change(function (event) {
-			var data = {
-				start_delay_max: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_number_laps_win').change(function (event) {
-			var data = {
-				number_laps_win: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_staging_tones').change(function (event) {
-			var data = {
-				staging_tones: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_start_behavior').change(function (event) {
-			var data = {
-				start_behavior: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-			rotorhazard.race_format.start_behavior = parseInt($(this).val());
-			update_race_format_ui();
-		})
-
-		$('#set_win_condition').change(function (event) {
-			var data = {
-				win_condition: parseInt($(this).val())
-			};
-			socket.emit('alter_race_format', data);
-			rotorhazard.race_format.win_condition = parseInt($(this).val());
-			update_race_format_ui();
-		})
-
-		$('button#backup_database').click(function (event) {
-			socket.emit('backup_database');
-			return false;
-		});
-
-		socket.on('database_bkp_done', function (msg) {
-			msgArray = atob(msg.file_data);  // decode Base64 string
-			// convert decoded data to byte array
-			var byteNumbers = new Array(msgArray.length);
-			for (var i = 0; i < msgArray.length; i++) {
-				byteNumbers[i] = msgArray.charCodeAt(i);
-			}
-			var byteArray = new Uint8Array(byteNumbers);
-			// construct blob from byte array and initiate browser save-as
-			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
-		});
-
-		socket.on('backups_list', function (msg) {
-			$('#database_list').empty();
-			if ('backup_files' in msg && msg.backup_files && msg.backup_files.length) {
-				for (file in msg.backup_files) {
-					dbfile = msg.backup_files[file];
-					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
+		function buildActionItem(event, effect, action_idx) {
+			if (rotorhazard.actions?.events && rotorhazard.actions?.effects && rotorhazard.actions?.list) {
+				var item = $('<li class="action">')
+				var eventLabel = $('<label>')
+					.text(__('Event'))
+					.addClass('screen-reader-text')
+					.attr('for', 'action_event_' + action_idx);
+				var eventSelect = $('<select class="actionfield">')
+					.addClass('actionfield')
+					.data('idx', action_idx)
+					.data('field', 'event')
+					.attr('id', 'action_event_' + action_idx);
+				for (const [key, value] of Object.entries(rotorhazard.actions.events)) {
+					var opt = $('<option>')
+						.attr('value', key)
+						.text(value);
+					eventSelect.append(opt);
 				}
-				$('#database_list').prop('disabled', false);
-				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', false);
-				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', false);
-			} else {
-				$('#database_list').append('<option value="-">' + __('No Saved Databases') + '</option>');
-				$('#database_list').prop('disabled', true);
-				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', true);
-				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', true);
+				if (event) {
+					eventSelect.val(event);
+				} else {
+					event = eventSelect.val();
+					rotorhazard.actions.list[action_idx].event = event;
+				}
+				item.append(eventLabel);
+				item.append(eventSelect);
+
+				var effectLabel = $('<label>')
+					.text(__('Effect'))
+					.addClass('screen-reader-text')
+					.attr('for', 'action_effect_' + action_idx);
+				var effectSelect = $('<select>')
+					.addClass('actionfield')
+					.data('idx', action_idx)
+					.data('field', 'effect')
+					.attr('id', 'action_effect_' + action_idx);
+				for (const [key, value] of Object.entries(rotorhazard.actions.effects)) {
+					var opt = $('<option>')
+						.attr('value', key)
+						.text(value.name);
+					effectSelect.append(opt);
+				}
+				if (effect) {
+					effectSelect.val(effect);
+				} else {
+					effect = effectSelect.val()
+					rotorhazard.actions.list[action_idx].effect = effect;
+				}
+
+				item.append(effectLabel);
+				item.append(effectSelect);
+
+				var deleteBtn = $('<button>')
+					.text('\u00D7')
+					.addClass('delete-action')
+					.addClass('btn-danger')
+					.data('id', action_idx)
+					.attr('title', __("Delete Action"));
+
+				item.append(deleteBtn);
+				item.append(buildActionFields(effect, action_idx));
+
+				return item;
+			}
+		}
+
+		function buildActionFields(effect, action_idx) {
+			if (rotorhazard.actions?.list && rotorhazard.actions?.effects) {
+				var fieldset = $('<fieldset>');
+
+				for (idx in rotorhazard.actions.effects[effect]?.fields) {
+					var settings = { ...rotorhazard.actions.effects[effect].fields[idx] };
+
+					settings.wrapperEl = 'div';
+					settings.data = {
+						idx: action_idx,
+						field: settings.name
+					}
+					if (rotorhazard.actions.list[action_idx][settings.name]) {
+						settings.value = rotorhazard.actions.list[action_idx][settings.name];
+					}
+
+					settings.id = 'action_' + action_idx + '_' + idx;
+					settings.fieldClass = 'actionfield';
+
+					var field = rhui.buildField(settings);
+
+					fieldset.append(field);
+				}
+				return fieldset;
+			}
+		}
+
+		socket.on('action_setup', function (msg) {
+			rotorhazard.actions ??= {}
+			rotorhazard.actions.effects = msg.effects;
+			rotorhazard.actions.events = msg.events;
+			updateActionList();
+		});
+
+		socket.on('event_actions', function (msg) {
+			rotorhazard.actions ??= {}
+			rotorhazard.actions.list = JSON.parse(msg.actions);
+			if (!Array.isArray(rotorhazard.actions.list)) {
+				rotorhazard.actions.list = [];
+			}
+			updateActionList();
+		});
+
+		$('button#add_action').click(function (event) {
+			if (rotorhazard.actions?.list) {
+				rotorhazard.actions.list.push({});
+				updateActionList();
 			}
 		});
 
-		$('button#restore_database').click(function (event) {
-			$.magnificPopup.close();
-			var data = {
-				backup_file: $('#database_list').val()
-			};
-			socket.emit('restore_database', data);
-			return false;
+		$(document).on('click', 'button.delete-action', function (event) {
+			var idx = $(event.target).data('id');
+			rotorhazard.actions.list.splice(idx, 1);
+			updateActionList();
+			socket.emit('set_config', {
+				section: 'USER',
+				key: 'actions',
+				value: JSON.stringify(rotorhazard.actions.list)
+			});
 		});
 
-		$('button#delete_database').click(function (event) {
-			$.magnificPopup.close();
-			var data = {
-				backup_file: $('#database_list').val()
-			};
-			socket.emit('delete_database', data);
-			return false;
-		});
+		$(document).on('change', '.actionfield', function(evt){
+			var target = $(evt.target);
+			var action = target.data('idx');
+			var field = target.data('field');
+			var value = rhui.getFieldVal(evt.target);
 
-		/* Database Reset */
-		socket.on('reset_confirm', function () {
-			standard_message_queue.push(__('Data Cleared'));
-			if (standard_message_queue.length == 1) {
-				get_standard_message()
+			rotorhazard.actions.list[action][field] = value;
+
+			if (field == "effect") {
+				updateActionList();
 			}
-		});
 
-		$('button#reset_database').click(function (event) {
-			$.magnificPopup.close();
-			var data = {
-				reset_type: $('#reset_type').val()
-			};
-			socket.emit('reset_database', data);
-			return false;
+			socket.emit('set_config', {
+				section: 'USER',
+				key: 'actions',
+				value: JSON.stringify(rotorhazard.actions.list)
+			});
 		});
 
 		/* System */
 		$('button#shutdown_pi').click(function (event) {
 			socket.emit('shutdown_pi');
-			return false;
 		});
 
 		$('button#reboot_pi').click(function (event) {
 			socket.emit('reboot_pi');
-			return false;
 		});
 
 		$('button#kill_server').click(function (event) {
 			socket.emit('kill_server');
-			return false;
-		});
-
-		socket.on('exporter_list', function (msg) {
-			$('#exporter_list').empty();
-			if ('exporters' in msg && msg.exporters.length) {
-				msg.exporters.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
-				for (idx in msg.exporters) {
-					var ex = msg.exporters[idx];
-					$('#exporter_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
-				}
-				$('#exporter_list').prop('disabled', false);
-				$('#export_database').prop('disabled', false);
-			} else {
-				$('#exporter_list').append('<option value="-">' + __('No Exporters') + '</option>');
-				$('#exporter_list').prop('disabled', true);
-				$('#export_database').prop('disabled', true);
-			}
-		});
-
-		socket.on('exported_data', function (msg) {
-			var data = msg.data
-			/*
-			msgArray = atob(msg.file_data);  // decode Base64 string
-			// convert decoded data to byte array
-			var byteNumbers = new Array(msgArray.length);
-			for (var i = 0; i < msgArray.length; i++) {
-				byteNumbers[i] = msgArray.charCodeAt(i);
-			}
-			var byteArray = new Uint8Array(byteNumbers);
-			*/
-			// construct blob and initiate browser save-as
-			saveAs(new Blob([data], {type: msg.encoding}), msg.filename);
-		});
-
-		$('button#export_database').click(function (event) {
-			var data = {
-				exporter: $('#exporter_list').val()
-			};
-			socket.emit('export_database', data);
-			return false;
 		});
 
 		$('button#download_logs').click(function (event) {
-			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
-			return false;
+			var audioSettingsData = rotorhazard.getAudioSettingsStr(new Date());
+			var outData = { 'emit_fn_name': 'settings_save_logs',
+							'audioSettingsData' : audioSettingsData,
+							'audioSettingsFName' : "rhAudioSettings.cfg" };
+			socket.emit('download_logs', outData);
 		});
 
 		socket.on('settings_save_logs', function (msg) {
@@ -1685,17 +1200,182 @@
 			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
 
+		$('button#backup_settings').click(function (event) {
+			socket.emit('backup_settings');
+		});
+
+		$('button#download_settings').click(function (event) {
+			socket.emit('download_settings');
+		});
+
+		socket.on('send_config_file', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
+
+		socket.on('upd_cfg_files_list', function (msg) {
+			$('#cfg_files_list').empty();
+			if ('cfg_files' in msg && msg.cfg_files && msg.cfg_files.length) {
+				for (file in msg.cfg_files) {
+					cfgfile = msg.cfg_files[file];
+					$('#cfg_files_list').append('<option value="' + cfgfile + '">' + cfgfile + '</option>');
+				}
+				$('#cfg_files_list').prop('disabled', false);
+				var select_file = msg.select_file;
+				if (select_file) {
+					$('#cfg_files_list').val(select_file);
+				} else {
+					$('#cfg_files_list').val($('#cfg_files_list option').last().val());
+				}
+				$('button[data-mfp-src="#settings_restore_confirm"]').prop('disabled', false);
+				$('#rename_settings_btn').prop('disabled', false);
+				$('button[data-mfp-src="#settings_delete_confirm"]').prop('disabled', false);
+			} else {
+				$('#cfg_files_list').append('<option value="-">' + __('No Saved Settings Files') + '</option>');
+				$('#cfg_files_list').prop('disabled', true);
+				$('button[data-mfp-src="#settings_restore_confirm"]').prop('disabled', true);
+				$('#rename_settings_btn').prop('disabled', true);
+				$('button[data-mfp-src="#settings_delete_confirm"]').prop('disabled', true);
+			}
+		});
+
+		$('button#reset_cfg_file_to_defaults').click(function (event) {
+			$.magnificPopup.close();
+			socket.emit('reset_settings_to_defaults');
+		});
+
+		$('button#restore_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				cfg_file: $('#cfg_files_list').val()
+			};
+			socket.emit('restore_cfg_file', data);
+		});
+
+		$('#rename_settings_btn').click(function (event) {
+			$('#new_cfg_file_name').val($('#cfg_files_list').val());  // default to current filename
+			$.magnificPopup.open({
+				items: {
+					src: '#settings_rename_popup'
+				},
+				type: 'inline'
+			});
+			// set focus and select text on 'input' field on popup window
+			setTimeout("document.getElementById('new_cfg_file_name').focus()", 100);
+			setTimeout("document.getElementById('new_cfg_file_name').select()", 110);
+		});
+
+		$('#rename_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				cfg_file: $('#cfg_files_list').val(),
+				new_name: $('#new_cfg_file_name').val()
+			};
+			socket.emit('rename_cfg_file', data);
+		});
+
+		$("#new_cfg_file_name").keyup(function(event) {
+			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+				$("#rename_cfg_file").click();
+			}
+		});
+
+		$('button#delete_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				cfg_file: $('#cfg_files_list').val()
+			};
+			socket.emit('delete_cfg_file', data);
+		});
+
+		$('#select_load_settings_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('button[data-mfp-src="#settings_load_confirm"]').prop('disabled', false);
+			}
+		});
+
+		$('button#load_cfg_file').click(function (event) {
+			$.magnificPopup.close();
+			file_obj = $('#select_load_settings_file').prop('files')[0]
+			if (file_obj) {
+				try {
+					var data = {
+						file_data: file_obj,
+						file_name: file_obj.name
+					};
+					socket.emit('load_cfg_file', data);
+					$('#select_load_settings_file').val('');
+				} catch(ex) {
+					console.error("Error loading settings file: " + ex)
+				}
+			}
+		});
+
 		socket.on('set_option', function (msg) {
 			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
 		});
 
-		$('.set-option').change(function (event) {
+		$(document).on('change', '.set-option', function (event) {
 			var data = {
 				option: $(this).data('option'),
 				value: $(this).val()
 			};
 			socket.emit('set_option', data);
-			return false;
+		});
+
+		socket.on('config_update', function (msg) {
+			for (var section in msg.config) {
+				if (section == 'SENSORS') {
+					display_sensors_ui(msg.config[section]);
+				} else {
+					for (var key in msg.config[section]) {
+						var value = msg.config[section][key];
+
+						if (section == 'GENERAL' && key == 'SECONDARIES') {
+							display_secondary_ui(value);
+						} else {
+							$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
+						}
+					}
+				}
+			}
+		});
+
+		socket.on('set_config', function (msg) {
+			if (msg.section == 'GENERAL' && msg.key == 'SECONDARIES') {
+				display_secondary_ui(msg);
+			} else if (msg.section == 'SENSORS') {
+				display_sensors_ui(msg);
+			} else {
+				$('.set_config[data-section="' + msg.section +'"][data-key="' + msg.key +'"]').val(msg.value);
+			}
+		});
+
+		$(document).on('change', '.set-config', function (event) {
+			value = $(this).val();
+			if ($(this).data('type') == 'boolean' ) {
+				if (value == 'true') {
+					value = true;
+				} else {
+					value = false;
+				}
+			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
+				value = Number(value);
+			}
+
+			var data = {
+				section: $(this).data('section'),
+				key: $(this).data('key'),
+				value: value
+			};
+			socket.emit('set_config', data);
 		});
 
 		$('#set_language').change(function (event) {
@@ -1785,75 +1465,81 @@
 		$.cssNumber.sat_1 = true;
 
 		$('.hue-control').on('input', function (event) {
-			var option = $(this).data('option');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value);
-			var option_index = option.split('_')[1];
-			calcContrasts(option_index);
+			$('html').css('--' + key, value);
+			var key_index = key.split('_')[1];
+			calcContrasts(key_index);
 		});
 
 		$('.hue-control').on('change', function (event) {
-			var option = $(this).data('option');
+			var section = $(this).data('section');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value);
-			var option_index = option.split('_')[1];
-			var contrasts = calcContrasts(option_index);
+
+			$('html').css('--' + key, value);
+			var key_index = key.split('_')[1];
+			var contrasts = calcContrasts(key_index);
 
 			var data = {
-				option: option,
+				section: section,
+				key: key,
 				value: value
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_low',
+				section: section,
+				key: 'contrast_' + key_index + '_low',
 				value: contrasts.low
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_high',
+				section: section,
+				key: 'contrast_' + key_index + '_high',
 				value: contrasts.high
 			};
-			socket.emit('set_option', data);
-
-			return false;
+			socket.emit('set_config', data);
 		});
 
 		$('.sat-control').on('input', function (event) {
-			var option = $(this).data('option');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value + '%');
-			var option_index = option.split('_')[1];
-			calcContrasts(option_index);
+			$('html').css('--' + key, value + '%');
+			var key_index = key.split('_')[1];
+			calcContrasts(key_index);
 		});
 
 		$('.sat-control').on('change ', function (event) {
-			var option = $(this).data('option');
+			var section = $(this).data('section');
+			var key = $(this).data('key');
 			var value = $(this).val();
-			$('html').css('--' + option, value + '%');
-			var option_index = option.split('_')[1];
-			var contrasts = calcContrasts(option_index);
+
+			$('html').css('--' + key, value + '%');
+			var key_index = key.split('_')[1];
+			var contrasts = calcContrasts(key_index);
 
 			var data = {
-				option: option,
+				section: section,
+				key: key,
 				value: value
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_low',
+				section: section,
+				key: 'contrast_' + key_index + '_low',
 				value: contrasts.low
 			};
-			socket.emit('set_option', data);
+			socket.emit('set_config', data);
 
 			var data = {
-				option: 'contrast_' + option_index + '_high',
+				section: section,
+				key: 'contrast_' + key_index + '_high',
 				value: contrasts.high
 			};
-			socket.emit('set_option', data);
-
-			return false;
+			socket.emit('set_config', data);
 		});
 
 		/* LED Controls */
@@ -1900,7 +1586,6 @@
 					blue: colors.b,
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$('button.LED-off').click(function (event) {
@@ -1908,14 +1593,12 @@
 					off: true
 				};
 				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		$(document).on("click", '#set_led_color', function (event) {
 			src_hexcolor = rgbtoHex($(event.target).css('background-color'));
 
-			color_picker(src_hexcolor, function(h, s, l){
-				hexcolor = hslToHex(h, s, l);
+			color_picker(src_hexcolor, function(hexcolor){
 				$(event.target).css('background-color', hexcolor);
 			})
 		})
@@ -2119,30 +1802,741 @@
 			$('#set_exit_at_level_' + node).trigger('change');
 			isTouchEvent = true;
 		});
+
+		// Plugins
+		socket.on('plugin_list', function (msg) {
+			// msg.plugins.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+
+			var wrap_el = $('#plugin-list');
+			wrap_el.empty();
+
+			if (msg.plugins.length) {
+				var list_el = $('<ul class="plugin-list">');
+				for (var idx in msg.plugins) {
+					var plugin = msg.plugins[idx];
+					var plug_el = $('<li>');
+
+					var main_info_el = $('<div class="main-info">');
+					var details_el = $('<div class="details">');
+					var status_el = $('<div class="status">');
+
+					main_info_el.append('<h3 class="name">' + plugin.name + '</h3>');
+
+					if (plugin.author) {
+						if (plugin.author_uri) {
+							main_info_el.append('<div class="author"><a href="' + plugin.author_uri + '">' + plugin.author + '</a></div>');
+						} else {
+							main_info_el.append('<div class="author">' + plugin.author + '</div>');
+						}
+					}
+
+					if (plugin.version) {
+						main_info_el.append('<div class="version">' + plugin.version + '</div>');
+					}
+
+					if (plugin.description) {
+						details_el.append('<div class="description">' + plugin.description + '</div>');
+					} else {
+						details_el.append('<div class="description"><em>(' + __('not provided') + ')</em></div>');
+					}
+
+					if (plugin.documentation_uri) {
+						details_el.append('<div class="documentation"><a href="' + plugin.documentation_uri + '">' + __('documentation') + '</a></div>');
+					}
+
+					if (plugin.info_uri) {
+						details_el.append('<div class="website"><a href="' + plugin.info_uri + '">' + __('website') + '</a></div>');
+					}
+
+					if (plugin.license_uri) {
+						details_el.append('<div class="license"><a href="' + plugin.license_uri + '">' + __('license') + '</a></div>');
+					} else if (plugin.license) {
+						details_el.append('<div class="license">' + plugin.license + '</div>');
+					}
+
+
+					if (plugin.loaded) {
+						status_el.append('<div class="">' + __('Loaded') + '</div>');
+					} else {
+						plug_el.addClass('load-fail');
+						status_el.append('<div class="">' + __('Not loaded') + ': ' + __(plugin.load_issue) + '</div>');
+					}
+
+					if (plugin.update_status != null) {
+						var install_btn = $(document.createElement('button'))
+								.addClass('install_plugin')
+								.data('domain', plugin.id)
+								.prop('hidden', true)
+								.text(__('Update'))
+								.appendTo(status_el);
+
+						if (plugin.update_status == 5) {
+							install_btn.prop('hidden', false);
+							install_btn.text(__('Reinstall'))
+						} else if ([3, 4].includes(plugin.update_status)) {
+							install_btn.prop('hidden', false);
+						}
+					}
+
+					status_el.append('<button class="delete-plugin" data-id="' + plugin.id + '">' + __('Delete') + '</button>');
+
+					/*
+					if (plugin.enabled) {
+						status_el.append('<button class="disable">' + __('Disable') + '</button>');
+					} else {
+						status_el.append('<button class="enable">' + __('Enable') + '</button>');
+					}
+					*/
+
+					plug_el.append(main_info_el);
+					plug_el.append(details_el);
+					plug_el.append(status_el);
+
+					list_el.append(plug_el);
+				}
+			} else {
+				var list_el = $('<p>').text(__('No external plugins loaded.'));
+			}
+			wrap_el.append(list_el);
+		});
+
+		$(document).on('click', '.install_plugin', function (event) {
+			var data = {
+				method: 'domain',
+				domain: $(this).data('domain'),
+			};
+			socket.emit('plugin_install', data);
+		});
+
+		$(document).on("click", '.delete-plugin', function (event) {
+			plugin_to_delete = $(this).data('id');
+			$.magnificPopup.open({
+				items: {
+					src: '#plugin-delete-confirm'
+				},
+				type: 'inline'
+			});
+		});
+
+		$(document).on("click", '#delete-plugin', function (event) {
+			$.magnificPopup.close();
+			var data = {
+				domain: plugin_to_delete,
+			};
+			socket.emit('plugin_delete', data);
+		});
+
+		$('#import_plugin_file').change(function(){
+			if ($(this).prop('files')[0]) {
+				$('#upload_plugin').prop('disabled', false);
+			}
+		});
+
+		$(document).on('click', '#upload_plugin', function (event) {
+			$.magnificPopup.close();
+			var data = {
+				method: 'upload',
+				source_data: $('#import_plugin_file').prop('files')[0]
+			};
+			socket.emit('plugin_install', data);
+			$('#import_plugin_file').val("");
+			$('#upload_plugin').prop('disabled', true);
+		});
+
+		// Secondaries
+		var secondary_options = [
+			['callout', __('Callout'), [
+				['time', __('Time')],
+				['speed', __('Speed')],
+				['both', __('Time & Speed')],
+				['nameOnly', __('Name')],
+				['none', __('None')]
+			], 'none'],
+			['distance', __('Distance'), 'numeric', 0],
+			['queryInterval', __('Query Interval'), 'numeric', 10],
+			['recEventsFlag', __('Receives Events'), 'boolean', false],
+			['timeout', __('Timeout (seconds)'), 'numeric', 0],
+			['event', __('Event'), 'text', ''],
+			['effect', __('Effect'), [
+				['speak', __('Speak')],
+				['message', __('Message')],
+				['alert', __('Alert')],
+			], 'speak'],
+			['text', __('Text'), 'text', ''],
+			['toneDuration', __('Tone Duration'), 'numeric', 0],
+			['toneFrequency', __('Tone Frequency'), 'numeric', 0],
+			['toneVolume', __('Tone Volume'), 'numeric', 0],
+			['toneType', __('Tone Type'), [
+				['square', __('Square')],
+				['sine', __('Sine')],
+				['sawtooth', __('Sawtooth')],
+				['triangle', __('Triangle')]
+			], 'square'],
+			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 10]
+		]
+		secondary_options.sort((a, b) => a[1].localeCompare(b[1]));
+
+		function display_secondary_ui(secondaries) {
+			if ($('#secondary-ui').length) {
+				var secondary_ui = $('#secondary-ui');
+			} else {
+				$('#secondary-setup').empty();
+				var secondary_ui = $(document.createElement('ul'))
+					.prop('id', 'secondary-ui')
+					.addClass('settings-list')
+					.appendTo('#secondary-setup');
+			}
+
+			if ($(`#secondary--new`).length) {
+				$(`#secondary--new input`).val('');
+			} else {
+				var item_el = $(document.createElement('li'))
+					.prop('id', `secondary--new`)
+					.appendTo(secondary_ui);
+				$(document.createElement('h4'))
+					.text( __('New Secondary') )
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
+					.addClass('form')
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('Address') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-secondary-config')
+					.data('property', 'address')
+					.appendTo(field);
+			}
+
+			secondary_ui.children('li').not('#secondary--new').addClass('flagged');
+
+			for (var i in secondaries) {
+				var secondary = secondaries[i];
+
+				if ($(`#secondary--${i}`).length) {
+					var item_el = $(`#secondary--${i}`)
+						.removeClass('flagged');
+					var address_field = item_el.find('.set-secondary-address');
+					var mode_field = item_el.find('.set-secondary-mode');
+					var new_field = item_el.find('.set-secondary-dynamic-new-key');
+					var fields = item_el.children('ol');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `secondary--${i}`)
+						.appendTo(secondary_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Secondary')} ${parseInt(i)+1}` )
+						.appendTo(item_el);
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-address')
+						.appendTo(field);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Mode') )
+						.appendTo(field);
+					var mode_field = $(document.createElement('select'))
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-mode')
+						.appendTo(field);
+					$(document.createElement('option'))
+						.prop('value', 'split')
+						.text( __('Split') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'mirror')
+						.text( __('Mirror') )
+						.appendTo(mode_field);
+					$(document.createElement('option'))
+						.prop('value', 'action')
+						.text( __('Action') )
+						.appendTo(mode_field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
+					var select_el = $(document.createElement('select'))
+						.addClass('set-secondary-config')
+						.addClass('set-secondary-dynamic-new-key')
+						.appendTo(new_field);
+					secondary_options_els(select_el);
+				}
+				address_field.val(secondary.address);
+				if (secondary.mode) {
+					mode_field.val(secondary.mode);
+				} else {
+					mode_field.val('split');
+				}
+				new_field.val();
+
+				display_secondary_dynamic_field_ui(secondary, fields);
+			}
+			secondary_ui.find('li.flagged').remove();
+		}
+
+		function secondary_options_els (select_el) {
+			$(document.createElement('option'))
+				.text( `- ${__('Select Key')} -` )
+				.prop('value', '')
+				.appendTo(select_el);
+
+			for (var idx in secondary_options) {
+				$(document.createElement('option'))
+					.text( secondary_options[idx][1] )
+					.prop('value', secondary_options[idx][0])
+					.appendTo(select_el);
+			}
+		}
+
+		function display_secondary_dynamic_field_ui(fields, el) {
+			els = el.children('.dynamic');
+
+			els.addClass('flagged');
+
+			var index = 0;
+			for (var i in fields) {
+				if (i != 'address' && i != 'mode') {
+					var field = fields[i];
+
+					if (els.length > index) {
+						var field_el = $(els[index]);
+						var key_el = field_el.children('.set-secondary-dynamic-key');
+						var value_el = field_el.children('.set-secondary-dynamic-input');
+						var value_select_el = field_el.children('.set-secondary-dynamic-select');
+					} else {
+						var field_el = $(document.createElement('li'))
+							.addClass('dynamic')
+							.appendTo(el);
+						var key_el = $(document.createElement('label'))
+							.addClass('label-block')
+							.addClass('set-secondary-dynamic-key')
+							.appendTo(field_el);
+
+						$(document.createElement('button'))
+							.addClass('delete-secondary-dynamic-key')
+							.addClass('btn-danger')
+							.html('&#215;')
+							.appendTo(field_el);
+						var value_el = $(document.createElement('input'))
+							.prop('type', 'number')
+							.prop('step', 'any')
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-value')
+							.addClass('set-secondary-dynamic-input')
+							.appendTo(field_el);
+						var value_select_el = $(document.createElement('select'))
+							.addClass('set-secondary-config')
+							.addClass('set-secondary-dynamic-value')
+							.addClass('set-secondary-dynamic-select')
+							.appendTo(field_el);
+					}
+
+					field_el.removeClass('flagged');
+
+					opt = secondary_options.find(obj => {return obj[0] == i});
+					if (opt) {
+						key_el.text( opt[1] );
+						if (opt[2] == 'numeric') {
+							value_el
+								.prop('hidden', false)
+								.prop('type', 'number')
+								.data('key', i)
+								.val(field);
+							value_select_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+						} else if ( opt[2] == 'boolean' ){
+							value_select_el.empty();
+							$(document.createElement('option'))
+								.prop('value', 1)
+								.text(__('True'))
+								.appendTo(value_select_el)
+							$(document.createElement('option'))
+								.prop('value', 0)
+								.text(__('False'))
+								.appendTo(value_select_el)
+							value_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+							value_select_el
+								.prop('hidden', false)
+								.data('key', i);
+							if (field === true) {
+								value_select_el.val(1);
+							} else if (field === false) {
+								value_select_el.val(0);
+							} else {
+								value_select_el.val(null);
+							}
+						} else if ( Array.isArray(opt[2]) ){
+							value_select_el.empty();
+							for (var o in opt[2]) {
+								$(document.createElement('option'))
+									.prop('value', opt[2][o][0])
+									.text( opt[2][o][1] )
+									.appendTo(value_select_el);
+							}
+							value_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+							value_select_el
+								.prop('hidden', false)
+								.data('key', i)
+								.val(field);
+						} else {
+							// text
+							value_el
+								.prop('hidden', false)
+								.prop('type', 'text')
+								.data('key', i)
+								.val(field);
+							value_select_el
+								.prop('hidden', true)
+								.data('key', null)
+								.val(null);
+						}
+					} else {
+						// text
+						key_el.text( i );
+						value_el
+							.prop('hidden', false)
+							.prop('type', 'text')
+							.data('key', i)
+							.val(field);
+						value_select_el
+							.prop('hidden', true)
+							.data('key', null)
+							.val(null);
+					}
+					index++;
+				}
+			}
+			els.children('.flagged').remove();
+		}
+
+		$(document).on('change', '.set-secondary-config', function (event) {
+			set_secondary_config();
+		});
+
+		$(document).on('click', '.delete-secondary-dynamic-key', function (event) {
+			$(this).siblings('.set-secondary-dynamic-value').data('key', null);
+			set_secondary_config();
+		});
+
+		function set_secondary_config() {
+			var secondaries = [];
+			$('#secondary--new').find('input').each(function(){
+				if ($(this).val()) {
+					secondaries.push({
+						address: $(this).val()
+					});
+					$(this).empty();
+				}
+			});
+
+			$('#secondary-ui').children().each(function(){
+				var values = {};
+				secondary_el = $(this);
+
+				var addr = secondary_el.find('.set-secondary-address')
+				if (addr) {
+					values.address = addr.val();
+				}
+
+				var mode = secondary_el.find('.set-secondary-mode')
+				if (mode) {
+					values.mode = mode.val();
+				}
+
+				secondary_el.find('.set-secondary-dynamic-new-key').each(function(){
+					key_el = $(this);
+					key = key_el.val();
+					if (key) {
+						opt = secondary_options.find(obj => {return obj[0] == key});
+						if (opt) {
+							values[key] = opt[3];
+						} else {
+							values[key] = null;
+						}
+						key_el.val('');
+					}
+				});
+
+				secondary_el.find('.set-secondary-dynamic-value').each(function(){
+					key = $(this).data('key');
+					if (key) {
+						opt = secondary_options.find(obj => {return obj[0] == key});
+						if (opt) {
+							if (opt[2] == 'numeric') {
+								value = Number($(this).val());
+							} else if ( opt[2] == 'boolean' ){
+								if ($(this).val() == '1') {
+									value = true;
+								} else if ($(this).val() == '0') {
+									value = false;
+								} else {
+									value = null;
+								}
+							} else if ( Array.isArray(opt[2]) ){
+								value = $(this).val();
+							} else {
+								value = $(this).val();
+							}
+						} else {
+							value = $(this).val();
+						}
+						values[key] = value;
+					}
+				})
+
+				if (values?.address) {
+					secondaries.push(values);
+				}
+			});
+
+			var data = {
+				section: 'GENERAL',
+				key: 'SECONDARIES',
+				value: secondaries
+			};
+			socket.emit('set_config', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'GENERAL': ['SECONDARIES']
+					}
+				}]
+			});
+		};
+
+		// Sensors
+		function display_sensors_ui(sensors) {
+			if ($('#sensor-ui').length) {
+				var sensor_ui = $('#sensor-ui');
+			} else {
+				$('#sensor-setup').empty();
+				var sensor_ui = $(document.createElement('ul'))
+					.prop('id', 'sensor-ui')
+					.addClass('settings-list')
+					.appendTo('#sensor-setup');
+			}
+
+			if ($(`#sensor--new`).length) {
+				$(`#sensor--new input`).val('');
+			} else {
+				var item_el = $(document.createElement('li'))
+					.prop('id', `sensor--new`)
+					.appendTo(sensor_ui);
+				$(document.createElement('h4'))
+					.text( __('New Sensor') )
+					.appendTo(item_el);
+				var fields = $(document.createElement('ol'))
+					.addClass('form')
+					.appendTo(item_el);
+				var field = $(document.createElement('li'))
+					.appendTo(fields);
+				$(document.createElement('label'))
+					.addClass('label-block')
+					.text( __('Address') )
+					.appendTo(field);
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set-sensor-config')
+					.data('property', 'address')
+					.appendTo(field);
+			}
+
+			sensor_ui.children('li').not('#sensor--new').addClass('flagged');
+
+			var index = 1;
+			for (var key in sensors) {
+				var sensor = sensors[key];
+
+				if ($(`#sensor--${index}`).length) {
+					var item_el = $(`#sensor--${index}`)
+						.removeClass('flagged');
+					var address_field = item_el.find('.set-sensor-address');
+					var new_field = item_el.find('.set-sensor-dynamic-new-key');
+					var fields = item_el.children('ol');
+				} else {
+					var item_el = $(document.createElement('li'))
+						.prop('id', `sensor--${index}`)
+						.appendTo(sensor_ui);
+					$(document.createElement('h4'))
+						.text( `${__('Sensor')} ${index}` )
+						.appendTo(item_el);
+					var fields = $(document.createElement('ol'))
+						.addClass('form')
+						.appendTo(item_el);
+
+					var field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('Address') )
+						.appendTo(field);
+					var address_field = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-address')
+						.appendTo(field);
+
+					var new_field = $(document.createElement('li'))
+						.appendTo(fields);
+					$(document.createElement('label'))
+						.addClass('label-block')
+						.text( __('New Key') )
+						.appendTo(new_field);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.prop('placeholder', __('key') )
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.addClass('set-sensor-dynamic-new-key')
+						.appendTo(new_field);
+				}
+				address_field.val(key);
+				new_field.val();
+
+				display_sensor_dynamic_field_ui(sensor, fields);
+				index++;
+			}
+			sensor_ui.find('li.flagged').remove();
+
+		}
+
+		function display_sensor_dynamic_field_ui(fields, el) {
+			els = el.children('.dynamic');
+
+			els.addClass('flagged');
+
+			var index = 0;
+			for (var key in fields) {
+				var value = fields[key];
+
+				if (els.length > index) {
+					var field_el = $(els[index]);
+					var key_el = field_el.children('.set-sensor-dynamic-key');
+					var value_el = field_el.children('.set-sensor-dynamic-value');
+				} else {
+					var field_el = $(document.createElement('li'))
+						.addClass('dynamic')
+						.appendTo(el);
+					var key_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('label-block')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-key')
+						.appendTo(field_el);
+					var value_el = $(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set-sensor-config')
+						.addClass('set-sensor-dynamic-value')
+						.appendTo(field_el);
+				}
+				field_el.removeClass('flagged');
+				key_el.val(key)
+				value_el.val(value)
+				index++;
+			}
+			els.children('.flagged').remove();
+		}
+
+		$(document).on('change', '.set-sensor-config', function (event) {
+			var sensors = {};
+			$('#sensor--new').find('input').each(function(){
+				if ($(this).val()) {
+					sensors[$(this).val()] = {};
+					$(this).empty();
+				}
+			});
+
+			$('#sensor-ui').children().not('#sensor--new').each(function(){
+				var values = {};
+				sensor_el = $(this);
+
+				var addr = sensor_el.find('.set-sensor-address')?.val();
+				if (addr) {
+					sensor_el.find('.set-sensor-dynamic-key').each(function(){
+						key_el = $(this);
+						value_el = key_el.siblings('.set-sensor-dynamic-value')
+						if (key_el.val()) {
+							if (value_el.length) {
+								values[key_el.val()] = (value_el.val());
+							} else {
+								values[key_el.val()] = null;
+								key_el.val('');
+							}
+						}
+					})
+
+					sensors[addr] = values;
+				}
+			});
+
+			var data = {
+				section: 'SENSORS',
+				value: sensors
+			};
+			socket.emit('set_config_section', data);
+
+			socket.emit('load_data', {
+				'load_types': [{
+					'type': 'config',
+					'value': {
+						'SENSORS': []
+					}
+				}]
+			});
+		});
+
+		$(document).on('click', '.datadir-handler', function (event) {
+			socket.emit('datadir_handler', {'method': $(this).data('method')});
+		});
 	});
 
 </script>
 {% endblock %} {% block content %}
 <main class="page-settings">
 
-{% if server_messages %}
-	<div class="server-messages">
-		<ul>
-			{{ server_messages | safe }}
-		</ul>
-	</div>
-{% endif %}
+<div class="server-messages" id="server_messages">
+	{% if server_messages %}
+		{{ server_messages | safe }}
+	{% endif %}
+</div>
 
-<!--Client Messaging-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Send Message') }}</h2>
-	</div>
-	<div class="panel-content">
-		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
-		<input type="text" id="message_body" maxlength="256" placeholder="Message">{{ getOption('eventDescription') }}</textarea></p>
-		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
-		<p><button id="send_message">{{ __('Send Message') }}</button></p>
+<div id="migrate_confirm" class="priority-message-interrupt mfp-hide popup">
+	<h2>{{ __('Alert') }}</h2>
+	<div class="popup-content">
+		<p>{{ __('User data will be migrated and the server will restart. Are you sure?') }}</p>
+		<p><button class="datadir-handler" data-method="migrate">{{ __('Migrate Data') }}</button>
+			<button class="cancel">{{ __('Cancel') }}</button></p>
 	</div>
 </div>
 
@@ -2283,7 +2677,7 @@
 				<div class="label-block">
 					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
 				</div>
-				<select id="set_calibrationMode" class="set-option" data-option="calibrationMode">
+				<select id="set_calibrationMode" class="set-config" data-section="TIMING" data-key="calibrationMode">
 					<option value="0">{{ __('Manual') }}</option>
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
@@ -2303,144 +2697,6 @@
 		</ol>
 
 		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("View Calibration and Tuning Guide") }}</a></p>
-	</div>
-</div>
-
-<!--Event and Class info-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Event and Classes') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_event_name">{{ __('Event Name') }}</label>
-				</div>
-				<input type="text" id="set_event_name" class="set-option" data-option="eventName" value="{{ getOption('eventName') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_event_description">{{ __('Event Description') }}</label>
-				</div>
-				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
-			</li>
-		</ol>
-
-		<div id="race_classes" class="race_classes item-blocks">
-			<p class="form-note">{{ __('Loading...') }}</p>
-		</div>
-		<div class="control-set">
-			<button id="add_race_class">+ {{ __('Add Class') }}</button>
-		</div>
-
-		<div id="class_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Modifying a locked class retroactively changes saved race data.') }}</p>
-				<p><button class="btn-danger" id="unlock_class">{{ __('Unlock') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-	</div>
-</div>
-
-<!--Heats list for editing-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Heats') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ol id="heats" class="heats item-blocks">
-			<li>{{ __('Loading...') }}</li>
-		</ol>
-		<div class="control-set">
-			<button id="add_heat">+ {{ __('Add Heat') }}</button>
-		</div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
-				</div>
-				<select id="set_next_heat_behavior">
-					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
-					<option value="1">{{ __('Manually Switch Heats') }}</option>
-				</select>
-			</li>
-		</ol>
-
-		<h3>Heat generator</h3>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
-				</div>
-				<select id="generator_input_class">
-					<option>{{ __('Loading...') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
-				</div>
-				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_suffix">{{ __('Suffix') }}</label>
-				</div>
-				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="generator_output_class">{{ __('Output Class') }}</label>
-				</div>
-				<select id="generator_output_class">
-					<option>{{ __('Loading...') }}</option>
-				</select>
-			</li>
-		</ol>
-		<div class="control-set">
-			<button id="generate_heats">{{ __('Generate Heats') }}</button>
-		</div>
-
-		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
-				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-	</div>
-</div>
-
-<!--Pilots list for editing-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Pilots') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ul class="pilots">
-			<li>{{ __('Loading...') }}</li>
-		</ul>
-
-		<div class="control-set">
-			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
-		</div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_pilotSort">{{ __('Pilot Sort') }}</label>
-				</div>
-				<select id="set_pilotSort" class="set-option" data-option="pilotSort">
-					<option value="name">{{ __('Name') }}</option>
-					<option value="callsign">{{ __('Callsign') }}</option>
-				</select>
-			</li>
-		</ol>
 	</div>
 </div>
 
@@ -2468,9 +2724,9 @@
 			</li>
 			<li>
 				<div class="label-block">
-					{{ __('Voice Test') }} &nbsp; &nbsp;
+					{{ __('Voice Test') }}
 				</div>
-				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
+				<input type="text" id="voice_test_text" value="{{ getConfig('UI', 'timerName') }}">
 				<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
 			</li>
 			<li>
@@ -2483,7 +2739,7 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2493,7 +2749,7 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2503,7 +2759,7 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="2">{{ __('Only on Non-Team/Non-Co-op Races') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
@@ -2519,11 +2775,12 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+						<label for="voice_team_lap_count">{{ __('Team/Co-op Lap Total') }}</label>
 					</div>
 					<select id="voice_team_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('On Team Races') }}</option>
+						<option value="1">{{ __('On Team/Co-op Races') }}</option>
+						<option value="2">{{ __('On Team/Co-op Races (short call)') }}</option>
 					</select>
 				</li>
 				<li>
@@ -2531,6 +2788,15 @@
 						<label for="voice_race_winner">{{ __('Race Winner') }}</label>
 					</div>
 					<select id="voice_race_winner">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_if_node_finished">{{ __('Laps After Pilot Done') }}</label>
+					</div>
+					<select id="voice_if_node_finished">
 						<option value="0">{{ __('Never') }}</option>
 						<option value="1">{{ __('Always') }}</option>
 					</select>
@@ -2554,20 +2820,47 @@
 					SPLMSK_SPLIT_TIME = 0x04
 					-->
 					<div class="label-block">
-						<label for="voice_split_timer">{{ __('Cluster/Split Timer') }}</label>
+						<label for="voice_split_timer">{{ __('Secondary/Split Timer') }}</label>
 					</div>
 					<select id="voice_split_timer">
 						<option value="0">{{ __('None') }}</option>
 						<option value="1">{{ __('Pilot Name') }}</option>
-						<option value="5">{{ __('Pilot Name, Split Time') }}</option>
+						<option value="5">{{ __('Pilot Name, Split Value') }}</option>
 						<option value="3">{{ __('Pilot Name, Split ID') }}</option>
-						<option value="7">{{ __('Pilot Name, Split ID, Split Time') }}</option>
+						<option value="7">{{ __('Pilot Name, Split ID, Split Value') }}</option>
 						<option value="2">{{ __('Split ID') }}</option>
 						<option value="4">{{ __('Split Time') }}</option>
 						<option value="6">{{ __('Split ID, Split Time') }}</option>
 					</select>
 				</li>
 				{% endif %}
+				<li>
+					<div class="label-block">
+						<label for="voice_race_leader">{{ __('Race Leader Pilot') }}</label>
+					</div>
+					<select id="voice_race_leader">
+						<option value="0">{{ __('None') }}</option>
+						<option value="1">{{ __('After 1 Second') }}</option>
+						<option value="2">{{ __('After 2 Seconds') }}</option>
+						<option value="3">{{ __('After 3 Seconds') }}</option>
+						<option value="4">{{ __('After 4 Seconds') }}</option>
+						<option value="5">{{ __('After 5 Seconds') }}</option>
+						<option value="6">{{ __('After 6 Seconds') }}</option>
+						<option value="7">{{ __('After 7 Seconds') }}</option>
+						<option value="8">{{ __('After 8 Seconds') }}</option>
+						<option value="9">{{ __('After 9 Seconds') }}</option>
+						<option value="10">{{ __('After 10 Seconds') }}</option>
+						<option value="11">{{ __('After 11 Seconds') }}</option>
+						<option value="12">{{ __('After 12 Seconds') }}</option>
+						<option value="13">{{ __('After 13 Seconds') }}</option>
+						<option value="14">{{ __('After 14 Seconds') }}</option>
+						<option value="15">{{ __('After 15 Seconds') }}</option>
+						<option value="16">{{ __('After 16 Seconds') }}</option>
+						<option value="17">{{ __('After 17 Seconds') }}</option>
+						<option value="18">{{ __('After 18 Seconds') }}</option>
+						<option value="19">{{ __('After 19 Seconds') }}</option>
+					</select>
+				</li>
 			</li>
 			<li>
 				<div class="label-block">
@@ -2609,7 +2902,7 @@
 					<li><label><input type="checkbox" id="beep_race_leader_lap"> {{ __('Race Leader Lap') }}</label></li>
 					<li><label><input type="checkbox" id="beep_race_winner_declared"> {{ __('Race Winner Declared') }}</label></li>
 					{% if cluster_has_secondaries %}
-					<li><label><input type="checkbox" id="beep_cluster_connect"> {{ __('Cluster Timer Connect / Disconnect') }}</label></li>
+					<li><label><input type="checkbox" id="beep_cluster_connect"> {{ __('Secondary Timer Connect / Disconnect') }}</label></li>
 					{% endif %}
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>
@@ -2622,157 +2915,41 @@
 				<input type="range" id="set_indicator_volume" min="0" max="100">
 			</li>
 		</ol>
+		<br>
+		<div class="control-set">
+			<div>
+				<button class="button" id="export_audio_settings">{{ __('Export Audio Settings') }}</button> &nbsp;
+				<button data-mfp-src="#audio_settings_defaults_confirm" class="open-mfp-popup">{{ __('Set Audio Settings to Defaults') }}</button>
+			</div>
+			<div>
+				<label for="select_audio_import_file"><span style="font-weight:bold">{{ __('Select File to Import') }}: </span></label>
+				<input type="file" id="select_audio_import_file" accept=".cfg" />
+				<button id="import_audio_settings" class="btn-danger" disabled="disabled">{{ __('Import Audio Settings') }}</button>
+			</div>
+		</div>
+		<div id="audio_settings_defaults_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Confirm') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('This will overwrite all audio settings. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="default_audio_settings">{{ __('Set Defaults') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
 	</div>
 </div>
 
-<!--Race Format-->
+<!--Event Actions-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Race Format') }}</h2>
+		<h2>{{ __('Event Actions') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
+		<div id="actions" class="form">
+		</div>
 
 		<div class="control-set">
-			<label for="set_race_format">{{ __('Format:') }}</label>
-			<select id="set_race_format">
-				<option>{{ __('Loading...') }}</option>
-			</select>
-			<button id="add_race_format" title="{{ __('Duplicate Format') }}">+</button>
-			<button class="btn-danger open-mfp-popup unlock" id="unlock_race_format_button" data-mfp-src="#format_unlock_confirm" title="{{ __('Force Modify Format') }}"></button>
-			<button class="btn-danger open-mfp-popup" id="delete_race_format_button" data-mfp-src="#format_delete_confirm" title="{{ __('Remove') }}">&#215;</button>
+			<button class="button" id="add_action" disabled="disabled">{{ __('Add Action') }}</button>
 		</div>
-
-		<div id="format_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Modifying a locked format retroactively changes saved race data.') }}</p>
-				<p><button class="btn-danger" id="unlock_race_format">{{ __('Unlock') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<div id="format_delete_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Deleting a race format cannot be undone.') }}</p>
-				<p><button class="btn-danger" id="delete_race_format">{{ __('Delete') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
-		<ol class="form" id="race_formats">
-			<li>
-				<div class="label-block">
-					<label for="set_format_name">{{ __('Name') }}</label>
-				</div>
-				<input type="text" id="set_format_name">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_race_mode">{{ __('Race Clock Mode') }}</label>
-				</div>
-				<select id="set_race_mode">
-					<option value="1">{{ __('No Time Limit') }}</option>
-					<option value="0">{{ __('Fixed Time') }}</option><!--  / Finish Lap -->
-					<!-- <option value="2">{{ __('Fixed Time / End Immediately') }}</option> -->
-				</select>
-			</li>
-			<li id="format-race-duration-field">
-				<div class="label-block">
-					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
-				</div>
-				<input type="number" id="set_fix_race_time" min="0" max="99999">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_start_delay_min">{{ __('Minimum Start Delay') }}</label>
-					<p class="desc">{{ __('Minimum time before race begins') }}</p>
-				</div>
-				<input type="number" id="set_start_delay_min" min="0" max="999">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_start_delay_max">{{ __('Maximum Start Delay') }}</label>
-					<p class="desc">{{ __('Maximum time before race begins') }}<br />
-						{{ __('Staging timer is hidden unless value matches Minimum Start Delay') }}</p>
-				</div>
-				<input type="number" id="set_start_delay_max" min="0" max="999">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_staging_tones">{{ __('Staging Tones') }}</label>
-				</div>
-				<select id="set_staging_tones">
-					<option value="2">{{ __('Each Second') }}</option>
-					<option value="1">{{ __('One') }}</option>
-					<option value="0">{{ __('None') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_start_behavior">{{ __('First Crossing') }}</label>
-				</div>
-				<select id="set_start_behavior">
-					<option value="0">{{ __('Hole Shot') }}</option>
-					<option value="1">{{ __('First Lap') }}</option>
-					<option value="2">{{ __('Staggered Start') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_win_condition">{{ __('Win Condition') }}</label>
-				</div>
-				<select id="set_win_condition">
-					<option value="1">{{ __('Most Laps in Fastest Time') }}</option>
-					<option value="5">{{ __('Most Laps Only') }}</option>
-					<option value="6">{{ __('Most Laps Only with Overtime') }}</option>
-					<option value="2">{{ __('First to X Laps') }}</option>
-					<option value="3">{{ __('Fastest Lap') }}</option>
-					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
-					<option value="0">{{ __('None') }}</option>
-				</select>
-			</li>
-			<li id="format-laps-to-win-field">
-				<div class="label-block">
-					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
-				</div>
-				<input type="number" id="set_number_laps_win" min="0" max="999">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
-				</div>
-				<select id="set_team_racing_mode">
-					<option value="0">{{ __('Team Racing Disabled') }}</option>
-					<option value="1">{{ __('Team Racing Enabled') }}</option>
-				</select>
-			</li>
-		</ol>
-
-		<div id="race_format_suggestions" class="form-note emphasis"></div>
-
-		<hr />
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
-					<p class="desc">{{ __('In seconds') }}</p>
-				</div>
-				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
-				</div>
-				<select id="set_min_lap_behavior">
-					<option value="0">{{ __('Highlight Short Laps') }}</option>
-					<option value="1">{{ __('Discard New Short Laps') }}</option>
-				</select>
-			</li>
-
-		</ol>
 	</div>
 </div>
 
@@ -2783,19 +2960,6 @@
 		<h2>{{ __('LED Events') }}</h2>
 	</div>
 	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_ledColorMode">{{ __('Color Mode') }}</label>
-				</div>
-				<select id="set_ledColorMode" class="set-option" data-option="ledColorMode">
-					<option value="0">{{ __('Node') }}</option>
-					<option value="1">{{ __('Pilot') }}</option>
-					<option value="2">{{ __('Frequency') }}</option>
-				</select>
-			</li>
-		</ol>
-		<hr />
 		<div id="LED-effect-setup"></div>
 	</div>
 </div>
@@ -2847,87 +3011,44 @@
 		<div id="vrx-control-setup"></div>
 
 		<div class="control-set vrx-warning"></div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_osd_pos_header">{{ __('OSD Rank Prefix') }}</label>
-				</div>
-				<input type="text" id="set_osd_pos_header" class="set-option" data-option="osd_positionHeader" value="{{ getOption('osd_positionHeader') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_osd_lap_header">{{ __('OSD Lap Prefix') }}</label>
-				</div>
-				<input type="text" id="set_osd_lap_header" class="set-option" data-option="osd_lapHeader" value="{{ getOption('osd_lapHeader') }}">
-			</li>
-		</ol>
 	</div>
 </div>
 {% endif %}
 
-<!--Reset database-->
+<!-- Plugins -->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Database') }}</h2>
+		<h2>{{ __('Plugins') }}</h2>
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button id="backup_database">{{ __('Backup Database') }}</button>
-			{% if Debug %}<a href="/database" class="debug button-like">{{ __('View Database') }}</a>{% endif %}
-		</div>
-		<div class="control-set">
-			<select id="reset_type">
-				<option value="races">{{ __('Races') }}</option>
-				<option value="heats">{{ __('Races and Heats') }}</option>
-				<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
-				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
-				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
-				<option value="formats">{{ __('Races and Race Formats') }}</option>
-			</select>
-			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
-		</div>
-		<div class="control-set">
-			<select id="database_list" disabled="disabled">
-				<option value="-">{{ __('No Saved Databases') }}</option>
-			</select>
-			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
-			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete Data') }}</button>
-		</div>
-		<div class="control-set">
-			<select id="exporter_list" disabled="disabled">
-				<option value="-">{{ __('No Exporters') }}</option>
-			</select>
-			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
+			<a href="#plugin-uploader" class="button-like open-mfp-popup">{{ __('Upload') }}</a>
+			<a href="/plugins" class="button-like" disabled>{{ __('Browse Community Plugins (online only)') }}</a>
 		</div>
 
-		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
+		<div id="plugin-list">
+			<p>{{ __('Loading...') }}</p>
+		</div>
+
+		<div id="plugin-uploader" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Upload Plugin') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+				<p><label for="import_plugin_file">{{ __('Plugin Zipfile') }} {{ __('Max 50MB') }}</label><br />
+				<input type="file" id="import_plugin_file" /></p>
+
+				<p><button id="upload_plugin" disabled="disabled">{{ __('Import Plugin') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
 
-		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+		<div id="plugin-delete-confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+				<p>{{ __('There is no undo available for this action. Restart is required.') }}</p>
+				<p><button class="btn-danger" id="delete-plugin">{{ __('Delete') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
-
-      <div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>{{ __('Alert') }}</h2>
-			<div class="popup-content">
-				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
-				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button></p>
-			</div>
-		</div>
-
 	</div>
 </div>
 
@@ -2942,6 +3063,7 @@
 			<button data-mfp-src="#shutdown_confirm" class="btn-danger open-mfp-popup">{{ __('Shut Down') }}</button>
 			<button data-mfp-src="#reboot_confirm" class="btn-danger open-mfp-popup">{{ __('Reboot') }}</button>
 			{% endif %}
+			<a href="#restart_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Restart') }}</a>
 			{% if Debug %}
 			<button data-mfp-src="#kill_server_confirm" class="btn-danger open-mfp-popup">{{ __('Kill Server') }}</button>
 			{% endif %}
@@ -2955,7 +3077,7 @@
 		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Shut down server?') }}</p>
+				<p>{{ __('Shut down server hardware?') }}</p>
 				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
@@ -2964,7 +3086,7 @@
 		<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
-				<p>{{ __('Reboot server?') }}</p>
+				<p>{{ __('Reboot server hardware?') }}</p>
 				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
@@ -2982,6 +3104,19 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
+					<label for="set_admin_user">{{ __('Username') }}</label>
+				</div>
+				<input type="text" id="set_admin_user" class="set-config" data-section="SECRETS" data-key="ADMIN_USERNAME" value="{{ getConfig('SECRETS', 'ADMIN_USERNAME') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_admin_password">{{ __('Password') }}</label>
+					<p class="desc">{{ __('Default') }}: rotorhazard</p>
+				</div>
+				<input type="password" id="set_admin_password" class="set-config" data-section="SECRETS" data-key="ADMIN_PASSWORD" value="**********">
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_language">{{ __('Language') }}</label>
 				</div>
 				<select id="set_language">
@@ -2992,50 +3127,50 @@
 				<div class="label-block">
 					<label for="set_time_format">{{ __('Time Format') }}</label>
 				</div>
-				<input type="text" id="set_time_format" class="set-option" data-option="timeFormat" value="{{ getOption('timeFormat') }}">
+				<input type="text" id="set_time_format" class="set-config" data-section="UI" data-key="timeFormat" value="{{ getConfig('UI', 'timeFormat') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_time_format_phonetic">{{ __('Phonetic Time Format') }}</label>
 				</div>
-				<input type="text" id="set_time_format_phonetic" class="set-option" data-option="timeFormatPhonetic" value="{{ getOption('timeFormatPhonetic') }}">
+				<input type="text" id="set_time_format_phonetic" class="set-config" data-section="UI" data-key="timeFormatPhonetic" value="{{ getConfig('UI', 'timeFormatPhonetic') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_timer_name">{{ __('Timer Name') }}</label>
 				</div>
-				<input type="text" id="set_timer_name" class="set-option" data-option="timerName" value="{{ getOption('timerName') }}">
+				<input type="text" id="set_timer_name" class="set-config" data-section="UI" data-key="timerName" value="{{ getConfig('UI', 'timerName') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_timer_logo">{{ __('Timer Logo') }}</label>
-					<p class="desc">{{ __('File path relative to RotorHazard/server/static/user') }}</p>
+					<p class="desc">{{ __('File path relative to <data>/shared/') }}</p>
 				</div>
-				<input type="text" id="set_timer_logo" class="set-option" data-option="timerLogo" value="{{ getOption('timerLogo') }}" placeholder="group-logo.png">
+				<input type="text" id="set_timer_logo" class="set-config" data-section="UI" data-key="timerLogo" value="{{ getConfig('UI', 'timerLogo') }}" placeholder="group-logo.png">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_primary" class="hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
+				<input type="range" id="set_hue_primary" class="hue-control" data-section="UI" data-key="hue_0" value="{{ getConfig('UI', 'hue_0') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_primary">{{ __('Primary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_primary" class="sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
+				<input type="range" id="set_sat_primary" class="sat-control" data-section="UI" data-key="sat_0" value="{{ getConfig('UI', 'sat_0') }}" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_secondary">{{ __('Secondary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_secondary" class="hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
+				<input type="range" id="set_hue_secondary" class="hue-control" data-section="UI" data-key="hue_1" value="{{ getConfig('UI', 'hue_1') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_secondary">{{ __('Secondary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_secondary" class="sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
+				<input type="range" id="set_sat_secondary" class="sat-control" data-section="UI" data-key="sat_1" value="{{ getConfig('UI', 'sat_1') }}" min="0" max="100">
 			</li>
 		</ol>
 
@@ -3046,18 +3181,135 @@
 	</div>
 </div>
 
-<!-- Status -->
+<!-- Cluster -->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Status') }}</h2>
+		<h2>{{ __('Secondary Timers') }}</h2>
 	</div>
 	<div class="panel-content">
+		<h3>{{ __('Cluster Status') }}</h3>
 		<div id="cluster-status" class="control-set">
+			<p>No cluster status available.</p>
 		</div>
-		<div id="env-data-table" class="control-set">
+
+		<h3>{{ __('Settings') }}</h3>
+		<div id="secondary-setup">
+			{{ __('Loading...') }}
 		</div>
 	</div>
 </div>
 
+<!-- Sensors -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Environment Sensors') }}</h2>
+	</div>
+	<div class="panel-content">
+		<h3>{{ __('Environment Status') }}</h3>
+		<div id="env-data-table" class="control-set">
+			<p>No environment status available.</p>
+		</div>
+		<h3>{{ __('Settings') }}</h3>
+		<div id="sensor-setup">
+			{{ __('Loading...') }}
+		</div>
+	</div>
+</div>
+
+<!-- Save/Load Settings -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Backup/Restore Settings') }}</h2>
+	</div>
+	<div class="panel-content">
+		<h3>{{ __('Current Server Settings') }}</h3>
+		<div class="control-set">
+			<button class="button" id="backup_settings">{{ __('Backup Settings') }}</button> &nbsp;
+			<button class="button" id="download_settings">{{ __('Download Settings') }}</button> &nbsp;
+			<button data-mfp-src="#reset_settings_to_defaults_confirm" class="open-mfp-popup">{{ __('Reset All Settings to Defaults') }}</button>
+		</div>
+
+		<h3>{{ __('Manage Files') }}</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="cfg_files_list">{{ __('Saved Settings Files:') }}</label>
+				</div>
+				<select id="cfg_files_list" disabled="disabled">
+					<option value="-">{{ __('No Saved Settings Files') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button data-mfp-src="#settings_restore_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Restore Settings File') }}</button> &nbsp;
+			<button id="rename_settings_btn" disabled="disabled">{{ __('Rename Settings File') }}</button> &nbsp;
+			<button data-mfp-src="#settings_delete_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Delete Settings File') }}</button>
+		</div>
+
+		<div id="reset_settings_to_defaults_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('All settings will be reset to default values and the server will restart. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="reset_cfg_file_to_defaults">{{ __('Reset Settings to Defaults') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+		<div id="settings_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('All settings will be overwritten and the server will restart. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="restore_cfg_file">{{ __('Restore Settings') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+		<div id="settings_rename_popup" class="mfp-hide popup">
+			<h2>{{ __('Rename Settings File') }}</h2>
+			<div class="popup-content">
+				<p>
+					<div class="label-block">
+						<label for="new_cfg_file_name">{{ __('Enter New File Name:') }}</label>
+					</div>
+					<input type="text" id="new_cfg_file_name">
+				</p>
+				<p><button class="button" id="rename_cfg_file">{{ __('Rename File') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+		<div id="settings_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleted settings files are not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="delete_cfg_file">{{ __('Delete File') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+		<div id="settings_load_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('All settings will be overwritten and the server will restart. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="load_cfg_file">{{ __('Load Settings') }}</button>
+					<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<h3>{{ __('Import File') }}</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="select_load_settings_file">{{ __('Select Settings File to Load') }}: </label>
+				</div>
+				<input type="file" id="select_load_settings_file" accept=".json" />
+			</li>
+		</ol>
+		<div class="control-set">
+			<button data-mfp-src="#settings_load_confirm" class="open-mfp-popup" disabled="disabled">{{ __('Load Settings') }}</button>
+		</div>
+	</div>
+</div>
+
+<!-- Custom UI -->
+<div id="custom-ui"></div>
+
+<p><a href="/advanced-settings">{{ __('Advanced Settings') }}</a>
 </main>
 {% endblock %}

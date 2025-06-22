@@ -1,53 +1,146 @@
 {% extends "layout.html" %} {% block title %}{{ __('Streams') }}{% endblock %}{% block head %}
+<script type="text/javascript" src="{{ url_for('static', filename='showdown-1.9.1/showdown.min.js') }}"></script>
 
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
 		'language',
+		{
+			'type': 'ui',
+			'value': 'streams'
+		},
 		'heat_data',
 		'class_data',
 	];
 
 	$(document).ready(function () {
+		// set up markdown converter
+		var panel_converter = new showdown.Converter({
+			ghCodeBlocks: true,
+			ghCompatibleHeaderId: true,
+			literalMidWordUnderscores: true,
+			simpleLineBreaks: true,
+			headerLevelStart: 3
+		});
+
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
 			}
 		});
 
-		socket.on('heat_data', function (msg) {
-			$('.heat_list').empty();
-			$('.heat_list').append('<li><a href="/stream/heat/0">' + __("Current Heat") + '</a></li>');
+		socket.on('ui', function (msg) {
+			if (msg.page == 'streams') {
+				$('#custom-ui').empty();
 
-			for (var i in msg.heats) {
-				var heat = msg.heats[i];
+				for (var i in msg.panels) {
+					var panel = msg.panels[i];
 
-				if (heat.note) {
-					heatname = heat.note;
-				} else {
-					heatname = __('Heat') + ' ' + heat.heat_id;
+					var panel_el = $('<div class="panel collapsing active">');
+					panel_el.attr('id', 'ui-custom-' + panel.panel.name);
+					var panel_header_el = $('<div class="panel-header">');
+					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+					var panel_content_el = $('<div class="panel-content">');
+
+					// panel open/close
+					if (panel.panel.open) {
+						panel_el.addClass('open');
+						panel_content_el.show();
+					} else {
+						panel_el.removeClass('open');
+						panel_content_el.hide();
+					}
+
+					// add markdown content
+					for (var md_idx in panel.markdowns) {
+						md_content = panel.markdowns[md_idx].desc;
+						md_output = panel_converter.makeHtml(md_content);
+						md_element = $('<div class="ui-md-el">').html(md_output);
+						panel_content_el.append(md_element);
+					}
+
+					var form_el = $('<ol class="form">');
+
+					for (var f_idx in panel.settings) {
+						var settings = { ...panel.settings[f_idx] };
+
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_option';
+						settings.id = 'genericOption_' + settings.name;
+						settings.data = {
+							field: settings.name,
+						}
+
+						var field = rhui.buildField(settings);
+
+						form_el.append(field);
+					}
+					panel_content_el.append(form_el);
+					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
+
+					panel_el.append(panel_header_el);
+					panel_el.append(panel_content_el);
+
+					$('#custom-ui').append(panel_el);
 				}
 
-				$('.heat_list').append('<li><a href="/stream/heat/' + heat.heat_id + '">' + heatname + '</a></li>');
+				// load panel state
+				for (var panel in rotorhazard.panelstates) {
+					var panel_obj = $('#' + panel);
+					var panelstate = rotorhazard.panelstates[panel];
+
+					if (panelstate) {
+						panel_obj.addClass('open');
+						panel_obj.children('.panel-content').stop().slideDown();
+					} else {
+						panel_obj.removeClass('open');
+						panel_obj.children('.panel-content').stop().slideUp();
+					}
+				}
 			}
+		});
+
+		socket.on('pilot_data', function (msg) {
+			rotorhazard.event.pilots = msg.pilots;
+			rotorhazard.options.pilotSort = msg.pilotSort;
+			display_heats();
+		});
+
+		socket.on('heat_data', function (msg) {
+			rotorhazard.event.heats = msg.heats;
+			display_heats();
 		});
 
 		socket.on('class_data', function (msg) {
-			$('.race_class_list').empty();
-			$('.race_class_list').append('<li><a href="/stream/class/0">' + __("Current Class") + '</a></li>');
-
-			for (var i in msg.classes) {
-				var race_class = msg.classes[i];
-
-				if (race_class.name) {
-					classname = race_class.name;
-				} else {
-					classname = __('Class') + ' ' + race_class.id;
-				}
-
-				$('.race_class_list').append('<li><a href="/stream/class/' + race_class.id + '">' + classname + '</a></li>');
-			}
+			rotorhazard.event.classes = msg.classes;
+			display_classes()
 		});
+
+		function display_heats() {
+			if (rotorhazard.event.heats) {
+				$('.heat_list').empty();
+				$('.heat_list').append('<li><a href="/stream/heat/0">' + __("Current Heat") + '</a></li>');
+
+				for (var i in rotorhazard.event.heats) {
+					var heat = rotorhazard.event.heats[i];
+
+					$('.heat_list').append('<li><a href="/stream/heat/' + heat.id + '">' + heat.displayname + '</a></li>');
+				}
+			}
+		}
+
+		function display_classes() {
+			if (rotorhazard.event.classes) {
+				$('.race_class_list').empty();
+				$('.race_class_list').append('<li><a href="/stream/class/0">' + __("Current Class") + '</a></li>');
+
+				for (var i in rotorhazard.event.classes) {
+					var race_class = rotorhazard.event.classes[i];
+
+					$('.race_class_list').append('<li><a href="/stream/class/' + race_class.id + '">' + race_class.displayname + '</a></li>');
+				}
+			}
+		}
 	});
 
 </script>
@@ -69,11 +162,18 @@
 			</ul>
 
 			<h2>{{ __("Heat Displays") }}</h2>
-			<ul class="heat_list"></ul>
+			<ul class="heat_list">
+				<li>{{ __("Loading...") }}</li>
+			</ul>
 
 			<h2>{{ __("Class Displays") }}</h2>
-			<ul class="race_class_list"></ul>
+			<ul class="race_class_list">
+				<li>{{ __("Loading...") }}</li>
+			</ul>
 		</div>
 	</div>
+
+	<!-- Custom UI -->
+	<div id="custom-ui"></div>
 </main>
 {% endblock %}

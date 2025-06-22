@@ -14,7 +14,7 @@ Hier ist ein Beispiel für die Verkabelung eines DS3231-Moduls über eine Delta5
 
 ![DS3231 wiring](../img/RH_DS3231_D5PCB.jpg)
 
-Wenn Sie eine der neueren [RotorHazard PCBs](../resources/PCB/README.md) verwenden, gibt es mehrere Stellen auf der Karte, an denen diese Verbindungen verfügbar sind.
+Wenn Sie eine der neueren [RotorHazard PCBs &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources/PCB/README.md) verwenden, gibt es mehrere Stellen auf der Karte, an denen diese Verbindungen verfügbar sind.
 
 ### Konfiguration
 

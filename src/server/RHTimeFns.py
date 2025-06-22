@@ -1,5 +1,4 @@
 # RHTimeFns:  Helpers for datetime and timezone functions.
-#             Supports python 2 and python 3
 
 from datetime import datetime
 
@@ -14,3 +13,9 @@ def getUtcDateTimeNow():
     if useTimezoneFlag:
         return datetime.now(datetime.timezone.utc)
     return datetime.utcnow()
+
+def datetimeToFormattedStr(datetimeObj):
+    return datetimeObj.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+def epochMsToFormattedStr(epochMs):
+    return datetimeToFormattedStr(datetime.fromtimestamp(epochMs / 1000.0))

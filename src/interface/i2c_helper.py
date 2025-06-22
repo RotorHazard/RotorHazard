@@ -7,7 +7,7 @@ except:
 import gevent
 import os
 import logging
-from monotonic import monotonic
+from time import monotonic
 
 I2C_CHILL_TIME = float(os.environ.get('RH_I2C_SLEEP', '0.015')) # Delay after i2c read/write
 
@@ -53,6 +53,6 @@ class I2CBus(object):
 
 
 def create(config):
-    bus = config.HARDWARE['I2C_BUS']
+    bus = config.get_item('HARDWARE', 'I2C_BUS')
     logger.debug('Starting I2C on bus {0}'.format(bus))
     return I2CBus(bus)

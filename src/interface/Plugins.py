@@ -3,10 +3,9 @@
 import logging
 import importlib
 import pkgutil
-from six.moves import UserList
+from collections import UserList
 
 logger = logging.getLogger(__name__)
-
 
 def search_modules(prefix=None, suffix=None):
     plugin_modules = []
@@ -27,7 +26,7 @@ class Plugins(UserList):
         self.prefix = prefix
         self.suffix = suffix
 
-    def discover(self, includeOffset=False, *args, **kwargs):
+    def discover(self, includeOffset=False, *args, **kwargs):  #pylint: disable=keyword-arg-before-vararg
         for plugin_module in search_modules(prefix = self.prefix, suffix = self.suffix):
             if includeOffset:
                 kwargs['idxOffset'] = len(self.data)

@@ -1,4 +1,4 @@
-{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Current') }}{% endblock %}{% block head %}
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Current Race') }}{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
@@ -18,13 +18,14 @@
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
 
-		rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
+		var staging_start_pi = (msg.pi_staging_at_s * 1000); // convert seconds (pi) to millis (JS)
+		var race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
 
 		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
-		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
-		rotorhazard.timer.race.duration = msg.race_time_sec;
+		rotorhazard.timer.race.count_up = Boolean(msg.unlimited_time);
+		rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
 
-		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+		rotorhazard.timer.race.start(race_start_pi, staging_start_pi);
 	}
 
 	$(document).ready(function () {
@@ -32,44 +33,48 @@
 		rotorhazard.pi_time_request = window.performance.now();
 		socket.emit('get_pi_time');
 
+		$('.timing-clock .warning').hide();
+
 		socket.on('pi_time', function (msg) {
+			var max_samples = 10;
 			var response_time = window.performance.now();
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
 
-			var pi_time_diff = {
+			var server_time_differential = {
 				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
 				'response': parseFloat(server_delay)
 			}
 
 			// store sync sample
-			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
+			rotorhazard.server_time_differential_samples.push(server_time_differential);
 
 			// sort stored samples
-			rotorhazard.pi_time_diff_samples.sort(function(a, b){
+			rotorhazard.server_time_differential_samples.sort(function(a, b){
 				return a.response - b.response;
 			})
 
 			// remove unusable samples
-			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
-			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
+			var diff_min = rotorhazard.server_time_differential_samples[0].differential - rotorhazard.server_time_differential_samples[0].response
+			var diff_max = rotorhazard.server_time_differential_samples[0].differential + rotorhazard.server_time_differential_samples[0].response
 
-			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+			rotorhazard.server_time_differential_samples = rotorhazard.server_time_differential_samples.filter(function(value, index, array) {
 				return value.differential >= diff_min && value.differential <= diff_max;
 			});
 
 			// get filtered value
 			var a = [];
-			for (var i in rotorhazard.pi_time_diff_samples) {
-				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			for (var i in rotorhazard.server_time_differential_samples) {
+				a.push(rotorhazard.server_time_differential_samples[i].differential);
 			}
-			rotorhazard.pi_time_diff = median(a);
+			rotorhazard.server_time_differential = median(a);
 
-			// pass current sync to timer
-			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+			// pass current sync to timers
+			rotorhazard.timer.race.sync();
+			rotorhazard.timer.deferred.sync();
 
 			// continue sampling for sync to improve accuracy
-			if (rotorhazard.pi_time_diff_samples.length < 10) {
+			if (rotorhazard.server_time_differential_samples.length < 10) {
 				setTimeout(function(){
 					rotorhazard.pi_time_request = window.performance.now();
 					socket.emit('get_pi_time');
@@ -78,10 +83,26 @@
 
 			// update server info
 			var a = Infinity;
-			for (var i in rotorhazard.pi_time_diff_samples) {
-				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
+			for (var i in rotorhazard.server_time_differential_samples) {
+				a = Math.min(a, rotorhazard.server_time_differential_samples[i].response);
 			}
-			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
+			rotorhazard.sync_within = Math.ceil(a);
+
+			/*
+			$('#server-lag').html('<p>Sync quality: within ' + rotorhazard.sync_within + 'ms (' + rotorhazard.server_time_differential_samples.length + '/' + max_samples + ' samples)</p>');
+
+			if (
+				(max_samples >= 10 && SYNC_WARNING_THRESHOLD_10 > rotorhazard.sync_within) ||
+				(max_samples >= 3 && SYNC_WARNING_THRESHOLD_3 > rotorhazard.sync_within) ||
+				SYNC_WARNING_THRESHOLD_1 > rotorhazard.sync_within) {
+				rotorhazard.has_server_sync = true;
+				if (!rotorhazard.timer.running()) {
+					$('.timing-clock .warning').hide();
+				}
+			} else {
+				$('.timing-clock .warning .value').text(rotorhazard.sync_within + 'ms');
+			}
+			*/
 		});
 
 		socket.on('language', function (msg) {
@@ -98,7 +119,7 @@
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
-				rotorhazard.timer.deferred.start(deferred_start, rotorhazard.pi_time_diff);
+				rotorhazard.timer.deferred.start(deferred_start, null);
 			} else {
 				rotorhazard.timer.deferred.stop();
 			}
@@ -155,10 +176,7 @@
 				var race = msg.current;
 			}
 
-			var heatname = __('Heat') + ' ' + race.heat;
-			if (race.heat_note)
-				heatname = race.heat_note;
-			$('.current_heat').html(heatname);
+			$('.current_heat').html(race.displayname);
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();
@@ -192,10 +210,6 @@
 		socket.on('stop_timer', function (msg) {
 			rotorhazard.timer.stopAll();
 		});
-
-		socket.on('stage_ready', function (msg) {
-			race_kickoff(msg);
-		});
 	});
 
 	function speak(obj, priority) {} // stub to prevent crashing
@@ -206,7 +220,13 @@
 	<div id="header">
 		<h1 class="current_heat">{{ __('Loading...') }}</h1>
 		<div id="timer">
-			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
+			<div class="timing-clock">
+				<div class="warning">
+					<div class="symbol">&#9888;&#xFE0E; {{ __('Sync') }}</div>
+					<div class="value">{{ __('Acquiring') }}</div>
+				</div>
+				<div class="time-display">--:--</div>
+			</div>
 		</div>
 	</div>
 

@@ -177,8 +177,8 @@ main {
 .timing-clock .warning {
 	position: absolute;
 	left: 0.25em;
-	line-height: 1.3;
-	display: none;
+	font-size: 1.2rem;
+	text-align: left;
 }
 
 #leaderboard {

@@ -117,12 +117,9 @@ can be checked after the install is completed.
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image14.jpg)
 
  
-#### ​6) Optional - Installing the Current Sensor Module
+#### ​6) Installing the Current Sensor Module
 
-The optional INA219 module provides voltage and current monitoring data.
-If one is not installed then a wire jumper needs to be soldered between
-the Vin+ and Vin- pins of the U10 pads (as noted on the
-[schematic](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf)).
+The INA219 module provides voltage and current monitoring data. **This sensor is optional, but if one is not installed then a wire jumper needs to be soldered between the Vin+ and Vin- pins of the U10 pads** (as noted on the [schematic](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf)).
 
 If an INA219 is being installed, prepare the module by soldering right
 angle pins to the component side of the board (see below). Make sure the
@@ -236,21 +233,20 @@ not then you'd need to move the 2-pin header clip to the '1' position on
 Boot0 (covering the pins designated as '3v3' and 'Boot0' in the pictures
 below).
 
-A 2-pin header clip should be present at the '0' position on Boot1
-(covering the pins designated as '3v3' and 'GND' in the pictures below).
-
-The location of the wire jumper is based on whether you used a Blue Pill
-or a RobotDyn Black Pill module:
+In addition to the wire jumper on Boot0, a 2-pin header clip must be present at the '0' position on Boot1
+(covering the pins designated as 'Boot1' and 'GND' in the pictures below).
 
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image9.jpg)
 
-![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image7.jpg)
+**Boot0 Wire Jumper Installed on Blue Pill Module**
 
-**Boot0 Wire Jumper Installed on RobotDyn Black Pill Module**
-
-![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image8.jpg)
+![](pic/S32_BPill_jumpers7s.jpg)
 
 <br>
+
+Note: If you used a RobotDyn Black Pill Module, see the pics
+[here](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image7.jpg) and
+[here](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image8.jpg).
 
 #### ​12) Assembled RotorHazard S32_BPill Board
 
