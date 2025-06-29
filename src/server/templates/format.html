@@ -2231,8 +2231,6 @@
 			var heat = rotorhazard.event.heats[heat_idx];
 
 			if(!auto_frequency) {
-
-
 				heat.slots.sort((a, b) => a.id - b.id);
 
 				var used_seats = []
@@ -2522,11 +2520,13 @@
 		function display_pilot_selectors() {
 			if (rotorhazard.event.pilots) {
 				$('.set_pilot_position').each(function(){
+					var existing_value = $(this).val();
 					$(this).empty();
-
-					for (var i in rotorhazard.event.pilots) {
-						$(this).append('<option value="'+ rotorhazard.event.pilots[i].id + '">' + rotorhazard.event.pilots[i].callsign + ' (' + rotorhazard.event.pilots[i].name + ')</option>');
+					var opts = pilot_selector.get_option_els_none();
+					for (var opt_idx in opts)	{
+						$(this).append(opts[opt_idx]);
 					}
+					$(this).val(existing_value);
 				});
 			}
 		}
@@ -3543,9 +3543,8 @@
 			} else {
 				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 			}
+			pilot_selector.seed();
 			display_pilots();
-			display_classes();
-			display_unclassified_heats();
 		});
 
 		$(document).on('change', '#parameters input,#parameters select', function (event) {
