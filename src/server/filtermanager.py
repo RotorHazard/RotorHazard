@@ -13,13 +13,14 @@ class FilterManager:
         self.filterOrder = {}
         self._rhapi = rhapi
 
-    def add_filter(self, filter_type, name, filter_fn, priority=200):
+    def add_filter(self, filter_type, name, filter_fn, priority=200, use_args=False):
         if filter_type not in self.filters:
             self.filters[filter_type] = {}
 
         self.filters[filter_type][name] = {
             "filter_fn": filter_fn,
             "priority": priority,
+            "use_args": use_args
         }
 
         self.filterOrder[filter_type] = [key for key, _value in sorted(self.filters[filter_type].items(), key=lambda x: x[1]['priority'])]
@@ -39,7 +40,7 @@ class FilterManager:
 
         return True
 
-    def run_filters(self, filter_type, data):
+    def run_filters(self, filter_type, data, args=None):
         filter_list = []
         if filter_type in self.filterOrder:
             for name in self.filterOrder[filter_type]:
@@ -48,13 +49,16 @@ class FilterManager:
         if len(filter_list):
             for name in filter_list:
                 filter = self.filters[filter_type][name]
-                data = self.run_filter(filter['filter_fn'], data)
+                data = self.run_filter(filter['filter_fn'], filter['use_args'], data, args)
 
         return data
 
     @catchLogExceptionsWrapper
-    def run_filter(self, handler, data):
-        return handler(data)
+    def run_filter(self, handler, use_args, data, args):
+        if use_args:
+            return handler(data, args)
+        else:
+            return handler(data)
 
 
 class Flt:
