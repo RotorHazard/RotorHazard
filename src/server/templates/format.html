@@ -71,25 +71,8 @@
 		});
 
 		socket.on('language', function (msg) {
-			$('#set_language').empty();
-			$('#set_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-
-			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
-			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
-
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_language').selectedIndex = 0;
 			}
 		});
 
@@ -3592,14 +3575,6 @@
 				var field_data = selected_importer.settings.find(obj => {return obj.name == field});
 				field_data.value = value;
 			}
-		});
-
-		$('#set_language').change(function (event) {
-			var data = {
-				language: $(this).val()
-			};
-			socket.emit('set_language', data);
-			location.reload(true);
 		});
 	});
 
