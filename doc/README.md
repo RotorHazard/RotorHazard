@@ -10,7 +10,7 @@
 * [Hardware Setup Instructions](Hardware%20Setup.md)
 * [Software Setup Instructions](Software%20Setup.md)
 * [Raspberry Pi Reference](Raspberry%20Pi%20Reference.md)
-* [Running on Windows Instructions](Windows%20Start.md)
+* [Windows Run Script](Windows%20Run%20Script.md)
 
 ## Optional Features
 * [Plugins](Plugins.md)

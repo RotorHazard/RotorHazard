@@ -409,7 +409,7 @@ For RotorHazard the minimum version of Python supported is 3.9. If the installed
 <a id="otheros"></a>
 ## Other Operating Systems
 
-The RotorHazard server may be run on any computer with an operating system that supports Python. In these alternate configurations, one or more hardware nodes may be connected via USB -- see [doc/USB Nodes.md](USB%20Nodes.md) for more information. The server may also be run using simulated (mock) nodes.
+The RotorHazard server may be run on any computer with an operating system that supports Python. In these alternate configurations, one or more hardware nodes may be connected via USB -- see [doc/USB Nodes.md](USB%20Nodes.md) for more information. The server may also be run using simulated (mock) nodes. (See also the [doc/Windows Run Script.md](Windows%20Run%20Script.md) documentation.)
 
 **To install the RotorHazard server on these systems:**
 
