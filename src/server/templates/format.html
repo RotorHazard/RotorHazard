@@ -1988,69 +1988,48 @@
 		function update_heat_ui(el, heat_id) {
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 
-			is_dynamic = heat.slots.some(obj => obj.method > 0)
+			var is_dynamic = heat.slots.some(obj => obj.method > 0)
 			var locally_locked = heat.manual_unlock ? false : heat.locked;
 
 			// option selector visibility
-			if (heat.status == 2 || locally_locked) {
-				el.find('.channel-block').prop('hidden', false);
-				el.find('.set_method').prop('hidden', true);
-				el.find('.set_class').prop('hidden', true);
-				el.find('.set_heat').prop('hidden', true);
-				el.find('.set_rank').prop('hidden', true);
-				el.find('.autofrequency-control').prop('hidden', true);
-			} else {
-				el.find('.channel-block').prop('hidden', heat.auto_frequency);
-				if (!heat.locked) {
-					el.find('.set_method').prop('hidden', false);
-				}
-				el.find('.set_class').prop('hidden', false);
-				el.find('.set_heat').prop('hidden', false);
-				el.find('.set_rank').prop('hidden', false);
-				el.find('.autofrequency-control').prop('hidden', false);
+			// reset to known state
+			el.find('.channel-block').prop('hidden', false);
+			el.find('.set_method').prop('hidden', true);
+			el.find('.set_class').prop('hidden', true);
+			el.find('.set_heat').prop('hidden', true);
+			el.find('.set_rank').prop('hidden', true);
+			el.find('.set_pilot_position').prop('hidden', true);
+			el.find('.set_pilot_position').prop('disabled', false);
+			el.find('.autofrequency-control').prop('hidden', false);
 
+			// confirmed
+			if (heat.status == 2 || heat.locked) {
+				el.find('.set_pilot_position').prop('hidden', false);
+				el.find('.autofrequency-control').prop('hidden', true);
+
+				if (!heat.manual_unlock) {
+					el.find('.set_pilot_position').prop('disabled', true);
+				}
+			} else {
+				el.find('.set_method').prop('hidden', false);
+				if (heat.auto_frequency) {
+					el.find('.channel-block').prop('hidden', true);
+				}
 				el.find('li').each(function(){
 					var method = parseInt($(this).find('.set_method').val());
 					if (method == -1) { // None
-						$(this).find('.set_class').prop('hidden', true);
-						$(this).find('.set_heat').prop('hidden', true);
-						$(this).find('.set_rank').prop('hidden', true);
-						$(this).find('.set_pilot_position').prop('hidden', true);
+						// display nothing
 					} else if (method == 0) { // Pilot
-						$(this).find('.set_class').prop('hidden', true);
-						$(this).find('.set_heat').prop('hidden', true);
-						$(this).find('.set_rank').prop('hidden', true);
 						$(this).find('.set_pilot_position').prop('hidden', false);
 					} else if (method == 1) { // Heat
-						$(this).find('.set_class').prop('hidden', true);
 						$(this).find('.set_heat').prop('hidden', false);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.set_pilot_position').prop('hidden', true);
 					} else if (method == 2) { // Class
 						$(this).find('.set_class').prop('hidden', false);
-						$(this).find('.set_heat').prop('hidden', true);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.set_pilot_position').prop('hidden', true);
 					}
 				});
 			}
-
-			// pilot visibility
-			el.find('li').each(function(){
-				if (((is_dynamic || heat.auto_frequency) && heat.status == 2) && locally_locked){
-					if ($(this).find('.set_pilot_position').val() == 0) {
-						$(this).prop('hidden', true);
-					} else {
-						// $(this).prop('hidden', false);
-						$(this).find('.set_pilot_position')
-							.prop('hidden', false)
-							.prop('disabled', true);
-					}
-				} else {
-					// $(this).prop('hidden', false);
-				}
-
-			});
 
 			// plan buttons
 			if ((is_dynamic || heat.auto_frequency) && heat.locked == false) {
