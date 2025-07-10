@@ -1248,7 +1248,7 @@ def on_add_heat(data=None):
         init = {
             'class_id': data['class']
         }
-        if 'group' in data:
+        if 'group' in data and data['group']:
             init['group_id'] = data['group']
         RaceContext.rhdata.add_heat(init=init)
     else:
