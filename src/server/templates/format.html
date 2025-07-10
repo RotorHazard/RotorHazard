@@ -958,6 +958,8 @@
 
 					var groupselect = $(`#group-selector--race-class-${race_class.id}`)
 					if (race_class.round_type == 1) {
+						var selected_group_val = groupselect.val();
+						groupselect.empty();
 						groupselect.prop('hidden', false);
 
 						if (groups.length > 1) {
@@ -967,6 +969,9 @@
 									.text(`${__('Round')} ${parseInt(i)+1}`)
 									.appendTo(groupselect);
 							}
+							if (selected_group_val > 0) {
+								groupselect.val(selected_group_val);
+							}
 						} else {
 							groupselect.prop('disabled', true);
 							$(document.createElement('option'))
@@ -975,6 +980,7 @@
 								.appendTo(groupselect);
 						}
 					} else {
+						groupselect.empty();
 						groupselect.prop('hidden', true);
 					}
 
@@ -1316,8 +1322,9 @@
 			var data = {
 				class: parseInt($(this).data('id')),
 			};
-			if (typeof $(this).data('group') !== 'undefined') {
-				data.group = $(this).data('group')
+			var group_select = $(this).siblings('.class-group-list')
+			if (group_select.length) {
+				data.group = group_select.val();
 			}
 			socket.emit('add_heat', data);
 		});
