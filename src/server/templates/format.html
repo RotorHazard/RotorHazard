@@ -454,8 +454,12 @@
 				for (var i in msg.classes) {
 					var new_class = msg.classes[i];
 					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
-					Object.assign(race_class, new_class);
-					rotorhazard.event.classes.push(new_class);
+					if (race_class) {
+						Object.assign(race_class, new_class);
+						rotorhazard.event.classes.push(race_class);
+					} else {
+						rotorhazard.event.classes.push(new_class);
+					}
 				}
 			} else {
 				rotorhazard.event.classes = msg.classes;
@@ -474,8 +478,10 @@
 					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
 					if (race_class) {
 						Object.assign(race_class, new_class);
+						rotorhazard.event.classes.push(race_class);
+					} else {
+						rotorhazard.event.classes.push(new_class);
 					}
-					rotorhazard.event.classes.push(new_class);
 				}
 			} else {
 				rotorhazard.event.classes = msg.classes;
@@ -1342,8 +1348,12 @@
 				for (var i in msg.heats) {
 					var new_heat = msg.heats[i];
 					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
-					Object.assign(heat, new_heat);
-					rotorhazard.event.heats.push(new_heat);
+					if (heat) {
+						Object.assign(heat, new_heat);
+						rotorhazard.event.heats.push(heat);
+					} else {
+						rotorhazard.event.heats.push(new_heat);
+					}
 				}
 			} else {
 				rotorhazard.event.heats = msg.heats;
@@ -1372,8 +1382,10 @@
 					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
 					if (heat) {
 						Object.assign(heat, new_heat);
+						rotorhazard.event.heats.push(heat);
+					} else {
+						rotorhazard.event.heats.push(new_heat);
 					}
-					rotorhazard.event.heats.push(new_heat);
 				}
 			} else {
 				rotorhazard.event.heats = msg.heats;
