@@ -2021,15 +2021,20 @@
 			el.find('.set_pilot_position').prop('disabled', false);
 			el.find('.autofrequency-control').prop('hidden', false);
 
-			// confirmed
-			if (heat.status == 2 || heat.locked) {
+			if (heat.locked) {
+				// heat has been run
 				el.find('.set_pilot_position').prop('hidden', false);
 				el.find('.autofrequency-control').prop('hidden', true);
 
 				if (!heat.manual_unlock) {
 					el.find('.set_pilot_position').prop('disabled', true);
 				}
+			} else if (heat.status == 2) {
+				// confirmed but not run
+				el.find('.set_pilot_position').prop('hidden', false);
+				el.find('.autofrequency-control').prop('hidden', true);
 			} else {
+				// unconfirmed and not run
 				el.find('.set_method').prop('hidden', false);
 				if (heat.auto_frequency) {
 					el.find('.channel-block').prop('hidden', true);
