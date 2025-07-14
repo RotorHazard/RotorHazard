@@ -1,13 +1,13 @@
 @echo off
-pushd %~d0%~p0RotorHazardRun\src\server
-SET ffprog="C:\Program Files\Mozilla Firefox\firefox.exe"
-if exist %ffprog% goto cont
-SET ffprog=
+set RH_RUN_DIR=%~d0%~p0RotorHazardRun
+set RH_DATA_DIR=%RH_RUN_DIR%\rh-data
+SET FF_PROG="C:\Program Files\Mozilla Firefox\firefox.exe"
+if exist %FF_PROG% goto cont
+SET FF_PROG=
 :cont
 if "%1"=="" goto noparam
-start ..\..\python39\python server.py --viewdb "%1" results %ffprog%
+start %RH_RUN_DIR%\python39\python %RH_RUN_DIR%\src\server\server.py --data %RH_DATA_DIR% --viewdb "%1" --launchb results %FF_PROG%
 goto ex
 :noparam
-start ..\..\python39\python server.py --launchb results %ffprog%
+start %RH_RUN_DIR%\python39\python %RH_RUN_DIR%\src\server\server.py --data %RH_DATA_DIR% --launchb results %FF_PROG%
 :ex
-popd
