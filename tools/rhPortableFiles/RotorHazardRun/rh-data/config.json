@@ -18,7 +18,7 @@
     "RACE_START_DELAY_EXTRA_SECS": 0.9,
     "LOG_SENSORS_DATA_RATE": 300,
     "SERIAL_PORTS": [],
-    "LAST_MODIFIED_TIME": 1720935008
+    "LAST_MODIFIED_TIME": 1752314168
   },
   "TIMING": {
     "startThreshLowerAmount": "0",
@@ -68,8 +68,6 @@
     "SERIAL_CTRLR_BAUD": 115200,
     "ledEffects": "",
     "ledBrightness": 32,
-    "ledColorNodes": "",
-    "ledColorFreqs": "",
     "ledColorMode": "",
     "seatColors": [
       "#0022ff",
@@ -80,19 +78,22 @@
       "#7700ff",
       "#00ffdd",
       "#aaaaaa"
-    ]
+    ],
+    "ledColorNodes": "",
+    "ledColorFreqs": ""
   },
   "LOGGING": {
     "CONSOLE_LEVEL": "INFO",
     "SYSLOG_LEVEL": "NONE",
     "FILELOG_LEVEL": "INFO",
     "FILELOG_NUM_KEEP": 30,
-    "CONSOLE_STREAM": "stdout"
+    "CONSOLE_STREAM": "stdout",
+    "EVENTS": 1
   },
   "SENSORS": {},
-  "VRX_CONTROL": {
-    "HOST": "localhost",
-    "ENABLED": false,
-    "OSD_LAP_HEADER": "L"
+  "PLUGINS": {
+    "REMOTE_DATA_URI": null,
+    "REMOTE_CATEGORIES_URI": null,
+    "UPDATE_BEHAVIOR": "check"
   }
 }
