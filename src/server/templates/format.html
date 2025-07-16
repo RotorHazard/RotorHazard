@@ -1755,20 +1755,6 @@
 			}
 
 			// Slots
-			if (heat.auto_frequency && heat.status != 2) {
-				heat.slots.sort((a,b) => {
-					if (a.method === -1 || (a.method === 0 && !a.pilot_id)) return 1;
-					if (b.method === -1 || (b.method === 0 && !b.pilot_id)) return -1;
-					return (a.method > b.method) ? 1 : -1
-					});
-			} else {
-				heat.slots.sort((a,b) => {
-					if (a.node_index === null) return 1;
-					if (b.node_index === null) return -1;
-					return (a.node_index > b.node_index) ? 1 : -1
-					});
-			}
-
 			$(heat_slots).children().addClass('flagged');
 			for (j in heat.slots) {
 				var slot = heat.slots[j];
@@ -2232,29 +2218,6 @@
 			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_id});
 			rotorhazard.event.heats[heat_idx].auto_frequency = auto_frequency;
 			var heat = rotorhazard.event.heats[heat_idx];
-
-			if(!auto_frequency) {
-				heat.slots.sort((a, b) => a.id - b.id);
-
-				var used_seats = []
-				for (var s in heat.slots) {
-					if (heat.slots[s].node_index != null) {
-						used_seats.push(heat.slots[s].node_index);
-					}
-				}
-
-				var idx = 0;
-				for (var s in heat.slots) {
-					if (heat.slots[s].node_index == null) {
-						while (used_seats.includes(idx)) {
-							idx++;
-						}
-						heat.slots[s].node_index = idx;
-						idx++;
-					}
-				}
-				heat.slots.sort((a, b) => a.node_index - b.node_index);
-			}
 
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), heat);
