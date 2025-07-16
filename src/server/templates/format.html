@@ -2091,18 +2091,20 @@
 				slot_id: slot_id,
 				pilot: pilot_id
 			};
-			if (pilot_id) {
-				data.method = 0;  // always set method to 'assign'
-			}
-			socket.emit('alter_heat', data);
 
-			// update local data
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			var slot = heat.slots.find(obj => {return obj.id == slot_id});
+
 			if (heat && slot) {
-				slot.pilot_id = pilot_id;
-				slot.method = 0;
+				slot.pilot_id = pilot_id;  // update local data
+				if (pilot_id && heat.status != 2) {
+					data.method = 0;  // set method to 'assign'
+					slot.method = 0;  // update local data
+				}
 			}
+
+			socket.emit('alter_heat', data);
+
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), heat);
 			});
