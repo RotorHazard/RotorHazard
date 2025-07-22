@@ -27,7 +27,6 @@ class RHMarshal {
 		laps: null,
 		enter_at: null,
 		exit_at: null,
-
 		start_time: null,
 		end_time: null,
 	}
@@ -114,9 +113,10 @@ class RHMarshal {
 	graphSetup() {
 		self.context = self.elements.graph_canvas.getContext('2d');
 		self.graph = new SmoothieChart({
+			interpolation: 'step',
 			responsive: true,
 			grid:{
-				strokeStyle:'rgba(255,255,255,0.25)',
+				strokeStyle:'rgba(255,255,255,0.1)',
 				millisPerLine:30, // Smoothie thinks the timestamps are in seconds
 				sharpLines:true,
 				verticalSections:0,
@@ -162,7 +162,6 @@ class RHMarshal {
 	}
 
 	setRaceData(args) {
-		self.race_loaded = true;
 		self.race.calc_result = {};
 		// fill current data with race meta
 		self.race.round_id = args.round;
@@ -172,13 +171,20 @@ class RHMarshal {
 		self.race.format_id = args.format_id;
 		self.race.start_time = args.start_time;
 		self.race.start_time_formatted = args.start_time_formatted;
+	}
+
+	setPilotData(args) {
 		self.race.pilotrace_index = args.pilot;
 		self.race.history_times = args.history_times;
 		self.race.history_values = args.history_values;
 		self.race.laps = args.laps;
 		self.race.enter_at = args.enter_at;
 		self.race.exit_at = args.exit_at;
+	}
 
+	initRace() {
+		// set initial display of loaded data
+		self.race_loaded = true;
 		if (self.race.history_times.length) {
 			self.race.end_time = self.race.history_times[self.race.history_times.length - 1];
 			self.graph.options.minValue = Math.min.apply(null, self.race.history_values) - 2;
@@ -234,7 +240,7 @@ class RHMarshal {
 		self.displayLaps(self.race.laps);
 	}
 
-	set_enter(rssi) {
+	setEnter(rssi) {
 		var chk_val = Math.min(rssi, self.graph.options.maxValue);
 		chk_val = Math.max(chk_val, self.graph.options.minValue);
 
@@ -255,7 +261,7 @@ class RHMarshal {
 		self.refreshDisplay();
 	}
 
-	set_exit(rssi) {
+	setExit(rssi) {
 		var chk_val = Math.min(rssi, self.graph.options.maxValue);
 		chk_val = Math.max(chk_val, self.graph.options.minValue);
 
@@ -280,7 +286,7 @@ class RHMarshal {
 		self.clearMarkedLap();
 		self.graph_series.lap_marker.clear();
 		self.graph_series.deleted_lap.clear();
-		self.recalc_race();
+		self.recalcRace();
 	}
 
 	clearCrossings() {
@@ -340,7 +346,7 @@ class RHMarshal {
 		self.context.clearRect(0, 0, self.elements.graph_canvas.width, self.elements.graph_canvas.height);
 	}
 
-	process_rx_data() {
+	processRXData() {
 		var crossing = false;
 		var crossingStart = 0;
 		var crossingEnd = 0;
@@ -439,8 +445,8 @@ class RHMarshal {
 		self.race.calc_result = laps;
 	}
 
-	calc_laps() {
-		self.process_rx_data();
+	calcLaps() {
+		self.processRXData();
 
 		// redraw crossings
 		self.clearCrossings();
@@ -458,8 +464,8 @@ class RHMarshal {
 		}
 	}
 
-	recalc_race() {
-		self.calc_laps();
+	recalcRace() {
+		self.calcLaps();
 		if (race_loaded) {
 			var laps = self.race.calc_result;
 			for (var lap_i in self.race.laps) {
@@ -469,7 +475,7 @@ class RHMarshal {
 				}
 			}
 			self.race.laps = laps;
-			self.add_incremental_lap_times();
+			self.updateIncrementalLapTimes();
 			self.displayLaps(laps);
 			self.renderGraph();
 		}
@@ -478,7 +484,8 @@ class RHMarshal {
 		}
 	}
 
-	add_incremental_lap_times() {
+	updateIncrementalLapTimes() {
+		// sorts laps table and calculates/updates "lap time" values based on lap-to-lap comparison
 		self.race.laps.sort(function(a, b){
 			return a.lap_time_stamp - b.lap_time_stamp
 		})
@@ -502,7 +509,7 @@ class RHMarshal {
 		}
 	}
 
-	add_manual_lap(lap_time_s) {
+	addManualLap(lap_time_s) {
 		if (!self.race_loaded) {
 			return false;
 		}
@@ -514,7 +521,7 @@ class RHMarshal {
 			source: 1,
 			deleted: false
 		});
-		self.add_incremental_lap_times();
+		self.updateIncrementalLapTimes();
 		self.clearMarkedLap();
 		self.displayLaps(self.race.laps);
 		self.renderGraph();
@@ -524,19 +531,19 @@ class RHMarshal {
 	markLapDeleted(lap_index) {
 		self.race.laps[lap_index].deleted = true;
 		self.clearMarkedLap();
-		self.add_incremental_lap_times(current_race_data.laps);
+		self.updateIncrementalLapTimes();
 		self.displayLaps();
 		self.renderGraph();
 	}
 
 	restoreDeletedLap(lap_index) {
 		self.race.laps[lap_index].deleted = false;
-		self.add_incremental_lap_times(current_race_data.laps);
+		self.updateIncrementalLapTimes();
 		self.displayLaps();
 		self.renderGraph();
 	}
 
-	clean_deleted_lasp() {
+	cleanDeletedLaps() {
 		if (!self.race_loaded) {
 			return false;
 		}
@@ -556,7 +563,7 @@ class RHMarshal {
 		return true;
 	}
 
-	save_laps() {
+	saveLaps() {
 		if (!self.race_loaded) {
 			return false;
 		}
@@ -631,9 +638,9 @@ class RHMarshal {
 			var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
 
 			if (self.interact.adjustEnter) {
-				self.set_enter(rssi);
+				self.setEnter(rssi);
 			} else {
-				self.set_exit(rssi);
+				self.setExit(rssi);
 			}
 		}
 	}
@@ -671,7 +678,7 @@ class RHMarshal {
 				});
 			}
 		} else {
-			self.recalc_race();
+			self.recalcRace();
 		}
 	}
 
@@ -684,7 +691,7 @@ class RHMarshal {
 		}
 		self.race.enter_at = self.interact.startingEnter;
 		self.race.exit_at = self.interact.startingExit;
-		self.recalc_race();
+		self.recalcRace();
 	}
 
 	// mouse handlers
@@ -699,7 +706,7 @@ class RHMarshal {
 		if (!self.interact.isTouchEvent) {
 			if (self.interact.canDrag) {
 				self.handleGraphInteractionMove(evt);
-				self.recalc_race();
+				self.recalcRace();
 			}
 		}
 	}
@@ -707,7 +714,7 @@ class RHMarshal {
 	graphInteractMouseUp(evt){
 		if (!self.interact.isTouchEvent) {
 			if (self.interact.isDragging) {
-				self.recalc_race();
+				self.recalcRace();
 			} else {
 				self.handleGraphInteractionTap(evt);
 			}
@@ -746,7 +753,7 @@ class RHMarshal {
 		evt.preventDefault();
 		if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
 			if (self.interact.isDragging) {
-				self.recalc_race();
+				self.recalcRace();
 			} else {
 				self.handleGraphInteractionTap(evt);
 			}
@@ -758,6 +765,4 @@ class RHMarshal {
 		self.handleGraphInteractionCancel();
 		self.interact.isTouchEvent = true;
 	}
-
-
 }
