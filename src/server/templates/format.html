@@ -1127,7 +1127,7 @@
 						method: rank_method,
 					}
 
-					if (race_class.ranksettings && race_class.ranksettings[settings.name]) {
+					if (race_class.ranksettings && settings.name in race_class.ranksettings) {
 						settings.value = race_class.ranksettings[settings.name];
 					}
 
