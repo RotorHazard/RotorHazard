@@ -14,7 +14,7 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * The RX5808 node modules are mounted vertically using small sub-boards -- this allows for up to eight on a single board, and provides substantially improved cooling
 
-* Communication between the STM32 processor and the Raspberry Pi is via serial-port link, running at 921600 baud. The S32_BPill board can also be connected directly to a computer (via USB-to-Serial/FTDI dongle)
+* Communication between the STM32 processor and the Raspberry Pi is via serial-port link, running at 921600 baud. The S32_BPill board can also be connected directly to a computer by attaching a USB-to-Serial/FTDI dongle to the J4 (BPill_FTDI) connector, with a baud rate of 921600 or 115200.
 
 * The STM32 processor is on a 40-pin module, attached to the board via sockets. These are commonly known as "Blue Pill" modules, and are readily available and inexpensive (see [below](#aboutblue))
 
