@@ -1,0 +1,13 @@
+{
+    "name": "DJI pilot frequency selector",
+    "author": "Arnaud Morin",
+    "author_uri": "https://github.com/arnaudmorin",
+    "description": "Allows setting a prefered frequency band (like DJI / RACEBAND) on RotorHazard to help selecting best node",
+    "info_uri": "https://github.com/arnaudmorin",
+    "license": "APACHE 2.0",
+    "license_uri": "https://www.apache.org/licenses/LICENSE-2.0",
+    "version": "0.1.0",
+    "required_rhapi_version": "1.0",
+    "update_uri": null,
+    "text_domain": null
+}
