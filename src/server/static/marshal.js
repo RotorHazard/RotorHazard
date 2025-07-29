@@ -2,7 +2,6 @@
 
 class RHMarshal {
 	self = false;
-	socket = false;
 
 	elements = {
 		graph_canvas_id: false,
@@ -10,6 +9,10 @@ class RHMarshal {
 	}
 
 	time_format = null;
+	start_thresh_lower_amount = 0;
+	start_thresh_lower_duration = 0;
+	min_lap = 0;
+	min_lap_behavior = null;
 
 	callbacks = {
 		calcLaps: false,
@@ -55,9 +58,12 @@ class RHMarshal {
 
 	constructor(options) {
 		self = this;
-		self.socket = options.socket;
 		self.elements.graph_canvas_id = options.elements.graph_canvas_id;
 		self.time_format = options.time_format;
+		self.start_thresh_lower_amount = options.start_thresh_lower_amount
+		self.start_thresh_lower_duration = options.start_thresh_lower_duration;
+		self.min_lap = options.min_lap
+		self.min_lap_behavior = options.min_lap_behavior
 		self.callbacks.calcLaps = options.callbacks.calcLaps;
 		self.callbacks.calibration = options.callbacks.calibration;
 		self.callbacks.clearMarkedLap = options.callbacks.clearMarkedLap;
@@ -125,7 +131,8 @@ class RHMarshal {
 			labels:{
 				precision: 0
 			},
-			scaleSmoothing: 1
+			scaleSmoothing: 1,
+			nonRealtimeData: true,
 		});
 		self.graph_series.rssi = new TimeSeries();
 		self.graph.addTimeSeries(self.graph_series.rssi, {
@@ -157,7 +164,7 @@ class RHMarshal {
 			fillStyle:'hsla(0, 0%, 100%, 0.15)'
 		});
 
-		self.graph.streamTo(self.elements.graph_canvas, 1);
+		self.graph.streamTo(self.elements.graph_canvas, 0);
 		self.graph.stop();
 	}
 
@@ -174,7 +181,8 @@ class RHMarshal {
 	}
 
 	setPilotData(args) {
-		self.race.pilotrace_index = args.pilot;
+		self.race.pilotrace_index = args?.pilot;
+		self.race.node = args?.node;
 		self.race.history_times = args.history_times;
 		self.race.history_values = args.history_values;
 		self.race.laps = args.laps;
@@ -357,8 +365,8 @@ class RHMarshal {
 		var startThreshLowerFlag = false;
 
 		// set lower EnterAt/ExitAt values at race start if configured
-		if (start_thresh_lower_amount > 0 && start_thresh_lower_duration > 0) {
-			var diffVal = (self.race.enter_at - self.race.exit_at) * start_thresh_lower_amount / 100;
+		if (self.start_thresh_lower_amount > 0 && self.start_thresh_lower_duration > 0) {
+			var diffVal = (self.race.enter_at - self.race.exit_at) * self.start_thresh_lower_amount / 100;
 			if (diffVal > 0) {
 				self.race.enter_at = self.race.enter_at - diffVal;
 				self.race.exit_at = self.race.exit_at - diffVal;
@@ -373,7 +381,7 @@ class RHMarshal {
 
 			if (startThreshLowerFlag) {
 				// if initial pass recorded or past duration then restore EnterAt/ExitAt values
-				if (laps.length > 0 || time >= self.race.start_time + start_thresh_lower_duration + self.race.race_format.start_delay_max) {
+				if (laps.length > 0 || time >= self.race.start_time + self.start_thresh_lower_duration + self.race.race_format.start_delay_max) {
 					self.race.enter_at = self.race.enter_at;
 					self.race.exit_at = self.race.exit_at;
 					startThreshLowerFlag = false;
@@ -407,7 +415,7 @@ class RHMarshal {
 							source: 2, // recalc
 							deleted: false
 						};
-						if (min_lap_behavior && lap_time_stamp < last_lap_time_stamp + min_lap) {
+						if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap) {
 							lapdata.deleted = true;
 						}
 						laps.push(lapdata);
@@ -466,7 +474,7 @@ class RHMarshal {
 
 	recalcRace() {
 		self.calcLaps();
-		if (race_loaded) {
+		if (self.race_loaded) {
 			var laps = self.race.calc_result;
 			for (var lap_i in self.race.laps) {
 				var lap = self.race.laps[lap_i];
@@ -480,7 +488,7 @@ class RHMarshal {
 			self.renderGraph();
 		}
 		if (typeof self.callbacks.recalcRace === 'function') {
-			self.callbacks.recalcRace(race_loaded);
+			self.callbacks.recalcRace(self.race_loaded);
 		}
 	}
 
@@ -563,7 +571,7 @@ class RHMarshal {
 		return true;
 	}
 
-	saveLaps() {
+	getRaceData() {
 		if (!self.race_loaded) {
 			return false;
 		}
@@ -574,15 +582,14 @@ class RHMarshal {
 			callsign: self.race.callsign,
 			race_id: self.race.race_id,
 			pilotrace_id: self.race.pilotrace_id,
-			node: self.race.node_index,
+			node: self.race.node,
 			pilot_id: self.race.pilot_id,
 			laps: self.race.laps,
 			enter_at: self.race.enter_at,
 			exit_at: self.race.exit_at,
 		}
-		self.socket.emit('resave_laps', data);
 
-		return true;
+		return data;
 	}
 
 	displayLaps() {
@@ -692,6 +699,10 @@ class RHMarshal {
 		self.race.enter_at = self.interact.startingEnter;
 		self.race.exit_at = self.interact.startingExit;
 		self.recalcRace();
+	}
+
+	graphInteractCancel() {
+		self.handleGraphInteractionCancel();
 	}
 
 	// mouse handlers

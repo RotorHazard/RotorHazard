@@ -2379,6 +2379,10 @@ def on_stage_race(*args):
 def on_stop_race(*args):
     RaceContext.race.stop(*args)
 
+@SOCKET_IO.on('current_race_marshal')
+def on_current_race_marshal(*args):
+    RaceContext.rhui.emit_race_marshal_data()
+
 @SOCKET_IO.on('save_laps')
 def on_save_race(*args):
     RaceContext.race.save(*args)
@@ -2479,6 +2483,18 @@ def on_resave_laps(data):
         'race_id': race_id,
         'pilot_id': pilot_id,
         })
+
+@SOCKET_IO.on('replace_current_laps')
+def replace_current_laps(data):
+    on_set_enter_at_level({
+        'node': data['node'],
+        'enter_at_level': data['enter_at']
+    })
+    on_set_exit_at_level({
+        'node': data['node'],
+        'exit_at_level': data['exit_at']
+    })
+    RaceContext.race.replace_laps(data)
 
 @catchLogExcWithDBWrapper
 def build_atomic_result_caches(params):

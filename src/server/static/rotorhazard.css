@@ -1331,6 +1331,19 @@ main.page-home {
 	margin: 0 0.125rem 0.25rem;
 }
 
+.node-graph {
+	border: none;
+	padding: 0;
+	color: inherit;
+	font-size: inherit;
+	min-height: 0;
+	display: block;
+	background: transparent;
+	text-align: inherit;
+	font-weight: inherit;
+	width: 100%;
+}
+
 #heat_list {
 	list-style: none;
 	margin: 1em 0;
@@ -2056,7 +2069,8 @@ ol.heat-edit-list>li {
 	}
 }
 
-.page-marshal td:not(:last-child) {
+.page-marshal td:not(:last-child),
+#m-laps td:not(:last-child) {
 	cursor: pointer;
 }
 
@@ -2384,22 +2398,26 @@ button .wide {
 
 /* Marshaling */
 
-#race-graph {
+#race-graph,
+#m-race-graph {
 	background: #222;
 }
 
-#race-display {
+#race-display
+#m-race-display {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.5em;
 }
 
-#race-header {
+#race-header
+#m-race-header {
 	width: 100%;
 	margin: 0 0.5em;
 }
 
-#race-view {
+#race-view
+#m-race-view {
 	flex: 1 1 24em;
 	margin: 0 0.5em 1em;
 }

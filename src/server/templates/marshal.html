@@ -20,6 +20,18 @@
 	rotorhazard.saveData();
 	$('nav li').removeClass('admin-hide');
 
+	var start_thresh_lower_amount = 0;
+	var start_thresh_lower_duration = 0;
+	var min_lap = {{ getOption('MinLapSec') }} * 1000;
+	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
+
+	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
+		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
+	}
+	if ('{{ getConfig('TIMING', 'startThreshLowerDuration') }}' != 'False') {
+		start_thresh_lower_duration = {{ getConfig('TIMING', 'startThreshLowerDuration') }};
+	}
+
 	// set up single-instance marshaling
 	function clearMarkedLap() {
 		$('#laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
@@ -135,11 +147,14 @@
 	}
 
 	var marshal = new RHMarshal({
-		socket: socket,
 		elements: {
 			graph_canvas_id: 'race-graph',
 		},
 		time_format: {{ getConfig('UI', 'timeFormat')|tojson }},
+		start_thresh_lower_amount: start_thresh_lower_amount,
+		start_thresh_lower_duration: start_thresh_lower_duration,
+		min_lap: min_lap,
+		min_lap_behavior: min_lap_behavior,
 		callbacks: {
 			calcLaps: calcLaps,
 			clearMarkedLap: clearMarkedLap,
@@ -189,17 +204,6 @@
 	var race_list_loaded = false;
 	var race_loaded = false;
 	var current_race_data = {};
-	var min_lap = {{ getOption('MinLapSec') }} * 1000;
-	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
-
-	var start_thresh_lower_amount = 0;
-	var start_thresh_lower_duration = 0;
-	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
-		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
-	}
-	if ('{{ getConfig('TIMING', 'startThreshLowerDuration') }}' != 'False') {
-		start_thresh_lower_duration = {{ getConfig('TIMING', 'startThreshLowerDuration') }};
-	}
 
 	$(document).ready(function () {
 		if ('{{ getConfig('TIMING', 'calibrationMode') }}' == '0') {
@@ -597,7 +601,10 @@
 		});
 
 		$('#save-laps').click(function(){
-			if (!marshal.saveLaps()) {
+			data = marshal.getRaceData();
+			if (data) {
+				socket.emit('resave_laps', data);
+			} else {
 				push_message(__('No race loaded'));
 			}
 		});
