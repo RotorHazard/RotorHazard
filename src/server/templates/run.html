@@ -523,11 +523,13 @@
 
 						$('.current_rssi_' + i).html(rssiValue);
 
-						if (msg.crossing_flag[i]) {
-							$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
-						}
-						else {
-							$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+						if (!marshal_mode) {
+							if (msg.crossing_flag[i]) {
+								$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+							}
+							else {
+								$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+							}
 						}
 
 						rotorhazard.nodes[i].graph.options.maxValue = Math.max(
@@ -2461,9 +2463,9 @@
 			}
 
 			// When a user clicks on a lap, toggle that lap's highlight pointer in the graph.
-			$('#laps td:not(:last-child)').click( function(){
+			$('#m-laps td:not(:last-child)').click( function(){
 				var thisrow = $(this).parent()
-				if(race_loaded && !thisrow.hasClass("lap-highlighted")){
+				if(!thisrow.hasClass("lap-highlighted")){
 					// Remove highlighting from other rows
 					clearMarkedLap();
 					thisrow.addClass("lap-highlighted");
@@ -2492,6 +2494,8 @@
 		function calibration(calibration) {
 			$('#m-enterat').val(calibration.enter);
 			$('#m-exitat').val(calibration.exit);
+			$(`set_enter_at_level_${calibration.node_index}`).val(calibration.enter).trigger('change');
+			$(`set_exit_at_level_${calibration.node_index}`).val(calibration.exit).trigger('change');
 		}
 
 		var marshal = new RHMarshal({
@@ -2533,6 +2537,8 @@
 			marshal.setRaceData(race_args);
 
 			for (var seat in msg.seats) {
+				$('.crossing_flag_' + seat).removeClass('is-crossing').html(__('Stopped'));
+
 				var node = rotorhazard.nodes[parseInt(seat)]
 				node.marshal_data = msg.seats[seat];
 
@@ -2646,14 +2652,14 @@
 		});
 
 		$('.node-graph').click(function(){
-			var node_index = parseInt($(this).data('node'));
+			var seat_index = parseInt($(this).data('node'));
 			if (marshal_mode) {
 				// open local marshaling
 				document.getElementById('marshal-dialog').showModal();
 
-				seat = rotorhazard?.nodes[node_index]?.marshal_data;
+				seat = rotorhazard?.nodes[seat_index]?.marshal_data;
 				pilot_args = {
-					node: node_index,
+					seat: seat_index,
 					history_times: seat.history_times,
 					history_values: seat.history_values,
 					laps: seat.laps,
@@ -2667,39 +2673,6 @@
 				// fill enter/exit values
 				$('#m-enterat').val(seat.enter_at);
 				$('#m-exitat').val(seat.exit_at);
-
-				/*
-				$.magnificPopup.open({
-					items: {
-						src: `#marshal-dialog`,
-						type: 'inline',
-					},
-					callbacks: {
-						open: function(){
-							seat = rotorhazard?.nodes[node_index]?.marshal_data;
-							pilot_args = {
-								node: node_index,
-								history_times: seat.history_times,
-								history_values: seat.history_values,
-								laps: seat.laps,
-								enter_at: seat.enter_at,
-								exit_at: seat.exit_at,
-							}
-							marshal.setPilotData(pilot_args);
-
-							marshal.initRace();
-
-							// fill enter/exit values
-							$('#m-enterat').val(seat.enter_at);
-							$('#m-exitat').val(seat.exit_at);
-						},
-						close: function(){
-							marshal.graphInteractCancel();
-						}
-					}
-				});
-				*/
-
 			} else {
 				// open tuning
 				$.magnificPopup.open({
@@ -2730,6 +2703,10 @@
   			btn.addEventListener('click', () => {
 				btn.parentElement.close();
 			});
+		});
+
+		document.getElementById('marshal-dialog').addEventListener("close", () => {
+			marshal.graphInteractCancel();
 		});
 	});
 

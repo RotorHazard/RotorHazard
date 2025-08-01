@@ -2487,11 +2487,11 @@ def on_resave_laps(data):
 @SOCKET_IO.on('replace_current_laps')
 def replace_current_laps(data):
     on_set_enter_at_level({
-        'node': data['node'],
+        'node': data['seat'],
         'enter_at_level': data['enter_at']
     })
     on_set_exit_at_level({
-        'node': data['node'],
+        'node': data['seat'],
         'exit_at_level': data['exit_at']
     })
     RaceContext.race.replace_laps(data)

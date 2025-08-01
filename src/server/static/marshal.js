@@ -189,7 +189,7 @@ class RHMarshal {
 
 	setPilotData(args) {
 		self.race.pilotrace_index = args?.pilot;
-		self.race.node = args?.node;
+		self.race.seat = args?.seat;
 		self.race.history_times = args.history_times;
 		self.race.history_values = args.history_values;
 		self.race.laps = args.laps;
@@ -271,6 +271,7 @@ class RHMarshal {
 			self.callbacks.calibration({
 				enter: self.race.enter_at,
 				exit: self.race.exit_at,
+				seat: self.race.seat,
 			});
 		}
 		self.refreshDisplay();
@@ -589,7 +590,7 @@ class RHMarshal {
 			callsign: self.race.callsign,
 			race_id: self.race.race_id,
 			pilotrace_id: self.race.pilotrace_id,
-			node: self.race.node,
+			seat: self.race.seat,
 			pilot_id: self.race.pilot_id,
 			laps: self.race.laps,
 			enter_at: self.race.enter_at,
