@@ -497,7 +497,7 @@ dialog > button {
 
 .popup-content,
 .dialog-content {
-	padding: 0 1rem;
+	padding: 1rem;
 	overflow: clip;
 	display: flow-root;
 }

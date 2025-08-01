@@ -123,12 +123,14 @@ class RHMarshal {
 		$(self.elements.graph_canvas).on('mousemove', self.graphInteractMouseMove);
 		$(self.elements.graph_canvas).on('mouseup', self.graphInteractMouseUp);
 		$(self.elements.graph_canvas).on('mouseout', self.graphInteractMouseOut);
+		$(document).on('mouseup', self.graphInteractCancel);
 
 		// touch handlers
 		$(self.elements.graph_canvas).on('touchstart', self.graphInteractTouchStart);
 		$(self.elements.graph_canvas).on('touchmove', self.graphInteractTouchMove);
 		$(self.elements.graph_canvas).on('touchend', self.graphInteractTouchEnd);
 		$(self.elements.graph_canvas).on('touchCancel', self.graphInteractTouchCancel);
+		$(document).on('touchend', self.graphInteractCancel);
 
 		// graph resize catch
 		var resizeTimer;
@@ -612,12 +614,14 @@ class RHMarshal {
 	}
 
 	handleGraphInteractionStart(evt) {
+		var rect = self.graph.canvas.getBoundingClientRect();
+
 		if (evt.targetTouches) {
-			var x = (evt.targetTouches[0].pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
-			var y = (evt.targetTouches[0].pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+			var x = (evt.targetTouches[0].clientX - rect.x) / evt.target.offsetWidth;
+			var y = (evt.targetTouches[0].clientY - rect.y) / evt.target.offsetHeight;
 		} else {
-			var x = (evt.pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
-			var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+			var x = (evt.clientX - rect.x) / evt.target.offsetWidth;
+			var y = (evt.clientY - rect.y) / evt.target.offsetHeight;
 		}
 
 		var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
@@ -641,10 +645,12 @@ class RHMarshal {
 
 	handleGraphInteractionMove(evt) {
 		// user drags on graph
+		var rect = self.graph.canvas.getBoundingClientRect();
+
 		if (evt.targetTouches) {
-			var y = (evt.targetTouches[0].pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+			var y = (evt.targetTouches[0].clientY - rect.top) / evt.target.offsetHeight;
 		} else {
-			var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+			var y = (evt.clientY - rect.top) / evt.target.offsetHeight;
 		}
 
 		if (Math.abs(y - self.interact.startingY) > 0.01 || self.interact.isDragging) { // prevent accidental drag
@@ -711,6 +717,8 @@ class RHMarshal {
 
 	graphInteractCancel() {
 		self.handleGraphInteractionCancel();
+		self.interact.canDrag = false;
+		self.interact.isDragging = false;
 	}
 
 	// mouse handlers
@@ -741,6 +749,7 @@ class RHMarshal {
 			self.interact.isDragging = false;
 		}
 		self.interact.isTouchEvent = false;
+		evt.stopPropagation();
 	}
 
 	graphInteractMouseOut(evt){
@@ -777,6 +786,7 @@ class RHMarshal {
 				self.handleGraphInteractionTap(evt);
 			}
 		}
+		evt.stopPropagation();
 	}
 
 	graphInteractTouchCancel(evt) {
