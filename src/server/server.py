@@ -2381,7 +2381,7 @@ def on_stop_race(*args):
 
 @SOCKET_IO.on('current_race_marshal')
 def on_current_race_marshal(*args):
-    RaceContext.rhui.emit_race_marshal_data()
+    RaceContext.rhui.emit_race_marshal_data(nobroadcast=True)
 
 @SOCKET_IO.on('save_laps')
 def on_save_race(*args):

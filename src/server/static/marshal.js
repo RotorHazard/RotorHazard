@@ -44,6 +44,32 @@ class RHMarshal {
 	}
 	race_loaded = false;
 
+	seriesStyle = {
+		rssi: {lineWidth:1.7,
+			strokeStyle:'hsl(214, 53%, 60%)',
+			fillStyle:'hsla(214, 53%, 60%, 0.4)'
+		},
+		lap_marker: {
+			lineWidth: 1.7,
+			strokeStyle:'none',
+			fillStyle:'hsla(136, 71%, 70%, 0.3)'
+		},
+		deleted_lap: {
+			lineWidth: 1.7,
+			strokeStyle:'none',
+			fillStyle:'hsla(8.2, 86.5%, 53.7%, 0.2)'
+		},
+		selection: {
+			lineWidth: 1.7,
+			strokeStyle:'hsl(70, 60%, 60%)',
+			lineWidth: 3
+		},
+		race_end: {
+			strokeStyle:'none',
+			fillStyle:'hsla(0, 0%, 100%, 0.15)'
+		}
+	}
+
 	// interactions
 	interact = {
 		canDrag: false,
@@ -135,34 +161,15 @@ class RHMarshal {
 			nonRealtimeData: true,
 		});
 		self.graph_series.rssi = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.rssi, {
-			lineWidth: 1.7,
-			strokeStyle:'hsl(214, 53%, 60%)',
-			fillStyle:'hsla(214, 53%, 60%, 0.4)'
-		});
+		self.graph.addTimeSeries(self.graph_series.rssi, this.seriesStyle.rssi);
 		self.graph_series.lap_marker = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.lap_marker, {
-			lineWidth: 1.7,
-			strokeStyle:'none',
-			fillStyle:'hsla(136, 71%, 70%, 0.3)'
-		});
+		self.graph.addTimeSeries(self.graph_series.lap_marker, this.seriesStyle.lap_marker);
 		self.graph_series.deleted_lap = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.deleted_lap, {
-			lineWidth: 1.7,
-			strokeStyle:'none',
-			fillStyle:'hsla(8.2, 86.5%, 53.7%, 0.2)'
-		});
+		self.graph.addTimeSeries(self.graph_series.deleted_lap, this.seriesStyle.deleted_lap);
 		self.graph_series.selection = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.selection, {
-			lineWidth: 1.7,
-			strokeStyle:'hsl(70, 60%, 60%)',
-			lineWidth: 3
-		});
+		self.graph.addTimeSeries(self.graph_series.selection, this.seriesStyle.selection);
 		self.graph_series.race_end = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.race_end, {
-			strokeStyle:'none',
-			fillStyle:'hsla(0, 0%, 100%, 0.15)'
-		});
+		self.graph.addTimeSeries(self.graph_series.race_end, this.seriesStyle.race_end);
 
 		self.graph.streamTo(self.elements.graph_canvas, 0);
 		self.graph.stop();

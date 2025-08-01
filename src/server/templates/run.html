@@ -458,6 +458,27 @@
 						rotorhazard.timer.race.initial_disp_tenths = null;
 					}
 					rotorhazard.timer.deferred.renderHTMLandUpdate();
+
+					for (var seat in rotorhazard.nodes) {
+						var node = rotorhazard.nodes[parseInt(seat)]
+						if (marshal_mode) {
+							node.graphPaused = false;
+
+							node.graph.options.scaleSmoothing = 0.125;
+							node.graph.options.millisPerPixel = 50;
+							node.graph.delay = 200;
+
+							node.graph.removeTimeSeries(node.marshal_series);
+							node.marshal_series = new TimeSeries();
+
+							node.graph.addTimeSeries(node.series, rotorhazard.seriesStyle.rssi);
+							node.graph.addTimeSeries(node.crossingSeries, rotorhazard.seriesStyle.crossing);
+
+							node.graph.start();
+							marshal_mode = false;
+						}
+					}
+
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}
@@ -1248,10 +1269,7 @@
 			if (node.graphPaused) {
 				node.graph.options.scaleSmoothing = 0.125;
 				node.graph.removeTimeSeries(node.pauseSeries)
-				node.graph.addTimeSeries(node.series, {lineWidth:1.7,
-					strokeStyle:'hsl(214, 53%, 60%)',
-					fillStyle:'hsla(214, 53%, 60%, 0.4)'
-				});
+				node.graph.addTimeSeries(node.series, rotorhazard.seriesStyle.rssi);
 				node.graph.start();
 				btn.html(svg_asset.pause);
 			} else {
@@ -1260,10 +1278,7 @@
 				node.pauseSeries = node.series;
 				node.graph.options.scaleSmoothing = 1;
 				node.graph.removeTimeSeries(node.series)
-				node.graph.addTimeSeries(node.pauseSeries, {lineWidth:1.7,
-					strokeStyle:'hsl(214, 53%, 60%)',
-					fillStyle:'hsla(214, 53%, 60%, 0.4)'
-				});
+				node.graph.addTimeSeries(node.pauseSeries, rotorhazard.seriesStyle.rssi);
 				node.graph.render(node.canvas, node.graphPausedTime);
 				btn.html(svg_asset.play);
 			}
@@ -2433,9 +2448,9 @@
 				}
 
 				if (lap.deleted) {
-					lapData.append('<td><button class="restore_lap" data-lapid="' + lap_i + '">+</button></td>');
+					lapData.append('<td><button class="m-restore_lap" data-lapid="' + lap_i + '">+</button></td>');
 				} else {
-					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
+					lapData.append('<td><button class="m-delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
 				}
 
 				if (!marshal.race.race_format.unlimited_time && lap.lap_time_stamp > (marshal.race.race_format.race_time_sec * 1000)) {
@@ -2526,11 +2541,7 @@
 					node.graphPaused = true;
 
 					node.marshal_series = new TimeSeries();
-					node.graph.addTimeSeries(node.marshal_series, {
-						lineWidth: 1.7,
-						strokeStyle:'hsl(214, 53%, 60%)',
-						fillStyle:'hsla(214, 53%, 60%, 0.4)'
-					});
+					node.graph.addTimeSeries(node.marshal_series, rotorhazard.seriesStyle.rssi);
 					node.graph.removeTimeSeries(node.series);
 					node.graph.removeTimeSeries(node.crossingSeries);
 
@@ -2555,7 +2566,7 @@
 					}
 
 					node.graph.options.scaleSmoothing = 1;
-					node.graph.delay = 1;
+					node.graph.delay = 0;
 
 					var history_duration = race_args.end_time - race_args.start_time;
 					var graphWidth = node.canvas.offsetWidth;
@@ -2614,11 +2625,11 @@
 			}
 		});
 
-		$(document).on('click', '.delete_lap', function(){
+		$(document).on('click', '.m-delete_lap', function(){
 			marshal.markLapDeleted($(this).data('lapid'));
 		});
 
-		$(document).on('click', '.restore_lap', function(){
+		$(document).on('click', '.m-restore_lap', function(){
 			marshal.restoreDeletedLap($(this).data('lapid'));
 		});
 
@@ -2627,17 +2638,37 @@
 			if (data) {
 				socket.emit('replace_current_laps', data);
 			}
-			$.magnificPopup.close();
+			document.getElementById('marshal-dialog').close();
 		});
 
 		$('#m-discard-laps').click(function(){
-			$.magnificPopup.close();
+			document.getElementById('marshal-dialog').close();
 		});
 
 		$('.node-graph').click(function(){
 			var node_index = parseInt($(this).data('node'));
 			if (marshal_mode) {
 				// open local marshaling
+				document.getElementById('marshal-dialog').showModal();
+
+				seat = rotorhazard?.nodes[node_index]?.marshal_data;
+				pilot_args = {
+					node: node_index,
+					history_times: seat.history_times,
+					history_values: seat.history_values,
+					laps: seat.laps,
+					enter_at: seat.enter_at,
+					exit_at: seat.exit_at,
+				}
+				marshal.setPilotData(pilot_args);
+
+				marshal.initRace();
+
+				// fill enter/exit values
+				$('#m-enterat').val(seat.enter_at);
+				$('#m-exitat').val(seat.exit_at);
+
+				/*
 				$.magnificPopup.open({
 					items: {
 						src: `#marshal-dialog`,
@@ -2667,6 +2698,7 @@
 						}
 					}
 				});
+				*/
 
 			} else {
 				// open tuning
@@ -2693,7 +2725,12 @@
 			}
 		});
 
-
+		const dialogs = document.querySelectorAll('dialog > button');
+		dialogs.forEach(btn => {
+  			btn.addEventListener('click', () => {
+				btn.parentElement.close();
+			});
+		});
 	});
 
 </script>
@@ -3230,11 +3267,13 @@
 <!-- Custom UI -->
 <div id="custom-ui"></div>
 
+<button id="audio-unlock">{{ __('Enable Audio') }}</button>
+</main>
 
-<!-- Inline Marshal -->
-<div id="marshal-dialog" class="mfp-hide popup">
+<dialog id="marshal-dialog">
 	<h2>{{ __('Marshal') }}</h2>
-	<div class="popup-content">
+	<button>&#215;<span class="screen-reader-text"> Close</span></button>
+	<div class="dialog-content">
 		<div id="m-race-display">
 			<div id="m-race-view">
 				<canvas id="marshal-graph" style="width:100%; height:200px"></canvas>
@@ -3277,8 +3316,6 @@
 			</div>
 		</div>
 	</div>
-</div>
+</dialog>
 
-<button id="audio-unlock">{{ __('Enable Audio') }}</button>
-</main>
 {% endblock %}
