@@ -10,6 +10,7 @@
 			'value': 'marshal'
 		},
 		'heat_data',
+		'class_data',
 		'enter_and_exit_at_levels',
 		'format_data',
 		'race_list'
@@ -399,8 +400,13 @@
 			display_heats();
 		});
 
+		socket.on('class_data', function (msg) {
+			rotorhazard.event.classes = msg.classes;
+			display_heats();
+		});
+
 		function display_heats() {
-			if (rotorhazard.event.heats) {
+			if (rotorhazard.event.heats && rotorhazard.event.classes) {
 				$("#reassign-heat-selector").empty();
 				for (var idx in rotorhazard.event.heats) {
 					var heat = rotorhazard.event.heats[idx];
@@ -409,8 +415,12 @@
 						.prop('value', heat.id)
 						.text(heat.displayname);
 
-					if (!heat.active) {
-						opt.prop('disabled', true)
+					if (heat.class_id) {
+						var race_class = rotorhazard.event.classes.find(obj => {return obj.id == heat.class_id});
+
+						if (race_class && race_class.round_type == 1 && !heat.active) {
+							opt.prop('disabled', true)
+						}
 					}
 
 					$('#reassign-heat-selector').append(opt);

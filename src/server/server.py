@@ -1248,7 +1248,7 @@ def on_add_heat(data=None):
         init = {
             'class_id': data['class']
         }
-        if 'group' in data:
+        if 'group' in data and data['group']:
             init['group_id'] = data['group']
         RaceContext.rhdata.add_heat(init=init)
     else:
@@ -3693,7 +3693,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         for plugin in plugin_modules:
             if load_plugin(plugin):
-                logger.info("Loaded plugin '{}'".format(plugin.name))
+                logger.info("Loaded {} plugin '{}'".format("bundled" if plugin.is_bundled else "external", plugin.name))
                 plugin.loaded = True
             else:
                 if plugin.load_issue_detail:

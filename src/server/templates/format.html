@@ -454,8 +454,12 @@
 				for (var i in msg.classes) {
 					var new_class = msg.classes[i];
 					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
-					Object.assign(race_class, new_class);
-					rotorhazard.event.classes.push(new_class);
+					if (race_class) {
+						Object.assign(race_class, new_class);
+						rotorhazard.event.classes.push(race_class);
+					} else {
+						rotorhazard.event.classes.push(new_class);
+					}
 				}
 			} else {
 				rotorhazard.event.classes = msg.classes;
@@ -474,8 +478,10 @@
 					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
 					if (race_class) {
 						Object.assign(race_class, new_class);
+						rotorhazard.event.classes.push(race_class);
+					} else {
+						rotorhazard.event.classes.push(new_class);
 					}
-					rotorhazard.event.classes.push(new_class);
 				}
 			} else {
 				rotorhazard.event.classes = msg.classes;
@@ -958,6 +964,8 @@
 
 					var groupselect = $(`#group-selector--race-class-${race_class.id}`)
 					if (race_class.round_type == 1) {
+						var selected_group_val = groupselect.val();
+						groupselect.empty();
 						groupselect.prop('hidden', false);
 
 						if (groups.length > 1) {
@@ -967,6 +975,9 @@
 									.text(`${__('Round')} ${parseInt(i)+1}`)
 									.appendTo(groupselect);
 							}
+							if (selected_group_val > 0) {
+								groupselect.val(selected_group_val);
+							}
 						} else {
 							groupselect.prop('disabled', true);
 							$(document.createElement('option'))
@@ -975,6 +986,7 @@
 								.appendTo(groupselect);
 						}
 					} else {
+						groupselect.empty();
 						groupselect.prop('hidden', true);
 					}
 
@@ -1115,7 +1127,7 @@
 						method: rank_method,
 					}
 
-					if (race_class.ranksettings && race_class.ranksettings[settings.name]) {
+					if (race_class.ranksettings && settings.name in race_class.ranksettings) {
 						settings.value = race_class.ranksettings[settings.name];
 					}
 
@@ -1316,8 +1328,9 @@
 			var data = {
 				class: parseInt($(this).data('id')),
 			};
-			if (typeof $(this).data('group') !== 'undefined') {
-				data.group = $(this).data('group')
+			var group_select = $(this).siblings('.class-group-list')
+			if (group_select.length) {
+				data.group = group_select.val();
 			}
 			socket.emit('add_heat', data);
 		});
@@ -1335,8 +1348,12 @@
 				for (var i in msg.heats) {
 					var new_heat = msg.heats[i];
 					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
-					Object.assign(heat, new_heat);
-					rotorhazard.event.heats.push(new_heat);
+					if (heat) {
+						Object.assign(heat, new_heat);
+						rotorhazard.event.heats.push(heat);
+					} else {
+						rotorhazard.event.heats.push(new_heat);
+					}
 				}
 			} else {
 				rotorhazard.event.heats = msg.heats;
@@ -1365,8 +1382,10 @@
 					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
 					if (heat) {
 						Object.assign(heat, new_heat);
+						rotorhazard.event.heats.push(heat);
+					} else {
+						rotorhazard.event.heats.push(new_heat);
 					}
-					rotorhazard.event.heats.push(new_heat);
 				}
 			} else {
 				rotorhazard.event.heats = msg.heats;
@@ -1736,28 +1755,14 @@
 			}
 
 			// Slots
-			if (heat.auto_frequency && heat.status != 2) {
-				heat.slots.sort((a,b) => {
-					if (a.method === -1 || (a.method === 0 && !a.pilot_id)) return 1;
-					if (b.method === -1 || (b.method === 0 && !b.pilot_id)) return -1;
-					return (a.method > b.method) ? 1 : -1
-					});
-			} else {
-				heat.slots.sort((a,b) => {
-					if (a.node_index === null) return 1;
-					if (b.node_index === null) return -1;
-					return (a.node_index > b.node_index) ? 1 : -1
-					});
-			}
-
 			$(heat_slots).children().addClass('flagged');
 			for (j in heat.slots) {
 				var slot = heat.slots[j];
 				var heatpilot = heat.slots[j].pilot_id;
 
-				if (!$(heat_slots).children(`.heat-ui--slot-${slot.id}`).length) {
+				if (!$(heat_slots).children(`.heat-ui--slot-index-${j}`).length) {
 					var slot_el = $(document.createElement('li'))
-						.addClass(`heat-ui--slot-${slot.id}`);
+						.addClass(`heat-ui--slot-index-${j}`);
 
 					// channel
 					var slot_channel = $(document.createElement('div'))
@@ -1772,7 +1777,7 @@
 
 					// method
 					var slot_method = $(document.createElement('select'))
-						.addClass(`heat-ui--method--slot-${slot.id}`)
+						.addClass('heat-ui--method')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_method')
@@ -1792,7 +1797,7 @@
 
 					// method:heat
 					var slot_method_heat = $(document.createElement('select'))
-						.addClass(`heat-ui--method-heat--slot-${slot.id}`)
+						.addClass('heat-ui--method-heat')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_heat')
@@ -1800,7 +1805,7 @@
 
 					// method:class
 					var slot_method_class = $(document.createElement('select'))
-						.addClass(`heat-ui--method-class--slot-${slot.id}`)
+						.addClass('heat-ui--method-class')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_class')
@@ -1808,7 +1813,7 @@
 
 					// rank
 					var slot_method_rank = $(document.createElement('input'))
-						.addClass(`heat-ui--method-rank--slot-${slot.id}`)
+						.addClass('heat-ui--method-rank')
 						.prop('type', 'number')
 						.prop('step', 1)
 						.prop('min', 1)
@@ -1821,7 +1826,7 @@
 
 					// method:pilot
 					var slot_method_pilot = $(document.createElement('select'))
-						.addClass(`heat-ui--method-pilot--slot-${slot.id}`)
+						.addClass('heat-ui--method-pilot')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_pilot_position')
@@ -1829,13 +1834,17 @@
 
 					heat_slots.append(slot_el);
 				} else {
-					var slot_el = $(heat_slots).children(`.heat-ui--slot-${slot.id}`);
+					var slot_el = $(heat_slots).children(`.heat-ui--slot-index-${j}`);
 					var slot_channel = $(slot_el).find('.channel-block');
-					var slot_method = $(slot_el).find(`.heat-ui--method--slot-${slot.id}`);
-					var slot_method_heat = $(slot_el).find(`.heat-ui--method-heat--slot-${slot.id}`);
-					var slot_method_class = $(slot_el).find(`.heat-ui--method-class--slot-${slot.id}`);
-					var slot_method_rank = $(slot_el).find(`.heat-ui--method-rank--slot-${slot.id}`);
-					var slot_method_pilot = $(slot_el).find(`.heat-ui--method-pilot--slot-${slot.id}`);
+					var slot_method = $(slot_el).find('.heat-ui--method');
+					var slot_method_heat = $(slot_el).find('.heat-ui--method-heat');
+					var slot_method_class = $(slot_el).find('.heat-ui--method-class');
+					var slot_method_rank = $(slot_el).find('.heat-ui--method-rank');
+					var slot_method_pilot = $(slot_el).find('.heat-ui--method-pilot');
+					slot_method_heat.data('slot', slot.id);
+					slot_method_class.data('slot', slot.id);
+					slot_method_rank.data('slot', slot.id);
+					slot_method_pilot.data('slot', slot.id);
 					slot_el.removeClass('flagged');
 				}
 
@@ -1988,69 +1997,53 @@
 		function update_heat_ui(el, heat_id) {
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 
-			is_dynamic = heat.slots.some(obj => obj.method > 0)
+			var is_dynamic = heat.slots.some(obj => obj.method > 0)
 			var locally_locked = heat.manual_unlock ? false : heat.locked;
 
 			// option selector visibility
-			if (heat.status == 2 || locally_locked) {
-				el.find('.channel-block').prop('hidden', false);
-				el.find('.set_method').prop('hidden', true);
-				el.find('.set_class').prop('hidden', true);
-				el.find('.set_heat').prop('hidden', true);
-				el.find('.set_rank').prop('hidden', true);
+			// reset to known state
+			el.find('.channel-block').prop('hidden', false);
+			el.find('.set_method').prop('hidden', true);
+			el.find('.set_class').prop('hidden', true);
+			el.find('.set_heat').prop('hidden', true);
+			el.find('.set_rank').prop('hidden', true);
+			el.find('.set_pilot_position').prop('hidden', true);
+			el.find('.set_pilot_position').prop('disabled', false);
+			el.find('.autofrequency-control').prop('hidden', false);
+
+			if (heat.locked) {
+				// heat has been run
+				el.find('.set_pilot_position').prop('hidden', false);
+				el.find('.autofrequency-control').prop('hidden', true);
+
+				if (!heat.manual_unlock) {
+					el.find('.set_pilot_position').prop('disabled', true);
+				}
+			} else if (heat.status == 2) {
+				// confirmed but not run
+				el.find('.set_pilot_position').prop('hidden', false);
 				el.find('.autofrequency-control').prop('hidden', true);
 			} else {
-				el.find('.channel-block').prop('hidden', heat.auto_frequency);
-				if (!heat.locked) {
-					el.find('.set_method').prop('hidden', false);
+				// unconfirmed and not run
+				el.find('.set_method').prop('hidden', false);
+				if (heat.auto_frequency) {
+					el.find('.channel-block').prop('hidden', true);
 				}
-				el.find('.set_class').prop('hidden', false);
-				el.find('.set_heat').prop('hidden', false);
-				el.find('.set_rank').prop('hidden', false);
-				el.find('.autofrequency-control').prop('hidden', false);
-
 				el.find('li').each(function(){
 					var method = parseInt($(this).find('.set_method').val());
 					if (method == -1) { // None
-						$(this).find('.set_class').prop('hidden', true);
-						$(this).find('.set_heat').prop('hidden', true);
-						$(this).find('.set_rank').prop('hidden', true);
-						$(this).find('.set_pilot_position').prop('hidden', true);
+						// display nothing
 					} else if (method == 0) { // Pilot
-						$(this).find('.set_class').prop('hidden', true);
-						$(this).find('.set_heat').prop('hidden', true);
-						$(this).find('.set_rank').prop('hidden', true);
 						$(this).find('.set_pilot_position').prop('hidden', false);
 					} else if (method == 1) { // Heat
-						$(this).find('.set_class').prop('hidden', true);
 						$(this).find('.set_heat').prop('hidden', false);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.set_pilot_position').prop('hidden', true);
 					} else if (method == 2) { // Class
 						$(this).find('.set_class').prop('hidden', false);
-						$(this).find('.set_heat').prop('hidden', true);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.set_pilot_position').prop('hidden', true);
 					}
 				});
 			}
-
-			// pilot visibility
-			el.find('li').each(function(){
-				if (((is_dynamic || heat.auto_frequency) && heat.status == 2) && locally_locked){
-					if ($(this).find('.set_pilot_position').val() == 0) {
-						$(this).prop('hidden', true);
-					} else {
-						// $(this).prop('hidden', false);
-						$(this).find('.set_pilot_position')
-							.prop('hidden', false)
-							.prop('disabled', true);
-					}
-				} else {
-					// $(this).prop('hidden', false);
-				}
-
-			});
 
 			// plan buttons
 			if ((is_dynamic || heat.auto_frequency) && heat.locked == false) {
@@ -2098,18 +2091,20 @@
 				slot_id: slot_id,
 				pilot: pilot_id
 			};
-			if (pilot_id) {
-				data.method = 0;  // always set method to 'assign'
-			}
-			socket.emit('alter_heat', data);
 
-			// update local data
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			var slot = heat.slots.find(obj => {return obj.id == slot_id});
+
 			if (heat && slot) {
-				slot.pilot_id = pilot_id;
-				slot.method = 0;
+				slot.pilot_id = pilot_id;  // update local data
+				if (pilot_id && heat.status != 2) {
+					data.method = 0;  // set method to 'assign'
+					slot.method = 0;  // update local data
+				}
 			}
+
+			socket.emit('alter_heat', data);
+
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), heat);
 			});
@@ -2229,29 +2224,6 @@
 			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_id});
 			rotorhazard.event.heats[heat_idx].auto_frequency = auto_frequency;
 			var heat = rotorhazard.event.heats[heat_idx];
-
-			if(!auto_frequency) {
-				heat.slots.sort((a, b) => a.id - b.id);
-
-				var used_seats = []
-				for (var s in heat.slots) {
-					if (heat.slots[s].node_index != null) {
-						used_seats.push(heat.slots[s].node_index);
-					}
-				}
-
-				var idx = 0;
-				for (var s in heat.slots) {
-					if (heat.slots[s].node_index == null) {
-						while (used_seats.includes(idx)) {
-							idx++;
-						}
-						heat.slots[s].node_index = idx;
-						idx++;
-					}
-				}
-				heat.slots.sort((a, b) => a.node_index - b.node_index);
-			}
 
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), heat);
