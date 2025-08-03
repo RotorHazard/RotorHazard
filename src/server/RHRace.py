@@ -1604,8 +1604,8 @@ class RHRace():
                     node_laps.append({
                         'lap_index': idx,
                         'lap_number': lap_number,
-                        'lap_raw': lap.lap_time,
-                        'lap_time': lap.lap_time_formatted,
+                        'lap_time': lap.lap_time,
+                        'lap_time_formatted': lap.lap_time_formatted,
                         'lap_time_stamp': lap.lap_time_stamp,
                         'splits': splits,
                         'late_lap': lap.late_lap
