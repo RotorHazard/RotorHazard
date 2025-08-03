@@ -295,6 +295,7 @@ class RHMarshal {
 			self.callbacks.calibration({
 				enter: self.race.enter_at,
 				exit: self.race.exit_at,
+				seat: self.race.seat,
 			});
 		}
 		self.refreshDisplay();

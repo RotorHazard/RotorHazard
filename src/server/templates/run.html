@@ -2432,7 +2432,7 @@
 
 				if (lap.deleted) {
 					lapData.addClass('lap-deleted');
-				} else if (lap_index && lap.lap_time < rotorhazard.min_lap) {
+				} else if (lap_index && lap.lap_time < rotorhazard.min_lap * 1000) {
 					lapData.addClass('min-lap-warning');
 				}
 
@@ -2494,8 +2494,10 @@
 		function calibration(calibration) {
 			$('#m-enterat').val(calibration.enter);
 			$('#m-exitat').val(calibration.exit);
-			$(`set_enter_at_level_${calibration.node_index}`).val(calibration.enter).trigger('change');
-			$(`set_exit_at_level_${calibration.node_index}`).val(calibration.exit).trigger('change');
+			rotorhazard.nodes[calibration.seat].enter_at_level = calibration.enter;
+			rotorhazard.nodes[calibration.seat].exit_at_level = calibration.exit;
+			$(`set_enter_at_level_${calibration.seat}`).val(calibration.enter).trigger('change');
+			$(`set_exit_at_level_${calibration.seat}`).val(calibration.exit).trigger('change');
 		}
 
 		var marshal = new RHMarshal({
@@ -2517,7 +2519,15 @@
 		});
 
 		socket.on('current_marshal_data', function (msg) {
-			race_args = {
+			rotorhazard.marshal_data = msg;
+			load_marshal_data();
+		});
+
+		function load_marshal_data() {
+			var msg = rotorhazard.marshal_data;
+			rotorhazard.marshal_data.race_args = [];
+
+			var race_args = {
 				round: msg.race.round_id,
 				heat: msg.race.heat_id,
 				race_id: msg.race.race_id,
@@ -2573,6 +2583,7 @@
 
 					node.graph.options.scaleSmoothing = 1;
 					node.graph.delay = 0;
+					node.graph.delay = 0;
 
 					var history_duration = race_args.end_time - race_args.start_time;
 					var graphWidth = node.canvas.offsetWidth;
@@ -2580,11 +2591,24 @@
 					node.graph.options.millisPerPixel = span;
 
 					node.graph.render(node.canvas, history_duration);
+					node.graphPausedTime = history_duration;
+
+					race_args.history_duration = history_duration;
 				}
+				rotorhazard.nodes[seat].race_args = race_args;
 			}
 
 			marshal_mode = true;
-		});
+		};
+
+		function update_marshal_graphs() {
+			for (var idx in rotorhazard.nodes) {
+				var node = rotorhazard.nodes[idx];
+				if (node.canvas) {
+					node.updateThresholds();
+				}
+			}
+		}
 
 		$('#m-enterat').on('input', function (event) {
 			if (Math.abs($('#m-enterat').val() - $('#m-exitat').val()) == 1) {
@@ -2644,6 +2668,7 @@
 			if (data) {
 				socket.emit('replace_current_laps', data);
 			}
+			update_marshal_graphs();
 			document.getElementById('marshal-dialog').close();
 		});
 
@@ -2663,16 +2688,16 @@
 					history_times: seat.history_times,
 					history_values: seat.history_values,
 					laps: current_laps.node_index[seat_index].laps,
-					enter_at: seat.enter_at,
-					exit_at: seat.exit_at,
+					enter_at: rotorhazard.nodes[seat_index].enter_at_level,
+					exit_at: rotorhazard.nodes[seat_index].exit_at_level,
 				}
 				marshal.setPilotData(pilot_args);
 
 				marshal.initRace();
 
 				// fill enter/exit values
-				$('#m-enterat').val(seat.enter_at);
-				$('#m-exitat').val(seat.exit_at);
+				$('#m-enterat').val(rotorhazard.nodes[seat_index].enter_at_level);
+				$('#m-exitat').val(rotorhazard.nodes[seat_index].exit_at_level);
 			} else {
 				// open tuning
 				$.magnificPopup.open({

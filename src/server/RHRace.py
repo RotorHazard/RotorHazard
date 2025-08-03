@@ -111,17 +111,6 @@ class RHRace():
 
         self.clear_results()
 
-        '''
-        Lap Object (dict) for node_laps:
-            lap_number
-            lap_time_stamp
-            lap_time
-            lap_time_formatted
-            source
-            deleted
-        '''
-
-
 
     @catchLogExceptionsWrapper
     def stage(self, data=None):
@@ -1162,7 +1151,7 @@ class RHRace():
 
 
     def replace_laps(self, data):
-        node = data['node']
+        node = data['seat']
         laps = data['laps']
 
         lap_objs = []
@@ -1607,6 +1596,8 @@ class RHRace():
                         'lap_time': lap.lap_time,
                         'lap_time_formatted': lap.lap_time_formatted,
                         'lap_time_stamp': lap.lap_time_stamp,
+                        'source': lap.source,
+                        'deleted': lap.deleted,
                         'splits': splits,
                         'late_lap': lap.late_lap
                     })
