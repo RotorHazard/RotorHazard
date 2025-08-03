@@ -716,9 +716,11 @@ class RHMarshal {
 	}
 
 	graphInteractCancel() {
-		self.handleGraphInteractionCancel();
-		self.interact.canDrag = false;
-		self.interact.isDragging = false;
+		if (self.interact.canDrag) {
+			self.interact.canDrag = false;
+			self.interact.isDragging = false;
+			self.handleGraphInteractionCancel();
+		}
 	}
 
 	// mouse handlers
