@@ -461,7 +461,7 @@
 
 					for (var seat in rotorhazard.nodes) {
 						var node = rotorhazard.nodes[parseInt(seat)]
-						if (marshal_mode) {
+						if (marshal_mode && node.marshal_series) {
 							node.graphPaused = false;
 
 							node.graph.options.scaleSmoothing = 0.125;
@@ -475,9 +475,9 @@
 							node.graph.addTimeSeries(node.crossingSeries, rotorhazard.seriesStyle.crossing);
 
 							node.graph.start();
-							marshal_mode = false;
 						}
 					}
+					marshal_mode = false;
 
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
@@ -2234,63 +2234,73 @@
 		});
 
 		$(document).on('keyup', function(e) {
-			// keyboard shortcuts
+			// keyboard shortcutsz
 			switch (e.which) {
 				case 83:  // S
-					if ( this !== event.target && event.target.id !== "set_current_heat"
-						&& event.target.id !== "set_race_format"
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// race schedule: s
-						$('#schedule_race').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target && event.target.id !== "set_current_heat"
+							&& event.target.id !== "set_race_format"
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// race schedule: s
+							$('#schedule_race').trigger('click');
+						}
 					}
 					break;
 				case 90:  // Z
-					if ( this !== event.target && event.target.id !== "set_current_heat"
-						&& event.target.id !== "set_race_format"
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// race start: z
-						$('#start_race').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target && event.target.id !== "set_current_heat"
+							&& event.target.id !== "set_race_format"
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// race start: z
+							$('#start_race').trigger('click');
+						}
 					}
 					break;
 				case 88:  // X
-					if ( this !== event.target
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// race stop: x
-						$('#stop_race').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// race stop: x
+							$('#stop_race').trigger('click');
+						}
 					}
 					break;
 				case 67:  // C
-					if ( this !== event.target
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// save laps: c
-						$('#save_laps').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// save laps: c
+							$('#save_laps').trigger('click');
+						}
 					}
 					break;
 				case 86:  // V
-					if ( this !== event.target
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// discard laps: v
-						$('#discard_laps').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// discard laps: v
+							$('#discard_laps').trigger('click');
+						}
 					}
 					break;
 				case 49:  // 1
@@ -2420,7 +2430,7 @@
 			$('#m-laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
 		}
 
-		function displayLaps(laps_obj) {
+		function displayLaps(laps_obj, marked_lap=null) {
 			var lapList = $('#m-laps tbody');
 			lapList.empty();
 
@@ -2429,6 +2439,10 @@
 				var lap = laps_obj[lap_i];
 				var lapData = $('<tr>');
 				$(lapData).data("lapTimeStamp", lap.lap_time_stamp);
+
+				if (marked_lap != null && lap_i == marked_lap) {
+					lapData.addClass('lap-highlighted');
+				}
 
 				if (lap.deleted) {
 					lapData.addClass('lap-deleted');
@@ -2702,20 +2716,20 @@
 				// open tuning
 				$.magnificPopup.open({
 					items: {
-						src: `#tuning-detail-${node_index}`,
+						src: `#tuning-detail-${seat_index}`,
 						type: 'inline',
 					},
 					callbacks: {
 						open: function(){
-							var graph = $('#rssi-graph-' + node_index);
+							var graph = $('#rssi-graph-' + seat_index);
 							$(this.content).find('.rssi-graph').append(graph);
 						},
 						close: function(){
-							var graph = $('#rssi-graph-' + node_index);
-							$('.rssi-graph.page[data-node="' + node_index + '"]').prepend(graph);
+							var graph = $('#rssi-graph-' + seat_index);
+							$('.rssi-graph.page[data-node="' + seat_index + '"]').prepend(graph);
 
 							if (rotorhazard.nodes[node].graphPaused) {
-								$('button.pause_graph[data-node=' + node_index + ']').click();
+								$('button.pause_graph[data-node=' + seat_index + ']').click();
 							}
 						}
 					}
@@ -2732,6 +2746,29 @@
 
 		document.getElementById('marshal-dialog').addEventListener("close", () => {
 			marshal.graphInteractCancel();
+		});
+
+		// lap list hotkey
+		$(document).on('keyup', function(e) {
+			// keyboard shortcuts
+			if (document.getElementById('marshal-dialog').open) {
+				switch (e.key) {
+					case 'Delete':
+					case 'x':
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// delete current lap toggle: z
+							$('#m-laps tr.lap-highlighted button').trigger('click');
+						}
+						break;
+					case 'Insert':
+					case 'x':
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// delete current lap toggle: z
+							$('#m-laps tr.lap-highlighted button').trigger('click');
+						}
+						break;
+				}
+			}
 		});
 	});
 

@@ -38,7 +38,7 @@
 		$('#laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
 	}
 
-	function displayLaps(laps_obj) {
+	function displayLaps(laps_obj, marked_lap=null) {
 		var lapList = $('#laps tbody');
 		lapList.empty();
 
@@ -47,6 +47,10 @@
 			var lap = laps_obj[lap_i];
 			var lapData = $('<tr>');
 			$(lapData).data("lapTimeStamp", lap.lap_time_stamp);
+
+			if (marked_lap != null && lap_i == marked_lap) {
+				lapData.addClass('lap-highlighted');
+			}
 
 			if (lap.deleted) {
 				lapData.addClass('lap-deleted');

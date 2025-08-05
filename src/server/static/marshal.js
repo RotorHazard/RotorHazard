@@ -254,7 +254,7 @@ class RHMarshal {
 		self.renderGraph();
 
 		// populate laps
-		self.displayLaps(self.race.laps);
+		self.displayLaps();
 	}
 
 	setEnter(rssi) {
@@ -495,7 +495,7 @@ class RHMarshal {
 			}
 			self.race.laps = laps;
 			self.updateIncrementalLapTimes();
-			self.displayLaps(laps);
+			self.displayLaps();
 			self.renderGraph();
 		}
 		if (typeof self.callbacks.recalcRace === 'function') {
@@ -542,7 +542,7 @@ class RHMarshal {
 		});
 		self.updateIncrementalLapTimes();
 		self.clearMarkedLap();
-		self.displayLaps(self.race.laps);
+		self.displayLaps();
 		self.renderGraph();
 		return true;
 	}
@@ -551,14 +551,14 @@ class RHMarshal {
 		self.race.laps[lap_index].deleted = true;
 		self.clearMarkedLap();
 		self.updateIncrementalLapTimes();
-		self.displayLaps();
+		self.displayLaps(lap_index);
 		self.renderGraph();
 	}
 
 	restoreDeletedLap(lap_index) {
 		self.race.laps[lap_index].deleted = false;
 		self.updateIncrementalLapTimes();
-		self.displayLaps();
+		self.displayLaps(lap_index);
 		self.renderGraph();
 	}
 
@@ -577,7 +577,7 @@ class RHMarshal {
 		self.race.laps = laps;
 
 		self.clearMarkedLap();
-		self.displayLaps(self.race.laps);
+		self.displayLaps();
 		self.renderGraph();
 		return true;
 	}
@@ -603,10 +603,10 @@ class RHMarshal {
 		return data;
 	}
 
-	displayLaps() {
+	displayLaps(marked_lap=null) {
 		self.clearCrossings();
 		if (typeof self.callbacks.displayLaps === 'function') {
-			self.callbacks.displayLaps(self.race.laps);
+			self.callbacks.displayLaps(self.race.laps, marked_lap);
 		}
 	}
 

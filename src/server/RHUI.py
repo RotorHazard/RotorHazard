@@ -18,11 +18,9 @@ import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod, RoundType
-from RHRace import RacingMode
+from RHRace import RacingMode, RaceStatus
 from filtermanager import Flt
 import logging
-
-from src.server.RHRace import RaceStatus
 
 logger = logging.getLogger(__name__)
 
