@@ -775,20 +775,20 @@ class RHUI():
                     }
 
                 events_list = {
-                    Evt.RACE_STAGE: 'Race Stage',
-                    Evt.RACE_START: 'Race Start',
-                    Evt.RACE_FINISH: 'Race Finish',
-                    Evt.RACE_STOP: 'Race Stop',
-                    Evt.RACE_WIN: 'Race Win',
-                    Evt.RACE_INITIAL_PASS: 'Race Initial Pass',
-                    Evt.RACE_PILOT_LEADING: 'Pilot Leading',
-                    Evt.RACE_PILOT_DONE: 'Pilot Done',
-                    Evt.HEAT_SET: 'Heat Change',
-                    Evt.RACE_SCHEDULE: 'Race Schedule',
-                    Evt.RACE_SCHEDULE_CANCEL: 'Cancel Scheduled Race',
-                    Evt.LAPS_SAVE: 'Save Laps',
-                    Evt.LAPS_DISCARD: 'Discard Laps',
-                    Evt.ROUNDS_COMPLETE: 'Rounds Complete'
+                    Evt.RACE_STAGE: self.__('Race Stage'),
+                    Evt.RACE_START: self.__('Race Start'),
+                    Evt.RACE_FINISH: self.__('Race Finish'),
+                    Evt.RACE_STOP: self.__('Race Stop'),
+                    Evt.RACE_WIN: self.__('Race Win'),
+                    Evt.RACE_INITIAL_PASS: self.__('Race Initial Pass'),
+                    Evt.RACE_PILOT_LEADING: self.__('Pilot Leading'),
+                    Evt.RACE_PILOT_DONE: self.__('Pilot Done'),
+                    Evt.HEAT_SET: self.__('Heat Change'),
+                    Evt.RACE_SCHEDULE: self.__('Race Schedule'),
+                    Evt.RACE_SCHEDULE_CANCEL: self.__('Cancel Scheduled Race'),
+                    Evt.LAPS_SAVE: self.__('Save Laps'),
+                    Evt.LAPS_DISCARD: self.__('Discard Laps'),
+                    Evt.ROUNDS_COMPLETE: self.__('Rounds Complete')
                 }
 
                 # if event names for any configured events not in list then add them
