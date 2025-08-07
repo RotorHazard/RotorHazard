@@ -2,6 +2,8 @@
 
 import os
 import logging
+import random
+
 import gevent # For threads and timing
 from time import monotonic # to capture read timing
 
@@ -31,8 +33,15 @@ class MockInterface(BaseHardwareInterface):
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
         self.data = []
+        self.mocknodedata = {}
         # i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
         for index in range(int(os.environ.get('RH_NODES', '8'))):
+            self.mocknodedata[index] = {
+                'lap_number': 0,
+                'is_crossing': False,
+                'pass_peak_rssi': 0,
+                'pass_nadir_rssi': 100,
+            }
             node = Node() # New node instance
             node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
             node.index = index
@@ -75,33 +84,77 @@ class MockInterface(BaseHardwareInterface):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
+
         for index, node in enumerate(self.nodes):
             if node.frequency:
                 readtime = monotonic()
 
-                node_data = self.data[index]
+                if self.mocknodedata[index]['is_crossing']:
+                    new_rssi = random.randrange(60,150)
+                    pass_peak_rssi = max(self.mocknodedata[index]['pass_peak_rssi'], new_rssi)
+                    node_data = {
+                        'lap_id': self.mocknodedata[index]['lap_number'],
+                        'ms_val': 0,
+                        'rssi_val': new_rssi,
+                        'node.node_peak_rssi': 100,
+                        'node.pass_peak_rssi': pass_peak_rssi,
+                        'node.loop_time': 1,
+                        'cross_flag': 1,
+                        'node.pass_nadir_rssi': self.mocknodedata[index]['pass_nadir_rssi'],
+                        'node.node_nadir_rssi': 20,
+                        'pn_history.peakRssi': new_rssi,
+                        'pn_history.peakFirstTime': 0,
+                        'pn_history.peakLastTime': 0,
+                        'pn_history.nadirRssi': new_rssi,
+                        'pn_history.nadirFirstTime': 0,
+                        'pn_history.nadirLastTime': 0
+                    }
+                    if random.random() < 0.5:
+                        self.mocknodedata[index]['is_crossing'] = False
+                        self.mocknodedata[index]['pass_nadir_rssi'] = 100
+                else:
+                    new_rssi = random.randrange(20,40)
+                    pass_nadir_rssi = min(self.mocknodedata[index]['pass_nadir_rssi'], new_rssi)
+                    node_data = {
+                        'lap_id': self.mocknodedata[index]['lap_number'],
+                        'ms_val': 0,
+                        'rssi_val': new_rssi,
+                        'node.node_peak_rssi': 100,
+                        'node.pass_peak_rssi': self.mocknodedata[index]['pass_peak_rssi'],
+                        'node.loop_time': 1,
+                        'cross_flag': 0,
+                        'node.pass_nadir_rssi': pass_nadir_rssi,
+                        'node.node_nadir_rssi': 20,
+                        'pn_history.peakRssi': new_rssi,
+                        'pn_history.peakFirstTime': 0,
+                        'pn_history.peakLastTime': 0,
+                        'pn_history.nadirRssi': new_rssi,
+                        'pn_history.nadirFirstTime': 0,
+                        'pn_history.nadirLastTime': 0
+                    }
+                    if random.random() < 0.05:
+                        self.mocknodedata[index]['lap_number'] += 1
+                        self.mocknodedata[index]['is_crossing'] = True
+                        self.mocknodedata[index]['pass_peak_rssi'] = 0
+
+
                 if node_data:
-                    data_line = node_data.readline()
-                    if data_line == '':
-                        node_data.seek(0)
-                        data_line = node_data.readline()
-                    data_columns = data_line.split(',')
-                    lap_id = int(data_columns[1])
-                    ms_val = int(data_columns[2])
-                    rssi_val = int(data_columns[3])
-                    node.node_peak_rssi = int(data_columns[4])
-                    node.pass_peak_rssi = int(data_columns[5])
-                    node.loop_time = int(data_columns[6])
-                    cross_flag = True if data_columns[7]=='T' else False
-                    node.pass_nadir_rssi = int(data_columns[8])
-                    node.node_nadir_rssi = int(data_columns[9])
+                    lap_id = node_data['lap_id']
+                    ms_val = node_data['ms_val']
+                    rssi_val = node_data['rssi_val']
+                    node.node_peak_rssi = node_data['node.node_peak_rssi']
+                    node.pass_peak_rssi = node_data['node.pass_peak_rssi']
+                    node.loop_time = node_data['node.loop_time']
+                    cross_flag = node_data['cross_flag']
+                    node.pass_nadir_rssi = node_data['node.pass_nadir_rssi']
+                    node.node_nadir_rssi = node_data['node.node_nadir_rssi']
                     pn_history = PeakNadirHistory(node.index)
-                    pn_history.peakRssi = int(data_columns[10])
-                    pn_history.peakFirstTime = int(data_columns[11])
-                    pn_history.peakLastTime = int(data_columns[12])
-                    pn_history.nadirRssi = int(data_columns[13])
-                    pn_history.nadirFirstTime = int(data_columns[14])
-                    pn_history.nadirLastTime = int(data_columns[15])
+                    pn_history.peakRssi = node_data['pn_history.peakRssi']
+                    pn_history.peakFirstTime = node_data['pn_history.peakFirstTime']
+                    pn_history.peakLastTime = node_data['pn_history.peakLastTime']
+                    pn_history.nadirRssi = node_data['pn_history.nadirRssi']
+                    pn_history.nadirFirstTime = node_data['pn_history.nadirFirstTime']
+                    pn_history.nadirLastTime = node_data['pn_history.nadirLastTime']
                     if node.is_valid_rssi(rssi_val):
                         node.current_rssi = rssi_val
                         self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)

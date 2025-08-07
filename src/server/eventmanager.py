@@ -168,6 +168,7 @@ class Evt:
     CROSSING_EXIT = 'crossingExit'
     RACE_INITIAL_PASS = 'raceInitialPass'
     # Race management
+    RACE_LAPS_REPLACE = 'raceLapsReplace'
     LAPS_SAVE = 'lapsSave'
     LAPS_DISCARD = 'lapsDiscard'
     LAPS_CLEAR = 'lapsClear'

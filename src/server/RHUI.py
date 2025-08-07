@@ -18,9 +18,10 @@ import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod, RoundType
-from RHRace import RacingMode
+from RHRace import RacingMode, RaceStatus
 from filtermanager import Flt
 import logging
+
 logger = logging.getLogger(__name__)
 
 from FlaskAppObj import APP
@@ -970,6 +971,49 @@ class RHUI():
             emit('leaderboard', emit_payload)
         else:
             self._socket.emit('leaderboard', emit_payload)
+
+    def emit_race_marshal_data(self, **params):
+        '''Emits current (post-race) marshal data.'''
+        race = self._racecontext.race
+        nodes = self._racecontext.interface.nodes
+
+        if race.race_status != RaceStatus.DONE:
+            return False
+
+        with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
+            if race.current_heat == RHUtils.HEAT_ID_NONE:
+                return False
+
+            race_marshal_data = {
+                'round_id': -1,
+                'heat_id': race.current_heat,
+                'race_id': None,
+                'class_id': None,
+                'format_id': race.format.id if hasattr(race.format, 'id') else RHUtils.FORMAT_ID_NONE,
+                'start_time': race.start_time_monotonic,
+                'start_time_formatted': race.start_time_formatted,
+            }
+
+            seat_marshal_data = {}
+            for index, node in enumerate(nodes):
+                seat_marshal_data[index] = {
+                    'pilotrace_index': index,
+                    'history_values': nodes[index].history_values,
+                    'history_times': nodes[index].history_times,
+                    'enter_at': nodes[index].enter_at_level,
+                    'exit_at': nodes[index].exit_at_level,
+                    'laps': [lap.asdict() for lap in race.node_laps[index]]
+                }
+
+        emit_payload = {
+            'race': race_marshal_data,
+            'seats': seat_marshal_data
+        }
+
+        if ('nobroadcast' in params):
+            emit('current_marshal_data', emit_payload)
+        else:
+            self._socket.emit('current_marshal_data', emit_payload)
 
     def emit_expanded_heat(self, heat_id, **params):
         '''Emits abbreviated heat data for more responsive UI.'''

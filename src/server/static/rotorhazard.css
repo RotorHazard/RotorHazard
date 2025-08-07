@@ -450,24 +450,54 @@ ol.form li+li {
 	margin: 1rem auto;
 }
 
+dialog {
+	background: #fff;
+	color: #000;
+	border: none;
+	box-shadow: 0 0 rgba(0,0,0,0.4);
+	padding: 0;
+}
+
+::backdrop {
+	background-color: rgba(0,0,0,0.8);
+}
+
 @media (prefers-color-scheme: dark) {
-	.popup {
+	.popup,
+	dialog {
 		background: #333;
 		color: #fff;
 	}
 }
 
-.popup h2 {
+.popup h2,
+dialog h2 {
 	margin-bottom: 0;
 	padding: 0 2.5rem 0 0.5rem;
 }
 
-.popup h2::before {
+.popup h2::before,
+dialog h2::before {
 	content: none;
 }
 
-.popup-content {
-	padding: 0 1rem;
+dialog > button {
+	position: absolute;
+	bottom: calc(100% - 2.25rem);
+	right: 0;
+	border: transparent;
+	background: transparent;
+}
+
+#marshal-dialog {
+	margin-top: 1rem;
+	width: 59em;
+	max-width: calc(100% - 2rem);
+}
+
+.popup-content,
+.dialog-content {
+	padding: 1rem;
 	overflow: clip;
 	display: flow-root;
 }
@@ -1331,6 +1361,19 @@ main.page-home {
 	margin: 0 0.125rem 0.25rem;
 }
 
+.node-graph {
+	border: none;
+	padding: 0;
+	color: inherit;
+	font-size: inherit;
+	min-height: 0;
+	display: block;
+	background: transparent;
+	text-align: inherit;
+	font-weight: inherit;
+	width: 100%;
+}
+
 #heat_list {
 	list-style: none;
 	margin: 1em 0;
@@ -2056,7 +2099,8 @@ ol.heat-edit-list>li {
 	}
 }
 
-.page-marshal td:not(:last-child) {
+.page-marshal td:not(:last-child),
+#m-laps td:not(:last-child) {
 	cursor: pointer;
 }
 
@@ -2384,22 +2428,26 @@ button .wide {
 
 /* Marshaling */
 
-#race-graph {
+#race-graph,
+#m-race-graph {
 	background: #222;
 }
 
-#race-display {
+#race-display,
+#m-race-display {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.5em;
 }
 
-#race-header {
+#race-header,
+#m-race-header {
 	width: 100%;
 	margin: 0 0.5em;
 }
 
-#race-view {
+#race-view,
+#m-race-view {
 	flex: 1 1 24em;
 	margin: 0 0.5em 1em;
 }
@@ -2797,10 +2845,6 @@ ul.plugin-list>li {
 		grid-row: 2;
 		grid-column: 1 / -1;
 	}
-}
-
-.dialog-content {
-	padding: 1rem;
 }
 
 .popup .notice {
