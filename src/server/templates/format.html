@@ -71,9 +71,7 @@
 		});
 
 		socket.on('language', function (msg) {
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
-			}
+			rotorhazard.interface_language = msg.language;
 		});
 
 		// set admin flag
