@@ -348,7 +348,7 @@ class Config:
 
     def clean_config(self):
         try:
-            if self.config.keys() == self.config_sections.keys():
+            if set(self.config_sections.keys()).issubset(set(self.config.keys()) ) : #PAMJesus  FIXME create PR and submit
                 # if LAST_MODIFIED_TIME does not match timestamp on file then trigger save to synchronize them
                 last_modified_time = self.get_item_int('GENERAL', 'LAST_MODIFIED_TIME')
                 file_modified_time = int(os.path.getmtime(self.config_file_name)) \
