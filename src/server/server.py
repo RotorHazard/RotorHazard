@@ -3552,7 +3552,12 @@ def load_plugin(plugin):
         plugin.load_issue = "no initialize function"
         return False
 
-    plugin.module.initialize(RHAPI)
+    try:
+        plugin.module.initialize(RHAPI)
+    except Exception as ex3:
+        plugin.load_issue = "error during plugin initialization"
+        plugin.load_issue_detail = ex3
+        return False
     return True
 
 @catchLogExceptionsWrapper
