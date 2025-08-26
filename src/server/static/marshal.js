@@ -190,13 +190,16 @@ class RHMarshal {
 	}
 
 	setPilotData(args) {
-		self.race.pilotrace_index = args?.pilot;
-		self.race.seat = args?.seat;
 		self.race.history_times = args.history_times;
 		self.race.history_values = args.history_values;
 		self.race.laps = args.laps;
 		self.race.enter_at = args.enter_at;
 		self.race.exit_at = args.exit_at;
+
+		self.race.pilotrace_id = args?.pilotrace_id;
+		self.race.pilot_id = args?.pilot_id;
+		self.race.seat = args?.seat;
+		self.race.callsign = args?.callsign;
 	}
 
 	initRace() {

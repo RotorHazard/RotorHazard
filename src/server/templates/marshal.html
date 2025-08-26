@@ -374,12 +374,15 @@
 			marshal.setRaceData(race_args);
 
 			pilot_args = {
-				pilotrace_index: current_race_data.pilot,
+				pilotrace_id: current_race_data.pilotrace_id,
+				pilot_id: current_race_data.pilot_id,
+				seat: current_race_data.node_index,
 				history_times: msg.history_times,
 				history_values: msg.history_values,
 				laps: msg.laps,
 				enter_at: msg.enter_at,
 				exit_at: msg.exit_at,
+				callsign: current_race_data.callsign,
 			}
 			marshal.setPilotData(pilot_args);
 
@@ -532,7 +535,7 @@
 
 			// load current race data
 			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
-			current_race_data.pilotrace_index = pilot;
+			current_race_data.pilotrace_id = current_race_data.pilotrace_id;
 			// fill current data with race meta
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;

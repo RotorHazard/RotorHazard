@@ -2396,7 +2396,7 @@ def on_resave_laps(data):
 
     race_id = data['race_id']
     pilotrace_id = data['pilotrace_id']
-    node = data['node']
+    seat = data['seat']
     pilot_id = data['pilot_id']
     laps = data['laps']
     enter_at = data['enter_at']
@@ -2419,7 +2419,7 @@ def on_resave_laps(data):
     new_racedata = {
             'race_id': race_id,
             'pilotrace_id': pilotrace_id,
-            'node_index': node,
+            'node_index': seat,
             'pilot_id': pilot_id,
             'laps': []
         }
@@ -2465,7 +2465,7 @@ def on_resave_laps(data):
                 lap_number += 1
             lap_objs.append(lap_data)
 
-        RaceContext.last_race.node_laps[node] = lap_objs
+        RaceContext.last_race.node_laps[seat] = lap_objs
 
         RaceContext.rhui.emit_current_leaderboard()
         RaceContext.rhui.emit_current_laps()
