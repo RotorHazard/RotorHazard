@@ -2910,7 +2910,8 @@ def heartbeat_thread_function():
 
             if RaceContext.serverstate.enable_heartbeat_event:
                 Events.trigger(Evt.HEARTBEAT, {
-                    'count': heartbeat_thread_function.iter_tracker
+                    'count': heartbeat_thread_function.iter_tracker,
+                    'node_data': node_data
                 })
 
             # update displayed IMD rating after freqs changed:
