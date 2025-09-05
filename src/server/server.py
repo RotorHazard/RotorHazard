@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.3.0-dev.5" # Public release version code
+RELEASE_VERSION = "4.3.1" # Public release version code
 SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -63,8 +63,9 @@ import importlib
 import functools
 import signal
 import werkzeug
+import urllib3
 
-from flask import Flask, send_from_directory, request, Response, templating, redirect, abort, copy_current_request_context
+from flask import Flask, send_from_directory, request, make_response, Response, templating, redirect, abort, copy_current_request_context
 from flask.blueprints import Blueprint
 from flask_socketio import SocketIO, emit
 
@@ -239,7 +240,7 @@ HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
+IMDTABLER_JAR_NAME =  PROGRAM_DIR + '/static/IMDTabler.jar'
 NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 
 # check if 'log' directory owned by 'root' and change owner to 'pi' user if so
@@ -406,7 +407,7 @@ def getFwfileProctypeStr(fileStr):
 def check_log_error_alert():
     if Auth_succeeded_flag and log.get_log_error_alert_flag():
         gevent.spawn_later(1.0, RaceContext.rhui.emit_priority_message,\
-                __("Error messages have been logged, <a href=\"/hardwarelog?log_level=ERROR\">click here</a> to view them"),\
+                f'{__("An error has occurred.")}<br /><a href="/hardwarelog?log_level=ERROR">{__("View error log")}</a>',\
                 True, False, True)  # admin_only=True
         return True
     return False
@@ -465,7 +466,9 @@ def render_template(template_name_or_list, **context):
             'Debug': RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'),
             'restart_flag': RaceContext.serverstate.restart_required
         })
-        return templating.render_template(template_name_or_list, **context)
+        response = make_response(templating.render_template(template_name_or_list, **context))
+        response.cache_control.no_store = True
+        return response
     except Exception:
         logger.exception("Exception in render_template")
     return "Error rendering template"
@@ -691,16 +694,18 @@ def render_vrxstatus():
 @APP.route('/docs')
 def render_viewDocs():
     '''Route to doc viewer.'''
-    folderBase = '../../doc/'
+    docBase = Path(PROGRAM_DIR).parent.parent.joinpath('doc')
     try:
         docfile = request.args.get('d')
-        docPath = werkzeug.security.safe_join(folderBase, docfile)
+        docPath = werkzeug.security.safe_join(docBase, docfile)
+        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+        if language:
+            translated_base = werkzeug.security.safe_join(docBase, language)
+            translated_path = werkzeug.security.safe_join(translated_base, docfile)
+            if os.path.isfile(translated_path):
+                docPath = translated_path
+
         if docPath:
-            language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-            if language:
-                translated_path = werkzeug.security.safe_join(folderBase + language + '/', docfile)
-                if os.path.isfile(translated_path):
-                    docPath = translated_path
             with io.open(docPath, 'r', encoding="utf-8") as f:
                 doc = f.read()
             return render_template('viewdocs.html', doc=doc)
@@ -708,20 +713,22 @@ def render_viewDocs():
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
 
-@APP.route('/img/<path:imgfile>')
-def render_viewImg(imgfile):
+@APP.route('/img/<path:img_filename>')
+def render_viewImg(img_filename):
     '''Route to img called within doc viewer.'''
-    folderBase = '../../doc/'
-    folderImg = 'img/'
-    imgPath = werkzeug.security.safe_join(folderImg, imgfile)
-    if imgPath:
-        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-        if language:
-            translated_path = werkzeug.security.safe_join(language + '/' + folderImg, imgfile)
-            if os.path.isfile(folderBase + translated_path):
-                imgPath = translated_path
-        if os.path.isfile(folderBase + imgPath):
-            return send_from_directory(folderBase, imgPath)
+    doc_base = Path(PROGRAM_DIR).parent.parent.joinpath('doc')
+    img_folder_name = 'img'
+    img_folder_path = werkzeug.security.safe_join(doc_base, img_folder_name)
+    language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+    if language:
+        translated_base = werkzeug.security.safe_join(doc_base, language)
+        translated_img_folder_path = werkzeug.security.safe_join(translated_base, img_folder_name)
+        translated_img_path = werkzeug.security.safe_join(translated_img_folder_path, img_filename)
+        if os.path.isfile(translated_img_path):
+            img_folder_path = translated_img_path
+    img_path = werkzeug.security.safe_join(img_folder_path, img_filename)
+    if os.path.isfile(img_path):
+        return send_from_directory(img_folder_path, img_filename)
     abort(404)
 
 # Redirect routes (Previous versions/Delta 5)
@@ -1245,7 +1252,7 @@ def on_add_heat(data=None):
         init = {
             'class_id': data['class']
         }
-        if 'group' in data:
+        if 'group' in data and data['group']:
             init['group_id'] = data['group']
         RaceContext.rhdata.add_heat(init=init)
     else:
@@ -1545,26 +1552,30 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update race (retroactively via marshaling).'''
 
-    _race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
+    race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
-    message = __('A race has been reassigned to {0}').format(new_heat.display_name)
-    RaceContext.rhui.emit_priority_message(message, False)
+    if race_meta or new_heat:
+        message = __('A race has been reassigned to {0}').format(new_heat.display_name)
+        RaceContext.rhui.emit_priority_message(message, False)
 
-    RaceContext.rhui.emit_race_list(nobroadcast=True)
-    RaceContext.rhui.emit_result_data()
+        RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_list(nobroadcast=True)
+        RaceContext.rhui.emit_result_data()
+    else:
+        message = __('No reassignment made: destination heat same as source')
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+
 
 @SOCKET_IO.on('backup_database')
 @catchLogExcWithDBWrapper
 def on_backup_database(*args):
     '''Backup database.'''
     bkp_name = RaceContext.rhdata.backup_db_file(True)  # make copy of DB file
-
-    download_database(bkp_name)
-
-    Events.trigger(Evt.DATABASE_BACKUP, {
-        'file_name': os.path.basename(bkp_name),
-        })
-
+    if bkp_name:
+        download_database(bkp_name)
+        Events.trigger(Evt.DATABASE_BACKUP, {
+            'file_name': os.path.basename(bkp_name),
+            })
     on_list_backups()
 
 @SOCKET_IO.on('download_database')
@@ -1574,11 +1585,11 @@ def on_download_database(data):
     if type(data) is dict:
         db_file = data.get('event_file')
         if db_file and db_file!= '-':
-            download_database(db_file)
+            download_database(os.path.join(DB_BKP_DIR_NAME, db_file))
 
 def download_database(db_file):
     # read DB data and convert to Base64
-    with open(DB_BKP_DIR_NAME + '/' + db_file, mode='rb') as file_obj:
+    with open(db_file, mode='rb') as file_obj:
         file_content = file_obj.read()
     file_content = base64.encodebytes(file_content).decode()
 
@@ -2000,9 +2011,11 @@ def on_download_logs(data):
 def on_backup_settings(*args):
     '''Make backup copy of config-settings file.'''
     bkp_file_name = RaceContext.serverconfig.check_backup_config_file()
-    RaceContext.rhui.emit_upd_cfg_files_list()
     if bkp_file_name:
+        RaceContext.rhui.emit_upd_cfg_files_list(bkp_file_name)
         RaceContext.rhui.emit_priority_message(__('Current settings saved to backup file: ') + str(bkp_file_name))
+    else:
+        RaceContext.rhui.emit_upd_cfg_files_list()
 
 @SOCKET_IO.on('download_settings')
 @catchLogExceptionsWrapper
@@ -2057,6 +2070,30 @@ def on_restore_cfg_file(data):
         else:
             logger.warning("Unable to restore cfg file '{0}': File does not exist".format(cfg_path))
 
+@SOCKET_IO.on('rename_cfg_file')
+@catchLogExcWithDBWrapper
+def on_rename_cfg_file(data):
+    '''Rename config-settings-backup file.'''
+    if 'cfg_file' in data and 'new_name' in data:
+        cfg_file = data['cfg_file']
+        new_name = data['new_name']
+        if new_name and new_name != cfg_file:
+            cfg_path = os.path.join(CFG_BKP_DIR_NAME, cfg_file)
+            logger.info("Renaming cfg file '{}' to '{}'".format(cfg_path, new_name))
+            try:
+                os.rename(cfg_path, os.path.join(CFG_BKP_DIR_NAME, new_name))
+                RaceContext.rhui.emit_upd_cfg_files_list(new_name)
+            except FileNotFoundError as ex:
+                logger.warning("Unable to rename cfg file: {}".format(ex))
+                msg_str = __('Error renaming settings file; new name may be invalid')
+                RaceContext.rhui.emit_priority_message(msg_str, True)
+                RaceContext.rhui.emit_upd_cfg_files_list()
+            except Exception as ex:
+                logger.warning("Unable to rename cfg file: {}".format(ex))
+                msg_str = __('Error renaming settings file: ') + str(ex)
+                RaceContext.rhui.emit_priority_message(msg_str, True)
+                RaceContext.rhui.emit_upd_cfg_files_list()
+
 @SOCKET_IO.on('delete_cfg_file')
 @catchLogExcWithDBWrapper
 def on_delete_cfg_file(data):
@@ -2064,12 +2101,14 @@ def on_delete_cfg_file(data):
     if 'cfg_file' in data:
         cfg_file = data['cfg_file']
         cfg_path = os.path.join(CFG_BKP_DIR_NAME, cfg_file)
-        if os.path.exists(cfg_path):
-            logger.info("Deleting cfg file '{0}'".format(cfg_path))
+        logger.info("Deleting cfg file '{0}'".format(cfg_path))
+        try:
             os.remove(cfg_path)
-            RaceContext.rhui.emit_upd_cfg_files_list()
-        else:
-            logger.warning("Unable to delete cfg file '{0}': File does not exist".format(cfg_path))
+        except Exception as ex:
+            logger.warning("Unable to delete cfg file: {}".format(ex))
+            msg_str = __('Error deleting settings file: ') + str(ex)
+            RaceContext.rhui.emit_priority_message(msg_str, True)
+        RaceContext.rhui.emit_upd_cfg_files_list()
 
 @SOCKET_IO.on('load_cfg_file')
 @catchLogExcWithDBWrapper
@@ -2087,7 +2126,7 @@ def on_load_cfg_file(data):
             logger.info("Restarting server to activate loaded settings file")
             on_restart_server()
         except Exception as ex:
-            logger.info("Error loading settings file: {}".format(ex))
+            logger.warning("Error loading settings file: {}".format(ex))
             msg_str = __('Error loading settings file: ') + str(ex)
             RaceContext.rhui.emit_priority_message(msg_str, True)
 
@@ -2344,6 +2383,10 @@ def on_stage_race(*args):
 def on_stop_race(*args):
     RaceContext.race.stop(*args)
 
+@SOCKET_IO.on('current_race_marshal')
+def on_current_race_marshal(*args):
+    RaceContext.rhui.emit_race_marshal_data(nobroadcast=True)
+
 @SOCKET_IO.on('save_laps')
 def on_save_race(*args):
     RaceContext.race.save(*args)
@@ -2357,7 +2400,7 @@ def on_resave_laps(data):
 
     race_id = data['race_id']
     pilotrace_id = data['pilotrace_id']
-    node = data['node']
+    seat = data['seat']
     pilot_id = data['pilot_id']
     laps = data['laps']
     enter_at = data['enter_at']
@@ -2380,7 +2423,7 @@ def on_resave_laps(data):
     new_racedata = {
             'race_id': race_id,
             'pilotrace_id': pilotrace_id,
-            'node_index': node,
+            'node_index': seat,
             'pilot_id': pilot_id,
             'laps': []
         }
@@ -2426,7 +2469,7 @@ def on_resave_laps(data):
                 lap_number += 1
             lap_objs.append(lap_data)
 
-        RaceContext.last_race.node_laps[node] = lap_objs
+        RaceContext.last_race.node_laps[seat] = lap_objs
 
         RaceContext.rhui.emit_current_leaderboard()
         RaceContext.rhui.emit_current_laps()
@@ -2444,6 +2487,18 @@ def on_resave_laps(data):
         'race_id': race_id,
         'pilot_id': pilot_id,
         })
+
+@SOCKET_IO.on('replace_current_laps')
+def replace_current_laps(data):
+    on_set_enter_at_level({
+        'node': data['seat'],
+        'enter_at_level': data['enter_at']
+    })
+    on_set_exit_at_level({
+        'node': data['seat'],
+        'exit_at_level': data['exit_at']
+    })
+    RaceContext.race.replace_laps(data)
 
 @catchLogExcWithDBWrapper
 def build_atomic_result_caches(params):
@@ -2467,7 +2522,6 @@ def on_calc_pilots(data):
 def on_calc_reset(data):
     data['status'] = Database.HeatStatus.PLANNED
     on_alter_heat(data)
-    RaceContext.rhui.emit_heat_data()
 
 @SOCKET_IO.on('confirm_heat_plan')
 @catchLogExcWithDBWrapper
@@ -2481,7 +2535,7 @@ def on_confirm_heat(data):
         RaceContext.rhdata.resolve_slot_unset_nodes(data['heat_id'])
         RaceContext.rhui.emit_heat_data()
 
-        if RaceContext.race.race_status == RaceStatus.READY:
+        if data.get('source') == 'run' and RaceContext.race.race_status == RaceStatus.READY:
             RaceContext.race.set_heat(data['heat_id'], force=True)
 
 @SOCKET_IO.on('set_current_heat')
@@ -2884,7 +2938,8 @@ def heartbeat_thread_function():
 
             if RaceContext.serverstate.enable_heartbeat_event:
                 Events.trigger(Evt.HEARTBEAT, {
-                    'count': heartbeat_thread_function.iter_tracker
+                    'count': heartbeat_thread_function.iter_tracker,
+                    'node_data': node_data
                 })
 
             # update displayed IMD rating after freqs changed:
@@ -3529,7 +3584,12 @@ def load_plugin(plugin):
         plugin.load_issue = "no initialize function"
         return False
 
-    plugin.module.initialize(RHAPI)
+    try:
+        plugin.module.initialize(RHAPI)
+    except Exception as ex3:
+        plugin.load_issue = "error during plugin initialization"
+        plugin.load_issue_detail = ex3
+        return False
     return True
 
 @catchLogExceptionsWrapper
@@ -3602,8 +3662,12 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
                 if len(args) > 0 and arg == CMDARG_LAUNCH_B_STR:
                     break    # don't include "--launchb" arguments
                 args.append(arg)
-            if len(args) > 0 and not os.path.exists(args[0]):  # if not finding "server.py" then
-                args[0] = os.path.join(PROGRAM_DIR, args[0])   # prepend program-dir path
+            if len(args) > 0:
+                arg0_new = os.path.join(PROGRAM_DIR, os.path.basename(args[0]))  # path for 'server.py'
+                if os.path.exists(arg0_new):
+                    args[0] = arg0_new
+                elif not os.path.exists(args[0]):                  # if not finding "server.py" then
+                    args[0] = os.path.join(PROGRAM_DIR, args[0])   # prepend program-dir path
             args.insert(0, sys.executable)
             if sys.platform == 'win32':
                 args = ['"%s"' % arg for arg in args]
@@ -3653,7 +3717,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         for plugin in plugin_modules:
             if load_plugin(plugin):
-                logger.info("Loaded plugin '{}'".format(plugin.name))
+                logger.info("Loaded {} plugin '{}'".format("bundled" if plugin.is_bundled else "external", plugin.name))
                 plugin.loaded = True
             else:
                 if plugin.load_issue_detail:
@@ -3688,19 +3752,22 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 if not plugin.is_bundled:
                     any_remote_flag = True
                     break
-            if any_remote_flag:
+            if any_remote_flag and RaceContext.serverconfig.get_item('PLUGINS', 'UPDATE_BEHAVIOR') == 'check':
                 logger.info("Querying plugins server for updates")
                 RaceContext.plugin_manager.load_remote_plugin_data()
                 remote_loaded = True
             else:
                 remote_loaded = False
+        except IOError or OSError or urllib3.exceptions.HTTPError as ex:
+            logger.info("Unable to query plugins server at startup (no internet access?): {}".format(ex))
+            remote_loaded = False
         except:
-            logger.exception("Unable to load remote plugins")
+            logger.exception("Error querying plugins server at startup")
             remote_loaded = False
 
         if local_loaded and remote_loaded:
             RaceContext.plugin_manager.apply_update_statuses()
-            if RaceContext.plugin_manager.update_avaliable:
+            if RaceContext.plugin_manager.update_available:
                 set_ui_message(
                     'plugins',
                     __("One or more plugins have updates available."),
@@ -3800,8 +3867,13 @@ def rh_program_initialize(reg_endpoints_flag=True):
         RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
         hasMirrors = False
         secondary = None
+
+        # process mirrors last
+        all_secondaries = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')
+        all_secondaries.sort(key=lambda x: (x['mode'] == 'mirror'))
+
         try:
-            for sec_idx, secondary_info in enumerate(RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')):
+            for sec_idx, secondary_info in enumerate(all_secondaries):
                 if isinstance(secondary_info, str):
                     secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
                 if 'address' not in secondary_info:
@@ -3915,6 +3987,8 @@ def rh_program_initialize(reg_endpoints_flag=True):
                             try:
                                 ledModule = importlib.import_module('ANSI_leds')
                                 LedStripObj = ledModule.get_pixel_interface(config=RaceContext.serverconfig.get_section('LED'), brightness=led_brightness)
+                                # revert reassignment of stdout (done in 'log.py') so that ANSI_leds can output to console
+                                sys.stdout = sys.__stdout__
                             except ImportError:
                                 ledModule = None
                                 logger.info('LED: disabled (no modules available)')
@@ -3995,7 +4069,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 except Exception:
                     logger.exception('Error checking IMDTabler:  ')
         else:
-            logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+            logger.warning('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
         # VRx Controllers
         RaceContext.vrx_manager = VRxControlManager(Events, RaceContext, RHAPI, legacy_config=RaceContext.serverconfig.get_section('VRX_CONTROL'))
@@ -4033,7 +4107,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     '<a href="/docs?d=Software Setup.md#the-data-directory">',
                     __("Why?"),
                     "</a>",
-                    '<br /><button class="datadir-handler" data-method="migrate">',
+                    '<br /><button data-mfp-src="#migrate_confirm" class="open-mfp-popup">',
                     __("Migrate user data to <code>~/rh-data</code> (recommended)"),
                     '</button>',
                     "|",

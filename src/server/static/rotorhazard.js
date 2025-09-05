@@ -331,12 +331,15 @@ $.fn.setup_navigation = function(settings) {
 			}
 		} else if(e.keyCode == 13 || e.keyCode == 32) {
 			// If submenu is hidden, open it
-			e.preventDefault();
-			$(this).parent('li').find('ul[aria-hidden=true]')
+			var sub_items = $(this).parent('li').find('ul[aria-hidden=true]');
+			if (sub_items.length) {
+				e.preventDefault();
+				$(this).parent('li').find('ul[aria-hidden=true]')
 					.attr('aria-hidden', 'false')
 					.addClass(settings.menuHoverClass)
 					.find('a').attr('tabIndex',0)
 					.first().focus();
+			}
 		} else if(e.keyCode == 27) {
 			e.preventDefault();
 			$('.'+settings.menuHoverClass)
@@ -706,14 +709,8 @@ nodeModel.prototype = {
 		return output;
 	},
 	setup: function(element){
-		this.graph.addTimeSeries(this.series, {lineWidth:1.7,
-			strokeStyle:'hsl(214, 53%, 60%)',
-			fillStyle:'hsla(214, 53%, 60%, 0.4)'
-		});
-		this.graph.addTimeSeries(this.crossingSeries, {lineWidth:1.7,
-			strokeStyle:'none',
-			fillStyle:'hsla(136, 71%, 70%, 0.3)'
-		});
+		this.graph.addTimeSeries(this.series, rotorhazard.seriesStyle.rssi);
+		this.graph.addTimeSeries(this.crossingSeries, rotorhazard.seriesStyle.crossing);
 		this.graph.streamTo(element, 200); // match delay value to heartbeat in server.py
 	},
 	updateThresholds: function(){
@@ -1129,6 +1126,19 @@ var rotorhazard = {
 	has_server_sync: false,
 	sync_within: Infinity,
 	winner_declared_flag: false,
+
+	// graph globals
+	seriesStyle: {
+		rssi: {lineWidth:1.7,
+			strokeStyle:'hsl(214, 53%, 60%)',
+			fillStyle:'hsla(214, 53%, 60%, 0.4)'
+		},
+		crossing: {
+			lineWidth:1.7,
+			strokeStyle:'none',
+			fillStyle:'hsla(136, 71%, 70%, 0.3)'
+		}
+	},
 
 	timer: {
 		deferred: new timerModel(),

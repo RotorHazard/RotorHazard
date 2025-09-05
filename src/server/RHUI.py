@@ -11,15 +11,17 @@ from eventmanager import Evt
 import json
 import os
 import subprocess
+import urllib3
 import re
 from collections import OrderedDict
 import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod, RoundType
-from RHRace import RacingMode
+from RHRace import RacingMode, RaceStatus
 from filtermanager import Flt
 import logging
+
 logger = logging.getLogger(__name__)
 
 from FlaskAppObj import APP
@@ -513,8 +515,10 @@ class RHUI():
                 self._racecontext.plugin_manager.load_remote_plugin_data()
                 category_data = self._racecontext.plugin_manager.get_remote_categories()
                 self._racecontext.plugin_manager.apply_update_statuses()
+            except IOError or OSError or urllib3.exceptions.HTTPError as ex:
+                logger.info("Unable to query plugins server (no internet access?): {}".format(ex))
             except:
-                logger.exception("Unable to load remote plugins")
+                logger.exception("Error querying plugins server")
 
         emit_payload = {
             'remote_categories': category_data,
@@ -604,7 +608,7 @@ class RHUI():
 
         emit_payload = self._filters.run_filters(Flt.EMIT_HEAT_PLAN, emit_payload)
 
-        self._socket.emit('heat_plan_result', emit_payload)
+        emit('heat_plan_result', emit_payload)
 
     def emit_race_stage(self, payload):
         self._socket.emit('stage_ready', payload)
@@ -1003,6 +1007,49 @@ class RHUI():
             emit('leaderboard', emit_payload)
         else:
             self._socket.emit('leaderboard', emit_payload)
+
+    def emit_race_marshal_data(self, **params):
+        '''Emits current (post-race) marshal data.'''
+        race = self._racecontext.race
+        nodes = self._racecontext.interface.nodes
+
+        if race.race_status != RaceStatus.DONE:
+            return False
+
+        with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
+            if race.current_heat == RHUtils.HEAT_ID_NONE:
+                return False
+
+            race_marshal_data = {
+                'round_id': -1,
+                'heat_id': race.current_heat,
+                'race_id': None,
+                'class_id': None,
+                'format_id': race.format.id if hasattr(race.format, 'id') else RHUtils.FORMAT_ID_NONE,
+                'start_time': race.start_time_monotonic,
+                'start_time_formatted': race.start_time_formatted,
+            }
+
+            seat_marshal_data = {}
+            for index, node in enumerate(nodes):
+                seat_marshal_data[index] = {
+                    'pilotrace_index': index,
+                    'history_values': nodes[index].history_values,
+                    'history_times': nodes[index].history_times,
+                    'enter_at': nodes[index].enter_at_level,
+                    'exit_at': nodes[index].exit_at_level,
+                    'laps': [lap.asdict() for lap in race.node_laps[index]]
+                }
+
+        emit_payload = {
+            'race': race_marshal_data,
+            'seats': seat_marshal_data
+        }
+
+        if ('nobroadcast' in params):
+            emit('current_marshal_data', emit_payload)
+        else:
+            self._socket.emit('current_marshal_data', emit_payload)
 
     def emit_expanded_heat(self, heat_id, **params):
         '''Emits abbreviated heat data for more responsive UI.'''
@@ -1979,11 +2026,12 @@ class RHUI():
         ''' Emits refresh-page message '''
         self._socket.emit('refresh_page')
 
-    def emit_upd_cfg_files_list(self):
+    def emit_upd_cfg_files_list(self, select_cfg_file=None):
         '''Update List of database files in cfg_bkp'''
         if not os.path.exists(self._racecontext.serverconfig.cfg_bkp_dir_name):
             emit_payload = {
-                'cfg_files': None
+                'cfg_files': None,
+                'select_file': None
             }
         else:
             files = []
@@ -1993,6 +2041,7 @@ class RHUI():
             files.sort(key=str.casefold)
             files = list(filter(lambda x: x.endswith(".json"), files))
             emit_payload = {
-                'cfg_files': files
+                'cfg_files': files,
+                'select_file': select_cfg_file
             }
         self._socket.emit('upd_cfg_files_list', emit_payload)

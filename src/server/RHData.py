@@ -202,6 +202,7 @@ class RHData():
             RHUtils.checkSetFileOwnerPi(bkp_name)
         except Exception:
             logger.exception('Error backing up database file')
+            return None
         return bkp_name
 
     def delete_old_db_autoBkp_files(self, num_keep_val, prefix_str, DB_AUTOBKP_NUM_KEEP_STR):
@@ -1333,12 +1334,19 @@ class RHData():
 
         # update current race
         if heat_id == self._racecontext.race.current_heat:
-            if not heat.active:
+            heat_nodes = self.get_heatNodes_by_heat(heat_id)
+            is_dynamic = False
+            for heatNode in heat_nodes:
+                if heatNode.method not in [ProgramMethod.NONE, ProgramMethod.ASSIGN]:
+                    is_dynamic = True
+                    break
+
+            if not heat.active or (is_dynamic and heat.status != HeatStatus.CONFIRMED):
                 self._racecontext.race.set_heat(RHUtils.HEAT_ID_NONE, mute_event=mute_event)
             else:
                 self._racecontext.race.node_pilots = {}
                 self._racecontext.race.node_teams = {}
-                for heatNode in self.get_heatNodes_by_heat(heat_id):
+                for heatNode in heat_nodes:
                     self._racecontext.race.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
                     if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
@@ -1386,12 +1394,17 @@ class RHData():
                         heat = Database.Heat.query.first()
                         if heat.id != 1:
                             heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+                            heat_attributes = Database.HeatAttribute.query.filter_by(id=heat.id).all()
 
                             if not self.savedRaceMetas_has_heat(heat.id):
                                 logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat.id))
                                 heat.id = 1
                                 for heatnode in heatnodes:
                                     heatnode.heat_id = heat.id
+
+                                for attribute in heat_attributes:
+                                    attribute.id = heat.id
+
                                 # self.commit()  # 'set_option()' below will do call to 'commit()'
                                 self._racecontext.race.current_heat = 1
                                 self.set_option('currentHeat', self._racecontext.race.current_heat)
@@ -3008,6 +3021,8 @@ class RHData():
 
     def reassign_savedRaceMeta_heat(self, savedRaceMeta_or_id, new_heat_id):
         race_meta = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
+        if race_meta.heat_id == new_heat_id:
+            return False, False
 
         old_heat_id = race_meta.heat_id
         old_heat = self.get_heat(old_heat_id)
@@ -3019,10 +3034,18 @@ class RHData():
 
         new_heat = self.get_heat(new_heat_id)
         new_class = self.get_raceClass(new_heat.class_id)
-        new_format_id = new_class.format_id
+        if new_class:
+            new_format_id = new_class.format_id
+        else:
+            new_format_id = old_format_id
 
         # clear round ids
         heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.round_id).all()
+
+        # abort if assigning to a grouped heat with existing race
+        if heat_races and new_class.round_type == RoundType.GROUPED:
+            return False, False
+
         race_meta.round_id = 0
         dummy_round_counter = -1
         for race in heat_races:
@@ -3057,10 +3080,8 @@ class RHData():
             race.round_id = round_counter
             round_counter += 1
 
-        if old_heat_races and old_class:
+        if old_class:
             if old_class.round_type == RoundType.GROUPED:
-                old_heat.active = False
-            else:
                 old_heat.active = True
 
         new_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id) \
@@ -3078,6 +3099,22 @@ class RHData():
 
         self.commit()
 
+        # group priming
+        if new_class and new_class.round_type == RoundType.GROUPED:
+            self.duplicate_heat(new_heat, new_heat_name=new_heat.name, group_id=new_heat.group_id + 1)
+
+        # group cleaning
+        if old_class and old_class.round_type == RoundType.GROUPED:
+            matching_heats = []
+            old_class_heats = self.get_heats_by_class(old_class.id)
+            for heat in old_class_heats:
+                if heat.id != old_heat.id and heat.display_name_short == old_heat.display_name_short:
+                    races = self.get_savedRaceMetas_by_heat(heat.id)
+                    if len(races) < 1:
+                        matching_heats.append(heat)
+            for heat in matching_heats:
+                self.delete_heat(heat)
+
         # cache cleaning
         self._racecontext.pagecache.set_valid(False)
 
@@ -3088,7 +3125,8 @@ class RHData():
             self.clear_results_savedRaceMeta(race_meta)
 
         if old_heat.class_id != new_heat.class_id:
-            self.clear_results_raceClass(new_class)
+            if new_class:
+                self.clear_results_raceClass(new_class)
             if old_class:
                 self.clear_results_raceClass(old_class)
 

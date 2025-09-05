@@ -1103,30 +1103,30 @@ def calc_coop_leaderboard(racecontext):
         average_lap_raw = 0
         average_fastest_lap_raw = 0
         average_consecutives_raw = 0
-        if coopGroup['contributing']:
-            if coopGroup['members']:
+        if coopGroup.get('contributing'):
+            if coopGroup.get('members'):
                 contribution_amt = float(coopGroup['contributing']) / coopGroup['members']
-            if coopGroup['combined_average_lap_raw']:
+            if coopGroup.get('combined_average_lap_raw'):
                 average_lap_raw = round(float(coopGroup['combined_average_lap_raw']) / coopGroup['contributing'], 3)
-            if coopGroup['combined_fastest_lap_raw']:
+            if coopGroup.get('combined_fastest_lap_raw'):
                 average_fastest_lap_raw = round(float(coopGroup['combined_fastest_lap_raw']) / coopGroup['contributing'], 3)
-            if coopGroup['combined_consecutives_raw']:
+            if coopGroup.get('combined_consecutives_raw'):
                 average_consecutives_raw = round(float(coopGroup['combined_consecutives_raw']) / coopGroup['contributing'], 3)
-        coopGroup['coop_total_time_raw'] = round(coopGroup['coop_total_time_raw'], 3)
+        coopGroup['coop_total_time_raw'] = round(coopGroup.get('coop_total_time_raw', 0), 3)
 
         leaderboard = [{
             'name': "Group",
-            'contributing': coopGroup['contributing'],
-            'members': coopGroup['members'],
+            'contributing': coopGroup.get('contributing', 0),
+            'members': coopGroup.get('members', 0),
             'contribution_amt': contribution_amt,
-            'laps': coopGroup['laps'],
-            'total_time_raw': coopGroup['total_time_raw'],
-            'coop_total_time_raw': coopGroup['coop_total_time_raw'],
-            'coop_total_time': coopGroup['coop_total_time'],
+            'laps': coopGroup.get('laps'),
+            'total_time_raw': coopGroup.get('total_time_raw', 0),
+            'coop_total_time_raw': coopGroup.get('coop_total_time_raw', 0),
+            'coop_total_time': coopGroup.get('coop_total_time', 0),
             'average_lap_raw': average_lap_raw,
             'average_fastest_lap_raw': average_fastest_lap_raw,
             'average_consecutives_raw': average_consecutives_raw,
-            'total_time': RHUtils.format_time_to_str(coopGroup['total_time_raw'], time_format),
+            'total_time': RHUtils.format_time_to_str(coopGroup.get('total_time_raw', 0), time_format),
             'average_lap': RHUtils.format_time_to_str(average_lap_raw, time_format),
             'average_fastest_lap': RHUtils.format_time_to_str(average_fastest_lap_raw, time_format),
             'average_consecutives': RHUtils.format_time_to_str(average_consecutives_raw, time_format),

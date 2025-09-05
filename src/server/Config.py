@@ -128,6 +128,7 @@ class Config:
         # plugin defaults
         self.config['PLUGINS']['REMOTE_DATA_URI'] = None
         self.config['PLUGINS']['REMOTE_CATEGORIES_URI'] = None
+        self.config['PLUGINS']['UPDATE_BEHAVIOR'] = 'check'
 
         self.InitResultStr = None
         self.InitResultLogLevel = logging.INFO
@@ -187,10 +188,6 @@ class Config:
                 'DB_AUTOBKP_NUM_KEEP',
                 'SERIAL_PORTS',
                 'MOCK_NODES'
-            ],
-            'SECRETS': [
-                'ADMIN_USERNAME',
-                'ADMIN_PASSWORD'
             ],
             'LOGGING': [
                 'CONSOLE_LEVEL',

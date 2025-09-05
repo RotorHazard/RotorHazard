@@ -41,7 +41,7 @@ class PluginInstallationManager:
     _local_plugin_data: dict[str, Any]
     _prerelease_mapping: dict[str, bool]
     _categories: list[str]
-    update_avaliable: bool = False
+    update_available: bool = False
 
     def __init__(self, plugin_dir: Path, remote_config: dict):
 
@@ -145,7 +145,7 @@ class PluginInstallationManager:
         :return: Status of plugin install
         """
         remote_version = plugin_data.get("last_version")
-        domain: Union[str, None] = plugin_data.get("domain")
+        domain: Union[str, None] = plugin_data.get('manifest', {}).get('domain')
 
         if domain is not None and domain in self._local_plugin_data:
             local_data: dict[str, Any] = self._local_plugin_data[domain]
@@ -161,12 +161,12 @@ class PluginInstallationManager:
                 plugin_data["update_status"] = local_data["update_status"] = (
                     _PluginStatus.PRE_RELEASE_UPDATE
                 )
-                self.update_avaliable = True
+                self.update_available = True
             elif remote_version_ > local_version_:
                 plugin_data["update_status"] = local_data["update_status"] = (
                     _PluginStatus.RELEASE_UPDATE
                 )
-                self.update_avaliable = True
+                self.update_available = True
             else:
                 plugin_data["update_status"] = _PluginStatus.NO_UPDATE
 

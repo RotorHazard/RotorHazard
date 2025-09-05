@@ -35,15 +35,40 @@
 			plugins_by_category = []
 			for (var i in msg.remote_categories) {
 				var cat = msg.remote_categories[i];
+				var cat_plugins = [];
+
+				for (var ii in cat) {
+					var repo_id = cat[ii];
+					var plugin = Object.values(msg.remote_data).find(obj => {return obj.repository == repo_id});
+
+					if (plugin) {
+						plugin.in_category = true;
+						cat_plugins.push(plugin);
+					}
+				}
+
+				if (cat_plugins.length) {
+					plugins_by_category.push({
+						title: __(i),
+						plugins: [...cat_plugins]
+					});
+				}
+			}
+
+			var cat_plugins = [];
+			for (var i in rotorhazard.plugins.remote) {
+				var plugin = rotorhazard.plugins.remote[i];
+				if (!plugin?.in_category) {
+					cat_plugins.push(plugin);
+				}
+			}
+			if (cat_plugins.length) {
 				plugins_by_category.push({
-					title: __(cat),
-					plugins: []
+					title: __('Uncategorized'),
+					plugins: [...cat_plugins]
 				});
 			}
-			plugins_by_category.push({
-				title: __('Uncategorized'),
-				plugins: []
-			});
+
 			display_plugin_list();
 		})
 
@@ -51,26 +76,6 @@
 			if (rotorhazard.plugins.remote) {
 				var directory_top_el = $('#plugin-list')
 					.empty();
-
-				for (var i in plugins_by_category) {
-					plugins_by_category[i].plugins = [];
-				}
-
-				for (var i in rotorhazard.plugins.remote) {
-					var plugin = rotorhazard.plugins.remote[i];
-					var categorized = false;
-					for (var ii in plugin.manifest.category) {
-						var cat_item = plugins_by_category.find(obj => {return obj.title == plugin.manifest.category[ii]});
-						if (cat_item) {
-							cat_item.plugins.push(plugin);
-							categorized = true;
-						}
-					}
-
-					if (!categorized) {
-						plugins_by_category[plugins_by_category.length - 1].plugins.push(plugin)
-					}
-				}
 
 				for (var i in plugins_by_category) {
 					var cat = plugins_by_category[i];
@@ -227,6 +232,25 @@
 			socket.emit('plugin_install', data);
 		});
 
+		socket.on('config_update', function (msg) {
+			for (var section in msg.config) {
+				for (var key in msg.config[section]) {
+					var value = msg.config[section][key];
+
+					$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
+				}
+			}
+		});
+
+		$(document).on('change', '.set-config', function (event) {
+			value = $(this).val();
+			var data = {
+				section: $(this).data('section'),
+				key: $(this).data('key'),
+				value: value
+			};
+			socket.emit('set_config', data);
+		});
 	});
 </script>
 
@@ -237,6 +261,20 @@
 		<h1>{{ __('Community Plugins') }}</h1>
 		<p>{{ __('Extend the functionality of your timer by installing plugins built, maintained, and provided by the community. All plugins listed here are open-source and free to use at any event.') }}</p>
 		<p>{{ __('For more information, including how to contribute, see:') }} <a href="https://rotorhazard.github.io/community-plugins/">{{ __('Community Plugins documentation') }} &#10132;&#xFE0E;</a></p>
+
+		<hr / >
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-plugin-update">{{ __('Plugin Updates') }}</label>
+				</div>
+				<select id="set-plugin-update" class="set-config" data-section="PLUGINS" data-key="UPDATE_BEHAVIOR">
+					<option value="check" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='check'}}>{{ __('Check for updates at startup') }}</option>
+					<option value="none" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='none'}}>{{ __('Never check for updates') }}</option>
+				</select>
+			</li>
+		</ol>
 	</div>
 </div>
 
