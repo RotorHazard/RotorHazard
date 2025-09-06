@@ -131,6 +131,7 @@ class ServerState:
     def build_info(self):
         self.has_rh_interface = False
         self.has_other_interface = False
+        info_node = None
         # Node API levels
         node_api_level = 0
         node_api_match = True

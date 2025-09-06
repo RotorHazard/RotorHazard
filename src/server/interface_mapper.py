@@ -136,12 +136,12 @@ class InterfaceMapper:
     def send_status_message(self, msgTypeVal, msgDataVal):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
-                return iface.interface.send_status_message()
+                return iface.interface.send_status_message(msgTypeVal, msgDataVal)
 
     def send_shutdown_button_state(self, stateVal):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
-                return iface.interface.send_shutdown_button_state()
+                return iface.interface.send_shutdown_button_state(stateVal)
 
     def send_shutdown_started_message(self):
         for iface in self._interface_map:
@@ -152,6 +152,16 @@ class InterfaceMapper:
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.send_server_idle_message()
+
+    def set_fwupd_serial_obj(self, serial_obj):
+        for iface in self._interface_map:
+            if iface.type == InterfaceType.RH:
+                return iface.interface.set_fwupd_serial_obj(serial_obj)
+
+    def set_mock_fwupd_serial_obj(self, port_name):
+        for iface in self._interface_map:
+            if iface.type == InterfaceType.RH:
+                return iface.interface.set_mock_fwupd_serial_obj(port_name)
 
     def get_fwupd_serial_name(self):
         for iface in self._interface_map:
