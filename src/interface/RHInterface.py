@@ -521,7 +521,7 @@ class RHInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_frequency(self, node_index, frequency, *_args):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
         if frequency:
