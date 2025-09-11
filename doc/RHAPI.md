@@ -243,9 +243,19 @@ _Read only_
 Provide a list of options registered by plugins. Does not include built-in options or fields registered as persistent configuration.
 
 #### fields.register_option(field, panel=None, order=0)
-Register an option and optionally assign it to be displayed on a UI panel.
+Register an option and optionally assign it to be displayed on a UI panel. By default, options registered this way are event-scoped. If `persistent_section` is true in the UIField, the option will be server-scoped. 
 
 - `field` (UIField): See [UI Fields](Plugins.md#ui-fields)
+- `panel` _optional_ (string): `name` of panel previously registered with `ui.register_panel`
+- `order` _optional_ (int): Not yet implemented
+
+#### fields.register_function_binding(field, getter_fn, setter_fn, args=None, panel=None, order=0)
+Register a field bound to user-defined functions instead of directly to an option value and optionally assign it to be displayed on a UI panel.
+
+- `field` (UIField): Defines the frontend representation; see [UI Fields](Plugins.md#ui-fields)
+- `getter_fn` (callable): function called when the value is populated to the UI
+- `setter_fn` (callable): function called when the UI passes a value to be set
+- `args` _optional_ (dict): arguments to be passed to the setter function when called
 - `panel` _optional_ (string): `name` of panel previously registered with `ui.register_panel`
 - `order` _optional_ (int): Not yet implemented
 

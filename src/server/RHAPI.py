@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 3
+API_VERSION_MINOR = 4
 
 import dataclasses
 import json
@@ -203,8 +203,8 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
-    def register_variable(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
-        return self._racecontext.rhui.register_ui_variable(field, getter_fn, setter_fn, args, panel, order)
+    def register_function_binding(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
+        return self._racecontext.rhui.register_ui_fn_bind(field, getter_fn, setter_fn, args, panel, order)
 
 #
 # Database Access

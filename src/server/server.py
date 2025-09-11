@@ -2627,10 +2627,10 @@ def on_set_config_section(data):
         'value': data['value'],
         })
 
-@SOCKET_IO.on('set_ui_variable')
+@SOCKET_IO.on('set_ui_binding_value')
 @catchLogExcWithDBWrapper
-def on_set_ui_variable(data):
-    for var in RaceContext.rhui.ui_variables:
+def on_set_ui_binding_value(data):
+    for var in RaceContext.rhui.ui_fn_bindings:
         if data['name'] == var.name:
             var.setter_fn(data['value'], var.args)
             break

@@ -208,11 +208,11 @@
 						form_el.append(field);
 					}
 
-					for (var f_idx in panel.variables) {
-						var settings = { ...panel.variables[f_idx] };
+					for (var f_idx in panel.fn_binds) {
+						var settings = { ...panel.fn_binds[f_idx] };
 
 						settings.wrapperEl = 'li';
-						settings.fieldClass = 'set_ui_variable';
+						settings.fieldClass = 'set_ui_binding_value';
 						settings.data = {
 							field: settings.name,
 						}
@@ -267,7 +267,7 @@
 			}
 		});
 
-		$(document).on('change', '.set_ui_variable', function (event) {
+		$(document).on('change', '.set_ui_binding_value', function (event) {
 			var field = $(this).data('field');
 			var section = $(this).data('section');
 			var value = rhui.getFieldVal(this);
@@ -276,7 +276,7 @@
 				name: field,
 				value: value
 			};
-			socket.emit('set_ui_variable', data);
+			socket.emit('set_ui_binding_value', data);
 		});
 
 		socket.on('heartbeat', function (msg) {
