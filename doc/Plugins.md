@@ -1,6 +1,11 @@
 # Plugins
 
-- [Installing and Running](#installing-and-running)
+RotorHazard makes use of externally loaded plugins to extend its functionality and behavior.
+
+Most plugins can be found, installed, and updated entirely through the RotorHazard UI. Simply visit the `Community Plugins` area, found in the `Plugins` panel of the `Settings` page.
+
+- [Community Plugins](#community-plugins)
+- [Installing and Running](#installing-and-running-manually)
 - [Development](#development)
     - [Initialize Function](#initialize-function)
     - [RHAPI](#rhapi)
@@ -15,11 +20,11 @@
     - [UI Fields](#ui-fields)
     - [Metadata](#metadata)
 
-## Installing and Running
+## Installing and Running Manually
 
-**To add and run a plugin, place the plugin's entire directory in `/src/server/plugins`, and (re)start the server.**
+To add and run a plugin manually, place the plugin's entire directory in the  `plugins` directory of the current installation's data directory (usually `~/rh-data`), and (re)start the server.
 
-RotorHazard makes use of externally loaded plugins to extend its functionality and behavior. Plugins are distributed as a directory (folder) containing an `__init__.py` file and potentially other files. Plugins are loaded during server startup. A line is added to the log for each plugin as it is found and imported; refer to the log to ensure plugins are being loaded as expected.
+Plugins are distributed as a directory (folder) containing an `__init__.py` file and potentially other files. Plugins are loaded during server startup. A line is added to the log for each plugin as it is found and imported; refer to the log to ensure plugins are being loaded as expected.
 
 If you have issues with a plugin, contact its developer to ensure compatibility with the version of RotorHazard you are running.
 
@@ -532,4 +537,4 @@ Basic metadata keys include:
 - `text_domain`: (not yet implemented)
 
 #### Community Plugins
-Community Plugins can be found, installed, and can be updated entirely through the RotorHazard UI. For a plugin to be included in this section, a manifest is required. Some keys or format of keys are restricted, and additional keys such as `domain` and `category` are also defined. See [Community Plugins documentation](https://rotorhazard.github.io/community-plugins/) for more information. 
+For a plugin to be included in the Community Plugins section, a manifest is required. Some keys or format of keys are restricted, and additional keys such as `domain` and `category` are also defined. See [Community Plugins documentation](https://rotorhazard.github.io/community-plugins/) for more information. 
