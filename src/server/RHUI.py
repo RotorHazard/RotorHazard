@@ -92,7 +92,7 @@ class GeneralSetting():
     order: int = 0
 
 @dataclass
-class UIVariable():
+class UIFunctionBinding():
     name: str
     field: UIField
     getter_fn: callable
@@ -134,7 +134,7 @@ class RHUI():
         self._raceformat_attributes = []
         self._ui_panels = []
         self._general_settings = []
-        self._ui_variables = []
+        self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
 
@@ -264,14 +264,14 @@ class RHUI():
         return self._general_settings
 
     # UI Variables
-    def register_ui_variable(self, field:UIField, value_var, setter_fn, args=None, panel=None, order=0):
+    def register_ui_fn_bind(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
         field_internal_id = field.name
-        self._ui_variables.append(UIVariable(field_internal_id, field, value_var, setter_fn, args, panel, order))
-        return self._ui_variables
+        self._ui_fn_bindings.append(UIFunctionBinding(field_internal_id, field, getter_fn, setter_fn, args, panel, order))
+        return self._ui_fn_bindings
 
     @property
-    def ui_variables(self):
-        return self._ui_variables
+    def ui_fn_bindings(self):
+        return self._ui_fn_bindings
 
     # Quickbuttons
     def register_quickbutton(self, panel, name, label, fn, args=None):
@@ -287,14 +287,14 @@ class RHUI():
     def get_panel_settings(self, name):
         payload = {
             'settings': [],
-            'variables': []
+            'fn_binds': []
         }
         for setting in self._general_settings:
             if setting.panel == name:
                 payload['settings'].append(setting)
-        for variable in self._ui_variables:
-            if variable.panel == name:
-                payload['variables'].append(variable)
+        for fn_bind in self._ui_fn_bindings:
+            if fn_bind.panel == name:
+                payload['fn_binds'].append(fn_bind)
 
         return payload
 
@@ -387,11 +387,11 @@ class RHUI():
 
                     settings.append(field)
 
-                variables = []
-                for var in panel_settings['variables']:
+                fn_binds = []
+                for var in panel_settings['fn_binds']:
                     field = var.field.frontend_repr()
                     field['value'] = var.getter_fn()
-                    variables.append(field)
+                    fn_binds.append(field)
 
                 buttons = []
                 for button in self.get_panel_quickbuttons(panel.name):
@@ -415,7 +415,7 @@ class RHUI():
                         'open': panel.open,
                     },
                     'settings': settings,
-                    'variables': variables,
+                    'fn_binds': fn_binds,
                     'quickbuttons': buttons,
                     'markdowns': markdowns
                 })
