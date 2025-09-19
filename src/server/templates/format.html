@@ -1080,7 +1080,7 @@
 						.appendTo(/*???*/);
 				}
 
-				socket.emit('get_class_recents', {'class_id': 0});
+				socket.emit('get_class_recents', {'class_id': null});
 
 			}
 			freq.updateBlocks();
@@ -1403,7 +1403,8 @@
 		});
 
 		function display_recents(class_id, heats) {
-			var el = $(`#recent-heat-data--race-class-${class_id}`);
+			var class_html_designator = class_id ? class_id : 0;
+			var el = $(`#recent-heat-data--race-class-${class_html_designator}`);
 
 			var heat_uis = []
 			el.find('.heat-edit').each(function(heat_el){
@@ -1414,7 +1415,7 @@
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == class_id});
 				if (!race_class) {
 					race_class = {
-						id: 0,
+						id: null,
 						round_type: 0
 					}
 				}

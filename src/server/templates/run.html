@@ -580,10 +580,10 @@
 		});
 
 		function display_heats() {
-			if (rotorhazard.current_heat != undefined && rotorhazard.event.heats && rotorhazard.event.classes) {
+			if (rotorhazard.current_heat !== undefined && rotorhazard.event.heats && rotorhazard.event.classes) {
 				$('#set_current_heat').empty();
 
-				var opt = $('<option value="0">');
+				var opt = $('<option value="">');
 				opt.html(__('Practice Mode'));
 				$('#set_current_heat').append(opt);
 
@@ -619,7 +619,7 @@
 						var optgroup = $('<optgroup>');
 
 						optgroup.attr('label', __('Unclassified'));
-						optgroup.attr('data-id', 0);
+						optgroup.attr('data-id', null);
 						for (var rc in rotorhazard.event.classes) {
 							if (c == rotorhazard.event.classes[rc].id) {
 								var class_data = rotorhazard.event.classes[rc]
@@ -641,7 +641,7 @@
 					}
 
 					// move unclassified to end of list
-					$('#set_current_heat').append($('#set_current_heat optgroup[data-id="0"]'));
+					$('#set_current_heat').append($('#set_current_heat optgroup[data-id=""]'));
 				}
 
 				update_current_heat_ui();

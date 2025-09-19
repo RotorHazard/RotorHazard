@@ -468,6 +468,27 @@ class RHData():
                         freqs["c"] = [None for _i in range(max(self._racecontext.race.num_nodes,8))]
                         profile['frequencies'] = json.dumps(freqs)
 
+            # Convert zero-index semaphores to null
+            if migrate_db_api < 47:
+                for heat in heat_query_data:
+                    if heat['class_id'] == 0:
+                        heat['class_id'] = None
+                for heatNode in heatNode_query_data:
+                    if heatNode['pilot_id'] == 0:
+                        heatNode['pilot_id'] = None
+                for raceClass in raceClass_query_data:
+                    if raceClass['format_id'] == 0:
+                        raceClass['format_id'] = None
+                for raceMeta in raceMeta_query_data:
+                    if raceMeta['class_id'] == 0:
+                        raceMeta['class_id'] = None
+                for racePilot in racePilot_query_data:
+                    if racePilot['pilot_id'] == 0:
+                        racePilot['pilot_id'] = None
+                for raceLap in raceLap_query_data:
+                    if raceLap['pilot_id'] == 0:
+                        raceLap['pilot_id'] = None
+
             recover_status['stage_0'] = True
         except Exception as ex:
             logger.warning('Error reading data from previous database (stage 0):  ' + str(ex))
@@ -1040,7 +1061,9 @@ class RHData():
             return heat_or_id
 
     def get_heat(self, heat_id):
-        return Database.Heat.query.get(heat_id)
+        if heat_id != None:
+            return Database.Heat.query.get(heat_id)
+        return None
 
     def get_heats(self):
         return Database.Heat.query.all()
@@ -1089,8 +1112,8 @@ class RHData():
             )
 
         if init:
-            if 'class_id' in init:
-                new_heat.class_id = init['class_id']
+            if 'class_id' in init and int(init['class_id']) > 0:
+                new_heat.class_id = int(init['class_id'])
             if 'name' in init:
                 new_heat.name = init['name']
             if 'auto_frequency' in init:
