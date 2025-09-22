@@ -2,6 +2,7 @@
 # RHUI Helper
 # Provides abstraction for user interface
 #
+from time import monotonic_ns
 from typing import List, Any  # @UnusedImport
 from dataclasses import dataclass, asdict  # @UnresolvedImport
 from enum import Enum
@@ -885,26 +886,35 @@ class RHUI():
         '''Emits race listing'''
         profile_freqs = json.loads(self._racecontext.race.profile.frequencies)
         heats = {}
+        races = self._racecontext.rhdata.get_savedRaceMetas()
+        pilotraces_db = self._racecontext.rhdata.get_savedPilotRaces()
+        pilots = self._racecontext.rhdata.get_pilots()
+        race_classes = self._racecontext.rhdata.get_raceClasses()
         for heat in self._racecontext.rhdata.get_heats():
-            if self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id):
-                rounds = {}
-                for race in self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id):
+            rounds = {}
+            for race in races:
+                if race.heat_id == heat.id:
                     pilotraces = []
-                    for pilotrace in self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
-                        pilot_data = self._racecontext.rhdata.get_pilot(pilotrace.pilot_id)
-                        if pilot_data:
-                            nodepilot = pilot_data.callsign
-                        else:
-                            nodepilot = None
+                    for pilotrace in pilotraces_db:
+                        if pilotrace.race_id == race.id:
+                            for pilot in pilots:
+                                if pilot.id == pilotrace.pilot_id:
+                                    pilot_data = pilot
+                                    break
 
-                        pilotraces.append({
-                            'pilotrace_id': pilotrace.id,
-                            'callsign': nodepilot,
-                            'pilot_id': pilotrace.pilot_id,
-                            'node_index': pilotrace.node_index,
-                            'pilot_freq': self.get_pilot_freq_info(profile_freqs, pilotrace.frequency, \
-                                                                   pilotrace.node_index)
-                        })
+                            if pilot_data:
+                                nodepilot = pilot_data.callsign
+                            else:
+                                nodepilot = None
+
+                            pilotraces.append({
+                                'pilotrace_id': pilotrace.id,
+                                'callsign': nodepilot,
+                                'pilot_id': pilotrace.pilot_id,
+                                'node_index': pilotrace.node_index,
+                                'pilot_freq': self.get_pilot_freq_info(profile_freqs, pilotrace.frequency, \
+                                                                       pilotrace.node_index)
+                            })
                     rounds[race.round_id] = {
                         'race_id': race.id,
                         'format_id': race.format_id,
@@ -912,15 +922,18 @@ class RHUI():
                         'start_time_formatted': race.start_time_formatted,
                         'pilotraces': pilotraces
                     }
+            if rounds:
                 heats[heat.id] = {
                     'heat_id': heat.id,
                     'class_id': heat.class_id,
                     'displayname': heat.display_name,
                     'rounds': rounds,
                 }
-                if heat.class_id:
-                    race_class = self._racecontext.rhdata.get_raceClass(heat.class_id)
-                    heats[heat.id]['round_type'] = race_class.round_type
+            if heat.class_id:
+                for race_class in race_classes:
+                    if race_class.id == heat.class_id:
+                        heats[heat.id]['round_type'] = race_class.round_type
+                        break
 
         emit_payload = {
             'heats': heats,

@@ -323,7 +323,7 @@
 					var newest_race = 0;
 					for (var heat in race_list.heats) {
 						for (var round in race_list.heats[heat].rounds) {
-							var race_time = race_list.heats[heat].rounds[round].start_time;
+							var race_time = new Date(race_list.heats[heat].rounds[round].start_time_formatted);
 
 							if (newest_race < race_time) {
 								newest_race = race_time;
