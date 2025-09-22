@@ -578,6 +578,10 @@ class RHRace():
     @catchLogExceptionsWrapper
     def do_save_actions(self):
         '''Save current laps data to the database.'''
+        if self.start_time == 0:
+            logger.debug('Ignoring save request for cleared race')
+            return False
+
         with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
             if self.current_heat == RHUtils.HEAT_ID_NONE:
                 self.discard_laps(saved=True)
@@ -1282,6 +1286,7 @@ class RHRace():
         '''Clear the current laps table.'''
         self._racecontext.branch_race_obj()
         self.db_id = None
+        self.start_time = 0
         self.reset_current_laps() # Clear out the current laps table
         logger.info('Current laps cleared')
 
