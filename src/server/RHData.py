@@ -821,21 +821,25 @@ class RHData():
 
     # Pilots
     def resolve_pilot_from_pilot_or_id(self, pilot_or_id):
+        if pilot_or_id is None:
+            return None
         if isinstance(pilot_or_id, Database.Pilot):
             return pilot_or_id
         else:
             return Database.Pilot.query.get(pilot_or_id)
 
     def resolve_id_from_pilot_or_id(self, pilot_or_id):
+        if pilot_or_id is None:
+            return None
         if isinstance(pilot_or_id, Database.Pilot):
             return pilot_or_id.id
         else:
             return pilot_or_id
 
     def get_pilot(self, pilot_id):
-        if pilot_id:
-            return Database.Pilot.query.get(pilot_id)
-        return None
+        if pilot_id is None:
+            return None
+        return Database.Pilot.query.get(pilot_id)
 
     def get_pilots(self):
         return Database.Pilot.query.all()
@@ -1049,21 +1053,25 @@ class RHData():
 
     # Heats
     def resolve_heat_from_heat_or_id(self, heat_or_id):
+        if heat_or_id is None:
+            return None
         if isinstance(heat_or_id, Database.Heat):
             return heat_or_id
         else:
             return Database.Heat.query.get(heat_or_id)
 
     def resolve_id_from_heat_or_id(self, heat_or_id):
+        if heat_or_id is None:
+            return None
         if isinstance(heat_or_id, Database.Heat):
             return heat_or_id.id
         else:
             return heat_or_id
 
     def get_heat(self, heat_id):
-        if heat_id != None:
-            return Database.Heat.query.get(heat_id)
-        return None
+        if heat_id is None:
+            return None
+        return Database.Heat.query.get(heat_id)
 
     def get_heats(self):
         return Database.Heat.query.all()
@@ -1829,18 +1837,24 @@ class RHData():
 
     # Race Classes
     def resolve_raceClass_from_raceClass_or_id(self, raceClass_or_id):
+        if raceClass_or_id is None:
+            return None
         if isinstance(raceClass_or_id, Database.RaceClass):
             return raceClass_or_id
         else:
             return Database.RaceClass.query.get(raceClass_or_id)
 
     def resolve_id_from_raceClass_or_id(self, raceClass_or_id):
+        if raceClass_or_id is None:
+            return None
         if isinstance(raceClass_or_id, Database.RaceClass):
             return raceClass_or_id.id
         else:
             return raceClass_or_id
     
     def get_raceClass(self, raceClass_id):
+        if raceClass_id is None:
+            return None
         return Database.RaceClass.query.get(raceClass_id)
 
     def get_raceClasses(self):
