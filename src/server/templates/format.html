@@ -807,7 +807,7 @@
 					for (var j in rotorhazard.event.race_formats) {
 						$(document.createElement('option'))
 							.prop('value', rotorhazard.event.race_formats[j].id)
-							.text(rotorhazard.event.race_formats[j].name)
+							.text(__(rotorhazard.event.race_formats[j].name))
 							.appendTo(field_select);
 					}
 					field_select.val(race_class.format);
@@ -2713,7 +2713,7 @@
 			if (rotorhazard.event.race_formats && rotorhazard.race_points_methods) {
 				$('#set_race_format').empty();
 				for (var i = 0; i < rotorhazard.event.race_formats.length; i++) {
-					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>');
+					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + __(rotorhazard.event.race_formats[i].name) + '</option>');
 				}
 				if (current_format == 'last') {
 					$('#set_race_format').val($('#set_race_format option:last').val());
@@ -2730,7 +2730,7 @@
 				$('#set_points_method').empty();
 				$('#set_points_method').append('<option value="">' + __("None") + '</option>');
 				for (var i = 0; i < rotorhazard.race_points_methods.length; i++) {
-					$('#set_points_method').append('<option value="' + rotorhazard.race_points_methods[i].name +'">' + rotorhazard.race_points_methods[i].label + '</option>');
+					$('#set_points_method').append('<option value="' + rotorhazard.race_points_methods[i].name +'">' + __(rotorhazard.race_points_methods[i].label) + '</option>');
 				}
 				$('#set_points_params').html(svg_asset.gear);
 
