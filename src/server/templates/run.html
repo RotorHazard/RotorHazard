@@ -542,7 +542,7 @@
 						if (rotorhazard.nodes[i].graphing) {
 							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 							if (msg.crossing_flag[i]) {
-								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), rotorhazard.nodes[i].graph.options.maxValue + 10);
 							} else{
 								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
 							}
