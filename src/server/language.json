@@ -397,10 +397,6 @@
 	"es": {
 		"name": "Español",
 		"values": {
-			"%HEAT% : Current heat name": "%HEAT%: nombre de serie actual",
-			"%PILOTS% : Current pilot names": "%PILOTS%: nombres de pilotos actuales",
-			"%LINEUP% : Current pilot names (faster)": "%LINEUP%: nombres de pilotos actuales (más rápido)",
-			"%FREQS% : Frequencies with current pilot assignments": "%FREQS%: Frecuencias con asignaciones piloto actuales",
 			"2:00 Stardard Race": "2:00 Carrera Stándard",
 			"1:30 Whoop Sprint": "1:30 Sprint de Whoop",
 			"3:00 Extended Race": "3:00 Carrera Extendida",
