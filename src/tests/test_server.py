@@ -11,7 +11,7 @@ sys.path.append('../server/util')
 sys.path.append('../server/plugins')
 sys.path.append('../interface')
 
-os.environ['RH_INTERFACE'] = 'Mock'
+os.environ['RH_NODES'] = '8'
 
 import server
 from Node import Node
@@ -195,6 +195,9 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(resp['heats']), num_heats+1)
 
     def test_alter_heat(self):
+        self.client.emit('add_pilot')
+        self.client.emit('add_heat')
+        self.client.emit('add_race_class')
         data = {
             'heat': 1,
             'node': 0,
@@ -278,7 +281,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 3)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 4)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_ui_api(self):
@@ -486,8 +489,8 @@ class ServerTest(unittest.TestCase):
 
     def test_race_api(self):
         server.RHAPI.db.heat_add()
-        server.RHAPI.race.heat = 0
-        self.assertEqual(server.RHAPI.race.heat, 0)
+        server.RHAPI.race.heat = None
+        self.assertEqual(server.RHAPI.race.heat, None)
         server.RHAPI.race.heat = 1
         self.assertEqual(server.RHAPI.race.heat, 1)
 
@@ -495,8 +498,8 @@ class ServerTest(unittest.TestCase):
         # Ensure there is a stored pilot, heat, class, and race
         server.RHAPI.db.pilot_add()
         server.RHAPI.db.heat_add()
-        server.RHAPI.db.raceclass_add()
-        server.RHAPI.race.stage()
+        server.RHAPI.db.raceclass_add(name='test class')
+        server.RaceContext.race.stage(immediate=True)
         server.RHAPI.race.stop()
         server.RHAPI.race.save()
 

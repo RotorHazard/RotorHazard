@@ -69,7 +69,7 @@ from flask import Flask, send_from_directory, request, make_response, Response, 
 from flask.blueprints import Blueprint
 from flask_socketio import SocketIO, emit
 
-PROGRAM_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+PROGRAM_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # determine data location
 DATA_DIR = None
@@ -219,6 +219,7 @@ RaceContext.serverstate.program_dir = PROGRAM_DIR
 RaceContext.serverstate.implicit_program_dir_flag = implicit_program_dir_flag
 RaceContext.serverstate.do_rhdata_migrate_flag = False
 
+RaceContext.interface = InterfaceMapper()
 Events = EventManager(RaceContext)
 RaceContext.events = Events
 Filters = FilterManager(RHAPI)
@@ -3387,7 +3388,7 @@ def _do_init_rh_interface():
                 logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
                 return False
 
-        num_mocks = max(RaceContext.serverconfig.get_item_int('GENERAL', 'MOCK_NODES'), RaceContext.serverstate.mock_nodes, os.environ.get('RH_NODES', 0), 0)
+        num_mocks = max(RaceContext.serverconfig.get_item_int('GENERAL', 'MOCK_NODES'), RaceContext.serverstate.mock_nodes, int(os.environ.get('RH_NODES', 0)), 0)
 
         if num_mocks > 0:
             interfaceModule = importlib.import_module('MockInterface')
@@ -3695,9 +3696,6 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # RotorHazard events dispatch
         Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
-
-        # Create interface mapping
-        RaceContext.interface = InterfaceMapper()
 
         # Plugin handling
         plugin_modules = []
