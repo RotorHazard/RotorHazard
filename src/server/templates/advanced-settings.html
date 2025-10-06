@@ -136,11 +136,17 @@
 
 		$(document).on('change', '.set-serial-config', function (event) {
 			var values = [];
-			$('.set-serial-config').each(function(){
-				if ($(this).val()) {
+			var newVal = false;
+			$('.set-serial-config').each(function() {
+				if (newVal === false) {
+					newVal = $(this).val();
+				} else if ($(this).val()) {
 					values.push($(this).val());
 				}
 			});
+			if (newVal && newVal.trim().length > 0) {
+				values.push(newVal);
+			}
 
 			var data = {
 				section: 'GENERAL',
