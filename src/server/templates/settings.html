@@ -282,46 +282,48 @@
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-				for (var i = 0; i < msg.current_rssi.length; i++) {
-					var rssiValue = msg.current_rssi[i];
+				if (msg.current_rssi) {
+					for (var i = 0; i < msg.current_rssi.length; i++) {
+						var rssiValue = msg.current_rssi[i];
 
-					if (rotorhazard.nodes[i].fObj.frequency == 0) {
-						rssiValue = 0;
-					}
+						if (rotorhazard.nodes[i].fObj.frequency == 0) {
+							rssiValue = 0;
+						}
 
-					$('.current_rssi_' + i).html(rssiValue);
+						$('.current_rssi_' + i).html(rssiValue);
 
-					if (msg.crossing_flag[i]) {
-						$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
-					}
-					else {
-						$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
-					}
-
-					rotorhazard.nodes[i].graph.options.maxValue = Math.max(
-						rssiValue,
-						rotorhazard.nodes[i].node_peak_rssi + 1,
-						rotorhazard.nodes[i].enter_at_level + 10,
-					);
-
-					rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
-						rssiValue,
-						rotorhazard.nodes[i].node_nadir_rssi - 1,
-						rotorhazard.nodes[i].exit_at_level - 10,
-					));
-
-					if (!rotorhazard.nodes[i].graphing && rssiValue) {
-						rotorhazard.nodes[i].graphing = true;
-						rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
-						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
-					}
-
-					if (rotorhazard.nodes[i].graphing) {
-						rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 						if (msg.crossing_flag[i]) {
-							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
-						} else{
-							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
+							$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+						}
+						else {
+							$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+						}
+
+						rotorhazard.nodes[i].graph.options.maxValue = Math.max(
+							rssiValue,
+							rotorhazard.nodes[i].node_peak_rssi + 1,
+							rotorhazard.nodes[i].enter_at_level + 10,
+						);
+
+						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
+							rssiValue,
+							rotorhazard.nodes[i].node_nadir_rssi - 1,
+							rotorhazard.nodes[i].exit_at_level - 10,
+						));
+
+						if (!rotorhazard.nodes[i].graphing && rssiValue) {
+							rotorhazard.nodes[i].graphing = true;
+							rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
+							rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+						}
+
+						if (rotorhazard.nodes[i].graphing) {
+							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+							if (msg.crossing_flag[i]) {
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+							} else{
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
+							}
 						}
 					}
 				}
