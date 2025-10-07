@@ -71,26 +71,7 @@
 		});
 
 		socket.on('language', function (msg) {
-			$('#set_language').empty();
-			$('#set_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-
-			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
-			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
-
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_language').selectedIndex = 0;
-			}
+			rotorhazard.interface_language = msg.language;
 		});
 
 		// set admin flag
@@ -454,8 +435,12 @@
 				for (var i in msg.classes) {
 					var new_class = msg.classes[i];
 					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
-					Object.assign(race_class, new_class);
-					rotorhazard.event.classes.push(new_class);
+					if (race_class) {
+						Object.assign(race_class, new_class);
+						rotorhazard.event.classes.push(race_class);
+					} else {
+						rotorhazard.event.classes.push(new_class);
+					}
 				}
 			} else {
 				rotorhazard.event.classes = msg.classes;
@@ -474,8 +459,10 @@
 					var race_class = existing_class_data.find(obj => {return obj.id == new_class.id});
 					if (race_class) {
 						Object.assign(race_class, new_class);
+						rotorhazard.event.classes.push(race_class);
+					} else {
+						rotorhazard.event.classes.push(new_class);
 					}
-					rotorhazard.event.classes.push(new_class);
 				}
 			} else {
 				rotorhazard.event.classes = msg.classes;
@@ -764,11 +751,11 @@
 						el.removeClass('flagged');
 					}
 
-					var locked = race_class.manual_unlock ? false : race_class.locked;
+					var locally_locked = race_class.manual_unlock ? false : race_class.locked;
 					var active_race = false;
 					if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_class_id == race_class.id) {
 						active_race = true;
-						locked = true;
+						locally_locked = true;
 					}
 
 					// Name
@@ -783,7 +770,7 @@
 					$(`#delete--race-class-${race_class.id}`)
 						.prop('title', `${__('Delete')} ${race_class.displayname}`);
 
-					if (locked) {
+					if (locally_locked) {
 						$(`#delete--race-class-${race_class.id}`)
 							.prop('hidden', true);
 						if (active_race) {
@@ -811,7 +798,7 @@
 
 					// Format
 					var field_select = $(`#format--race-class-${race_class.id}`)
-						.prop('disabled', locked)
+						.prop('disabled', locally_locked)
 						.empty();
 					$(document.createElement('option'))
 						.prop('value', 0)
@@ -827,7 +814,7 @@
 
 					// Ranking
 					var field_select = $(`#ranking--race-class-${race_class.id}`)
-						.prop('disabled', locked)
+						.prop('disabled', locally_locked)
 						.empty();
 					$(document.createElement('option'))
 						.prop('value', '')
@@ -843,7 +830,7 @@
 						.val(race_class.win_condition);
 
 					var field_options = $(`#ranking-params--race-class-${race_class.id}`)
-						.prop('disabled', locked);
+						.prop('disabled', locally_locked);
 					var rank_method = rotorhazard.raceclass_rank_methods.find(obj => {return obj.name == race_class.win_condition});
 					if (rank_method && rank_method.settings) {
 						field_options.prop('hidden', false);
@@ -854,7 +841,7 @@
 					// Round type
 					$(`#round-type--race-class-${race_class.id}`)
 						.val(race_class.round_type)
-						.prop('disabled', locked);
+						.prop('disabled', locally_locked);
 
 					// Rounds
 					$(`#rounds--race-class-${race_class.id}`)
@@ -958,6 +945,8 @@
 
 					var groupselect = $(`#group-selector--race-class-${race_class.id}`)
 					if (race_class.round_type == 1) {
+						var selected_group_val = groupselect.val();
+						groupselect.empty();
 						groupselect.prop('hidden', false);
 
 						if (groups.length > 1) {
@@ -967,6 +956,9 @@
 									.text(`${__('Round')} ${parseInt(i)+1}`)
 									.appendTo(groupselect);
 							}
+							if (selected_group_val > 0) {
+								groupselect.val(selected_group_val);
+							}
 						} else {
 							groupselect.prop('disabled', true);
 							$(document.createElement('option'))
@@ -975,6 +967,7 @@
 								.appendTo(groupselect);
 						}
 					} else {
+						groupselect.empty();
 						groupselect.prop('hidden', true);
 					}
 
@@ -1115,7 +1108,7 @@
 						method: rank_method,
 					}
 
-					if (race_class.ranksettings && race_class.ranksettings[settings.name]) {
+					if (race_class.ranksettings && settings.name in race_class.ranksettings) {
 						settings.value = race_class.ranksettings[settings.name];
 					}
 
@@ -1287,7 +1280,6 @@
 			var el = $(`#race-class-${class_to_unlock}`);
 
 			var race_class = rotorhazard.event.classes.find(obj => {return obj.id == class_to_unlock});
-			race_class.locked = false;
 			race_class.manual_unlock = true;
 
 			display_classes();
@@ -1317,8 +1309,9 @@
 			var data = {
 				class: parseInt($(this).data('id')),
 			};
-			if (typeof $(this).data('group') !== 'undefined') {
-				data.group = $(this).data('group')
+			var group_select = $(this).siblings('.class-group-list')
+			if (group_select.length) {
+				data.group = group_select.val();
 			}
 			socket.emit('add_heat', data);
 		});
@@ -1336,8 +1329,12 @@
 				for (var i in msg.heats) {
 					var new_heat = msg.heats[i];
 					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
-					Object.assign(heat, new_heat);
-					rotorhazard.event.heats.push(new_heat);
+					if (heat) {
+						Object.assign(heat, new_heat);
+						rotorhazard.event.heats.push(heat);
+					} else {
+						rotorhazard.event.heats.push(new_heat);
+					}
 				}
 			} else {
 				rotorhazard.event.heats = msg.heats;
@@ -1366,8 +1363,10 @@
 					var heat = existing_heat_data.find(obj => {return obj.id == new_heat.id});
 					if (heat) {
 						Object.assign(heat, new_heat);
+						rotorhazard.event.heats.push(heat);
+					} else {
+						rotorhazard.event.heats.push(new_heat);
 					}
-					rotorhazard.event.heats.push(new_heat);
 				}
 			} else {
 				rotorhazard.event.heats = msg.heats;
@@ -1389,7 +1388,7 @@
 					var heat_arr_index = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat.id});
 					if (heat_arr_index != undefined) {
 						Object.assign(rotorhazard.event.heats[heat_arr_index], heat);
-						rotorhazard.event.heats[heat_arr_index] = heat;
+						msg.heats[idx] = rotorhazard.event.heats[heat_arr_index];
 					} else {
 						rotorhazard.event.heats.push(heat);
 					}
@@ -1656,11 +1655,11 @@
 				el.removeClass('is-confirmed');
 			}
 
-			var locked = heat.manual_unlock ? false : heat.locked;
+			var locally_locked = heat.manual_unlock ? false : heat.locked;
 			var active_race = false
 			if (rotorhazard.event.race_status && rotorhazard.event.race_status.race_status && rotorhazard.event.race_status.race_heat_id == heat.id) {
 				active_race = true;
-				locked = true;
+				locally_locked = true;
 			}
 
 			var placeholder_name = heat.auto_name ? heat.auto_name : heat.displayname;
@@ -1692,7 +1691,7 @@
 			heat_delete
 				.prop('title', `${__('Delete')} ${heat.displayname}`);
 
-			if (locked) {
+			if (locally_locked) {
 				heat_delete
 					.prop('hidden', true);
 
@@ -1737,28 +1736,14 @@
 			}
 
 			// Slots
-			if (heat.auto_frequency && heat.status != 2) {
-				heat.slots.sort((a,b) => {
-					if (a.method === -1 || (a.method === 0 && !a.pilot_id)) return 1;
-					if (b.method === -1 || (b.method === 0 && !b.pilot_id)) return -1;
-					return (a.method > b.method) ? 1 : -1
-					});
-			} else {
-				heat.slots.sort((a,b) => {
-					if (a.node_index === null) return 1;
-					if (b.node_index === null) return -1;
-					return (a.node_index > b.node_index) ? 1 : -1
-					});
-			}
-
 			$(heat_slots).children().addClass('flagged');
 			for (j in heat.slots) {
 				var slot = heat.slots[j];
 				var heatpilot = heat.slots[j].pilot_id;
 
-				if (!$(heat_slots).children(`.heat-ui--slot-${slot.id}`).length) {
+				if (!$(heat_slots).children(`.heat-ui--slot-index-${j}`).length) {
 					var slot_el = $(document.createElement('li'))
-						.addClass(`heat-ui--slot-${slot.id}`);
+						.addClass(`heat-ui--slot-index-${j}`);
 
 					// channel
 					var slot_channel = $(document.createElement('div'))
@@ -1773,7 +1758,7 @@
 
 					// method
 					var slot_method = $(document.createElement('select'))
-						.addClass(`heat-ui--method--slot-${slot.id}`)
+						.addClass('heat-ui--method')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_method')
@@ -1793,7 +1778,7 @@
 
 					// method:heat
 					var slot_method_heat = $(document.createElement('select'))
-						.addClass(`heat-ui--method-heat--slot-${slot.id}`)
+						.addClass('heat-ui--method-heat')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_heat')
@@ -1801,7 +1786,7 @@
 
 					// method:class
 					var slot_method_class = $(document.createElement('select'))
-						.addClass(`heat-ui--method-class--slot-${slot.id}`)
+						.addClass('heat-ui--method-class')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_class')
@@ -1809,7 +1794,7 @@
 
 					// rank
 					var slot_method_rank = $(document.createElement('input'))
-						.addClass(`heat-ui--method-rank--slot-${slot.id}`)
+						.addClass('heat-ui--method-rank')
 						.prop('type', 'number')
 						.prop('step', 1)
 						.prop('min', 1)
@@ -1822,7 +1807,7 @@
 
 					// method:pilot
 					var slot_method_pilot = $(document.createElement('select'))
-						.addClass(`heat-ui--method-pilot--slot-${slot.id}`)
+						.addClass('heat-ui--method-pilot')
 						.data('heat', heat.id)
 						.data('slot', slot.id)
 						.addClass('set_pilot_position')
@@ -1830,13 +1815,17 @@
 
 					heat_slots.append(slot_el);
 				} else {
-					var slot_el = $(heat_slots).children(`.heat-ui--slot-${slot.id}`);
+					var slot_el = $(heat_slots).children(`.heat-ui--slot-index-${j}`);
 					var slot_channel = $(slot_el).find('.channel-block');
-					var slot_method = $(slot_el).find(`.heat-ui--method--slot-${slot.id}`);
-					var slot_method_heat = $(slot_el).find(`.heat-ui--method-heat--slot-${slot.id}`);
-					var slot_method_class = $(slot_el).find(`.heat-ui--method-class--slot-${slot.id}`);
-					var slot_method_rank = $(slot_el).find(`.heat-ui--method-rank--slot-${slot.id}`);
-					var slot_method_pilot = $(slot_el).find(`.heat-ui--method-pilot--slot-${slot.id}`);
+					var slot_method = $(slot_el).find('.heat-ui--method');
+					var slot_method_heat = $(slot_el).find('.heat-ui--method-heat');
+					var slot_method_class = $(slot_el).find('.heat-ui--method-class');
+					var slot_method_rank = $(slot_el).find('.heat-ui--method-rank');
+					var slot_method_pilot = $(slot_el).find('.heat-ui--method-pilot');
+					slot_method_heat.data('slot', slot.id);
+					slot_method_class.data('slot', slot.id);
+					slot_method_rank.data('slot', slot.id);
+					slot_method_pilot.data('slot', slot.id);
 					slot_el.removeClass('flagged');
 				}
 
@@ -1851,7 +1840,7 @@
 						slot_method.val(0);
 					}
 				}
-				slot_method.prop('disabled', locked);
+				slot_method.prop('disabled', heat.locked);
 
 				// method:heat
 				if (slot.method == 1) {
@@ -1894,7 +1883,7 @@
 						slot_method_heat.val(0);
 					}
 				}
-				slot_method_heat.prop('disabled', locked);
+				slot_method_heat.prop('disabled', locally_locked);
 
 				// method:class
 				if (slot.method == 2) {
@@ -1937,13 +1926,13 @@
 						slot_method_class.val(0);
 					}
 				}
-				slot_method_class.prop('disabled', locked);
+				slot_method_class.prop('disabled', locally_locked);
 
 				// method:rank
 				if (slot_method_rank.val() != slot.seed_rank ?? "") {
 					slot_method_rank.val(slot.seed_rank);
 				}
-				slot_method_rank.prop('disabled', locked);
+				slot_method_rank.prop('disabled', locally_locked);
 
 				// method:pilot
 				if (slot_method_pilot.data('token') != pilot_selector.token) {
@@ -1961,14 +1950,14 @@
 						slot_method_pilot.val(0);
 					}
 				}
-				slot_method_pilot.prop('disabled', locked);
+				slot_method_pilot.prop('disabled', locally_locked);
 			}
 			$(heat_slots).children('flagged').remove();
 
 			// Auto-frequency
 			heat_autofrequency
 				.prop('checked', heat.auto_frequency)
-				.prop('disabled', locked)
+				.prop('disabled', locally_locked)
 
 			// Dynamic Controls
 
@@ -1989,66 +1978,53 @@
 		function update_heat_ui(el, heat_id) {
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 
-			is_dynamic = heat.slots.some(obj => obj.method > 0)
+			var is_dynamic = heat.slots.some(obj => obj.method > 0)
+			var locally_locked = heat.manual_unlock ? false : heat.locked;
 
 			// option selector visibility
-			if (heat.status == 2 || heat.locked) {
-				el.find('.channel-block').prop('hidden', false);
-				el.find('.set_method').prop('hidden', true);
-				el.find('.set_class').prop('hidden', true);
-				el.find('.set_heat').prop('hidden', true);
-				el.find('.set_rank').prop('hidden', true);
+			// reset to known state
+			el.find('.channel-block').prop('hidden', false);
+			el.find('.set_method').prop('hidden', true);
+			el.find('.set_class').prop('hidden', true);
+			el.find('.set_heat').prop('hidden', true);
+			el.find('.set_rank').prop('hidden', true);
+			el.find('.set_pilot_position').prop('hidden', true);
+			el.find('.set_pilot_position').prop('disabled', false);
+			el.find('.autofrequency-control').prop('hidden', false);
+
+			if (heat.locked) {
+				// heat has been run
+				el.find('.set_pilot_position').prop('hidden', false);
+				el.find('.autofrequency-control').prop('hidden', true);
+
+				if (!heat.manual_unlock) {
+					el.find('.set_pilot_position').prop('disabled', true);
+				}
+			} else if (heat.status == 2) {
+				// confirmed but not run
+				el.find('.set_pilot_position').prop('hidden', false);
 				el.find('.autofrequency-control').prop('hidden', true);
 			} else {
-				el.find('.channel-block').prop('hidden', heat.auto_frequency);
+				// unconfirmed and not run
 				el.find('.set_method').prop('hidden', false);
-				el.find('.set_class').prop('hidden', false);
-				el.find('.set_heat').prop('hidden', false);
-				el.find('.set_rank').prop('hidden', false);
-				el.find('.autofrequency-control').prop('hidden', false);
-
+				if (heat.auto_frequency) {
+					el.find('.channel-block').prop('hidden', true);
+				}
 				el.find('li').each(function(){
 					var method = parseInt($(this).find('.set_method').val());
 					if (method == -1) { // None
-						$(this).find('.set_class').prop('hidden', true);
-						$(this).find('.set_heat').prop('hidden', true);
-						$(this).find('.set_rank').prop('hidden', true);
-						$(this).find('.set_pilot_position').prop('hidden', true);
+						// display nothing
 					} else if (method == 0) { // Pilot
-						$(this).find('.set_class').prop('hidden', true);
-						$(this).find('.set_heat').prop('hidden', true);
-						$(this).find('.set_rank').prop('hidden', true);
 						$(this).find('.set_pilot_position').prop('hidden', false);
 					} else if (method == 1) { // Heat
-						$(this).find('.set_class').prop('hidden', true);
 						$(this).find('.set_heat').prop('hidden', false);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.set_pilot_position').prop('hidden', true);
 					} else if (method == 2) { // Class
 						$(this).find('.set_class').prop('hidden', false);
-						$(this).find('.set_heat').prop('hidden', true);
 						$(this).find('.set_rank').prop('hidden', false);
-						$(this).find('.set_pilot_position').prop('hidden', true);
 					}
 				});
 			}
-
-			// pilot visibility
-			el.find('li').each(function(){
-				if ((is_dynamic || heat.auto_frequency) && heat.status == 2){
-					if ($(this).find('.set_pilot_position').val() == 0) {
-						$(this).prop('hidden', true);
-					} else {
-						$(this).prop('hidden', false);
-						$(this).find('.set_pilot_position')
-							.prop('hidden', false)
-							.prop('disabled', true);
-					}
-				} else {
-					$(this).prop('hidden', false);
-				}
-
-			});
 
 			// plan buttons
 			if ((is_dynamic || heat.auto_frequency) && heat.locked == false) {
@@ -2096,18 +2072,20 @@
 				slot_id: slot_id,
 				pilot: pilot_id
 			};
-			if (pilot_id) {
-				data.method = 0;  // always set method to 'assign'
-			}
-			socket.emit('alter_heat', data);
 
-			// update local data
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
 			var slot = heat.slots.find(obj => {return obj.id == slot_id});
+
 			if (heat && slot) {
-				slot.pilot_id = pilot_id;
-				slot.method = 0;
+				slot.pilot_id = pilot_id;  // update local data
+				if (pilot_id && heat.status != 2) {
+					data.method = 0;  // set method to 'assign'
+					slot.method = 0;  // update local data
+				}
 			}
+
+			socket.emit('alter_heat', data);
+
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), heat);
 			});
@@ -2227,31 +2205,6 @@
 			var heat_idx = rotorhazard.event.heats.findIndex(obj => {return obj.id == heat_id});
 			rotorhazard.event.heats[heat_idx].auto_frequency = auto_frequency;
 			var heat = rotorhazard.event.heats[heat_idx];
-
-			if(!auto_frequency) {
-
-
-				heat.slots.sort((a, b) => a.id - b.id);
-
-				var used_seats = []
-				for (var s in heat.slots) {
-					if (heat.slots[s].node_index != null) {
-						used_seats.push(heat.slots[s].node_index);
-					}
-				}
-
-				var idx = 0;
-				for (var s in heat.slots) {
-					if (heat.slots[s].node_index == null) {
-						while (used_seats.includes(idx)) {
-							idx++;
-						}
-						heat.slots[s].node_index = idx;
-						idx++;
-					}
-				}
-				heat.slots.sort((a, b) => a.node_index - b.node_index);
-			}
 
 			$(`.heat-ui--heat-${heat_id}`).each(function(idx){
 				heat_ui($(this).parent(), heat);
@@ -2431,7 +2384,6 @@
 			update_heat_ui(el, heat_id);
 
 			var heat = rotorhazard.event.heats.find(obj => {return obj.id == heat_id});
-			heat.locked = false;
 			heat.manual_unlock = true;
 
 			heat_ui(el.parent(), heat);
@@ -2521,11 +2473,13 @@
 		function display_pilot_selectors() {
 			if (rotorhazard.event.pilots) {
 				$('.set_pilot_position').each(function(){
+					var existing_value = $(this).val();
 					$(this).empty();
-
-					for (var i in rotorhazard.event.pilots) {
-						$(this).append('<option value="'+ rotorhazard.event.pilots[i].id + '">' + rotorhazard.event.pilots[i].callsign + ' (' + rotorhazard.event.pilots[i].name + ')</option>');
+					var opts = pilot_selector.get_option_els_none();
+					for (var opt_idx in opts)	{
+						$(this).append(opts[opt_idx]);
 					}
+					$(this).val(existing_value);
 				});
 			}
 		}
@@ -3542,9 +3496,8 @@
 			} else {
 				rotorhazard.event.pilots.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
 			}
+			pilot_selector.seed();
 			display_pilots();
-			display_classes();
-			display_unclassified_heats();
 		});
 
 		$(document).on('change', '#parameters input,#parameters select', function (event) {
@@ -3592,14 +3545,6 @@
 				var field_data = selected_importer.settings.find(obj => {return obj.name == field});
 				field_data.value = value;
 			}
-		});
-
-		$('#set_language').change(function (event) {
-			var data = {
-				language: $(this).val()
-			};
-			socket.emit('set_language', data);
-			location.reload(true);
 		});
 	});
 

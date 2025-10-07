@@ -1,5 +1,6 @@
 {% extends "layout.html" %} {% block title %}{{ __('Marshal Race Data') }}{% endblock %}{% block head %}
 
+<script type="text/javascript" charset="utf-8" src="/static/marshal.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
@@ -9,6 +10,7 @@
 			'value': 'marshal'
 		},
 		'heat_data',
+		'class_data',
 		'enter_and_exit_at_levels',
 		'format_data',
 		'race_list'
@@ -19,22 +21,194 @@
 	rotorhazard.saveData();
 	$('nav li').removeClass('admin-hide');
 
-	var race_list = {};
-	var race_list_loaded = false;
-	var race_loaded = false;
-	var current_race_data = {};
-	var precalc_laps = {};
+	var start_thresh_lower_amount = 0;
+	var start_thresh_lower_duration = 0;
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
 	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
 
-	var start_thresh_lower_amount = 0;
-	var start_thresh_lower_duration = 0;
 	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
 		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
 	}
 	if ('{{ getConfig('TIMING', 'startThreshLowerDuration') }}' != 'False') {
 		start_thresh_lower_duration = {{ getConfig('TIMING', 'startThreshLowerDuration') }};
 	}
+
+	// set up single-instance marshaling
+	function clearMarkedLap() {
+		$('#laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
+	}
+
+	function displayLaps(laps_obj, marked_lap=null) {
+		var lapList = $('#laps tbody');
+		lapList.empty();
+
+		var lap_index = 0;
+		for (var lap_i in laps_obj) {
+			var lap = laps_obj[lap_i];
+			var lapData = $('<tr>');
+			$(lapData).data("lapTimeStamp", lap.lap_time_stamp);
+
+			if (marked_lap != null && lap_i == marked_lap) {
+				lapData.addClass('lap-highlighted');
+			}
+
+			if (lap.deleted) {
+				lapData.addClass('lap-deleted');
+			} else if (lap_index && lap.lap_time < min_lap) {
+				lapData.addClass('min-lap-warning');
+			}
+
+			if (!lap.deleted) {
+				marshal.drawLap(lap, true);
+				lapData.append('<td>' + lap_index + '</td>');
+				lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+				lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td>');
+				lap_index++;
+			} else {
+				marshal.drawLap(lap, false);
+				lapData.append('<td>-</td>');
+				lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+				lapData.append('<td>' + __('Deleted') + '</td>');
+			}
+
+			switch (lap.source) {
+				case 0:
+					lapData.append('<td>Realtime</td>');
+					break;
+				case 1:
+					lapData.append('<td>Manual</td>');
+					break;
+				case 2:
+					lapData.append('<td>Recalc</td>');
+					break;
+				case 3:
+					lapData.append('<td>Automatic</td>');
+					break;
+				case 4:
+					lapData.append('<td>API (plugin)</td>');
+					break;
+			}
+
+			if (lap.deleted) {
+				lapData.append('<td><button class="restore_lap" data-lapid="' + lap_i + '">+</button></td>');
+			} else {
+				lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
+			}
+
+			if (!marshal.race.race_format.unlimited_time && lap.lap_time_stamp > (marshal.race.race_format.race_time_sec * 1000)) {
+				lapData.addClass('after-time-expired');
+			}
+
+			lapList.append(lapData);
+		}
+
+		// When a user clicks on a lap, toggle that lap's highlight pointer in the graph.
+		$('#laps td:not(:last-child)').click( function(){
+			var thisrow = $(this).parent()
+			if(race_loaded && !thisrow.hasClass("lap-highlighted")){
+				// Remove highlighting from other rows
+				clearMarkedLap();
+				thisrow.addClass("lap-highlighted");
+				var lapTimeStamp = parseFloat(thisrow.data("lapTimeStamp"));
+				marshal.markLap(lapTimeStamp);
+			} else {
+				clearMarkedLap();
+			}
+			marshal.renderGraph();
+		});
+	}
+
+	function calcLaps(isLoaded) {
+		// invalidate current laps
+		$('#laps').addClass('invalid');
+		disableUI(true);
+	}
+
+	function recalcRace(isLoaded) {
+		if (isLoaded) {
+			$('#laps').removeClass('invalid');
+			enableUI();
+		} else {
+			push_message(__('No race loaded'));
+		}
+	}
+
+	function graphInteractTap(args) {
+		$('#laps tr').each(function(){
+			if ($(this).data('lapTimeStamp') == args.lapTimeStamp) {
+				$(this).children().eq(0).trigger('click');
+			}
+		});
+	}
+
+	function graphInteractCancel(args) {
+		$('#enterat').val(args.startingEnter);
+		$('#exitat').val(args.startingExit);
+	}
+
+	function calibration(calibration) {
+		$('#enterat').val(calibration.enter);
+		$('#exitat').val(calibration.exit);
+	}
+
+	var marshal = new RHMarshal({
+		elements: {
+			graph_canvas_id: 'race-graph',
+		},
+		time_format: {{ getConfig('UI', 'timeFormat')|tojson }},
+		start_thresh_lower_amount: start_thresh_lower_amount,
+		start_thresh_lower_duration: start_thresh_lower_duration,
+		min_lap: min_lap,
+		min_lap_behavior: min_lap_behavior,
+		callbacks: {
+			calcLaps: calcLaps,
+			clearMarkedLap: clearMarkedLap,
+			displayLaps: displayLaps,
+			graphInteractCancel: graphInteractCancel,
+			graphInteractTap: graphInteractTap,
+			recalcRace: recalcRace,
+			calibration: calibration,
+		},
+	});
+
+	function disableUI(lapsOnly=false) {
+		if (!lapsOnly) {
+			$('#enterat').prop('disabled', true);
+			$('#exitat').prop('disabled', true);
+			$('#recalc').prop('disabled', true);
+			$('#load-transitions').prop('disabled', true);
+			$('#save-transitions').prop('disabled', true);
+
+			$('#race-title').html(__('Select Race'));
+			marshal.clearGraph();
+			$('#enterat').val('');
+			$('#exitat').val('');
+		}
+		$('#manual-lap-time').prop('disabled', true);
+		$('#add-lap').prop('disabled', true);
+		$('#clean-laps').prop('disabled', true);
+		$('#reassign-heat').prop('disabled', true);
+		$('#save-laps').prop('disabled', true);
+	}
+
+	function enableUI() {
+		$('#enterat').prop('disabled', false);
+		$('#exitat').prop('disabled', false);
+		$('#recalc').prop('disabled', false);
+		$('#load-transitions').prop('disabled', false);
+		$('#save-transitions').prop('disabled', false);
+		$('#manual-lap-time').prop('disabled', false);
+		$('#add-lap').prop('disabled', false);
+		$('#clean-laps').prop('disabled', false);
+		$('#save-laps').prop('disabled', false);
+		$('#reassign-heat').prop('disabled', false);
+		$('#discard-laps').prop('disabled', false);
+	}
+
+	var race_list = {};
+	var race_list_loaded = false;
+	var race_loaded = false;
+	var current_race_data = {};
 
 	$(document).ready(function () {
 		if ('{{ getConfig('TIMING', 'calibrationMode') }}' == '0') {
@@ -111,45 +285,6 @@
 			}
 		});
 
-		var graph_canvas = document.getElementById('race-graph');
-		var context = graph_canvas.getContext('2d');
-		var graph = new SmoothieChart({
-			responsive: true,
-			grid:{
-				strokeStyle:'rgba(255,255,255,0.25)',
-				// millisPerLine:1, // Smoothie thinks the timestamps are in seconds
-				sharpLines:true,
-				verticalSections:0,
-				borderVisible:false
-			},
-			labels:{
-				precision: 0
-			},
-			scaleSmoothing: 1
-		});
-		var rssi_series = new TimeSeries();
-		graph.addTimeSeries(rssi_series, {lineWidth:1.7,
-			strokeStyle:'hsl(214, 53%, 60%)',
-			fillStyle:'hsla(214, 53%, 60%, 0.4)'
-		});
-		var lap_marker_series = new TimeSeries();
-		graph.addTimeSeries(lap_marker_series, {lineWidth:1.7,
-			strokeStyle:'none',
-			fillStyle:'hsla(136, 71%, 70%, 0.3)'
-		});
-		var deleted_lap_series = new TimeSeries();
-		graph.addTimeSeries(deleted_lap_series, {lineWidth:1.7,
-			strokeStyle:'none',
-			fillStyle:'hsla(8.2, 86.5%, 53.7%, 0.2)'
-		});
-		var selection_series = new TimeSeries();
-		graph.addTimeSeries(selection_series, {lineWidth:1.7,
-			strokeStyle:'hsl(70, 60%, 60%)',
-			lineWidth: 3
-		});
-		graph.streamTo(graph_canvas, 1);
-		graph.stop();
-
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -188,7 +323,7 @@
 					var newest_race = 0;
 					for (var heat in race_list.heats) {
 						for (var round in race_list.heats[heat].rounds) {
-							var race_time = race_list.heats[heat].rounds[round].start_time;
+							var race_time = new Date(race_list.heats[heat].rounds[round].start_time_formatted);
 
 							if (newest_race < race_time) {
 								newest_race = race_time;
@@ -219,32 +354,39 @@
 		}
 
 		socket.on('race_details', function (msg) {
-			var racedetail = msg;
-
-			current_race_data.history_times = msg.history_times;
-			current_race_data.history_values = msg.history_values;
-			current_race_data.laps = msg.laps;
-			current_race_data.enter_at = msg.enter_at;
-			current_race_data.exit_at = msg.exit_at;
-
-			if (current_race_data.history_times.length) {
-				current_race_data.end_time = current_race_data.history_times[current_race_data.history_times.length - 1];
-				graph.options.minValue = Math.min.apply(null, current_race_data.history_values) - 2;
-				graph.options.maxValue = Math.max.apply(null, current_race_data.history_values) + 2;
-			} else {
-				current_race_data.end_time = current_race_data.start_time + 1
-				graph.options.minValue = current_race_data.exit_at;
-				graph.options.maxValue = current_race_data.enter_at;
+			race_args = {
+				round: current_race_data.round_id,
+				heat: current_race_data.heat_id,
+				race_id: current_race_data.race_id,
+				class_id: current_race_data.class_id,
+				format_id: current_race_data.format_id,
+				start_time: current_race_data.start_time,
+				start_time_formatted: current_race_data.start_time_formatted,
 			}
-
 			if (current_race_data.format_id > 0) {
-				current_race_data.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == current_race_data.format_id});
+				race_args.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == current_race_data.format_id});
 			} else {
-				current_race_data.race_format = {
+				race_args.race_format = {
 					unlimited_time: false,
 					race_time_sec: null
 				};
 			}
+			marshal.setRaceData(race_args);
+
+			pilot_args = {
+				pilotrace_id: current_race_data.pilotrace_id,
+				pilot_id: current_race_data.pilot_id,
+				seat: current_race_data.node_index,
+				history_times: msg.history_times,
+				history_values: msg.history_values,
+				laps: msg.laps,
+				enter_at: msg.enter_at,
+				exit_at: msg.exit_at,
+				callsign: current_race_data.callsign,
+			}
+			marshal.setPilotData(pilot_args);
+
+			marshal.initRace();
 
 			// update header
 			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
@@ -253,27 +395,8 @@
 			$('#race-title').html(header);
 
 			// fill enter/exit values
-			$('#enterat').val(current_race_data.enter_at);
-			$('#exitat').val(current_race_data.exit_at);
-
-			// prepare graph
-			rssi_series.data = [];
-			for (idx in current_race_data.history_times) {
-				var value = current_race_data.history_times[idx];
-				if (value == lastValue) {
-					rssi_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
-				} else {
-					rssi_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
-				}
-				var lastValue = value;
-			}
-			// Lap marker series lines drawn below the bottom of the graph
-			clearCrossings();
-			clearMarkedLap();
-			renderGraph();
-
-			// populate laps
-			displayLaps(current_race_data.laps);
+			$('#enterat').val(msg.enter_at);
+			$('#exitat').val(msg.exit_at);
 
 			enableUI();
 			return false;
@@ -284,8 +407,13 @@
 			display_heats();
 		});
 
+		socket.on('class_data', function (msg) {
+			rotorhazard.event.classes = msg.classes;
+			display_heats();
+		});
+
 		function display_heats() {
-			if (rotorhazard.event.heats) {
+			if (rotorhazard.event.heats && rotorhazard.event.classes) {
 				$("#reassign-heat-selector").empty();
 				for (var idx in rotorhazard.event.heats) {
 					var heat = rotorhazard.event.heats[idx];
@@ -294,8 +422,12 @@
 						.prop('value', heat.id)
 						.text(heat.displayname);
 
-					if (!heat.active) {
-						opt.prop('disabled', true)
+					if (heat.class_id) {
+						var race_class = rotorhazard.event.classes.find(obj => {return obj.id == heat.class_id});
+
+						if (race_class && race_class.round_type == 1 && !heat.active) {
+							opt.prop('disabled', true)
+						}
 					}
 
 					$('#reassign-heat-selector').append(opt);
@@ -396,7 +528,6 @@
 
 		function load_race() {
 			race_loaded = true;
-			precalc_laps = {};
 
 			var heat = parseInt($('#selected_heat').val());
 			var round = parseInt($('#selected_round').val());
@@ -404,7 +535,7 @@
 
 			// load current race data
 			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
-			current_race_data.pilotrace_index = pilot;
+			current_race_data.pilotrace_id = current_race_data.pilotrace_id;
 			// fill current data with race meta
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;
@@ -419,433 +550,38 @@
 			});
 		}
 
-		function disableUI(lapsOnly=false) {
-			if (!lapsOnly) {
-				$('#enterat').prop('disabled', true);
-				$('#exitat').prop('disabled', true);
-				$('#recalc').prop('disabled', true);
-				$('#load-transitions').prop('disabled', true);
-				$('#save-transitions').prop('disabled', true);
-
-				$('#race-title').html(__('Select Race'));
-				context.clearRect(0, 0, graph_canvas.width, graph_canvas.height);
-				$('#enterat').val('');
-				$('#exitat').val('');
-			}
-			$('#manual-lap-time').prop('disabled', true);
-			$('#add-lap').prop('disabled', true);
-			$('#clean-laps').prop('disabled', true);
-			$('#reassign-heat').prop('disabled', true);
-			$('#save-laps').prop('disabled', true);
-		}
-
-		function enableUI() {
-			$('#enterat').prop('disabled', false);
-			$('#exitat').prop('disabled', false);
-			$('#recalc').prop('disabled', false);
-			$('#load-transitions').prop('disabled', false);
-			$('#save-transitions').prop('disabled', false);
-			$('#manual-lap-time').prop('disabled', false);
-			$('#add-lap').prop('disabled', false);
-			$('#clean-laps').prop('disabled', false);
-			$('#save-laps').prop('disabled', false);
-			$('#reassign-heat').prop('disabled', false);
-			$('#discard-laps').prop('disabled', false);
-		}
-
-		function renderGraph() {
-			var graphWidth = graph_canvas.offsetWidth;
-
-			var startTime = current_race_data.start_time;
-			var endTime = current_race_data.end_time;
-			var duration = endTime - startTime;
-			var span = duration / graphWidth;
-
-			graph.options.millisPerPixel = span;
-			graph.options.horizontalLines = [
-				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: parseInt($('#enterat').val())}, // red
-				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: parseInt($('#exitat').val())}, // orange
-			];
-
-			graph.render(graph_canvas, endTime);
-		}
-
-		function clearCrossings() {
-			lap_marker_series.clear();
-			lap_marker_series.append(current_race_data.start_time - 10, graph.options.minValue - 10);
-			deleted_lap_series.clear();
-			deleted_lap_series.append(current_race_data.start_time - 10, graph.options.minValue - 10);
-		}
-
-		function clearMarkedLap(){
-			$('#laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
-			selection_series.clear();
-			selection_series.append(current_race_data.start_time - 10, graph.options.minValue - 10);
-		}
-
-		var resizeTimer;
-		$(window).on('resize', function(){
-			if (race_loaded) {
-				clearTimeout(resizeTimer);
-				resizeTimer = setTimeout(function() {
-					renderGraph();
-				}, 250);
-			}
-		});
-
-		function displayLaps(laps_obj) {
-			clearCrossings();
-			var lapList = $('#laps tbody');
-			lapList.empty();
-
-			var lap_index = 0;
-			for (var lap_i in laps_obj) {
-				var lap = laps_obj[lap_i];
-				var lapData = $('<tr>');
-				$(lapData).data("lapTimeStamp", lap.lap_time_stamp);
-
-				if (lap.deleted) {
-					lapData.addClass('lap-deleted');
-				} else if (lap_index && lap.lap_time < min_lap) {
-					lapData.addClass('min-lap-warning');
-				}
-
-				if (!lap.deleted) {
-					lap_marker_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);
-					lap_marker_series.append(lap.crossingStart, graph.options.maxValue + 10);
-					lap_marker_series.append(lap.crossingEnd, graph.options.maxValue + 10);
-					lap_marker_series.append(lap.crossingEnd + 0.001, graph.options.minValue - 10);
-
-					lapData.append('<td>' + lap_index + '</td>');
-					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td>');
-					lap_index++;
-				} else {
-					deleted_lap_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);
-					deleted_lap_series.append(lap.crossingStart, graph.options.maxValue + 10);
-					deleted_lap_series.append(lap.crossingEnd, graph.options.maxValue + 10);
-					deleted_lap_series.append(lap.crossingEnd + 0.001, graph.options.minValue - 10);
-
-					lapData.append('<td>-</td>');
-					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-					lapData.append('<td>' + __('Deleted') + '</td>');
-				}
-
-				switch (lap.source) {
-					case 0:
-						lapData.append('<td>'+ __('Realtime') + '</td>');
-						break;
-					case 1:
-						lapData.append('<td>'+ __('Manual') + '</td>');
-						break;
-					case 2:
-						lapData.append('<td>'+ __('Recalc') + '</td>');
-						break;
-					case 3:
-						lapData.append('<td>'+ __('Automatic') + '</td>');
-						break;
-					case 4:
-						lapData.append('<td>'+ __('API (plugin)') + '</td>');
-						break;
-				}
-
-				if (lap.deleted) {
-					lapData.append('<td><button class="restore_lap" data-lapid="' + lap_i + '">+</button></td>');
-				} else {
-					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
-				}
-
-				if (!current_race_data.race_format.unlimited_time && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
-					lapData.addClass('after-time-expired');
-				}
-
-				lapList.append(lapData);
-			}
-
-			// When a user clicks on a lap, toggle that lap's highlight pointer in the graph.
-			$('#laps td:not(:last-child)').click( function(){
-				var thisrow = $(this).parent()
-				if(race_loaded && !thisrow.hasClass("lap-highlighted")){
-					// Remove highlighting from other rows
-					clearMarkedLap();
-					thisrow.addClass("lap-highlighted");
-					var lap_time_stamp = parseFloat(thisrow.data("lapTimeStamp"));
-					// convert lap time to history time
-					var history_time_stamp = current_race_data.start_time + lap_time_stamp / 1000;
-					selection_series.clear();
-					// highlight the currently clicked lap
-
-					selection_series.append(current_race_data.start_time, graph.options.minValue - 10);
-					selection_series.append(history_time_stamp - .001, graph.options.minValue - 10);
-					selection_series.append(history_time_stamp, graph.options.maxValue + 10);
-					selection_series.append(history_time_stamp + .001, graph.options.maxValue + 10);
-					selection_series.append(history_time_stamp + .002, graph.options.minValue - 10);
-					renderGraph();
-				} else {
-					clearMarkedLap();
-					renderGraph();
-				}
-			});
-		}
-
-		function recalc_race() {
-			precalc_laps = precalc_rx_data();
-			if (race_loaded) {
-				var laps = recalc_rx_data();
-				for (var lap_i in current_race_data.laps) {
-					var lap = current_race_data.laps[lap_i];
-					if (lap.source == 1 || lap.source == 4) { // LapSource.MANUAL = 1, LapSource.API = 4
-						laps.push(lap);
-					}
-				}
-				calc_lap_times(laps);
-				current_race_data.laps = laps;
-				displayLaps(laps);
-				renderGraph();
-				$('#laps').removeClass('invalid');
-				enableUI();
-			} else {
-				push_message(__('No race loaded'));
-			}
-		}
-
 		$('#enterat').on('input', function (event) {
-			if (Math.abs($('#enterat').val() - current_race_data.enter_at) == 1) {
-				validate_enter();  // handle long press of 'up' button on input widget
+			if (Math.abs($('#enterat').val() - marshal.race.enter_at) == 1) {
+				marshal.setEnter($(this).val());  // handle long press of 'up' button on input widget
 			}
 		});
 
 		$('#enterat').change(function(){
-			validate_enter();
+			marshal.setEnter($(this).val());
 		});
 
-		function validate_enter() {
-			var rssi = $('#enterat').val();
-			var chk_val = Math.min(rssi, graph.options.maxValue);
-			chk_val = Math.max(chk_val, graph.options.minValue);
-			if (chk_val != rssi) {
-				if (chk_val < current_race_data.exit_at)  {
-					chk_val = current_race_data.exit_at;
-				}
-				rssi = chk_val;
-				$('#enterat').val(rssi);
-			}
-			if (rssi < current_race_data.exit_at)  {
-				current_race_data.exit_at = rssi;
-				$('#exitat').val(rssi);
-			}
-
-			clearMarkedLap();
-			lap_marker_series.clear();
-			deleted_lap_series.clear();
-			precalc_laps = precalc_rx_data();
-			renderGraph();
-
-			recalc_race();
-		}
-
 		$('#exitat').on('input', function (event) {
-			if (Math.abs($('#exitat').val() - current_race_data.exit_at) == 1) {
-				validate_exit();  // handle long press of 'down' button on input widget
+			if (Math.abs($('#exitat').val() - marshal.race.exit_at) == 1) {
+				marshal.setExit($(this).val());  // handle long press of 'down' button on input widget
 			}
 		});
 
 		$('#exitat').change(function(){
-			validate_exit()
+			marshal.setExit($(this).val());
 		});
 
-		function validate_exit() {
-			var rssi = $('#exitat').val();
-			var chk_val = Math.min(rssi, graph.options.maxValue);
-			chk_val = Math.max(chk_val, graph.options.minValue);
-			if (chk_val != rssi) {
-				if (chk_val > current_race_data.enter_at)  {
-					chk_val = current_race_data.enter_at;
-				}
-				rssi = chk_val;
-				$('#exitat').val(rssi);
-			}
-			if (rssi > current_race_data.enter_at)  {
-				current_race_data.enter_at = rssi
-				$('#enterat').val(rssi);
-			}
-
-			clearMarkedLap();
-			lap_marker_series.clear();
-			deleted_lap_series.clear();
-			precalc_laps = precalc_rx_data();
-			renderGraph();
-
-			recalc_race();
-		}
-
-		function recalc_rx_data() {
-			return precalc_laps;
-		}
-
-		function precalc_rx_data() {
-			// calc laps
-			var enterat = parseInt($('#enterat').val());
-			var exitat = parseInt($('#exitat').val());
-
-			current_race_data.enter_at = enterat;
-			current_race_data.exit_at = exitat;
-
-			var crossing = false;
-			var crossingStart = 0;
-			var crossingEnd = 0;
-			var peakRssi = 0;
-			var peakFirst = 0;
-			var peakLast = 0;
-			var laps = [];
-			var startThreshLowerFlag = false;
-
-			// set lower EnterAt/ExitAt values at race start if configured
-			if (start_thresh_lower_amount > 0 && start_thresh_lower_duration > 0) {
-				var diffVal = (enterat - exitat) * start_thresh_lower_amount / 100;
-				if (diffVal > 0) {
-					enterat = enterat - diffVal;
-					exitat = exitat - diffVal;
-					startThreshLowerFlag = true;
-				}
-			}
-
-			var last_lap_time_stamp = -Infinity;
-			for(var idx in current_race_data.history_values) {
-				var rssi = current_race_data.history_values[idx];
-				var time = current_race_data.history_times[idx];
-
-				if (startThreshLowerFlag) {
-					// if initial pass recorded or past duration then restore EnterAt/ExitAt values
-					if (laps.length > 0 || time >= current_race_data.start_time + start_thresh_lower_duration + current_race_data.race_format.start_delay_max) {
-						enterat = current_race_data.enter_at;
-						exitat = current_race_data.exit_at;
-						startThreshLowerFlag = false;
-					}
-				}
-
-				if (!crossing && (rssi > enterat)) {
-					crossing = true;
-					crossingStart = time;
-				}
-
-				if (rssi >= peakRssi) {
-					peakLast = time;
-
-					if (rssi > peakRssi) {
-						peakFirst = time;
-						peakRssi = rssi;
-					}
-				}
-
-				if (crossing) {
-					if (rssi < exitat) {
-						var lap_time_stamp = (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000; // zero stamp within race
-
-						if (lap_time_stamp > 0) { // reject passes before race start
-							var crossingEnd = time;
-							var lapdata = {
-								crossingStart: crossingStart,
-								crossingEnd: crossingEnd,
-								lap_time_stamp: lap_time_stamp, // zero stamp within race
-								source: 2, // recalc
-								deleted: false
-							};
-							if (min_lap_behavior && lap_time_stamp < last_lap_time_stamp + min_lap) {
-								lapdata.deleted = true;
-							}
-							laps.push(lapdata);
-						}
-						crossing = false;
-						peakRssi = 0;
-						last_lap_time_stamp = lap_time_stamp;
-					}
-				}
-			}
-
-			if (crossing) { // check for crossing at data end
-					var lap_time_stamp = (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000; // zero stamp within race
-
-					var crossingEnd = time;
-					laps.push({
-						crossingStart: crossingStart,
-						crossingEnd: crossingEnd,
-						lap_time_stamp: lap_time_stamp, // zero stamp within race
-						source: 2, // recalc
-						deleted: false
-					});
-			}
-
-			// auto-delete late laps
-			var finished = false;
-			for (var lap_i in laps) {
-				var lap = laps[lap_i];
-				if (finished) {
-					lap.deleted = true;
-				} else if (!current_race_data.race_format.unlimited_time && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
-					finished = true;
-				}
-			}
-
-			// redraw crossings
-			clearCrossings();
-			for (var lap_i in laps) {
-				var lap = laps[lap_i];
-
-				lap_marker_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);
-				lap_marker_series.append(lap.crossingStart, graph.options.maxValue + 10);
-				lap_marker_series.append(lap.crossingEnd, graph.options.maxValue + 10);
-				lap_marker_series.append(lap.crossingEnd + 0.001, graph.options.minValue - 10);
-			}
-
-			// invalidate current laps
-			$('#laps').addClass('invalid');
-			disableUI(true);
-
-			return laps;
-		}
-
-		function calc_lap_times(laps_obj){
-			laps_obj.sort(function(a, b){
-				return a.lap_time_stamp-b.lap_time_stamp
-			})
-
-			var lap_index = 0;
-			for (lap_i in laps_obj) {
-				var lap = laps_obj[lap_i];
-				if (!lap.deleted) {
-					if (lap_index) {
-						lap.lap_time = lap.lap_time_stamp - lastLap.lap_time_stamp;
-					} else {
-						lap.lap_time = lap.lap_time_stamp;
-					}
-					lap.lap_time_formatted = lap.lap_time / 1000; // ***
-					lap_index++;
-					var lastLap = lap;
-				} else {
-					lap.lap_time = 0;
-					lap.lap_time_formatted = '-';
-				}
-			}
-		}
+		$('#manual-lap-time').on('input', function (event) {
+			lap_time_s = $('#manual-lap-time').val()
+			marshal.clearMarkedLap();
+			marshal.markLap(lap_time_s * 1000);
+			marshal.renderGraph();
+		});
 
 		$('#add-lap').click(function(){
 			lap_time_s = $('#manual-lap-time').val();
 
 			if (lap_time_s.length > 0) {
-				if (race_loaded) {
-					current_race_data.laps.push({
-						crossingStart: 0,
-						crossingEnd: 0,
-						lap_time_stamp: parseInt(lap_time_s * 1000),
-						source: 1,
-						deleted: false
-					});
-					calc_lap_times(current_race_data.laps)
-					clearMarkedLap();
-					displayLaps(current_race_data.laps);
-					renderGraph();
-				} else {
+				if (!marshal.addManualLap(lap_time_s)) {
 					push_message(__('No race loaded'));
 				}
 			} else {
@@ -854,40 +590,17 @@
 		});
 
 		$('#clean-laps').click(function(){
-			if (race_loaded) {
-				var laps = [];
-
-				for (var lap_i in current_race_data.laps) {
-					var lap = current_race_data.laps[lap_i];
-					if (!lap.deleted) {
-						laps.push(lap);
-					}
-				}
-
-				current_race_data.laps = laps;
-				clearMarkedLap();
-				displayLaps(laps);
-				renderGraph();
-			} else {
+			if (!marshal.cleanDeletedLaps()) {
 				push_message(__('No race loaded'));
 			}
 		});
 
 		$(document).on('click', '.delete_lap', function(){
-			var lap = $(this).data('lapid');
-			current_race_data.laps[lap].deleted = true;
-			clearMarkedLap();
-			calc_lap_times(current_race_data.laps);
-			displayLaps(current_race_data.laps);
-			renderGraph();
+			marshal.markLapDeleted($(this).data('lapid'));
 		});
 
 		$(document).on('click', '.restore_lap', function(){
-			var lap = $(this).data('lapid');
-			current_race_data.laps[lap].deleted = false;
-			calc_lap_times(current_race_data.laps)
-			displayLaps(current_race_data.laps);
-			renderGraph();
+			marshal.restoreDeletedLap($(this).data('lapid'));
 		});
 
 		$('#reassign-heat').click(function(){
@@ -905,24 +618,9 @@
 		});
 
 		$('#save-laps').click(function(){
-			if (race_loaded) {
-				var data = {
-					heat_id: current_race_data.heat_id,
-					round_id: current_race_data.round_id,
-					callsign: current_race_data.callsign,
-					race_id: current_race_data.race_id,
-					pilotrace_id: current_race_data.pilotrace_id,
-					node: current_race_data.node_index,
-					pilot_id: current_race_data.pilot_id,
-					laps: current_race_data.laps,
-					enter_at: current_race_data.enter_at,
-					exit_at: current_race_data.exit_at,
-				}
+			data = marshal.getRaceData();
+			if (data) {
 				socket.emit('resave_laps', data);
-				var this_pilotrace = race_list.heats[current_race_data.heat_id].rounds[current_race_data.round_id].pilotraces[current_race_data.pilotrace_index];
-				this_pilotrace.enter_at = current_race_data.enter_at;
-				this_pilotrace.exit_at = current_race_data.exit_at;
-				this_pilotrace.laps = current_race_data.laps;
 			} else {
 				push_message(__('No race loaded'));
 			}
@@ -937,7 +635,7 @@
 				var node = current_race_data.node_index;
 				$('#enterat').val(rotorhazard.nodes[node].enter_at_level);
 				$('#exitat').val(rotorhazard.nodes[node].exit_at_level);
-				recalc_race();
+				marshal.recalcRace();
 			} else {
 				push_message(__('No race loaded'));
 			}
@@ -963,180 +661,7 @@
 			}
 		});
 
-		var canDrag = false;
-		var isDragging = false;
-		var startingEnter = false;
-		var startingExit = false;
-		var startingX = false;
-		var startingY = false;
-		var adjustEnter = true;
-		var isTouchEvent = false;
-
-		function mapRange(val, start, end){
-			return val * (end - start) / 1 + start;
-		}
-
-		function handleGraphInteractionStart(evt) {
-			if (evt.targetTouches) {
-				var x = (evt.targetTouches[0].pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
-				var y = (evt.targetTouches[0].pageY - evt.target.offsetTop) / evt.target.offsetHeight;
-			} else {
-				var x = (evt.pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
-				var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
-			}
-
-			var rssi = parseInt(mapRange(y, graph.options.maxValue, graph.options.minValue));
-
-			startingEnter = current_race_data.enter_at;
-			startingExit = current_race_data.exit_at;
-			startingX = x;
-			startingY = y;
-
-			var midPoint = (startingEnter + startingExit) >> 1;
-			adjustEnter = (rssi >= midPoint);
-		}
-
-		function handleGraphInteractionMove(evt) {
-			// user drags on graph
-			if (evt.targetTouches) {
-				var y = (evt.targetTouches[0].pageY - evt.target.offsetTop) / evt.target.offsetHeight;
-			} else {
-				var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
-			}
-
-			if (Math.abs(y - startingY) > 0.01 || isDragging) { // prevent accidental drag
-				isDragging = true;
-
-				var rssi = parseInt(mapRange(y, graph.options.maxValue, graph.options.minValue));
-
-				if (adjustEnter) {
-					$('#enterat').val(rssi);
-					validate_enter();
-				} else {
-					$('#exitat').val(rssi);
-					validate_exit();
-				}
-			}
-		}
-
-		function handleGraphInteractionTap(evt) {
-			// user taps but does not drag
-			var time = mapRange(startingX, current_race_data.start_time, current_race_data.end_time);
-
-			if (!$.isEmptyObject(precalc_laps)) {
-				// find closest start/end time to "time" point
-				var delta = Infinity;
-				var selectedLap = null;
-				for (var i in precalc_laps) {
-					var lap = precalc_laps[i];
-
-					if (time > lap.crossingEnd) {
-						selectedLap = i;
-						delta = Math.abs(time - lap.crossingEnd);
-					} else if (time >= lap.crossingStart
-						&& time <= lap.crossingEnd) {
-						selectedLap = i;
-						break;
-					} else {
-						diff = Math.abs(time - lap.crossingStart);
-						if (diff < delta) {
-							selectedLap = i;
-						}
-						break;
-					}
-				}
-
-				$('#laps tr').each(function(){
-					if ($(this).data('lapTimeStamp') == precalc_laps[selectedLap].lap_time_stamp) {
-						$(this).children().eq(0).trigger('click');
-					}
-				});
-			} else {
-				recalc_race();
-			}
-		}
-
-		// mouse handlers
-		$(graph_canvas).on('mousedown', function(evt){
-			if (!isTouchEvent) {
-				canDrag = true;
-				handleGraphInteractionStart(evt);
-			}
-		})
-		$(graph_canvas).on('mousemove', function(evt){
-			if (!isTouchEvent) {
-				if (canDrag) {
-					handleGraphInteractionMove(evt);
-					recalc_race();
-				}
-			}
-		})
-		$(graph_canvas).on('mouseup', function(evt){
-			if (!isTouchEvent) {
-				if (isDragging) {
-					recalc_race();
-				} else {
-					handleGraphInteractionTap(evt);
-				}
-				canDrag = false;
-				isDragging = false;
-			}
-			isTouchEvent = false;
-		})
-		$(graph_canvas).on('mouseout', function(evt){
-			if (!isTouchEvent) {
-				if (isDragging) {
-					$('#enterat').val(startingEnter);
-					$('#enterat').trigger('change');
-					$('#exitat').val(startingExit);
-					$('#exitat').trigger('change');
-					recalc_race();
-				}
-			}
-			isTouchEvent = false;
-		});
-		$(document).on('mouseup', function(){
-			if (!isTouchEvent) {
-				canDrag = false;
-				isDragging = false;
-			}
-			isTouchEvent = false;
-		});
-
-		// touch handlers
-		$(graph_canvas).on('touchstart', function(evt) {
-			evt.preventDefault();
-			if (evt.targetTouches.length == 1) { // pause if multi-touch detected
-				handleGraphInteractionStart(evt);
-			}
-			isTouchEvent = true;
-		})
-		$(graph_canvas).on('touchmove', function(evt) {
-			evt.preventDefault();
-			if (evt.targetTouches.length == 1) { // pause if multi-touch detected
-				handleGraphInteractionMove(evt);
-			}
-		})
-		$(graph_canvas).on('touchend', function(evt){
-			evt.preventDefault();
-			if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
-				if (isDragging) {
-					recalc_race();
-				} else {
-					handleGraphInteractionTap(evt);
-				}
-			}
-		})
-		$(graph_canvas).on('touchCancel', function(evt) {
-			evt.preventDefault();
-			$('#enterat').val(startingEnter);
-			$('#enterat').trigger('change');
-			$('#exitat').val(startingExit);
-			$('#exitat').trigger('change');
-			recalc_race();
-			isTouchEvent = true;
-		});
-
+		// lap list hotkey
 		$(document).on('keyup', function(e) {
 			// keyboard shortcuts
 			switch (e.key) {

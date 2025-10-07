@@ -1,11 +1,11 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.3.0-beta.3" # Public release version code
+RELEASE_VERSION = "4.4.0-dev.1" # Public release version code
 SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
-MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.9)
-MIN_PYTHON_MINOR_VERSION = 9
+MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.10)
+MIN_PYTHON_MINOR_VERSION = 10
 
 # command-line arguments:
 CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
@@ -16,6 +16,7 @@ CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill process
 CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
 CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
 CMDARG_DATA_DIR = '--data'               # use given dir as data location
+CMDARG_MIN_MOCKS = '--mock-nodes'        # add at least this many mock nodes
 
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
@@ -177,6 +178,7 @@ from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
+from interface_mapper import InterfaceMapper, InterfaceType
 
 # Events manager
 from eventmanager import Evt, EventManager
@@ -685,16 +687,18 @@ def render_vrxstatus():
 @APP.route('/docs')
 def render_viewDocs():
     '''Route to doc viewer.'''
-    folderBase = '../../doc/'
+    docBase = Path(PROGRAM_DIR).parent.parent.joinpath('doc')
     try:
         docfile = request.args.get('d')
-        docPath = werkzeug.security.safe_join(folderBase, docfile)
+        docPath = werkzeug.security.safe_join(docBase, docfile)
+        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+        if language:
+            translated_base = werkzeug.security.safe_join(docBase, language)
+            translated_path = werkzeug.security.safe_join(translated_base, docfile)
+            if os.path.isfile(translated_path):
+                docPath = translated_path
+
         if docPath:
-            language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-            if language:
-                translated_path = werkzeug.security.safe_join(folderBase + language + '/', docfile)
-                if os.path.isfile(translated_path):
-                    docPath = translated_path
             with io.open(docPath, 'r', encoding="utf-8") as f:
                 doc = f.read()
             return render_template('viewdocs.html', doc=doc)
@@ -702,20 +706,22 @@ def render_viewDocs():
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
 
-@APP.route('/img/<path:imgfile>')
-def render_viewImg(imgfile):
+@APP.route('/img/<path:img_filename>')
+def render_viewImg(img_filename):
     '''Route to img called within doc viewer.'''
-    folderBase = '../../doc/'
-    folderImg = 'img/'
-    imgPath = werkzeug.security.safe_join(folderImg, imgfile)
-    if imgPath:
-        language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
-        if language:
-            translated_path = werkzeug.security.safe_join(language + '/' + folderImg, imgfile)
-            if os.path.isfile(folderBase + translated_path):
-                imgPath = translated_path
-        if os.path.isfile(folderBase + imgPath):
-            return send_from_directory(folderBase, imgPath)
+    doc_base = Path(PROGRAM_DIR).parent.parent.joinpath('doc')
+    img_folder_name = 'img'
+    img_folder_path = werkzeug.security.safe_join(doc_base, img_folder_name)
+    language = RaceContext.serverconfig.get_item('UI', 'currentLanguage')
+    if language:
+        translated_base = werkzeug.security.safe_join(doc_base, language)
+        translated_img_folder_path = werkzeug.security.safe_join(translated_base, img_folder_name)
+        translated_img_path = werkzeug.security.safe_join(translated_img_folder_path, img_filename)
+        if os.path.isfile(translated_img_path):
+            img_folder_path = translated_img_path
+    img_path = werkzeug.security.safe_join(img_folder_path, img_filename)
+    if os.path.isfile(img_path):
+        return send_from_directory(img_folder_path, img_filename)
     abort(404)
 
 # Redirect routes (Previous versions/Delta 5)
@@ -1036,7 +1042,7 @@ def on_set_frequency(data):
         })
     RaceContext.race.profile = profile
 
-    RaceContext.interface.set_frequency(node_index, frequency)
+    RaceContext.interface.set_frequency(node_index, frequency, band, channel)
 
     RaceContext.race.clear_results()
 
@@ -1124,7 +1130,7 @@ def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     logger.debug("Sending frequency values to nodes: " + str(freqs["f"]))
     for idx in range(RaceContext.race.num_nodes):
-        RaceContext.interface.set_frequency(idx, freqs["f"][idx])
+        RaceContext.interface.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
 
         RaceContext.race.clear_results()
 
@@ -1141,7 +1147,9 @@ def restore_node_frequency(node_index):
     gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
     profile_freqs = json.loads(RaceContext.race.profile.frequencies)
     freq = profile_freqs["f"][node_index]
-    RaceContext.interface.set_frequency(node_index, freq)
+    band = profile_freqs["b"][node_index]
+    channel = profile_freqs["c"][node_index]
+    RaceContext.interface.set_frequency(node_index, freq, band, channel)
     logger.info('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
 
 @SOCKET_IO.on('set_enter_at_level')
@@ -1237,7 +1245,7 @@ def on_add_heat(data=None):
         init = {
             'class_id': data['class']
         }
-        if 'group' in data:
+        if 'group' in data and data['group']:
             init['group_id'] = data['group']
         RaceContext.rhdata.add_heat(init=init)
     else:
@@ -2368,6 +2376,10 @@ def on_stage_race(*args):
 def on_stop_race(*args):
     RaceContext.race.stop(*args)
 
+@SOCKET_IO.on('current_race_marshal')
+def on_current_race_marshal(*args):
+    RaceContext.rhui.emit_race_marshal_data(nobroadcast=True)
+
 @SOCKET_IO.on('save_laps')
 def on_save_race(*args):
     RaceContext.race.save(*args)
@@ -2381,7 +2393,7 @@ def on_resave_laps(data):
 
     race_id = data['race_id']
     pilotrace_id = data['pilotrace_id']
-    node = data['node']
+    seat = data['seat']
     pilot_id = data['pilot_id']
     laps = data['laps']
     enter_at = data['enter_at']
@@ -2404,7 +2416,7 @@ def on_resave_laps(data):
     new_racedata = {
             'race_id': race_id,
             'pilotrace_id': pilotrace_id,
-            'node_index': node,
+            'node_index': seat,
             'pilot_id': pilot_id,
             'laps': []
         }
@@ -2450,7 +2462,7 @@ def on_resave_laps(data):
                 lap_number += 1
             lap_objs.append(lap_data)
 
-        RaceContext.last_race.node_laps[node] = lap_objs
+        RaceContext.last_race.node_laps[seat] = lap_objs
 
         RaceContext.rhui.emit_current_leaderboard()
         RaceContext.rhui.emit_current_laps()
@@ -2468,6 +2480,18 @@ def on_resave_laps(data):
         'race_id': race_id,
         'pilot_id': pilot_id,
         })
+
+@SOCKET_IO.on('replace_current_laps')
+def replace_current_laps(data):
+    on_set_enter_at_level({
+        'node': data['seat'],
+        'enter_at_level': data['enter_at']
+    })
+    on_set_exit_at_level({
+        'node': data['seat'],
+        'exit_at_level': data['exit_at']
+    })
+    RaceContext.race.replace_laps(data)
 
 @catchLogExcWithDBWrapper
 def build_atomic_result_caches(params):
@@ -2595,6 +2619,14 @@ def on_set_config_section(data):
         'section': data['section'],
         'value': data['value'],
         })
+
+@SOCKET_IO.on('set_ui_binding_value')
+@catchLogExcWithDBWrapper
+def on_set_ui_binding_value(data):
+    for var in RaceContext.rhui.ui_fn_bindings:
+        if data['name'] == var.name:
+            var.setter_fn(data['value'], var.args)
+            break
 
 @SOCKET_IO.on('set_consecutives_count')
 @catchLogExcWithDBWrapper
@@ -2899,7 +2931,8 @@ def heartbeat_thread_function():
 
             if RaceContext.serverstate.enable_heartbeat_event:
                 Events.trigger(Evt.HEARTBEAT, {
-                    'count': heartbeat_thread_function.iter_tracker
+                    'count': heartbeat_thread_function.iter_tracker,
+                    'node_data': node_data
                 })
 
             # update displayed IMD rating after freqs changed:
@@ -3030,8 +3063,8 @@ def ms_from_program_start():
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-def pass_record_callback(node, lap_timestamp_absolute, source):
-    RaceContext.race.pass_invoke_func_queue_obj.put(RaceContext.race.add_lap, node, lap_timestamp_absolute, source)
+def pass_record_callback(node, lap_timestamp_absolute, source, **kwargs):
+    RaceContext.race.pass_invoke_func_queue_obj.put(RaceContext.race.add_lap, node, lap_timestamp_absolute, source, **kwargs)
 
 @catchLogExcWithDBWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
@@ -3099,7 +3132,7 @@ def assign_frequencies():
     freqs = json.loads(profile.frequencies)
 
     for idx in range(RaceContext.race.num_nodes):
-        RaceContext.interface.set_frequency(idx, freqs["f"][idx])
+        RaceContext.interface.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
         RaceContext.race.clear_results()
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
@@ -3296,8 +3329,8 @@ def _do_init_rh_interface():
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
-            RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, \
-                                            isS32BPillFlag=RHUtils.is_S32_BPill_board(), **HardwareHelpers)
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(RaceContext, config=RaceContext.serverconfig, \
+                                            isS32BPillFlag=RHUtils.is_S32_BPill_board(), **HardwareHelpers), InterfaceType.RH)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
             if RaceContext.interface and ((not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0) and \
@@ -3316,58 +3349,55 @@ def _do_init_rh_interface():
                         subclass='no-library'
                         )
                 RaceContext.race.num_nodes = 0
-                RaceContext.interface.pass_record_callback = pass_record_callback
-                RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-                RaceContext.interface.node_crossing_callback = node_crossing_callback
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
-        if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
-            if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'):
-                ports_str = str(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'))
-                if len(ports_str) > 0:
-                    try:
-                        importlib.import_module('serial')
-                        if RaceContext.interface:
-                            if not (getattr(RaceContext.interface, "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
-                                logger.info("Unable to initialize serial node(s): {0}".format(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
-                                logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
-                                # enter serial port name so it's available for node firmware update
-                                if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
-                                    RaceContext.interface.set_mock_fwupd_serial_obj(RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
-                                    set_ui_message('stm32', \
-                                                   __("Server is unable to communicate with node processor") + ". " + \
-                                                   __("If an S32_BPill board is connected, you may attempt to") + \
-                                                   " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                                   __("its processor."), \
-                                                   header='Warning', subclass='no-comms')
-                        else:
-                            logger.warning("Unable to initialize configured serial node(s): {0}".format(ports_str))
-                            set_ui_message('serial', \
-                                           __("Unable to initialize configured serial node(s):") + " " + ports_str, \
-                                           header='Warning', subclass='no-conn')
-                    except ImportError:
-                        logger.warn("Unable to import library for serial node(s) - is 'pyserial' installed?")
-                        set_ui_message('serial', \
-                                       __("Unable to import library for serial node(s) - is 'pyserial' installed?"), \
-                                       header='Warning', subclass='import-err')
-            if (not RaceContext.interface) or (not RaceContext.interface.nodes) or len(RaceContext.interface.nodes) <= 0:
-                interfaceModule = importlib.import_module('MockInterface')
-                RaceContext.interface = interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, **HardwareHelpers)
-                for node in RaceContext.interface.nodes:  # put mock nodes at latest API level
-                    node.api_level = NODE_API_BEST
-                set_ui_message(
-                    'mock',
-                    __("Server is using simulated (mock) nodes"),
-                    header='Notice',
-                    subclass='in-use'
-                    )
+
+        if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'):
+            try:
+                importlib.import_module('serial')
+                if RaceContext.interface:
+                    if not (getattr(RaceContext.interface,
+                                    "get_info_node_obj") and RaceContext.interface.get_info_node_obj()):
+                        logger.info("Unable to initialize serial node(s): {0}".format(
+                            RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                        logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
+                        # enter serial port name so it's available for node firmware update
+                        if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
+                            RaceContext.interface.set_mock_fwupd_serial_obj(
+                                RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
+                            set_ui_message('stm32', \
+                                           __("Server is unable to communicate with node processor") + ". " + \
+                                           __("If an S32_BPill board is connected, you may attempt to") + \
+                                           " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                           __("its processor."), \
+                                           header='Warning', subclass='no-comms')
+                else:
+                    logger.info("Unable to initialize specified serial node(s): {0}".format(
+                        RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')))
+                    return False  # unable to open serial port
+            except ImportError:
+                logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                return False
+
+        num_mocks = max(RaceContext.serverconfig.get_item_int('GENERAL', 'MOCK_NODES'), RaceContext.serverstate.mock_nodes, os.environ.get('RH_NODES', 0), 0)
+
+        if num_mocks > 0:
+            interfaceModule = importlib.import_module('MockInterface')
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(RaceContext, config=RaceContext.serverconfig, num_nodes=num_mocks, **HardwareHelpers), InterfaceType.MOCK,
+                {
+                    'api_level': NODE_API_BEST,
+                    'num_nodes': num_mocks
+                })
+            # set_ui_message(
+            #     'mock',
+            #     __("Server is using simulated (mock) nodes"),
+            #     header='Notice',
+            #     subclass='in-use'
+            #     )
+
+
         RaceContext.race.num_nodes = len(RaceContext.interface.nodes)  # save number of nodes found
-        # set callback functions invoked by interface module
-        RaceContext.interface.pass_record_callback = pass_record_callback
-        RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-        RaceContext.interface.node_crossing_callback = node_crossing_callback
-        RaceContext.rhui._interface = RaceContext.interface  #pylint: disable=protected-access
         return True
     except:
         logger.exception("Error initializing RH interface")
@@ -3384,6 +3414,11 @@ def initialize_rh_interface():
             header='Warning',
             subclass='none'
             )
+    RaceContext.interface.pass_record_callback = pass_record_callback
+    RaceContext.interface.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
+    RaceContext.interface.node_crossing_callback = node_crossing_callback
+    RaceContext.interface.add_callbacks()
+    RaceContext.interface.reindex_nodes()
     return True
 
 # Create and save server/node information
@@ -3397,32 +3432,33 @@ def buildServerInfo():
 # Log server/node information
 def reportServerInfo():
     logger.debug("Server info:  " + json.dumps(RaceContext.serverstate.info_dict))
-    if RaceContext.serverstate.node_api_match is False:
-        logger.info('** WARNING: Node API mismatch **')
-        set_ui_message('node-match',
-            __("Node versions do not match and may not function similarly"), header='Warning')
-    if RaceContext.race.num_nodes > 0:
-        if RaceContext.serverstate.node_api_lowest < NODE_API_SUPPORTED:
-            logger.info('** WARNING: Node firmware is out of date and may not function properly **')
-            msgStr = __("Node firmware is out of date and may not function properly")
-            if RaceContext.interface.get_fwupd_serial_name() != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
-            set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
-        elif RaceContext.serverstate.node_api_lowest < NODE_API_BEST:
-            logger.info('** NOTICE: Node firmware update is available **')
-            msgStr = __("Node firmware update is available")
-            if RaceContext.interface.get_fwupd_serial_name() != None:
-                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
-                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                          __("its processor.")
-            set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
-        elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
-            logger.warning('** WARNING: Node firmware is newer than this server version supports **')
-            set_ui_message('node-newer',
-                __("Node firmware is newer than this server version and may not function properly"),
-                header='Warning', subclass='api-high')
+    if not RaceContext.serverstate.has_other_interface:
+        if RaceContext.serverstate.node_api_match is False:
+            logger.info('** WARNING: Node API mismatch **')
+            set_ui_message('node-match',
+                __("Node versions do not match and may not function similarly"), header='Warning')
+        if RaceContext.race.num_nodes > 0:
+            if RaceContext.serverstate.node_api_lowest < NODE_API_SUPPORTED:
+                logger.info('** WARNING: Node firmware is out of date and may not function properly **')
+                msgStr = __("Node firmware is out of date and may not function properly")
+                if RaceContext.interface.get_fwupd_serial_name() != None:
+                    msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
+                              " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                              __("its processor.")
+                set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
+            elif RaceContext.serverstate.node_api_lowest < NODE_API_BEST:
+                logger.info('** NOTICE: Node firmware update is available **')
+                msgStr = __("Node firmware update is available")
+                if RaceContext.interface.get_fwupd_serial_name() != None:
+                    msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
+                              " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                              __("its processor.")
+                set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
+            elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
+                logger.warning('** WARNING: Node firmware is newer than this server version supports **')
+                set_ui_message('node-newer',
+                    __("Node firmware is newer than this server version and may not function properly"),
+                    header='Warning', subclass='api-high')
 
 def check_req_entry(req_line, entry):
     try:
@@ -3541,7 +3577,12 @@ def load_plugin(plugin):
         plugin.load_issue = "no initialize function"
         return False
 
-    plugin.module.initialize(RHAPI)
+    try:
+        plugin.module.initialize(RHAPI)
+    except Exception as ex3:
+        plugin.load_issue = "error during plugin initialization"
+        plugin.load_issue_detail = ex3
+        return False
     return True
 
 @catchLogExceptionsWrapper
@@ -3648,6 +3689,9 @@ def rh_program_initialize(reg_endpoints_flag=True):
         # RotorHazard events dispatch
         Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
+        # Create interface mapping
+        RaceContext.interface = InterfaceMapper()
+
         # Plugin handling
         plugin_modules = []
         if os.path.isdir(PROGRAM_DIR + '/bundled_plugins'):
@@ -3666,7 +3710,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         for plugin in plugin_modules:
             if load_plugin(plugin):
-                logger.info("Loaded plugin '{}'".format(plugin.name))
+                logger.info("Loaded {} plugin '{}'".format("bundled" if plugin.is_bundled else "external", plugin.name))
                 plugin.loaded = True
             else:
                 if plugin.load_issue_detail:
@@ -3701,7 +3745,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 if not plugin.is_bundled:
                     any_remote_flag = True
                     break
-            if any_remote_flag:
+            if any_remote_flag and RaceContext.serverconfig.get_item('PLUGINS', 'UPDATE_BEHAVIOR') == 'check':
                 logger.info("Querying plugins server for updates")
                 RaceContext.plugin_manager.load_remote_plugin_data()
                 remote_loaded = True
@@ -3778,6 +3822,10 @@ def rh_program_initialize(reg_endpoints_flag=True):
             except Exception as ex:
                 logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
+        if len(sys.argv) > 0 and CMDARG_MIN_MOCKS in sys.argv:
+            min_mocks_arg_idx = sys.argv.index(CMDARG_MIN_MOCKS) + 1
+            RaceContext.serverstate.mock_nodes = int(sys.argv[min_mocks_arg_idx])
+
         initRhResultFlag = initialize_rh_interface()
         if not initRhResultFlag:
             log.wait_for_queue_empty()
@@ -3812,8 +3860,13 @@ def rh_program_initialize(reg_endpoints_flag=True):
         RaceContext.cluster = ClusterNodeSet(RaceContext.language, Events)
         hasMirrors = False
         secondary = None
+
+        # process mirrors last
+        all_secondaries = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')
+        all_secondaries.sort(key=lambda x: (x['mode'] == 'mirror'))
+
         try:
-            for sec_idx, secondary_info in enumerate(RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')):
+            for sec_idx, secondary_info in enumerate(all_secondaries):
                 if isinstance(secondary_info, str):
                     secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
                 if 'address' not in secondary_info:

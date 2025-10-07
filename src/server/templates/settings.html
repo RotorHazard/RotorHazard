@@ -43,6 +43,8 @@
 
 	$(document).ready(function () {
 		socket.on('language', function (msg) {
+			rotorhazard.interface_language = msg.language;
+
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
 			for (var i = 0; i < msg.languages.length; i++) {
@@ -57,12 +59,7 @@
 			}
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
 
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_language').selectedIndex = 0;
-			}
+			$('#set_language').val(msg.language);
 		});
 
 		var heartbeatCounter = 0;
@@ -208,9 +205,22 @@
 						}
 
 						var field = rhui.buildField(settings);
-
 						form_el.append(field);
 					}
+
+					for (var f_idx in panel.fn_binds) {
+						var settings = { ...panel.fn_binds[f_idx] };
+
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_binding_value';
+						settings.data = {
+							field: settings.name,
+						}
+
+						var field = rhui.buildField(settings);
+						form_el.append(field);
+					}
+
 					panel_content_el.append(form_el);
 					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
 
@@ -257,49 +267,63 @@
 			}
 		});
 
+		$(document).on('change', '.set_ui_binding_value', function (event) {
+			var field = $(this).data('field');
+			var section = $(this).data('section');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				name: field,
+				value: value
+			};
+			socket.emit('set_ui_binding_value', data);
+		});
+
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-				for (var i = 0; i < msg.current_rssi.length; i++) {
-					var rssiValue = msg.current_rssi[i];
+				if (msg.current_rssi) {
+					for (var i = 0; i < msg.current_rssi.length; i++) {
+						var rssiValue = msg.current_rssi[i];
 
-					if (rotorhazard.nodes[i].fObj.frequency == 0) {
-						rssiValue = 0;
-					}
+						if (rotorhazard.nodes[i].fObj.frequency == 0) {
+							rssiValue = 0;
+						}
 
-					$('.current_rssi_' + i).html(rssiValue);
+						$('.current_rssi_' + i).html(rssiValue);
 
-					if (msg.crossing_flag[i]) {
-						$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
-					}
-					else {
-						$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
-					}
-
-					rotorhazard.nodes[i].graph.options.maxValue = Math.max(
-						rssiValue,
-						rotorhazard.nodes[i].node_peak_rssi + 1,
-						rotorhazard.nodes[i].enter_at_level + 10,
-					);
-
-					rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
-						rssiValue,
-						rotorhazard.nodes[i].node_nadir_rssi - 1,
-						rotorhazard.nodes[i].exit_at_level - 10,
-					));
-
-					if (!rotorhazard.nodes[i].graphing && rssiValue) {
-						rotorhazard.nodes[i].graphing = true;
-						rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
-						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
-					}
-
-					if (rotorhazard.nodes[i].graphing) {
-						rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 						if (msg.crossing_flag[i]) {
-							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
-						} else{
-							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
+							$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+						}
+						else {
+							$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+						}
+
+						rotorhazard.nodes[i].graph.options.maxValue = Math.max(
+							rssiValue,
+							rotorhazard.nodes[i].node_peak_rssi + 1,
+							rotorhazard.nodes[i].enter_at_level + 10,
+						);
+
+						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
+							rssiValue,
+							rotorhazard.nodes[i].node_nadir_rssi - 1,
+							rotorhazard.nodes[i].exit_at_level - 10,
+						));
+
+						if (!rotorhazard.nodes[i].graphing && rssiValue) {
+							rotorhazard.nodes[i].graphing = true;
+							rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
+							rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+						}
+
+						if (rotorhazard.nodes[i].graphing) {
+							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+							if (msg.crossing_flag[i]) {
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+							} else{
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
+							}
 						}
 					}
 				}
@@ -1953,7 +1977,7 @@
 				['none', __('None')]
 			], 'none'],
 			['distance', __('Distance'), 'numeric', 0],
-			['queryInterval', __('Query Interval'), 'numeric', 0],
+			['queryInterval', __('Query Interval'), 'numeric', 10],
 			['recEventsFlag', __('Receives Events'), 'boolean', false],
 			['timeout', __('Timeout (seconds)'), 'numeric', 0],
 			['event', __('Event'), 'text', ''],
@@ -1972,7 +1996,7 @@
 				['sawtooth', __('Sawtooth')],
 				['triangle', __('Triangle')]
 			], 'square'],
-			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 0]
+			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 10]
 		]
 		secondary_options.sort((a, b) => a[1].localeCompare(b[1]));
 

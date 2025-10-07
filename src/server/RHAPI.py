@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 3
+API_VERSION_MINOR = 4
 
 import dataclasses
 import json
@@ -13,6 +13,7 @@ import logging
 import RHUtils
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
+from interface_mapper import InterfaceType
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +203,8 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
+    def register_function_binding(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
+        return self._racecontext.rhui.register_ui_fn_bind(field, getter_fn, setter_fn, args, panel, order)
 
 #
 # Database Access
@@ -682,9 +685,10 @@ class DatabaseAPI():
 
             if set_id == self._racecontext.race.profile.id:
                 self._racecontext.race.profile = result
-                for idx, value in enumerate(json.loads(result.frequencies)['f']):
+                freqs = json.loads(result.frequencies)
+                for idx, value in enumerate(freqs['f']):
                     if idx < self._racecontext.race.num_nodes:
-                        self._racecontext.interface.set_frequency(idx, value)
+                        self._racecontext.interface.set_frequency(idx, value, freqs['b'][idx], freqs['c'][idx])
                 self._racecontext.rhui.emit_frequency_data()
 
             return result
@@ -1272,6 +1276,8 @@ class HardwareInterfaceAPI():
     def seats(self):
         return self._racecontext.interface.nodes
 
+    def add(self, interface):
+        return self._racecontext.interface.add_interface(interface, InterfaceType.RHAPI)
 
 #
 # Server Config
@@ -1376,6 +1382,9 @@ class ServerAPI():
     def enable_heartbeat_event(self):
         self._racecontext.serverstate.enable_heartbeat_event = True
 
+    def set_min_mocks(self, mocks):
+        self._racecontext.serverstate.mock_nodes = mocks
+
     @property
     def info(self):
         return self._racecontext.serverstate.info_dict
@@ -1421,6 +1430,9 @@ class ServerAPI():
     @property
     def data_dir(self):
         return self._racecontext.serverstate.data_dir
+
+    def set_restart_required(self):
+        return self._racecontext.serverstate.set_restart_required()
 
 #
 # Filters
