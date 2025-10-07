@@ -627,13 +627,6 @@ def render_scanner():
     return render_template('scanner.html',
         num_nodes=RaceContext.race.num_nodes)
 
-@APP.route('/decoder')
-@requires_auth
-def render_decoder():
-    '''Route to race management page.'''
-    return render_template('decoder.html',
-        num_nodes=RaceContext.race.num_nodes)
-
 @APP.route('/imdtabler')
 def render_imdtabler():
     '''Route to IMDTabler page.'''
@@ -3512,7 +3505,7 @@ def check_requirements():
         if num_mismatched > 0:
             logger.warning(__('Try "pip install --upgrade --no-cache-dir -r {}"'.format(req_file_name)))
             set_ui_message('check_reqs',
-                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>".format(req_file_name)),
+                __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>").format(req_file_name),
                 header='Warning', subclass='none')
     except:
         logger.exception("Error checking package requirements")
