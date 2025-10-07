@@ -232,6 +232,25 @@
 			socket.emit('plugin_install', data);
 		});
 
+		socket.on('config_update', function (msg) {
+			for (var section in msg.config) {
+				for (var key in msg.config[section]) {
+					var value = msg.config[section][key];
+
+					$('.set_config[data-section="' + section +'"][data-key="' + key +'"]').val(value);
+				}
+			}
+		});
+
+		$(document).on('change', '.set-config', function (event) {
+			value = $(this).val();
+			var data = {
+				section: $(this).data('section'),
+				key: $(this).data('key'),
+				value: value
+			};
+			socket.emit('set_config', data);
+		});
 	});
 </script>
 
@@ -242,6 +261,20 @@
 		<h1>{{ __('Community Plugins') }}</h1>
 		<p>{{ __('Extend the functionality of your timer by installing plugins built, maintained, and provided by the community. All plugins listed here are open-source and free to use at any event.') }}</p>
 		<p>{{ __('For more information, including how to contribute, see:') }} <a href="https://rotorhazard.github.io/community-plugins/">{{ __('Community Plugins documentation') }} &#10132;&#xFE0E;</a></p>
+
+		<hr / >
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set-plugin-update">{{ __('Plugin Updates') }}</label>
+				</div>
+				<select id="set-plugin-update" class="set-config" data-section="PLUGINS" data-key="UPDATE_BEHAVIOR">
+					<option value="check" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='check'}}>{{ __('Check for updates at startup') }}</option>
+					<option value="none" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='none'}}>{{ __('Never check for updates') }}</option>
+				</select>
+			</li>
+		</ol>
 	</div>
 </div>
 

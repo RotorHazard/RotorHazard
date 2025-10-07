@@ -1,5 +1,5 @@
 '''Class to hold race management variables.'''
-
+import dataclasses
 import logging
 import json
 import RHUtils
@@ -35,8 +35,11 @@ class Crossing(dict):
     deleted: bool = False
     late_lap: bool = False
     invalid: bool = False
+    peak_rssi: int = None
     def __bool__(self):
         return True  # always evaluate object as 'True', even if underlying dict is empty
+    def asdict(self):
+        return dataclasses.asdict(self)
 
 class RHRace():
     '''Class to hold race management variables.'''
@@ -108,17 +111,6 @@ class RHRace():
         self.pass_invoke_func_queue_obj = InvokeFuncQueue(logger)
 
         self.clear_results()
-
-        '''
-        Lap Object (dict) for node_laps:
-            lap_number
-            lap_time_stamp
-            lap_time
-            lap_time_formatted
-            source
-            deleted
-        '''
-
 
 
     @catchLogExceptionsWrapper
@@ -586,6 +578,10 @@ class RHRace():
     @catchLogExceptionsWrapper
     def do_save_actions(self):
         '''Save current laps data to the database.'''
+        if self.start_time == 0:
+            logger.debug('Ignoring save request for cleared race')
+            return False
+
         with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
             if self.current_heat == RHUtils.HEAT_ID_NONE:
                 self.discard_laps(saved=True)
@@ -733,7 +729,7 @@ class RHRace():
             self._racecontext.rhui.emit_result_data()
 
     @catchLogExceptionsWrapper
-    def add_lap(self, node, lap_timestamp_absolute, source):
+    def add_lap(self, node, lap_timestamp_absolute, source, **kwargs):
         '''Handles pass records from the nodes.'''
         APP.app_context().push()
 
@@ -897,6 +893,7 @@ class RHRace():
                                 lap_data.source = source
                                 lap_data.deleted = lap_late_flag  # delete if lap pass is after race winner declared
                                 lap_data.late_lap = lap_late_flag
+                                lap_data.peak_rssi = kwargs.get('peak', None)
 
                                 self.node_laps[node.index].append(lap_data)
 
@@ -1003,6 +1000,7 @@ class RHRace():
                                 lap_data.source = source
                                 lap_data.deleted = True
                                 lap_data.invalid = True
+                                lap_data.peak_rssi = kwargs.get('peak', None)
 
                                 self.node_laps[node.index].append(lap_data)
                         else:
@@ -1158,6 +1156,43 @@ class RHRace():
             self._racecontext.rhui.emit_current_laps() # Race page, update web client
             self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
 
+
+    def replace_laps(self, data):
+        node = data['seat']
+        laps = data['laps']
+
+        lap_objs = []
+        lap_number = 0
+        for lap in laps:
+            tmp_lap_time_formatted = lap['lap_time']
+            if isinstance(lap['lap_time'], float) or isinstance(lap['lap_time'], int):
+                tmp_lap_time_formatted = RHUtils.format_time_to_str(lap['lap_time'],
+                                                                    self._racecontext.serverconfig.get_item('UI',
+                                                                                                      'timeFormat'))
+            lap_data = Crossing()
+            lap_data.lap_number = lap_number
+            lap_data.lap_time_stamp = lap['lap_time_stamp']
+            lap_data.lap_time = lap['lap_time']
+            lap_data.lap_time_formatted = tmp_lap_time_formatted
+            lap_data.source = lap['source']
+            lap_data.deleted = lap['deleted']
+            if not lap_data.deleted:
+                lap_number += 1
+            lap_objs.append(lap_data)
+
+        self.node_laps[node] = lap_objs
+
+        self.clear_lap_results()
+        self.clear_results()
+
+        self._racecontext.rhui.emit_current_leaderboard()
+        self._racecontext.rhui.emit_current_laps()
+
+        self._racecontext.events.trigger(Evt.RACE_LAPS_REPLACE, {
+            'seat': node,
+        })
+
+
     @catchLogExceptionsWrapper
     def restore_deleted_lap(self, data):
         '''Restore a deleted (or "late") lap.'''
@@ -1251,6 +1286,7 @@ class RHRace():
         '''Clear the current laps table.'''
         self._racecontext.branch_race_obj()
         self.db_id = None
+        self.start_time = 0
         self.reset_current_laps() # Clear out the current laps table
         logger.info('Current laps cleared')
 
@@ -1565,9 +1601,11 @@ class RHRace():
                     node_laps.append({
                         'lap_index': idx,
                         'lap_number': lap_number,
-                        'lap_raw': lap.lap_time,
-                        'lap_time': lap.lap_time_formatted,
+                        'lap_time': lap.lap_time,
+                        'lap_time_formatted': lap.lap_time_formatted,
                         'lap_time_stamp': lap.lap_time_stamp,
+                        'source': lap.source,
+                        'deleted': lap.deleted,
                         'splits': splits,
                         'late_lap': lap.late_lap
                     })

@@ -120,8 +120,8 @@ def unpack_rssi(node, data):
 
 
 class RHInterface(BaseHardwareInterface):
-    def __init__(self, *args, **kwargs):
-        BaseHardwareInterface.__init__(self)
+    def __init__(self, racecontext, *args, **kwargs):
+        BaseHardwareInterface.__init__(self, racecontext)
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -521,7 +521,7 @@ class RHInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_frequency(self, node_index, frequency, *_args):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
         if frequency:
@@ -661,6 +661,6 @@ class RHInterface(BaseHardwareInterface):
             self.log("Error in RHInterface 'get_intf_error_report_str()': " + str(ex))
         return None
 
-def get_hardware_interface(*args, **kwargs):
+def get_hardware_interface(racecontext, *args, **kwargs):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface(*args, **kwargs)
+    return RHInterface(racecontext, *args, **kwargs)

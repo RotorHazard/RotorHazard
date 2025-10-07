@@ -2,6 +2,7 @@
 <script type="text/javascript" src="./static/Blob.js"></script>
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='showdown-1.9.1/showdown.min.js') }}"></script>
+<script type="text/javascript" charset="utf-8" src="/static/marshal.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
@@ -37,6 +38,8 @@
 	var request_time;
 	var request_pi_time;
 	var resume_check = true;
+
+	var marshal_mode = false;
 
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
@@ -131,11 +134,7 @@
 		});
 
 		socket.on('language', function (msg) {
-			$('#set_language').empty();
-			$('#set_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
-				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
+			rotorhazard.interface_language = msg.language;
 
 			$('#set_voice_string_language').empty();
 			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
@@ -144,13 +143,6 @@
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
-
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_language').selectedIndex = 0;
-			}
 		});
 
 		var heartbeatCounter = 0;
@@ -414,6 +406,7 @@
 					$('body').addClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					socket.emit('current_race_marshal');
 					break;
 				case 3: // staging
 					$('#set_current_heat').prop('disabled', true);
@@ -454,6 +447,27 @@
 						rotorhazard.timer.race.initial_disp_tenths = null;
 					}
 					rotorhazard.timer.deferred.renderHTMLandUpdate();
+
+					for (var seat in rotorhazard.nodes) {
+						var node = rotorhazard.nodes[parseInt(seat)]
+						if (marshal_mode && node.marshal_series) {
+							node.graphPaused = false;
+
+							node.graph.options.scaleSmoothing = 0.125;
+							node.graph.options.millisPerPixel = 50;
+							node.graph.delay = 200;
+
+							node.graph.removeTimeSeries(node.marshal_series);
+							node.marshal_series = new TimeSeries();
+
+							node.graph.addTimeSeries(node.series, rotorhazard.seriesStyle.rssi);
+							node.graph.addTimeSeries(node.crossingSeries, rotorhazard.seriesStyle.crossing);
+
+							node.graph.start();
+						}
+					}
+					marshal_mode = false;
+
 					if (resume_check) {
 						socket.emit('get_race_scheduled');
 					}
@@ -498,11 +512,13 @@
 
 						$('.current_rssi_' + i).html(rssiValue);
 
-						if (msg.crossing_flag[i]) {
-							$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
-						}
-						else {
-							$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+						if (!marshal_mode) {
+							if (msg.crossing_flag[i]) {
+								$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+							}
+							else {
+								$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+							}
 						}
 
 						rotorhazard.nodes[i].graph.options.maxValue = Math.max(
@@ -526,7 +542,7 @@
 						if (rotorhazard.nodes[i].graphing) {
 							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 							if (msg.crossing_flag[i]) {
-								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), rotorhazard.nodes[i].graph.options.maxValue + 10);
 							} else{
 								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
 							}
@@ -780,7 +796,7 @@
 				rotorhazard.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
 				$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
-				rotorhazard.nodes[i].updateThresholds();
+				// rotorhazard.nodes[i].updateThresholds();
 			}
 		});
 
@@ -880,7 +896,7 @@
 								$('<td class="display_lap_number">').text(lap_num)
 							);
 						}
-						time_td = $('<td colspan="'+local_colspan+'">').text(' ' + lap.lap_time + ' ').append(
+						time_td = $('<td colspan="'+local_colspan+'">').text(' ' + lap.lap_time_formatted + ' ').append(
 								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
 								);
 						if(lap.late_lap) {
@@ -915,7 +931,7 @@
 						time_td.prepend(local_prepend);
 						tr.append(time_td);
 
-						if (lap.lap_number && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+						if (lap.lap_number && lap.lap_time < (rotorhazard.min_lap * 1000)) {
 							tr.addClass('min-lap-warning');
 						}
 						if (!rotorhazard.event.race_status.unlimited_time && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
@@ -1244,10 +1260,7 @@
 			if (node.graphPaused) {
 				node.graph.options.scaleSmoothing = 0.125;
 				node.graph.removeTimeSeries(node.pauseSeries)
-				node.graph.addTimeSeries(node.series, {lineWidth:1.7,
-					strokeStyle:'hsl(214, 53%, 60%)',
-					fillStyle:'hsla(214, 53%, 60%, 0.4)'
-				});
+				node.graph.addTimeSeries(node.series, rotorhazard.seriesStyle.rssi);
 				node.graph.start();
 				btn.html(svg_asset.pause);
 			} else {
@@ -1256,10 +1269,7 @@
 				node.pauseSeries = node.series;
 				node.graph.options.scaleSmoothing = 1;
 				node.graph.removeTimeSeries(node.series)
-				node.graph.addTimeSeries(node.pauseSeries, {lineWidth:1.7,
-					strokeStyle:'hsl(214, 53%, 60%)',
-					fillStyle:'hsla(214, 53%, 60%, 0.4)'
-				});
+				node.graph.addTimeSeries(node.pauseSeries, rotorhazard.seriesStyle.rssi);
 				node.graph.render(node.canvas, node.graphPausedTime);
 				btn.html(svg_asset.play);
 			}
@@ -1588,6 +1598,7 @@
 			$('#set_min_lap').val(msg.min_lap);
 			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
 			rotorhazard.min_lap = parseIntDefault(msg.min_lap);
+			rotorhazard.min_lap_behavior = parseIntDefault(msg.min_lap_behavior);
 		});
 
 		$('#set_min_lap').change(function (event) {
@@ -2076,28 +2087,6 @@
 			})
 		}
 
-		/* Other */
-		$('.open-mfp-popup-tuning').magnificPopup({
-			type:'inline',
-			midClick: true,
-			callbacks: {
-				open: function(){
-					var node = $.magnificPopup.instance.st.el.data('node');
-					var graph = $('#rssi-graph-' + node);
-					$(this.content).find('.rssi-graph').append(graph);
-				},
-				close: function(){
-					var node = $.magnificPopup.instance.st.el.data('node');
-					var graph = $('#rssi-graph-' + node);
-					$('.rssi-graph.page[data-node="' + node + '"]').prepend(graph);
-
-					if (rotorhazard.nodes[node].graphPaused) {
-						$('button.pause_graph[data-node=' + node + ']').click();
-					}
-				}
-			}
-		});
-
 		/* positional RSSI adjustment */
 		var canDrag = false;
 		var isDragging = false;
@@ -2242,63 +2231,73 @@
 		});
 
 		$(document).on('keyup', function(e) {
-			// keyboard shortcuts
+			// keyboard shortcutsz
 			switch (e.which) {
 				case 83:  // S
-					if ( this !== event.target && event.target.id !== "set_current_heat"
-						&& event.target.id !== "set_race_format"
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// race schedule: s
-						$('#schedule_race').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target && event.target.id !== "set_current_heat"
+							&& event.target.id !== "set_race_format"
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// race schedule: s
+							$('#schedule_race').trigger('click');
+						}
 					}
 					break;
 				case 90:  // Z
-					if ( this !== event.target && event.target.id !== "set_current_heat"
-						&& event.target.id !== "set_race_format"
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// race start: z
-						$('#start_race').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target && event.target.id !== "set_current_heat"
+							&& event.target.id !== "set_race_format"
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// race start: z
+							$('#start_race').trigger('click');
+						}
 					}
 					break;
 				case 88:  // X
-					if ( this !== event.target
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// race stop: x
-						$('#stop_race').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// race stop: x
+							$('#stop_race').trigger('click');
+						}
 					}
 					break;
 				case 67:  // C
-					if ( this !== event.target
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// save laps: c
-						$('#save_laps').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// save laps: c
+							$('#save_laps').trigger('click');
+						}
 					}
 					break;
 				case 86:  // V
-					if ( this !== event.target
-						&& ( /textarea|select/i.test( event.target.nodeName )
-						 || event.target.type === "text") ) {
-						return;
-					}
-					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-						// discard laps: v
-						$('#discard_laps').trigger('click');
+					if (!document.getElementById('marshal-dialog').open) {
+						if ( this !== event.target
+							&& ( /textarea|select/i.test( event.target.nodeName )
+							 || event.target.type === "text") ) {
+							return;
+						}
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// discard laps: v
+							$('#discard_laps').trigger('click');
+						}
 					}
 					break;
 				case 49:  // 1
@@ -2415,6 +2414,359 @@
 					break;
 			}
 		});
+
+		// Marshaing
+		if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
+			start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
+		}
+		if ('{{ getConfig('TIMING', 'startThreshLowerDuration') }}' != 'False') {
+			start_thresh_lower_duration = {{ getConfig('TIMING', 'startThreshLowerDuration') }};
+		}
+
+		function clearMarkedLap() {
+			$('#m-laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
+		}
+
+		function displayLaps(laps_obj, marked_lap=null) {
+			var lapList = $('#m-laps tbody');
+			lapList.empty();
+
+			var lap_index = 0;
+			for (var lap_i in laps_obj) {
+				var lap = laps_obj[lap_i];
+				var lapData = $('<tr>');
+				$(lapData).data("lapTimeStamp", lap.lap_time_stamp);
+
+				if (marked_lap != null && lap_i == marked_lap) {
+					lapData.addClass('lap-highlighted');
+				}
+
+				if (lap.deleted) {
+					lapData.addClass('lap-deleted');
+				} else if (lap_index && lap.lap_time < rotorhazard.min_lap * 1000) {
+					lapData.addClass('min-lap-warning');
+				}
+
+				if (!lap.deleted) {
+					marshal.drawLap(lap, true);
+					lapData.append('<td>' + lap_index + '</td>');
+					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td>');
+					lap_index++;
+				} else {
+					marshal.drawLap(lap, false);
+					lapData.append('<td>-</td>');
+					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+					lapData.append('<td>' + __('Deleted') + '</td>');
+				}
+
+				if (lap.deleted) {
+					lapData.append('<td><button class="m-restore_lap" data-lapid="' + lap_i + '">+</button></td>');
+				} else {
+					lapData.append('<td><button class="m-delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
+				}
+
+				if (!marshal.race.race_format.unlimited_time && lap.lap_time_stamp > (marshal.race.race_format.race_time_sec * 1000)) {
+					lapData.addClass('after-time-expired');
+				}
+
+				lapList.append(lapData);
+			}
+
+			// When a user clicks on a lap, toggle that lap's highlight pointer in the graph.
+			$('#m-laps td:not(:last-child)').click( function(){
+				var thisrow = $(this).parent()
+				if(!thisrow.hasClass("lap-highlighted")){
+					// Remove highlighting from other rows
+					clearMarkedLap();
+					thisrow.addClass("lap-highlighted");
+					var lapTimeStamp = parseFloat(thisrow.data("lapTimeStamp"));
+					marshal.markLap(lapTimeStamp);
+				} else {
+					clearMarkedLap();
+				}
+				marshal.renderGraph();
+			});
+		}
+
+		function graphInteractTap(args) {
+			$('#m-laps tr').each(function(){
+				if ($(this).data('lapTimeStamp') == args.lapTimeStamp) {
+					$(this).children().eq(0).trigger('click');
+				}
+			});
+		}
+
+		function graphInteractCancel(args) {
+			$('#m-enterat').val(args.startingEnter);
+			$('#m-exitat').val(args.startingExit);
+		}
+
+		function calibration(calibration) {
+			$('#m-enterat').val(calibration.enter);
+			$('#m-exitat').val(calibration.exit);
+			rotorhazard.nodes[calibration.seat].enter_at_level = calibration.enter;
+			rotorhazard.nodes[calibration.seat].exit_at_level = calibration.exit;
+			$(`set_enter_at_level_${calibration.seat}`).val(calibration.enter).trigger('change');
+			$(`set_exit_at_level_${calibration.seat}`).val(calibration.exit).trigger('change');
+		}
+
+		var marshal = new RHMarshal({
+			elements: {
+				graph_canvas_id: 'marshal-graph',
+			},
+			time_format: {{ getConfig('UI', 'timeFormat')|tojson }},
+			start_thresh_lower_amount: start_thresh_lower_amount,
+			start_thresh_lower_duration: start_thresh_lower_duration,
+			min_lap: rotorhazard.min_lap,
+			min_lap_behavior: rotorhazard.min_lap_behavior,
+			callbacks: {
+				clearMarkedLap: clearMarkedLap,
+				displayLaps: displayLaps,
+				graphInteractCancel: graphInteractCancel,
+				graphInteractTap: graphInteractTap,
+				calibration: calibration,
+			},
+		});
+
+		socket.on('current_marshal_data', function (msg) {
+			rotorhazard.marshal_data = msg;
+			load_marshal_data();
+		});
+
+		function load_marshal_data() {
+			var msg = rotorhazard.marshal_data;
+			rotorhazard.marshal_data.race_args = [];
+
+			var race_args = {
+				round: msg.race.round_id,
+				heat: msg.race.heat_id,
+				race_id: msg.race.race_id,
+				class_id: msg.race.class_id,
+				format_id: msg.race.format_id,
+				start_time: msg.race.start_time,
+				start_time_formatted: msg.race.start_time_formatted,
+			}
+			if (msg.format_id > 0) {
+				race_args.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == msg.format_id});
+			} else {
+				race_args.race_format = {
+					unlimited_time: false,
+					race_time_sec: null
+				};
+			}
+			marshal.setRaceData(race_args);
+
+			for (var seat in msg.seats) {
+				$('.crossing_flag_' + seat).removeClass('is-crossing').html(__('Stopped'));
+
+				var node = rotorhazard.nodes[parseInt(seat)]
+				node.marshal_data = msg.seats[seat];
+
+				if (node.canvas) {
+					node.graph.stop();
+					node.graphPaused = true;
+
+					node.marshal_series = new TimeSeries();
+					node.graph.addTimeSeries(node.marshal_series, rotorhazard.seriesStyle.rssi);
+					node.graph.removeTimeSeries(node.series);
+					node.graph.removeTimeSeries(node.crossingSeries);
+
+					if (msg.seats[seat].history_times.length) {
+						race_args.end_time = msg.seats[seat].history_times[msg.seats[seat].history_times.length - 1];
+						node.graph.options.minValue = Math.min.apply(null, msg.seats[seat].history_values) - 2;
+						node.graph.options.maxValue = Math.max.apply(null, msg.seats[seat].history_values) + 2;
+
+						for (var idx in msg.seats[seat].history_times) {
+							var value = msg.seats[seat].history_times[idx];
+							if (value == lastValue) {
+								node.marshal_series.append((msg.seats[seat].history_times[idx] - race_args.start_time) + 0.001, msg.seats[seat].history_values[idx]);
+							} else {
+								node.marshal_series.append((msg.seats[seat].history_times[idx] - race_args.start_time), msg.seats[seat].history_values[idx]);
+							}
+							var lastValue = value;
+						}
+					} else {
+						race_args.end_time = race_args.start_time + 1
+						node.graph.options.minValue = msg.seats[seat].exit_at;
+						node.graph.options.maxValue = msg.seats[seat].enter_at;
+					}
+
+					node.graph.options.scaleSmoothing = 1;
+					node.graph.delay = 0;
+					node.graph.delay = 0;
+
+					var history_duration = race_args.end_time - race_args.start_time;
+					var graphWidth = node.canvas.offsetWidth;
+					var span = history_duration / graphWidth;
+					node.graph.options.millisPerPixel = span;
+
+					node.graph.render(node.canvas, history_duration);
+					node.graphPausedTime = history_duration;
+
+					race_args.history_duration = history_duration;
+				}
+				rotorhazard.nodes[seat].race_args = race_args;
+			}
+
+			marshal_mode = true;
+		};
+
+		function update_marshal_graphs() {
+			for (var idx in rotorhazard.nodes) {
+				var node = rotorhazard.nodes[idx];
+				if (node.canvas) {
+					node.updateThresholds();
+				}
+			}
+		}
+
+		$('#m-enterat').on('input', function (event) {
+			if (Math.abs($('#m-enterat').val() - $('#m-exitat').val()) == 1) {
+				marshal.setEnter($(this).val());  // handle long press of 'up' button on input widget
+			}
+		});
+
+		$('#m-enterat').change(function(){
+			marshal.setEnter($(this).val());
+		});
+
+		$('#m-exitat').on('input', function (event) {
+			if (Math.abs($('#m-exitat').val() - $('#m-enterat').val()) == 1) {
+				marshal.setExit($(this).val());  // handle long press of 'down' button on input widget
+			}
+		});
+
+		$('#m-exitat').change(function(){
+			marshal.setExit($(this).val());
+		});
+
+		$('#m-manual-lap-time').on('input', function (event) {
+			lap_time_s = $('#m-manual-lap-time').val()
+			marshal.clearMarkedLap();
+			marshal.markLap(lap_time_s * 1000);
+			marshal.renderGraph();
+		});
+
+		$('#m-add-lap').click(function(){
+			lap_time_s = $('#m-manual-lap-time').val();
+
+			if (lap_time_s.length > 0) {
+				if (!marshal.addManualLap(lap_time_s)) {
+					push_message(__('No race loaded'));
+				}
+			} else {
+				push_message(__('To add a lap manually, first specify lap time'));
+			}
+		});
+
+		$('#m-clean-laps').click(function(){
+			if (!marshal.cleanDeletedLaps()) {
+				push_message(__('No race loaded'));
+			}
+		});
+
+		$(document).on('click', '.m-delete_lap', function(){
+			marshal.markLapDeleted($(this).data('lapid'));
+		});
+
+		$(document).on('click', '.m-restore_lap', function(){
+			marshal.restoreDeletedLap($(this).data('lapid'));
+		});
+
+		$('#m-save-laps').click(function(){
+			data = marshal.getRaceData();
+			if (data) {
+				socket.emit('replace_current_laps', data);
+			}
+			update_marshal_graphs();
+			document.getElementById('marshal-dialog').close();
+		});
+
+		$('#m-discard-laps').click(function(){
+			document.getElementById('marshal-dialog').close();
+		});
+
+		$('.node-graph').click(function(){
+			var seat_index = parseInt($(this).data('node'));
+			if (marshal_mode) {
+				// open local marshaling
+				document.getElementById('marshal-dialog').showModal();
+
+				seat = rotorhazard?.nodes[seat_index]?.marshal_data;
+				pilot_args = {
+					seat: seat_index,
+					history_times: seat.history_times,
+					history_values: seat.history_values,
+					laps: current_laps.node_index[seat_index].laps,
+					enter_at: rotorhazard.nodes[seat_index].enter_at_level,
+					exit_at: rotorhazard.nodes[seat_index].exit_at_level,
+				}
+				marshal.setPilotData(pilot_args);
+
+				marshal.initRace();
+
+				// fill enter/exit values
+				$('#m-enterat').val(rotorhazard.nodes[seat_index].enter_at_level);
+				$('#m-exitat').val(rotorhazard.nodes[seat_index].exit_at_level);
+			} else {
+				// open tuning
+				$.magnificPopup.open({
+					items: {
+						src: `#tuning-detail-${seat_index}`,
+						type: 'inline',
+					},
+					callbacks: {
+						open: function(){
+							var graph = $('#rssi-graph-' + seat_index);
+							$(this.content).find('.rssi-graph').append(graph);
+						},
+						close: function(){
+							var graph = $('#rssi-graph-' + seat_index);
+							$('.rssi-graph.page[data-node="' + seat_index + '"]').prepend(graph);
+
+							if (rotorhazard.nodes[node].graphPaused) {
+								$('button.pause_graph[data-node=' + seat_index + ']').click();
+							}
+						}
+					}
+				});
+			}
+		});
+
+		const dialogs = document.querySelectorAll('dialog > button');
+		dialogs.forEach(btn => {
+  			btn.addEventListener('click', () => {
+				btn.parentElement.close();
+			});
+		});
+
+		document.getElementById('marshal-dialog').addEventListener("close", () => {
+			marshal.graphInteractCancel();
+		});
+
+		// lap list hotkey
+		$(document).on('keyup', function(e) {
+			// keyboard shortcuts
+			if (document.getElementById('marshal-dialog').open) {
+				switch (e.key) {
+					case 'Delete':
+					case 'x':
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// delete current lap toggle: z
+							$('#m-laps tr.lap-highlighted button').trigger('click');
+						}
+						break;
+					case 'Insert':
+					case 'x':
+						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+							// delete current lap toggle: z
+							$('#m-laps tr.lap-highlighted button').trigger('click');
+						}
+						break;
+				}
+			}
+		});
 	});
 
 </script>
@@ -2474,9 +2826,10 @@
 					<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr">{{ node.freq }}</span></div>
 					<button class="simulate_lap" id="manual_lap_{{ node.index }}" data-node="{{ node.index }}" title="{{ __('Manual') }}">+ {{ __('Lap') }}</button>
 				</div>
-				<a href="#tuning-detail-{{node.index}}" data-node="{{ node.index }}" class="open-mfp-popup-tuning" title="{{ __('Tune this node') }}">
+				<button class="node-graph no-style" data-node="{{ node.index }}" title="{{ __('Tune this node') }}">
 					<div class="rssi-graph page" data-node="{{ node.index }}"><canvas id="rssi-graph-{{ node.index }}"></div>
-				</a>
+				</button>
+
 				<h4 class="callsign_{{ node.index }}">
 					{{ __('Loading...') }}
 				</h4>
@@ -2952,4 +3305,53 @@
 
 <button id="audio-unlock">{{ __('Enable Audio') }}</button>
 </main>
+
+<dialog id="marshal-dialog" closedby="any">
+	<h2>{{ __('Marshal') }}</h2>
+	<button>&#215;<span class="screen-reader-text"> Close</span></button>
+	<div class="dialog-content">
+		<div id="m-race-display">
+			<div id="m-race-view">
+				<canvas id="marshal-graph" style="width:100%; height:200px"></canvas>
+
+				<table id="m-laps">
+				<thead>
+					<tr>
+						<th>{{ __('Lap') }}</th>
+						<th>{{ __('Timestamp') }}</th>
+						<th>{{ __('Lap Time') }}</th>
+						<th>{{ __('Deleted') }}</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+				</table>
+			</div>
+
+			<div class="sidebar-controls">
+				<div class="control-block">
+					<h3>{{ __('Recalculate') }}</h3>
+					<label for="enterat" class="screen-reader-text">{{ __('EnterAt') }}</label>
+					<input type="number" id="m-enterat" value="" placeholder="{{ __('EnterAt') }}" />
+					<label for="exitat" class="screen-reader-text">{{ __('ExitAt') }}</label>
+					<input type="number" id="m-exitat" value="" placeholder="{{ __('ExitAt') }}" />
+					<button id="m-load-transitions" hidden>{{ __('Load from Node') }}</button>
+					<button id="m-save-transitions" hidden>{{ __('Save to Node') }}</button>
+				</div>
+				<div class="control-block">
+					<h3>{{ __('Modify') }}</h3>
+					<label for="manual-lap-time" class="screen-reader-text">{{ __('Manual Lap Time') }}</label>
+					<input type="number" id="m-manual-lap-time" step="0.001" placeholder="{{ __('Manual Lap Time') }}" />
+					<button id="m-add-lap">{{ __('Add Lap') }}</button>
+					<button id="m-clean-laps">{{ __('Clean Deleted Laps') }}</button>
+				</div>
+				<div class="control-block">
+					<h3>{{ __('Confirm') }}</h3>
+					<button id="m-save-laps">{{ __('Commit Changes') }}</button>
+					<button id="m-discard-laps">{{ __('Discard Changes') }}</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</dialog>
+
 {% endblock %}

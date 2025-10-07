@@ -15,8 +15,8 @@ del rhPortable.zip.tmp >nul 2>&1
 sleep 2
 7z a rhPortable.zip "%RH_FILES_DIR%\tools\rhPortableFiles\runRotorHazard.bat" "%RH_FILES_DIR%\tools\rhPortableFiles\runRotorHazardFF.bat"
 sleep 1
+7z a rhPortable.zip "%RH_FILES_DIR%\tools\rhPortableFiles\RotorHazardRun\"
+sleep 1
 7z rn rhPortable.zip %RH_DIR_NAME%\ RotorHazardRun\
 sleep 1
 7z rn rhPortable.zip Python39\ RotorHazardRun\Python39\
-sleep 1
-7z a -r rhPortable.zip "%RH_FILES_DIR%\tools\rhPortableFiles\RotorHazardRun\"

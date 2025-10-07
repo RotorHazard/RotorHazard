@@ -10,12 +10,12 @@
 * [Hardware Setup Instructions](Hardware%20Setup.md)
 * [Software Setup Instructions](Software%20Setup.md)
 * [Raspberry Pi Reference](Raspberry%20Pi%20Reference.md)
+* [Windows Run Script](Windows%20Run%20Script.md)
 
 ## Optional Features
 * [Plugins](Plugins.md)
 * [Split Timing Guide](Cluster.md)
 * [USB Nodes](USB%20Nodes.md)
-* [Video Receiver Control](Video%20Receiver.md)
 
 ## General Reference
 * [FPV Frequency Reference Chart](Frequency%20Reference.md)
