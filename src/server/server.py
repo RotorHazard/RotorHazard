@@ -4,8 +4,8 @@ SERVER_API = 46 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
-MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.9)
-MIN_PYTHON_MINOR_VERSION = 9
+MIN_PYTHON_MAJOR_VERSION = 3 # minimum python version (3.10)
+MIN_PYTHON_MINOR_VERSION = 10
 
 # command-line arguments:
 CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
@@ -3336,7 +3336,7 @@ def _do_init_rh_interface():
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
-            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, \
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(RaceContext, config=RaceContext.serverconfig, \
                                             isS32BPillFlag=RHUtils.is_S32_BPill_board(), **HardwareHelpers), InterfaceType.RH)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
@@ -3391,7 +3391,7 @@ def _do_init_rh_interface():
 
         if num_mocks > 0:
             interfaceModule = importlib.import_module('MockInterface')
-            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, num_nodes=num_mocks, **HardwareHelpers), InterfaceType.MOCK,
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(RaceContext, config=RaceContext.serverconfig, num_nodes=num_mocks, **HardwareHelpers), InterfaceType.MOCK,
                 {
                     'api_level': NODE_API_BEST,
                     'num_nodes': num_mocks

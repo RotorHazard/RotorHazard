@@ -82,6 +82,7 @@ class Config:
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
         self.config['GENERAL']['SERIAL_PORTS'] = []
         self.config['GENERAL']['MOCK_NODES'] = 0
+        self.config['GENERAL']['MOCK_NODE_SIGNAL'] = 0
         self.config['GENERAL']['LAST_MODIFIED_TIME'] = 0
 
         self.config['SECRETS']['ADMIN_USERNAME'] = 'admin'

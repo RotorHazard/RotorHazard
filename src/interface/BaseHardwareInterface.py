@@ -22,7 +22,7 @@ class BaseHardwareInterface(object):
     RACE_STATUS_RACING = 1
     RACE_STATUS_DONE = 2
 
-    def __init__(self):
+    def __init__(self, racecontext):
         self.calibration_threshold = 20
         self.calibration_offset = 10
         self.trigger_threshold = 20
@@ -33,6 +33,7 @@ class BaseHardwareInterface(object):
         self.new_enter_or_exit_at_callback = None # Function added in server.py
         self.node_crossing_callback = None # Function added in server.py
         self.nodes = []
+        self._racecontext = racecontext
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
