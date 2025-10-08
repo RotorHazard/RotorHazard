@@ -116,6 +116,7 @@ class PageCache:
             heats = {}
             all_heats = self._racecontext.rhdata.get_heats()
             all_heats = sorted(all_heats, key = lambda h: (
+                h.class_id is None,
                 h.class_id,
                 h.group_id,
                 h.order,
