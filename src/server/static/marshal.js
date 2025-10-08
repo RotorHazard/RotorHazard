@@ -378,12 +378,15 @@ class RHMarshal {
 		var laps = [];
 		var startThreshLowerFlag = false;
 
+		var localEnter = self.race.enter_at
+		var localExit = self.race.exit_at
+
 		// set lower EnterAt/ExitAt values at race start if configured
 		if (self.start_thresh_lower_amount > 0 && self.start_thresh_lower_duration > 0) {
 			var diffVal = (self.race.enter_at - self.race.exit_at) * self.start_thresh_lower_amount / 100;
 			if (diffVal > 0) {
-				self.race.enter_at = self.race.enter_at - diffVal;
-				self.race.exit_at = self.race.exit_at - diffVal;
+				localEnter = self.race.enter_at - diffVal;
+				localExit = self.race.exit_at - diffVal;
 				startThreshLowerFlag = true;
 			}
 		}
@@ -396,8 +399,8 @@ class RHMarshal {
 			if (startThreshLowerFlag) {
 				// if initial pass recorded or past duration then restore EnterAt/ExitAt values
 				if (laps.length > 0 || time >= self.race.start_time + self.start_thresh_lower_duration + self.race.race_format.start_delay_max) {
-					self.race.enter_at = self.race.enter_at;
-					self.race.exit_at = self.race.exit_at;
+					localEnter = self.race.enter_at;
+					localExit = self.race.exit_at;
 					startThreshLowerFlag = false;
 				}
 			}
