@@ -542,7 +542,7 @@
 						if (rotorhazard.nodes[i].graphing) {
 							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 							if (msg.crossing_flag[i]) {
-								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), rotorhazard.nodes[i].graph.options.maxValue + 10);
 							} else{
 								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
 							}
@@ -1774,13 +1774,20 @@
 
 		socket.on('environmental_data', function (msg) {
 			var env_table_html = '';
-			for (i=0; i<msg.length; i++) {
+			for (var i=0; i<msg.length; i++) {
 				var sensor = msg[i];
 				var name = Object.keys(sensor)[0];
 				var data = sensor[name];
 				var values = '';
 				var br = '';
-				for (var reading in data) {
+
+				//The display order of the readings
+				var displayOrder = ['voltage', 'current', 'power', 'capacity', 'temperature', 'humidity', 'pressure'];
+				var readingsToDisplay = displayOrder.filter(function (reading) {
+					return data.hasOwnProperty(reading);
+				});
+
+				readingsToDisplay.forEach(function (reading) {
 					var value = data[reading].value;
 					var units = data[reading].units;
 					values += br;
@@ -1790,21 +1797,22 @@
 						values += __('Current: ') + Number(value).toFixed(0)+units;
 					} else if(reading == 'power') {
 						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'capacity') {
+						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else if(reading == 'temperature') {
 						values += __('Temperature: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'humidity') {
 						values += __('Humidity: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'pressure') {
 						values += __('Pressure: ') + Number(value).toFixed(1)+units;
-					} else if(reading == 'capacity') {
-						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else {
 						values += __('Unknown: ') + value;
 					}
 					br = '<br/>';
-				}
+				});
+					
 				env_table_html += '<tr>';
-				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + __(name) + '</td>';
 				env_table_html += '<td>' + values + '</td>';
 				env_table_html += '</tr>';
 			}
@@ -2838,7 +2846,7 @@
 					<div class="popup-content">
 
 						<div class="rssi-graph in-popup" data-node="{{ node.index }}">
-							<button class="pause_graph" data-node="{{ node.index }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><title>Pause</title><circle cx="8" cy="8" r="7.6" opacity=".8"/><path fill="#fff" d="M3.7 3.7H7v8.7H3.7z"/><path fill="#fff" d="M9 3.7h3.3v8.7H9z"/></svg></button>
+							<button class="pause_graph" data-node="{{ node.index }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><title>{{ __('Pause') }}</title><circle cx="8" cy="8" r="7.6" opacity=".8"/><path fill="#fff" d="M3.7 3.7H7v8.7H3.7z"/><path fill="#fff" d="M9 3.7h3.3v8.7H9z"/></svg></button>
 						</div>
 						<div class="crossing crossing_flag_{{ node.index }}"><span>{{ __('Clear') }}</span></div>
 
@@ -2964,7 +2972,7 @@
 	</div>
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
-		<input type="text" id="message_body" maxlength="256" placeholder="Message"></p>
+		<input type="text" id="message_body" maxlength="256" placeholder="{{ __('Message') }}"></p>
 		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>

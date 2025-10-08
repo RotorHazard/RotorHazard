@@ -16,4 +16,4 @@ Find more info at http://NuclearQuads.com/
 
 Find support at https://discord.gg/ANKd2pzBKH
 
-Find pre-made boards for sale at [NuclearQuads' Store](https://nuclearquads.etsy.com/listing/1428199972)
+Find pre-made boards for sale at [NuclearQuads' Store](https://nuclearquads.com)

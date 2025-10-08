@@ -73,19 +73,19 @@
 
 			switch (lap.source) {
 				case 0:
-					lapData.append('<td>Realtime</td>');
+					lapData.append('<td>' + __('Realtime') + '</td>');
 					break;
 				case 1:
-					lapData.append('<td>Manual</td>');
+					lapData.append('<td>' + __('Manual') + '</td>');
 					break;
 				case 2:
-					lapData.append('<td>Recalc</td>');
+					lapData.append('<td>' + __('Recalc') + '</td>');
 					break;
 				case 3:
-					lapData.append('<td>Automatic</td>');
+					lapData.append('<td>' + __('Automatic') + '</td>');
 					break;
 				case 4:
-					lapData.append('<td>API (plugin)</td>');
+					lapData.append('<td>' + __('API (plugin)') + '</td>')
 					break;
 			}
 
@@ -551,7 +551,7 @@
 		}
 
 		$('#enterat').on('input', function (event) {
-			if (Math.abs($('#enterat').val() - current_race_data.enter_at) == 1) {
+			if (Math.abs($('#enterat').val() - marshal.race.enter_at) == 1) {
 				marshal.setEnter($(this).val());  // handle long press of 'up' button on input widget
 			}
 		});
@@ -561,7 +561,7 @@
 		});
 
 		$('#exitat').on('input', function (event) {
-			if (Math.abs($('#exitat').val() - current_race_data.exit_at) == 1) {
+			if (Math.abs($('#exitat').val() - marshal.race.exit_at) == 1) {
 				marshal.setExit($(this).val());  // handle long press of 'down' button on input widget
 			}
 		});
