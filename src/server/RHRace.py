@@ -348,7 +348,10 @@ class RHRace():
                         self.race_time_sec = round(self.coop_best_time, 1)
                 self.show_init_time_flag = True  # show 'race_time_sec' value on initial Run-page timer display (if nonzero)
             else:
-                self.show_init_time_flag = False
+                if not self.unlimited_time:
+                    self.show_init_time_flag = True
+                else:
+                    self.show_init_time_flag = False
         else:
             self.show_init_time_flag = False
 
