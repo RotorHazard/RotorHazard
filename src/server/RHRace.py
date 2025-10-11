@@ -114,7 +114,7 @@ class RHRace():
 
 
     @catchLogExceptionsWrapper
-    def stage(self, data=None):
+    def stage(self, data=None, immediate=False):
         # need to show alert via spawn in case a clear-messages event was just triggered
         if request:
             @catchLogExceptionsWrapper
@@ -295,7 +295,11 @@ class RHRace():
 
                 self.start_time_epoch_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.start_time_monotonic)
                 self.start_token = random.random()
-                gevent.spawn(self.race_start_thread, self.start_token)
+
+                if immediate:
+                    self.race_start_thread(self.start_token)
+                else:
+                    gevent.spawn(self.race_start_thread, self.start_token)
 
                 # Announce staging with final parameters
                 eventPayload = {

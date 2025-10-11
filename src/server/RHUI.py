@@ -929,11 +929,11 @@ class RHUI():
                     'displayname': heat.display_name,
                     'rounds': rounds,
                 }
-            if heat.class_id:
-                for race_class in race_classes:
-                    if race_class.id == heat.class_id:
-                        heats[heat.id]['round_type'] = race_class.round_type
-                        break
+                if heat.class_id:
+                    for race_class in race_classes:
+                        if race_class.id == heat.class_id:
+                            heats[heat.id]['round_type'] = race_class.round_type
+                            break
 
         emit_payload = {
             'heats': heats,
