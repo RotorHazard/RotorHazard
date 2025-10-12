@@ -384,7 +384,13 @@ class RHUI():
                         db_val = self._racecontext.rhdata.get_option(setting.field.name)
 
                     if db_val is not None:
-                        field['value'] = db_val != '0' if setting.field.field_type is UIFieldType.CHECKBOX else db_val
+                        if setting.field.field_type is UIFieldType.CHECKBOX:
+                            if db_val == False or db_val == 0 or db_val == '0' or db_val == '': #Process falsy strings (db) or true booleans (config)
+                                field['value'] = False
+                            else:
+                                field['value'] = True
+                        else:
+                            field['value'] = db_val
 
                     settings.append(field)
 
