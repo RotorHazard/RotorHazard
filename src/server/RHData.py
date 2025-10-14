@@ -499,9 +499,10 @@ class RHData():
 
         self.db_init(nofill=True, migrateDbApi=migrate_db_api)
 
-        # stage 1: recover pilots, heats, heatnodes, format, profile, class, options
+        # stage 1: recover pilots, format, class, heats + heatnodes, profile, options
         if recover_status['stage_0'] == True:
             try:
+                # restore pilots
                 if pilot_query_data:
                     Database.DB_session.query(Database.Pilot).delete()
                     self.restore_table(Database.Pilot, pilot_query_data, defaults={
@@ -518,6 +519,97 @@ class RHData():
                 else:
                     self.reset_pilots()
 
+                # restore formats
+                if raceFormat_query_data:
+                    # Convert old staging
+                    if migrate_db_api < 33:
+                        for raceFormat in raceFormat_query_data:
+                            if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ONE:
+                                raceFormat['staging_fixed_tones'] = 1
+
+                                if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
+                                    raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
+                                    del raceFormat['start_delay_min']
+
+                                if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
+                                    if 'start_delay_min_ms' in raceFormat:
+                                        raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
+                                        if raceFormat['start_delay_max_ms'] < 0:
+                                            raceFormat['start_delay_max_ms'] = 0
+                                    del raceFormat['start_delay_max']
+
+                            elif 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ALL:
+                                raceFormat['staging_tones'] = StagingTones.TONES_ALL
+
+                                if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
+                                    raceFormat['staging_fixed_tones'] = raceFormat['start_delay_min']
+                                    raceFormat['start_delay_min_ms'] = 1000
+                                    del raceFormat['start_delay_min']
+
+                                if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
+                                    if 'staging_fixed_tones' in raceFormat:
+                                        raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - (raceFormat['staging_fixed_tones'] * 1000)
+                                        if raceFormat['start_delay_max_ms'] < 0:
+                                            raceFormat['start_delay_max_ms'] = 0
+                                    del raceFormat['start_delay_max']
+
+                            else: # None or unsupported
+                                raceFormat['staging_fixed_tones'] = 0
+                                raceFormat['staging_tones'] = StagingTones.TONES_NONE
+
+                                if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
+                                    raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
+                                    del raceFormat['start_delay_min']
+
+                                if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
+                                    raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
+                                    if raceFormat['start_delay_max_ms'] < 0:
+                                        raceFormat['start_delay_max_ms'] = 0
+                                    del raceFormat['start_delay_max']
+
+                    self.restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
+                        'name': self.__("Migrated Format"),
+                        'unlimited_time': 0,
+                        'race_time_sec': 120,
+                        'lap_grace_sec': -1,
+                        'staging_fixed_tones': 3,
+                        'start_delay_min_ms': 1000,
+                        'start_delay_max_ms': 0,
+                        'staging_delay_tones': 0,
+                        'number_laps_win': 0,
+                        'win_condition': WinCondition.MOST_LAPS,
+                        'team_racing_mode': RacingMode.INDIVIDUAL,
+                        'points_method': None
+                    })
+                    if migrate_db_api < 46:
+                        self.add_coopRaceFormats()
+                        logger.info("Added co-op race formats")
+                else:
+                    self.reset_raceFormats()
+
+                # restore classes
+                self.restore_table(Database.RaceClass, raceClass_query_data, defaults={
+                        'name': 'New class',
+                        'format_id': 0,
+                        'results': None,
+                        '_cache_status': json.dumps({
+                            'data_ver': monotonic(),
+                            'build_ver': None
+                        }),
+                        'ranking': None,
+                        'rank_settings': None,
+                        '_rank_status': json.dumps({
+                            'data_ver': monotonic(),
+                            'build_ver': None
+                        }),
+                        'win_condition': 0,
+                        'rounds': 0,
+                        'heat_advance_type': 1,
+                        'round_type': 0,
+                        'order': None,
+                    })
+
+                # restore heats
                 if migrate_db_api < 27:
                     # old heat DB structure; migrate node 0 to heat table
 
@@ -597,73 +689,7 @@ class RHData():
                     else:
                         self.reset_heats()
 
-                if raceFormat_query_data:
-                    # Convert old staging
-                    if migrate_db_api < 33:
-                        for raceFormat in raceFormat_query_data:
-                            if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ONE:
-                                raceFormat['staging_fixed_tones'] = 1
-
-                                if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
-                                    raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
-                                    del raceFormat['start_delay_min']
-
-                                if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
-                                    if 'start_delay_min_ms' in raceFormat:
-                                        raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
-                                        if raceFormat['start_delay_max_ms'] < 0:
-                                            raceFormat['start_delay_max_ms'] = 0
-                                    del raceFormat['start_delay_max']
-
-                            elif 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ALL:
-                                raceFormat['staging_tones'] = StagingTones.TONES_ALL
-
-                                if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
-                                    raceFormat['staging_fixed_tones'] = raceFormat['start_delay_min']
-                                    raceFormat['start_delay_min_ms'] = 1000
-                                    del raceFormat['start_delay_min']
-
-                                if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
-                                    if 'staging_fixed_tones' in raceFormat:
-                                        raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - (raceFormat['staging_fixed_tones'] * 1000)
-                                        if raceFormat['start_delay_max_ms'] < 0:
-                                            raceFormat['start_delay_max_ms'] = 0
-                                    del raceFormat['start_delay_max']
-
-                            else: # None or unsupported
-                                raceFormat['staging_fixed_tones'] = 0
-                                raceFormat['staging_tones'] = StagingTones.TONES_NONE
-
-                                if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
-                                    raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
-                                    del raceFormat['start_delay_min']
-
-                                if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
-                                    raceFormat['start_delay_max_ms'] = (raceFormat['start_delay_max'] * 1000) - raceFormat['start_delay_min_ms']
-                                    if raceFormat['start_delay_max_ms'] < 0:
-                                        raceFormat['start_delay_max_ms'] = 0
-                                    del raceFormat['start_delay_max']
-
-                    self.restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
-                        'name': self.__("Migrated Format"),
-                        'unlimited_time': 0,
-                        'race_time_sec': 120,
-                        'lap_grace_sec': -1,
-                        'staging_fixed_tones': 3,
-                        'start_delay_min_ms': 1000,
-                        'start_delay_max_ms': 0,
-                        'staging_delay_tones': 0,
-                        'number_laps_win': 0,
-                        'win_condition': WinCondition.MOST_LAPS,
-                        'team_racing_mode': RacingMode.INDIVIDUAL,
-                        'points_method': None
-                    })
-                    if migrate_db_api < 46:
-                        self.add_coopRaceFormats()
-                        logger.info("Added co-op race formats")
-                else:
-                    self.reset_raceFormats()
-
+                # restore profiles
                 if profiles_query_data:
                     self.restore_table(Database.Profiles, profiles_query_data, defaults={
                             'name': self.__("Migrated Profile"),
@@ -675,27 +701,7 @@ class RHData():
                 else:
                     self.reset_profiles()
 
-                self.restore_table(Database.RaceClass, raceClass_query_data, defaults={
-                        'name': 'New class',
-                        'format_id': 0,
-                        'results': None,
-                        '_cache_status': json.dumps({
-                            'data_ver': monotonic(),
-                            'build_ver': None
-                        }),
-                        'ranking': None,
-                        'rank_settings': None,
-                        '_rank_status': json.dumps({
-                            'data_ver': monotonic(),
-                            'build_ver': None
-                        }),
-                        'win_condition': 0,
-                        'rounds': 0,
-                        'heat_advance_type': 1,
-                        'round_type': 0,
-                        'order': None,
-                    })
-
+                # restore options
                 self.reset_options()
                 if options_query_data:
                     if migrate_db_api == self._SERVER_API:
@@ -708,6 +714,7 @@ class RHData():
 
                 logger.info('UI Options restored')
 
+                # restore attributes
                 self.restore_table(Database.PilotAttribute, pilotAttribute_query_data, defaults={
                         'name': '',
                         'value': None
@@ -719,11 +726,6 @@ class RHData():
                     })
 
                 self.restore_table(Database.RaceClassAttribute, raceClassAttribute_query_data, defaults={
-                        'name': '',
-                        'value': None
-                    })
-
-                self.restore_table(Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
                         'name': '',
                         'value': None
                     })
@@ -782,6 +784,11 @@ class RHData():
                         self.restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
                             'source': None,
                             'deleted': False
+                        })
+
+                        self.restore_table(Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
+                            'name': '',
+                            'value': None
                         })
 
                     recover_status['stage_2'] = True
