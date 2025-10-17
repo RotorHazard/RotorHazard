@@ -1127,7 +1127,7 @@ class RHData():
             )
 
         if init:
-            if 'class_id' in init and int(init['class_id']) > 0:
+            if 'class_id' in init and int(init['class_id'] or 0) > 0:
                 new_heat.class_id = int(init['class_id'])
             if 'name' in init:
                 new_heat.name = init['name']
@@ -1265,6 +1265,8 @@ class RHData():
         if 'group_id' in data:
             heat.group_id = data['group_id']
         if 'pilot' in data:
+            if int(data['pilot'] or 0) == 0:
+                data['pilot'] = RHUtils.PILOT_ID_NONE
             slot.pilot_id = data['pilot']
             if slot.method == ProgramMethod.ASSIGN and data['pilot'] == RHUtils.PILOT_ID_NONE:
                 slot.method = ProgramMethod.NONE
@@ -1795,6 +1797,8 @@ class RHData():
             slot = Database.HeatNode.query.get(slot_id)
 
             if 'pilot' in slot_data:
+                if int(slot_data['pilot'] or 0) == 0:
+                    slot_data['pilot'] = RHUtils.PILOT_ID_NONE
                 slot.pilot_id = slot_data['pilot']
             if 'method' in slot_data:
                 slot.method = slot_data['method']
@@ -1896,6 +1900,8 @@ class RHData():
             if 'description' in init:
                 new_race_class.description = init['description']
             if 'format_id' in init:
+                if int(init['format_id'] or 0) == 0:
+                    init['format_id'] = RHUtils.FORMAT_ID_NONE
                 new_race_class.format_id = init['format_id']
             if 'win_condition' in init:
                 new_race_class.win_condition = init['win_condition']
@@ -1986,6 +1992,8 @@ class RHData():
         if 'class_description' in data:
             race_class.description = data['class_description']
         if 'class_format' in data:
+            if int(data['class_format'] or 0) == 0:
+                data['class_format'] = RHUtils.CLASS_ID_NONE
             race_class.format_id = data['class_format']
         if 'win_condition' in data:
             race_class.win_condition = data['win_condition']
@@ -2035,7 +2043,7 @@ class RHData():
                 self.clear_results_raceClass(race_class)
 
             if 'class_format' in data:
-                if int(data['class_format']):
+                if int(data['class_format'] or 0):
                     for race_meta in race_list:
                         race_meta.format_id = data['class_format']
                         self.clear_results_savedRaceMeta(race_meta)
@@ -3037,6 +3045,9 @@ class RHData():
         self.commit()
 
     def add_savedRaceMeta(self, data):
+        if int(data['class_id'] or 0) == 0:
+            data['class_id'] = RHUtils.CLASS_ID_NONE
+
         new_race = Database.SavedRaceMeta(
             round_id=data['round_id'],
             heat_id=data['heat_id'],
