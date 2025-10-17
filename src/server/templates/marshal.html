@@ -366,10 +366,7 @@
 			if (current_race_data.format_id > 0) {
 				race_args.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == current_race_data.format_id});
 			} else {
-				race_args.race_format = {
-					unlimited_time: false,
-					race_time_sec: null
-				};
+				race_args.race_format = null;
 			}
 			marshal.setRaceData(race_args);
 

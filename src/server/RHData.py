@@ -2514,6 +2514,8 @@ class RHData():
             return raceFormat_or_id
 
     def get_raceFormat(self, raceFormat_id):
+        if raceFormat_id is None:
+            return None
         return Database.RaceFormat.query.get(raceFormat_id)
 
     def get_raceFormats(self):
