@@ -810,7 +810,11 @@
 							.text(__(rotorhazard.event.race_formats[j].name))
 							.appendTo(field_select);
 					}
-					field_select.val(race_class.format);
+					if (race_class.format == null) {
+						field_select.val(0);
+					} else {
+						field_select.val(race_class.format);
+					}
 
 					// Ranking
 					var field_select = $(`#ranking--race-class-${race_class.id}`)
