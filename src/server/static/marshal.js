@@ -184,7 +184,7 @@ class RHMarshal {
 		self.race.heat_id = args.heat;
 		self.race.race_id = args.race_id;
 		self.race.class_id = args.class_id;
-		self.race.format_id = args.format_id;
+		self.race.race_format = args.race_format;
 		self.race.start_time = args.start_time;
 		self.race.start_time_formatted = args.start_time_formatted;
 	}
@@ -217,12 +217,11 @@ class RHMarshal {
 
 		self.race.history_duration = self.race.end_time - self.race.start_time;
 
-		if (self.race.format_id > 0) {
-			self.race.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == self.race.format_id});
-		} else {
+		if (!self.race.race_format) {
 			self.race.race_format = {
-				unlimited_time: false,
-				race_time_sec: null
+				unlimited_time: true,
+				race_time_sec: null,
+				start_delay_max: 0
 			};
 		}
 

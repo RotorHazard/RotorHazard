@@ -1628,7 +1628,13 @@
 				for (var i = 0; i < rotorhazard.event.race_formats.length; i++) {
 					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>')
 				}
-				$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
+
+				if (rotorhazard.event.race_status.race_format_id > 0) {
+					$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
+				} else {
+					$('#set_race_format').append('<option value="">-' + __('External') + '-</option>')
+					$('#set_race_format').val(rotorhazard.event.race_status.race_format_id);
+				}
 
 				var format = rotorhazard.event.race_formats.find(obj => {return obj.id == rotorhazard.event.race_status.race_format_id})
 
@@ -2550,10 +2556,7 @@
 			if (msg.format_id > 0) {
 				race_args.race_format = rotorhazard.event.race_formats.find(obj => {return obj.id == msg.format_id});
 			} else {
-				race_args.race_format = {
-					unlimited_time: false,
-					race_time_sec: null
-				};
+				race_args.race_format = null;
 			}
 			marshal.setRaceData(race_args);
 
