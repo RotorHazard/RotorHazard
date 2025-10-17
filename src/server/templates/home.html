@@ -35,8 +35,10 @@
 <div class="header">
 	<h1>
 		{% if getConfig('UI', 'timerLogo') %}
-			<img src="/shared/{{ getConfig('UI', 'timerLogo') }}" alt="{{ getConfig('UI', 'timerName') }}" />
+			<div class="screen-reader-text">{{ getConfig('UI', 'timerName') }}</div>
+			<img src="/shared/{{ getConfig('UI', 'timerLogo') }}" alt="" />
 		{% else %}
+			<div class="screen-reader-text">RotorHazard</div>
 			<div class="rh-logo"></div>
 		{% endif %}
 	</h1>
