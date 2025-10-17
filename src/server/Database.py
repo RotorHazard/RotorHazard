@@ -299,7 +299,7 @@ class SavedRaceMeta(Base):
     round_id = DB.Column(DB.Integer, nullable=False)
     heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=True)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=True)
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
     results = DB.Column(DB.PickleType, nullable=True)
