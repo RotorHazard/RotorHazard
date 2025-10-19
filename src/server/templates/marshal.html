@@ -495,8 +495,9 @@
 				} else {
 					pilotFreqInfo = ""
 				}
+				var callsign = pilotrace.callsign ? pilotrace.callsign : '';
 				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' +
-				        pilotrace.pilot_id + '">' + pilotrace.callsign + ' (' +
+				        pilotrace.pilot_id + '">' + callsign + ' (' +
 				        (pilotrace.node_index + 1) + ')' + pilotFreqInfo + '</option>');
 			}
 
