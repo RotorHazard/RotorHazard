@@ -903,6 +903,7 @@ class RHUI():
                     pilotraces = []
                     for pilotrace in pilotraces_db:
                         if pilotrace.race_id == race.id:
+                            pilot_data = None
                             for pilot in pilots:
                                 if pilot.id == pilotrace.pilot_id:
                                     pilot_data = pilot
