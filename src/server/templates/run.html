@@ -837,18 +837,19 @@
 		function show_current_laps() {
 			if (current_laps && rotorhazard.event.race_status) {
 				$.each(current_laps.node_index, function (i, curnode_data) { // i is loop num, curnode_data is json object
+					var laps_list = [...curnode_data.laps];
 					$('#current_laps_' + i + ' tbody > tr').remove();
 
 					if(rotorhazard.display_laps_reversed) {
 						if(!current_laps_reversed) {
-							curnode_data.laps.reverse();
+							laps_list.reverse();
 						}
 					}
 					else if(current_laps_reversed) {
-						curnode_data.laps.reverse();
+						laps_list.reverse();
 					}
 
-					$.each(curnode_data.laps, function (j, lap) { // j is loop num, lap_id is json object
+					$.each(laps_list, function (j, lap) { // j is loop num, lap_id is json object
 						if(lap.splits) {
 							if(rotorhazard.display_laps_reversed) {
 								if(!current_laps_reversed && lap.splits.length > 1) {
@@ -908,15 +909,15 @@
 
 						if(rotorhazard.display_time_first_pass) {
 							if(rotorhazard.display_laps_reversed) {
-								if(curnode_data.laps.length > 0) {
-									ts_val = lap.lap_time_stamp - curnode_data.laps[curnode_data.laps.length-1].lap_time_stamp;
+								if(laps_list.length > 0) {
+									ts_val = lap.lap_time_stamp - laps_list[laps_list.length-1].lap_time_stamp;
 								}
 								else {
 									ts_val = 0;
 								}
 							}
 							else {
-								ts_val = lap.lap_time_stamp - curnode_data.laps[0].lap_time_stamp;
+								ts_val = lap.lap_time_stamp - laps_list[0].lap_time_stamp;
 							}
 							local_prepend.text(formatTimeMillis(ts_val, {{ getConfig('UI', 'timeFormat')|tojson }}));
 							if(rotorhazard.display_time_start){
@@ -941,7 +942,7 @@
 
 						if(!rotorhazard.display_laps_reversed) {
 							$.each(lap.splits, function(k, split) {
-								if ((!curnode_data.finished_flag) || j < curnode_data.laps.length-1 ||
+								if ((!curnode_data.finished_flag) || j < laps_list.length-1 ||
 														(split.split_time && split.split_time != '-') ||
 														split.split_speed) {  // don't show last split if empty and pilot finished
 									var split_display = split.split_time + ' ';
