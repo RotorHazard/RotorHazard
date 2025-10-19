@@ -2712,6 +2712,14 @@
 				// fill enter/exit values
 				$('#m-enterat').val(rotorhazard.nodes[seat_index].enter_at_level);
 				$('#m-exitat').val(rotorhazard.nodes[seat_index].exit_at_level);
+
+				// Show appropriate UI
+				if (rotorhazard?.current_heatNodes[seat_index]?.pilot_id) {
+					$('#m-save-laps').prop('disabled', false);
+				} else {
+					$('#m-save-laps').prop('disabled', true);
+				}
+
 			} else {
 				// open tuning
 				$.magnificPopup.open({
