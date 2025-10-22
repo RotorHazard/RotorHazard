@@ -1027,8 +1027,8 @@ class RHData():
         return Database.HeatNode.query.filter_by(pilot_id=pilot_id).order_by(Database.HeatNode.id.desc()).first()
 
     def clear_pilots(self):
-        Database.DB_session.query(Database.Pilot).delete()
         Database.DB_session.query(Database.PilotAttribute).delete()
+        Database.DB_session.query(Database.Pilot).delete()
         self.commit()
 
     def reset_pilots(self):
@@ -1700,9 +1700,9 @@ class RHData():
         self.commit()
 
     def clear_heats(self):
-        Database.DB_session.query(Database.Heat).delete()
-        Database.DB_session.query(Database.HeatNode).delete()
         Database.DB_session.query(Database.HeatAttribute).delete()
+        Database.DB_session.query(Database.HeatNode).delete()
+        Database.DB_session.query(Database.Heat).delete()
         self.commit()
 
     def reset_heats(self, nofill=False):
@@ -2271,8 +2271,8 @@ class RHData():
         self.commit()
 
     def clear_raceClasses(self):
-        Database.DB_session.query(Database.RaceClass).delete()
         Database.DB_session.query(Database.RaceClassAttribute).delete()
+        Database.DB_session.query(Database.RaceClass).delete()
         self.commit()
         return True
 
@@ -2745,13 +2745,14 @@ class RHData():
             return False
 
     def clear_raceFormats(self):
-        Database.DB_session.query(Database.RaceFormat).delete()
-        Database.DB_session.query(Database.RaceFormatAttribute).delete()
         for race_class in self.get_raceClasses():
             self.alter_raceClass({
                 'class_id': race_class.id,
                 'class_format': RHUtils.FORMAT_ID_NONE
                 })
+        Database.DB_session.flush()
+        Database.DB_session.query(Database.RaceFormatAttribute).delete()
+        Database.DB_session.query(Database.RaceFormat).delete()
 
         self.commit()
         return True
@@ -3427,11 +3428,11 @@ class RHData():
         return True
 
     def clear_race_data(self):
-        Database.DB_session.query(Database.SavedRaceMeta).delete()
         Database.DB_session.query(Database.SavedRaceMetaAttribute).delete()
-        Database.DB_session.query(Database.SavedPilotRace).delete()
-        Database.DB_session.query(Database.SavedRaceLap).delete()
         Database.DB_session.query(Database.LapSplit).delete()
+        Database.DB_session.query(Database.SavedRaceLap).delete()
+        Database.DB_session.query(Database.SavedPilotRace).delete()
+        Database.DB_session.query(Database.SavedRaceMeta).delete()
         for heat in self.get_heats():
             heat.active = True
         self.commit()

@@ -1722,28 +1722,28 @@ def on_reset_database(data):
         on_list_backups()
 
     if reset_type == 'races':
-        RaceContext.rhdata.clear_race_data()
         RaceContext.race.reset_current_laps()
+        RaceContext.rhdata.clear_race_data()
     elif reset_type == 'heats':
-        RaceContext.rhdata.reset_heats()
-        RaceContext.rhdata.clear_race_data()
         RaceContext.race.reset_current_laps()
+        RaceContext.rhdata.clear_race_data()
+        RaceContext.rhdata.reset_heats()
     elif reset_type == 'classes':
+        RaceContext.race.reset_current_laps()
+        RaceContext.rhdata.clear_race_data()
         RaceContext.rhdata.reset_heats()
         RaceContext.rhdata.reset_raceClasses()
-        RaceContext.rhdata.clear_race_data()
-        RaceContext.race.reset_current_laps()
     elif reset_type == 'pilots':
-        RaceContext.rhdata.reset_pilots()
-        RaceContext.rhdata.reset_heats()
-        RaceContext.rhdata.clear_race_data()
         RaceContext.race.reset_current_laps()
-    elif reset_type == 'all':
+        RaceContext.rhdata.clear_race_data()
+        RaceContext.rhdata.reset_heats()
         RaceContext.rhdata.reset_pilots()
+    elif reset_type == 'all':
+        RaceContext.race.reset_current_laps()
+        RaceContext.rhdata.clear_race_data()
         RaceContext.rhdata.reset_heats()
         RaceContext.rhdata.reset_raceClasses()
-        RaceContext.rhdata.clear_race_data()
-        RaceContext.race.reset_current_laps()
+        RaceContext.rhdata.reset_pilots()
     elif reset_type == 'formats':
         RaceContext.rhdata.clear_race_data()
         RaceContext.race.reset_current_laps()
