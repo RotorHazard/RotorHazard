@@ -282,7 +282,7 @@ def later_stage_setup(config, socket):
             if num_attempts > 5:
                 break
             time.sleep(1.1)
-        hdlr_obj = logging.FileHandler(log_path_name)
+        hdlr_obj = logging.FileHandler(log_path_name, encoding='utf-8')
         hdlr_obj.setLevel(lvl)
         # configure log format with milliseconds as ".###" (not ",###")
         hdlr_obj.setFormatter(logging.Formatter(fmt=FILELOG_FORMAT_STR, datefmt='%Y-%m-%d %H:%M:%S'))
