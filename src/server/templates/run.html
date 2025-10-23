@@ -2270,6 +2270,7 @@
 						}
 						if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 							// race stop: x
+							$('#cancel_schedule_race').trigger('click');
 							$('#stop_race').trigger('click');
 						}
 					}
