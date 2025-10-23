@@ -1202,8 +1202,8 @@ def get_gap_info(racecontext, seat_index):
         if result['node'] == seat_index:
             rank_index = index
             break
-    else: # no break
-        logger.error('Failed to find results: Node not in result list')
+    else: # no break, pilot is duplicated or NONE
+        logger.debug('Failed to find results: Node not in result list')
         return
 
     # check for best lap
