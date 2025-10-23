@@ -1325,7 +1325,7 @@ class RHRace():
         with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
             if self.race_status != RaceStatus.READY:
-                logger.warning("Ignoring request to schedule race: Status not READY")
+                logger.info("Ignoring request to schedule race: Status not READY")
                 return False
 
             if s or m:
@@ -1341,11 +1341,12 @@ class RHRace():
 
                 logger.info("Scheduling race in {0:01d}:{1:02d}".format(int(m), int(s)))
             else:
-                self.scheduled = False
-                self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL, {
-                    'heat_id': self.current_heat,
-                    })
-                self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
+                if self.scheduled:
+                    self.scheduled = False
+                    self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL, {
+                        'heat_id': self.current_heat,
+                        })
+                    self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
 
             self._racecontext.rhui.emit_race_schedule()
             return True
