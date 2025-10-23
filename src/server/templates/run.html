@@ -2229,8 +2229,9 @@
 
 		$(document).on('keyup', function(e) {
 			// keyboard shortcutsz
-			switch (e.which) {
-				case 83:  // S
+			switch (e.key) {
+				case "s":
+				case "S":
 					if (!document.getElementById('marshal-dialog').open) {
 						if ( this !== event.target && event.target.id !== "set_current_heat"
 							&& event.target.id !== "set_race_format"
@@ -2244,7 +2245,8 @@
 						}
 					}
 					break;
-				case 90:  // Z
+				case "z":
+				case "Z":
 					if (!document.getElementById('marshal-dialog').open) {
 						if ( this !== event.target && event.target.id !== "set_current_heat"
 							&& event.target.id !== "set_race_format"
@@ -2258,7 +2260,8 @@
 						}
 					}
 					break;
-				case 88:  // X
+				case "x":
+				case "X":
 					if (!document.getElementById('marshal-dialog').open) {
 						if ( this !== event.target
 							&& ( /textarea|select/i.test( event.target.nodeName )
@@ -2271,7 +2274,8 @@
 						}
 					}
 					break;
-				case 67:  // C
+				case "c":
+				case "C":
 					if (!document.getElementById('marshal-dialog').open) {
 						if ( this !== event.target
 							&& ( /textarea|select/i.test( event.target.nodeName )
@@ -2284,7 +2288,8 @@
 						}
 					}
 					break;
-				case 86:  // V
+				case "v":
+				case "V":
 					if (!document.getElementById('marshal-dialog').open) {
 						if ( this !== event.target
 							&& ( /textarea|select/i.test( event.target.nodeName )
@@ -2297,7 +2302,7 @@
 						}
 					}
 					break;
-				case 49:  // 1
+				case "1":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 1: alt+1
 						$('#manual_lap_0').trigger('click');
@@ -2307,7 +2312,7 @@
 							$('#play_callout_1').trigger('click');
 					}
 					break;
-				case 50:  // 2
+				case "2":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 2: alt+2
 						$('#manual_lap_1').trigger('click');
@@ -2317,7 +2322,7 @@
 							$('#play_callout_2').trigger('click');
 					}
 					break;
-				case 51:  // 3
+				case "3":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 3: alt+3
 						$('#manual_lap_2').trigger('click');
@@ -2327,7 +2332,7 @@
 							$('#play_callout_3').trigger('click');
 					}
 					break;
-				case 52:  // 4
+				case "4":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 4: alt+4
 						$('#manual_lap_3').trigger('click');
@@ -2337,7 +2342,7 @@
 							$('#play_callout_4').trigger('click');
 					}
 					break;
-				case 53:  // 5
+				case "5":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 5: alt+5
 						$('#manual_lap_4').trigger('click');
@@ -2347,7 +2352,7 @@
 							$('#play_callout_5').trigger('click');
 					}
 					break;
-				case 54:  // 6
+				case "6":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 6: alt+6
 						$('#manual_lap_5').trigger('click');
@@ -2357,7 +2362,7 @@
 							$('#play_callout_6').trigger('click');
 					}
 					break;
-				case 55:  // 7
+				case "7":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 7: alt+7
 						$('#manual_lap_6').trigger('click');
@@ -2367,7 +2372,7 @@
 							$('#play_callout_7').trigger('click');
 					}
 					break;
-				case 56:  // 8
+				case "8":
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 8: alt+8
 						$('#manual_lap_7').trigger('click');
@@ -2377,7 +2382,7 @@
 							$('#play_callout_8').trigger('click');
 					}
 					break;
-				case 57:  // 9
+				case "9":
 					if (e.ctrlKey && e.altKey && !e.metaKey) {
 						// play callout 1: ctrl+alt+9
 						if ($('#play_callout_9').length)
@@ -2388,8 +2393,8 @@
 		});
 
 		$(document).on('keydown', function(e) {
-			switch (e.which) {
-				case 32:  // space bar
+			switch (e.key) {
+				case " ":
 					if ( this !== event.target && event.target.id !== "set_current_heat"
 						&& event.target.id !== "set_race_format"
 						&& ( /textarea|select/i.test( event.target.nodeName )
