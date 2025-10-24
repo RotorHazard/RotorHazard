@@ -174,6 +174,17 @@ class RHData():
         self.clean()
         if not copy_flag:
             Database.close_database()
+        
+        # Checkpoint WAL to flush all changes into main DB file before backup
+        try:
+            import sqlite3
+            conn = sqlite3.connect(self._DB_FILE_NAME)
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.close()
+            logger.debug('Checkpointed WAL before database backup')
+        except Exception as ex:
+            logger.warning('Failed to checkpoint WAL before backup: ' + str(ex))
+        
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
         except:  # if error then use 'now' timestamp

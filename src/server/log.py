@@ -477,6 +477,15 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
                 if config_file and os.path.isfile(config_file):
                     zip_file_obj.write(config_file)
                 if db_file and os.path.isfile(db_file):
+                    # Checkpoint WAL to flush all changes into main DB file before adding to zip
+                    try:
+                        import sqlite3
+                        conn = sqlite3.connect(db_file)
+                        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                        conn.close()
+                        logger.debug('Checkpointed WAL before adding database to logs zip')
+                    except Exception as ex:
+                        logger.warning('Failed to checkpoint WAL before logs zip: ' + str(ex))
                     zip_file_obj.write(db_file)
                 bashrc_file = os.path.expanduser('~/.bashrc')
                 if os.path.isfile(bashrc_file):
