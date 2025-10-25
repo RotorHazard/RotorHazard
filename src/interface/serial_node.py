@@ -17,6 +17,7 @@ BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mo
 SERIAL_BAUD_RATES = [921600, 115200]
 SYS_DEV_DIR_PATH = "/dev/"
 DEF_S32BPILL_SERIAL_PORTS = ["ttyAMA0", "serial0"]
+PORT_DISCOVERY_TIMEOUT = 10.0  # Maximum seconds to spend trying to discover a node on each port
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,10 @@ class SerialNode(Node):
     # Serial Common Functions
     #
 
-    def read_block(self, interface, command, size, max_retries=MAX_RETRY_COUNT, check_multi_flag=True):
+    def read_block(self, interface, command, size, max_retries=MAX_RETRY_COUNT, check_multi_flag=True, deadline=None):
         '''
         Read serial data given command, and data size.
+        deadline: optional monotonic() time after which to abort
         '''
         with node_io_rlock_obj:  # only allow one greenlet at a time
             self.inc_read_block_count(interface)
@@ -49,6 +51,9 @@ class SerialNode(Node):
             retry_count = 0
             data = None
             while success is False and retry_count <= max_retries:
+                # Check if we've exceeded the deadline
+                if deadline is not None and monotonic() > deadline:
+                    return None
                 if check_multi_flag:
                     if self.multi_node_index >= 0:
                         if not self.check_set_multi_node_index(interface):
@@ -56,7 +61,9 @@ class SerialNode(Node):
                 try:
                     self.io_request = monotonic()
                     self.serial.flushInput()
+                    gevent.sleep(0)  # Yield to allow gevent to process other tasks
                     self.serial.write(bytearray([command]))
+                    gevent.sleep(0)  # Yield again after write
                     data = bytearray(self.serial.read(size + 1))
                     self.io_response = monotonic()
                     if validate_checksum(data):
@@ -88,14 +95,13 @@ class SerialNode(Node):
                                     self.node_log(interface, 'Retry (no data) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
                             self.inc_read_error_count(interface)
                             gevent.sleep(0.025)
-                except IOError as err:
-                    self.node_log(interface, 'Read Error: ' + str(err))
+                except (IOError, serial.SerialTimeoutException) as err:
                     retry_count = retry_count + 1
                     if check_multi_flag:  # log and count if regular query
                         if retry_count <= max_retries:
-                            self.node_log(interface, 'Retry (IOError) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                            self.node_log(interface, 'Retry (IOError/Timeout) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
                         else:
-                            self.node_log(interface, 'Retry (IOError) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                            self.node_log(interface, 'Retry (IOError/Timeout) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
                         self.inc_read_error_count(interface)
                         gevent.sleep(0.025)
             return data if success else None
@@ -228,8 +234,11 @@ class SerialNode(Node):
 
 
 def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
+    logger.info("=== Starting serial node discovery ===")
     nodes = []
     config_ser_ports = config.get_item('GENERAL', 'SERIAL_PORTS')
+    if config_ser_ports:
+        logger.info("Configured serial ports: {0}".format(config_ser_ports))
     if isS32BPillFlag and len(config_ser_ports) == 0:
         try:    # if "/dev/ttyAMA0" exist then use it, otherwise use "/dev/serial0"
             def_port = SYS_DEV_DIR_PATH + (DEF_S32BPILL_SERIAL_PORTS[0] \
@@ -242,33 +251,62 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     if config_ser_ports:
         node_serial_obj = None
         for index, comm in enumerate(config_ser_ports):
+            logger.info("Attempting to discover serial node on port '{0}'".format(comm))
+            port_start_time = time.time()  # Start timeout timer for this port
             rev_val = None
             baud_idx = 0
             while (not rev_val) and baud_idx < len(SERIAL_BAUD_RATES):
-                attempt_delay_secs = 0.0625
-                # if opening port fails then do retries; with exponential delay, but less than 1 second
-                while (not rev_val) and attempt_delay_secs < 0.9:
-                    attempt_delay_secs *= 2
-                    node_serial_obj = serial.Serial(port=None, baudrate=SERIAL_BAUD_RATES[baud_idx], timeout=0.25)
+                # Check if we've exceeded the per-port timeout
+                if time.time() - port_start_time > PORT_DISCOVERY_TIMEOUT:
+                    logger.warning("Discovery timeout ({0}s) exceeded for port '{1}' - moving to next port".format(PORT_DISCOVERY_TIMEOUT, comm))
+                    break
+                
+                logger.info("Trying baudrate {0} on port '{1}'".format(SERIAL_BAUD_RATES[baud_idx], comm))
+                attempt_count = 0
+                max_attempts = 3
+                # if opening port fails then do retries with short delays
+                while (not rev_val) and attempt_count < max_attempts:
+                    # Check timeout in inner loop too
+                    if time.time() - port_start_time > PORT_DISCOVERY_TIMEOUT:
+                        logger.warning("Discovery timeout exceeded during baudrate retry - aborting port '{0}'".format(comm))
+                        break
+                    
+                    attempt_count += 1
+                    # Moderate timeout (0.25s read, 0.5s write) - fast enough to detect non-responsive devices but allows real devices time to respond
+                    node_serial_obj = serial.Serial(port=None, baudrate=SERIAL_BAUD_RATES[baud_idx], timeout=0.25, write_timeout=0.5)
                     node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
                     node_serial_obj.setRTS(0)
                     node_serial_obj.setPort(comm)
                     node_serial_obj.open()  # open port (now that DTR is configured for no change)
-                    if baud_idx > 0 and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
-                        gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
-                    else:
-                        logger.debug("Delaying {} secs before attempting connection to serial node".format(attempt_delay_secs))
-                        gevent.sleep(attempt_delay_secs)
+                    # Only delay on retry attempts, not the first attempt
+                    if attempt_count > 1:
+                        delay_secs = 0.1  # Short 100ms delay between retries
+                        logger.debug("Delaying {} secs before retry attempt".format(delay_secs))
+                        gevent.sleep(delay_secs)
                     node = SerialNode(index+idxOffset, node_serial_obj)
                     multi_count = 1
                     try:               # handle serial multi-node processor
-                        # read NODE_API_LEVEL and verification value:
-                        data = node.read_block(None, READ_REVISION_CODE, 2, 2, False)
+                        # read NODE_API_LEVEL and verification value with timeout protection
+                        logger.info("Attempting to read revision code from serial node at port '{0}' (baudrate={1})...".format(comm, SERIAL_BAUD_RATES[baud_idx]))
+                        
+                        # Set a 3-second deadline for this read (allows time for device to respond while preventing infinite hangs)
+                        read_deadline = monotonic() + 3.0
+                        data = node.read_block(None, READ_REVISION_CODE, 2, 2, False, deadline=read_deadline)
+                        if data is None:
+                            logger.warning("Timeout reading revision code from port '{0}' at baudrate {1}".format(comm, SERIAL_BAUD_RATES[baud_idx]))
+                        
                         rev_val = unpack_16(data) if data != None else None
+                        if rev_val:
+                            logger.debug("Received revision code: 0x{0:04X}".format(rev_val))
                         if rev_val and (rev_val >> 8) == 0x25:
                             if (rev_val & 0xFF) >= 32:  # check node API level
-                                data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False)
+                                # Set a 3-second deadline for multinode count read
+                                read_deadline = monotonic() + 3.0
+                                data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False, deadline=read_deadline)
                                 multi_count = unpack_8(data) if data != None else None
+                                if multi_count is None:
+                                    logger.warning("Timeout reading multinode count from port '{0}'".format(comm))
+                                    multi_count = 1  # Assume single node on timeout
                             if multi_count is None or multi_count < 0 or multi_count > 32:
                                 logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
                                 multi_count = 1
@@ -278,9 +316,9 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                     except Exception:
                         multi_count = 1
                         logger.exception('Error fetching READ_MULTINODE_COUNT for serial node')
-                    if (not rev_val) and node_serial_obj:
-                        node_serial_obj.close()
-                        node_serial_obj = None
+                    # Don't close the port during retries - closing a non-responsive USB CDC device
+                    # can block for 30+ seconds. Just leave it open; if discovery fails, we'll skip
+                    # the close entirely to avoid blocking.
                 if (not rev_val):  # if connection attempt failed then retry with alternate baud rate
                     baud_idx += 1
             if rev_val:
@@ -343,5 +381,15 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                         slots_str += ' ' + str(node.multi_node_slot_index+1)
                     logger.info("Receiver modules found at slot positions: " + slots_str)
             else:
-                logger.error('Unable to fetch revision code for serial node at "{0}"'.format(comm))
+                logger.warning('Unable to fetch revision code for serial node at "{0}" - device not responding or wrong mode'.format(comm))
+                logger.warning('Skipping port "{0}" and continuing with server startup...'.format(comm))
+            
+            # Always close serial port if we didn't find a valid node
+            if not rev_val and node_serial_obj:
+                # Don't close non-responsive serial ports - close() can block for 30+ seconds!
+                # Just abandon the port and let the OS clean it up when the process exits.
+                # The port will be released and available for other processes.
+                logger.debug("Skipping close() on non-responsive port '{0}' to avoid blocking".format(comm))
+                node_serial_obj = None
+    logger.info("=== Serial node discovery complete: found {0} node(s) ===".format(len(nodes)))
     return nodes
