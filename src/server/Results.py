@@ -2110,7 +2110,7 @@ def check_win_coop_most_laps(racecontext, **kwargs):
         'status': WinStatus.NONE
     }
 
-def get_leading_pilot_id(raceObj, interfaceObj, onlyNewFlag=False):
+def get_leading_pilot_id_and_node_idx(raceObj, interfaceObj, onlyNewFlag=False):
     try:
         lboard_name = raceObj.results['meta']['primary_leaderboard']
         leaderboard = raceObj.results[lboard_name]
@@ -2126,20 +2126,26 @@ def get_leading_pilot_id(raceObj, interfaceObj, onlyNewFlag=False):
                             node = interfaceObj.nodes[line['node']]
                             if node.pass_crossing_flag:
                                 logger.info('Waiting for node {0} crossing to determine leader'.format(line['node']+1))
-                                return RHUtils.PILOT_ID_NONE
+                                return RHUtils.PILOT_ID_NONE, -1
                 pilot_id = leaderboard[0]['pilot_id']
                 if onlyNewFlag:
                     if lead_lap == raceObj.race_leader_lap and pilot_id == raceObj.race_leader_pilot_id:
-                        return RHUtils.PILOT_ID_NONE  # reported leader previously so return none
+                        return RHUtils.PILOT_ID_NONE, -1  # reported leader previously so return none
                 prev_lead_lap = raceObj.race_leader_lap
                 raceObj.race_leader_lap = lead_lap
                 raceObj.race_leader_pilot_id = pilot_id
                 logger.debug('Race leader pilot_id={}, lap={}, prevLap={}'.format(pilot_id, lead_lap, prev_lead_lap))
                 # return ID of leader, but not if from previous lap (because of deleted lap)
-                return pilot_id if lead_lap >= prev_lead_lap else RHUtils.PILOT_ID_NONE
+                if lead_lap >= prev_lead_lap:
+                    return pilot_id, leaderboard[0]['node']
+                return RHUtils.PILOT_ID_NONE, -1
     except Exception:
         logger.exception("Error in Results 'get_leading_pilot_id()'")
-    return RHUtils.PILOT_ID_NONE
+    return RHUtils.PILOT_ID_NONE, -1
+
+def get_leading_pilot_id(raceObj, interfaceObj, onlyNewFlag=False):
+    id, idx = get_leading_pilot_id_and_node_idx(raceObj, interfaceObj, onlyNewFlag)
+    return id
 
 def get_leading_team_name(results):
     try:

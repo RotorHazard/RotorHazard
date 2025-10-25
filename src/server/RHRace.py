@@ -972,9 +972,11 @@ class RHRace():
                                                             team_short_phonetic=team_short_phonetic)
                                     else:
                                         if check_leader:
-                                            leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
+                                            leader_pilot_id, leader_node_idx = Results.get_leading_pilot_id_and_node_idx(
+                                                            self, self._racecontext.interface, True)
                                         else:
                                             leader_pilot_id = RHUtils.PILOT_ID_NONE
+                                            leader_node_idx = -1
                                         self._racecontext.rhui.emit_phonetic_data(pilot_id, lap_id, lap_time, None, \
                                                         (pilot_id == leader_pilot_id), node_finished_flag, node.index)
                                         if leader_pilot_id != RHUtils.PILOT_ID_NONE:
@@ -988,8 +990,7 @@ class RHRace():
                                                 logger.info('Pilot {} is leading'.format(pilot_namestr))
                                             self._racecontext.events.trigger(Evt.RACE_PILOT_LEADING, {
                                                 'pilot_id': leader_pilot_id,
-                                                'node_index': self._racecontext.rhdata.get_node_idx_from_heatNode(\
-                                                                              self.current_heat, leader_pilot_id)
+                                                'node_index': leader_node_idx
                                             })
 
                                     # check for and announce possible winner and trigger possible pilot-done events
