@@ -446,7 +446,6 @@ class RHRace():
                     gevent.spawn(self.race_expire_thread, start_token)
 
                 self._racecontext.rhui.emit_race_status() # Race page, to set race button states
-                logger.info('Race started at {:.3f} ({:.0f})'.format(self.start_time_monotonic, self.start_time_epoch_ms))
                 logger.info('Race started at {:.3f} ({:.0f}) time={}'.format(self.start_time_monotonic, self.start_time_epoch_ms, \
                                                                                      self.start_time_formatted))
 
