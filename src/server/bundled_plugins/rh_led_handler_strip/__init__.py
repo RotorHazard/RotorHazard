@@ -1,7 +1,7 @@
 '''LED visual effects'''
 
 from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, effect_delay
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, effect_delay, set_strip_led_on_fn
 import gevent
 import random
 import math
@@ -642,3 +642,4 @@ def register_handlers(args):
 
 def initialize(rhapi):
     rhapi.events.on(Evt.LED_INITIALIZE, register_handlers)
+    set_strip_led_on_fn(led_on)

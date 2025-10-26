@@ -16,7 +16,6 @@ import RHUtils
 from RHUtils import catchLogExceptionsWrapper, cleanVarName
 import gevent
 from eventmanager import Evt
-from collections import UserDict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -311,6 +310,17 @@ def effect_delay(ms, args):
         gevent.sleep(ms/1000.0)
         if effect_obj.terminate:
             raise LEDEffectExit
+
+
+LEDEventManager.strip_led_on_fn = None
+
+def set_strip_led_on_fn(led_on_fn):
+    LEDEventManager.strip_led_on_fn = led_on_fn
+
+def call_strip_led_on_fn(*args):
+    if callable(LEDEventManager.strip_led_on_fn):
+        LEDEventManager.strip_led_on_fn(*args)
+
 
 class LEDEffect():
     def __init__(self, label, handler_fn, valid_events, default_args=None, name=None):
