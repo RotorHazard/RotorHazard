@@ -1134,6 +1134,12 @@ Color of seat in active race. Returns `Color`.
 Immediately activate an LED effect. **Should usually be called asynchronously with `gevent.spawn()`.**
 - `args` (dict): Must include `handler_fn` to activate; other arguments are passed to handler
 
+#### led.set_pattern(self, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0)
+Sets the LED strip to the given color and pattern. Note that LED events may overwrite the pattern.
+
+#### led.set_strip_pixels(self, colors_list, offset=0)
+Sets the LED strip to the given list of color values. Note that LED events may overwrite the colors.
+
 
 
 ## Video Receivers

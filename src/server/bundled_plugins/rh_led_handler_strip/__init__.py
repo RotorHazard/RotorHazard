@@ -1,7 +1,8 @@
 '''LED visual effects'''
 
 from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, effect_delay, set_strip_led_on_fn
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern, effect_delay, \
+                              set_strip_led_on_fn, set_set_strip_pixels_fn
 import gevent
 import random
 import math
@@ -26,18 +27,62 @@ def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color)
     else:
-        patternlength = sum(pattern)
+        num_patterns = len(pattern) // 2
 
-        for i in range(strip.numPixels()):
-            if (i+offset) % patternlength < pattern[0]:
-                strip.setPixelColor(i, color)
+        if num_patterns <= 1:
+            patternlength = sum(pattern)
+            if isinstance(color, list):  # handle color list (even though only need one color)
+                color = color[0] if len(color) > 0 else ColorVal.WHITE
+            for i in range(strip.numPixels()):
+                if (i+offset) % patternlength < pattern[0]:
+                    strip.setPixelColor(i, color)
+                else:
+                    strip.setPixelColor(i, ColorVal.NONE)
+        else:
+            # multiple patterns specified (as pairs), i.e. [4, 4, 2, 6]
+            if isinstance(color, list):  # need color list with one entry for each pattern
+                color_list = color
+                if len(color_list) < num_patterns:
+                    for i in range(num_patterns-len(color_list)):
+                        color_list.append(ColorVal.WHITE)
             else:
-                strip.setPixelColor(i, ColorVal.NONE)
+                color_list = [color] * num_patterns
+            pattern_idx = 0  # index from 0 to num_patterns-1
+            sub_pattern = [pattern[0], pattern[1]]  # start with first pattern
+            patternlength = sum(sub_pattern)
+            pat_pos = 0      # position in sub-pattern
+            for i in range(strip.numPixels()):
+                if (i+offset) % patternlength < sub_pattern[0]:
+                    strip.setPixelColor(i, color_list[pattern_idx])
+                else:
+                    strip.setPixelColor(i, ColorVal.NONE)
+                pat_pos += 1
+                if pat_pos >= patternlength:  # switch to next pattern (or back to first)
+                    pattern_idx = (pattern_idx + 1) % num_patterns
+                    sub_pattern = [pattern[pattern_idx*2], pattern[pattern_idx*2+1]]
+                    patternlength = sum(sub_pattern)
+                    pat_pos = 0      # reset position in sub-pattern
 
     strip.show()
 
 def led_off(strip):
     led_on(strip, ColorVal.NONE)
+
+# Set the LED strip to the colors in the given list, starting at 'offset' pixel position on the strip
+def set_strip_pixels(strip, colors_list, offset=0):
+    if colors_list is not None:
+        num_pixels = strip.numPixels()
+        pix_pos = offset if offset >= 0 and offset < num_pixels else 0
+        if isinstance(colors_list, list):
+            list_len = len(colors_list)
+            if list_len +  pix_pos >= num_pixels:
+                list_len = num_pixels - pix_pos
+            for i in range(list_len):
+                strip.setPixelColor(pix_pos, colors_list[i])
+                pix_pos += 1
+        else:
+            strip.setPixelColor(pix_pos, colors_list)  # support setting single pixel to color value
+        strip.show()
 
 def chase(args):
     """Movie theater light style chaser animation."""
@@ -643,3 +688,4 @@ def register_handlers(args):
 def initialize(rhapi):
     rhapi.events.on(Evt.LED_INITIALIZE, register_handlers)
     set_strip_led_on_fn(led_on)
+    set_set_strip_pixels_fn(set_strip_pixels)

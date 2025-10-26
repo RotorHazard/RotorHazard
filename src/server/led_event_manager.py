@@ -313,6 +313,7 @@ def effect_delay(ms, args):
 
 
 LEDEventManager.strip_led_on_fn = None
+LEDEventManager.set_strip_pixels_fn = None
 
 def set_strip_led_on_fn(led_on_fn):
     LEDEventManager.strip_led_on_fn = led_on_fn
@@ -320,6 +321,13 @@ def set_strip_led_on_fn(led_on_fn):
 def call_strip_led_on_fn(*args):
     if callable(LEDEventManager.strip_led_on_fn):
         LEDEventManager.strip_led_on_fn(*args)
+
+def set_set_strip_pixels_fn(led_on_fn):
+    LEDEventManager.set_strip_pixels_fn = led_on_fn
+
+def call_set_strip_pixels_fn(*args):
+    if callable(LEDEventManager.set_strip_pixels_fn):
+        LEDEventManager.set_strip_pixels_fn(*args)
 
 
 class LEDEffect():
