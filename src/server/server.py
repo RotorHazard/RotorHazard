@@ -768,6 +768,9 @@ def stop_background_threads():
     except:
         logger.exception("Error stopping background threads")
 
+def start_background_threads_delayed():
+    gevent.spawn_later(1.0, start_background_threads)
+
 #
 # Socket IO Events
 #
@@ -3673,6 +3676,8 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
 @catchLogExceptionsWrapper
 def rh_program_initialize(reg_endpoints_flag=True):
     with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+
+        RaceContext.server_start_background_threads_fn = start_background_threads_delayed  # setup RHAPI access to function
 
         logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format( \
             RELEASE_VERSION, SERVER_API, NODE_API_BEST))

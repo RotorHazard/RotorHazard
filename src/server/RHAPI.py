@@ -1379,8 +1379,11 @@ class ServerAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
-    def enable_heartbeat_event(self):
+    def enable_heartbeat_event(self, start_background_threads=True):
         self._racecontext.serverstate.enable_heartbeat_event = True
+        if start_background_threads and \
+                    callable(self._racecontext.server_start_background_threads_fn):
+            self._racecontext.server_start_background_threads_fn()
 
     def set_min_mocks(self, mocks):
         self._racecontext.serverstate.mock_nodes = mocks

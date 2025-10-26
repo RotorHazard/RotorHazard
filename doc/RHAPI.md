@@ -1443,8 +1443,10 @@ These methods are accessed via `RHAPI.server`
 
 ### All Properties and Methods
 
-#### server.enable_heartbeat_event()
-When enabled, each time the server heartbeat function runs a `Evt.HEARTBEAT` event will be triggered. No return value.
+#### server.enable_heartbeat_event(start_background_threads=True)
+When enabled, each time the server heartbeat function runs a `Evt.HEARTBEAT` event will be triggered.
+Background threads will be started (if not already running), unless 'False' is passed in for the
+'start_background_threads' parameter. No return value.
 
 #### server.info
 _Read only_

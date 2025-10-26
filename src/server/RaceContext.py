@@ -39,6 +39,7 @@ class RaceContext():
         self.raceclass_rank_manager = None
         self.race_points_manager = None
         self.plugin_manager = None
+        self.server_start_background_threads_fn = None
 
         self.serverconfig = Config.Config(self, config_file_name, cfg_bkp_dir_name)
         self.serverstate = ServerState(self)
