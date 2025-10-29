@@ -1456,7 +1456,7 @@ ol.heat-edit-list>li {
 }
 
 .heat-edit>.set_heat_name {
-	position: absolute;
+
 	top: 0;
 	left: 0;
 	width: calc(100% - 6.5rem);
@@ -1464,6 +1464,8 @@ ol.heat-edit-list>li {
 	border: transparent;
 	color: var(--contrast_1_high);
 	font-weight: bold;
+	margin-top: 0.5rem;
+	margin-left: 0.5rem;
 }
 
 .heat-edit>h4 {
@@ -1507,7 +1509,9 @@ ol.heat-edit-list>li {
 }
 
 .heats>li {
-	border: solid 0.0625em #d1d3d4;
+	border: solid 0.0625em #e6e6e6;
+	border-radius: 0.5rem;
+	background-color: #f1f2f4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1570,7 +1574,7 @@ ol.heat-edit-list>li {
 }
 
 .heats label.auto_frequency {
-	margin: 0.25rem;
+	margin: 0.5rem;
 	display: block;
 }
 
@@ -1596,6 +1600,18 @@ ol.heat-edit-list>li {
 	box-sizing: border-box;
 	display: flex;
 	flex-wrap: wrap;
+}
+
+.plan-calc, .plan-reset {
+	margin-top: 0.0rem;
+	margin-left: 0.5rem;
+	margin-bottom: 0.5rem;
+}
+
+.heat-round-group {
+	margin-top: 0.5rem;
+	margin-left: 0.5rem;
+	margin-bottom: 0.0rem;
 }
 
 @media (prefers-color-scheme: dark) {

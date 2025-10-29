@@ -1523,15 +1523,9 @@
 					.addClass('heat-edit')
 					.appendTo(parent_el);
 
-				var heat_header = $(document.createElement('h4'))
-					.text(`${__('Heat')} ${heat.id}`)
-				el.append(heat_header);
-
-				// Round
-				var heat_round = $(document.createElement('p'))
-					.addClass(`heat-ui--round--heat-${heat.id}`)
-					.addClass(`heat-round-group`)
-				el.append(heat_round);
+				// var heat_header = $(document.createElement('h4'))
+				// 	.text(`${__('Heat')} ${heat.id}`)
+				// el.append(heat_header);
 
 				// Name
 				var heat_name = $(document.createElement('input'))
@@ -1541,6 +1535,12 @@
 					.data('heat', heat.id)
 					.addClass('set_heat_name');
 				el.append(heat_name);
+
+				// Round
+				var heat_round = $(document.createElement('p'))
+					.addClass(`heat-ui--round--heat-${heat.id}`)
+					.addClass(`heat-round-group`)
+				el.append(heat_round);
 
 				// Actions
 				var heat_actions = $(document.createElement('div'))
