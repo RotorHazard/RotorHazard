@@ -31,7 +31,6 @@
 #include "commands.h"
 #if !STM32_MODE_FLAG
 #include <Wire.h>
-#include "rheeprom.h"
 #endif
 
 // Note: Configure Arduino NODE_NUMBER value in 'config.h'
@@ -60,12 +59,6 @@ const char *firmwareProcTypeString = "FIRMWARE_PROCTYPE: STM32F4";
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
 uint8_t i2cAddress = 6 + (NODE_NUMBER * 2);
 #define SERIALCOM Serial
-#define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
-#define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
-#define EEPROM_ADRW_EXITAT 4       //address for stored 'exitAtLevel'
-#define EEPROM_ADRW_EXPIRE 6       //address for stored catch history expire duration
-#define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
-#define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 #define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
 
 #else
@@ -270,21 +263,6 @@ void setup()
     cbi(ADCSRA, ADPS1);
     cbi(ADCSRA, ADPS0);
 
-    // if EEPROM-check value matches then read stored values
-    if (eepromReadWord(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
-    {
-        rssiNodePtr->setVtxFreq(eepromReadWord(EEPROM_ADRW_RXFREQ));
-        rssiNodePtr->setEnterAtLevel(eepromReadWord(EEPROM_ADRW_ENTERAT));
-        rssiNodePtr->setExitAtLevel(eepromReadWord(EEPROM_ADRW_EXITAT));
-    }
-    else
-    {    // if no match then initialize EEPROM values
-        eepromWriteWord(EEPROM_ADRW_RXFREQ, rssiNodePtr->getVtxFreq());
-        eepromWriteWord(EEPROM_ADRW_ENTERAT, rssiNodePtr->getEnterAtLevel());
-        eepromWriteWord(EEPROM_ADRW_EXITAT, rssiNodePtr->getExitAtLevel());
-        eepromWriteWord(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
-    }
-
     rssiNodePtr->initRxModule();  //init and set RX5808 to default frequency
     rssiNodePtr->rssiInit();      //initialize RSSI processing
 
@@ -354,7 +332,6 @@ void loop()
 
             if (changeFlags & FREQ_CHANGED)
             {
-                eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
                 rssiNodePtr->rssiStateReset();  // restart rssi peak tracking for node
             }
         }
@@ -385,11 +362,6 @@ void loop()
             commsMonitorEnabledFlag = true;
             commsMonitorLastResetTime = curTimeMs;
         }
-
-        if (changeFlags & ENTERAT_CHANGED)
-            eepromWriteWord(EEPROM_ADRW_ENTERAT, rssiNodePtr->getEnterAtLevel());
-        if (changeFlags & EXITAT_CHANGED)
-            eepromWriteWord(EEPROM_ADRW_EXITAT, rssiNodePtr->getExitAtLevel());
 #endif
 
         // Status LED
