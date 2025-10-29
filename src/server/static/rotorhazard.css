@@ -1401,7 +1401,8 @@ main.page-home {
 .heats>li {
 	width: calc(20% - 0.5em);
 	margin: 0 0.25em 0.5em;
-	padding: 0;
+	padding-top: 5px;
+	padding-bottom: 20px;
 	box-sizing: border-box;
 }
 
@@ -1740,8 +1741,8 @@ ol.heat-edit-list>li {
 
 .actions {
 	position: absolute;
-	top: 0.25rem;
-	right: 0.25em;
+	top: 0.7rem;
+	right: 0.5rem;
 	font-size: 0.9rem;
 	z-index: 100;
 }
