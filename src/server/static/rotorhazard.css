@@ -1312,11 +1312,12 @@ main.page-home {
 
 .item-blocks .set_method {
 	flex: 0 0 5em;
-	margin-right: auto;
+	margin-right: 0.5em;
 }
 
 .item-blocks .set_rank {
 	flex: 0 0 5em;
+	margin-left: 0.5em;
 }
 
 .item-blocks .unlock {
