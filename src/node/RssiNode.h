@@ -140,6 +140,7 @@ public:
     void initRxModule();
     void copyNodeData(RssiNode *srcPtr);
     void setRxModuleToFreq(uint16_t vtxFreq);
+    bool testRxModuleRegister();
 
     rssi_t rssiRead();
     void rssiSetFilter(Filter<rssi_t> *f);

@@ -210,6 +210,10 @@ void Message::handleReadCommand(bool serialFlag)
             buffer.write16(cmdRssiNodePtr->getVtxFreq());
             break;
 
+        case TEST_RX_REGISTER:
+            buffer.write8(int(cmdRssiNodePtr->testRxModuleRegister()));
+            break;
+
         case READ_LAP_STATS:  // deprecated; use READ_LAP_PASS_STATS and READ_LAP_EXTREMUMS
             {
                 mtime_t timeNowVal = millis();

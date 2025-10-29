@@ -36,7 +36,7 @@
 // Note: Configure Arduino NODE_NUMBER value in 'config.h'
 
 // firmware version string (prefix allows text to be located in '.bin' file)
-const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.5";
+const char *firmwareVersionString = "FIRMWARE_VERSION: 1.2.0";
 
 // build date/time strings
 const char *firmwareBuildDateString = "FIRMWARE_BUILDDATE: " __DATE__;

@@ -10,6 +10,7 @@ from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
+TEST_RX_REGISTER = 0x04     # Check if register on RX module matches set frequency
 READ_LAP_STATS = 0x05
 READ_LAP_PASS_STATS = 0x0D
 READ_LAP_EXTREMUMS = 0x0E
@@ -181,7 +182,6 @@ class RHInterface(BaseHardwareInterface):
                     if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
                             (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
                         self.set_fwupd_serial_obj(node.serial)
-            
 
     def discover_nodes(self, *args, **kwargs):
         kwargs['set_info_node_obj_fn'] = self.set_info_node_obj
@@ -535,6 +535,14 @@ class RHInterface(BaseHardwareInterface):
                 READ_FREQUENCY,
                 1111 if node.api_level >= 24 else 5800)
             node.frequency = 0
+
+        # run register test to see if RX has stored frequency value
+        if node and node.api_level >= 36:
+            gevent.sleep(
+                0.03)  # IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, 30ms is safer, can be longer but not shorter). Erroneous results will occur if delay is too short
+            test_result = self.get_value_8(node, TEST_RX_REGISTER)
+            if not test_result:
+                logger.warning("Node {} failed register test {}; check RX SPI communications".format(node_index + 1, test_result))
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,
