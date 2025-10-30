@@ -24,9 +24,10 @@ class InterfaceMeta:
 
 
 class InterfaceMapper:
-    def __init__(self):
+    def __init__(self, racecontext):
         self._interface_map = []
         self._node_map = []
+        self._racecontext = racecontext
 
     def add_interface(self, interface, if_type:InterfaceType, args=None):
         self._interface_map.append(InterfaceMeta(interface, if_type))
@@ -102,7 +103,16 @@ class InterfaceMapper:
     def set_frequency(self, node_index, frequency, band, channel):
         mapped_node = self._node_map[node_index]
         local_index = mapped_node.index
-        return mapped_node.interface.set_frequency(local_index, frequency, band, channel)
+        result = mapped_node.interface.set_frequency(local_index, frequency, band, channel)
+        if result is False:
+            if mapped_node.object.current_rssi:
+                self._racecontext.rhui.emit_priority_message(
+                    self._racecontext.language.__('Failed to set frequency on node {}').format(node_index + 1)
+                )
+            if not self._racecontext.rhui.is_ui_message_set("rx-register-fail-{}".format(node_index)):
+                self._racecontext.rhui.set_ui_message("rx-register-fail-{}".format(node_index),\
+                           f'{self._racecontext.language.__("Failed to set frequency on node {}.").format(node_index + 1)} (<a href=\"/docs?d=Hardware Setup.md#rx5808-video-receivers\">{self._racecontext.language.__("Check that SPI is enabled for this receiver.")}</a>)',\
+                           header="Warning", subclass="errors-logged")
 
     def transmit_enter_at_level(self, node, level):
         for mapped_node in self._node_map:

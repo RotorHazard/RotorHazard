@@ -219,7 +219,7 @@ RaceContext.serverstate.program_dir = PROGRAM_DIR
 RaceContext.serverstate.implicit_program_dir_flag = implicit_program_dir_flag
 RaceContext.serverstate.do_rhdata_migrate_flag = False
 
-RaceContext.interface = InterfaceMapper()
+RaceContext.interface = InterfaceMapper(RaceContext)
 Events = EventManager(RaceContext)
 RaceContext.events = Events
 Filters = FilterManager(RHAPI)

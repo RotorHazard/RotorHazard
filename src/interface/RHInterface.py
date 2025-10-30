@@ -542,7 +542,10 @@ class RHInterface(BaseHardwareInterface):
                 0.03)  # IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, 30ms is safer, can be longer but not shorter). Erroneous results will occur if delay is too short
             test_result = self.get_value_8(node, TEST_RX_REGISTER)
             if not test_result:
-                logger.warning("Node {} failed register test {}; check RX SPI communications".format(node_index + 1, test_result))
+                logger.warning("Node {} failed register test; check RX SPI communications".format(node_index + 1))
+                return False
+
+        return True
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,
