@@ -62,6 +62,7 @@ RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware support
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
+MAX_FREQUENCY_RETRY_COUNT = 4 # Limit of retries for frequency setting
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
 logger = logging.getLogger(__name__)
@@ -524,28 +525,39 @@ class RHInterface(BaseHardwareInterface):
     def set_frequency(self, node_index, frequency, *_args):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
-        if frequency:
-            node.frequency = self.set_and_validate_value_16(node,
-                WRITE_FREQUENCY,
-                READ_FREQUENCY,
-                frequency)
-        else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
-            self.set_and_validate_value_16(node,
-                WRITE_FREQUENCY,
-                READ_FREQUENCY,
-                1111 if node.api_level >= 24 else 5800)
-            node.frequency = 0
 
-        # run register test to see if RX has stored frequency value
-        if node and node.api_level >= 36:
-            gevent.sleep(
-                0.03)  # IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, 30ms is safer, can be longer but not shorter). Erroneous results will occur if delay is too short
-            test_result = self.get_value_8(node, TEST_RX_REGISTER)
-            if not test_result:
-                logger.warning("Node {} failed register test; check RX SPI communications".format(node_index + 1))
-                return False
+        success = False
+        retry_count = 0
+        while success is False and retry_count <= MAX_FREQUENCY_RETRY_COUNT:
+            if frequency:
+                node.frequency = self.set_and_validate_value_16(node,
+                    WRITE_FREQUENCY,
+                    READ_FREQUENCY,
+                    frequency)
+            else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
+                self.set_and_validate_value_16(node,
+                    WRITE_FREQUENCY,
+                    READ_FREQUENCY,
+                    1111 if node.api_level >= 24 else 5800)
+                node.frequency = 0
 
-        return True
+            # run register test to see if RX has stored frequency value
+            if frequency and node and node.api_level >= 36:
+                gevent.sleep(
+                    0.03)  # IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, 30ms is safer, can be longer but not shorter). Erroneous results will occur if delay is too short
+                test_result = self.get_value_8(node, TEST_RX_REGISTER)
+                if test_result:
+                    success = True
+                else:
+                    retry_count = retry_count + 1
+                    self.log('Frequency not validated (try={0}): frequency={1}, node={2}'. \
+                        format(retry_count, frequency, node_index + 1))
+            else:
+                # assume success on lower API levels where test does not exist
+                # assume success on disable (frequency=0)
+                success = True
+
+        return success
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,

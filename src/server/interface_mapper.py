@@ -105,6 +105,7 @@ class InterfaceMapper:
         local_index = mapped_node.index
         result = mapped_node.interface.set_frequency(local_index, frequency, band, channel)
         if result is False:
+            logger.warning("Node {} failed register test; check RX SPI communications".format(node_index + 1))
             if mapped_node.object.current_rssi:
                 self._racecontext.rhui.emit_priority_message(
                     self._racecontext.language.__('Failed to set frequency on node {}').format(node_index + 1)
