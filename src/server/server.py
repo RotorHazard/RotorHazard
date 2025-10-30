@@ -231,7 +231,6 @@ Server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 HardwareHelpers = {}
-UI_server_messages = {}
 Auth_succeeded_flag = False
 
 SERVER_PROCESS_RESTART_FLAG = False
@@ -286,12 +285,12 @@ Current_log_path_name = log.later_stage_setup(RaceContext.serverconfig.get_secti
 
 # Callback function invoked when an error-level message is logged
 def log_error_callback_fn(*args):
-    if not is_ui_message_set("errors-logged"):
-        set_ui_message("errors-logged",\
+    if not RaceContext.rhui.is_ui_message_set("errors-logged"):
+        RaceContext.rhui.set_ui_message("errors-logged",\
                    f'{__("Error messages have been logged.")} (<a href=\"/hardwarelog?log_level=ERROR\">{__("View error log")}</a>)',\
                    header="Notice", subclass="errors-logged")
         if Auth_succeeded_flag:
-            SOCKET_IO.emit('update_server_messages', get_ui_server_messages_str())
+            SOCKET_IO.emit('update_server_messages', RaceContext.rhui.get_ui_server_messages_str())
     if check_log_error_alert():  # show alert popup if not previously shown
         log.set_log_level_callback(logging.NOTSET)  # if popup shown then clear callback function
 
@@ -311,43 +310,6 @@ RaceContext.rhui = RHUI.RHUI(APP, SOCKET_IO, RaceContext, Events) # User Interfa
 RaceContext.rhui.__ = RaceContext.language.__ # Pass translation shortcut
 RaceContext.calibration = calibration.Calibration(RaceContext)
 RaceContext.heatautomator = heat_automation.HeatAutomator(RaceContext)
-
-def set_ui_message(mainclass, message, header=None, subclass=None):
-    item = {}
-    item['message'] = message
-    if header:
-        item['header'] = __(header)
-    if subclass:
-        item['subclass'] = subclass
-    UI_server_messages[mainclass] = item
-
-def is_ui_message_set(mainclass):
-    return mainclass in UI_server_messages
-
-def get_ui_server_messages_str():
-    server_messages_formatted = ''
-    if len(UI_server_messages):
-        for key, item in UI_server_messages.items():
-            message = '<li class="' + key
-            if 'subclass' in item and item['subclass']:
-                message += ' ' + key + '-' + item['subclass']
-            if 'header' in item and item['header']:
-                message += ' ' + item['header'].lower()
-            message += '">'
-            if 'header' in item and item['header']:
-                message += '<strong>' + item['header'] + ':</strong> '
-            message += item['message']
-            message += '</li>'
-            server_messages_formatted += message
-    if RaceContext.serverconfig.config_file_status == -1:
-        server_messages_formatted += '<li class="config config-bad warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
-    if len(server_messages_formatted):
-        server_messages_formatted = '<ul>' + server_messages_formatted + '</ul>'
-    return server_messages_formatted
-
-def clear_ui_message(mainclass):
-    if mainclass in UI_server_messages:
-        UI_server_messages.pop(mainclass)
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
@@ -569,7 +531,7 @@ def render_settings():
                            led_events_enabled=RaceContext.led_manager.isEnabled(),
                            vrx_enabled=RaceContext.vrx_manager.isEnabled(),
                            num_nodes=RaceContext.race.num_nodes,
-                           server_messages=get_ui_server_messages_str(),
+                           server_messages=RaceContext.rhui.get_ui_server_messages_str(),
                            cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
                            node_fw_updatable=(RaceContext.interface.get_fwupd_serial_name()!=None),
                            is_raspberry_pi=RHUtils.is_sys_raspberry_pi())
@@ -2898,7 +2860,7 @@ def on_datadir_handler(data):
             on_restart_server()
         elif method == 'explicit_program':
             if RHUtils.write_datapath_file(PROGRAM_DIR, PROGRAM_DIR):
-                clear_ui_message('implicit-data-dir')
+                RaceContext.rhui.clear_ui_message('implicit-data-dir')
                 RaceContext.rhui.emit_refresh_page()
 
 
@@ -3346,7 +3308,7 @@ def _do_init_rh_interface():
                 except ImportError:
                     logger.warning("Unable to import libraries for I2C nodes; try:  " +\
                                    "pip install --upgrade --no-cache-dir -r requirements.txt")
-                    set_ui_message(
+                    RaceContext.rhui.set_ui_message(
                         'i2c',
                         __("Unable to import libraries for I2C nodes. Try: <code>pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
                         header='Warning',
@@ -3370,7 +3332,7 @@ def _do_init_rh_interface():
                         if getattr(RaceContext.interface, "set_mock_fwupd_serial_obj"):
                             RaceContext.interface.set_mock_fwupd_serial_obj(
                                 RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS')[0])
-                            set_ui_message('stm32', \
+                            RaceContext.rhui.set_ui_message('stm32', \
                                            __("Server is unable to communicate with node processor") + ". " + \
                                            __("If an S32_BPill board is connected, you may attempt to") + \
                                            " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
@@ -3412,7 +3374,7 @@ def initialize_rh_interface():
         return False
     if RaceContext.race.num_nodes == 0:
         logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
-        set_ui_message(
+        RaceContext.rhui.set_ui_message(
             'node',
             __("No receiver nodes found"),
             header='Warning',
@@ -3439,7 +3401,7 @@ def reportServerInfo():
     if not RaceContext.serverstate.has_other_interface:
         if RaceContext.serverstate.node_api_match is False:
             logger.info('** WARNING: Node API mismatch **')
-            set_ui_message('node-match',
+            RaceContext.rhui.set_ui_message('node-match',
                 __("Node versions do not match and may not function similarly"), header='Warning')
         if RaceContext.race.num_nodes > 0:
             if RaceContext.serverstate.node_api_lowest < NODE_API_SUPPORTED:
@@ -3449,7 +3411,7 @@ def reportServerInfo():
                     msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
                               " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                               __("its processor.")
-                set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
+                RaceContext.rhui.set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
             elif RaceContext.serverstate.node_api_lowest < NODE_API_BEST:
                 logger.info('** NOTICE: Node firmware update is available **')
                 msgStr = __("Node firmware update is available")
@@ -3457,10 +3419,10 @@ def reportServerInfo():
                     msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
                               " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                               __("its processor.")
-                set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
+                RaceContext.rhui.set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
             elif RaceContext.serverstate.node_api_lowest > NODE_API_BEST:
                 logger.warning('** WARNING: Node firmware is newer than this server version supports **')
-                set_ui_message('node-newer',
+                RaceContext.rhui.set_ui_message('node-newer',
                     __("Node firmware is newer than this server version and may not function properly"),
                     header='Warning', subclass='api-high')
 
@@ -3508,7 +3470,7 @@ def check_requirements():
         logger.debug("Number of required libraries checked: {}".format(num_checked))
         if num_mismatched > 0:
             logger.warning(__('Try "pip install --upgrade --no-cache-dir -r {}"'.format(req_file_name)))
-            set_ui_message('check_reqs',
+            RaceContext.rhui.set_ui_message('check_reqs',
                 __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>").format(req_file_name),
                 header='Warning', subclass='none')
     except:
@@ -3764,7 +3726,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
         if local_loaded and remote_loaded:
             RaceContext.plugin_manager.apply_update_statuses()
             if RaceContext.plugin_manager.update_available:
-                set_ui_message(
+                RaceContext.rhui.set_ui_message(
                     'plugins',
                     __("One or more plugins have updates available."),
                     header='Notice',
@@ -3779,7 +3741,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                                                                                  RHUtils.get_GPIO_type_str(), RHUtils.is_S32_BPill_board()))
         if RHUtils.is_sys_raspberry_pi() and not RHUtils.is_real_hw_GPIO():
             logger.warning("Unable to access real GPIO on Pi; libraries may need to be installed")
-            set_ui_message(
+            RaceContext.rhui.set_ui_message(
                 'gpio',
                 __("Unable to access real GPIO on Pi libraries may need to be installed"),
                 header='Warning',
@@ -3883,7 +3845,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                     hasMirrors = True
                 elif hasMirrors:
                     logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
-                    set_ui_message(
+                    RaceContext.rhui.set_ui_message(
                         'secondary',
                         __("Mirror secondaries must be last; ignoring part of secondary configuration"),
                         header='Notice',
@@ -3895,7 +3857,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
                 RaceContext.cluster.addSecondary(secondary)
         except:
             logger.exception("Error adding secondary to cluster")
-            set_ui_message(
+            RaceContext.rhui.set_ui_message(
                 'secondary',
                 __('Secondary configuration is invalid.'),
                 header='Error',
@@ -4096,7 +4058,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # display notice if implicitly using program dir as data dir
         if RaceContext.serverstate.implicit_program_dir_flag:
-            set_ui_message(
+            RaceContext.rhui.set_ui_message(
                 'implicit-data-dir',
                 '{} {}{}{} {}{}{} {} {}{}{}'.format(
                     __("User data should be stored separately from program data."),
