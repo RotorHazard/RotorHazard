@@ -56,6 +56,8 @@ class SerialNode(Node):
                 try:
                     self.io_request = monotonic()
                     self.serial.flushInput()
+                    gevent.sleep(0.01)  # Brief delay for any in-flight ESP32 boot messages
+                    self.serial.flushInput()  # Second flush to catch delayed boot messages
                     self.serial.write(bytearray([command]))
                     data = bytearray(self.serial.read(size + 1))
                     self.io_response = monotonic()
