@@ -13,14 +13,18 @@ class FilterManager:
         self.filterOrder = {}
         self._rhapi = rhapi
 
-    def add_filter(self, filter_type, name, filter_fn, priority=200, use_args=False):
+    def add_filter(self, filter_type, name, filter_fn, priority=200, with_context=False):
+        if not callable(filter_fn):
+            logger.error("Filter {} must be assigned a callable function".format(name))
+            return False
+
         if filter_type not in self.filters:
             self.filters[filter_type] = {}
 
         self.filters[filter_type][name] = {
             "filter_fn": filter_fn,
             "priority": priority,
-            "use_args": use_args
+            "with_context": with_context
         }
 
         self.filterOrder[filter_type] = [key for key, _value in sorted(self.filters[filter_type].items(), key=lambda x: x[1]['priority'])]
@@ -40,7 +44,7 @@ class FilterManager:
 
         return True
 
-    def run_filters(self, filter_type, data, args=None):
+    def run_filters(self, filter_type, data, context=None):
         filter_list = []
         if filter_type in self.filterOrder:
             for name in self.filterOrder[filter_type]:
@@ -49,14 +53,15 @@ class FilterManager:
         if len(filter_list):
             for name in filter_list:
                 filter = self.filters[filter_type][name]
-                data = self.run_filter(filter['filter_fn'], filter['use_args'], data, args)
+                data = self.run_filter(filter['filter_fn'], filter['with_context'], data, context)
 
         return data
 
     @catchLogExceptionsWrapper
-    def run_filter(self, handler, use_args, data, args):
-        if use_args:
-            return handler(data, args)
+    def run_filter(self, handler, with_context, data, context):
+        # RHAPI <1.4 expect only one argument
+        if with_context:
+            return handler(data, context)
         else:
             return handler(data)
 
