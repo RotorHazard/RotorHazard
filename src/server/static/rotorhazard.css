@@ -1872,6 +1872,17 @@ ol.heat-edit-list>li {
 		grid-column: 1 / -1;
 		grid-row: 9;
 	}
+
+	.heat-edit-selectors{
+		padding: 20px ;
+		background-color: #f1f2f4;
+		border: solid 0.0625em #e6e6e6;
+		border-radius: 0.5rem;
+	}
+
+	.heat-edit-selectors > *:not(:last-child) {
+		margin-right: 0.5rem;
+	}
 }
 
 .race_classes h3 {
