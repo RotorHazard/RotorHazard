@@ -1589,10 +1589,15 @@
 					.addClass(`heat-ui--slot-list--heat-${heat.id}`);
 				el.append(heat_slots);
 
+				// New Control Div
+				var new_control_div = $(document.createElement('div'))
+					.addClass('new_control_div')
+					.appendTo(el);
+
 				// Auto-frequency
 				var heat_autofrequency_wrapper = $(document.createElement('div'))
-					.addClass('autofrequency-control')
-					.appendTo(el);
+					.addClass('autofrequency-control') //New Control Left
+					.appendTo(new_control_div);
 				var label = $(document.createElement('label'))
 					.addClass('auto_frequency')
 					.text(__('Auto Frequency'))
@@ -1606,8 +1611,8 @@
 
 				// Dynamic Controls
 				var heat_controls = $(document.createElement('div'))
-					.addClass('dynamic-controls')
-					.appendTo(el);
+					.addClass('dynamic-controls') //New Control Right
+					.appendTo(new_control_div);
 				var heat_plan_revert = $(document.createElement('button'))
 					.addClass(`heat-ui--plan-revert--heat-${heat.id}`)
 					.data('id', heat.id)
