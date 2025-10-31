@@ -1463,7 +1463,7 @@ ol.heat-edit-list>li {
 	width: calc(100% - 6.5rem);
 	background: transparent;
 	border: transparent;
-	color: var(--contrast_1_high);
+	color: black;
 	font-weight: bold;
 	margin-top: 0.5rem;
 	margin-left: 0.5rem;
