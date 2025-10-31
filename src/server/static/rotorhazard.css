@@ -1741,13 +1741,26 @@ ol.heat-edit-list>li {
 
 .actions {
 	position: absolute;
+	top: 0.25rem;
+	right: 0.25rem;
+	font-size: 0.9rem;
+	z-index: 100;
+}
+
+.actions button {
+	margin-left:0.5em;
+	font-weight: bold;
+}
+
+.actions_heat_card {
+	position: absolute;
 	top: 0.7rem;
 	right: 0.5rem;
 	font-size: 0.9rem;
 	z-index: 100;
 }
 
-.actions button {
+.actions_heat_card button {
 	margin-left:0.5em;
 	font-weight: bold;
 }
