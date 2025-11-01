@@ -56,8 +56,6 @@ class SerialNode(Node):
                 try:
                     self.io_request = monotonic()
                     self.serial.flushInput()
-                    gevent.sleep(0.01)  # Brief delay for any in-flight ESP32 boot messages
-                    self.serial.flushInput()  # Second flush to catch delayed boot messages
                     self.serial.write(bytearray([command]))
                     data = bytearray(self.serial.read(size + 1))
                     self.io_response = monotonic()
@@ -262,6 +260,7 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                         logger.debug("Delaying {} secs before attempting connection to serial node".format(attempt_delay_secs))
                         gevent.sleep(attempt_delay_secs)
                     node = SerialNode(index+idxOffset, node_serial_obj)
+                    node_serial_obj.flushInput()  # Clear any boot messages (ESP32/Arduino)
                     multi_count = 1
                     try:               # handle serial multi-node processor
                         # read NODE_API_LEVEL and verification value:
