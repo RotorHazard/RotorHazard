@@ -241,27 +241,31 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
             pass
     if config_ser_ports:
         node_serial_obj = None
+        # if not S32_BPill then reverse list (try 115200 baud first as that is likely the baud rate to use)
+        baud_rates_list = SERIAL_BAUD_RATES if isS32BPillFlag else SERIAL_BAUD_RATES[::-1]
         for index, comm in enumerate(config_ser_ports):
             rev_val = None
             baud_idx = 0
-            while (not rev_val) and baud_idx < len(SERIAL_BAUD_RATES):
+            while (not rev_val) and baud_idx < len(baud_rates_list):
                 attempt_delay_secs = 0.0625
                 # if opening port fails then do retries; with exponential delay, but less than 1 second
                 while (not rev_val) and attempt_delay_secs < 0.9:
                     attempt_delay_secs *= 2
-                    node_serial_obj = serial.Serial(port=None, baudrate=SERIAL_BAUD_RATES[baud_idx], timeout=0.25)
+                    logger.debug("Attempting connection to serial node at {}, {} baud".\
+                                 format(comm, baud_rates_list[baud_idx]))
+                    node_serial_obj = serial.Serial(port=None, baudrate=baud_rates_list[baud_idx], timeout=0.25)
                     node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
                     node_serial_obj.setRTS(0)
                     node_serial_obj.setPort(comm)
                     node_serial_obj.open()  # open port (now that DTR is configured for no change)
-                    # ESP32 boards reset when port opens, need longer delay for boot (~700-1000ms)
-                    # Use BOOTLOADER_CHILL_TIME for all first attempts to ensure board has fully booted
-                    if attempt_delay_secs < BOOTLOADER_CHILL_TIME:
+                    if (not isS32BPillFlag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
+                        logger.debug("Delaying {} secs before attempting connection to serial node (bootloader)".format(BOOTLOADER_CHILL_TIME))
                         gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for ESP32/Arduino boot
                     else:
                         logger.debug("Delaying {} secs before attempting connection to serial node".format(attempt_delay_secs))
                         gevent.sleep(attempt_delay_secs)
                     node = SerialNode(index+idxOffset, node_serial_obj)
+                    node_serial_obj.flushInput()  # clear any messages that came in during delay
                     multi_count = 1
                     try:               # handle serial multi-node processor
                         # read NODE_API_LEVEL and verification value:
