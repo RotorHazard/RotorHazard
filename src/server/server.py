@@ -1072,7 +1072,7 @@ def on_set_frequency_preset(data):
     RaceContext.rhui.emit_frequency_data()
     if Use_imdtabler_jar_flag:
         heartbeat_thread_function.imdtabler_flag = True
-    hardware_set_all_frequencies(payload)
+    RaceContext.interface.set_all_frequencies(payload)
 
 def set_all_frequencies(freqs):
     ''' Set frequencies for all nodes (but do not update hardware) '''
@@ -1091,21 +1091,6 @@ def set_all_frequencies(freqs):
         'frequencies': profile_freqs
         })
     RaceContext.race.profile = profile
-
-def hardware_set_all_frequencies(freqs):
-    '''do hardware update for frequencies'''
-    logger.debug("Sending frequency values to nodes: " + str(freqs["f"]))
-    for idx in range(RaceContext.race.num_nodes):
-        RaceContext.interface.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
-
-        RaceContext.race.clear_results()
-
-        Events.trigger(Evt.FREQUENCY_SET, {
-            'nodeIndex': idx,
-            'frequency': freqs["f"][idx],
-            'band': freqs["b"][idx],
-            'channel': freqs["c"][idx]
-            })
 
 @catchLogExcWithDBWrapper
 def restore_node_frequency(node_index):
@@ -1499,7 +1484,7 @@ def on_set_profile(data, emit_vals=True):
             if Use_imdtabler_jar_flag:
                 heartbeat_thread_function.imdtabler_flag = True
 
-        hardware_set_all_frequencies(freqs)
+        RaceContext.interface.set_all_frequencies(freqs)
         RaceContext.calibration.hardware_set_all_enter_ats(enter_ats)
         RaceContext.calibration.hardware_set_all_exit_ats(exit_ats)
 

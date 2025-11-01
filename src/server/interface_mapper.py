@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass
+from eventmanager import Evt
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,19 @@ class InterfaceMapper:
     #
     # External functions for setting data
     #
+
+    def set_all_frequencies(self, freqs):
+        '''do hardware update for frequencies'''
+        logger.debug("Sending frequency values to all nodes: " + str(freqs["f"]))
+        for idx, node in enumerate(self.nodes):
+            self.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
+
+            self._racecontext.events.trigger(Evt.FREQUENCY_SET, {
+                'nodeIndex': idx,
+                'frequency': freqs["f"][idx],
+                'band': freqs["b"][idx],
+                'channel': freqs["c"][idx]
+            })
 
     def set_frequency(self, node_index, frequency, band, channel):
         mapped_node = self._node_map[node_index]
