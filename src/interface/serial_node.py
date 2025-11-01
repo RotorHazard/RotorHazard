@@ -254,13 +254,14 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                     node_serial_obj.setRTS(0)
                     node_serial_obj.setPort(comm)
                     node_serial_obj.open()  # open port (now that DTR is configured for no change)
-                    if baud_idx > 0 and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
-                        gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
+                    # ESP32 boards reset when port opens, need longer delay for boot (~700-1000ms)
+                    # Use BOOTLOADER_CHILL_TIME for all first attempts to ensure board has fully booted
+                    if attempt_delay_secs < BOOTLOADER_CHILL_TIME:
+                        gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for ESP32/Arduino boot
                     else:
                         logger.debug("Delaying {} secs before attempting connection to serial node".format(attempt_delay_secs))
                         gevent.sleep(attempt_delay_secs)
                     node = SerialNode(index+idxOffset, node_serial_obj)
-                    node_serial_obj.flushInput()  # Clear any boot messages (ESP32/Arduino)
                     multi_count = 1
                     try:               # handle serial multi-node processor
                         # read NODE_API_LEVEL and verification value:
