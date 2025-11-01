@@ -1,6 +1,8 @@
 #include "config.h"
 #include "RssiNode.h"
 
+#define TSPI 10 //uS
+
 RssiNode RssiNode::rssiNodeArray[MULTI_RHNODE_MAX];
 uint8_t RssiNode::multiRssiNodeCount = 1;
 mtime_t RssiNode::lastRX5808BusTimeMs = 0;
@@ -115,6 +117,55 @@ void RssiNode::setRxModuleToFreq(uint16_t vtxFreq)
 
     recentSetFreqFlag = true;  // indicate need to wait RX5808_MIN_TUNETIME before reading RSSI
     lastRX5808BusTimeMs = lastSetFreqTimeMs = millis();  // mark time of last tune of RX5808 to freq
+}
+
+// Test register on RX5808 module matches provided frequency
+bool RssiNode::testRxModuleRegister()
+{
+    // Verify read HEX value in RX5808 module Frequency Register 0x01
+    uint16_t vtxHexVerify=0;
+    //  Modified copy of packet code in setRxModuleToFreq(), to read Register 0x01
+    //  20 bytes of register data are read, but the
+    //  MSB 4 bits are zeros
+    //  Data Packet is: register address (4-bits) = 0x1, read/write bit = 1 for read, data D0-D15 stored in vtxHexVerify, data15-19=0x0
+
+    rx5808SerialEnableHigh();
+    rx5808SerialEnableLow();
+
+    rx5808SerialSendBit1();  // Register 0x1
+    rx5808SerialSendBit0();
+    rx5808SerialSendBit0();
+    rx5808SerialSendBit0();
+
+    rx5808SerialSendBit0();  // Read register r/w
+
+    //receive data D0-D15, and ignore D16-D19
+    pinMode(rx5808DataPin, INPUT_PULLUP);
+    uint8_t i;
+    for(i = 0; i < 20; i++){
+      delayMicroseconds(TSPI);
+      // only use D0-D15, ignore D16-D19
+      if (i < 16) {
+      if (digitalRead(rx5808DataPin)) {
+        bitWrite(vtxHexVerify,i,1);
+      }
+      else bitWrite(vtxHexVerify,i,0);       
+      }
+      if (i >= 16) digitalRead(rx5808DataPin);
+      digitalWrite(rx5808ClkPin,HIGH);
+      delayMicroseconds(TSPI);
+      digitalWrite(rx5808ClkPin,LOW);
+      delayMicroseconds(TSPI);
+    }
+
+    pinMode(rx5808DataPin, OUTPUT); // return status of Data pin after INPUT_PULLUP above
+    rx5808SerialEnableHigh();  // Finished clocking data in
+    delay(2);
+
+    digitalWrite(rx5808ClkPin, LOW);
+    digitalWrite(rx5808DataPin, LOW);    
+
+    return vtxHexVerify == freqMhzToRegVal(settings.vtxFreq);
 }
 
 // Read the RSSI value for the current channel

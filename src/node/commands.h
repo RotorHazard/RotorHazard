@@ -4,7 +4,7 @@
 #include "io.h"
 
 // API level for node; increment when commands are modified
-#define NODE_API_LEVEL 35
+#define NODE_API_LEVEL 36
 
 class Message
 {
@@ -24,6 +24,7 @@ public:
 
 #define READ_ADDRESS 0x00
 #define READ_FREQUENCY 0x03
+#define TEST_RX_REGISTER 0x04      // test RX register data matches set frequency
 #define READ_LAP_STATS 0x05
 #define READ_LAP_PASS_STATS 0x0D
 #define READ_LAP_EXTREMUMS 0x0E
