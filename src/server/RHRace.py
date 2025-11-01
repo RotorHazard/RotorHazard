@@ -238,9 +238,9 @@ class RHRace():
                             logger.info("Forcing race format from class setting: '{0}' ({1})".format(self.format.name, self.format.id))
 
                 # Ensure hardware/interface is up to date
-                self._racecontext.interface.set_all_frequencies(freqs)
-                self._racecontext.calibration.hardware_set_all_enter_ats(enter_ats)
-                self._racecontext.calibration.hardware_set_all_exit_ats(exit_ats)
+                self._racecontext.interface.set_all_frequencies(json.loads(self.profile.frequencies))
+                self._racecontext.calibration.hardware_set_all_enter_ats([node.enter_at_level for node in self._racecontext.interface.nodes])
+                self._racecontext.calibration.hardware_set_all_exit_ats([node.exit_at_level for node in self._racecontext.interface.nodes])
 
                 self.clear_laps() # Clear laps before race start
                 self.init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
