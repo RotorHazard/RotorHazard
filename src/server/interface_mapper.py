@@ -70,6 +70,11 @@ class InterfaceMapper:
             nodelist.append(node.object)
         return nodelist
 
+    def get_rh_interface(self):
+        for iface in self._interface_map:
+            if iface.type == InterfaceType.RH:
+                return iface.interface
+
     def pass_record_callback(self):
         pass
 
