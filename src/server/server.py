@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.4.0-dev.1" # Public release version code
+RELEASE_VERSION = "4.4.0-dev.2" # Public release version code
 SERVER_API = 47 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 36 # Most recent node API
@@ -2698,46 +2698,50 @@ def check_bpillfw_file(data):
         logger.debug("Error reading file '{}' in 'check_bpillfw_file()': {}".format(fileStr, ex))
         return
     try:  # find version, processor-type and build-timestamp strings in firmware '.bin' file
-        rStr = RHUtils.findPrefixedSubstring(dataStr, RaceContext.interface.FW_VERSION_PREFIXSTR, \
-                                             RaceContext.interface.FW_TEXT_BLOCK_SIZE)
-        fwVerStr = rStr if rStr else "({})".format(__("(unknown)"))
-        fwRTypStr = RHUtils.findPrefixedSubstring(dataStr, RaceContext.interface.FW_PROCTYPE_PREFIXSTR, \
-                                             RaceContext.interface.FW_TEXT_BLOCK_SIZE)
-        fwTypStr = (fwRTypStr + ", ") if fwRTypStr else ""
-        rStr = RHUtils.findPrefixedSubstring(dataStr, RaceContext.interface.FW_BUILDDATE_PREFIXSTR, \
-                                             RaceContext.interface.FW_TEXT_BLOCK_SIZE)
-        if rStr:
-            fwTimStr = rStr
-            rStr = RHUtils.findPrefixedSubstring(dataStr, RaceContext.interface.FW_BUILDTIME_PREFIXSTR, \
-                                                 RaceContext.interface.FW_TEXT_BLOCK_SIZE)
+        RHinterface = RaceContext.interface.get_rh_interface()
+        if not RHinterface:
+            SOCKET_IO.emit('upd_set_info_text', "No updatable interfaces are available on this device.")
+        else:
+            rStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_VERSION_PREFIXSTR, \
+                                                 RHinterface.FW_TEXT_BLOCK_SIZE)
+            fwVerStr = rStr if rStr else "({})".format(__("(unknown)"))
+            fwRTypStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_PROCTYPE_PREFIXSTR, \
+                                                 RHinterface.FW_TEXT_BLOCK_SIZE)
+            fwTypStr = (fwRTypStr + ", ") if fwRTypStr else ""
+            rStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_BUILDDATE_PREFIXSTR, \
+                                                 RHinterface.FW_TEXT_BLOCK_SIZE)
             if rStr:
-                fwTimStr += " " + rStr
-        else:
-            fwTimStr = "({})".format(__("(unknown)"))
-        fileSize = len(dataStr)
-        logger.debug("Node update firmware file size={}, version={}, {}build timestamp: {}".\
-                     format(fileSize, fwVerStr, fwTypStr, fwTimStr))
-        infoStr = "{} = {} bytes<br>".format(__("Firmware update file size"), fileSize) + \
-                  "{}: {} ({}{}: {})<br><br>".\
-                  format(__("Firmware update version"), fwVerStr, fwTypStr, __("Build timestamp"), fwTimStr)
-        info_node = RaceContext.interface.get_info_node_obj()
-        curNodeStr = info_node.firmware_version_str if info_node else None
-        if curNodeStr:
-            tsStr = info_node.firmware_timestamp_str
-            if tsStr:
-                curRTypStr = info_node.firmware_proctype_str
-                ptStr = (curRTypStr + ", ") if curRTypStr else ""
-                curNodeStr += " ({}{}: {})".format(ptStr, __("Build timestamp"), tsStr)
-        else:
-            curRTypStr = None
-            curNodeStr = "({})".format(__("(unknown)"))
-        infoStr += __("Current firmware version: ") + curNodeStr
-        if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
-            infoStr += "<br><br><b>{}</b>: ".format(__("Warning")) + \
-                        __("Firmware file processor type ({}) does not match current ({})").\
-                        format(fwRTypStr, curRTypStr)
-        SOCKET_IO.emit('upd_set_info_text', infoStr)
-        SOCKET_IO.emit('upd_enable_update_button')
+                fwTimStr = rStr
+                rStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_BUILDTIME_PREFIXSTR, \
+                                                     RHinterface.FW_TEXT_BLOCK_SIZE)
+                if rStr:
+                    fwTimStr += " " + rStr
+            else:
+                fwTimStr = "({})".format(__("(unknown)"))
+            fileSize = len(dataStr)
+            logger.debug("Node update firmware file size={}, version={}, {}build timestamp: {}".\
+                         format(fileSize, fwVerStr, fwTypStr, fwTimStr))
+            infoStr = "{} = {} bytes<br>".format(__("Firmware update file size"), fileSize) + \
+                      "{}: {} ({}{}: {})<br><br>".\
+                      format(__("Firmware update version"), fwVerStr, fwTypStr, __("Build timestamp"), fwTimStr)
+            info_node = RHinterface.get_info_node_obj()
+            curNodeStr = info_node.firmware_version_str if info_node else None
+            if curNodeStr:
+                tsStr = info_node.firmware_timestamp_str
+                if tsStr:
+                    curRTypStr = info_node.firmware_proctype_str
+                    ptStr = (curRTypStr + ", ") if curRTypStr else ""
+                    curNodeStr += " ({}{}: {})".format(ptStr, __("Build timestamp"), tsStr)
+            else:
+                curRTypStr = None
+                curNodeStr = "({})".format(__("(unknown)"))
+            infoStr += __("Current firmware version: ") + curNodeStr
+            if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
+                infoStr += "<br><br><b>{}</b>: ".format(__("Warning")) + \
+                            __("Firmware file processor type ({}) does not match current ({})").\
+                            format(fwRTypStr, curRTypStr)
+            SOCKET_IO.emit('upd_set_info_text', infoStr)
+            SOCKET_IO.emit('upd_enable_update_button')
     except Exception as ex:
         SOCKET_IO.emit('upd_set_info_text', "Error processing firmware file: {}<br><br><br><br>".format(ex))
         logger.exception("Error processing file '{}' in 'check_bpillfw_file()'".format(fileStr))

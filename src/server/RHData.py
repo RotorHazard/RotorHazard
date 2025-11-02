@@ -1427,10 +1427,10 @@ class RHData():
             else:
                 for attr in self.get_heat_attributes(heat_or_id):
                     Database.DB_session.delete(attr)
-
-                Database.DB_session.delete(heat)
                 for heatnode in heatnodes:
                     Database.DB_session.delete(heatnode)
+                Database.DB_session.flush()
+                Database.DB_session.delete(heat)
                 self.commit()
 
                 logger.info('Heat {0} deleted'.format(deleted_heat_id))

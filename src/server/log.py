@@ -524,17 +524,22 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
                 logger.exception("Error adding audio settings info to .zip file")
             try:
                 # include current list of Python libraries
-                whichPipStr = subprocess.check_output(['which', 'pip']).decode("utf-8").rstrip()
-                if whichPipStr:  # include execution path to 'pip'
-                    whichPipStr = "$ " + whichPipStr + " list" + os.linesep
-                else:
-                    whichPipStr = ""
+
                 # fetch output of "pip list" command (send stderr to null because it always contains warning message)
                 fetchedStr = subprocess.check_output(['pip', 'list'], stderr=subprocess.DEVNULL).decode("utf-8").rstrip()
                 if not fetchedStr:
                     fetchedStr = ""
-                fetchedStr = whichPipStr + "Python version: " + sys.version.split()[0] + \
-                             os.linesep + os.linesep + fetchedStr
+
+                try:
+                    whichPipStr = subprocess.check_output(['which', 'pip']).decode("utf-8").rstrip()
+                    if whichPipStr:  # include execution path to 'pip'
+                        whichPipStr = "$ " + whichPipStr + " list" + os.linesep
+                    else:
+                        whichPipStr = ""
+                    fetchedStr = whichPipStr + "Python version: " + sys.version.split()[0] + \
+                                 os.linesep + os.linesep + fetchedStr
+                except Exception:
+                    logger.warning("Error fetching pip execution path")
                 zip_file_obj.writestr('pip_libs_list.txt', fetchedStr)
             except Exception:
                 logger.exception("Error adding pip-list libraries info to .zip file")
