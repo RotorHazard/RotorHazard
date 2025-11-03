@@ -74,6 +74,7 @@ class InterfaceMapper:
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface
+        return None
 
     def pass_record_callback(self):
         pass
@@ -113,6 +114,7 @@ class InterfaceMapper:
         for mapped_node in self._node_map:
             if node == mapped_node:
                 return mapped_node.interface.transmit_enter_at_level(node, level)
+        return None
 
     def set_enter_at_level(self, node_index, level):
         mapped_node = self._node_map[node_index]
@@ -123,6 +125,7 @@ class InterfaceMapper:
         for mapped_node in self._node_map:
             if node == mapped_node:
                 return mapped_node.interface.transmit_exit_at_level(node, level)
+        return None
 
     def set_exit_at_level(self, node_index, level):
         mapped_node = self._node_map[node_index]
@@ -142,36 +145,43 @@ class InterfaceMapper:
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.send_status_message(msgTypeVal, msgDataVal)
+        return None
 
     def send_shutdown_button_state(self, stateVal):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.send_shutdown_button_state(stateVal)
+        return None
 
     def send_shutdown_started_message(self):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.send_shutdown_started_message()
+        return None
 
     def send_server_idle_message(self):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.send_server_idle_message()
+        return None
 
     def set_fwupd_serial_obj(self, serial_obj):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.set_fwupd_serial_obj(serial_obj)
+        return None
 
     def set_mock_fwupd_serial_obj(self, port_name):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.set_mock_fwupd_serial_obj(port_name)
+        return None
 
     def get_fwupd_serial_name(self):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.get_fwupd_serial_name()
+        return None
 
     def close_fwupd_serial_port(self):
         for iface in self._interface_map:
@@ -194,6 +204,7 @@ class InterfaceMapper:
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
                 return iface.interface.get_intf_error_report_str(*args, **kwargs)
+        return None
 
     # From Base
 
