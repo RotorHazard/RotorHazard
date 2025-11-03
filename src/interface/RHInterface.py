@@ -122,8 +122,8 @@ def unpack_rssi(node, data):
 
 
 class RHInterface(BaseHardwareInterface):
-    def __init__(self, racecontext, *args, **kwargs):
-        BaseHardwareInterface.__init__(self, racecontext)
+    def __init__(self, *args, **kwargs):
+        BaseHardwareInterface.__init__(self)
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -684,6 +684,6 @@ class RHInterface(BaseHardwareInterface):
             self.log("Error in RHInterface 'get_intf_error_report_str()': " + str(ex))
         return None
 
-def get_hardware_interface(racecontext, *args, **kwargs):
+def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface(racecontext, *args, **kwargs)
+    return RHInterface(*args, **kwargs)

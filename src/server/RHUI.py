@@ -398,7 +398,7 @@ class RHUI():
                 fn_binds = []
                 for var in panel_settings['fn_binds']:
                     field = var.field.frontend_repr()
-                    field['value'] = var.getter_fn()
+                    field['value'] = var.getter_fn(var.args)
                     fn_binds.append(field)
 
                 buttons = []
