@@ -3337,7 +3337,7 @@ def _do_init_rh_interface():
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
-            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(RaceContext, config=RaceContext.serverconfig, \
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, \
                                             isS32BPillFlag=RHUtils.is_S32_BPill_board(), **HardwareHelpers), InterfaceType.RH)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
@@ -3392,7 +3392,7 @@ def _do_init_rh_interface():
 
         if num_mocks > 0:
             interfaceModule = importlib.import_module('MockInterface')
-            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(RaceContext, config=RaceContext.serverconfig, num_nodes=num_mocks, **HardwareHelpers), InterfaceType.MOCK,
+            RaceContext.interface.add_interface(interfaceModule.get_hardware_interface(config=RaceContext.serverconfig, num_nodes=num_mocks, **HardwareHelpers), InterfaceType.MOCK,
                 {
                     'api_level': NODE_API_BEST,
                     'num_nodes': num_mocks
