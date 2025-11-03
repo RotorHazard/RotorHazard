@@ -725,7 +725,7 @@ class Stm32Bootloader:
 import serial
 import requests
 
-DEF_SERIAL_PORT = "/dev/serial0"
+DEF_SERIAL_PORT = "/dev/ttyAMA0"
 DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
 MAX_SRC_FILE_SIZE = 999999
 
