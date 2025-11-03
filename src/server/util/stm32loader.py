@@ -727,7 +727,7 @@ class Stm32Bootloader:
 import serial
 import requests
 
-DEF_SERIAL_PORT = "/dev/serial0"
+DEF_SERIAL_PORT = "/dev/ttyAMA0"
 DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
 MAX_SRC_FILE_SIZE = 999999
 
@@ -802,7 +802,7 @@ def reset_to_run():
 def download_to_buffer(src_url, log_flag=True):
     if log_flag:
         Console_output_fn("Downloading file data from: {}".format(src_url))
-    resp = requests.get(src_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0"}, verify=False)
+    resp = requests.get(src_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0"})
     if resp.status_code != 200:
         raise RuntimeError("Error reading file data, HTTP status code: {}".format(resp.status_code))
     file_size = int(resp.headers["Content-Length"])
