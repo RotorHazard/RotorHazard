@@ -2751,33 +2751,39 @@ def check_bpillfw_file(data):
         logger.debug("Error reading file '{}' in 'check_bpillfw_file()': {}".format(fileStr, ex))
         return
     try:  # find version, processor-type and build-timestamp strings in firmware '.bin' file
-        RHinterface = RaceContext.interface.get_rh_interface()
-        if not RHinterface:
-            SOCKET_IO.emit('upd_set_info_text', "No updatable interfaces are available on this device.")
-        else:
-            rStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_VERSION_PREFIXSTR, \
-                                                 RHinterface.FW_TEXT_BLOCK_SIZE)
-            fwVerStr = rStr if rStr else "({})".format(__("(unknown)"))
-            fwRTypStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_PROCTYPE_PREFIXSTR, \
-                                                 RHinterface.FW_TEXT_BLOCK_SIZE)
-            fwTypStr = (fwRTypStr + ", ") if fwRTypStr else ""
-            rStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_BUILDDATE_PREFIXSTR, \
-                                                 RHinterface.FW_TEXT_BLOCK_SIZE)
+        rhInterfaceObj = RaceContext.interface.get_rh_interface()
+        rhIntfAccessObj = rhInterfaceObj
+        if not rhIntfAccessObj:
+            import MockInterface  # fall back to MockInterface so firmware-file parse will still work
+            rhIntfAccessObj = MockInterface
+        rStr = RHUtils.findPrefixedSubstring(dataStr, rhIntfAccessObj.FW_VERSION_PREFIXSTR, \
+                                             rhIntfAccessObj.FW_TEXT_BLOCK_SIZE)
+        fwVerStr = rStr if rStr else "({})".format(__("(unknown)"))
+        fwRTypStr = RHUtils.findPrefixedSubstring(dataStr, rhIntfAccessObj.FW_PROCTYPE_PREFIXSTR, \
+                                                  rhIntfAccessObj.FW_TEXT_BLOCK_SIZE)
+        fwTypStr = (fwRTypStr + ", ") if fwRTypStr else ""
+        rStr = RHUtils.findPrefixedSubstring(dataStr, rhIntfAccessObj.FW_BUILDDATE_PREFIXSTR, \
+                                             rhIntfAccessObj.FW_TEXT_BLOCK_SIZE)
+        if rStr:
+            fwTimStr = rStr
+            rStr = RHUtils.findPrefixedSubstring(dataStr, rhIntfAccessObj.FW_BUILDTIME_PREFIXSTR, \
+                                                 rhIntfAccessObj.FW_TEXT_BLOCK_SIZE)
             if rStr:
-                fwTimStr = rStr
-                rStr = RHUtils.findPrefixedSubstring(dataStr, RHinterface.FW_BUILDTIME_PREFIXSTR, \
-                                                     RHinterface.FW_TEXT_BLOCK_SIZE)
-                if rStr:
-                    fwTimStr += " " + rStr
-            else:
-                fwTimStr = "({})".format(__("(unknown)"))
-            fileSize = len(dataStr)
-            logger.debug("Node update firmware file size={}, version={}, {}build timestamp: {}".\
-                         format(fileSize, fwVerStr, fwTypStr, fwTimStr))
-            infoStr = "{} = {} bytes<br>".format(__("Firmware update file size"), fileSize) + \
-                      "{}: {} ({}{}: {})<br><br>".\
+                fwTimStr += " " + rStr
+        else:
+            fwTimStr = "({})".format(__("(unknown)"))
+        fileSize = len(dataStr)
+        logger.debug("Node update firmware file size={}, version={}, {}build timestamp: {}". \
+                     format(fileSize, fwVerStr, fwTypStr, fwTimStr))
+        infoStr = "{} = {} bytes<br>".format(__("Firmware update file size"), fileSize) + \
+                  "{}: {} ({}{}: {})<br><br>". \
                       format(__("Firmware update version"), fwVerStr, fwTypStr, __("Build timestamp"), fwTimStr)
-            info_node = RHinterface.get_info_node_obj()
+
+        if not rhInterfaceObj:
+            infoStr = infoStr + "No updatable interfaces are available on this device";
+            SOCKET_IO.emit('upd_set_info_text', infoStr)
+        else:
+            info_node = rhInterfaceObj.get_info_node_obj()
             curNodeStr = info_node.firmware_version_str if info_node else None
             if curNodeStr:
                 tsStr = info_node.firmware_timestamp_str
