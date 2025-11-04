@@ -14,8 +14,9 @@ class Calibration:
         self._racecontext = racecontext
 
     @catchLogExceptionsWrapper
-    def set_enter_at_level(self, seat_index, enter_at_level):
+    def set_enter_at_level(self, seat_index, enter_at_level_input):
         '''Set node enter-at level.'''
+        enter_at_level = int(enter_at_level_input or 0)
 
         if seat_index < 0 or seat_index >= self._racecontext.race.num_nodes:
             logger.info('Unable to set enter-at ({0}) on node {1}; node index out of range'.format(enter_at_level, seat_index+1))
@@ -50,8 +51,9 @@ class Calibration:
         logger.info('Node enter-at set: Node {0} Level {1}'.format(seat_index+1, enter_at_level))
 
     @catchLogExceptionsWrapper
-    def set_exit_at_level(self, seat_index, exit_at_level):
+    def set_exit_at_level(self, seat_index, exit_at_level_input):
         '''Set node exit-at level.'''
+        exit_at_level = int(exit_at_level_input or 0)
 
         if seat_index < 0 or seat_index >= self._racecontext.race.num_nodes:
             logger.info('Unable to set exit-at ({0}) on node {1}; node index out of range'.format(exit_at_level, seat_index+1))

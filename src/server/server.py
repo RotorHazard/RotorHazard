@@ -1161,7 +1161,7 @@ def restore_node_frequency(node_index):
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
     seat_index = data['node']
-    enter_at_level = data['enter_at_level']
+    enter_at_level = int(data['enter_at_level'] or 0)
     RaceContext.calibration.set_enter_at_level(seat_index, enter_at_level)
 
 @SOCKET_IO.on('set_exit_at_level')
@@ -1169,7 +1169,7 @@ def on_set_enter_at_level(data):
 def on_set_exit_at_level(data):
     '''Set node exit-at level.'''
     seat_index = data['node']
-    exit_at_level = data['exit_at_level']
+    exit_at_level = int(data['exit_at_level'] or 0)
     RaceContext.calibration.set_exit_at_level(seat_index, exit_at_level)
 
 @SOCKET_IO.on("set_start_thresh_lower_amount")
