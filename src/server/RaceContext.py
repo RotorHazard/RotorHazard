@@ -94,6 +94,9 @@ class ServerState:
     node_version_match = None
     node_fw_versions = [None]
 
+    # STATE
+    interface_started = False
+
     # PLUGIN STATUS
     plugins = None
     mock_nodes = 0
