@@ -83,9 +83,22 @@ class ServerState:
     def __init__(self, racecontext):
         self._racecontext = racecontext
 
+    # BASIC INFO
+    release_version = None
+    server_api_version = None
+    json_api_version = None
+    node_api_match = None
+    node_api_lowest = 0
+    node_api_best = None
+    node_api_levels = [None]
+    node_version_match = None
+    node_fw_versions = [None]
+
     # PLUGIN STATUS
     plugins = None
     mock_nodes = 0
+
+    _info_html = None
 
     @property
     def info_dict(self):
@@ -108,20 +121,6 @@ class ServerState:
         info = self.info_dict
         info['about_html'] = self.info_html
         return info
-
-    # BASIC INFO
-
-    release_version = None
-    server_api_version = None
-    json_api_version = None
-    node_api_match = None
-    node_api_lowest = 0
-    node_api_best = None
-    node_api_levels = [None]
-    node_version_match = None
-    node_fw_versions = [None]
-
-    _info_html = None
 
     @property
     def info_html(self):
