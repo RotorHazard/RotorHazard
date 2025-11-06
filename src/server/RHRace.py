@@ -548,6 +548,10 @@ class RHRace():
             self.race_status = RaceStatus.READY # Go back to ready state
             self._racecontext.interface.set_race_status(RaceStatus.READY)
             self._racecontext.events.trigger(Evt.LAPS_CLEAR)
+            self._racecontext.events.trigger(Evt.RACE_ABORT, {
+                'heat_id': self.current_heat,
+                'color': ColorVal.RED
+            })
             delta_time = 0
 
         else:
