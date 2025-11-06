@@ -269,6 +269,7 @@ class RHRace():
                 self._racecontext.rhui.emit_race_status()
 
                 assigned_start_ok_flag = False
+                hide_stage_timer = False
                 if assigned_start:
                     self.stage_time_monotonic = monotonic() + float(self._racecontext.serverconfig.get_item('GENERAL', 'RACE_START_DELAY_EXTRA_SECS'))
                     if assigned_start > self.stage_time_monotonic:

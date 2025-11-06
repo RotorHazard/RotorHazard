@@ -642,7 +642,9 @@ class RHUI():
             class_id = heat.class_id
             race_class = self._racecontext.rhdata.get_raceClass(class_id)
         else:
+            heat = None
             class_id = None
+            race_class = None
 
         emit_payload = {
                 'race_status': self._racecontext.race.race_status,
@@ -657,7 +659,7 @@ class RHUI():
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
                 'show_init_time_flag': self._racecontext.race.show_init_time_flag
             }
-        if class_id and race_class.round_type == RoundType.GROUPED:
+        if race_class and race_class.round_type == RoundType.GROUPED and heat:
             emit_payload['next_round'] = heat.group_id + 1
         else:
             emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_id)

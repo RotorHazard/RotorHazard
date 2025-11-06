@@ -245,6 +245,7 @@ class RHInterface(BaseHardwareInterface):
                     readtime = node.io_response - server_oneway
                 else:
                     data = node.read_block(self, READ_LAP_STATS, 17)
+                    readtime = 0
 
                 if data != None and len(data) > 0:
                     lap_id = data[0]

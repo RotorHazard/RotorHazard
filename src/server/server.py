@@ -356,12 +356,15 @@ def getDefNodeFwUpdateUrl():
 
 # Returns the processor-type string from the given firmware file, or None if not found
 def getFwfileProctypeStr(fileStr):
-    dataStr = None
+    rhIntfAccessObj = RaceContext.interface.get_rh_interface()
+    if not rhIntfAccessObj:
+        import MockInterface  #pylint: disable=import-error
+        rhIntfAccessObj = MockInterface  # fall back to MockInterface so firmware-file parse will still work
     try:
         dataStr = stm32loader.load_source_file(fileStr, False)
         if dataStr:
-            return RHUtils.findPrefixedSubstring(dataStr, RaceContext.interface.FW_PROCTYPE_PREFIXSTR, \
-                                                 RaceContext.interface.FW_TEXT_BLOCK_SIZE)
+            return RHUtils.findPrefixedSubstring(dataStr, rhIntfAccessObj.FW_PROCTYPE_PREFIXSTR, \
+                                                 rhIntfAccessObj.FW_TEXT_BLOCK_SIZE)
     except Exception as ex:
         logger.debug("Error processing file '{}' in 'getFwfileProctypeStr()': {}".format(fileStr, ex))
     return None
@@ -2703,8 +2706,8 @@ def check_bpillfw_file(data):
         rhInterfaceObj = RaceContext.interface.get_rh_interface()
         rhIntfAccessObj = rhInterfaceObj
         if not rhIntfAccessObj:
-            import MockInterface  # fall back to MockInterface so firmware-file parse will still work
-            rhIntfAccessObj = MockInterface
+            import MockInterface  #pylint: disable=import-error
+            rhIntfAccessObj = MockInterface  # fall back to MockInterface so firmware-file parse will still work
         rStr = RHUtils.findPrefixedSubstring(dataStr, rhIntfAccessObj.FW_VERSION_PREFIXSTR, \
                                              rhIntfAccessObj.FW_TEXT_BLOCK_SIZE)
         fwVerStr = rStr if rStr else "({})".format(__("(unknown)"))

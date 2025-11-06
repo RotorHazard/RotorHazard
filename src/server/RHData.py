@@ -1262,6 +1262,8 @@ class RHData():
         if 'slot_id' in data:
             slot_id = data['slot_id']
             slot = Database.HeatNode.query.get(slot_id)
+        else:
+            raise ValueError("Field 'slot_id' not found in data passed to 'alter_heat()'")
 
         if 'name' in data:
             self._racecontext.pagecache.set_valid(False)
