@@ -742,7 +742,9 @@ def start_background_threads_delayed():
 def connect_handler(auth):
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
-    start_background_threads()
+    if not RaceContext.serverstate.interface_started:
+        start_background_threads()
+        RaceContext.serverstate.interface_started = True
     #
     @catchLogExcWithDBWrapper
     @copy_current_request_context
