@@ -40,10 +40,10 @@ class Language():
         if not domain:
             lang = self._racecontext.serverconfig.get_item('UI', 'currentLanguage')
 
-        if lang:
-            if lang in self._Languages:
-                if text in self._Languages[lang]['values']:
-                    return self._Languages[lang]['values'][text]
+            if lang:
+                if lang in self._Languages:
+                    if text in self._Languages[lang]['values']:
+                        return self._Languages[lang]['values'][text]
         return text
 
     def getLanguages(self):
