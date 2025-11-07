@@ -49,6 +49,8 @@ class RHRace():
         self._filters = racecontext.filters
         self.__ = self._racecontext.language.__
         # setup/options
+        self.name = None
+        self.round = None
         self.num_nodes = 0
         self.current_heat = RHUtils.HEAT_ID_NONE # heat ID
         self.node_pilots = {} # current race pilots, by node, filled on heat change
@@ -732,6 +734,7 @@ class RHRace():
                 gevent.spawn(self.rebuild_page_cache)
 
                 self._racecontext.rhui.emit_race_saved(new_race, race_data)
+        self.round = self.calc_round()
 
     def rebuild_page_cache(self):
         self._racecontext.pagecache.set_valid(False)
@@ -1998,6 +2001,8 @@ class RHRace():
         if self.race_status == RaceStatus.READY:
 
             if new_heat_id == RHUtils.HEAT_ID_NONE:
+                self.name = self._racecontext.language.__("Practice Mode")
+                self.round = None
                 self.node_pilots = {}
                 self.node_teams = {}
                 if self.current_heat != new_heat_id:
@@ -2026,6 +2031,8 @@ class RHRace():
                             self.node_teams[heatNode.node_index] = None
 
                 heat_data = self._racecontext.rhdata.get_heat(new_heat_id)
+                self.name = heat_data.display_name_short
+                self.round = self.calc_round()
 
                 if heat_data.class_id != RHUtils.CLASS_ID_NONE:
                     class_format_id = self._racecontext.rhdata.get_raceClass(heat_data.class_id).format_id
@@ -2053,6 +2060,17 @@ class RHRace():
             self._racecontext.rhui.emit_race_status()
         else:
             logger.debug('Prevented heat change for active race')
+
+    def calc_round(self):
+        if not self.current_heat:
+            return None
+
+        heat_data = self._racecontext.rhdata.get_heat(self.current_heat)
+        if heat_data and heat_data.class_id:
+            race_class = self._racecontext.rhdata.get_raceClass(heat_data.class_id)
+            if race_class.round_type == RoundType.GROUPED:
+                return heat_data.group_id + 1
+        return self._racecontext.rhdata.get_round_num_for_heat(self.current_heat)
 
 
 class RHRaceFormat():
