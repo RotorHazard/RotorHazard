@@ -69,18 +69,22 @@ class FilterManager:
 class Flt:
     PILOT_ADD = 'pilotAdd'
     PILOT_ALTER = 'pilotAlter'
+    PILOT_ALTER_ATTRIBUTE = 'pilotAlterAttribute'
     HEAT_ADD = 'heatAdd'
     HEAT_DUPLICATE = 'heatDuplicate'
     HEAT_ALTER = 'heatAlter'
+    HEAT_ALTER_ATTRIBUTE = 'heatAlterAttribute'
     CLASS_ADD = 'classAdd'
     CLASS_DUPLICATE = 'classDuplicate'
     CLASS_ALTER = 'classAlter'
+    CLASS_ALTER_ATTRIBUTE = 'classAlterAttribute'
     PROFILE_ADD = 'profileAdd'
-    PROFILE_DUPLICATE = 'profileDuplicate' ## ***
+    PROFILE_DUPLICATE = 'profileDuplicate'
     PROFILE_ALTER = 'profileAlter'
     RACE_FORMAT_ADD = 'raceFormatAdd'
-    RACE_FORMAT_DUPLICATE = 'raceFormatDuplicate' ## ***
+    RACE_FORMAT_DUPLICATE = 'raceFormatDuplicate'
     RACE_FORMAT_ALTER = 'raceFormatAlter'
+    RACE_FORMAT_ALTER_ATTRIBUTE = 'raceFormatAlterAttribute'
     OPTION_GET = 'optionGet'
     OPTION_GET_INT = 'optionGetInt'
     OPTION_SET = 'optionSet'
@@ -91,6 +95,7 @@ class Flt:
     RACE_TEAM_RESULTS = 'raceTeamResults'
     RACE_COOP_RESULTS = 'raceCoopResults'
     RACE_SET_HEAT = 'raceSetHeat'
+    RACE_ALTER_ATTRIBUTE = 'raceAlterAttribute'
 
     EMIT_UI = 'emitUI'
     EMIT_PLUGIN_LIST = 'emitPluginList'
