@@ -2784,7 +2784,7 @@ def do_bpillfw_update(data):
         successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
         msgStr = "Node update " + ("succeeded" if successFlag else "failed")
         logger.info(msgStr)
-        msgStr = __("Node update ") + (__("succeeded") \
+        msgStr = __("Node update") + " " + (__("succeeded") \
                                            if successFlag else __("failed"))
         SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
     except:
