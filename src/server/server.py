@@ -1877,6 +1877,9 @@ def on_reboot_pi(*args):
 @SOCKET_IO.on('restart_server')
 def on_restart_server():
     '''Re-execute the current process.'''
+    RaceContext.rhui.emit_server_restarting()
+    if isinstance(RaceContext.serverstate.restart_sleep_secs, (int,float)):
+        gevent.sleep(RaceContext.serverstate.restart_sleep_secs)
     global SERVER_PROCESS_RESTART_FLAG
     SERVER_PROCESS_RESTART_FLAG = True
     if RaceContext.cluster:
@@ -2779,25 +2782,17 @@ def do_bpillfw_update(data):
             log.wait_for_queue_empty()
         stm32loader.set_console_output_fn(doS32Log)
         successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-        msgStr = __("Node update ") + (__("succeeded; restarting interface") \
-                                   if successFlag else __("failed"))
+        msgStr = "Node update " + ("succeeded" if successFlag else "failed")
         logger.info(msgStr)
+        msgStr = __("Node update ") + (__("succeeded") \
+                                           if successFlag else __("failed"))
         SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
     except:
         logger.exception("Error in 'do_bpillfw_update()'")
     stm32loader.set_console_output_fn(None)
     gevent.sleep(0.2)
-    logger.info("Reinitializing RH interface")
-    UI_server_messages.clear()
-    initialize_rh_interface()
-    if RaceContext.race.num_nodes <= 0:
-        SOCKET_IO.emit('upd_messages_append', "\nWarning: No receiver nodes found")
-    with RaceContext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
-        buildServerInfo()
-        reportServerInfo()
-        init_race_state()
-        start_background_threads(True)
-        SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
+    RaceContext.serverstate.set_restart_required(1.0)
+    SOCKET_IO.emit('upd_messages_finish')  # show 'Close and Restart' button
 
 @SOCKET_IO.on('set_vrx_node')
 @catchLogExceptionsWrapper

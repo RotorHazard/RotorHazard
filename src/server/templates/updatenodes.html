@@ -24,7 +24,15 @@
 		});
 
 		socket.on('upd_messages_finish', function () {
-			$('#close_button_div').html("<a href=\"/settings\" class=\"debug button-like\">{{ __('Close') }}</a>");
+			$('#close_button_div').html("<button id=\"close_and_restart\" class=\"debug button-like\">{{ __('Close and Restart') }}</button>")
+			$('button#close_and_restart').click(function (event) {
+				socket.emit('restart_server');
+				return false;
+			});
+		});
+
+		socket.on('server_restarting', function () {
+			window.location.href = '/settings';  // if restarting then navigate to 'Settings' page
 		});
 
 		$('button#do_update').click(function (event) {
