@@ -196,10 +196,7 @@ class RHRace():
                 else:
                     f_desc_str = "????"
                 logger.info("Staging new race, format: {}".format(f_desc_str))
-                max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
-                if max_round is None:
-                    max_round = 0
-                logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, (max_round+1),
+                logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, self.round,
                                                                            ", ".join(pilot_names_list)))
             else:
                 heatNodes = []
@@ -626,17 +623,12 @@ class RHRace():
                 self._racecontext.rhdata.clear_results_raceClass(heat.class_id, token)
                 self._racecontext.rhdata.clear_results_event(token)
 
-                # Get the last saved round for the current heat
-                max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
-
-                if max_round is None:
-                    max_round = 0
                 # Loop through laps to copy to saved races
                 profile = self.profile
                 profile_freqs = json.loads(profile.frequencies)
 
                 new_race_data = {
-                    'round_id': max_round+1,
+                    'round_id': self.round,
                     'heat_id': self.current_heat,
                     'class_id': heat.class_id,
                     'format_id': self.format.id if hasattr(self.format, 'id') else RHUtils.FORMAT_ID_NONE,
