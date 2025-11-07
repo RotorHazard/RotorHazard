@@ -21,8 +21,8 @@ MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 class MockInterface(BaseHardwareInterface):
-    def __init__(self, racecontext, *args, **kwargs):
-        BaseHardwareInterface.__init__(self, racecontext)
+    def __init__(self, *args, **kwargs):
+        BaseHardwareInterface.__init__(self)
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -30,7 +30,7 @@ class MockInterface(BaseHardwareInterface):
         self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
         self.update_thread = None # Thread for running the main update loop
 
-        # Scans all i2c_addrs to populate nodes array
+        self.config = kwargs['config'] # provides access to RH config
         self.nodes = [] # Array to hold each node object
         self.data = []
         self.mocknodedata = {}
@@ -89,7 +89,7 @@ class MockInterface(BaseHardwareInterface):
             if node.frequency:
                 readtime = monotonic()
 
-                match self._racecontext.serverconfig.get_item('GENERAL', 'MOCK_NODE_SIGNAL'):
+                match self.config.get_item('GENERAL', 'MOCK_NODE_SIGNAL'):
                     case 2:
                         if self.mocknodedata[index]['is_crossing']:
                             new_rssi = random.randrange(60,150)
@@ -296,7 +296,7 @@ class MockInterface(BaseHardwareInterface):
     def get_intf_error_report_str(self, forceFlag=False):
         return None
 
-def get_hardware_interface(racecontext, *args, **kwargs):
+def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
     logger.info('Using mock hardware interface')
-    return MockInterface(racecontext, *args, **kwargs)
+    return MockInterface(*args, **kwargs)

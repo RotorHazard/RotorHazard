@@ -1262,6 +1262,8 @@ class RHData():
         if 'slot_id' in data:
             slot_id = data['slot_id']
             slot = Database.HeatNode.query.get(slot_id)
+        else:
+            raise ValueError("Field 'slot_id' not found in data passed to 'alter_heat()'")
 
         if 'name' in data:
             self._racecontext.pagecache.set_valid(False)
@@ -2331,7 +2333,7 @@ class RHData():
                     group_heats.append([])
                 group_heats[heat.group_id].append(heat)
 
-            if len(group_heats) < race_class.rounds:
+            if len(group_heats) < race_class.rounds or 0:
                 next_round = len(group_heats)
                 for heat in group_heats[-1]:
                     races = self.get_savedRaceMetas_by_heat(heat.id)

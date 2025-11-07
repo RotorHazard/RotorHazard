@@ -10,6 +10,7 @@ from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
+TEST_RX_REGISTER = 0x04     # Check if register on RX module matches set frequency
 READ_LAP_STATS = 0x05
 READ_LAP_PASS_STATS = 0x0D
 READ_LAP_EXTREMUMS = 0x0E
@@ -61,6 +62,7 @@ RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware support
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
+MAX_FREQUENCY_RETRY_COUNT = 4 # Limit of retries for frequency setting
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
 logger = logging.getLogger(__name__)
@@ -120,8 +122,8 @@ def unpack_rssi(node, data):
 
 
 class RHInterface(BaseHardwareInterface):
-    def __init__(self, racecontext, *args, **kwargs):
-        BaseHardwareInterface.__init__(self, racecontext)
+    def __init__(self, *args, **kwargs):
+        BaseHardwareInterface.__init__(self)
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -181,7 +183,6 @@ class RHInterface(BaseHardwareInterface):
                     if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
                             (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
                         self.set_fwupd_serial_obj(node.serial)
-            
 
     def discover_nodes(self, *args, **kwargs):
         kwargs['set_info_node_obj_fn'] = self.set_info_node_obj
@@ -244,6 +245,7 @@ class RHInterface(BaseHardwareInterface):
                     readtime = node.io_response - server_oneway
                 else:
                     data = node.read_block(self, READ_LAP_STATS, 17)
+                    readtime = 0
 
                 if data != None and len(data) > 0:
                     lap_id = data[0]
@@ -524,17 +526,39 @@ class RHInterface(BaseHardwareInterface):
     def set_frequency(self, node_index, frequency, *_args):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
-        if frequency:
-            node.frequency = self.set_and_validate_value_16(node,
-                WRITE_FREQUENCY,
-                READ_FREQUENCY,
-                frequency)
-        else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
-            self.set_and_validate_value_16(node,
-                WRITE_FREQUENCY,
-                READ_FREQUENCY,
-                1111 if node.api_level >= 24 else 5800)
-            node.frequency = 0
+
+        success = False
+        retry_count = 0
+        while success is False and retry_count <= MAX_FREQUENCY_RETRY_COUNT:
+            if frequency:
+                node.frequency = self.set_and_validate_value_16(node,
+                    WRITE_FREQUENCY,
+                    READ_FREQUENCY,
+                    frequency)
+            else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
+                self.set_and_validate_value_16(node,
+                    WRITE_FREQUENCY,
+                    READ_FREQUENCY,
+                    1111 if node.api_level >= 24 else 5800)
+                node.frequency = 0
+
+            # run register test to see if RX has stored frequency value
+            if frequency and node and node.api_level >= 36:
+                gevent.sleep(
+                    0.03)  # IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, 30ms is safer, can be longer but not shorter). Erroneous results will occur if delay is too short
+                test_result = self.get_value_8(node, TEST_RX_REGISTER)
+                if test_result:
+                    success = True
+                else:
+                    retry_count = retry_count + 1
+                    self.log('Frequency not validated (try={0}): frequency={1}, node={2}'. \
+                        format(retry_count, frequency, node_index + 1))
+            else:
+                # assume success on lower API levels where test does not exist
+                # assume success on disable (frequency=0)
+                success = True
+
+        return success
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,
@@ -661,6 +685,6 @@ class RHInterface(BaseHardwareInterface):
             self.log("Error in RHInterface 'get_intf_error_report_str()': " + str(ex))
         return None
 
-def get_hardware_interface(racecontext, *args, **kwargs):
+def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface(racecontext, *args, **kwargs)
+    return RHInterface(*args, **kwargs)

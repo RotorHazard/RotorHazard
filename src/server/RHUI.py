@@ -138,6 +138,7 @@ class RHUI():
         self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
+        self._UI_server_messages = {}
 
     # Pilot Attributes
     def register_pilot_attribute(self, field:UIField):
@@ -397,7 +398,7 @@ class RHUI():
                 fn_binds = []
                 for var in panel_settings['fn_binds']:
                     field = var.field.frontend_repr()
-                    field['value'] = var.getter_fn()
+                    field['value'] = var.getter_fn(var.args)
                     fn_binds.append(field)
 
                 buttons = []
@@ -641,7 +642,9 @@ class RHUI():
             class_id = heat.class_id
             race_class = self._racecontext.rhdata.get_raceClass(class_id)
         else:
+            heat = None
             class_id = None
+            race_class = None
 
         emit_payload = {
                 'race_status': self._racecontext.race.race_status,
@@ -656,7 +659,7 @@ class RHUI():
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
                 'show_init_time_flag': self._racecontext.race.show_init_time_flag
             }
-        if class_id and race_class.round_type == RoundType.GROUPED:
+        if race_class and race_class.round_type == RoundType.GROUPED and heat:
             emit_payload['next_round'] = heat.group_id + 1
         else:
             emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_id)
@@ -820,6 +823,7 @@ class RHUI():
 
                 events_list = {
                     Evt.RACE_STAGE: self.__('Race Stage'),
+                    Evt.RACE_ABORT: self.__('Race Stage Abort'),
                     Evt.RACE_START: self.__('Race Start'),
                     Evt.RACE_FINISH: self.__('Race Finish'),
                     Evt.RACE_STOP: self.__('Race Stop'),
@@ -2065,3 +2069,40 @@ class RHUI():
                 'select_file': select_cfg_file
             }
         self._socket.emit('upd_cfg_files_list', emit_payload)
+
+    def set_ui_message(self, mainclass, message, header=None, subclass=None):
+        item = {}
+        item['message'] = message
+        if header:
+            item['header'] = self._racecontext.language.__(header)
+        if subclass:
+            item['subclass'] = subclass
+        self._UI_server_messages[mainclass] = item
+
+    def is_ui_message_set(self, mainclass):
+        return mainclass in self._UI_server_messages
+
+    def get_ui_server_messages_str(self):
+        server_messages_formatted = ''
+        if len(self._UI_server_messages):
+            for key, item in self._UI_server_messages.items():
+                message = '<li class="' + key
+                if 'subclass' in item and item['subclass']:
+                    message += ' ' + key + '-' + item['subclass']
+                if 'header' in item and item['header']:
+                    message += ' ' + item['header'].lower()
+                message += '">'
+                if 'header' in item and item['header']:
+                    message += '<strong>' + item['header'] + ':</strong> '
+                message += item['message']
+                message += '</li>'
+                server_messages_formatted += message
+        if self._racecontext.serverconfig.config_file_status == -1:
+            server_messages_formatted += '<li class="config config-bad warning"><strong>' + self._racecontext.language.__('Warning') + ': ' + '</strong>' + self._racecontext.language.__('The config.json file is invalid. Falling back to default configuration.') + '<br />' + self._racecontext.language.__('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
+        if len(server_messages_formatted):
+            server_messages_formatted = '<ul>' + server_messages_formatted + '</ul>'
+        return server_messages_formatted
+
+    def clear_ui_message(self, mainclass):
+        if mainclass in self._UI_server_messages:
+            self._UI_server_messages.pop(mainclass)

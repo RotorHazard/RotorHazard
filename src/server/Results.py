@@ -190,21 +190,27 @@ def build_atomic_results(rhDataObj, params):
 
     if 'race_id' in params:
         race = rhDataObj.get_savedRaceMeta(params['race_id'])
+    else:
+        race = None
 
     if 'heat_id' in params:
         heat_id = params['heat_id']
         heat = rhDataObj.get_heat(heat_id)
     elif 'race_id' in params:
-        heat_id = race.heat_id
+        heat_id = race.heat_id if race else None
         heat = rhDataObj.get_heat(heat_id)
+    else:
+        heat_id = None
+        heat = None
 
     if 'class_id' in params:
         class_id = params['class_id']
         USE_CLASS = True
-    elif 'heat_id' in params and heat.class_id != RHUtils.CLASS_ID_NONE:
+    elif 'heat_id' in params and heat and heat.class_id != RHUtils.CLASS_ID_NONE:
         class_id = heat.class_id
         USE_CLASS = True
     else:
+        class_id = None
         USE_CLASS = False
 
     # rebuild race result

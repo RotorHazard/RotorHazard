@@ -2,7 +2,7 @@
 #
 # Example Usage:
 #
-# cd ~/RotorHazard/server
+# cd ~/RotorHazard/src/server
 # python util/rhBinInfo.py http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin
 #
 
@@ -16,9 +16,6 @@ sys.path.append('../../interface')
 import RHUtils
 import util.stm32loader as stm32loader
 import RHInterface  #pylint: disable=import-error
-import RaceContext
-
-__ = RaceContext.language.__ # Shortcut to translation function
 
 def showFirmwareBinInfo(fileStr):
     dataStr = None
@@ -30,7 +27,7 @@ def showFirmwareBinInfo(fileStr):
     try:
         rStr = RHUtils.findPrefixedSubstring(dataStr, RHInterface.FW_VERSION_PREFIXSTR, \
                                              RHInterface.FW_TEXT_BLOCK_SIZE)
-        fwVerStr = rStr if rStr else __("(unknown)")
+        fwVerStr = rStr if rStr else "(unknown)"
         rStr = RHUtils.findPrefixedSubstring(dataStr, RHInterface.FW_PROCTYPE_PREFIXSTR, \
                                              RHInterface.FW_TEXT_BLOCK_SIZE)
         fwTypStr = (rStr + ", ") if rStr else ""
