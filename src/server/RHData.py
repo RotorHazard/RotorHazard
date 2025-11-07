@@ -1016,10 +1016,12 @@ class RHData():
                 for attr in self.get_pilot_attributes(pilot_or_id):
                     Database.DB_session.delete(attr)
 
-                Database.DB_session.delete(pilot)
                 for heatNode in Database.HeatNode.query.all():
                     if heatNode.pilot_id == pilot.id:
                         heatNode.pilot_id = RHUtils.PILOT_ID_NONE
+
+                Database.DB_session.flush()
+                Database.DB_session.delete(pilot)
                 self.commit()
 
                 self._Events.trigger(Evt.PILOT_DELETE, {
