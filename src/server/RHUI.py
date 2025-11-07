@@ -1366,7 +1366,9 @@ class RHUI():
             'heats': heats,
         }
 
-        emit_payload = self._filters.run_filters(Flt.EMIT_RECENT_HEAT_DATA, emit_payload)
+        emit_payload = self._filters.run_filters(Flt.EMIT_RECENT_HEAT_DATA, emit_payload, {
+            'limit': limit
+        })
 
         if ('nobroadcast' in params):
             emit('recent_heat_data', emit_payload)
@@ -1791,7 +1793,9 @@ class RHUI():
                 'split_speed': phonetic_speed
             }
 
-            emit_payload = self._filters.run_filters(Flt.EMIT_PHONETIC_SPLIT, emit_payload)
+            emit_payload = self._filters.run_filters(Flt.EMIT_PHONETIC_SPLIT, emit_payload, {
+                'split_data': split_data
+            })
 
             if ('nobroadcast' in params):
                 emit('phonetic_split_call', emit_payload)
