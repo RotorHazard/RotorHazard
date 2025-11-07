@@ -49,7 +49,6 @@ class RHRace():
         self._filters = racecontext.filters
         self.__ = self._racecontext.language.__
         # setup/options
-        self.name = None
         self.round = None
         self.num_nodes = 0
         self.current_heat = RHUtils.HEAT_ID_NONE # heat ID
@@ -2001,7 +2000,6 @@ class RHRace():
         if self.race_status == RaceStatus.READY:
 
             if new_heat_id == RHUtils.HEAT_ID_NONE:
-                self.name = self._racecontext.language.__("Practice Mode")
                 self.round = None
                 self.node_pilots = {}
                 self.node_teams = {}
@@ -2031,7 +2029,6 @@ class RHRace():
                             self.node_teams[heatNode.node_index] = None
 
                 heat_data = self._racecontext.rhdata.get_heat(new_heat_id)
-                self.name = heat_data.display_name_short
                 self.round = self.calc_round()
 
                 if heat_data.class_id != RHUtils.CLASS_ID_NONE:
@@ -2071,6 +2068,13 @@ class RHRace():
             if race_class.round_type == RoundType.GROUPED:
                 return heat_data.group_id + 1
         return self._racecontext.rhdata.get_round_num_for_heat(self.current_heat)
+
+    @property
+    def name(self):
+        if self.current_heat == RHUtils.HEAT_ID_NONE:
+            return self._racecontext.language.__("Practice Mode")
+        heat_data = self._racecontext.rhdata.get_heat(self.current_heat)
+        return heat_data.display_name_short
 
 
 class RHRaceFormat():

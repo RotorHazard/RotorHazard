@@ -1067,8 +1067,12 @@ class RaceAPI():
         return self._racecontext.race.set_heat(heat_id)
 
     @property
+    def name(self):
+        return self._racecontext.race.name
+
+    @property
     def round(self):
-        return self._racecontext.rhdata.get_round_num_for_heat(self._racecontext.race.current_heat)
+        return self._racecontext.race.round
 
     @property
     @callWithDatabaseWrapper
