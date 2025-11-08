@@ -1024,10 +1024,12 @@ class RHData():
                 for attr in self.get_pilot_attributes(pilot_or_id):
                     Database.DB_session.delete(attr)
 
-                Database.DB_session.delete(pilot)
                 for heatNode in Database.HeatNode.query.all():
                     if heatNode.pilot_id == pilot.id:
                         heatNode.pilot_id = RHUtils.PILOT_ID_NONE
+
+                Database.DB_session.flush()
+                Database.DB_session.delete(pilot)
                 self.commit()
 
                 self._Events.trigger(Evt.PILOT_DELETE, {
@@ -1275,7 +1277,7 @@ class RHData():
             slot_id = data['slot_id']
             slot = Database.HeatNode.query.get(slot_id)
         else:
-            raise ValueError("Field 'slot_id' not found in data passed to 'alter_heat()'")
+            slot = None
 
         if 'name' in data:
             self._racecontext.pagecache.set_valid(False)
@@ -1283,6 +1285,8 @@ class RHData():
         if 'class' in data:
             old_class_id = heat.class_id
             heat.class_id = data['class']
+        else:
+            old_class_id = None
         if 'auto_frequency' in data:
             heat.auto_frequency = data['auto_frequency']
             if not heat.auto_frequency:
@@ -1357,7 +1361,7 @@ class RHData():
                 for race_meta in race_list:
                     race_meta.class_id = data['class']
 
-                if old_class_id is not RHUtils.CLASS_ID_NONE:
+                if old_class_id and old_class_id is not RHUtils.CLASS_ID_NONE:
                     self.clear_results_raceClass(old_class_id)
 
         if 'pilot' in data:

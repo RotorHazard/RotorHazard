@@ -323,7 +323,12 @@ class ServerState:
     # flag if restart is needed (after plugin install, etc.)
     restart_required = False
 
-    def set_restart_required(self):
+    # sleep delay to be performed just before restarting
+    restart_sleep_secs = None
+
+    def set_restart_required(self, sleep_secs=None):
+        if sleep_secs:
+            self.restart_sleep_secs = sleep_secs
         if not self.restart_required:
             self.restart_required = True
             self._racecontext.serverconfig.check_backup_config_file()

@@ -2054,6 +2054,10 @@ class RHUI():
         ''' Emits refresh-page message '''
         self._socket.emit('refresh_page')
 
+    def emit_server_restarting(self, **params):
+        ''' Emits server_restarting message '''
+        self._socket.emit('server_restarting')
+
     def emit_upd_cfg_files_list(self, select_cfg_file=None):
         '''Update List of database files in cfg_bkp'''
         if not os.path.exists(self._racecontext.serverconfig.cfg_bkp_dir_name):
