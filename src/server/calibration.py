@@ -201,7 +201,11 @@ class Calibration:
             'enter_at_level': node.enter_at_level,
             'exit_at_level': node.exit_at_level
         }
-        context = self._racecontext.filters.run_filters(Flt.CALIBRATION_FALLBACK, context)
+        context = self._racecontext.filters.run_filters(Flt.CALIBRATION_FALLBACK, context, {
+            'heat_id': heat.id,
+            'pilot_id': pilot,
+            'class_id': heat.class_id
+        })
         return {
             'enter_at_level': context['enter_at_level'],
             'exit_at_level': context['exit_at_level']

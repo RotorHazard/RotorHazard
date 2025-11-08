@@ -1547,19 +1547,21 @@ For example, the `Flt.EMIT_PHONETIC_DATA` hook runs just before lap announcement
 
 ### All Properties and Methods
 
-#### filters.add(hook, name, fn, priority=200):
+#### filters.add(hook, name, fn, priority=200, with_context=False):
 Add a new filter function to an existing hook. The filter will be run when the hook is triggered.
 - `hook` (Flt|string): Hook to attach this filter to 
 - `name` (string): Internal identifier for this filter
 - `fn` (function): Function to run when the hook is triggered 
 - `priority` _(optional)_ (int): Order in which this filter will run among all attached to this hook
+- `with_context` _(optional)_ (boolean): if True, additional data (context) is passed to the function as an additional argument when run, if specified by the runner; if False, function will be run with no additional arguments
 
 #### filters.remove(hook, name):
 Remove a filter from a hook.
 - `hook` (Flt|string): Hook from which filter to remove is attached
 - `name` (string): Internal identifier of filter to remove
 
-#### filters.run(hook, data):
+#### filters.run(hook, data, context=None):
 Run filters attached to specified hook.
 - `hook` (Flt|string): Hook on which filters will be called
 - `data` (any): Data supplied to filters attached to hook
+- `context` (any): additional data passed to filters as an argument
