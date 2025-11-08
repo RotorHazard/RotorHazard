@@ -198,10 +198,11 @@ Calls function when a socket event is received.
 
 Update data displayed on frontend. Use after modifying data structures with other API methods.
 
-#### ui.broadcast_ui(page):
+#### ui.broadcast_ui(page, replace_panels=True):
 Broadcast UI panel setup to all connected clients.
 
 - `page` (string): Page to update
+- `replace_panels` (boolean): if True, replaces all panels on page
 
 #### ui.broadcast_frequencies():
 Broadcast seat frequencies to all connected clients.

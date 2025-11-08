@@ -112,8 +112,8 @@ class UserInterfaceAPI():
 
     # Broadcasts
     @callWithDatabaseWrapper
-    def broadcast_ui(self, page):
-        self._racecontext.rhui.emit_ui(page)
+    def broadcast_ui(self, page, replace_panels=True):
+        self._racecontext.rhui.emit_ui(page, replace_panels=replace_panels)
 
     @callWithDatabaseWrapper
     def broadcast_frequencies(self):
