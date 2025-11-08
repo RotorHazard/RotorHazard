@@ -371,6 +371,9 @@ class RHUI():
             'panels': []
         }
 
+        if 'replace_panels' in params:
+            emit_payload['replace_panels'] = params['replace_panels']
+
         for panel in self.ui_panels:
             if panel.page == page:
                 panel_settings = self.get_panel_settings(panel.name)

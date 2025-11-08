@@ -31,24 +31,33 @@
 
 		socket.on('ui', function (msg) {
 			if (msg.page == 'streams') {
-				$('#custom-ui').empty();
+				if (msg.replace_panels !== false) {
+					$('#custom-ui').empty();
+				}
 
 				for (var i in msg.panels) {
 					var panel = msg.panels[i];
 
-					var panel_el = $('<div class="panel collapsing active">');
-					panel_el.attr('id', 'ui-custom-' + panel.panel.name);
-					var panel_header_el = $('<div class="panel-header">');
-					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
-					var panel_content_el = $('<div class="panel-content">');
-
-					// panel open/close
-					if (panel.panel.open) {
-						panel_el.addClass('open');
-						panel_content_el.show();
+					if (msg.replace_panels === false) {
+						var panel_el = $('#ui-custom-' + panel.panel.name);
+						var panel_content_el = panel_el.children('.panel-content');
+						panel_content_el.empty();
 					} else {
-						panel_el.removeClass('open');
-						panel_content_el.hide();
+						var panel_el = $('<div class="panel collapsing active">');
+						panel_el.attr('id', 'ui-custom-' + panel.panel.name);
+						var panel_header_el = $('<div class="panel-header">');
+						panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+						var panel_content_el = $('<div class="panel-content">');
+						panel_el.append(panel_header_el);
+
+						// panel open/close
+						if (panel.panel.open) {
+							panel_el.addClass('open');
+							panel_content_el.show();
+						} else {
+							panel_el.removeClass('open');
+							panel_content_el.hide();
+						}
 					}
 
 					// add markdown content
