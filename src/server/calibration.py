@@ -203,7 +203,7 @@ class Calibration:
         }
         context = self._racecontext.filters.run_filters(Flt.CALIBRATION_FALLBACK, context, {
             'heat_id': heat.id,
-            'pilot_id': pilot.id,
+            'pilot_id': pilot,
             'class_id': heat.class_id
         })
         return {
