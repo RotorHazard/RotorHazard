@@ -2610,7 +2610,7 @@ class RHData():
 
         Database.DB_session.add(race_format)
 
-        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ADD, race_format{
+        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ADD, race_format, {
             'data': init
         })
 
