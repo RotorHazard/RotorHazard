@@ -725,7 +725,7 @@ class RHRace():
                 gevent.spawn(self.rebuild_page_cache)
 
                 self._racecontext.rhui.emit_race_saved(new_race, race_data)
-        self.round = self.calc_round()
+            self.round = self.calc_round()
 
     def rebuild_page_cache(self):
         self._racecontext.pagecache.set_valid(False)
