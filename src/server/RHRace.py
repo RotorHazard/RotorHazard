@@ -669,7 +669,7 @@ class RHRace():
                     'race_id': new_race.id,
                     })
 
-                logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, max_round+1))
+                logger.info('Current laps saved: Heat {0} Round {1}'.format(self.current_heat, self.round))
 
                 if self.format.team_racing_mode == RacingMode.COOP_ENABLED:
                     self._racecontext.rhdata.update_heat_coop_values(heat, self.coop_best_time, self.coop_num_laps)
