@@ -899,7 +899,9 @@ class RHData():
             if 'color' in init:
                 new_pilot.color = init['color']
 
-        new_pilot = self._filters.run_filters(Flt.PILOT_ADD, new_pilot)
+        new_pilot = self._filters.run_filters(Flt.PILOT_ADD, new_pilot, {
+            'data': init
+        })
 
         self.commit()
 
@@ -932,13 +934,19 @@ class RHData():
             pilot.color = data['color']
 
         if 'pilot_attr' in data and 'value' in data:
+            data['pilot_attr'] = self._filters.run_filters(Flt.PILOT_ALTER_ATTRIBUTE, data['pilot_attr'], {
+                'pilot_id': pilot_id
+            })
+
             attribute = Database.PilotAttribute.query.filter_by(id=pilot_id, name=data['pilot_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.PilotAttribute(id=pilot_id, name=data['pilot_attr'], value=data['value']))
 
-        pilot = self._filters.run_filters(Flt.PILOT_ALTER, pilot)
+        pilot = self._filters.run_filters(Flt.PILOT_ALTER, pilot, {
+            'data': data
+        })
 
         self.commit()
 
@@ -1175,7 +1183,9 @@ class RHData():
 
             Database.DB_session.add(new_heatNode)
 
-        new_heat = self._filters.run_filters(Flt.HEAT_ADD, new_heat)
+        new_heat = self._filters.run_filters(Flt.HEAT_ADD, new_heat, {
+            'data': init
+        })
 
         self.commit()
 
@@ -1244,7 +1254,9 @@ class RHData():
                 )
             Database.DB_session.add(new_heatnode)
 
-        new_heat = self._filters.run_filters(Flt.HEAT_DUPLICATE, new_heat)
+        new_heat = self._filters.run_filters(Flt.HEAT_DUPLICATE, new_heat, {
+            'source': source_heat.id
+        })
 
         self.commit()
 
@@ -1375,13 +1387,19 @@ class RHData():
                 self._racecontext.pagecache.set_valid(False)
 
         if 'heat_attr' in data and 'value' in data:
+            data['heat_attr'] = self._filters.run_filters(Flt.HEAT_ALTER_ATTRIBUTE, data['heat_attr'], {
+                'heat_id': heat_id
+            })
+
             attribute = Database.HeatAttribute.query.filter_by(id=heat_id, name=data['heat_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.HeatAttribute(id=heat_id, name=data['heat_attr'], value=data['value']))
 
-        heat = self._filters.run_filters(Flt.HEAT_ALTER, heat)
+        heat = self._filters.run_filters(Flt.HEAT_ALTER, heat, {
+            'data': data
+        })
 
         self.commit()
 
@@ -1924,7 +1942,9 @@ class RHData():
             if 'order' in init:
                 new_race_class.order = init['order']
 
-        new_race_class = self._filters.run_filters(Flt.CLASS_ADD, new_race_class)
+        new_race_class = self._filters.run_filters(Flt.CLASS_ADD, new_race_class, {
+            'data': init
+        })
 
         self.commit()
 
@@ -1977,7 +1997,9 @@ class RHData():
         for heat in Database.Heat.query.filter_by(class_id=source_class.id).all():
             self.duplicate_heat(heat, dest_class=new_class.id)
 
-        new_class = self._filters.run_filters(Flt.CLASS_DUPLICATE, new_class)
+        new_class = self._filters.run_filters(Flt.CLASS_DUPLICATE, new_class, {
+            'source': source_class.id
+        })
 
         self.commit()
 
@@ -2063,13 +2085,19 @@ class RHData():
                         self.clear_results_heat(heat)
 
         if 'class_attr' in data and 'value' in data:
+            data['class_attr'] = self._filters.run_filters(Flt.CLASS_ALTER_ATTRIBUTE, data['class_attr'], {
+                'race_class_id': race_class_id
+            })
+
             attribute = Database.RaceClassAttribute.query.filter_by(id=race_class_id, name=data['class_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.RaceClassAttribute(id=race_class_id, name=data['class_attr'], value=data['value']))
 
-        race_class = self._filters.run_filters(Flt.CLASS_ALTER, race_class)
+        race_class = self._filters.run_filters(Flt.CLASS_ALTER, race_class, {
+            'data': data
+        })
 
         self.commit()
 
@@ -2397,7 +2425,9 @@ class RHData():
 
         Database.DB_session.add(new_profile)
 
-        new_profile = self._filters.run_filters(Flt.PROFILE_ADD, new_profile)
+        new_profile = self._filters.run_filters(Flt.PROFILE_ADD, new_profile, {
+            'data': init
+        })
 
         self.commit()
 
@@ -2422,7 +2452,9 @@ class RHData():
             f_ratio = 100)
         Database.DB_session.add(new_profile)
 
-        new_profile = self._filters.run_filters(Flt.PROFILE_DUPLICATE, new_profile)
+        new_profile = self._filters.run_filters(Flt.PROFILE_DUPLICATE, new_profile, {
+            'source': source_profile.id
+        })
 
         self.commit()
 
@@ -2446,7 +2478,9 @@ class RHData():
         if 'exit_ats' in data:
             profile.exit_ats = data['exit_ats'] if isinstance(data['exit_ats'], str) else json.dumps(data['exit_ats'])
 
-        profile = self._filters.run_filters(Flt.PROFILE_ALTER, profile)
+        profile = self._filters.run_filters(Flt.PROFILE_ALTER, profile, {
+            'data': data
+        })
 
         self.commit()
 
@@ -2580,7 +2614,9 @@ class RHData():
 
         Database.DB_session.add(race_format)
 
-        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ADD, race_format)
+        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ADD, race_format, {
+            'data': init
+        })
 
         self.commit()
 
@@ -2618,7 +2654,9 @@ class RHData():
             points_method=source_format.points_method)
         Database.DB_session.add(new_format)
 
-        new_format = self._filters.run_filters(Flt.RACE_FORMAT_DUPLICATE, new_format)
+        new_format = self._filters.run_filters(Flt.RACE_FORMAT_DUPLICATE, new_format, {
+            'source': source_format.id
+        })
 
         self.commit()
 
@@ -2682,13 +2720,19 @@ class RHData():
                 logger.warning("Adding points method settings without established type")
 
         if 'format_attr' in data and 'value' in data:
+            data['format_attr'] = self._filters.run_filters(Flt.RACE_FORMAT_ALTER_ATTRIBUTE, data['format_attr'], {
+                'race_format_id': data['format_id']
+            })
+
             attribute = Database.RaceFormatAttribute.query.filter_by(id=data['format_id'], name=data['format_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
                 Database.DB_session.add(Database.RaceFormatAttribute(id=data['format_id'], name=data['format_attr'], value=data['value']))
 
-        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ALTER, race_format)
+        race_format = self._filters.run_filters(Flt.RACE_FORMAT_ALTER, race_format, {
+            'data': data
+        })
 
         self.commit()
 
@@ -3049,6 +3093,9 @@ class RHData():
 
     def alter_savedRaceMeta(self, race_id, data):
         if 'race_attr' in data and 'value' in data:
+            data['race_attr'] = self._filters.run_filters(Flt.RACE_ALTER_ATTRIBUTE, data['race_attr'], {
+                'race_id': race_id
+            })
             attribute = Database.SavedRaceMetaAttribute.query.filter_by(id=race_id, name=data['race_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
@@ -3528,10 +3575,15 @@ class RHData():
         except:
             output = default_value
 
-        return self._filters.run_filters(Flt.OPTION_GET, output)
+        return self._filters.run_filters(Flt.OPTION_GET, output, {
+            'option': option,
+            'default_value': default_value
+        })
 
     def set_option(self, option, value):
-        value = self._filters.run_filters(Flt.OPTION_SET, value)
+        value = self._filters.run_filters(Flt.OPTION_SET, value, {
+            'option': option
+        })
 
         if isinstance(value, bool):
             value = '1' if value else '0'
@@ -3555,7 +3607,10 @@ class RHData():
         except:
             output = default_value
 
-        return self._filters.run_filters(Flt.OPTION_GET_INT, output)
+        return self._filters.run_filters(Flt.OPTION_GET_INT, output, {
+            'option': option,
+            'default_value': default_value
+        })
 
     def delete_option(self, option):
         Database.GlobalSettings.query.filter_by(option_name=option).delete()

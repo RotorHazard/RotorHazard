@@ -13,13 +13,18 @@ class FilterManager:
         self.filterOrder = {}
         self._rhapi = rhapi
 
-    def add_filter(self, filter_type, name, filter_fn, priority=200):
+    def add_filter(self, filter_type, name, filter_fn, priority=200, with_context=False):
+        if not callable(filter_fn):
+            logger.error("Filter {} must be assigned a callable function".format(name))
+            return False
+
         if filter_type not in self.filters:
             self.filters[filter_type] = {}
 
         self.filters[filter_type][name] = {
             "filter_fn": filter_fn,
             "priority": priority,
+            "with_context": with_context
         }
 
         self.filterOrder[filter_type] = [key for key, _value in sorted(self.filters[filter_type].items(), key=lambda x: x[1]['priority'])]
@@ -39,7 +44,7 @@ class FilterManager:
 
         return True
 
-    def run_filters(self, filter_type, data):
+    def run_filters(self, filter_type, data, context=None):
         filter_list = []
         if filter_type in self.filterOrder:
             for name in self.filterOrder[filter_type]:
@@ -48,30 +53,38 @@ class FilterManager:
         if len(filter_list):
             for name in filter_list:
                 filter = self.filters[filter_type][name]
-                data = self.run_filter(filter['filter_fn'], data)
+                data = self.run_filter(filter['filter_fn'], filter['with_context'], data, context)
 
         return data
 
     @catchLogExceptionsWrapper
-    def run_filter(self, handler, data):
-        return handler(data)
+    def run_filter(self, handler, with_context, data, context):
+        # RHAPI <1.4 expect only one argument
+        if with_context:
+            return handler(data, context)
+        else:
+            return handler(data)
 
 
 class Flt:
     PILOT_ADD = 'pilotAdd'
     PILOT_ALTER = 'pilotAlter'
+    PILOT_ALTER_ATTRIBUTE = 'pilotAlterAttribute'
     HEAT_ADD = 'heatAdd'
     HEAT_DUPLICATE = 'heatDuplicate'
     HEAT_ALTER = 'heatAlter'
+    HEAT_ALTER_ATTRIBUTE = 'heatAlterAttribute'
     CLASS_ADD = 'classAdd'
     CLASS_DUPLICATE = 'classDuplicate'
     CLASS_ALTER = 'classAlter'
+    CLASS_ALTER_ATTRIBUTE = 'classAlterAttribute'
     PROFILE_ADD = 'profileAdd'
-    PROFILE_DUPLICATE = 'profileDuplicate' ## ***
+    PROFILE_DUPLICATE = 'profileDuplicate'
     PROFILE_ALTER = 'profileAlter'
     RACE_FORMAT_ADD = 'raceFormatAdd'
-    RACE_FORMAT_DUPLICATE = 'raceFormatDuplicate' ## ***
+    RACE_FORMAT_DUPLICATE = 'raceFormatDuplicate'
     RACE_FORMAT_ALTER = 'raceFormatAlter'
+    RACE_FORMAT_ALTER_ATTRIBUTE = 'raceFormatAlterAttribute'
     OPTION_GET = 'optionGet'
     OPTION_GET_INT = 'optionGetInt'
     OPTION_SET = 'optionSet'
@@ -82,6 +95,7 @@ class Flt:
     RACE_TEAM_RESULTS = 'raceTeamResults'
     RACE_COOP_RESULTS = 'raceCoopResults'
     RACE_SET_HEAT = 'raceSetHeat'
+    RACE_ALTER_ATTRIBUTE = 'raceAlterAttribute'
 
     EMIT_UI = 'emitUI'
     EMIT_PLUGIN_LIST = 'emitPluginList'

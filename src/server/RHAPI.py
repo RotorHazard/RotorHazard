@@ -112,8 +112,8 @@ class UserInterfaceAPI():
 
     # Broadcasts
     @callWithDatabaseWrapper
-    def broadcast_ui(self, page):
-        self._racecontext.rhui.emit_ui(page)
+    def broadcast_ui(self, page, replace_panels=True):
+        self._racecontext.rhui.emit_ui(page, replace_panels=replace_panels)
 
     @callWithDatabaseWrapper
     def broadcast_frequencies(self):
@@ -1448,14 +1448,14 @@ class FilterAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
-    def add(self, hook, name, fn, priority=200):
-        self._racecontext.filters.add_filter(hook, name, fn, priority)
+    def add(self, hook, name, fn, priority=200, with_context=False):
+        self._racecontext.filters.add_filter(hook, name, fn, priority, with_context)
 
     def remove(self, hook, name):
         self._racecontext.filters.remove_filter(hook, name)
 
-    def run(self, hook, data):
-        return self._racecontext.filters.run_filters(hook, data)
+    def run(self, hook, data, context=None):
+        return self._racecontext.filters.run_filters(hook, data, context)
 
 
 #

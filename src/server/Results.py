@@ -743,7 +743,10 @@ def add_fastest_race_lap_meta(racecontext, all_leaderboards):
 
 def build_leaderboard_race(racecontext, heat_id, round_id):
     result = calc_leaderboard(racecontext, heat_id=heat_id, round_id=round_id)
-    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_RACE, result)
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_RACE, result, {
+        'heat_id': heat_id,
+        'round_id': round_id
+    })
 
 def build_leaderboard_heat(racecontext, heat):
     leaderboard = {}
@@ -756,7 +759,9 @@ def build_leaderboard_heat(racecontext, heat):
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
     leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
 
-    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_HEAT, leaderboard)
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_HEAT, leaderboard, {
+        'heat_id': heat.id
+    })
 
 def build_leaderboard_class(racecontext, race_class):
     leaderboard = {}
@@ -769,7 +774,9 @@ def build_leaderboard_class(racecontext, race_class):
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
     leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
 
-    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_CLASS, leaderboard)
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_CLASS, leaderboard, {
+        'class_id': race_class.id
+    })
 
 def build_leaderboard_event(racecontext):
     leaderboard = {}
