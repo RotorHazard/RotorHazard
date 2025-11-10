@@ -214,7 +214,7 @@ def assemble_results(rhapi):
         payload.append([rhapi.__('Class Leaderboards')])
 
         # move unclassified heats to end
-        all_classes.append(all_classes.pop(all_classes.index(0)))
+        all_classes.append(all_classes.pop(all_classes.index(RHUtils.CLASS_ID_NONE)))
 
         for class_id in all_classes:
 

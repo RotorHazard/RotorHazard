@@ -1740,7 +1740,7 @@ def on_export_database_file(data):
         logger.info('Exporting data via {0}'.format(exporter))
         export_result = RaceContext.export_manager.export(exporter)
 
-        if export_result != False:
+        if export_result:
             try:
                 emit_payload = {
                     'filename': 'RotorHazard Export ' + datetime.now().strftime('%Y%m%d_%H%M%S') + ' ' + exporter + '.' + export_result['ext'],
