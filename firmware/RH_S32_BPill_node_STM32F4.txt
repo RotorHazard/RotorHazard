@@ -1,1 +1,1 @@
-Firmware file version: 1.1.5 (STM32F4, Build timestamp: Jan 18 2024 02:44:36)
+Firmware file version: 1.2.0 (STM32F4, Build timestamp: Nov  6 2025 14:37:05)
