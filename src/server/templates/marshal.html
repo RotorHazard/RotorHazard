@@ -89,6 +89,8 @@
 					break;
 			}
 
+			lapData.append('<td>' + lap.peak_rssi + '</td>');
+
 			if (lap.deleted) {
 				lapData.append('<td><button class="restore_lap" data-lapid="' + lap_i + '">+</button></td>');
 			} else {
@@ -723,6 +725,7 @@
 						<th>{{ __('Timestamp') }}</th>
 						<th>{{ __('Lap Time') }}</th>
 						<th>{{ __('Source') }}</th>
+						<th>{{ __('Peak') }}</th>
 						<th>{{ __('Deleted') }}</th>
 					</tr>
 				</thead>

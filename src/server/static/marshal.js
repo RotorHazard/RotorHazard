@@ -1,5 +1,10 @@
 /* Marshaling functions */
 
+const HISTORY_TYPE = {
+	RSSI: 0,
+	PEAK: 1
+};
+
 class RHMarshal {
 	self = false;
 
@@ -27,6 +32,7 @@ class RHMarshal {
 	race = {
 		history_times: null,
 		history_values: null,
+		history_type: HISTORY_TYPE.RSSI,
 		laps: null,
 		enter_at: null,
 		exit_at: null,
@@ -190,8 +196,6 @@ class RHMarshal {
 	}
 
 	setPilotData(args) {
-		self.race.history_times = args.history_times;
-		self.race.history_values = args.history_values;
 		self.race.laps = args.laps;
 		self.race.enter_at = args.enter_at;
 		self.race.exit_at = args.exit_at;
@@ -200,6 +204,37 @@ class RHMarshal {
 		self.race.pilot_id = args?.pilot_id;
 		self.race.seat = args?.seat;
 		self.race.callsign = args?.callsign;
+
+		self.setHistory({
+			'history_times': args.history_times,
+			'history_values': args.history_values
+		});
+	}
+
+	setHistory(args) {
+		if (!args.history_times || !args.history_values) {
+			self.race.history_type = HISTORY_TYPE.PEAK;
+			var times = [];
+			var values = [];
+			times.push(0);
+			values.push(0);
+			for (var i in self.race.laps) {
+				var lap = self.race.laps[i];
+				times.push(self.race.start_time + (lap.lap_time_stamp / 1000));
+				values.push(lap.peak_rssi);
+				times.push(self.race.start_time + (lap.lap_time_stamp + 1) / 1000);
+				values.push(0);
+			}
+			times.push(times[times.length - 1] + 10);
+			values.push(0);
+
+			self.race.history_times = times;
+			self.race.history_values = values;
+		} else {
+			self.race.history_type = HISTORY_TYPE.RSSI;
+			self.race.history_times = args.history_times;
+			self.race.history_values = args.history_values;
+		}
 	}
 
 	initRace() {
@@ -368,94 +403,120 @@ class RHMarshal {
 	}
 
 	processRXData() {
-		var crossing = false;
-		var crossingStart = 0;
-		var crossingEnd = 0;
-		var peakRssi = 0;
-		var peakFirst = 0;
-		var peakLast = 0;
-		var laps = [];
-		var startThreshLowerFlag = false;
-
-		var localEnter = self.race.enter_at
-		var localExit = self.race.exit_at
-
-		// set lower EnterAt/ExitAt values at race start if configured
-		if (self.start_thresh_lower_amount > 0 && self.start_thresh_lower_duration > 0) {
-			var diffVal = (self.race.enter_at - self.race.exit_at) * self.start_thresh_lower_amount / 100;
-			if (diffVal > 0) {
-				localEnter = self.race.enter_at - diffVal;
-				localExit = self.race.exit_at - diffVal;
-				startThreshLowerFlag = true;
-			}
-		}
-
 		var last_lap_time_stamp = -Infinity;
-		for(var idx in self.race.history_values) {
-			var rssi = self.race.history_values[idx];
-			var time = self.race.history_times[idx];
+		var laps = [];
+		if (self.race.history_type == HISTORY_TYPE.PEAK) {
+			for (var lap_i in self.race.laps) {
+				var lap = self.race.laps[lap_i];
+				lap.source = 2;
+				lap.crossingStart = lap.lap_time_stamp;
+				lap.crossingEnd = lap.lap_time_stamp + 1;
 
-			if (startThreshLowerFlag) {
-				// if initial pass recorded or past duration then restore EnterAt/ExitAt values
-				if (laps.length > 0 || time >= self.race.start_time + self.start_thresh_lower_duration + self.race.race_format.start_delay_max) {
-					localEnter = self.race.enter_at;
-					localExit = self.race.exit_at;
-					startThreshLowerFlag = false;
+				if (lap.peak_rssi < self.race.enter_at) {
+					lap.deleted = true;
+				} else {
+					lap.deleted = false;
 				}
-			}
 
-			if (!crossing && (rssi > self.race.enter_at)) {
-				crossing = true;
-				crossingStart = time;
-			}
-
-			if (rssi >= peakRssi) {
-				peakLast = time;
-
-				if (rssi > peakRssi) {
-					peakFirst = time;
-					peakRssi = rssi;
-				}
-			}
-
-			if (crossing) {
-				if (rssi < self.race.exit_at) {
-					var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
-
-					if (lap_time_stamp > 0) { // reject passes before race start
-						var crossingEnd = time;
-						var lapdata = {
-							crossingStart: crossingStart,
-							crossingEnd: crossingEnd,
-							lap_time_stamp: lap_time_stamp, // zero stamp within race
-							source: 2, // recalc
-							deleted: false
-						};
-						if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap) {
-							lapdata.deleted = true;
-						}
-						laps.push(lapdata);
-					}
-					crossing = false;
-					peakRssi = 0;
+				if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap) {
+					lapdata.deleted = true;
+				} else {
 					last_lap_time_stamp = lap_time_stamp;
 				}
+				laps.push();
 			}
+
+		} else {
+			var crossing = false;
+			var crossingStart = 0;
+			var crossingEnd = 0;
+			var peakRssi = 0;
+			var peakFirst = 0;
+			var peakLast = 0;
+			var startThreshLowerFlag = false;
+
+			var localEnter = self.race.enter_at
+			var localExit = self.race.exit_at
+
+			// set lower EnterAt/ExitAt values at race start if configured
+			if (self.start_thresh_lower_amount > 0 && self.start_thresh_lower_duration > 0) {
+				var diffVal = (self.race.enter_at - self.race.exit_at) * self.start_thresh_lower_amount / 100;
+				if (diffVal > 0) {
+					localEnter = self.race.enter_at - diffVal;
+					localExit = self.race.exit_at - diffVal;
+					startThreshLowerFlag = true;
+				}
+			}
+
+			for(var idx in self.race.history_values) {
+				var rssi = self.race.history_values[idx];
+				var time = self.race.history_times[idx];
+
+				if (startThreshLowerFlag) {
+					// if initial pass recorded or past duration then restore EnterAt/ExitAt values
+					if (laps.length > 0 || time >= self.race.start_time + self.start_thresh_lower_duration + self.race.race_format.start_delay_max) {
+						localEnter = self.race.enter_at;
+						localExit = self.race.exit_at;
+						startThreshLowerFlag = false;
+					}
+				}
+
+				if (!crossing && (rssi > self.race.enter_at)) {
+					crossing = true;
+					crossingStart = time;
+				}
+
+				if (rssi >= peakRssi) {
+					peakLast = time;
+
+					if (rssi > peakRssi) {
+						peakFirst = time;
+						peakRssi = rssi;
+					}
+				}
+
+				if (crossing) {
+					if (rssi < self.race.exit_at) {
+						var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
+
+						if (lap_time_stamp > 0) { // reject passes before race start
+							var crossingEnd = time;
+							var lapdata = {
+								crossingStart: crossingStart,
+								crossingEnd: crossingEnd,
+								lap_time_stamp: lap_time_stamp, // zero stamp within race
+								source: 2, // recalc
+								deleted: false
+							};
+							if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap) {
+								lapdata.deleted = true;
+							} else {
+								last_lap_time_stamp = lap_time_stamp;
+							}
+							laps.push(lapdata);
+						}
+						crossing = false;
+						peakRssi = 0;
+
+					}
+				}
+			}
+
+			if (crossing) { // check for crossing at data end
+					var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
+
+					var crossingEnd = time;
+					laps.push({
+						crossingStart: crossingStart,
+						crossingEnd: crossingEnd,
+						lap_time_stamp: lap_time_stamp, // zero stamp within race
+						source: 2, // recalc
+						deleted: false
+					});
+			}
+
+
 		}
-
-		if (crossing) { // check for crossing at data end
-				var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
-
-				var crossingEnd = time;
-				laps.push({
-					crossingStart: crossingStart,
-					crossingEnd: crossingEnd,
-					lap_time_stamp: lap_time_stamp, // zero stamp within race
-					source: 2, // recalc
-					deleted: false
-				});
-		}
-
 		// auto-delete late laps
 		var finished = false;
 		for (var lap_i in laps) {
@@ -466,6 +527,7 @@ class RHMarshal {
 				finished = true;
 			}
 		}
+
 		self.race.calc_result = laps;
 	}
 
@@ -491,14 +553,16 @@ class RHMarshal {
 	recalcRace() {
 		self.calcLaps();
 		if (self.race_loaded) {
-			var laps = self.race.calc_result;
-			for (var lap_i in self.race.laps) {
-				var lap = self.race.laps[lap_i];
-				if (lap.source == 1 || lap.source == 4) { // LapSource.MANUAL = 1, LapSource.API = 4
-					laps.push(lap);
+			if (self.race.history_type != HISTORY_TYPE.PEAK) {
+				var laps = self.race.calc_result;
+				for (var lap_i in self.race.laps) {
+					var lap = self.race.laps[lap_i];
+					if (lap.source == 1 || lap.source == 4) { // LapSource.MANUAL = 1, LapSource.API = 4
+						laps.push(lap);
+					}
 				}
+				self.race.laps = laps;
 			}
-			self.race.laps = laps;
 			self.updateIncrementalLapTimes();
 			self.displayLaps();
 			self.renderGraph();
