@@ -3478,7 +3478,8 @@ class RHData():
                     lap_time=lap.lap_time,
                     lap_time_formatted=lap.lap_time_formatted,
                     source=lap.source,
-                    deleted=lap.deleted
+                    deleted=lap.deleted,
+                    peak_rssi=lap.peak_rssi
                 ))
 
         self.commit()

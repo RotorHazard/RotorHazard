@@ -35,7 +35,7 @@ class Crossing(dict):
     deleted: bool = False
     late_lap: bool = False
     invalid: bool = False
-    peak_rssi: int = None
+    peak_rssi: int|None = None
     def __bool__(self):
         return True  # always evaluate object as 'True', even if underlying dict is empty
     def asdict(self):

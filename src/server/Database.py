@@ -360,6 +360,7 @@ class SavedRaceLap(Base):
     lap_time_formatted = DB.Column(DB.String, nullable=False)
     source = DB.Column(DB.Integer, nullable=False)
     deleted = DB.Column(DB.Boolean, nullable=False)
+    peak_rssi = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id
