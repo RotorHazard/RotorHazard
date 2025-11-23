@@ -4131,7 +4131,6 @@
 			"Total": "总计",
 			"Troubleshooting": "故障排除",
 			"True": "是",
-			"Try <code>pip install --upgrade --no-cache-dir -r {}</code>": "尝试 <code>pip install --upgrade --no-cache-dir -r {}</code>",
 			"Tuning": "调节",
 			"Tuning adjust failed on node {0}: Bad RSSI value": "节点 {0} 上的调节失败: 错误的 RSSI 值",
 			"Tuning Parameters": "调节参数",

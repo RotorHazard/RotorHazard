@@ -3464,7 +3464,7 @@ def check_requirements():
                         num_checked += 1
         logger.debug("Number of required libraries checked: {}".format(num_checked))
         if num_mismatched > 0:
-            logger.warning(__('Try <code>pip install --upgrade --no-cache-dir -r {}</code>'.format(req_file_name)))
+            logger.warning(__('Try "pip install --upgrade --no-cache-dir -r {}"'.format(req_file_name)))
             RaceContext.rhui.set_ui_message('check_reqs',
                 __("Package-version mismatches detected. Try: <code>pip install --upgrade --no-cache-dir -r {}</code>").format(req_file_name),
                 header='Warning', subclass='none')
