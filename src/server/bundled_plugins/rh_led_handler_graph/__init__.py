@@ -22,7 +22,7 @@ except ModuleNotFoundError as ex:
     logger.debug(str(ex) + " ('pillow' module not available for '" + __name__ + "')")
 
 class NodeToLEDMapping:
-    def __init__(self, led_first_idx=0, led_last_idx=0):
+    def __init__(self, led_first_idx, led_last_idx):
         self.led_first_idx = led_first_idx
         self.led_last_idx = led_last_idx
         self.idx_range = abs(led_last_idx - led_first_idx) + 1
@@ -35,8 +35,9 @@ def rssiGraph(args):
 
     rhapi = args['RHAPI']
     INTERFACE = rhapi.interface
+    led_count = rhapi.config.get('LED', 'LED_COUNT', as_int=True)
 
-    if len(INTERFACE.seats) < 1:
+    if len(INTERFACE.seats) < 1 or led_count < 1:
         return False
 
     if args.get('active_only'):
@@ -48,6 +49,7 @@ def rssiGraph(args):
         active_nodes = INTERFACE.seats
     if len(active_nodes) < 1:
         return False
+
     if args.get('single_node_only'):
         single_node_idx = args.get('single_node_idx', -1)
         if single_node_idx >= 0:
@@ -64,7 +66,11 @@ def rssiGraph(args):
 
     logger.debug("rh_led_handler_graph active nodes: {}".format(active_nodes))
 
-    if rhapi.config.get('LED', 'LED_ROWS', as_int=True) != 1:
+    if rhapi.config.get('LED', 'LED_ROWS', as_int=True) > 1:
+
+        if not Pil_avail_flag:
+            logger.error("Cannot display to LED panel because 'pillow' module not installed")
+            return False
 
         panel = getPanelImg(strip, rhapi)
 
@@ -81,15 +87,11 @@ def rssiGraph(args):
             for idx, node in enumerate(active_nodes):
                 rssi_min = node.node_nadir_rssi if not use_enter_exit_ats_flag else node.exit_at_level
                 rssi_max = node.node_peak_rssi if not use_enter_exit_ats_flag else node.enter_at_level
-                rssi_val = node.current_rssi
-
+                rssi_val = max(rssi_min, min(node.current_rssi, rssi_max))  # bound value to min/max
                 color = convertColor(args['manager'].getDisplayColor(node.index))
-
                 rssi_range = rssi_max - rssi_min
-
-                if rssi_range:
+                if rssi_range > 0:
                     point = (rssi_max - rssi_val) / float(rssi_range) * panel['height']
-
                     panel['draw'].rectangle((barWidth * idx, point, (barWidth * idx) + barWidth - 1, panel['height']), fill=color)
 
             img = panel['im'].rotate(90 * rhapi.config.get('LED', 'PANEL_ROTATE'), expand=True)
@@ -98,7 +100,6 @@ def rssiGraph(args):
             effect_delay(100, args)
 
     else:
-        led_count = rhapi.config.get('LED', 'LED_COUNT', as_int=True)
         node_mappings_dict = {}
         led_strip_pixels = [ColorVal.NONE] * led_count
         pixels_per_node = led_count // len(active_nodes)
@@ -205,7 +206,7 @@ def register_handlers(args):
     led_count = rhapi.config.get('LED', 'LED_COUNT', as_int=True)
     led_rows = rhapi.config.get('LED', 'LED_ROWS', as_int=True)
     if (not Pil_avail_flag) and led_count > 1 and led_rows > 1:
-        raise ModuleNotFoundError("'pillow' module not found") from ex
+        logger.info("Cannot support LED panel because 'pillow' module not installed")
 
     for led_effect in [
         LEDEffect(
@@ -215,8 +216,12 @@ def register_handlers(args):
                 'exclude': [],
                 'recommended': []
             },
-            {},
-            name='graphRSSI',
+            {
+                'active_only': False,
+                'serpentine': True,  # use serpentine pattern (single-row strip only)
+                'use_enter_exit_ats': False  # use enter/exit-at values instead of node min/max
+            },
+            name='graphRSSI'
         ),
         LEDEffect(
             "Graph: RSSI (enabled)",
@@ -225,12 +230,14 @@ def register_handlers(args):
                 'exclude': [],
                 'recommended': []
             }, {
-                'active_only': True
+                'active_only': True,
+                'serpentine': True,  # use serpentine pattern (single-row strip only)
+                'use_enter_exit_ats': False  # use enter/exit-at values instead of node min/max
             },
-            name='graphRSSIActive',
+            name='graphRSSIActive'
         ),
         LEDEffect(
-            "Strip: RSSI (first)",  # only show first active node
+            "Graph: RSSI (first enabled)",  # only show first active node
             rssiGraph, {
                 'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
                 'exclude': [],
@@ -239,23 +246,9 @@ def register_handlers(args):
                 'active_only': True,
                 'single_node_only': True,
                 'single_node_idx': -1,  # index of node to show (0=Node1), or -1 for first active
-                'use_enter_exit_ats': True  # use enter/exit-at values instead of node min/max
+                'use_enter_exit_ats': False  # use enter/exit-at values instead of node min/max
             },
-            name='stripRSSIFirst',
-        ),
-        LEDEffect(
-            "Strip: RSSI (enabled)",  # show all active nodes, using serpentine pattern
-            rssiGraph, {
-                'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
-                'exclude': [],
-                'recommended': []
-            }, {
-                'active_only': True,
-                'single_node': False,
-                'serpentine': True,
-                'use_enter_exit_ats': True  # use enter/exit-at values instead of node min/max
-            },
-            name='stripRSSIActive',
+            name='graphRSSIFirst'
         )
     ]:
         args['register_fn'](led_effect)
