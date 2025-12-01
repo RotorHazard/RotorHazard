@@ -3442,6 +3442,7 @@ class RHData():
                 lap_time_stamp=lap['lap_time_stamp'],
                 lap_time=lap['lap_time'],
                 lap_time_formatted=lap['lap_time_formatted'],
+                peak_rssi = lap['peak_rssi'],
                 source = lap['source'],
                 deleted = lap['deleted']
             ))
