@@ -842,7 +842,7 @@ class RHRace():
                                                        self._racecontext.interface.get_lap_source_str(source), pilot_namestr))
                                     lap_ok_flag = False
 
-                            if lap_ok_flag:
+                            if lap_ok_flag and not kwargs.get('ignore', False):
                                 if race_format.team_racing_mode == race_format.team_racing_mode == RacingMode.INDIVIDUAL:
                                     node_finished_flag = self.get_node_finished_flag(node.index)
                                     if not node_finished_flag:
