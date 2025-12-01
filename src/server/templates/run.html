@@ -2870,13 +2870,13 @@
 						<div class="node-controls">
 							<div class="enter-exit-control">
 								<label for="set_enter_at_level_{{ node.index }}">{{ __('EnterAt') }}</label>
-								<input type="number" id="set_enter_at_level_{{ node.index }}" class="set_enter_at_level" data-node="{{ node.index }}" min="0" max="999">
+								<input type="number" id="set_enter_at_level_{{ node.index }}" class="set_enter_at_level" data-node="{{ node.index }}" min="0" max="9999">
 								<button class="cap_enter_at_btn" data-node_index="{{ node.index }}">{{ __('Capture') }}</button>
 							</div>
 
 							<div class="enter-exit-control">
 								<label for="set_exit_at_level_{{ node.index }}">{{ __('ExitAt') }}</label>
-								<input type="number" id="set_exit_at_level_{{ node.index }}" class="set_exit_at_level" data-node="{{ node.index }}" min="0" max="999">
+								<input type="number" id="set_exit_at_level_{{ node.index }}" class="set_exit_at_level" data-node="{{ node.index }}" min="0" max="9999">
 								<button class="cap_exit_at_btn" data-node_index="{{ node.index }}">{{ __('Capture') }}</button>
 							</div>
 						</div>
