@@ -97,6 +97,9 @@ class BaseHardwareInterface(object):
                     if callable(self.new_enter_or_exit_at_callback):
                         gevent.spawn(self.new_enter_or_exit_at_callback, node, False)
 
+        self.process_history(node, readtime, pn_history)
+
+    def process_history(self, node, readtime, pn_history):
         # prune history data if race is not running (keep last 60s)
         if self.race_status is BaseHardwareInterface.RACE_STATUS_READY:
             if len(node.history_times):
