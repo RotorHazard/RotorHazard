@@ -2,7 +2,7 @@
 
 const MARSHAL_TYPE = {
 	RSSI: 0,
-	HYBRID_PASS_PEAK: 1,
+	HYBRID_PASS_PEAK: 1, // not implemented
 	PASS_PEAK_ONLY: 2,
 };
 
@@ -405,7 +405,7 @@ class RHMarshal {
 	processRXData() {
 		var last_lap_time_stamp = -Infinity;
 		var laps = [];
-		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY) {
+		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY || self.race.marshal_type == MARSHAL_TYPE.HYBRID_PASS_PEAK) {
 			for (var lap_i in self.race.laps) {
 				var lap = self.race.laps[lap_i];
 				lap.source = 2;
@@ -425,7 +425,6 @@ class RHMarshal {
 				}
 				laps.push();
 			}
-
 		} else {
 			var crossing = false;
 			var crossingStart = 0;
