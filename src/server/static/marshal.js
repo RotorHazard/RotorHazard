@@ -1,8 +1,9 @@
 /* Marshaling functions */
 
-const HISTORY_TYPE = {
+const MARSHAL_TYPE = {
 	RSSI: 0,
-	PEAK: 1
+	HYBRID_PASS_PEAK: 1,
+	PASS_PEAK_ONLY: 2,
 };
 
 class RHMarshal {
@@ -32,7 +33,7 @@ class RHMarshal {
 	race = {
 		history_times: null,
 		history_values: null,
-		history_type: HISTORY_TYPE.RSSI,
+		marshal_type: MARSHAL_TYPE.RSSI,
 		laps: null,
 		enter_at: null,
 		exit_at: null,
@@ -199,6 +200,7 @@ class RHMarshal {
 		self.race.laps = args.laps;
 		self.race.enter_at = args.enter_at;
 		self.race.exit_at = args.exit_at;
+		self.race.marshal_type = args.marshal_type;
 
 		self.race.pilotrace_id = args?.pilotrace_id;
 		self.race.pilot_id = args?.pilot_id;
@@ -212,8 +214,7 @@ class RHMarshal {
 	}
 
 	setHistory(args) {
-		if (!args.history_times || !args.history_values) {
-			self.race.history_type = HISTORY_TYPE.PEAK;
+		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY) {
 			var times = [];
 			var values = [];
 			times.push(0);
@@ -231,7 +232,6 @@ class RHMarshal {
 			self.race.history_times = times;
 			self.race.history_values = values;
 		} else {
-			self.race.history_type = HISTORY_TYPE.RSSI;
 			self.race.history_times = args.history_times;
 			self.race.history_values = args.history_values;
 		}
@@ -405,7 +405,7 @@ class RHMarshal {
 	processRXData() {
 		var last_lap_time_stamp = -Infinity;
 		var laps = [];
-		if (self.race.history_type == HISTORY_TYPE.PEAK) {
+		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY) {
 			for (var lap_i in self.race.laps) {
 				var lap = self.race.laps[lap_i];
 				lap.source = 2;
@@ -553,7 +553,7 @@ class RHMarshal {
 	recalcRace() {
 		self.calcLaps();
 		if (self.race_loaded) {
-			if (self.race.history_type != HISTORY_TYPE.PEAK) {
+			if (self.race.marshal_type == MARSHAL_TYPE.RSSI) {
 				var laps = self.race.calc_result;
 				for (var lap_i in self.race.laps) {
 					var lap = self.race.laps[lap_i];

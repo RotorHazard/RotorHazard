@@ -661,7 +661,8 @@ class RHRace():
                                 'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
                                 'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
                                 'frequency': self._racecontext.interface.nodes[node_index].frequency,
-                                'laps': self.node_laps[node_index]
+                                'laps': self.node_laps[node_index],
+                                'marshal_type': self._racecontext.interface.node_map[node_index].interface.marshal_type
                                 }
 
                             self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {

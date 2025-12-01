@@ -2692,6 +2692,7 @@ def get_pilotrace(data):
                 'laps': laps,
                 'enter_at': pilotrace.enter_at,
                 'exit_at': pilotrace.exit_at,
+                'marshal_type': pilotrace.marshal_type
             })
 
 @SOCKET_IO.on('check_bpillfw_file')

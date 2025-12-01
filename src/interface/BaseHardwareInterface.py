@@ -7,6 +7,10 @@ CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at lev
 
 logger = logging.getLogger(__name__)
 
+class MarshalType():
+    FULL_RSSI = 0
+    HYBRID_PASS_PEAK_RSSI = 1
+    PASS_PEAK_ONLY = 2
 
 class BaseHardwareInterface(object):
 
@@ -33,6 +37,7 @@ class BaseHardwareInterface(object):
         self.new_enter_or_exit_at_callback = None # Function added in server.py
         self.node_crossing_callback = None # Function added in server.py
         self.nodes = []
+        self.marshal_type = None
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):

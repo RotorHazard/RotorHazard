@@ -3461,7 +3461,8 @@ class RHData():
                 penalty_time=0,
                 enter_at=node_data['enter_at'],
                 exit_at=node_data['exit_at'],
-                frequency=node_data['frequency']
+                frequency=node_data['frequency'],
+                marshal_type=node_data.get('marshal_type', None)
             )
 
             Database.DB_session.add(new_pilotrace)
