@@ -2471,6 +2471,8 @@
 					lapData.append('<td>' + __('Deleted') + '</td>');
 				}
 
+				lapData.append('<td>' + lap.peak_rssi + '</td>');
+
 				if (lap.deleted) {
 					lapData.append('<td><button class="m-restore_lap" data-lapid="' + lap_i + '">+</button></td>');
 				} else {
@@ -2706,10 +2708,10 @@
 					seat: seat_index,
 					history_times: seat.history_times,
 					history_values: seat.history_values,
-					laps: current_laps.node_index[seat_index].laps,
+					laps: seat.laps,
 					enter_at: rotorhazard.nodes[seat_index].enter_at_level,
 					exit_at: rotorhazard.nodes[seat_index].exit_at_level,
-					marshal_type: rotorhazard.nodes[seat_index].marshal_type,
+					marshal_type: seat.marshal_type,
 				}
 				marshal.setPilotData(pilot_args);
 
@@ -3337,6 +3339,7 @@
 						<th>{{ __('Lap') }}</th>
 						<th>{{ __('Timestamp') }}</th>
 						<th>{{ __('Lap Time') }}</th>
+						<th>{{ __('Peak') }}</th>
 						<th>{{ __('Deleted') }}</th>
 					</tr>
 				</thead>
