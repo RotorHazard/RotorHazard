@@ -3442,6 +3442,7 @@ class RHData():
                 lap_time_stamp=lap['lap_time_stamp'],
                 lap_time=lap['lap_time'],
                 lap_time_formatted=lap['lap_time_formatted'],
+                peak_rssi = lap['peak_rssi'],
                 source = lap['source'],
                 deleted = lap['deleted']
             ))
@@ -3461,7 +3462,8 @@ class RHData():
                 penalty_time=0,
                 enter_at=node_data['enter_at'],
                 exit_at=node_data['exit_at'],
-                frequency=node_data['frequency']
+                frequency=node_data['frequency'],
+                marshal_type=node_data.get('marshal_type', None)
             )
 
             Database.DB_session.add(new_pilotrace)
@@ -3478,7 +3480,8 @@ class RHData():
                     lap_time=lap.lap_time,
                     lap_time_formatted=lap.lap_time_formatted,
                     source=lap.source,
-                    deleted=lap.deleted
+                    deleted=lap.deleted,
+                    peak_rssi=lap.peak_rssi
                 ))
 
         self.commit()

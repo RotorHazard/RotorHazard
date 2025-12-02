@@ -793,7 +793,7 @@ class DatabaseAPI():
     def pilotruns_by_race(self, race_id):
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
 
-    def pilotrun_add(self, race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps):
+    def pilotrun_add(self, race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps, marshal_type=None):
         data = {}
 
         for name, value in [
@@ -805,6 +805,7 @@ class DatabaseAPI():
             ('exit_at', exit_at),
             ('frequency', frequency),
             ('laps', laps),
+            ('marshal_type', marshal_type),
             ]:
             if value is not None:
                 data[name] = value

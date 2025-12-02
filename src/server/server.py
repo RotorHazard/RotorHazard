@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "4.4.0-dev.3" # Public release version code
-SERVER_API = 47 # Server API version
+SERVER_API = 49 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 36 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -2389,6 +2389,7 @@ def on_resave_laps(data):
             'lap_time_stamp': lap['lap_time_stamp'],
             'lap_time': lap['lap_time'],
             'lap_time_formatted': tmp_lap_time_formatted,
+            'peak_rssi': lap.get('peak_rssi', None),
             'source': lap['source'],
             'deleted': lap['deleted']
             })
@@ -2672,7 +2673,8 @@ def get_pilotrace(data):
                         'lap_time': lap.lap_time,
                         'lap_time_formatted': lap.lap_time_formatted,
                         'source': lap.source,
-                        'deleted': lap.deleted
+                        'deleted': lap.deleted,
+                        'peak_rssi': lap.peak_rssi
                     })
 
             pilot_data = RaceContext.rhdata.get_pilot(pilotrace.pilot_id)
@@ -2691,6 +2693,7 @@ def get_pilotrace(data):
                 'laps': laps,
                 'enter_at': pilotrace.enter_at,
                 'exit_at': pilotrace.exit_at,
+                'marshal_type': pilotrace.marshal_type
             })
 
 @SOCKET_IO.on('check_bpillfw_file')
