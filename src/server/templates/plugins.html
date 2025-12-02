@@ -43,7 +43,19 @@
 
 					if (plugin) {
 						plugin.in_category = true;
-						cat_plugins.push(plugin);
+						if (msg.allow_prerelease) {
+							cat_plugins.push(plugin);
+						} else {
+							var has_stable_release = false;
+							for (var iii in plugin.releases) {
+								if (plugin.releases[iii].prerelease == false) {
+									has_stable_release = true;
+								}
+							}
+							if (has_stable_release) {
+								cat_plugins.push(plugin);
+							}
+						}
 					}
 				}
 
@@ -244,6 +256,16 @@
 
 		$(document).on('change', '.set-config', function (event) {
 			value = $(this).val();
+			if ($(this).data('type') == 'boolean' ) {
+				if (value == 'true') {
+					value = true;
+				} else {
+					value = false;
+				}
+			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
+				value = Number(value);
+			}
+
 			var data = {
 				section: $(this).data('section'),
 				key: $(this).data('key'),
@@ -272,6 +294,15 @@
 				<select id="set-plugin-update" class="set-config" data-section="PLUGINS" data-key="UPDATE_BEHAVIOR">
 					<option value="check" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='check'}}>{{ __('Check for updates at startup') }}</option>
 					<option value="none" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='none'}}>{{ __('Never check for updates') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-plugin-channel">{{ __('Release Channel') }}</label>
+				</div>
+				<select id="set-plugin-channel" class="set-config" data-section="PLUGINS" data-key="ALLOW_PRERELEASE" data-type="boolean">
+					<option value="false" {{'selected' if getConfig('PLUGINS', 'ALLOW_PRERELEASE')==false}}>{{ __('Stable Only') }}</option>
+					<option value="true" {{'selected' if getConfig('PLUGINS', 'ALLOW_PRERELEASE')==true}}>{{ __('Pre-release or Stable') }}</option>
 				</select>
 			</li>
 		</ol>

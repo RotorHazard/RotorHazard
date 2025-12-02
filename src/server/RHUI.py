@@ -533,7 +533,8 @@ class RHUI():
 
         emit_payload = {
             'remote_categories': category_data,
-            'remote_data': plugin_data
+            'remote_data': plugin_data,
+            'allow_prerelease': self._racecontext.serverconfig.get_item('PLUGINS', 'ALLOW_PRERELEASE')
         }
 
         if ('nobroadcast' in params):
