@@ -873,6 +873,7 @@ class RHUI():
         '''Emits current minimum lap.'''
         emit_payload = {
             'min_lap': self._racecontext.rhdata.get_optionInt('MinLapSec'),
+            'min_first_crossing': self._racecontext.rhdata.get_optionInt('MinFirstCrossingSec'),
             'min_lap_behavior': self._racecontext.serverconfig.get_item_int('TIMING', 'MinLapBehavior')
         }
         if ('nobroadcast' in params):
