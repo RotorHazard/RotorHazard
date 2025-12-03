@@ -11,8 +11,9 @@ class RHMarshal {
 	time_format = null;
 	start_thresh_lower_amount = 0;
 	start_thresh_lower_duration = 0;
-	min_lap = 0;
+	min_lap_ms = 0;
 	min_lap_behavior = null;
+	min_first_crossing_ms = 0;
 
 	callbacks = {
 		calcLaps: false,
@@ -64,7 +65,7 @@ class RHMarshal {
 			strokeStyle:'hsl(70, 60%, 60%)',
 			lineWidth: 3
 		},
-		race_end: {
+		race_bounds: {
 			strokeStyle:'none',
 			fillStyle:'hsla(0, 0%, 100%, 0.15)'
 		}
@@ -88,8 +89,9 @@ class RHMarshal {
 		self.time_format = options.time_format;
 		self.start_thresh_lower_amount = options.start_thresh_lower_amount
 		self.start_thresh_lower_duration = options.start_thresh_lower_duration;
-		self.min_lap = options.min_lap
+		self.min_lap_ms = options.min_lap_ms
 		self.min_lap_behavior = options.min_lap_behavior
+		self.min_first_crossing_ms = options.min_first_crossing_ms
 		self.callbacks.calcLaps = options.callbacks.calcLaps;
 		self.callbacks.calibration = options.callbacks.calibration;
 		self.callbacks.clearMarkedLap = options.callbacks.clearMarkedLap;
@@ -170,8 +172,8 @@ class RHMarshal {
 		self.graph.addTimeSeries(self.graph_series.deleted_lap, this.seriesStyle.deleted_lap);
 		self.graph_series.selection = new TimeSeries();
 		self.graph.addTimeSeries(self.graph_series.selection, this.seriesStyle.selection);
-		self.graph_series.race_end = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.race_end, this.seriesStyle.race_end);
+		self.graph_series.race_bounds = new TimeSeries();
+		self.graph.addTimeSeries(self.graph_series.race_bounds, this.seriesStyle.race_bounds);
 
 		self.graph.streamTo(self.elements.graph_canvas, 0);
 		self.graph.stop();
@@ -238,16 +240,24 @@ class RHMarshal {
 		}
 
 		// display race end
-		self.graph_series.race_end.clear();
-		self.graph_series.race_end.data = [];
+		self.graph_series.race_bounds.clear();
+		self.graph_series.race_bounds.data = [];
+
+		if (self.min_first_crossing_ms) {
+			self.graph_series.race_bounds.append(0, self.graph.options.maxValue + 10);
+			self.graph_series.race_bounds.append(self.min_first_crossing_ms/1000 - .001, self.graph.options.maxValue + 10);
+			self.graph_series.race_bounds.append(self.min_first_crossing_ms/1000, self.graph.options.minValue - 10);
+		} else {
+			self.graph_series.race_bounds.append(0, self.graph.options.minValue - 10);
+		}
+
 		if (self.race.race_format.race_time_sec) {
 			// convert lap time to history time
 			var finish_time = self.race.race_format.race_time_sec;
-			// highlight the lap
-			self.graph_series.race_end.append(0, self.graph.options.minValue - 10);
-			self.graph_series.race_end.append(finish_time - .001, self.graph.options.minValue - 10);
-			self.graph_series.race_end.append(finish_time, self.graph.options.maxValue + 10);
-			self.graph_series.race_end.append(self.race.history_duration + .001, self.graph.options.maxValue + 10);
+			// highlight after finish
+			self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
+			self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
+			self.graph_series.race_bounds.append(self.race.history_duration + .001, self.graph.options.maxValue + 10);
 		}
 
 		// Lap marker series lines drawn below the bottom of the graph
@@ -431,7 +441,9 @@ class RHMarshal {
 							source: 2, // recalc
 							deleted: false
 						};
-						if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap) {
+						if (lap_time_stamp < min_first_crossing_ms) {
+							lapdata.deleted = true;
+						} else if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap_ms) {
 							lapdata.deleted = true;
 						}
 						laps.push(lapdata);

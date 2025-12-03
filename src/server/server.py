@@ -2095,6 +2095,19 @@ def on_set_min_lap(data):
     logger.info("set min lap time to %s seconds" % min_lap)
     RaceContext.rhui.emit_min_lap(noself=True)
 
+@SOCKET_IO.on("set_min_first_crossing")
+@catchLogExcWithDBWrapper
+def on_set_min_first_crossing(data):
+    min_first_crossing = data['min_first_crossing']
+    RaceContext.rhdata.set_option("MinFirstCrossingSec", data['min_first_crossing'])
+
+    Events.trigger(Evt.MIN_FIRST_CROSSING_SET, {
+        'min_first_crossing': min_first_crossing,
+        })
+
+    logger.info("set min first crossing to %s seconds" % min_first_crossing)
+    RaceContext.rhui.emit_min_lap(noself=True)
+
 @SOCKET_IO.on("set_min_lap_behavior")
 @catchLogExcWithDBWrapper
 def on_set_min_lap_behavior(data):
