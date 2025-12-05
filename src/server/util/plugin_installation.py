@@ -2,22 +2,26 @@
 Plugin installation management
 """
 
-import os
 import io
-import sys
 import json
+import os
 import shutil
+import sys
 import zipfile
+from dataclasses import MISSING, asdict, dataclass, field, fields
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, TypeVar, Union
 
 import requests
-from gevent import subprocess, pool
+from gevent import pool, subprocess
 from packaging import version
 
 DEFAULT_DATA_URI = "https://rhcp.hazardcreative.com/v1/plugin/data.json"
 DEFAULT_CATEGORIES_URI = "https://rhcp.hazardcreative.com/v1/plugin/categories.json"
+
+T = TypeVar("T")
+
 
 class _PluginStatus(IntEnum):
     """
@@ -31,20 +35,112 @@ class _PluginStatus(IntEnum):
     NO_UPDATE = 5
 
 
+@dataclass(frozen=True)
+class Manifest:
+    domain: str
+    name: str
+    description: str
+    required_rhapi_version: str
+    version: str
+    category: list[str] = field(default_factory=list)
+    author: str | None = None
+    author_uri: str | None = None
+    documentation_uri: str | None = None
+    zip_filename: str | None = None
+    license: str | None = None
+    license_uri: str | None = None
+
+
+@dataclass(frozen=True)
+class ReleaseAsset:
+    name: str
+    size: int
+    download_count: int
+    sha256: str
+
+
+@dataclass(frozen=True)
+class Releases:
+    tag_name: str
+    published_at: str
+    prerelease: bool
+    asset: ReleaseAsset | None = None
+
+
+@dataclass
+class RemoteData:
+    manifest: Manifest
+    releases: list[Releases]
+    last_version: str | None
+    repository: str
+    last_prerelease: str | None = None
+    reload_required: bool = False
+    update_status: int = _PluginStatus.UNKNOWN
+
+    @property
+    def domain(self):
+        return self.manifest.domain
+
+
+@dataclass
+class LocalData:
+    manifest: Manifest
+    reload_required: bool = False
+    update_status: int = _PluginStatus.UNKNOWN
+
+    @property
+    def domain(self):
+        return self.manifest.domain
+
+    @property
+    def version(self):
+        return self.manifest.version
+
+
+def parse_dict_to_dataclass(cls: type[T], data: dict[str, Any]) -> T:
+    """
+    Recursively parses a dictionary into a dataclass instance.
+    """
+    if not hasattr(cls, "__dataclass_fields__"):
+        raise TypeError(f"{cls.__name__} is not a dataclass.")
+
+    field_values = {}
+    for field_info in fields(cls):  # type: ignore
+        field_name = field_info.name
+        field_type: type = field_info.type  # type: ignore
+
+        if field_name in data:
+            value = data[field_name]
+            if hasattr(field_type, "__dataclass_fields__") and isinstance(value, dict):
+                field_values[field_name] = parse_dict_to_dataclass(field_type, value)
+            elif (
+                isinstance(value, list)
+                and hasattr(field_type, "__args__")
+                and hasattr(field_type.__args__[0], "__dataclass_fields__")
+            ):
+                nested_dataclass_type = field_type.__args__[0]
+                field_values[field_name] = [
+                    parse_dict_to_dataclass(nested_dataclass_type, item)
+                    for item in value
+                ]
+            else:
+                field_values[field_name] = value
+        elif field_info.default is not MISSING:
+            field_values[field_name] = field_info.default
+        elif field_info.default_factory is not MISSING:
+            field_values[field_name] = field_info.default_factory()
+        else:
+            raise ValueError(f"Missing required field: {field_name}")
+
+    return cls(**field_values)
+
+
 class PluginInstallationManager:
     """
     Plugin installation and update management
     """
 
-    _session: requests.Session
-    _remote_plugin_data: dict[str, dict]
-    _local_plugin_data: dict[str, Any]
-    _prerelease_mapping: dict[str, bool]
-    _categories: list[str]
-    update_available: bool = False
-
-    def __init__(self, plugin_dir: Path, remote_config: dict):
-
+    def __init__(self, plugin_dir: Path, remote_config: dict, api_version:str):
         if not plugin_dir.exists():
             raise FileNotFoundError(f"{plugin_dir} does not exist")
 
@@ -52,20 +148,22 @@ class PluginInstallationManager:
             raise TypeError(f"{plugin_dir} is not a directory")
 
         self._session = requests.Session()
-        self._remote_plugin_data = {}
-        self._local_plugin_data = {}
-        self._prerelease_mapping = {}
-        self._categories = []
+        self._remote_plugin_data: dict[str, RemoteData] = {}
+        self._local_plugin_data: dict[str, LocalData] = {}
+        self._prerelease_mapping: dict[str, bool] = {}
+        self._categories: dict[str, list[str]] = {}
+        self._api_version = version.parse(api_version)
+        self.update_available = False
 
         self._plugin_dir = plugin_dir
         self.load_local_plugin_data()
 
-        data_uri = remote_config.get('data_uri', None)
+        data_uri = remote_config.get("data_uri", None)
         if data_uri is None:
             data_uri = DEFAULT_DATA_URI
         self._remote_data_uri = data_uri
-        
-        categories_uri = remote_config.get('categories_uri', None)
+
+        categories_uri = remote_config.get("categories_uri", None)
         if categories_uri is None:
             categories_uri = DEFAULT_CATEGORIES_URI
         self._remote_category_uri = categories_uri
@@ -74,23 +172,24 @@ class PluginInstallationManager:
         """
         Load remote plugin data
         """
-        data = self._session.get(
-            self._remote_data_uri, timeout=5
-        )
+        data = self._session.get(self._remote_data_uri, timeout=5)
 
         pool_ = pool.Pool(10)
         pool_.map(self._fetch_remote_plugin_data, dict(data.json()).values())
 
         data = self._session.get(
-            self._remote_category_uri, timeout=5,
+            self._remote_category_uri,
+            timeout=5,
         )
 
         self._categories = data.json()
 
     def _fetch_remote_plugin_data(self, plugin_data: dict):
-        plugin_data["reload_required"] = False
-
-        self._remote_plugin_data.update({plugin_data["manifest"]["domain"]: plugin_data})
+        """
+        Parse remote plugin data and store the result
+        """
+        data = parse_dict_to_dataclass(RemoteData, plugin_data)
+        self._remote_plugin_data.update({data.manifest.domain: data})
 
     def load_local_plugin_data(self) -> None:
         """
@@ -119,15 +218,14 @@ class PluginInstallationManager:
 
         with open(manifest_path, "r", encoding="utf-8") as file:
             data = json.load(file)
-            data["reload_required"] = reload_required
-            data["update_status"] = _PluginStatus.NO_UPDATE
 
-            if "domain" in data:
-                data_ = {data["domain"]: data}
-            else:
-                data_ = {plugin_path.stem: data}
+            if "domain" not in data:
+                data["domain"] = plugin_path.stem
 
-        self._local_plugin_data.update(data_)
+            manifest = parse_dict_to_dataclass(Manifest, data)
+            plugin_data = LocalData(manifest, reload_required)
+
+        self._local_plugin_data.update({plugin_data.domain: plugin_data})
 
     def apply_update_statuses(self) -> None:
         """
@@ -136,7 +234,7 @@ class PluginInstallationManager:
         for value in self._remote_plugin_data.values():
             self._apply_update_status(value)
 
-    def _apply_update_status(self, plugin_data: dict[str, Any]) -> None:
+    def _apply_update_status(self, remote_data: RemoteData) -> None:
         """
         Gets the install and update status of a remote plugin
 
@@ -144,37 +242,37 @@ class PluginInstallationManager:
         :raises ValueError: Local plugin data not generated
         :return: Status of plugin install
         """
-        remote_version = plugin_data.get("last_version")
-        domain: Union[str, None] = plugin_data.get('manifest', {}).get('domain')
+        remote_version = remote_data.last_version
+        domain = remote_data.domain
 
-        if domain is not None and domain in self._local_plugin_data:
-            local_data: dict[str, Any] = self._local_plugin_data[domain]
-            local_version = local_data.get("version")
-        else:
-            local_version = None
+        if domain not in self._local_plugin_data:
+            return
+
+        local_data = self._local_plugin_data[domain]
+        local_version = local_data.version
 
         if remote_version is not None and local_version is not None:
             remote_version_ = version.parse(remote_version)
             local_version_ = version.parse(local_version)
 
             if remote_version_ > local_version_ and remote_version_.is_prerelease:
-                plugin_data["update_status"] = local_data["update_status"] = (
+                remote_data.update_status = local_data.update_status = (
                     _PluginStatus.PRE_RELEASE_UPDATE
                 )
                 self.update_available = True
             elif remote_version_ > local_version_:
-                plugin_data["update_status"] = local_data["update_status"] = (
+                remote_data.update_status = local_data.update_status = (
                     _PluginStatus.RELEASE_UPDATE
                 )
                 self.update_available = True
             else:
-                plugin_data["update_status"] = _PluginStatus.NO_UPDATE
+                remote_data.update_status = _PluginStatus.NO_UPDATE
 
         elif remote_version is not None and local_version is None:
-            plugin_data["update_status"] = _PluginStatus.NOT_INSTALLED
+            remote_data.update_status = _PluginStatus.NOT_INSTALLED
 
         else:
-            plugin_data["update_status"] = _PluginStatus.UNKNOWN
+            remote_data.update_status = _PluginStatus.UNKNOWN
 
     def download_plugin(self, domain: str, *, allow_prerelease: bool = False) -> None:
         """
@@ -190,12 +288,8 @@ class PluginInstallationManager:
         except KeyError as ex:
             raise ValueError("Plugin data was not found") from ex
 
-        repo = plugin_data.get("repository")
-        last_version = plugin_data.get("last_version")
-        pre_version = plugin_data.get("last_prerelease")
-
-        manifest: dict = plugin_data["manifest"]
-        zip_filename = manifest.get("zip_filename")
+        last_version = plugin_data.last_version
+        pre_version = plugin_data.last_prerelease
 
         if last_version is not None and pre_version is not None and allow_prerelease:
             if version.parse(last_version) < version.parse(pre_version):
@@ -203,16 +297,17 @@ class PluginInstallationManager:
             else:
                 download_version = last_version
         else:
-            download_version = last_version
+            download_version = last_version if last_version is not None else pre_version
 
-        if repo is None or download_version is None:
-            raise ValueError("Plugin metadata is not valid")
+        if download_version is None:
+            raise ValueError(f"Plugin {domain} does not have valid release version")
 
         self._download_and_install_plugin(
-            repo, download_version, domain, zip_filename
+            plugin_data,
+            download_version,
         )
 
-        plugin_data["reload_required"] = True
+        plugin_data.reload_required = True
         self._read_plugin_data(
             Path(self._plugin_dir).joinpath(domain), reload_required=True
         )
@@ -221,10 +316,8 @@ class PluginInstallationManager:
 
     def _download_and_install_plugin(
         self,
-        repo: str,
+        plugin_data: RemoteData,
         version_: str,
-        domain: str,
-        zip_filename: Union[str, None],
     ) -> None:
         """
         Downloads the zip of the plugin version from Github. If successful,
@@ -234,6 +327,8 @@ class PluginInstallationManager:
         :param version_: The version of the plugin to install
         :param domain: The domain identifier of the plugin
         """
+        repo = plugin_data.repository
+        zip_filename = plugin_data.manifest.zip_filename
 
         if zip_filename is not None:
             url = (
@@ -244,8 +339,8 @@ class PluginInstallationManager:
 
         response = self._session.get(url, timeout=10)
 
-        self.delete_plugin_dir(domain)
-        self._install_plugin_data(domain, response.content)
+        self.delete_plugin_dir(plugin_data.domain)
+        self._install_plugin_data(plugin_data.domain, response.content)
 
     def delete_plugin_dir(self, domain: str) -> None:
         """
@@ -307,24 +402,22 @@ class PluginInstallationManager:
                 [sys.executable, "-m", "pip", "install", *depends], check=True
             )
 
-    def _update_with_check(self, data: dict) -> None:
+    def _update_with_check(self, data: RemoteData) -> None:
         """
         Checks to see if the plugin has an update avaliable.
         If it does, download the new version.
 
         :param data: The plugin data and mode to check against
         """
-        status = data.get("update_status")
+        status = data.update_status
 
         if status is not None:
-
             if status == _PluginStatus.RELEASE_UPDATE:
-                self.download_plugin(data["domain"])
+                self.download_plugin(data.domain)
 
             elif status == _PluginStatus.PRE_RELEASE_UPDATE:
-                domain = data["domain"]
-                if self._prerelease_mapping.get(domain, False):
-                    self.download_plugin(domain, allow_prerelease=True)
+                if self._prerelease_mapping.get(data.domain, False):
+                    self.download_plugin(data.domain, allow_prerelease=True)
 
     def mass_update_plugins(
         self, *, prerelease_mapping: Union[dict[str, bool], None] = None
@@ -351,8 +444,9 @@ class PluginInstallationManager:
 
         :return: Compilation of plugin data
         """
-
-        return self._local_plugin_data
+        return {
+            domain: asdict(data) for domain, data in self._local_plugin_data.items()
+        }
 
     def get_display_data(self) -> dict[str, dict]:
         """
@@ -361,16 +455,16 @@ class PluginInstallationManager:
 
         :return: Compilation of plugin data
         """
+        return {
+            domain: asdict(data) for domain, data in self._remote_plugin_data.items()
+        }
 
-        return self._remote_plugin_data
-
-    def get_remote_categories(self) -> dict[str, dict]:
+    def get_remote_categories(self) -> dict[str, list[str]]:
         """
         Lists the categories fetched from the remote repository
 
         :return: Compilation of categories
         """
-
         return self._categories
 
     def _install_from_upload(self, file: bytes, domain: str) -> None:
@@ -414,6 +508,6 @@ class PluginInstallationManager:
                 self._install_from_upload(file, init_domain)
 
             elif not manifest_found:
-                raise ValueError("Invalid uploaded plugin")
+                raise ValueError("Uploaded plugin is invalid")
 
         self.apply_update_statuses()
