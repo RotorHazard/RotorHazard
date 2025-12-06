@@ -2289,21 +2289,6 @@
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
 
-					if (Number.isInteger(slot.node_index)) {
-						if (slot.frequency_change) {
-							slot_el.addClass('freq-change');
-							slot_el.append('<td class="calc_to">&#x25c8;<span class="screen-reader-text">' + __('frequency change') + '</span></td>');
-						} else {
-							slot_el.append('<td class="calc_to">&#x2192;</td>');
-						}
-
-						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
-					} else {
-						slot_el.addClass('no-freq');
-						slot_el.append('<td class="calc_to">&#x00D7;</td>');
-						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
-					}
-
 					if (slot.pilot_id) {
 						/*
 						// rotorhazard.event.pilots not currently requested
@@ -2323,6 +2308,21 @@
 						slot_el.append('<td class="pilot-name">' + __('(None)') + '</td>');
 					}
 
+					if (Number.isInteger(slot.node_index)) {
+						if (slot.frequency_change) {
+							slot_el.addClass('freq-change');
+							slot_el.append('<td class="calc_to">' + __('to') + '</td>');
+						} else {
+							slot_el.append('<td class="calc_to">' + __('on') + '</td>');
+						}
+
+						slot_el.append('<td class="channel"><div draggable="true" class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
+					} else {
+						slot_el.addClass('no-freq');
+						slot_el.append('<td class="calc_to">&#x00D7;</td>');
+						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
+					}
+
 					nodelist.append(slot_el);
 				}
 			}
@@ -2332,6 +2332,8 @@
 
 			var actions_el = $('<div class="dialog-actions">');
 			actions_el.append('<button class="cancel">' + __('Cancel') + '</button>');
+
+			$('<button class="plan-calc">' + __('Reseed') + '</button>').data('id', msg.heat).appendTo(actions_el);
 			actions_el.append('<button class="btn-danger confirm-heat-plan" data-heat_id="' + msg.heat + '">' + __('Confirm') + '</button>');
 			message_content.append(actions_el);
 

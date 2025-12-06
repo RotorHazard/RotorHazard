@@ -13,7 +13,7 @@ class HeatAutomator:
     def __init__(self, racecontext):
         self._racecontext = racecontext
 
-    def calc_heat(self, heat_id, silent=False):
+    def calc_heat(self, heat_id, silent=False, preassignments=None):
         heat = self._racecontext.rhdata.get_heat(heat_id)
 
         if (heat):
@@ -37,7 +37,7 @@ class HeatAutomator:
             else:
                 calc_fn = self.find_best_slot_node_basic
 
-            self.run_auto_frequency(heat, self._racecontext.race.profile.frequencies, self._racecontext.race.num_nodes, calc_fn)
+            self.run_auto_frequency(heat, self._racecontext.race.profile.frequencies, self._racecontext.race.num_nodes, calc_fn, preassignments)
 
             if request and not silent:
                 self._racecontext.rhui.emit_heat_plan_result(heat_id, calc_result)
@@ -160,7 +160,7 @@ class HeatAutomator:
         self._racecontext.rhdata.alter_heatNodes_fast(slot_alterations)
         return result
 
-    def run_auto_frequency(self, heat_or_id, current_frequencies, num_nodes, calc_fn):
+    def run_auto_frequency(self, heat_or_id, current_frequencies, num_nodes, calc_fn, preassigned=None):
         logger.debug('running auto-frequency with {}'.format(calc_fn))
         heat = self._racecontext.rhdata.resolve_heat_from_heat_or_id(heat_or_id)
         slots = self._racecontext.rhdata.get_heatNodes_by_heat(heat.id)
@@ -172,24 +172,39 @@ class HeatAutomator:
 
             self._racecontext.rhdata.commit()
 
+            # run preassignments
+            for slot in slots:
+                if preassigned and str(slot.id) in preassigned:
+                    slot.node_index = preassigned.get(str(slot.id))
+                    logger.debug(f'Preassigning {slot.id}:{slot.node_index}')
+
             # collect node data
             available_seats = []
             profile_freqs = json.loads(current_frequencies)
             for node_index in range(num_nodes):
                 if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                    available_seats.append({
-                        'idx': node_index,
-                        'frq': {
-                            'f': profile_freqs["f"][node_index],
-                            'b': profile_freqs["b"][node_index],
-                            'c': profile_freqs["c"][node_index]
-                            },
-                        'matches': []
-                        })
+                    assigned_node_index = None
+                    if preassigned:
+                        for assigned_node_index in preassigned.values():
+                            if node_index == assigned_node_index:
+                                break
+                        else:
+                            assigned_node_index = None
+
+                    if assigned_node_index is None:
+                        available_seats.append({
+                            'idx': node_index,
+                            'frq': {
+                                'f': profile_freqs["f"][node_index],
+                                'b': profile_freqs["b"][node_index],
+                                'c': profile_freqs["c"][node_index]
+                                },
+                            'matches': []
+                            })
 
             # get frequency matches from pilots
             for slot in slots:
-                if slot.pilot_id:
+                if slot.pilot_id and slot.node_index is None:
                     used_frequencies_json = self._racecontext.rhdata.get_pilot(slot.pilot_id).used_frequencies
                     if used_frequencies_json:
                         used_frequencies = json.loads(used_frequencies_json)

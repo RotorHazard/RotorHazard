@@ -2467,7 +2467,7 @@ def on_discard_laps(**kwargs):
 @catchLogExcWithDBWrapper
 def on_calc_pilots(data):
     heat_id = data['heat']
-    RaceContext.heatautomator.calc_heat(heat_id)
+    RaceContext.heatautomator.calc_heat(heat_id, preassignments=data.get('preassignments'))
 
 @SOCKET_IO.on('calc_reset')
 @catchLogExcWithDBWrapper
