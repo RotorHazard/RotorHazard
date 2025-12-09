@@ -40,7 +40,7 @@ class HeatAutomator:
             self.run_auto_frequency(heat, self._racecontext.race.profile.frequencies, self._racecontext.race.num_nodes, calc_fn, preassignments)
 
             if request and not silent:
-                self._racecontext.rhui.emit_heat_plan_result(heat_id, calc_result)
+                self._racecontext.rhui.emit_heat_plan_result(heat_id, calc_result, preassignments=preassignments)
 
             return 'unsafe'
 
@@ -174,9 +174,9 @@ class HeatAutomator:
 
             # run preassignments
             for slot in slots:
-                if preassigned and str(slot.id) in preassigned:
-                    slot.node_index = preassigned.get(str(slot.id))
-                    logger.debug(f'Preassigning {slot.id}:{slot.node_index}')
+                if preassigned and slot.id in preassigned:
+                    slot.node_index = preassigned.get(slot.id)
+                    logger.debug(f'Pre-assigning {slot.id} to seat {slot.node_index}')
 
             # collect node data
             available_seats = []
