@@ -27,6 +27,7 @@ const RACING_MODE_COOP = 2;   // COOP_ENABLED
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
 var checkSpeakQueueCntr = 0;
+var reloading = false;
 
 /* global functions */
 function supportsLocalStorage() {
@@ -1732,14 +1733,20 @@ jQuery(document).ready(function($){
 
 	// load needed data from server when required
 	socket.on('load_all', function (msg) {
-		if (rotorhazard.server_instance_token && rotorhazard.server_instance_token != msg.server_instance_token) {
-			location.reload(true);
-		} else {
-			rotorhazard.server_instance_token = msg.server_instance_token;
-		}
-
-		if (typeof(data_dependencies) != "undefined") {
-			socket.emit('load_data', {'load_types': data_dependencies});
+		if (!reloading) {
+			if (rotorhazard.server_instance_token && rotorhazard.server_instance_token != msg.server_instance_token) {
+				setTimeout(() => {  // do delay to avoid possible race condition
+					reloading = false;
+					location.reload(true);
+				}, 500);
+				reloading = true;
+				rotorhazard.server_instance_token = null;  // make sure we don't end up in a refresh loop
+			} else {
+				rotorhazard.server_instance_token = msg.server_instance_token;
+				if (typeof(data_dependencies) != "undefined") {
+					socket.emit('load_data', {'load_types': data_dependencies});
+				}
+			}
 		}
 	});
 
