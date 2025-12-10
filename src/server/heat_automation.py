@@ -5,6 +5,7 @@ import random
 import json
 import RHUtils
 from Database import ProgramMethod, HeatStatus
+from filtermanager import Flt
 from flask import request
 
 logger = logging.getLogger(__name__)
@@ -172,6 +173,12 @@ class HeatAutomator:
 
             self._racecontext.rhdata.commit()
 
+            preassigned = self._racecontext.filters.run_filters(Flt.AUTO_FREQ_PREASSIGN, preassigned, context={
+                'heat': heat,
+                'slots': slots,
+                'current_frequencies': current_frequencies,
+                'num_nodes': num_nodes
+            })
             # run preassignments
             for slot in slots:
                 if preassigned and slot.id in preassigned:
