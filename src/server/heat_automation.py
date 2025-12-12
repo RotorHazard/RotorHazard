@@ -38,6 +38,22 @@ class HeatAutomator:
             else:
                 calc_fn = self.find_best_slot_node_basic
 
+            preassignments = self._racecontext.filters.run_filters(Flt.AUTO_FREQ_PREASSIGN, preassignments, context={
+                'heat': heat,
+                'current_frequencies': self._racecontext.race.profile.frequencies,
+                'num_nodes': self._racecontext.race.num_nodes
+            })
+
+            # ensure no duplicate seats
+            if preassignments:
+                filtered_preassignments = {}
+                used_seats = []
+                for slot, seat in preassignments.items():
+                    if seat not in used_seats:
+                        filtered_preassignments[slot] = seat
+                        used_seats.append(seat)
+                preassignments = filtered_preassignments
+
             self.run_auto_frequency(heat, self._racecontext.race.profile.frequencies, self._racecontext.race.num_nodes, calc_fn, preassignments)
 
             if request and not silent:
@@ -173,12 +189,6 @@ class HeatAutomator:
 
             self._racecontext.rhdata.commit()
 
-            preassigned = self._racecontext.filters.run_filters(Flt.AUTO_FREQ_PREASSIGN, preassigned, context={
-                'heat': heat,
-                'slots': slots,
-                'current_frequencies': current_frequencies,
-                'num_nodes': num_nodes
-            })
             # run preassignments
             for slot in slots:
                 if preassigned and slot.id in preassigned:
