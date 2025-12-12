@@ -2357,7 +2357,7 @@
 			freq.updateBlocks();
 		}
 
-		$(document).on("click", '.heat-plan-result .channel-block', function (event) {
+		$(document).on("click", '.heat-plan-result table .channel-block', function (event) {
 			var slot_el = $(this).closest('tr');
 			var slot = slot_el.data('slot_id');
 			var last_frequency = slot_el.data('last_frequency');
