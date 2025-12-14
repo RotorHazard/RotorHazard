@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 import hashlib
 import logging
+from typing import Callable
 
 import requests
 from gevent import pool, subprocess
@@ -164,7 +165,14 @@ class PluginInstallationManager:
     Plugin installation and update management
     """
 
-    def __init__(self, plugin_dir: Path, remote_config: dict, api_version: str):
+    def __init__(
+        self,
+        plugin_dir: Path,
+        remote_config: dict,
+        /,
+        api_version: str,
+        notify_cb: Callable[[str], None],
+    ):
         if not plugin_dir.exists():
             raise FileNotFoundError(f"{plugin_dir} does not exist")
 
@@ -177,6 +185,7 @@ class PluginInstallationManager:
         self._prerelease_mapping: dict[str, bool] = {}
         self._categories: dict[str, list[str]] = {}
         self._api_version = version.parse(api_version)
+        self._notify = notify_cb
         self.update_available = False
         self._pool = pool.Pool(10)
 
@@ -337,8 +346,10 @@ class PluginInstallationManager:
             )
         except requests.Timeout as ex:
             raise PluginInstallationError(
-                "Failed to download plugin data", domain
+                "Timed out downloading plugin data", domain
             ) from ex
+        except PluginInstallationError:
+            raise
 
         plugin_data.reload_required = True
         self._read_plugin_data(self._plugin_dir.joinpath(domain), reload_required=True)
@@ -465,13 +476,20 @@ class PluginInstallationManager:
         if self._api_version < min_version:
             raise InvalidRHAPIVersion(
                 (
-                    "The plugin version attempting to be install"
-                    "requires a newer version of RotorHazard"
+                    "The plugin version attempting to be install "
+                    "requires a newer version of RotorHazard than "
+                    "what is currently installed."
                 ),
                 domain,
             )
 
         if manifest.dependencies:
+            self._notify(
+                (
+                    "Installing additional plugin dependencies. "
+                    "Please wait for installation completion."
+                )
+            )
             try:
                 subprocess.run(
                     [sys.executable, "-m", "pip", "install", *manifest.dependencies],

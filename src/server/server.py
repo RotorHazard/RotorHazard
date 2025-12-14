@@ -3689,7 +3689,12 @@ def rh_program_initialize(reg_endpoints_flag=True):
             'data_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_DATA_URI'),
             'categories_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_CATEGORIES_URI')
         }
-        RaceContext.plugin_manager = PluginInstallationManager(plugin_dir, remote_config, ".".join(map(str, (RHAPI.API_VERSION_MAJOR, RHAPI.API_VERSION_MINOR))))
+        RaceContext.plugin_manager = PluginInstallationManager(
+            plugin_dir, 
+            remote_config, 
+            ".".join(map(str, (RHAPI.API_VERSION_MAJOR, RHAPI.API_VERSION_MINOR))), 
+            RaceContext.rhui.emit_priority_message
+        )
 
         try:
             RaceContext.plugin_manager.load_local_plugin_data()
