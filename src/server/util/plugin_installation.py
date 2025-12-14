@@ -21,6 +21,7 @@ from packaging import version
 
 DEFAULT_DATA_URI = "https://rhcp.hazardcreative.com/v1/plugin/data.json"
 DEFAULT_CATEGORIES_URI = "https://rhcp.hazardcreative.com/v1/plugin/categories.json"
+DEFAULT_TIMEOUT = 10
 
 T = TypeVar("T")
 
@@ -41,13 +42,21 @@ class _PluginStatus(IntEnum):
 
 class PluginInstallationError(Exception):
     """
-    Custom exception raised for specific error scenarios in my application.
+    Exceptions signalling an error in the plugin installation
+    process
     """
 
     def __init__(self, message, domain: str):
         self.message = message
         self.domain = domain
         super().__init__(self.message)
+
+
+class InvalidRHAPIVersion(PluginInstallationError):
+    """
+    Exception signalling that the minimum RHAPI version was not
+    met when installing a plugin
+    """
 
 
 @dataclass(frozen=True)
@@ -57,7 +66,7 @@ class Manifest:
     description: str
     required_rhapi_version: str
     version: str
-    category: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
     author: str | None = None
     author_uri: str | None = None
     documentation_uri: str | None = None
@@ -86,8 +95,8 @@ class Release:
 class RemoteData:
     manifest: Manifest
     releases: list[Release]
-    last_version: str | None
     repository: str
+    last_version: str | None = None
     last_prerelease: str | None = None
     reload_required: bool = False
     update_status: _PluginStatus = _PluginStatus.UNKNOWN
@@ -169,6 +178,7 @@ class PluginInstallationManager:
         self._categories: dict[str, list[str]] = {}
         self._api_version = version.parse(api_version)
         self.update_available = False
+        self._pool = pool.Pool(10)
 
         self._plugin_dir = Path(plugin_dir)
         self.load_local_plugin_data()
@@ -187,14 +197,14 @@ class PluginInstallationManager:
         """
         Load remote plugin data
         """
-        data = self._session.get(self._remote_data_uri, timeout=5)
+        data = self._session.get(self._remote_data_uri, timeout=DEFAULT_TIMEOUT)
 
-        pool_ = pool.Pool(10)
-        pool_.map(self._fetch_remote_plugin_data, dict(data.json()).values())
+        for plugin in dict(data.json()).values():
+            self._fetch_remote_plugin_data(plugin)
 
         data = self._session.get(
             self._remote_category_uri,
-            timeout=5,
+            timeout=DEFAULT_TIMEOUT,
         )
 
         self._categories = data.json()
@@ -213,8 +223,7 @@ class PluginInstallationManager:
         :raises FileNotFoundError: The specific plugin directory was not found
         :raises TypeError: The
         """
-        pool_ = pool.Pool(10)
-        pool_.map(self._read_plugin_data, self._plugin_dir.iterdir())
+        self._pool.map(self._read_plugin_data, self._plugin_dir.iterdir())
 
     def _read_plugin_data(
         self, plugin_path: Path, *, reload_required: bool = False
@@ -321,10 +330,15 @@ class PluginInstallationManager:
                     "Remote data does not contain a matching release version", domain
                 )
 
-        self._download_and_install_plugin(
-            plugin_data,
-            release_,
-        )
+        try:
+            self._download_and_install_plugin(
+                plugin_data,
+                release_,
+            )
+        except requests.Timeout as ex:
+            raise PluginInstallationError(
+                "Failed to download plugin data", domain
+            ) from ex
 
         plugin_data.reload_required = True
         self._read_plugin_data(self._plugin_dir.joinpath(domain), reload_required=True)
@@ -345,17 +359,20 @@ class PluginInstallationManager:
         """
         repo = plugin_data.repository
         from_asset = False
+        asset: ReleaseAsset | None
 
         for asset in release.assets:
             if asset.name == f"{plugin_data.domain}.zip":
                 from_asset = True
                 break
+        else:
+            asset = None
+            if plugin_data.manifest.zip_filename is not None:
+                from_asset = True
 
-        self.delete_plugin_dir(plugin_data.domain)
-
-        if from_asset:
+        if from_asset and asset is not None:
             url = f"https://github.com/{repo}/releases/download/{release.tag_name}/{asset.name}"
-            response = self._session.get(url, timeout=10)
+            response = self._session.get(url, timeout=DEFAULT_TIMEOUT)
 
             sha256_hash = hashlib.sha256()
             sha256_hash.update(response.content)
@@ -372,11 +389,22 @@ class PluginInstallationManager:
                     plugin_data.domain,
                 )
 
+        elif from_asset:
+            file_name = plugin_data.manifest.zip_filename
+            url = f"https://github.com/{repo}/releases/download/{release.tag_name}/{file_name}"
+            response = self._session.get(url, timeout=DEFAULT_TIMEOUT)
+
         else:
             url = f"https://github.com/{repo}/archive/refs/tags/{release.tag_name}.zip"
-            response = self._session.get(url, timeout=10)
+            response = self._session.get(url, timeout=DEFAULT_TIMEOUT)
 
-        self._install_plugin_data(plugin_data.domain, response.content)
+        self.delete_plugin_dir(plugin_data.domain)
+
+        try:
+            self._install_plugin_data(plugin_data.domain, response.content)
+        except (PluginInstallationError, InvalidRHAPIVersion):
+            self.delete_plugin_dir(plugin_data.domain)
+            raise
 
     def delete_plugin_dir(self, domain: str) -> None:
         """
@@ -420,23 +448,39 @@ class PluginInstallationManager:
                     save_name.write_bytes(file_data)
 
                     if name.endswith("manifest.json"):
-                        self._install_dependencies(file_data)
+                        self._process_manifest(domain, file_data)
 
-    def _install_dependencies(self, manifest: bytes) -> None:
+    def _process_manifest(self, domain: str, file_data: bytes) -> None:
         """
-        Loads the manifest data and install the dependencies
-        through pip
+        Evaluate data in the manifest file for plugin installation
 
-        :param manifest: Manifest file as bytes
+        :param domain: The domain used for the plugin
+        :param file_data: Manifest file as bytes
+        :raises PluginInstallationError: Error when installing the plugin
         """
+        data: dict = json.loads(file_data)
+        manifest = parse_dict_to_dataclass(Manifest, data)
 
-        manifest_: dict = json.loads(manifest)
-        depends = manifest_.get("dependencies", None)
-
-        if depends is not None:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", *depends], check=True
+        min_version = version.parse(manifest.required_rhapi_version)
+        if self._api_version < min_version:
+            raise InvalidRHAPIVersion(
+                (
+                    "The plugin version attempting to be install"
+                    "requires a newer version of RotorHazard"
+                ),
+                domain,
             )
+
+        if manifest.dependencies:
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", *manifest.dependencies],
+                    check=True,
+                )
+            except subprocess.CalledProcessError as ex:
+                raise PluginInstallationError(
+                    "Failed to install dependencies", domain
+                ) from ex
 
     def _update_with_check(self, data: RemoteData) -> None:
         """
@@ -450,17 +494,12 @@ class PluginInstallationManager:
 
     def mass_update_plugins(self) -> None:
         """
-        Update all avaliable plugins. Only updates plugins if they are already
-        installed.
-
-        The mapping for this fucntion should be in the form of
-        {str(domain) : bool(allow_prerelease_install)}
+        Performs an update on all plugins if an update is avalible.
+        This will only upgrade plugins to their newest stable version.
         """
 
         remote_plugins = self._remote_plugin_data.values()
-
-        pool_ = pool.Pool(10)
-        pool_.map(self._update_with_check, remote_plugins)
+        self._pool.map(self._update_with_check, remote_plugins)
 
     def get_local_display_data(self) -> dict[str, dict]:
         """
