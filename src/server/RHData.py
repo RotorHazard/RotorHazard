@@ -50,14 +50,14 @@ class RHData():
             if self.get_optionInt('server_api') < self._SERVER_API:
                 logger.info('Old server API version; recovering database')
                 return False
-            if not Database.Profiles.query.count():
+            if not Database.DB_session.query(Database.Profiles).count():
                 logger.info('Profiles are empty; recovering database')
                 return False
-            if not Database.RaceFormat.query.count():
+            if not Database.DB_session.query(Database.RaceFormat).count():
                 logger.info('Formats are empty; recovering database')
                 return False
             try:  # make sure no problems reading 'Heat' table data
-                Database.Heat.query.all()
+                Database.DB_session.query(Database.Heat).all()
             except Exception as ex:
                 logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
                 return False
@@ -71,7 +71,7 @@ class RHData():
 
     # Caching
     def primeCache(self):
-        settings = Database.GlobalSettings.query.all()
+        settings = Database.DB_session.query(Database.GlobalSettings).all()
         self._OptionsCache = {} # empty cache
         for setting in settings:
             self._OptionsCache[setting.option_name] = setting.option_value
@@ -174,7 +174,7 @@ class RHData():
         self.clean()
         if not copy_flag:
             Database.close_database()
-        
+
         # Checkpoint WAL to flush all changes into main DB file before backup
         try:
             import sqlite3
@@ -184,7 +184,7 @@ class RHData():
             logger.debug('Checkpointed WAL before database backup')
         except Exception as ex:
             logger.warning('Failed to checkpoint WAL before backup: ' + str(ex))
-        
+
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
         except:  # if error then use 'now' timestamp
@@ -524,7 +524,7 @@ class RHData():
                             'color': None,
                             'used_frequencies': None
                         })
-                    for pilot in Database.Pilot.query.all():
+                    for pilot in Database.DB_session.query(Database.Pilot).all():
                         if not pilot.color:
                             pilot.color = RHUtils.hslToHex(False, 100, 50)
                 else:
@@ -844,7 +844,7 @@ class RHData():
         if isinstance(pilot_or_id, Database.Pilot):
             return pilot_or_id
         else:
-            return Database.Pilot.query.get(pilot_or_id)
+            return Database.DB_session.get(Database.Pilot, pilot_or_id)
 
     def resolve_id_from_pilot_or_id(self, pilot_or_id):
         if pilot_or_id is None:
@@ -857,10 +857,10 @@ class RHData():
     def get_pilot(self, pilot_id):
         if pilot_id is None:
             return None
-        return Database.Pilot.query.get(pilot_id)
+        return Database.DB_session.get(Database.Pilot, pilot_id)
 
     def get_pilots(self):
-        return Database.Pilot.query.all()
+        return Database.DB_session.query(Database.Pilot).all()
 
     def get_pilot_for_callsign(self, callsign):
         pilots = self.get_pilots()
@@ -921,7 +921,7 @@ class RHData():
 
     def alter_pilot(self, data):
         pilot_id = data['pilot_id']
-        pilot = Database.Pilot.query.get(pilot_id)
+        pilot = Database.DB_session.get(Database.Pilot, pilot_id)
         if 'callsign' in data:
             pilot.callsign = data['callsign']
         if 'team_name' in data:
@@ -938,7 +938,7 @@ class RHData():
                 'pilot_id': pilot_id
             })
 
-            attribute = Database.PilotAttribute.query.filter_by(id=pilot_id, name=data['pilot_attr']).one_or_none()
+            attribute = Database.DB_session.query(Database.PilotAttribute).filter_by(id=pilot_id, name=data['pilot_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
@@ -960,7 +960,7 @@ class RHData():
 
         race_list = []
         if 'callsign' in data or 'team_name' in data:
-            heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
+            heatnodes = Database.DB_session.query(Database.HeatNode).filter_by(pilot_id=pilot_id).all()
             if heatnodes:
                 for heatnode in heatnodes:
                     heat = self.get_heat(heatnode.heat_id)
@@ -969,7 +969,7 @@ class RHData():
                     if heat.class_id != RHUtils.CLASS_ID_NONE:
                         self.clear_results_raceClass(heat.class_id)
 
-                    for race in Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id).all():
+                    for race in Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=heatnode.heat_id).all():
                         race_list.append(race)
 
             if len(race_list):
@@ -984,7 +984,7 @@ class RHData():
         return pilot, race_list
 
     def set_pilot_used_frequency(self, pilot_or_id, frequency):
-        pilot = self.resolve_pilot_from_pilot_or_id(pilot_or_id) 
+        pilot = self.resolve_pilot_from_pilot_or_id(pilot_or_id)
         if pilot:
             if pilot.used_frequencies:
                 used_freqs = json.loads(pilot.used_frequencies)
@@ -1024,7 +1024,7 @@ class RHData():
                 for attr in self.get_pilot_attributes(pilot_or_id):
                     Database.DB_session.delete(attr)
 
-                for heatNode in Database.HeatNode.query.all():
+                for heatNode in Database.DB_session.query(Database.HeatNode).all():
                     if heatNode.pilot_id == pilot.id:
                         heatNode.pilot_id = RHUtils.PILOT_ID_NONE
 
@@ -1045,7 +1045,7 @@ class RHData():
             logger.info("No pilot to delete")
             return False
     def get_recent_pilot_node(self, pilot_id):
-        return Database.HeatNode.query.filter_by(pilot_id=pilot_id).order_by(Database.HeatNode.id.desc()).first()
+        return Database.DB_session.query(Database.HeatNode).filter_by(pilot_id=pilot_id).order_by(Database.HeatNode.id.desc()).first()
 
     def clear_pilots(self):
         Database.DB_session.query(Database.PilotAttribute).delete()
@@ -1060,11 +1060,11 @@ class RHData():
     #Pilot Attributes
     def get_pilot_attribute(self, pilot_or_id, name):
         pilot_id = self.resolve_id_from_pilot_or_id(pilot_or_id)
-        return Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
+        return Database.DB_session.query(Database.PilotAttribute).filter_by(id=pilot_id, name=name).one_or_none()
 
     def get_pilot_attribute_value(self, pilot_or_id, name, default_value=None):
         pilot_id = self.resolve_id_from_pilot_or_id(pilot_or_id)
-        attr = Database.PilotAttribute.query.filter_by(id=pilot_id, name=name).one_or_none()
+        attr = Database.DB_session.query(Database.PilotAttribute).filter_by(id=pilot_id, name=name).one_or_none()
 
         if attr is not None:
             return attr.value
@@ -1073,10 +1073,10 @@ class RHData():
 
     def get_pilot_attributes(self, pilot_or_id):
         pilot_id = self.resolve_id_from_pilot_or_id(pilot_or_id)
-        return Database.PilotAttribute.query.filter_by(id=pilot_id).all()
+        return Database.DB_session.query(Database.PilotAttribute).filter_by(id=pilot_id).all()
 
     def get_pilot_id_by_attribute(self, name, value):
-        attrs = Database.PilotAttribute.query.filter_by(name=name, value=value).all()
+        attrs = Database.DB_session.query(Database.PilotAttribute).filter_by(name=name, value=value).all()
         return [attr.id for attr in attrs]
 
     # Heats
@@ -1086,7 +1086,7 @@ class RHData():
         if isinstance(heat_or_id, Database.Heat):
             return heat_or_id
         else:
-            return Database.Heat.query.get(heat_or_id)
+            return Database.DB_session.get(Database.Heat, heat_or_id)
 
     def resolve_id_from_heat_or_id(self, heat_or_id):
         if heat_or_id is None:
@@ -1099,19 +1099,19 @@ class RHData():
     def get_heat(self, heat_id):
         if heat_id is None:
             return None
-        return Database.Heat.query.get(heat_id)
+        return Database.DB_session.get(Database.Heat, heat_id)
 
     def get_heats(self):
-        return Database.Heat.query.all()
+        return Database.DB_session.query(Database.Heat).all()
 
     def get_heats_by_class(self, class_id):
-        return Database.Heat.query.filter_by(class_id=class_id).all()
+        return Database.DB_session.query(Database.Heat).filter_by(class_id=class_id).all()
 
     def get_recent_heats_by_class(self, class_id, limit):
-        return Database.Heat.query.filter_by(class_id=class_id).order_by(Database.Heat.id.desc()).limit(limit).all()
+        return Database.DB_session.query(Database.Heat).filter_by(class_id=class_id).order_by(Database.Heat.id.desc()).limit(limit).all()
 
     def get_first_heat(self):
-        return Database.Heat.query.first()
+        return Database.DB_session.query(Database.Heat).first()
 
     def get_heat_auto_name(self, heat):
         if heat.class_id:
@@ -1271,11 +1271,11 @@ class RHData():
     def alter_heat(self, data, mute_event=False):
         # Alters heat. Returns heat and list of affected races
         heat_id = data['heat']
-        heat = Database.Heat.query.get(heat_id)
+        heat = Database.DB_session.get(Database.Heat, heat_id)
 
         if 'slot_id' in data:
             slot_id = data['slot_id']
-            slot = Database.HeatNode.query.get(slot_id)
+            slot = Database.DB_session.get(Database.HeatNode, slot_id)
         else:
             slot = None
 
@@ -1336,7 +1336,7 @@ class RHData():
 
         if 'name' in data and not 'class' in data:
             if heat.class_id != RHUtils.CLASS_ID_NONE:
-                race_class = Database.RaceClass.query.get(heat.class_id)
+                race_class = Database.DB_session.get(Database.RaceClass, heat.class_id)
                 if race_class.results:
                     self._racecontext.pagecache.set_valid(False)
                     new_result = Results.refresh_source_displayname(self._racecontext, race_class.results, heat.id)
@@ -1354,7 +1354,7 @@ class RHData():
                 pass
 
         # alter existing saved races:
-        race_list = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
+        race_list = Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=heat_id).all()
 
         if 'class' in data:
             if len(race_list):
@@ -1367,10 +1367,10 @@ class RHData():
         if 'pilot' in data:
             if len(race_list):
                 for race_meta in race_list:
-                    for pilot_race in Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
+                    for pilot_race in Database.DB_session.query(Database.SavedPilotRace).filter_by(race_id=race_meta.id).all():
                         if pilot_race.node_index == slot.node_index:
                             pilot_race.pilot_id = data['pilot']
-                    for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id):
+                    for race_lap in Database.DB_session.query(Database.SavedRaceLap).filter_by(race_id=race_meta.id):
                         if race_lap.node_index == slot.node_index:
                             race_lap.pilot_id = data['pilot']
 
@@ -1391,7 +1391,7 @@ class RHData():
                 'heat_id': heat_id
             })
 
-            attribute = Database.HeatAttribute.query.filter_by(id=heat_id, name=data['heat_attr']).one_or_none()
+            attribute = Database.DB_session.query(Database.HeatAttribute).filter_by(id=heat_id, name=data['heat_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
@@ -1440,8 +1440,8 @@ class RHData():
         if heat:
             deleted_heat_id = heat.id
 
-            heat_count = Database.Heat.query.count()
-            heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+            heat_count = Database.DB_session.query(Database.Heat).count()
+            heatnodes = Database.DB_session.query(Database.HeatNode).filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
 
             has_race = self.savedRaceMetas_has_heat(heat.id)
 
@@ -1466,10 +1466,10 @@ class RHData():
                 # if only one heat remaining then set ID to 1
                 if heat_count == 2 and self._racecontext.race.race_status == RaceStatus.READY:
                     try:
-                        heat = Database.Heat.query.first()
+                        heat = Database.DB_session.query(Database.Heat).first()
                         if heat.id != 1:
-                            heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
-                            heat_attributes = Database.HeatAttribute.query.filter_by(id=heat.id).all()
+                            heatnodes = Database.DB_session.query(Database.HeatNode).filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+                            heat_attributes = Database.DB_session.query(Database.HeatAttribute).filter_by(id=heat.id).all()
 
                             if not self.savedRaceMetas_has_heat(heat.id):
                                 logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat.id))
@@ -1644,7 +1644,7 @@ class RHData():
             if s.node_index == None:
                 while seat in used_seats:
                     seat += 1
-                
+
                 s.node_index = seat
                 seat += 1
 
@@ -1729,7 +1729,7 @@ class RHData():
             'build_ver': None
         })
 
-        Database.Heat.query.update({
+        Database.DB_session.query(Database.Heat).update({
             Database.Heat._cache_status: initStatus
             })
         self.commit()
@@ -1755,11 +1755,11 @@ class RHData():
     #Heat Attributes
     def get_heat_attribute(self, heat_or_id, name):
         heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
-        return Database.HeatAttribute.query.filter_by(id=heat_id, name=name).one_or_none()
+        return Database.DB_session.query(Database.HeatAttribute).filter_by(id=heat_id, name=name).one_or_none()
 
     def get_heat_attribute_value(self, heat_or_id, name, default_value=None):
         heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
-        attr = Database.HeatAttribute.query.filter_by(id=heat_id, name=name).one_or_none()
+        attr = Database.DB_session.query(Database.HeatAttribute).filter_by(id=heat_id, name=name).one_or_none()
 
         if attr is not None:
             return attr.value
@@ -1768,10 +1768,10 @@ class RHData():
 
     def get_heat_attributes(self, heat_or_id):
         heat_id = self.resolve_id_from_heat_or_id(heat_or_id)
-        return Database.HeatAttribute.query.filter_by(id=heat_id).all()
+        return Database.DB_session.query(Database.HeatAttribute).filter_by(id=heat_id).all()
 
     def get_heat_id_by_attribute(self, name, value):
-        attrs = Database.HeatAttribute.query.filter_by(name=name, value=value).all()
+        attrs = Database.DB_session.query(Database.HeatAttribute).filter_by(name=name, value=value).all()
         return [attr.id for attr in attrs]
 
     # HeatNodes
@@ -1779,7 +1779,7 @@ class RHData():
     #    if isinstance(heatNode_or_id, Database.HeatNode):
     #        return heatNode_or_id
     #    else:
-    #        return Database.HeatNode.query.get(heatNode_or_id)
+    #        return Database.DB_session.get(Database.HeatNode, heatNode_or_id)
 
     #def resolve_id_from_heatNode_or_id(self, heatNode_or_id):
     #    if isinstance(heatNode_or_id, Database.HeatNode):
@@ -1788,13 +1788,13 @@ class RHData():
     #        return heatNode_or_id
 
     def get_heatNode(self, heatNode_id):
-        return Database.HeatNode.query.get(heatNode_id)
+        return Database.DB_session.get(Database.HeatNode, heatNode_id)
 
     def get_heatNodes(self):
-        return Database.HeatNode.query.all()
+        return Database.DB_session.query(Database.HeatNode).all()
 
     def get_heatNodes_by_heat(self, heat_id):
-        return Database.HeatNode.query.filter_by(heat_id=heat_id).order_by(Database.HeatNode.node_index).all()
+        return Database.DB_session.query(Database.HeatNode).filter_by(heat_id=heat_id).order_by(Database.HeatNode.node_index).all()
 
     def add_heatNode(self, heat_id, node_index):
         new_heatNode = Database.HeatNode(
@@ -1809,7 +1809,7 @@ class RHData():
         return True
 
     def get_pilot_from_heatNode(self, heat_id, node_index):
-        heatNode = Database.HeatNode.query.filter_by(heat_id=heat_id, node_index=node_index).one_or_none()
+        heatNode = Database.DB_session.query(Database.HeatNode).filter_by(heat_id=heat_id, node_index=node_index).one_or_none()
         if heatNode:
             return heatNode.pilot_id
         else:
@@ -1822,7 +1822,7 @@ class RHData():
 
         for slot_data in slot_list:
             slot_id = slot_data['slot_id']
-            slot = Database.HeatNode.query.get(slot_id)
+            slot = Database.DB_session.get(Database.HeatNode, slot_id)
 
             if 'pilot' in slot_data:
                 if int(slot_data['pilot'] or 0) == 0:
@@ -1881,7 +1881,7 @@ class RHData():
         if isinstance(raceClass_or_id, Database.RaceClass):
             return raceClass_or_id
         else:
-            return Database.RaceClass.query.get(raceClass_or_id)
+            return Database.DB_session.get(Database.RaceClass, raceClass_or_id)
 
     def resolve_id_from_raceClass_or_id(self, raceClass_or_id):
         if raceClass_or_id is None:
@@ -1890,14 +1890,14 @@ class RHData():
             return raceClass_or_id.id
         else:
             return raceClass_or_id
-    
+
     def get_raceClass(self, raceClass_id):
         if raceClass_id is None:
             return None
-        return Database.RaceClass.query.get(raceClass_id)
+        return Database.DB_session.get(Database.RaceClass, raceClass_id)
 
     def get_raceClasses(self):
-        return Database.RaceClass.query.all()
+        return Database.DB_session.query(Database.RaceClass).all()
 
     def add_raceClass(self, init=None):
         # Add new race class
@@ -1994,7 +1994,7 @@ class RHData():
         Database.DB_session.flush()
         Database.DB_session.refresh(new_class)
 
-        for heat in Database.Heat.query.filter_by(class_id=source_class.id).all():
+        for heat in Database.DB_session.query(Database.Heat).filter_by(class_id=source_class.id).all():
             self.duplicate_heat(heat, dest_class=new_class.id)
 
         new_class = self._filters.run_filters(Flt.CLASS_DUPLICATE, new_class, {
@@ -2014,7 +2014,7 @@ class RHData():
     def alter_raceClass(self, data):
         # alter existing classes
         race_class_id = data['class_id']
-        race_class = Database.RaceClass.query.get(race_class_id)
+        race_class = Database.DB_session.get(Database.RaceClass, race_class_id)
 
         if not race_class:
             return False, False
@@ -2048,7 +2048,7 @@ class RHData():
         if 'order' in data:
             race_class.order = data['order']
 
-        race_list = Database.SavedRaceMeta.query.filter_by(class_id=race_class_id).all()
+        race_list = Database.DB_session.query(Database.SavedRaceMeta).filter_by(class_id=race_class_id).all()
 
         # if switching to groups, split races into individual heats
         if 'round_type' in data:
@@ -2080,7 +2080,7 @@ class RHData():
                         race_meta.format_id = data['class_format']
                         self.clear_results_savedRaceMeta(race_meta)
 
-                    heats = Database.Heat.query.filter_by(class_id=race_class_id).all()
+                    heats = Database.DB_session.query(Database.Heat).filter_by(class_id=race_class_id).all()
                     for heat in heats:
                         self.clear_results_heat(heat)
 
@@ -2089,7 +2089,7 @@ class RHData():
                 'race_class_id': race_class_id
             })
 
-            attribute = Database.RaceClassAttribute.query.filter_by(id=race_class_id, name=data['class_attr']).one_or_none()
+            attribute = Database.DB_session.query(Database.RaceClassAttribute).filter_by(id=race_class_id, name=data['class_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
@@ -2127,7 +2127,7 @@ class RHData():
                 Database.DB_session.delete(attr)
 
             Database.DB_session.delete(race_class)
-            for heat in Database.Heat.query.all():
+            for heat in Database.DB_session.query(Database.Heat).all():
                 if heat.class_id == race_class.id:
                     heat.class_id = RHUtils.CLASS_ID_NONE
 
@@ -2302,7 +2302,7 @@ class RHData():
         }
         jsonStatus = json.dumps(initStatus)
 
-        Database.RaceClass.query.update({
+        Database.DB_session.query(Database.RaceClass).update({
             Database.RaceClass._cache_status: jsonStatus,
             Database.RaceClass._rank_status: jsonStatus
             })
@@ -2322,11 +2322,11 @@ class RHData():
     #RaceClass Attributes
     def get_raceclass_attribute(self, raceclass_or_id, name):
         raceclass_id = self.resolve_id_from_raceClass_or_id(raceclass_or_id)
-        return Database.RaceClassAttribute.query.filter_by(id=raceclass_id, name=name).one_or_none()
+        return Database.DB_session.query(Database.RaceClassAttribute).filter_by(id=raceclass_id, name=name).one_or_none()
 
     def get_raceclass_attribute_value(self, raceclass_or_id, name, default_value=None):
         raceclass_id = self.resolve_id_from_raceClass_or_id(raceclass_or_id)
-        attr = Database.RaceClassAttribute.query.filter_by(id=raceclass_id, name=name).one_or_none()
+        attr = Database.DB_session.query(Database.RaceClassAttribute).filter_by(id=raceclass_id, name=name).one_or_none()
 
         if attr is not None:
             return attr.value
@@ -2335,10 +2335,10 @@ class RHData():
 
     def get_raceclass_attributes(self, raceclass_or_id):
         raceclass_id = self.resolve_id_from_raceClass_or_id(raceclass_or_id)
-        return Database.RaceClassAttribute.query.filter_by(id=raceclass_id).all()
+        return Database.DB_session.query(Database.RaceClassAttribute).filter_by(id=raceclass_id).all()
 
     def get_raceclass_id_by_attribute(self, name, value):
-        attrs = Database.RaceClassAttribute.query.filter_by(name=name, value=value).all()
+        attrs = Database.DB_session.query(Database.RaceClassAttribute).filter_by(name=name, value=value).all()
         return [attr.id for attr in attrs]
 
     def raceclass_expand_heat_rounds(self, race_class_or_id, prime=False):
@@ -2386,7 +2386,7 @@ class RHData():
         if isinstance(profile_or_id, Database.Profiles):
             return profile_or_id
         else:
-            return Database.Profiles.query.get(profile_or_id)
+            return Database.DB_session.get(Database.Profiles, profile_or_id)
 
     def resolve_id_from_profile_or_id(self, profile_or_id):
         if isinstance(profile_or_id, Database.Profiles):
@@ -2395,13 +2395,13 @@ class RHData():
             return profile_or_id
 
     def get_profile(self, profile_id):
-        return Database.Profiles.query.get(profile_id)
+        return Database.DB_session.get(Database.Profiles, profile_id)
 
     def get_profiles(self):
-        return Database.Profiles.query.all()
+        return Database.DB_session.query(Database.Profiles).all()
 
     def get_first_profile(self):
-        return Database.Profiles.query.first()
+        return Database.DB_session.query(Database.Profiles).first()
 
     def add_profile(self, init=None):
         new_profile = Database.Profiles(
@@ -2465,7 +2465,7 @@ class RHData():
         return new_profile
 
     def alter_profile(self, data):
-        profile = Database.Profiles.query.get(data['profile_id'])
+        profile = Database.DB_session.get(Database.Profiles, data['profile_id'])
 
         if 'profile_name' in data:
             profile.name = data['profile_name']
@@ -2549,7 +2549,7 @@ class RHData():
         if isinstance(raceFormat_or_id, Database.RaceFormat):
             return raceFormat_or_id
         else:
-            return Database.RaceFormat.query.get(raceFormat_or_id)
+            return Database.DB_session.get(Database.RaceFormat, raceFormat_or_id)
 
     def resolve_id_from_raceFormat_or_id(self, raceFormat_or_id):
         if isinstance(raceFormat_or_id, Database.RaceFormat):
@@ -2560,13 +2560,13 @@ class RHData():
     def get_raceFormat(self, raceFormat_id):
         if raceFormat_id is None:
             return None
-        return Database.RaceFormat.query.get(raceFormat_id)
+        return Database.DB_session.get(Database.RaceFormat, raceFormat_id)
 
     def get_raceFormats(self):
-        return Database.RaceFormat.query.all()
+        return Database.DB_session.query(Database.RaceFormat).all()
 
     def get_first_raceFormat(self):
-        return Database.RaceFormat.query.first()
+        return Database.DB_session.query(Database.RaceFormat).first()
 
     def add_format(self, init=None):
         race_format = Database.RaceFormat(
@@ -2667,7 +2667,7 @@ class RHData():
         return new_format
 
     def alter_raceFormat(self, data):
-        race_format = Database.RaceFormat.query.get(data['format_id'])
+        race_format = Database.DB_session.get(Database.RaceFormat, data['format_id'])
 
         # Prevent active race format change
         if self.get_optionInt('currentFormat') == data['format_id'] and \
@@ -2715,7 +2715,7 @@ class RHData():
             if race_format.points_method:
                 pm = json.loads(race_format.points_method)
                 pm['s'] = data['points_settings']
-                race_format.points_method = json.dumps(pm) 
+                race_format.points_method = json.dumps(pm)
             else:
                 logger.warning("Adding points method settings without established type")
 
@@ -2724,7 +2724,7 @@ class RHData():
                 'race_format_id': data['format_id']
             })
 
-            attribute = Database.RaceFormatAttribute.query.filter_by(id=data['format_id'], name=data['format_attr']).one_or_none()
+            attribute = Database.DB_session.query(Database.RaceFormatAttribute).filter_by(id=data['format_id'], name=data['format_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
@@ -2741,7 +2741,7 @@ class RHData():
         race_list = []
 
         if 'win_condition' in data or 'start_behavior' in data or 'points_method' in data or 'points_settings' in data:
-            race_list = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
+            race_list = Database.DB_session.query(Database.SavedRaceMeta).filter_by(format_id=race_format.id).all()
 
             if len(race_list):
                 self._racecontext.pagecache.set_valid(False)
@@ -2750,12 +2750,12 @@ class RHData():
                 for race in race_list:
                     self.clear_results_savedRaceMeta(race)
 
-                classes = Database.RaceClass.query.filter_by(format_id=race_format.id).all()
+                classes = Database.DB_session.query(Database.RaceClass).filter_by(format_id=race_format.id).all()
 
                 for race_class in classes:
                     self.clear_results_raceClass(race_class)
 
-                    heats = Database.Heat.query.filter_by(class_id=race_class.id).all()
+                    heats = Database.DB_session.query(Database.Heat).filter_by(class_id=race_class.id).all()
 
                     for heat in heats:
                         self.clear_results_heat(heat)
@@ -2781,7 +2781,7 @@ class RHData():
             logger.warning('Preventing race format deletion: saved race exists')
             return False
 
-        race_format = Database.RaceFormat.query.get(format_id)
+        race_format = Database.DB_session.get(Database.RaceFormat, format_id)
         if race_format and len(self.get_raceFormats()) > 1: # keep one format
             for attr in self.get_raceformat_attributes(format_id):
                 Database.DB_session.delete(attr)
@@ -3035,11 +3035,11 @@ class RHData():
     # Race Format Attributes
     def get_raceformat_attribute(self, raceformat_or_id, name):
         raceformat_id = self.resolve_id_from_raceFormat_or_id(raceformat_or_id)
-        return Database.RaceFormatAttribute.query.filter_by(id=raceformat_id, name=name).one_or_none()
+        return Database.DB_session.query(Database.RaceFormatAttribute).filter_by(id=raceformat_id, name=name).one_or_none()
 
     def get_raceformat_attribute_value(self, raceformat_or_id, name, default_value=None):
         raceformat_id = self.resolve_id_from_raceFormat_or_id(raceformat_or_id)
-        attr = Database.RaceFormatAttribute.query.filter_by(id=raceformat_id, name=name).one_or_none()
+        attr = Database.DB_session.query(Database.RaceFormatAttribute).filter_by(id=raceformat_id, name=name).one_or_none()
 
         if attr is not None:
             return attr.value
@@ -3048,10 +3048,10 @@ class RHData():
 
     def get_raceformat_attributes(self, raceformat_or_id):
         raceformat_id = self.resolve_id_from_raceFormat_or_id(raceformat_or_id)
-        return Database.RaceFormatAttribute.query.filter_by(id=raceformat_id).all()
+        return Database.DB_session.query(Database.RaceFormatAttribute).filter_by(id=raceformat_id).all()
 
     def get_raceformat_id_by_attribute(self, name, value):
-        attrs = Database.RaceFormatAttribute.query.filter_by(name=name, value=value).all()
+        attrs = Database.DB_session.query(Database.RaceFormatAttribute).filter_by(name=name, value=value).all()
         return [attr.id for attr in attrs]
 
     # Race Meta
@@ -3059,7 +3059,7 @@ class RHData():
         if isinstance(savedRaceMeta_or_id, Database.SavedRaceMeta):
             return savedRaceMeta_or_id
         else:
-            return Database.SavedRaceMeta.query.get(savedRaceMeta_or_id)
+            return Database.DB_session.get(Database.SavedRaceMeta, savedRaceMeta_or_id)
 
     def resolve_id_from_savedRaceMeta_or_id(self, savedRaceMeta_or_id):
         if isinstance(savedRaceMeta_or_id, Database.SavedRaceMeta):
@@ -3068,35 +3068,35 @@ class RHData():
             return savedRaceMeta_or_id
 
     def get_savedRaceMeta(self, raceMeta_id):
-        return Database.SavedRaceMeta.query.get(raceMeta_id)
+        return Database.DB_session.get(Database.SavedRaceMeta, raceMeta_id)
 
     def get_savedRaceMeta_by_heat_round(self, heat_id, round_id):
-        return Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
+        return Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=heat_id, round_id=round_id).one()
 
     def get_savedRaceMetas(self):
-        return Database.SavedRaceMeta.query.all()
+        return Database.DB_session.query(Database.SavedRaceMeta).all()
 
     def get_savedRaceMetas_by_heat(self, heat_id):
-        return Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).order_by(Database.SavedRaceMeta.round_id).all()
+        return Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=heat_id).order_by(Database.SavedRaceMeta.round_id).all()
 
     def get_savedRaceMetas_by_raceClass(self, class_id):
-        return Database.SavedRaceMeta.query.filter_by(class_id=class_id).order_by(Database.SavedRaceMeta.round_id).all()
+        return Database.DB_session.query(Database.SavedRaceMeta).filter_by(class_id=class_id).order_by(Database.SavedRaceMeta.round_id).all()
 
     def savedRaceMetas_has_raceFormat(self, race_format_id):
-        return bool(Database.SavedRaceMeta.query.filter_by(format_id=race_format_id).count())
+        return bool(Database.DB_session.query(Database.SavedRaceMeta).filter_by(format_id=race_format_id).count())
 
     def savedRaceMetas_has_heat(self, heat_id):
-        return bool(Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).count())
+        return bool(Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=heat_id).count())
 
     def savedRaceMetas_has_raceClass(self, class_id):
-        return bool(Database.SavedRaceMeta.query.filter_by(class_id=class_id).count())
+        return bool(Database.DB_session.query(Database.SavedRaceMeta).filter_by(class_id=class_id).count())
 
     def alter_savedRaceMeta(self, race_id, data):
         if 'race_attr' in data and 'value' in data:
             data['race_attr'] = self._filters.run_filters(Flt.RACE_ALTER_ATTRIBUTE, data['race_attr'], {
                 'race_id': race_id
             })
-            attribute = Database.SavedRaceMetaAttribute.query.filter_by(id=race_id, name=data['race_attr']).one_or_none()
+            attribute = Database.DB_session.query(Database.SavedRaceMetaAttribute).filter_by(id=race_id, name=data['race_attr']).one_or_none()
             if attribute:
                 attribute.value = data['value']
             else:
@@ -3155,7 +3155,7 @@ class RHData():
             new_format_id = old_format_id
 
         # clear round ids
-        heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.round_id).all()
+        heat_races = Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.round_id).all()
 
         # abort if assigning to a grouped heat with existing race
         if heat_races and new_class.round_type == RoundType.GROUPED:
@@ -3188,7 +3188,7 @@ class RHData():
 
         # renumber rounds
         Database.DB_session.flush()
-        old_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id) \
+        old_heat_races = Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=old_heat_id) \
             .order_by(Database.SavedRaceMeta.start_time_formatted).all()
         round_counter = 1
         for race in old_heat_races:
@@ -3199,7 +3199,7 @@ class RHData():
             if old_class.round_type == RoundType.GROUPED:
                 old_heat.active = True
 
-        new_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id) \
+        new_heat_races = Database.DB_session.query(Database.SavedRaceMeta).filter_by(heat_id=new_heat_id) \
             .order_by(Database.SavedRaceMeta.start_time_formatted).all()
         round_counter = 1
         for race in new_heat_races:
@@ -3351,7 +3351,7 @@ class RHData():
             'build_ver': None
         })
 
-        Database.SavedRaceMeta.query.update({
+        Database.DB_session.query(Database.SavedRaceMeta).update({
             Database.SavedRaceMeta._cache_status: initStatus
             })
         self.commit()
@@ -3372,11 +3372,11 @@ class RHData():
     #SavedRace Attributes
     def get_savedrace_attribute(self, savedrace_or_id, name):
         savedrace_id = self.resolve_id_from_savedRaceMeta_or_id(savedrace_or_id)
-        return Database.SavedRaceMetaAttribute.query.filter_by(id=savedrace_id, name=name).one_or_none()
+        return Database.DB_session.query(Database.SavedRaceMetaAttribute).filter_by(id=savedrace_id, name=name).one_or_none()
 
     def get_savedrace_attribute_value(self, savedrace_or_id, name, default_value=None):
         savedrace_id = self.resolve_id_from_savedRaceMeta_or_id(savedrace_or_id)
-        attr = Database.SavedRaceMetaAttribute.query.filter_by(id=savedrace_id, name=name).one_or_none()
+        attr = Database.DB_session.query(Database.SavedRaceMetaAttribute).filter_by(id=savedrace_id, name=name).one_or_none()
 
         if attr is not None:
             return attr.value
@@ -3385,24 +3385,24 @@ class RHData():
 
     def get_savedrace_attributes(self, savedrace_or_id):
         savedrace_id = self.resolve_id_from_savedRaceMeta_or_id(savedrace_or_id)
-        return Database.SavedRaceMetaAttribute.query.filter_by(id=savedrace_id).all()
+        return Database.DB_session.query(Database.SavedRaceMetaAttribute).filter_by(id=savedrace_id).all()
 
     def get_savedrace_id_by_attribute(self, name, value):
-        attrs = Database.SavedRaceMetaAttribute.query.filter_by(name=name, value=value).all()
+        attrs = Database.DB_session.query(Database.SavedRaceMetaAttribute).filter_by(name=name, value=value).all()
         return [attr.id for attr in attrs]
 
     # Pilot-Races
     def get_savedPilotRace(self, pilotrace_id):
-        return Database.SavedPilotRace.query.get(pilotrace_id)
+        return Database.DB_session.get(Database.SavedPilotRace, pilotrace_id)
 
     def get_savedPilotRaces(self):
-        return Database.SavedPilotRace.query.all()
+        return Database.DB_session.query(Database.SavedPilotRace).all()
 
     def get_savedPilotRaces_by_savedRaceMeta(self, race_id):
-        return Database.SavedPilotRace.query.filter_by(race_id=race_id).all()
+        return Database.DB_session.query(Database.SavedPilotRace).filter_by(race_id=race_id).all()
 
     def alter_savedPilotRace(self, data):
-        pilotrace = Database.SavedPilotRace.query.get(data['pilotrace_id'])
+        pilotrace = Database.DB_session.get(Database.SavedPilotRace, data['pilotrace_id'])
 
         if 'enter_at' in data:
             pilotrace.enter_at = data['enter_at']
@@ -3414,24 +3414,24 @@ class RHData():
         return True
 
     def savedPilotRaces_has_pilot(self, pilot_id):
-        return bool(Database.SavedPilotRace.query.filter_by(pilot_id=pilot_id).count())
+        return bool(Database.DB_session.query(Database.SavedPilotRace).filter_by(pilot_id=pilot_id).count())
 
     # Race Laps
     def get_savedRaceLaps(self):
-        return Database.SavedRaceLap.query.all()
+        return Database.DB_session.query(Database.SavedRaceLap).all()
 
     def get_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
-        return Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
+        return Database.DB_session.query(Database.SavedRaceLap).filter_by(pilotrace_id=pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
 
     def get_active_savedRaceLaps(self):
-        return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1).all()
+        return Database.DB_session.query(Database.SavedRaceLap).filter(Database.SavedRaceLap.deleted != 1).all()
 
     def get_active_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
-        return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1, Database.SavedRaceLap.pilotrace_id == pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
+        return Database.DB_session.query(Database.SavedRaceLap).filter(Database.SavedRaceLap.deleted != 1, Database.SavedRaceLap.pilotrace_id == pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
 
     # Race general
     def replace_savedRaceLaps(self, data):
-        Database.SavedRaceLap.query.filter_by(pilotrace_id=data['pilotrace_id']).delete()
+        Database.DB_session.query(Database.SavedRaceLap).filter_by(pilotrace_id=data['pilotrace_id']).delete()
 
         for lap in data['laps']:
             Database.DB_session.add(Database.SavedRaceLap(
@@ -3500,16 +3500,16 @@ class RHData():
 
     # Splits
     def get_lapSplits(self):
-        return Database.LapSplit.query.all()
+        return Database.DB_session.query(Database.LapSplit).all()
 
     def get_lapSplits_by_lap(self, node_index, lap_id):
-        return Database.LapSplit.query.filter_by(
+        return Database.DB_session.query(Database.LapSplit).filter_by(
             node_index=node_index,
             lap_id=lap_id
             ).all()
 
     def get_lapSplit_by_params(self, node_index, lap_id, split_id):
-        return Database.LapSplit.query.filter_by(
+        return Database.DB_session.query(Database.LapSplit).filter_by(
             node_index=node_index,
             lap_id=lap_id,
             split_id=split_id
@@ -3560,7 +3560,7 @@ class RHData():
 
     # Options
     def get_options(self):
-        return Database.GlobalSettings.query.all()
+        return Database.DB_session.query(Database.GlobalSettings).all()
 
     def option_exists(self, option):
         return True if option in self._OptionsCache else False
@@ -3590,7 +3590,7 @@ class RHData():
 
         self._OptionsCache[option] = str(value)
 
-        settings = Database.GlobalSettings.query.filter_by(option_name=option).one_or_none()
+        settings = Database.DB_session.query(Database.GlobalSettings).filter_by(option_name=option).one_or_none()
         if settings:
             settings.option_value = value
         else:
@@ -3613,7 +3613,7 @@ class RHData():
         })
 
     def delete_option(self, option):
-        Database.GlobalSettings.query.filter_by(option_name=option).delete()
+        Database.DB_session.query(Database.GlobalSettings).filter_by(option_name=option).delete()
         self.commit()
 
     def clear_options(self):
