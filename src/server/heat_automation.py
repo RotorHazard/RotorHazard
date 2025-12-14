@@ -38,10 +38,23 @@ class HeatAutomator:
             else:
                 calc_fn = self.find_best_slot_node_basic
 
+            current_frequencies = self._racecontext.race.profile.frequencies
+            num_nodes = self._racecontext.race.num_nodes
+
+            calc_fn_filtered = self._racecontext.filters.run_filters(Flt.AUTO_FREQ_FUNCTION, calc_fn, context={
+                'heat': heat,
+                'current_frequencies': current_frequencies,
+                'num_nodes': num_nodes
+            })
+            if callable(calc_fn_filtered):
+                calc_fn = calc_fn_filtered
+            else:
+                logger.error("Ignoring AUTO_FREQ_FUNCTION filter output; result must be a function")
+
             preassignments = self._racecontext.filters.run_filters(Flt.AUTO_FREQ_PREASSIGN, preassignments, context={
                 'heat': heat,
-                'current_frequencies': self._racecontext.race.profile.frequencies,
-                'num_nodes': self._racecontext.race.num_nodes
+                'current_frequencies': current_frequencies,
+                'num_nodes': num_nodes
             })
 
             # ensure no duplicate seats
@@ -54,7 +67,7 @@ class HeatAutomator:
                         used_seats.append(seat)
                 preassignments = filtered_preassignments
 
-            self.run_auto_frequency(heat, self._racecontext.race.profile.frequencies, self._racecontext.race.num_nodes, calc_fn, preassignments)
+            self.run_auto_frequency(heat, current_frequencies, num_nodes, calc_fn, preassignments)
 
             if request and not silent:
                 self._racecontext.rhui.emit_heat_plan_result(heat_id, calc_result, preassignments=preassignments)
