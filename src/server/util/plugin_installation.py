@@ -348,8 +348,6 @@ class PluginInstallationManager:
             raise PluginInstallationError(
                 "Timed out downloading plugin data", domain
             ) from ex
-        except PluginInstallationError:
-            raise
 
         plugin_data.reload_required = True
         self._read_plugin_data(self._plugin_dir.joinpath(domain), reload_required=True)
