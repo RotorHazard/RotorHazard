@@ -43,6 +43,8 @@
 
 	$(document).ready(function () {
 		socket.on('language', function (msg) {
+			rotorhazard.interface_language = msg.language;
+
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
 			for (var i = 0; i < msg.languages.length; i++) {
@@ -57,12 +59,7 @@
 			}
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
 
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_language').selectedIndex = 0;
-			}
+			$('#set_language').val(msg.language);
 		});
 
 		var heartbeatCounter = 0;
@@ -167,24 +164,33 @@
 
 		socket.on('ui', function (msg) {
 			if (msg.page == 'settings') {
-				$('#custom-ui').empty();
+				if (msg.replace_panels !== false) {
+					$('#custom-ui').empty();
+				}
 
 				for (var i in msg.panels) {
 					var panel = msg.panels[i];
 
-					var panel_el = $('<div class="panel collapsing active">');
-					panel_el.attr('id', 'ui-custom-' + panel.panel.name);
-					var panel_header_el = $('<div class="panel-header">');
-					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
-					var panel_content_el = $('<div class="panel-content">');
-
-					// panel open/close
-					if (panel.panel.open) {
-						panel_el.addClass('open');
-						panel_content_el.show();
+					if (msg.replace_panels === false) {
+						var panel_el = $('#ui-custom-' + panel.panel.name);
+						var panel_content_el = panel_el.children('.panel-content');
+						panel_content_el.empty();
 					} else {
-						panel_el.removeClass('open');
-						panel_content_el.hide();
+						var panel_el = $('<div class="panel collapsing active">');
+						panel_el.attr('id', 'ui-custom-' + panel.panel.name);
+						var panel_header_el = $('<div class="panel-header">');
+						panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+						var panel_content_el = $('<div class="panel-content">');
+						panel_el.append(panel_header_el);
+
+						// panel open/close
+						if (panel.panel.open) {
+							panel_el.addClass('open');
+							panel_content_el.show();
+						} else {
+							panel_el.removeClass('open');
+							panel_content_el.hide();
+						}
 					}
 
 					// add markdown content
@@ -208,9 +214,22 @@
 						}
 
 						var field = rhui.buildField(settings);
-
 						form_el.append(field);
 					}
+
+					for (var f_idx in panel.fn_binds) {
+						var settings = { ...panel.fn_binds[f_idx] };
+
+						settings.wrapperEl = 'li';
+						settings.fieldClass = 'set_ui_binding_value';
+						settings.data = {
+							field: settings.name,
+						}
+
+						var field = rhui.buildField(settings);
+						form_el.append(field);
+					}
+
 					panel_content_el.append(form_el);
 					panel_content_el.append(rhui.buildQuickbuttons(panel.quickbuttons));
 
@@ -257,49 +276,63 @@
 			}
 		});
 
+		$(document).on('change', '.set_ui_binding_value', function (event) {
+			var field = $(this).data('field');
+			var section = $(this).data('section');
+			var value = rhui.getFieldVal(this);
+
+			var data = {
+				name: field,
+				value: value
+			};
+			socket.emit('set_ui_binding_value', data);
+		});
+
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-				for (var i = 0; i < msg.current_rssi.length; i++) {
-					var rssiValue = msg.current_rssi[i];
+				if (msg.current_rssi) {
+					for (var i = 0; i < msg.current_rssi.length; i++) {
+						var rssiValue = msg.current_rssi[i];
 
-					if (rotorhazard.nodes[i].fObj.frequency == 0) {
-						rssiValue = 0;
-					}
+						if (rotorhazard.nodes[i].fObj.frequency == 0) {
+							rssiValue = 0;
+						}
 
-					$('.current_rssi_' + i).html(rssiValue);
+						$('.current_rssi_' + i).html(rssiValue);
 
-					if (msg.crossing_flag[i]) {
-						$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
-					}
-					else {
-						$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
-					}
-
-					rotorhazard.nodes[i].graph.options.maxValue = Math.max(
-						rssiValue,
-						rotorhazard.nodes[i].node_peak_rssi + 1,
-						rotorhazard.nodes[i].enter_at_level + 10,
-					);
-
-					rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
-						rssiValue,
-						rotorhazard.nodes[i].node_nadir_rssi - 1,
-						rotorhazard.nodes[i].exit_at_level - 10,
-					));
-
-					if (!rotorhazard.nodes[i].graphing && rssiValue) {
-						rotorhazard.nodes[i].graphing = true;
-						rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
-						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
-					}
-
-					if (rotorhazard.nodes[i].graphing) {
-						rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 						if (msg.crossing_flag[i]) {
-							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
-						} else{
-							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
+							$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+						}
+						else {
+							$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+						}
+
+						rotorhazard.nodes[i].graph.options.maxValue = Math.max(
+							rssiValue,
+							rotorhazard.nodes[i].node_peak_rssi + 1,
+							rotorhazard.nodes[i].enter_at_level + 10,
+						);
+
+						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
+							rssiValue,
+							rotorhazard.nodes[i].node_nadir_rssi - 1,
+							rotorhazard.nodes[i].exit_at_level - 10,
+						));
+
+						if (!rotorhazard.nodes[i].graphing && rssiValue) {
+							rotorhazard.nodes[i].graphing = true;
+							rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
+							rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+						}
+
+						if (rotorhazard.nodes[i].graphing) {
+							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+							if (msg.crossing_flag[i]) {
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+							} else{
+								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
+							}
 						}
 					}
 				}
@@ -308,13 +341,20 @@
 
 		socket.on('environmental_data', function (msg) {
 			var env_table_html = '';
-			for (i=0; i<msg.length; i++) {
+			for (var i=0; i<msg.length; i++) {
 				var sensor = msg[i];
 				var name = Object.keys(sensor)[0];
 				var data = sensor[name];
 				var values = '';
 				var br = '';
-				for (var reading in data) {
+
+				//The display order of the readings
+				var displayOrder = ['voltage', 'current', 'power', 'capacity', 'temperature', 'humidity', 'pressure'];
+				var readingsToDisplay = displayOrder.filter(function (reading) {
+					return data.hasOwnProperty(reading);
+				});
+
+				readingsToDisplay.forEach(function (reading) {
 					var value = data[reading].value;
 					var units = data[reading].units;
 					values += br;
@@ -324,21 +364,22 @@
 						values += __('Current: ') + Number(value).toFixed(0)+units;
 					} else if(reading == 'power') {
 						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'capacity') {
+						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else if(reading == 'temperature') {
 						values += __('Temperature: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'humidity') {
 						values += __('Humidity: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'pressure') {
 						values += __('Pressure: ') + Number(value).toFixed(1)+units;
-					} else if(reading == 'capacity') {
-						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else {
 						values += __('Unknown: ') + value;
 					}
 					br = '<br/>';
-				}
+				});
+					
 				env_table_html += '<tr>';
-				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + __(name) + '</td>';
 				env_table_html += '<td>' + values + '</td>';
 				env_table_html += '</tr>';
 			}

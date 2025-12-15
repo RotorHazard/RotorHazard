@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 3
+API_VERSION_MINOR = 4
 
 import dataclasses
 import json
@@ -13,6 +13,7 @@ import logging
 import RHUtils
 from RHUI import UIField, UIFieldType
 from eventmanager import Evt
+from interface_mapper import InterfaceType
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +112,8 @@ class UserInterfaceAPI():
 
     # Broadcasts
     @callWithDatabaseWrapper
-    def broadcast_ui(self, page):
-        self._racecontext.rhui.emit_ui(page)
+    def broadcast_ui(self, page, replace_panels=True):
+        self._racecontext.rhui.emit_ui(page, replace_panels=replace_panels)
 
     @callWithDatabaseWrapper
     def broadcast_frequencies(self):
@@ -202,6 +203,8 @@ class FieldsAPI():
     def register_option(self, field:UIField, panel=None, order=0):
         return self._racecontext.rhui.register_general_setting(field, panel, order)
 
+    def register_function_binding(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
+        return self._racecontext.rhui.register_ui_fn_bind(field, getter_fn, setter_fn, args, panel, order)
 
 #
 # Database Access
@@ -682,9 +685,10 @@ class DatabaseAPI():
 
             if set_id == self._racecontext.race.profile.id:
                 self._racecontext.race.profile = result
-                for idx, value in enumerate(json.loads(result.frequencies)['f']):
+                freqs = json.loads(result.frequencies)
+                for idx, value in enumerate(freqs['f']):
                     if idx < self._racecontext.race.num_nodes:
-                        self._racecontext.interface.set_frequency(idx, value)
+                        self._racecontext.interface.set_frequency(idx, value, freqs['b'][idx], freqs['c'][idx])
                 self._racecontext.rhui.emit_frequency_data()
 
             return result
@@ -1272,6 +1276,8 @@ class HardwareInterfaceAPI():
     def seats(self):
         return self._racecontext.interface.nodes
 
+    def add(self, interface):
+        return self._racecontext.interface.add_interface(interface, InterfaceType.RHAPI)
 
 #
 # Server Config
@@ -1373,8 +1379,14 @@ class ServerAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
-    def enable_heartbeat_event(self):
+    def enable_heartbeat_event(self, start_background_threads=True):
         self._racecontext.serverstate.enable_heartbeat_event = True
+        if start_background_threads and \
+                    callable(self._racecontext.server_start_background_threads_fn):
+            self._racecontext.server_start_background_threads_fn()
+
+    def set_min_mocks(self, mocks):
+        self._racecontext.serverstate.mock_nodes = mocks
 
     @property
     def info(self):
@@ -1422,6 +1434,9 @@ class ServerAPI():
     def data_dir(self):
         return self._racecontext.serverstate.data_dir
 
+    def set_restart_required(self):
+        return self._racecontext.serverstate.set_restart_required()
+
 #
 # Filters
 #
@@ -1429,14 +1444,14 @@ class FilterAPI():
     def __init__(self, race_context):
         self._racecontext = race_context
 
-    def add(self, hook, name, fn, priority=200):
-        self._racecontext.filters.add_filter(hook, name, fn, priority)
+    def add(self, hook, name, fn, priority=200, with_context=False):
+        self._racecontext.filters.add_filter(hook, name, fn, priority, with_context)
 
     def remove(self, hook, name):
         self._racecontext.filters.remove_filter(hook, name)
 
-    def run(self, hook, data):
-        return self._racecontext.filters.run_filters(hook, data)
+    def run(self, hook, data, context=None):
+        return self._racecontext.filters.run_filters(hook, data, context)
 
 
 #

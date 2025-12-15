@@ -91,7 +91,7 @@ class Heat(Base):
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column('note', DB.String(80), nullable=True)
     auto_name = DB.Column(DB.String(80), nullable=True)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
+    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=True)
     results = DB.Column(DB.PickleType, nullable=True)
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
     order = DB.Column(DB.Integer, nullable=True)
@@ -179,7 +179,7 @@ class HeatNode(Base):
     id = DB.Column(DB.Integer, primary_key=True)
     heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=True)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=True)
     color = DB.Column(DB.String(6), nullable=True)
     method = DB.Column(DB.Integer, nullable=False)
     seed_rank = DB.Column(DB.Integer, nullable=True)
@@ -199,7 +199,7 @@ class RaceClass(Base):
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=True)
     win_condition = DB.Column(DB.String, nullable=False)
     results = DB.Column(DB.PickleType, nullable=True)
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
@@ -279,7 +279,7 @@ class LapSplit(Base):
     )
     id = DB.Column(DB.Integer, primary_key=True)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=True)
     lap_id = DB.Column(DB.Integer, nullable=False)
     split_id = DB.Column(DB.Integer, nullable=False)
     split_time_stamp = DB.Column(DB.Integer, nullable=False)
@@ -298,8 +298,8 @@ class SavedRaceMeta(Base):
     id = DB.Column(DB.Integer, primary_key=True)
     round_id = DB.Column(DB.Integer, nullable=False)
     heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=True)
+    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=True)
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
     results = DB.Column(DB.PickleType, nullable=True)
@@ -336,7 +336,7 @@ class SavedPilotRace(Base):
     id = DB.Column(DB.Integer, primary_key=True)
     race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=True)
     history_values = DB.Column(DB.String, nullable=True)
     history_times = DB.Column(DB.String, nullable=True)
     penalty_time = DB.Column(DB.Integer, nullable=False)
@@ -354,7 +354,7 @@ class SavedRaceLap(Base):
     race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
     pilotrace_id = DB.Column(DB.Integer, DB.ForeignKey("saved_pilot_race.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=True)
     lap_time_stamp = DB.Column(DB.Float, nullable=False)
     lap_time = DB.Column(DB.Float, nullable=False)
     lap_time_formatted = DB.Column(DB.String, nullable=False)
@@ -447,7 +447,27 @@ def initialize(db_uri=None):
     if db_uri:
         DB_URI = db_uri
     global DB_engine
-    DB_engine = create_engine(DB_URI, pool_size=DB_POOL_SIZE, max_overflow=DB_MAX_OVERFLOW)
+    DB_engine = create_engine(DB_URI, pool_size=DB_POOL_SIZE, max_overflow=DB_MAX_OVERFLOW, 
+                            connect_args={
+                                'check_same_thread': False,  # Required for SQLite with multiple threads
+                                'timeout': 30,  # Connection timeout in seconds
+                                'isolation_level': None,  # Let SQLAlchemy handle transactions
+                                'cached_statements': 100,  # Cache prepared statements
+                            })
+    
+    # Set SQLite PRAGMAs after connection
+    def set_pragmas(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA cache_size=-10000")
+        cursor.execute("PRAGMA synchronous=FULL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
+    
+    from sqlalchemy import event
+    event.listen(DB_engine, 'connect', set_pragmas)
+    
     global DB_session
     DB_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, \
                                              bind=DB_engine, expire_on_commit=False))

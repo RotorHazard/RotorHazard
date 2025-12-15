@@ -282,7 +282,7 @@ def later_stage_setup(config, socket):
             if num_attempts > 5:
                 break
             time.sleep(1.1)
-        hdlr_obj = logging.FileHandler(log_path_name)
+        hdlr_obj = logging.FileHandler(log_path_name, encoding='utf-8')
         hdlr_obj.setLevel(lvl)
         # configure log format with milliseconds as ".###" (not ",###")
         hdlr_obj.setFormatter(logging.Formatter(fmt=FILELOG_FORMAT_STR, datefmt='%Y-%m-%d %H:%M:%S'))
@@ -477,6 +477,15 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
                 if config_file and os.path.isfile(config_file):
                     zip_file_obj.write(config_file)
                 if db_file and os.path.isfile(db_file):
+                    # Checkpoint WAL to flush all changes into main DB file before adding to zip
+                    try:
+                        import sqlite3
+                        conn = sqlite3.connect(db_file)
+                        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                        conn.close()
+                        logger.debug('Checkpointed WAL before adding database to logs zip')
+                    except Exception as ex:
+                        logger.warning('Failed to checkpoint WAL before logs zip: ' + str(ex))
                     zip_file_obj.write(db_file)
                 bashrc_file = os.path.expanduser('~/.bashrc')
                 if os.path.isfile(bashrc_file):
@@ -515,17 +524,22 @@ def create_log_files_zip(logger, config_file, db_file, program_dir_str, outData=
                 logger.exception("Error adding audio settings info to .zip file")
             try:
                 # include current list of Python libraries
-                whichPipStr = subprocess.check_output(['which', 'pip']).decode("utf-8").rstrip()
-                if whichPipStr:  # include execution path to 'pip'
-                    whichPipStr = "$ " + whichPipStr + " list" + os.linesep
-                else:
-                    whichPipStr = ""
+
                 # fetch output of "pip list" command (send stderr to null because it always contains warning message)
                 fetchedStr = subprocess.check_output(['pip', 'list'], stderr=subprocess.DEVNULL).decode("utf-8").rstrip()
                 if not fetchedStr:
                     fetchedStr = ""
-                fetchedStr = whichPipStr + "Python version: " + sys.version.split()[0] + \
-                             os.linesep + os.linesep + fetchedStr
+
+                try:
+                    whichPipStr = subprocess.check_output(['which', 'pip']).decode("utf-8").rstrip()
+                    if whichPipStr:  # include execution path to 'pip'
+                        whichPipStr = "$ " + whichPipStr + " list" + os.linesep
+                    else:
+                        whichPipStr = ""
+                    fetchedStr = whichPipStr + "Python version: " + sys.version.split()[0] + \
+                                 os.linesep + os.linesep + fetchedStr
+                except Exception:
+                    logger.warning("Error fetching pip execution path")
                 zip_file_obj.writestr('pip_libs_list.txt', fetchedStr)
             except Exception:
                 logger.exception("Error adding pip-list libraries info to .zip file")

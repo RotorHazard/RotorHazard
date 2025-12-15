@@ -140,6 +140,11 @@ wget https://rotorhazard.com/install.sh
 sh install.sh
 ```
 
+To install another version, add the desired version code after `install.sh`; for example:
+```bash
+sh install.sh v4.3.0-beta.1
+```
+
 (Note that the updates for the RotorHazard server Python dependencies may take a few minutes.)
 
 ### 8. Configuration File
@@ -390,6 +395,8 @@ Before updating, any currently-running RotorHazard server should be stopped. If 
 sudo systemctl stop rotorhazard
 ```
 
+The minimum version of Python supported is 3.10. If the installed version is older, it should be upgraded before upgrading RotorHazard. You can check the current version on the command line using `python --version`. This wiki article covers a method to [install a newer version of Python](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi).
+
 To update to the [latest stable release](https://github.com/RotorHazard/RotorHazard/releases/latest), enter the following commands:
 
 ```bash
@@ -398,11 +405,14 @@ wget https://rotorhazard.com/update.sh
 sh update.sh
 ```
 
+To upgrade to another version, add the desired version code after `install.sh`; for example:
+```bash
+sh update.sh v4.3.0-beta.1
+```
+
 Note:
 * The updates for the RotorHazard server Python dependencies may take a few minutes
-* The previous "RotorHazard" directory will be archived as: "old/RotorHazard_YYYYMMDD_HHMMSS" (with the current date/time) 
-
-For RotorHazard the minimum version of Python supported is 3.9. If the installed version is Python 3.8 or older, see this [wiki article](https://github.com/RotorHazard/RotorHazard/wiki/Installing-Newer-Versions-of-Python-on-the-Raspberry-Pi) for a way to install a newer version of Python.
+* The previous "RotorHazard" directory will be archived as: "old/RotorHazard_YYYYMMDD_HHMMSS" (with the current date/time)
 
 ----------------------------------------------------------------------------
 
@@ -413,7 +423,7 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 **To install the RotorHazard server on these systems:**
 
-1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.9. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
+1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . The minimum version of Python needed for RotorHazard is 3.10. To check if Python is installed and the version, open up a command prompt and enter ```python --version```
 
 2. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 

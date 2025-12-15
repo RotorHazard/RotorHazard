@@ -71,26 +71,7 @@
 		});
 
 		socket.on('language', function (msg) {
-			$('#set_language').empty();
-			$('#set_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-
-			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
-			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
-
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_language').selectedIndex = 0;
-			}
+			rotorhazard.interface_language = msg.language;
 		});
 
 		// set admin flag
@@ -128,24 +109,33 @@
 
 		socket.on('ui', function (msg) {
 			if (msg.page == 'format') {
-				$('#custom-ui').empty();
+				if (msg.replace_panels !== false) {
+					$('#custom-ui').empty();
+				}
 
 				for (var i in msg.panels) {
 					var panel = msg.panels[i];
 
-					var panel_el = $('<div class="panel collapsing active">');
-					panel_el.attr('id', 'ui-custom-' + panel.panel.name);
-					var panel_header_el = $('<div class="panel-header">');
-					panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
-					var panel_content_el = $('<div class="panel-content">');
-
-					// panel open/close
-					if (panel.panel.open) {
-						panel_el.addClass('open');
-						panel_content_el.show();
+					if (msg.replace_panels === false) {
+						var panel_el = $('#ui-custom-' + panel.panel.name);
+						var panel_content_el = panel_el.children('.panel-content');
+						panel_content_el.empty();
 					} else {
-						panel_el.removeClass('open');
-						panel_content_el.hide();
+						var panel_el = $('<div class="panel collapsing active">');
+						panel_el.attr('id', 'ui-custom-' + panel.panel.name);
+						var panel_header_el = $('<div class="panel-header">');
+						panel_header_el.append('<h2><button class="no-style">' + panel.panel.label + '</button></h2>');
+						var panel_content_el = $('<div class="panel-content">');
+						panel_el.append(panel_header_el);
+
+						// panel open/close
+						if (panel.panel.open) {
+							panel_el.addClass('open');
+							panel_content_el.show();
+						} else {
+							panel_el.removeClass('open');
+							panel_content_el.hide();
+						}
 					}
 
 					// add markdown content
@@ -826,10 +816,14 @@
 					for (var j in rotorhazard.event.race_formats) {
 						$(document.createElement('option'))
 							.prop('value', rotorhazard.event.race_formats[j].id)
-							.text(rotorhazard.event.race_formats[j].name)
+							.text(__(rotorhazard.event.race_formats[j].name))
 							.appendTo(field_select);
 					}
-					field_select.val(race_class.format);
+					if (race_class.format == null) {
+						field_select.val(0);
+					} else {
+						field_select.val(race_class.format);
+					}
 
 					// Ranking
 					var field_select = $(`#ranking--race-class-${race_class.id}`)
@@ -1099,7 +1093,7 @@
 						.appendTo(/*???*/);
 				}
 
-				socket.emit('get_class_recents', {'class_id': 0});
+				socket.emit('get_class_recents', {'class_id': null});
 
 			}
 			freq.updateBlocks();
@@ -1422,7 +1416,8 @@
 		});
 
 		function display_recents(class_id, heats) {
-			var el = $(`#recent-heat-data--race-class-${class_id}`);
+			var class_html_designator = class_id ? class_id : 0;
+			var el = $(`#recent-heat-data--race-class-${class_html_designator}`);
 
 			var heat_uis = []
 			el.find('.heat-edit').each(function(heat_el){
@@ -1433,7 +1428,7 @@
 				var race_class = rotorhazard.event.classes.find(obj => {return obj.id == class_id});
 				if (!race_class) {
 					race_class = {
-						id: 0,
+						id: null,
 						round_type: 0
 					}
 				}
@@ -2732,7 +2727,7 @@
 			if (rotorhazard.event.race_formats && rotorhazard.race_points_methods) {
 				$('#set_race_format').empty();
 				for (var i = 0; i < rotorhazard.event.race_formats.length; i++) {
-					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + rotorhazard.event.race_formats[i].name + '</option>');
+					$('#set_race_format').append('<option value="' + rotorhazard.event.race_formats[i].id +'">' + __(rotorhazard.event.race_formats[i].name) + '</option>');
 				}
 				if (current_format == 'last') {
 					$('#set_race_format').val($('#set_race_format option:last').val());
@@ -2749,7 +2744,7 @@
 				$('#set_points_method').empty();
 				$('#set_points_method').append('<option value="">' + __("None") + '</option>');
 				for (var i = 0; i < rotorhazard.race_points_methods.length; i++) {
-					$('#set_points_method').append('<option value="' + rotorhazard.race_points_methods[i].name +'">' + rotorhazard.race_points_methods[i].label + '</option>');
+					$('#set_points_method').append('<option value="' + rotorhazard.race_points_methods[i].name +'">' + __(rotorhazard.race_points_methods[i].label) + '</option>');
 				}
 				$('#set_points_params').html(svg_asset.gear);
 
@@ -3564,14 +3559,6 @@
 				var field_data = selected_importer.settings.find(obj => {return obj.name == field});
 				field_data.value = value;
 			}
-		});
-
-		$('#set_language').change(function (event) {
-			var data = {
-				language: $(this).val()
-			};
-			socket.emit('set_language', data);
-			location.reload(true);
 		});
 	});
 

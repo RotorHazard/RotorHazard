@@ -17,26 +17,7 @@
 
 	$(document).ready(function () {
 		socket.on('language', function (msg) {
-			$('#set_language').empty();
-			$('#set_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-
-			$('#set_voice_string_language').empty();
-			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
-			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (var i = 0; i < msg.languages.length; i++) {
-				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
-
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_language').selectedIndex = 0;
-			}
+			rotorhazard.interface_language = msg.language;
 		});
 
 		// set admin flag
@@ -155,11 +136,17 @@
 
 		$(document).on('change', '.set-serial-config', function (event) {
 			var values = [];
-			$('.set-serial-config').each(function(){
-				if ($(this).val()) {
+			var newVal = false;
+			$('.set-serial-config').each(function() {
+				if (newVal === false) {
+					newVal = $(this).val();
+				} else if ($(this).val()) {
 					values.push($(this).val());
 				}
 			});
+			if (newVal && newVal.trim().length > 0) {
+				values.push(newVal);
+			}
 
 			var data = {
 				section: 'GENERAL',
@@ -452,6 +439,22 @@
 					<label for="set-sync-delay">{{ __('Race Start Delay (seconds)') }}</label>
 				</div>
 				<input type="number" id="set-sync-delay" class="set-config" data-section="GENERAL" data-key="RACE_START_DELAY_EXTRA_SECS" value="{{ getConfig('GENERAL', 'RACE_START_DELAY_EXTRA_SECS') }}" min="0.9" max="99.9" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-mock-nodes">{{ __('Mock Nodes (minimum)') }}</label>
+				</div>
+				<input type="number" id="set-mock-nodes" class="set-config" data-section="GENERAL" data-key="MOCK_NODES" value="{{ getConfig('GENERAL', 'MOCK_NODES') }}" min="0">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-mock-node-behavior">{{ __('Mock Node Signal') }}</label>
+				</div>
+				<select id="set-mock-node-behavior" class="set-config" data-section="GENERAL" data-key="MOCK_NODE_SIGNAL" data-type="int">
+					<option value="0" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==0}}>{{ __('None') }}</option>
+					<option value="1" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==1}}>{{ __('Replay') }} mock_data_[n].csv</option>
+					<option value="2" {{'selected' if getConfig('GENERAL', 'MOCK_NODE_SIGNAL')==2}}>{{ __('Simulated') }}</option>
+				</select>
 			</li>
 		</ol>
 	</div>

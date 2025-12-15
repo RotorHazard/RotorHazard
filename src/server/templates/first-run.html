@@ -11,9 +11,14 @@
 
 	$(document).ready(function () {
 		socket.on('language', function (msg) {
-			if (msg.language) {
-				rotorhazard.interface_language = msg.language;
+			rotorhazard.interface_language = msg.language;
+
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (var i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
+			$('#set_language').val(msg.language);
 		});
 
 		$(document).on('change', '.set-config', function (event) {
@@ -24,6 +29,14 @@
 			};
 			socket.emit('set_config', data);
 		});
+
+		$('#set_language').change(function (event) {
+			var data = {
+				language: $(this).val()
+			};
+			socket.emit('set_language', data);
+			location.reload(true);
+		});
 	});
 </script>
 
@@ -31,6 +44,7 @@
 
 <div class="header">
 	<h1>
+		<div class="screen-reader-text">RotorHazard</div>
 		<div class="rh-logo"></div>
 	</h1>
 </div>
@@ -40,6 +54,17 @@
 		<h2 style="text-align:center">{{ __("Welcome to RotorHazard!") }}</h2>
 	</div>
 	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_language">{{ __('Language') }}</label>
+				</div>
+				<select id="set_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+
 		<p style="text-align:center">{{ __("Please set an admin login.") }}</p>
 
 		<ol class="form">

@@ -2,6 +2,7 @@
 # RHUI Helper
 # Provides abstraction for user interface
 #
+from time import monotonic_ns
 from typing import List, Any  # @UnusedImport
 from dataclasses import dataclass, asdict  # @UnresolvedImport
 from enum import Enum
@@ -18,9 +19,10 @@ import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod, RoundType
-from RHRace import RacingMode
+from RHRace import RacingMode, RaceStatus
 from filtermanager import Flt
 import logging
+
 logger = logging.getLogger(__name__)
 
 from FlaskAppObj import APP
@@ -91,6 +93,16 @@ class GeneralSetting():
     order: int = 0
 
 @dataclass
+class UIFunctionBinding():
+    name: str
+    field: UIField
+    getter_fn: callable
+    setter_fn: callable
+    args: dict
+    panel: str = None
+    order: int = 0
+
+@dataclass
 class QuickButton():
     panel: str
     name: str
@@ -123,8 +135,10 @@ class RHUI():
         self._raceformat_attributes = []
         self._ui_panels = []
         self._general_settings = []
+        self._ui_fn_bindings = []
         self._quickbuttons = []
         self._markdowns = []
+        self._UI_server_messages = {}
 
     # Pilot Attributes
     def register_pilot_attribute(self, field:UIField):
@@ -251,7 +265,17 @@ class RHUI():
     def general_settings(self):
         return self._general_settings
 
-    # button
+    # UI Variables
+    def register_ui_fn_bind(self, field:UIField, getter_fn, setter_fn, args=None, panel=None, order=0):
+        field_internal_id = field.name
+        self._ui_fn_bindings.append(UIFunctionBinding(field_internal_id, field, getter_fn, setter_fn, args, panel, order))
+        return self._ui_fn_bindings
+
+    @property
+    def ui_fn_bindings(self):
+        return self._ui_fn_bindings
+
+    # Quickbuttons
     def register_quickbutton(self, panel, name, label, fn, args=None):
         for idx, button in enumerate(self._quickbuttons):
             if button.name == name:
@@ -263,10 +287,16 @@ class RHUI():
         return self._quickbuttons
 
     def get_panel_settings(self, name):
-        payload = []
+        payload = {
+            'settings': [],
+            'fn_binds': []
+        }
         for setting in self._general_settings:
             if setting.panel == name:
-                payload.append(setting)
+                payload['settings'].append(setting)
+        for fn_bind in self._ui_fn_bindings:
+            if fn_bind.panel == name:
+                payload['fn_binds'].append(fn_bind)
 
         return payload
 
@@ -341,10 +371,15 @@ class RHUI():
             'panels': []
         }
 
+        if 'replace_panels' in params:
+            emit_payload['replace_panels'] = params['replace_panels']
+
         for panel in self.ui_panels:
             if panel.page == page:
+                panel_settings = self.get_panel_settings(panel.name)
+
                 settings = []
-                for setting in self.get_panel_settings(panel.name):
+                for setting in panel_settings['settings']:
                     field = setting.field.frontend_repr()
 
                     if setting.field.persistent_section:
@@ -353,9 +388,21 @@ class RHUI():
                         db_val = self._racecontext.rhdata.get_option(setting.field.name)
 
                     if db_val is not None:
-                        field['value'] = db_val != '0' if setting.field.field_type is UIFieldType.CHECKBOX else db_val
+                        if setting.field.field_type is UIFieldType.CHECKBOX:
+                            if db_val == False or db_val == 0 or db_val == '0' or db_val == '': #Process falsy strings (db) or true booleans (config)
+                                field['value'] = False
+                            else:
+                                field['value'] = True
+                        else:
+                            field['value'] = db_val
 
                     settings.append(field)
+
+                fn_binds = []
+                for var in panel_settings['fn_binds']:
+                    field = var.field.frontend_repr()
+                    field['value'] = var.getter_fn(var.args)
+                    fn_binds.append(field)
 
                 buttons = []
                 for button in self.get_panel_quickbuttons(panel.name):
@@ -379,6 +426,7 @@ class RHUI():
                         'open': panel.open,
                     },
                     'settings': settings,
+                    'fn_binds': fn_binds,
                     'quickbuttons': buttons,
                     'markdowns': markdowns
                 })
@@ -597,7 +645,9 @@ class RHUI():
             class_id = heat.class_id
             race_class = self._racecontext.rhdata.get_raceClass(class_id)
         else:
+            heat = None
             class_id = None
+            race_class = None
 
         emit_payload = {
                 'race_status': self._racecontext.race.race_status,
@@ -612,7 +662,7 @@ class RHUI():
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
                 'show_init_time_flag': self._racecontext.race.show_init_time_flag
             }
-        if class_id and race_class.round_type == RoundType.GROUPED:
+        if race_class and race_class.round_type == RoundType.GROUPED and heat:
             emit_payload['next_round'] = heat.group_id + 1
         else:
             emit_payload['next_round'] = self._racecontext.rhdata.get_round_num_for_heat(heat_id)
@@ -776,6 +826,7 @@ class RHUI():
 
                 events_list = {
                     Evt.RACE_STAGE: self.__('Race Stage'),
+                    Evt.RACE_ABORT: self.__('Race Stage Abort'),
                     Evt.RACE_START: self.__('Race Start'),
                     Evt.RACE_FINISH: self.__('Race Finish'),
                     Evt.RACE_STOP: self.__('Race Stop'),
@@ -848,26 +899,36 @@ class RHUI():
         '''Emits race listing'''
         profile_freqs = json.loads(self._racecontext.race.profile.frequencies)
         heats = {}
+        races = self._racecontext.rhdata.get_savedRaceMetas()
+        pilotraces_db = self._racecontext.rhdata.get_savedPilotRaces()
+        pilots = self._racecontext.rhdata.get_pilots()
+        race_classes = self._racecontext.rhdata.get_raceClasses()
         for heat in self._racecontext.rhdata.get_heats():
-            if self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id):
-                rounds = {}
-                for race in self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id):
+            rounds = {}
+            for race in races:
+                if race.heat_id == heat.id:
                     pilotraces = []
-                    for pilotrace in self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
-                        pilot_data = self._racecontext.rhdata.get_pilot(pilotrace.pilot_id)
-                        if pilot_data:
-                            nodepilot = pilot_data.callsign
-                        else:
-                            nodepilot = None
+                    for pilotrace in pilotraces_db:
+                        if pilotrace.race_id == race.id:
+                            pilot_data = None
+                            for pilot in pilots:
+                                if pilot.id == pilotrace.pilot_id:
+                                    pilot_data = pilot
+                                    break
 
-                        pilotraces.append({
-                            'pilotrace_id': pilotrace.id,
-                            'callsign': nodepilot,
-                            'pilot_id': pilotrace.pilot_id,
-                            'node_index': pilotrace.node_index,
-                            'pilot_freq': self.get_pilot_freq_info(profile_freqs, pilotrace.frequency, \
-                                                                   pilotrace.node_index)
-                        })
+                            if pilot_data:
+                                nodepilot = pilot_data.callsign
+                            else:
+                                nodepilot = None
+
+                            pilotraces.append({
+                                'pilotrace_id': pilotrace.id,
+                                'callsign': nodepilot,
+                                'pilot_id': pilotrace.pilot_id,
+                                'node_index': pilotrace.node_index,
+                                'pilot_freq': self.get_pilot_freq_info(profile_freqs, pilotrace.frequency, \
+                                                                       pilotrace.node_index)
+                            })
                     rounds[race.round_id] = {
                         'race_id': race.id,
                         'format_id': race.format_id,
@@ -875,6 +936,7 @@ class RHUI():
                         'start_time_formatted': race.start_time_formatted,
                         'pilotraces': pilotraces
                     }
+            if rounds:
                 heats[heat.id] = {
                     'heat_id': heat.id,
                     'class_id': heat.class_id,
@@ -882,8 +944,10 @@ class RHUI():
                     'rounds': rounds,
                 }
                 if heat.class_id:
-                    race_class = self._racecontext.rhdata.get_raceClass(heat.class_id)
-                    heats[heat.id]['round_type'] = race_class.round_type
+                    for race_class in race_classes:
+                        if race_class.id == heat.class_id:
+                            heats[heat.id]['round_type'] = race_class.round_type
+                            break
 
         emit_payload = {
             'heats': heats,
@@ -970,6 +1034,49 @@ class RHUI():
             emit('leaderboard', emit_payload)
         else:
             self._socket.emit('leaderboard', emit_payload)
+
+    def emit_race_marshal_data(self, **params):
+        '''Emits current (post-race) marshal data.'''
+        race = self._racecontext.race
+        nodes = self._racecontext.interface.nodes
+
+        if race.race_status != RaceStatus.DONE:
+            return False
+
+        with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
+            if race.current_heat == RHUtils.HEAT_ID_NONE:
+                return False
+
+            race_marshal_data = {
+                'round_id': -1,
+                'heat_id': race.current_heat,
+                'race_id': None,
+                'class_id': None,
+                'format_id': race.format.id if hasattr(race.format, 'id') else RHUtils.FORMAT_ID_NONE,
+                'start_time': race.start_time_monotonic,
+                'start_time_formatted': race.start_time_formatted,
+            }
+
+            seat_marshal_data = {}
+            for index, node in enumerate(nodes):
+                seat_marshal_data[index] = {
+                    'pilotrace_index': index,
+                    'history_values': nodes[index].history_values,
+                    'history_times': nodes[index].history_times,
+                    'enter_at': nodes[index].enter_at_level,
+                    'exit_at': nodes[index].exit_at_level,
+                    'laps': [lap.asdict() for lap in race.node_laps[index]]
+                }
+
+        emit_payload = {
+            'race': race_marshal_data,
+            'seats': seat_marshal_data
+        }
+
+        if ('nobroadcast' in params):
+            emit('current_marshal_data', emit_payload)
+        else:
+            self._socket.emit('current_marshal_data', emit_payload)
 
     def emit_expanded_heat(self, heat_id, **params):
         '''Emits abbreviated heat data for more responsive UI.'''
@@ -1262,7 +1369,9 @@ class RHUI():
             'heats': heats,
         }
 
-        emit_payload = self._filters.run_filters(Flt.EMIT_RECENT_HEAT_DATA, emit_payload)
+        emit_payload = self._filters.run_filters(Flt.EMIT_RECENT_HEAT_DATA, emit_payload, {
+            'limit': limit
+        })
 
         if ('nobroadcast' in params):
             emit('recent_heat_data', emit_payload)
@@ -1687,7 +1796,9 @@ class RHUI():
                 'split_speed': phonetic_speed
             }
 
-            emit_payload = self._filters.run_filters(Flt.EMIT_PHONETIC_SPLIT, emit_payload)
+            emit_payload = self._filters.run_filters(Flt.EMIT_PHONETIC_SPLIT, emit_payload, {
+                'split_data': split_data
+            })
 
             if ('nobroadcast' in params):
                 emit('phonetic_split_call', emit_payload)
@@ -1946,6 +2057,10 @@ class RHUI():
         ''' Emits refresh-page message '''
         self._socket.emit('refresh_page')
 
+    def emit_server_restarting(self, **params):
+        ''' Emits server_restarting message '''
+        self._socket.emit('server_restarting')
+
     def emit_upd_cfg_files_list(self, select_cfg_file=None):
         '''Update List of database files in cfg_bkp'''
         if not os.path.exists(self._racecontext.serverconfig.cfg_bkp_dir_name):
@@ -1965,3 +2080,40 @@ class RHUI():
                 'select_file': select_cfg_file
             }
         self._socket.emit('upd_cfg_files_list', emit_payload)
+
+    def set_ui_message(self, mainclass, message, header=None, subclass=None):
+        item = {}
+        item['message'] = message
+        if header:
+            item['header'] = self._racecontext.language.__(header)
+        if subclass:
+            item['subclass'] = subclass
+        self._UI_server_messages[mainclass] = item
+
+    def is_ui_message_set(self, mainclass):
+        return mainclass in self._UI_server_messages
+
+    def get_ui_server_messages_str(self):
+        server_messages_formatted = ''
+        if len(self._UI_server_messages):
+            for key, item in self._UI_server_messages.items():
+                message = '<li class="' + key
+                if 'subclass' in item and item['subclass']:
+                    message += ' ' + key + '-' + item['subclass']
+                if 'header' in item and item['header']:
+                    message += ' ' + item['header'].lower()
+                message += '">'
+                if 'header' in item and item['header']:
+                    message += '<strong>' + item['header'] + ':</strong> '
+                message += item['message']
+                message += '</li>'
+                server_messages_formatted += message
+        if self._racecontext.serverconfig.config_file_status == -1:
+            server_messages_formatted += '<li class="config config-bad warning"><strong>' + self._racecontext.language.__('Warning') + ': ' + '</strong>' + self._racecontext.language.__('The config.json file is invalid. Falling back to default configuration.') + '<br />' + self._racecontext.language.__('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
+        if len(server_messages_formatted):
+            server_messages_formatted = '<ul>' + server_messages_formatted + '</ul>'
+        return server_messages_formatted
+
+    def clear_ui_message(self, mainclass):
+        if mainclass in self._UI_server_messages:
+            self._UI_server_messages.pop(mainclass)

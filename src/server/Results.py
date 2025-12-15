@@ -190,21 +190,27 @@ def build_atomic_results(rhDataObj, params):
 
     if 'race_id' in params:
         race = rhDataObj.get_savedRaceMeta(params['race_id'])
+    else:
+        race = None
 
     if 'heat_id' in params:
         heat_id = params['heat_id']
         heat = rhDataObj.get_heat(heat_id)
     elif 'race_id' in params:
-        heat_id = race.heat_id
+        heat_id = race.heat_id if race else None
         heat = rhDataObj.get_heat(heat_id)
+    else:
+        heat_id = None
+        heat = None
 
     if 'class_id' in params:
         class_id = params['class_id']
         USE_CLASS = True
-    elif 'heat_id' in params and heat.class_id != RHUtils.CLASS_ID_NONE:
+    elif 'heat_id' in params and heat and heat.class_id != RHUtils.CLASS_ID_NONE:
         class_id = heat.class_id
         USE_CLASS = True
     else:
+        class_id = None
         USE_CLASS = False
 
     # rebuild race result
@@ -743,7 +749,10 @@ def add_fastest_race_lap_meta(racecontext, all_leaderboards):
 
 def build_leaderboard_race(racecontext, heat_id, round_id):
     result = calc_leaderboard(racecontext, heat_id=heat_id, round_id=round_id)
-    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_RACE, result)
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_RACE, result, {
+        'heat_id': heat_id,
+        'round_id': round_id
+    })
 
 def build_leaderboard_heat(racecontext, heat):
     leaderboard = {}
@@ -756,7 +765,9 @@ def build_leaderboard_heat(racecontext, heat):
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
     leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
 
-    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_HEAT, leaderboard)
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_HEAT, leaderboard, {
+        'heat_id': heat.id
+    })
 
 def build_leaderboard_class(racecontext, race_class):
     leaderboard = {}
@@ -769,7 +780,9 @@ def build_leaderboard_class(racecontext, race_class):
     leaderboard = sort_and_rank_leaderboards(racecontext, leaderboard)
     leaderboard = add_fastest_race_lap_meta(racecontext, leaderboard)
 
-    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_CLASS, leaderboard)
+    return racecontext.filters.run_filters(Flt.LEADERBOARD_BUILD_CLASS, leaderboard, {
+        'class_id': race_class.id
+    })
 
 def build_leaderboard_event(racecontext):
     leaderboard = {}
@@ -1202,8 +1215,8 @@ def get_gap_info(racecontext, seat_index):
         if result['node'] == seat_index:
             rank_index = index
             break
-    else: # no break
-        logger.error('Failed to find results: Node not in result list')
+    else: # no break, pilot is duplicated or NONE
+        logger.debug('Failed to find results: Node not in result list')
         return
 
     # check for best lap
@@ -2110,7 +2123,7 @@ def check_win_coop_most_laps(racecontext, **kwargs):
         'status': WinStatus.NONE
     }
 
-def get_leading_pilot_id(raceObj, interfaceObj, onlyNewFlag=False):
+def get_leading_pilot_id_and_node_idx(raceObj, interfaceObj, onlyNewFlag=False):
     try:
         lboard_name = raceObj.results['meta']['primary_leaderboard']
         leaderboard = raceObj.results[lboard_name]
@@ -2126,20 +2139,26 @@ def get_leading_pilot_id(raceObj, interfaceObj, onlyNewFlag=False):
                             node = interfaceObj.nodes[line['node']]
                             if node.pass_crossing_flag:
                                 logger.info('Waiting for node {0} crossing to determine leader'.format(line['node']+1))
-                                return RHUtils.PILOT_ID_NONE
+                                return RHUtils.PILOT_ID_NONE, -1
                 pilot_id = leaderboard[0]['pilot_id']
                 if onlyNewFlag:
                     if lead_lap == raceObj.race_leader_lap and pilot_id == raceObj.race_leader_pilot_id:
-                        return RHUtils.PILOT_ID_NONE  # reported leader previously so return none
+                        return RHUtils.PILOT_ID_NONE, -1  # reported leader previously so return none
                 prev_lead_lap = raceObj.race_leader_lap
                 raceObj.race_leader_lap = lead_lap
                 raceObj.race_leader_pilot_id = pilot_id
                 logger.debug('Race leader pilot_id={}, lap={}, prevLap={}'.format(pilot_id, lead_lap, prev_lead_lap))
                 # return ID of leader, but not if from previous lap (because of deleted lap)
-                return pilot_id if lead_lap >= prev_lead_lap else RHUtils.PILOT_ID_NONE
+                if lead_lap >= prev_lead_lap:
+                    return pilot_id, leaderboard[0]['node']
+                return RHUtils.PILOT_ID_NONE, -1
     except Exception:
         logger.exception("Error in Results 'get_leading_pilot_id()'")
-    return RHUtils.PILOT_ID_NONE
+    return RHUtils.PILOT_ID_NONE, -1
+
+def get_leading_pilot_id(raceObj, interfaceObj, onlyNewFlag=False):
+    id, idx = get_leading_pilot_id_and_node_idx(raceObj, interfaceObj, onlyNewFlag)
+    return id
 
 def get_leading_team_name(results):
     try:
