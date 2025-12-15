@@ -2293,7 +2293,8 @@
 			$('#secondary--new').find('input').each(function(){
 				if ($(this).val()) {
 					secondaries.push({
-						address: $(this).val()
+						address: $(this).val(),
+						mode: "split"
 					});
 					$(this).empty();
 				}
