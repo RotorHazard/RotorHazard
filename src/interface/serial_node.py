@@ -241,9 +241,11 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
             pass
     if config_ser_ports:
         node_serial_obj = None
-        # if not S32_BPill then reverse list (try 115200 baud first as that is likely the baud rate to use)
-        baud_rates_list = SERIAL_BAUD_RATES if isS32BPillFlag else SERIAL_BAUD_RATES[::-1]
         for index, comm in enumerate(config_ser_ports):
+            # if serial port is USB type then don't treat as S32_BPill (may need bootloader chill-time delay)
+            s32_port_flag = isS32BPillFlag if not (isinstance(comm, str) and "USB" in comm.upper()) else False
+            # if not S32_BPill then reverse list (try 115200 baud first as that is likely the baud rate to use)
+            baud_rates_list = SERIAL_BAUD_RATES if s32_port_flag else SERIAL_BAUD_RATES[::-1]
             rev_val = None
             baud_idx = 0
             while (not rev_val) and baud_idx < len(baud_rates_list):
@@ -258,7 +260,7 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                     node_serial_obj.setRTS(0)
                     node_serial_obj.setPort(comm)
                     node_serial_obj.open()  # open port (now that DTR is configured for no change)
-                    if (not isS32BPillFlag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
+                    if (not s32_port_flag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
                         logger.debug("Delaying {} secs before attempting connection to serial node (bootloader)".format(BOOTLOADER_CHILL_TIME))
                         gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for ESP32/Arduino boot
                     else:
