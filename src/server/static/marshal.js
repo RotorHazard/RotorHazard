@@ -488,44 +488,42 @@ class RHMarshal {
 					if (rssi < self.race.exit_at) {
 						var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
 
-					if (lap_time_stamp > 0) { // reject passes before race start
-						var crossingEnd = time;
-						var lapdata = {
-							crossingStart: crossingStart,
-							crossingEnd: crossingEnd,
-							lap_time_stamp: lap_time_stamp, // zero stamp within race
-							source: 2, // recalc
-							deleted: false
-						};
-						if (lap_time_stamp < min_first_crossing_ms) {
-							lapdata.deleted = true;
-						} else if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap_ms) {
-							lapdata.deleted = true;
-						} else {
-                            last_lap_time_stamp = lap_time_stamp;
-                        }
-						laps.push(lapdata);
+						if (lap_time_stamp > 0) { // reject passes before race start
+							var crossingEnd = time;
+							var lapdata = {
+								crossingStart: crossingStart,
+								crossingEnd: crossingEnd,
+								lap_time_stamp: lap_time_stamp, // zero stamp within race
+								source: 2, // recalc
+								deleted: false
+							};
+							if (lap_time_stamp < min_first_crossing_ms) {
+								lapdata.deleted = true;
+							} else if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap_ms) {
+								lapdata.deleted = true;
+							} else {
+								last_lap_time_stamp = lap_time_stamp;
+							}
+							laps.push(lapdata);
+						}
+						crossing = false;
+						peakRssi = 0;
 					}
-					crossing = false;
-					peakRssi = 0;
 				}
 			}
-		}
 
 			if (crossing) { // check for crossing at data end
-					var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
+				var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
 
-					var crossingEnd = time;
-					laps.push({
-						crossingStart: crossingStart,
-						crossingEnd: crossingEnd,
-						lap_time_stamp: lap_time_stamp, // zero stamp within race
-						source: 2, // recalc
-						deleted: false
-					});
+				var crossingEnd = time;
+				laps.push({
+					crossingStart: crossingStart,
+					crossingEnd: crossingEnd,
+					lap_time_stamp: lap_time_stamp, // zero stamp within race
+					source: 2, // recalc
+					deleted: false
+				});
 			}
-
-
 		}
 		// auto-delete late laps
 		var finished = false;
@@ -718,7 +716,7 @@ class RHMarshal {
 		} else {
 			var midPoint = (
 				self.interact.startingEnter
-			 	+ self.interact.startingExit) >> 1;
+				+ self.interact.startingExit) >> 1;
 			self.interact.adjustEnter = (rssi >= midPoint);
 		}
 	}
