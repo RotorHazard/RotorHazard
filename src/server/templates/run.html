@@ -2471,6 +2471,8 @@
 					lapData.append('<td>' + __('Deleted') + '</td>');
 				}
 
+				lapData.append('<td>' + lap.peak_rssi + '</td>');
+
 				if (lap.deleted) {
 					lapData.append('<td><button class="m-restore_lap" data-lapid="' + lap_i + '">+</button></td>');
 				} else {
@@ -2706,9 +2708,10 @@
 					seat: seat_index,
 					history_times: seat.history_times,
 					history_values: seat.history_values,
-					laps: current_laps.node_index[seat_index].laps,
+					laps: seat.laps,
 					enter_at: rotorhazard.nodes[seat_index].enter_at_level,
 					exit_at: rotorhazard.nodes[seat_index].exit_at_level,
+					marshal_type: seat.marshal_type,
 				}
 				marshal.setPilotData(pilot_args);
 
@@ -2869,13 +2872,13 @@
 						<div class="node-controls">
 							<div class="enter-exit-control">
 								<label for="set_enter_at_level_{{ node.index }}">{{ __('EnterAt') }}</label>
-								<input type="number" id="set_enter_at_level_{{ node.index }}" class="set_enter_at_level" data-node="{{ node.index }}" min="0" max="999">
+								<input type="number" id="set_enter_at_level_{{ node.index }}" class="set_enter_at_level" data-node="{{ node.index }}" min="0" max="9999">
 								<button class="cap_enter_at_btn" data-node_index="{{ node.index }}">{{ __('Capture') }}</button>
 							</div>
 
 							<div class="enter-exit-control">
 								<label for="set_exit_at_level_{{ node.index }}">{{ __('ExitAt') }}</label>
-								<input type="number" id="set_exit_at_level_{{ node.index }}" class="set_exit_at_level" data-node="{{ node.index }}" min="0" max="999">
+								<input type="number" id="set_exit_at_level_{{ node.index }}" class="set_exit_at_level" data-node="{{ node.index }}" min="0" max="9999">
 								<button class="cap_exit_at_btn" data-node_index="{{ node.index }}">{{ __('Capture') }}</button>
 							</div>
 						</div>
@@ -3336,6 +3339,7 @@
 						<th>{{ __('Lap') }}</th>
 						<th>{{ __('Timestamp') }}</th>
 						<th>{{ __('Lap Time') }}</th>
+						<th>{{ __('Peak') }}</th>
 						<th>{{ __('Deleted') }}</th>
 					</tr>
 				</thead>

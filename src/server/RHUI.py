@@ -1065,7 +1065,8 @@ class RHUI():
                     'history_times': nodes[index].history_times,
                     'enter_at': nodes[index].enter_at_level,
                     'exit_at': nodes[index].exit_at_level,
-                    'laps': [lap.asdict() for lap in race.node_laps[index]]
+                    'laps': [lap.asdict() for lap in race.node_laps[index]],
+                    'marshal_type': self._racecontext.interface.node_map[index].interface.marshal_type
                 }
 
         emit_payload = {

@@ -6,7 +6,7 @@ import gevent # For threads and timing
 from time import monotonic # to capture read timing
 
 from Plugins import Plugins
-from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
+from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory, MarshalType
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
@@ -141,6 +141,7 @@ class RHInterface(BaseHardwareInterface):
 
         self.nodes = Plugins(suffix='node')
         self.discover_nodes(*args, **kwargs)
+        self.marshal_type = MarshalType.FULL_RSSI
 
         self.data_loggers = {}
         if len(self.nodes) > 0:

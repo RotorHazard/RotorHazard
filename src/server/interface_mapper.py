@@ -72,6 +72,13 @@ class InterfaceMapper:
             nodelist.append(node.object)
         return nodelist
 
+    @property
+    def node_map(self):
+        nodelist = []
+        for node in self._node_map:
+            nodelist.append(node)
+        return nodelist
+
     def get_rh_interface(self):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
