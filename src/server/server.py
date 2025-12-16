@@ -3624,7 +3624,7 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
                 http_server_args['certfile'] = cert_path
                 http_server_args['keyfile'] = key_path
             else:
-                logger.error("Unable to start SSL: missing certificate or key")
+                logger.error("Unable to start HTTPS: missing certificate or key")
 
         SOCKET_IO.run(APP, **http_server_args)
         logger.info("Server is shutting down")
