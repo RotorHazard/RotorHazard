@@ -422,7 +422,9 @@ class RHMarshal {
 				lap.crossingStart = lap.lap_time_stamp;
 				lap.crossingEnd = lap.lap_time_stamp + 1;
 
-				if (lap.peak_rssi < self.race.enter_at) {
+				if (lap.lap_time_stamp < min_first_crossing_ms) {
+					lap.deleted = true;
+				} else if (lap.peak_rssi < self.race.enter_at) {
 					lap.deleted = true;
 				} else {
 					lap.deleted = false;
