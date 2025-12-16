@@ -816,7 +816,9 @@ def on_ssl_generate():
     if (loaded_key and loaded_key != auto_key) or (loaded_cert and loaded_cert != auto_cert):
         RaceContext.rhui.emit_priority_message(__("Refusing to overwrite custom SSL file"))
     else:
-        generate_self_signed_cert(DATA_DIR+auto_key, DATA_DIR+auto_cert)
+        cert_path = werkzeug.security.safe_join(DATA_DIR, auto_cert)
+        key_path = werkzeug.security.safe_join(DATA_DIR, auto_key)
+        generate_self_signed_cert(key_path, cert_path)
         RaceContext.serverconfig.set_item('GENERAL', 'HTTP_SSL_KEY', auto_key)
         RaceContext.serverconfig.set_item('GENERAL', 'HTTP_SSL_CERT', auto_cert)
         RaceContext.rhui.emit_priority_message(__("Generated self-signed SSL files"))
@@ -3613,13 +3615,12 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
         }
         ssl_type = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL')
         if ssl_type:
-            import ssl
             ssl_cert = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_CERT')
             ssl_key = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_KEY')
             cert_path = werkzeug.security.safe_join(DATA_DIR, ssl_cert)
             key_path = werkzeug.security.safe_join(DATA_DIR, ssl_key)
 
-            if cert_path and key_path:
+            if ssl_cert and ssl_key and cert_path and key_path:
                 http_server_args['certfile'] = cert_path
                 http_server_args['keyfile'] = key_path
             else:
