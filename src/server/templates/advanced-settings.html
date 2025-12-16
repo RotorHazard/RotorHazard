@@ -78,6 +78,10 @@
 			socket.emit('set_config', data);
 		});
 
+		$(document).on('click', '.ssl-generate', function (event) {
+			socket.emit('ssl_generate');
+		});
+
 		function display_serial_port_ui(ports) {
 			if ($('#serial-port-ui').length) {
 				var serial_ui = $('#serial-port-ui');
@@ -234,7 +238,33 @@
 				</div>
 				<input type="text" id="set-cors-hosts" class="set-config" data-section="GENERAL" data-key="CORS_ALLOWED_HOSTS" value="{{ getConfig('GENERAL', 'CORS_ALLOWED_HOSTS') }}">
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-ssl-type">{{ __('SSL Type') }}</label>
+				</div>
+				<select id="set-ssl-type" class="set-config" data-section="GENERAL" data-key="HTTP_SSL" data-type="boolean">
+					<option value="false" {{'selected' if getConfig('GENERAL', 'HTTP_SSL')==false}}>{{ __('Off (HTTP)') }}</option>
+					<option value="true" {{'selected' if getConfig('GENERAL', 'HTTP_SSL')==true}}>{{ __('On (HTTPS)') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-ssl-cert">{{ __('SSL Certificate File Location') }}</label>
+					<p class="desc">{{ __('Relative to data dir') }}</p>
+				</div>
+				<input type="text" id="set-ssl-cert" class="set-config" data-section="GENERAL" data-key="HTTP_SSL_CERT" value="{{ getConfig('GENERAL', 'HTTP_SSL_CERT') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-ssl-key">{{ __('SSL Key File Location') }}</label>
+					<p class="desc">{{ __('Relative to data dir') }}</p>
+				</div>
+				<input type="text" id="set-ssl-key" class="set-config" data-section="GENERAL" data-key="HTTP_SSL_KEY" value="{{ getConfig('GENERAL', 'HTTP_SSL_KEY') }}">
+			</li>
 		</ol>
+		<div class="control-set">
+			<button class="ssl-generate">{{ __('Generate SSL Cert & Key') }}</button>
+		</div>
 	</div>
 </div>
 

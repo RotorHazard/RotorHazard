@@ -69,6 +69,9 @@ class Config:
 
         # other default configurations
         self.config['GENERAL']['HTTP_PORT'] = 5000
+        self.config['GENERAL']['HTTP_SSL'] = False  # whether to use Flask's SSL handling
+        self.config['GENERAL']['HTTP_SSL_CERT'] = ''  # explicit certificate file
+        self.config['GENERAL']['HTTP_SSL_KEY'] = ''  # explicit key file
         self.config['GENERAL']['SECONDARIES'] = []
         self.config['GENERAL']['SECONDARY_TIMEOUT'] = 300  # seconds
         self.config['GENERAL']['DEBUG'] = False
@@ -181,6 +184,9 @@ class Config:
             ],
             'GENERAL' : [
                 'HTTP_PORT',
+                'HTTP_SSL',
+                'HTTP_SSL_CERT',
+                'HTTP_SSL_KEY',
                 'SECONDARIES',
                 'CORS_ALLOWED_HOSTS',
                 'FORCE_S32_BPILL_FLAG',

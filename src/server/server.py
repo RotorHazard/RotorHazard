@@ -179,6 +179,7 @@ import PageCache
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 from interface_mapper import InterfaceMapper, InterfaceType
+from util.crypto import generate_self_signed_cert
 
 # Events manager
 from eventmanager import Evt, EventManager
@@ -803,6 +804,22 @@ def on_join_cluster_ex(data=None):
                 'message': __('Joined cluster')
                 })
     RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, RaceContext.serverstate.info_dict)
+
+@SOCKET_IO.on('ssl_generate')
+@catchLogExcWithDBWrapper
+def on_ssl_generate():
+    auto_key = 'rh-auto-key.pem'
+    auto_cert = 'rh-auto-cert.pem'
+    loaded_key = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_KEY')
+    loaded_cert = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_CERT')
+
+    if (loaded_key and loaded_key != auto_key) or (loaded_cert and loaded_cert != auto_cert):
+        RaceContext.rhui.emit_priority_message(__("Refusing to overwrite custom SSL file"))
+    else:
+        generate_self_signed_cert(DATA_DIR+auto_key, DATA_DIR+auto_cert)
+        RaceContext.serverconfig.set_item('GENERAL', 'HTTP_SSL_KEY', auto_key)
+        RaceContext.serverconfig.set_item('GENERAL', 'HTTP_SSL_CERT', auto_cert)
+        RaceContext.rhui.emit_priority_message(__("Generated self-signed SSL files"))
 
 @SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
@@ -3588,7 +3605,27 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
 
     try:
         # the following fn does not return until the server is shutting down
-        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        http_server_args = {
+            'host': '0.0.0.0',
+            'port': port_val,
+            'debug': True,
+            'use_reloader': False
+        }
+        ssl_type = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL')
+        if ssl_type:
+            import ssl
+            ssl_cert = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_CERT')
+            ssl_key = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_KEY')
+            cert_path = werkzeug.security.safe_join(DATA_DIR, ssl_cert)
+            key_path = werkzeug.security.safe_join(DATA_DIR, ssl_key)
+
+            if cert_path and key_path:
+                http_server_args['certfile'] = cert_path
+                http_server_args['keyfile'] = key_path
+            else:
+                logger.error("Unable to start SSL: missing certificate or key")
+
+        SOCKET_IO.run(APP, **http_server_args)
         logger.info("Server is shutting down")
     except KeyboardInterrupt:
         logger.info("Server terminated by keyboard interrupt")
