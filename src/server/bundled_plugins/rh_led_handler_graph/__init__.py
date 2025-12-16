@@ -102,15 +102,34 @@ def rssiGraph(args):
     else:
         node_mappings_dict = {}
         led_strip_pixels = [ColorVal.NONE] * led_count
-        pixels_per_node = led_count // len(active_nodes)
+        node_count = len(active_nodes)
+        pixels_per_node_arr = [led_count // node_count] * node_count
+        # if LED count is odd then add extra pixels to the total for each node as needed
+        # (for example if LED count is 142 and four nodes, setup these counts: 36, 35, 36, 35)
+        pix_total = pixels_per_node_arr[0] * node_count
+        if pix_total < led_count:
+            pixels_per_node_arr[0] += 1
+            pix_total += 1
+            if pix_total < led_count and node_count > 2:
+                pixels_per_node_arr[2] += 1
+                pix_total += 1
+                if pix_total < led_count:
+                    pixels_per_node_arr[1] += 1
+        # setup mapping of first/last pixel index for each node
         serpentine_flag = args.get('serpentine', False)
+        pix_total = 0
         for idx, node in enumerate(active_nodes):
-            first_idx = idx * pixels_per_node
-            last_idx = first_idx + pixels_per_node - 1
+            first_idx = pix_total
+            pix_total += pixels_per_node_arr[idx]
+            last_idx = pix_total - 1
             if (not serpentine_flag) or idx % 2 == 0:
                 node_mappings_dict[node.index] = NodeToLEDMapping(first_idx, last_idx)
-            else:  # alternate order on each node
+                logger.debug("rh_led_handler_graph node_idx={}, cnt={}, first={}, last={}".\
+                             format(idx, pixels_per_node_arr[idx], first_idx, last_idx))
+            else:  # if serpentine then alternate order on each node
                 node_mappings_dict[node.index] = NodeToLEDMapping(last_idx, first_idx)
+                logger.debug("rh_led_handler_graph node_idx={}, cnt={}, first={}, last={}". \
+                             format(idx, pixels_per_node_arr[idx], last_idx, first_idx))
         use_enter_exit_ats_flag = args.get('use_enter_exit_ats', False)
 
         while True:

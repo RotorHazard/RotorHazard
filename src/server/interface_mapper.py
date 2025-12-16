@@ -72,6 +72,13 @@ class InterfaceMapper:
             nodelist.append(node.object)
         return nodelist
 
+    @property
+    def node_map(self):
+        nodelist = []
+        for node in self._node_map:
+            nodelist.append(node)
+        return nodelist
+
     def get_rh_interface(self):
         for iface in self._interface_map:
             if iface.type == InterfaceType.RH:
@@ -213,6 +220,9 @@ class InterfaceMapper:
             iface.interface.close_fwupd_serial_port()
 
     def get_info_node_obj(self):
+        for iface in self._interface_map:
+            if iface.type == InterfaceType.RH and iface.interface.get_info_node_obj():
+                return iface.interface.get_info_node_obj()
         return self.nodes[0] if self.nodes and len(self.nodes) > 0 else None
 
     def get_intf_total_error_count(self):

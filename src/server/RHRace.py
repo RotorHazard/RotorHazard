@@ -35,7 +35,7 @@ class Crossing(dict):
     deleted: bool = False
     late_lap: bool = False
     invalid: bool = False
-    peak_rssi: int = None
+    peak_rssi: int|None = None
     def __bool__(self):
         return True  # always evaluate object as 'True', even if underlying dict is empty
     def asdict(self):
@@ -661,7 +661,8 @@ class RHRace():
                                 'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
                                 'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
                                 'frequency': self._racecontext.interface.nodes[node_index].frequency,
-                                'laps': self.node_laps[node_index]
+                                'laps': self.node_laps[node_index],
+                                'marshal_type': self._racecontext.interface.node_map[node_index].interface.marshal_type
                                 }
 
                             self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {
@@ -855,7 +856,7 @@ class RHRace():
                                                        self._racecontext.interface.get_lap_source_str(source), pilot_namestr))
                                     lap_ok_flag = False
 
-                            if lap_ok_flag:
+                            if lap_ok_flag and not kwargs.get('ignore', False):
                                 if race_format.team_racing_mode == race_format.team_racing_mode == RacingMode.INDIVIDUAL:
                                     node_finished_flag = self.get_node_finished_flag(node.index)
                                     if not node_finished_flag:

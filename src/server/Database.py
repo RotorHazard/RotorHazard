@@ -344,6 +344,7 @@ class SavedPilotRace(Base):
     enter_at = DB.Column(DB.Integer, nullable=False)
     exit_at = DB.Column(DB.Integer, nullable=False)
     frequency = DB.Column(DB.Integer, nullable=True)
+    marshal_type = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<SavedPilotRace %r>' % self.id
@@ -360,6 +361,7 @@ class SavedRaceLap(Base):
     lap_time_formatted = DB.Column(DB.String, nullable=False)
     source = DB.Column(DB.Integer, nullable=False)
     deleted = DB.Column(DB.Boolean, nullable=False)
+    peak_rssi = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id
