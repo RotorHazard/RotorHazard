@@ -3613,8 +3613,8 @@ def start(port_val=RaceContext.serverconfig.get_item('GENERAL', 'HTTP_PORT'), ar
             'debug': True,
             'use_reloader': False
         }
-        ssl_type = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL')
-        if ssl_type:
+        ssl_enabled = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL')
+        if ssl_enabled:
             ssl_cert = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_CERT')
             ssl_key = RaceContext.serverconfig.get_item('GENERAL', 'HTTP_SSL_KEY')
             cert_path = werkzeug.security.safe_join(DATA_DIR, ssl_cert)
