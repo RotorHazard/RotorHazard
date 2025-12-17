@@ -422,7 +422,7 @@ class RHMarshal {
 				lap.crossingStart = lap.lap_time_stamp;
 				lap.crossingEnd = lap.lap_time_stamp + 1;
 
-				if (lap.lap_time_stamp < min_first_crossing_ms) {
+				if (lap.lap_time_stamp < self.min_first_crossing_ms) {
 					lap.deleted = true;
 				} else if (lap.peak_rssi < self.race.enter_at) {
 					lap.deleted = true;
@@ -497,9 +497,10 @@ class RHMarshal {
 								crossingEnd: crossingEnd,
 								lap_time_stamp: lap_time_stamp, // zero stamp within race
 								source: 2, // recalc
+								peak_rssi: peakRssi,
 								deleted: false
 							};
-							if (lap_time_stamp < min_first_crossing_ms) {
+							if (lap_time_stamp < self.min_first_crossing_ms) {
 								lapdata.deleted = true;
 							} else if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap_ms) {
 								lapdata.deleted = true;
@@ -563,7 +564,7 @@ class RHMarshal {
 	recalcRace() {
 		self.calcLaps();
 		if (self.race_loaded) {
-			if (self.race.marshal_type == MARSHAL_TYPE.RSSI) {
+			if (!self.race.marshal_type || self.race.marshal_type == MARSHAL_TYPE.RSSI) {
 				var laps = self.race.calc_result;
 				for (var lap_i in self.race.laps) {
 					var lap = self.race.laps[lap_i];

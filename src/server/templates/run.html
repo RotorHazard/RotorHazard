@@ -1600,11 +1600,9 @@
 			rotorhazard.min_lap_s = parseIntDefault(msg.min_lap);
 			rotorhazard.min_lap_behavior = parseIntDefault(msg.min_lap_behavior);
 			rotorhazard.min_first_crossing_s = parseIntDefault(msg.min_first_crossing);
-			if (marshal) {
-				marshal.min_lap_ms = parseIntDefault(msg.min_lap) * 1000;
-				marshal.min_lap_behavior = parseIntDefault(msg.min_lap_behavior);
-				marshal.min_first_crossing_ms = parseIntDefault(msg.min_first_crossing) * 1000;
-			}
+			marshal.min_lap_ms = parseIntDefault(msg.min_lap) * 1000;
+			marshal.min_lap_behavior = parseIntDefault(msg.min_lap_behavior);
+			marshal.min_first_crossing_ms = parseIntDefault(msg.min_first_crossing) * 1000;
 		});
 
 		$('#set_min_lap').change(function (event) {

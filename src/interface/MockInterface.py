@@ -8,7 +8,7 @@ import gevent # For threads and timing
 from time import monotonic # to capture read timing
 
 from Node import Node
-from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
+from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory, MarshalType
 from RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
                         FW_BUILDDATE_PREFIXSTR, FW_BUILDTIME_PREFIXSTR, \
                         FW_PROCTYPE_PREFIXSTR
@@ -29,6 +29,7 @@ class MockInterface(BaseHardwareInterface):
         self.FW_BUILDTIME_PREFIXSTR = FW_BUILDTIME_PREFIXSTR
         self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
         self.update_thread = None # Thread for running the main update loop
+        self.marshal_type = MarshalType.FULL_RSSI
 
         self.config = kwargs['config'] # provides access to RH config
         self.nodes = [] # Array to hold each node object
