@@ -3826,7 +3826,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # process mirrors last
         all_secondaries = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES')
-        all_secondaries.sort(key=lambda x: (x['mode'] == 'mirror'))
+        all_secondaries.sort(key=lambda x: (x['mode'] == 'mirror' if 'mode' in x else False))
 
         try:
             for sec_idx, secondary_info in enumerate(all_secondaries):
