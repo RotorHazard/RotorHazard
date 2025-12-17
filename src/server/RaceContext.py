@@ -93,6 +93,7 @@ class ServerState:
     node_api_levels = [None]
     node_version_match = None
     node_fw_versions = [None]
+    rhapi_version = None
 
     # STATE
     interface_started = False

@@ -218,6 +218,7 @@ RaceContext.serverstate.data_dir = DATA_DIR
 RaceContext.serverstate.program_dir = PROGRAM_DIR
 RaceContext.serverstate.implicit_program_dir_flag = implicit_program_dir_flag
 RaceContext.serverstate.do_rhdata_migrate_flag = False
+RaceContext.serverstate.rhapi_version = ".".join(map(str, (RHAPI.API_VERSION_MAJOR, RHAPI.API_VERSION_MINOR)))
 
 RaceContext.interface = InterfaceMapper(RaceContext)
 Events = EventManager(RaceContext)

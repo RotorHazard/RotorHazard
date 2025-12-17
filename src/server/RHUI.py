@@ -16,6 +16,7 @@ import urllib3
 import re
 from collections import OrderedDict
 import gevent
+from packaging import version
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod, RoundType
@@ -530,6 +531,11 @@ class RHUI():
                 logger.info("Unable to query plugins server (no internet access?): {}".format(ex))
             except:
                 logger.exception("Error querying plugins server")
+
+        rhapi_version = version.parse(self._racecontext.serverstate.rhapi_version)
+        for plugin in plugin_data.values():
+            min_version = version.parse(plugin['manifest']['required_rhapi_version'])
+            plugin['rh_version_supported'] = rhapi_version >= min_version
 
         emit_payload = {
             'remote_categories': category_data,
