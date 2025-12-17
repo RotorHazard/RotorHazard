@@ -204,11 +204,18 @@
 								.addClass('status')
 								.appendTo(plugin_el);
 
-							var install_btn = $(document.createElement('button'))
-									.addClass('install_plugin')
-									.data('domain', plugin.manifest.domain)
-									.text(__('Install'))
+							if (!plugin.rh_version_supported) {
+								plugin_el.addClass('load-fail');
+								var install_btn = $(document.createElement('div'))
+									.text(__('Not supported by this version of RotorHazard'))
 									.appendTo(status_el);
+							}
+
+							var install_btn = $(document.createElement('button'))
+								.addClass('install_plugin')
+								.data('domain', plugin.manifest.domain)
+								.text(__('Install'))
+								.appendTo(status_el);
 
 							if (plugin.update_status == 5) {
 								install_btn.text(__('Reinstall'))
@@ -218,7 +225,6 @@
 
 							cat_plugin_list_el.append(plugin_el);
 						}
-
 					}
 				}
 			}
