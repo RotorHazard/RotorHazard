@@ -2819,7 +2819,10 @@ def on_plugin_install(data):
     try:
         if data['method'] == 'domain':
             plugin_id = data['domain']
-            RaceContext.plugin_manager.download_plugin(data['domain'])
+            if ('tag' in data):
+                RaceContext.plugin_manager.download_plugin(data['domain'], data['tag'])
+            else:
+                RaceContext.plugin_manager.download_plugin(data['domain'])
         elif data['method'] == 'upload':
             plugin_id = '(uploaded file)'
             RaceContext.plugin_manager.install_from_upload(data['source_data'])

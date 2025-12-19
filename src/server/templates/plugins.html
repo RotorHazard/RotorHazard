@@ -13,6 +13,7 @@
 
 	// Directory meta
 	var plugins_by_category = []
+	rotorhazard.plugins.show_releases = {{ getConfig('PLUGINS', 'SHOW_RELEASES')|tojson }}
 
 	// set up markdown converter
 	var converter = new showdown.Converter({
@@ -132,7 +133,7 @@
 								}
 							}
 
-							if(plugin.manifest.version) {
+							if (!rotorhazard.plugins.show_releases && plugin.manifest.version) {
 								$(document.createElement('div'))
 									.addClass('version')
 									.text(plugin.manifest.version)
@@ -207,8 +208,28 @@
 							if (!plugin.rh_version_supported) {
 								plugin_el.addClass('load-fail');
 								var install_btn = $(document.createElement('div'))
-									.text(__('Not supported by this version of RotorHazard'))
+									.text(__('Latest plugin release is not supported by this version of RotorHazard'))
 									.appendTo(status_el);
+							}
+
+							if (rotorhazard.plugins.show_releases && plugin.releases) {
+								var install_selector = $(document.createElement('select'))
+									.addClass(`${plugin.manifest.domain}--tags`)
+									.appendTo(status_el);
+
+								for (var iii in plugin.releases) {
+									var release = plugin.releases[iii];
+									var tag_label = release.tag_name;
+									var opt = $(document.createElement('option'))
+										.text(tag_label)
+										.val(release.tag_name)
+										.appendTo(install_selector);
+
+									if (release.prerelease) {
+										opt.addClass('prerelease');
+									}
+
+								}
 							}
 
 							var install_btn = $(document.createElement('button'))
@@ -235,6 +256,9 @@
 				method: 'domain',
 				domain: $(this).data('domain'),
 			};
+			if ($(`.${data.domain}--tags`)) {
+				data.tag = $(`.${data.domain}--tags`).val();
+			}
 			socket.emit('plugin_install', data);
 		});
 
@@ -249,13 +273,35 @@
 		});
 
 		$(document).on('change', '.set-config', function (event) {
-			value = $(this).val();
+			var value = $(this).val();
+			if ($(this).data('type') == 'boolean' ) {
+				if (value == 'true') {
+					value = true;
+				} else {
+					value = false;
+				}
+			} else if ($(this).data('type') == 'int' || $(this).attr('type') == 'number') {
+				value = Number(value);
+			}
+
 			var data = {
 				section: $(this).data('section'),
 				key: $(this).data('key'),
 				value: value
 			};
 			socket.emit('set_config', data);
+		});
+
+		$(document).on('change', '#set-plugin-show-releases', function (event) {
+			var value = $(this).val();
+			if (value == 'true') {
+				rotorhazard.plugins.show_releases = true;
+			} else {
+				rotorhazard.plugins.show_releases = false;
+			}
+			if (rotorhazard.plugins.remote) {
+				display_plugin_list();
+			}
 		});
 	});
 </script>
@@ -278,6 +324,15 @@
 				<select id="set-plugin-update" class="set-config" data-section="PLUGINS" data-key="UPDATE_BEHAVIOR">
 					<option value="check" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='check'}}>{{ __('Check for updates at startup') }}</option>
 					<option value="none" {{'selected' if getConfig('PLUGINS', 'UPDATE_BEHAVIOR')=='none'}}>{{ __('Never check for updates') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set-plugin-show-releases">{{ __('Install Version') }}</label>
+				</div>
+				<select id="set-plugin-show-releases" class="set-config" data-section="PLUGINS" data-key="SHOW_RELEASES" data-type="boolean">
+					<option value="false" {{'selected' if getConfig('PLUGINS', 'SHOW_RELEASES')==false}}>{{ __('Default') }}</option>
+					<option value="true" {{'selected' if getConfig('PLUGINS', 'SHOW_RELEASES')==true}}>{{ __('Select from list') }}</option>
 				</select>
 			</li>
 		</ol>
