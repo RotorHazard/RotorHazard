@@ -2329,7 +2329,9 @@ def cancel_schedule_race(*args):
 
 @SOCKET_IO.on('stage_race')
 def on_stage_race(*args):
-    RaceContext.race.stage(*args)
+    result = RaceContext.race.stage(*args)
+    if not result:
+        RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race(*args):
