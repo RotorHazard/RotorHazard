@@ -129,7 +129,7 @@ def parse_dict_to_dataclass(cls: type[T], data: dict[str, Any]) -> T:
     if not hasattr(cls, "__dataclass_fields__"):
         raise TypeError(f"{cls.__name__} is not a dataclass.")
 
-    field_values = {}
+    field_values: dict[str, T | list[T]] = {}
     for field_info in fields(cls):  # type: ignore
         field_name = field_info.name
         field_type: type = field_info.type  # type: ignore
@@ -334,10 +334,10 @@ class PluginInstallationManager:
         for release_ in plugin_data.releases:
             if release_.tag_name == tag:
                 break
-            else:
-                raise PluginInstallationError(
-                    "Remote data does not contain a matching release version", domain
-                )
+        else:
+            raise PluginInstallationError(
+                "Remote data does not contain a matching release version", domain
+            )
 
         try:
             self._download_and_install_plugin(
