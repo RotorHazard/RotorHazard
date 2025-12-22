@@ -580,7 +580,7 @@ class RHUI():
         else:
             self._socket.emit('config_update', emit_payload)
 
-    def emit_heat_plan_result(self, new_heat_id, calc_result):
+    def emit_heat_plan_result(self, new_heat_id, calc_result, preassignments=None):
         heat = self._racecontext.rhdata.get_heat(new_heat_id)
         heatNodes = []
 
@@ -596,7 +596,11 @@ class RHUI():
                 'callsign': None,
                 'method': heatNode.method,
                 'seed_rank': heatNode.seed_rank,
-                'seed_id': heatNode.seed_id
+                'seed_id': heatNode.seed_id,
+                'id': heatNode.id,
+                'preassigned': None,
+                'frequency_change': None,
+                'last_frequency': None
                 }
             if heatNode.pilot_id:
                 pilot = self._racecontext.rhdata.get_pilot(heatNode.pilot_id)
@@ -605,8 +609,11 @@ class RHUI():
                     if pilot.used_frequencies and heatNode.node_index is not None:
                         used_freqs = json.loads(pilot.used_frequencies)
                         heatNode_data['frequency_change'] = (used_freqs[-1]['f'] != profile_freqs["f"][heatNode.node_index])
+                        heatNode_data['last_frequency'] = used_freqs[-1]['f']
                     else:
                         heatNode_data['frequency_change'] = True
+
+                    heatNode_data['preassigned'] = (preassignments and heatNode.id in preassignments)
 
             heatNodes.append(heatNode_data)
 

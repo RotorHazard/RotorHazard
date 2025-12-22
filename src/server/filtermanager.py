@@ -74,6 +74,8 @@ class Flt:
     HEAT_DUPLICATE = 'heatDuplicate'
     HEAT_ALTER = 'heatAlter'
     HEAT_ALTER_ATTRIBUTE = 'heatAlterAttribute'
+    AUTO_FREQ_PREASSIGN = 'heatAutoFreqPreassign'
+    AUTO_FREQ_FUNCTION = 'heatAutoFreqFunction'
     CLASS_ADD = 'classAdd'
     CLASS_DUPLICATE = 'classDuplicate'
     CLASS_ALTER = 'classAlter'

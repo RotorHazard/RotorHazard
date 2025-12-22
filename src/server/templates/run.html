@@ -656,7 +656,9 @@
 		}
 
 		socket.on('heat_plan_result', function (msg) {
-			display_race_plan_result(msg);
+			if (rotorhazard.event.heats) {
+				display_race_plan_result(msg);
+			}
 			// TODO: store data locally; wait for rotorhazard.event.heats population
 		});
 
@@ -677,30 +679,23 @@
 			}
 
 			var heat_el = $('<div class="heat-plan">');
+			heat_el.data('heat_id', msg.heat);
 			var nodelist = $('<table>');
 			for (idx in msg.slots) {
 				var slot = msg.slots[idx];
 				var slot_el = $('<tr>');
+				slot_el.data('slot_id', slot.id);
+				slot_el.data('last_frequency', slot.last_frequency);
+
+				if (slot.preassigned) {
+					slot_el.addClass('preassigned');
+					slot_el.data('preassigned', slot.node_index);
+				}
 
 				if (slot.method == 0 && slot.pilot_id ||
 					slot.method > 0 && slot.seed_id) {
 					var method_text = get_method_descriptor(slot.method, slot.seed_id, slot.seed_rank)
 					slot_el.append('<td class="method">' + method_text + '</td>');
-
-					if (Number.isInteger(slot.node_index)) {
-						if (slot.frequency_change) {
-							slot_el.addClass('freq-change');
-							slot_el.append('<td class="calc_to">&#x25c8;<span class="screen-reader-text">' + __('frequency change') + '</span></td>');
-						} else {
-							slot_el.append('<td class="calc_to">&#x2192;</td>');
-						}
-
-						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
-					} else {
-						slot_el.addClass('no-freq');
-						slot_el.append('<td class="calc_to">&#x00D7;</td>');
-						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
-					}
 
 					if (slot.pilot_id) {
 						/*
@@ -715,10 +710,26 @@
 						} else {
 							var callsign = "(" + __("Pilot") + " " + slot.pilot_id + ")"
 						}
-						slot_el.append('<td class="pilot-name">' + callsign + '</td>');
 					} else {
 						slot_el.addClass('no-pilot');
-						slot_el.append('<td class="pilot-name">' + __('(None)') + '</td>');
+						var callsign = __('(None)');
+					}
+					slot_el.data('callsign', callsign);
+					slot_el.append('<td class="pilot-name">' + callsign + '</td>');
+
+					if (Number.isInteger(slot.node_index)) {
+						if (slot.frequency_change) {
+							slot_el.addClass('freq-change');
+							slot_el.append('<td class="calc_to">' + __('to') + '</td>');
+						} else {
+							slot_el.append('<td class="calc_to">' + __('on') + '</td>');
+						}
+
+						slot_el.append('<td class="channel"><div class="channel-block" data-node="' + slot.node_index + '"><span class="ch"></span> <span class="fr"></span></div></td>');
+					} else {
+						slot_el.addClass('no-freq');
+						slot_el.append('<td class="calc_to">&#x00D7;</td>');
+						slot_el.append('<td class="channel"><div class="channel-block"><span class="ch">—</span> <span class="fr">None</span></div></td>');
 					}
 
 					nodelist.append(slot_el);
@@ -729,8 +740,8 @@
 			message_content.append(heat_el);
 
 			var actions_el = $('<div class="dialog-actions">');
-			actions_el.append('<a href="/format#classes_and_heats">' + __('Modify Plans') + '</a>');
 			actions_el.append('<button class="cancel">' + __('Cancel') + '</button>');
+			$('<button class="plan-calc">' + __('Reseed') + '</button>').data('id', msg.heat).appendTo(actions_el);
 			actions_el.append('<button class="btn-danger confirm-heat-plan" data-heat_id="' + msg.heat + '">' + __('Confirm') + '</button>');
 			message_content.append(actions_el);
 
@@ -748,6 +759,58 @@
 
 			freq.updateBlocks();
 		}
+
+		$(document).on("click", '.heat-plan-result table .channel-block', function (event) {
+			var slot_el = $(this).closest('tr');
+			var slot = slot_el.data('slot_id');
+			var last_frequency = slot_el.data('last_frequency');
+			var channel_selector_ui = $('<div class="channel-selector-ui">');
+			$('<h3>' + __('Assign') + ' ' + slot_el.data('callsign') + '</h3>').appendTo(channel_selector_ui);
+			var channel_selector = $('<div class="channel-block-selector">');
+			channel_selector.data('slot_id', slot);
+			channel_selector.data('preassigned', slot_el.data('preassigned'));
+			for (var i in rotorhazard.nodes) {
+				if (rotorhazard.nodes[i].fObj?.frequency) {
+					var block = $('<div class="channel-block" data-node="' + i + '"><span class="ch"></span> <span class="fr"></span>');
+					if (rotorhazard.nodes[i].fObj?.frequency != last_frequency) {
+						block.addClass('freq-change');
+					}
+					block.appendTo(channel_selector);
+				}
+			}
+			channel_selector.appendTo(channel_selector_ui);
+			$('.heat-plan').append(channel_selector_ui);
+			freq.updateBlocks();
+		});
+
+		$(document).on("click", '.channel-block-selector .channel-block', function (event) {
+			var heat_id = $(this).closest('.heat-plan').data('heat_id');
+			var selector = $(this).closest('.channel-block-selector');
+			var slot = parseInt(selector.data('slot_id'));
+			var seat = parseInt($(this).data('node'));
+
+			var preassigned_data = {};
+			$(this).closest('.heat-plan').children('table').children('tr').each(function(idx){
+				var preassigned_node = $(this).data('preassigned');
+				if (preassigned_node != undefined && preassigned_node != seat) {
+					preassigned_data[$(this).data('slot_id')] = preassigned_node;
+				}
+			});
+
+			var data = {
+				heat: heat_id,
+				preassignments: preassigned_data,
+			};
+			data.preassignments[slot] = seat;
+			socket.emit('calc_pilots', data);
+		});
+
+		$(document).on("click", 'button.plan-calc', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('calc_pilots', data);
+		});
 
 		$(document).on("click", '.confirm-heat-plan', function (event) {
 			$.magnificPopup.close();
