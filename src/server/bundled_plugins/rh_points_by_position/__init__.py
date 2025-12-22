@@ -8,11 +8,14 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 logger = logging.getLogger(__name__)
 
 def points_by_position(_rhapi, leaderboard, args):
-    try:
-        points_list = [int(x.strip()) for x in args['points_list'].split(',')]
-    except:
-        logger.info("Unable to parse points list string")
-        return leaderboard
+    if args.get('points_list'):
+        try:
+            points_list = [int(x.strip()) for x in args['points_list'].split(',')]
+        except:
+            logger.info("Unable to parse points list string")
+            return leaderboard
+    else:
+        points_list = [10, 6, 3, 1]
 
     lb = leaderboard[leaderboard['meta']['primary_leaderboard']]
 
