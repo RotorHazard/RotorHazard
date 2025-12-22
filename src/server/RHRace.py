@@ -220,13 +220,14 @@ class RHRace():
                 if from_scheduler:
                     if self.race_status != RaceStatus.DONE and self.scheduler_forcing_save:
                         self.scheduler_forcing_save = False
-                        logger.info("Race scheduler is forcing active race save")
+                        logger.info("Race scheduler forcing active race save")
                         self.do_save_actions()
                     else:
                         self.scheduler_forcing_save = False
                         logger.info("Scheduled race prevented by unsaved active race")
                         self._racecontext.rhui.emit_priority_message(
                             self.__("Scheduled race not started: Active race results not finalized"), True)
+                        self.schedule(0)
                         return
 
                 if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
@@ -586,7 +587,6 @@ class RHRace():
                     node.start_thresh_lower_time = self.end_time + 0.1
 
         self.timer_running = False # indicate race timer not running
-        self.scheduled = False # also stop any deferred start
 
         self._racecontext.rhui.emit_race_status() # Race page, to set race button states
         self._racecontext.rhui.emit_current_leaderboard()
