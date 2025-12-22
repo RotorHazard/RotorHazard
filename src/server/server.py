@@ -2941,7 +2941,7 @@ def heartbeat_thread_function():
             # check if race is to be started
             if RaceContext.race.scheduled:
                 if time_now > RaceContext.race.scheduled_time:
-                    on_stage_race()
+                    RaceContext.race.stage(from_scheduler=True)
                     RaceContext.race.scheduled = False
 
             # if any comm errors then log them (at defined intervals; faster if debug mode)

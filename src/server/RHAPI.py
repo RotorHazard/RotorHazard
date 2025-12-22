@@ -1224,8 +1224,8 @@ class RaceAPI():
     def race_leader_pilot_id(self):
         return self._racecontext.race.race_leader_pilot_id
     
-    def schedule(self, sec_or_none, minutes=0):
-        return self._racecontext.race.schedule(sec_or_none, minutes)
+    def schedule(self, sec_or_none, minutes=0, force_save=False):
+        return self._racecontext.race.schedule(sec_or_none, minutes, force_save)
 
     @property
     def scheduled(self):

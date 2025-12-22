@@ -609,7 +609,7 @@
 		});
 
 		socket.on('stop_timer', function (msg) {
-			rotorhazard.timer.stopAll();
+			rotorhazard.timer.race.stop();
 		});
 
 		socket.on('pilot_data', function (msg) {
