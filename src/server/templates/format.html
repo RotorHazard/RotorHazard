@@ -3120,6 +3120,7 @@
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
+			$('#set_min_first_crossing').val(msg.min_first_crossing);
 			rotorhazard.min_lap = msg.min_lap;
 		});
 
@@ -3137,6 +3138,14 @@
 				min_lap_behavior: parseInt($(this).val())
 			};
 			socket.emit('set_min_lap_behavior', data);
+		})
+
+		$('#set_min_first_crossing').change(function (event) {
+			var min_first_crossing_val = parseInt($(this).val());
+			var data = {
+				min_first_crossing: min_first_crossing_val
+			};
+			socket.emit('set_min_first_crossing', data);
 		})
 
 		/* Database Reset */
@@ -3611,6 +3620,13 @@
 					<option value="0">{{ __('Highlight Short Laps') }}</option>
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_first_crossing">{{ __('Ignore Crossings Before') }}</label>
+					<p class="desc">{{ __('Seconds') }}</p>
+				</div>
+				<input type="number" id="set_min_first_crossing" min="0" max="999" value="{{ getOption('MinFirstCrossingSec') }}">
 			</li>
 		</ol>
 

@@ -796,9 +796,11 @@ class RHRace():
 
                             if race_format is self._racecontext.serverstate.secondary_race_format:
                                 min_lap = 0  # don't enforce min-lap time if running as secondary timer
+                                min_first_lap = 0
                                 min_lap_behavior = 0
                             else:
                                 min_lap = self._racecontext.rhdata.get_optionInt("MinLapSec")
+                                min_first_lap = self._racecontext.rhdata.get_optionInt("MinFirstCrossingSec")
                                 min_lap_behavior = self._racecontext.serverconfig.get_item_int('TIMING', "MinLapBehavior")
 
                             lap_time_fmtstr = RHUtils.format_time_to_str(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
@@ -815,7 +817,19 @@ class RHRace():
                             lap_ok_flag = True
                             lap_late_flag = False
                             pilot_done_flag = False
-                            if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
+                            if lap_number == 0:
+                                if lap_time < (min_first_lap * 1000):  # if lap time less than minimum first crossing
+                                    node.under_min_lap_count += 1
+                                    logger.info(
+                                        'Pass record before minimum first crossing ({}): Node={}, sinceStart={}, count={}, source={}, pilot: {}' \
+                                        .format(min_lap, node.index + 1,
+                                                lap_ts_fmtstr, \
+                                                node.under_min_lap_count,
+                                                self._racecontext.interface.get_lap_source_str(source), \
+                                                pilot_namestr))
+                                    lap_ok_flag = False # always discard
+
+                            else:
                                 if lap_time <= 0: # if lap is non-sequential
                                     logger.info('Ignoring lap prior to already recorded lap: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
                                                .format(node.index+1, lap_number, \

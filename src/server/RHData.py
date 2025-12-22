@@ -3633,6 +3633,7 @@ class RHData():
         self.set_option("currentHeat", "0")
         # minimum lap
         self.set_option("MinLapSec", "10")
+        self.set_option("MinFirstCrossingSec", "0")
         # event information
         self.set_option("eventName", self.generate_new_event_name())
         self.set_option("eventDescription", "")
