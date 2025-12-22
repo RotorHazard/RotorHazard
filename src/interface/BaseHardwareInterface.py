@@ -38,6 +38,11 @@ class BaseHardwareInterface(object):
         self.node_crossing_callback = None # Function added in server.py
         self.nodes = []
         self.marshal_type = None
+        self.ready_failure_msg = None
+
+    @property
+    def ready(self):
+        return True
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):

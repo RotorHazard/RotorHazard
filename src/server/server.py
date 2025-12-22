@@ -478,12 +478,13 @@ def render_results():
 @requires_auth
 def render_run():
     '''Route to race management page.'''
-    frequencies = [node.frequency for node in RaceContext.interface.nodes]
+    profile_freqs = json.loads(RaceContext.race.profile.frequencies)
+
     nodes = []
-    for idx, freq in enumerate(frequencies):
-        if freq:
+    for idx, node in enumerate(RaceContext.interface.nodes):
+        if profile_freqs["f"][idx]:
             nodes.append({
-                'freq': freq,
+                'freq': profile_freqs["f"][idx],
                 'index': idx
             })
 
@@ -2342,7 +2343,9 @@ def cancel_schedule_race(*args):
 
 @SOCKET_IO.on('stage_race')
 def on_stage_race(*args):
-    RaceContext.race.stage(*args)
+    result = RaceContext.race.stage(*args)
+    if not result:
+        RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race(*args):
