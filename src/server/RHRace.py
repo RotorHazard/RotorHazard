@@ -124,6 +124,15 @@ class RHRace():
 
         data = self._filters.run_filters(Flt.RACE_STAGE, data)
 
+        for ifmeta in self._racecontext.interface.mapped_interfaces:
+            if not ifmeta.interface.ready:
+                logger.info(f"Canceling staging, timing interface not ready: {ifmeta.interface.ready_failure_msg}")
+                if request:
+                    gevent.spawn(emit_alert_msg, self, \
+                        self._racecontext.language.__("Can't start race; timing interface not ready: {}")
+                                 .format(self._racecontext.language.__(ifmeta.interface.ready_failure_msg)))
+                return False
+
         with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
 
             if data and data.get('secondary_format'):
