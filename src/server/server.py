@@ -218,6 +218,7 @@ RaceContext.serverstate.data_dir = DATA_DIR
 RaceContext.serverstate.program_dir = PROGRAM_DIR
 RaceContext.serverstate.implicit_program_dir_flag = implicit_program_dir_flag
 RaceContext.serverstate.do_rhdata_migrate_flag = False
+RaceContext.serverstate.rhapi_version = ".".join(map(str, (RHAPI.API_VERSION_MAJOR, RHAPI.API_VERSION_MINOR)))
 
 RaceContext.interface = InterfaceMapper(RaceContext)
 Events = EventManager(RaceContext)
@@ -2821,7 +2822,10 @@ def on_plugin_install(data):
     try:
         if data['method'] == 'domain':
             plugin_id = data['domain']
-            RaceContext.plugin_manager.download_plugin(data['domain'])
+            if ('tag' in data):
+                RaceContext.plugin_manager.download_plugin(data['domain'], data['tag'])
+            else:
+                RaceContext.plugin_manager.download_plugin(data['domain'])
         elif data['method'] == 'upload':
             plugin_id = '(uploaded file)'
             RaceContext.plugin_manager.install_from_upload(data['source_data'])
@@ -3692,7 +3696,12 @@ def rh_program_initialize(reg_endpoints_flag=True):
             'data_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_DATA_URI'),
             'categories_uri': RaceContext.serverconfig.get_item('PLUGINS', 'REMOTE_CATEGORIES_URI')
         }
-        RaceContext.plugin_manager = PluginInstallationManager(plugin_dir, remote_config)
+        RaceContext.plugin_manager = PluginInstallationManager(
+            plugin_dir, 
+            remote_config, 
+            ".".join(map(str, (RHAPI.API_VERSION_MAJOR, RHAPI.API_VERSION_MINOR))), 
+            RaceContext.rhui.emit_priority_message
+        )
 
         try:
             RaceContext.plugin_manager.load_local_plugin_data()
