@@ -58,6 +58,7 @@ class RHRace():
         # sequence
         self.scheduled = False # Whether to start a race when time
         self.scheduled_time = 0 # Start race when time reaches this value
+        self.scheduler_forcing_save = False # Scheduler will force race status to ready by saving active race if needed
         self.start_token = False # Check start thread matches correct stage sequence
         # status
         self.race_status = RaceStatus.READY
@@ -114,7 +115,7 @@ class RHRace():
 
 
     @catchLogExceptionsWrapper
-    def stage(self, data=None, immediate=False):
+    def stage(self, data=None, immediate=False, from_scheduler=False):
         # need to show alert via spawn in case a clear-messages event was just triggered
         if request:
             @catchLogExceptionsWrapper
@@ -124,7 +125,7 @@ class RHRace():
 
         data = self._filters.run_filters(Flt.RACE_STAGE, data)
 
-        with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
+        with ((self._racecontext.rhdata.get_db_session_handle())):  # make sure DB session/connection is cleaned up
 
             if data and data.get('secondary_format'):
                 self.format = self._racecontext.serverstate.secondary_race_format
@@ -216,6 +217,18 @@ class RHRace():
                         heatNodes.append(heatNode)
 
             if self.race_status != RaceStatus.READY:
+                if from_scheduler:
+                    if self.race_status != RaceStatus.DONE and self.scheduler_forcing_save:
+                        self.scheduler_forcing_save = False
+                        logger.info("Race scheduler is forcing active race save")
+                        self.do_save_actions()
+                    else:
+                        self.scheduler_forcing_save = False
+                        logger.info("Scheduled race prevented by unsaved active race")
+                        self._racecontext.rhui.emit_priority_message(
+                            self.__("Scheduled race not started: Active race results not finalized"), True)
+                        return
+
                 if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
                     if self.race_status == RaceStatus.RACING:
                         return  # if race in progress then leave it be
@@ -1332,20 +1345,18 @@ class RHRace():
             node.first_cross_flag = False
             node.show_crossing_flag = False
 
-    def schedule(self, s, m=0):
+    def schedule(self, s, m=0, force_save=False):
         with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
-
-            if self.race_status != RaceStatus.READY:
-                logger.info("Ignoring request to schedule race: Status not READY")
-                return False
 
             if s or m:
                 self.scheduled = True
                 self.scheduled_time = monotonic() + (int(m) * 60) + int(s)
+                self.scheduler_forcing_save = force_save
 
                 self._racecontext.events.trigger(Evt.RACE_SCHEDULE, {
                     'scheduled_at': self.scheduled_time,
                     'heat_id': self.current_heat,
+                    'forced_save': force_save
                     })
 
                 self._racecontext.rhui.emit_priority_message(self.__("Next race begins in") + " {0:01d}:{1:02d}".format(int(m), int(s)), True)
@@ -1354,6 +1365,7 @@ class RHRace():
             else:
                 if self.scheduled:
                     self.scheduled = False
+                    self.scheduler_forcing_save = False
                     self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL, {
                         'heat_id': self.current_heat,
                         })
