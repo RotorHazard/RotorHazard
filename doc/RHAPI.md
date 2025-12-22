@@ -1315,10 +1315,11 @@ Pilot database ID of current race leader. Returns `int`, or `None`.
 _Read only_
 Internal (monotonic) timestamp of scheduled race staging start time. Returns `int`, or `None` if race is not scheduled. 
 
-#### race.schedule(sec_or_none, minutes=0)
+#### race.schedule(sec_or_none, minutes=0, force_save=False)
 Schedule race with a relative future time offset. Fails if `race.status` is not `READY`. Cancels existing schedule if both values are falsy. Returns boolean success value.
 - `sec_or_none`: seconds ahead to schedule race
 - `minutes` _(optional)_: minutes ahead to schedule race
+- `force_save` _(optional)_: if `True` and active race is stopped at scheduled time, save and stage race
 
 #### race.stage()
 Begin race staging sequence. May fail if `race.status` is not `READY`. No return value.

@@ -1223,7 +1223,7 @@
 		}
 
 		socket.on('stop_timer', function (msg) {
-			rotorhazard.timer.stopAll();
+			rotorhazard.timer.race.stop();
 		});
 
 		socket.on('stage_ready', function (msg) {
@@ -1237,7 +1237,7 @@
 				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
-				rotorhazard.timer.stopAll();
+				rotorhazard.timer.race.stop();
 				$('.time-display').html('--:--');
 				socket.emit('stage_race');
 			}
@@ -1250,7 +1250,7 @@
 				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
-				rotorhazard.timer.stopAll();
+				rotorhazard.timer.race.stop();
 				socket.emit('stop_race');
 			}
 		});
