@@ -125,7 +125,7 @@ class RHRace():
 
         data = self._filters.run_filters(Flt.RACE_STAGE, data)
 
-        with ((self._racecontext.rhdata.get_db_session_handle())):  # make sure DB session/connection is cleaned up
+        with (self._racecontext.rhdata.get_db_session_handle()):  # make sure DB session/connection is cleaned up
 
             if data and data.get('secondary_format'):
                 self.format = self._racecontext.serverstate.secondary_race_format
