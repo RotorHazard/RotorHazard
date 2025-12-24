@@ -1312,11 +1312,12 @@ main.page-home {
 
 .item-blocks .set_method {
 	flex: 0 0 5em;
-	margin-right: auto;
+	margin-right: 0.5em;
 }
 
 .item-blocks .set_rank {
 	flex: 0 0 5em;
+	margin-left: 0.5em;
 }
 
 .item-blocks .unlock {
@@ -1400,7 +1401,8 @@ main.page-home {
 .heats>li {
 	width: calc(20% - 0.5em);
 	margin: 0 0.25em 0.5em;
-	padding: 0;
+	padding-top: 5px;
+	padding-bottom: 20px;
 	box-sizing: border-box;
 }
 
@@ -1455,16 +1457,23 @@ ol.heat-edit-list>li {
 }
 
 .heat-edit>.set_heat_name {
-	position: absolute;
+
 	top: 0;
 	left: 0;
 	width: calc(100% - 6.5rem);
 	background: transparent;
 	border: transparent;
-	color: var(--contrast_1_high);
+	color: black;
 	font-weight: bold;
+	margin-top: 0.5rem;
+	margin-left: 0.5rem;
 }
 
+@media (prefers-color-scheme: dark) {
+    .heat-edit>.set_heat_name {
+        color: white;
+    }
+}
 .heat-edit>h4 {
 	color: transparent;
 	font-size: 1.17em;
@@ -1505,14 +1514,29 @@ ol.heat-edit-list>li {
 	}
 }
 
-.heats>li {
-	border: solid 0.0625em #d1d3d4;
+.auto-frequency-control-container {
+	display: flex;
+	width: 100%;
+	height: 50px;
+	margin: 1rem 0 0 0;
+	padding: 0 0.5rem;
+	box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-	.heats>li {
-		border-color: #4c4c4c;
-	}
+.autofrequency-control,
+.dynamic-controls {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	height: 100%;
+}
+
+.autofrequency-control {
+	justify-content: flex-start;
+}
+
+.dynamic-controls {
+	justify-content: flex-end;
 }
 
 .heats ol,
@@ -1569,7 +1593,7 @@ ol.heat-edit-list>li {
 }
 
 .heats label.auto_frequency {
-	margin: 0.25rem;
+	margin: 0.5rem;
 	display: block;
 }
 
@@ -1595,6 +1619,12 @@ ol.heat-edit-list>li {
 	box-sizing: border-box;
 	display: flex;
 	flex-wrap: wrap;
+}
+
+.heat-round-group {
+	margin-top: 0.5rem;
+	margin-left: 0.5rem;
+	margin-bottom: 0.0rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1724,12 +1754,25 @@ ol.heat-edit-list>li {
 .actions {
 	position: absolute;
 	top: 0.25rem;
-	right: 0.25em;
+	right: 0.25rem;
 	font-size: 0.9rem;
 	z-index: 100;
 }
 
 .actions button {
+	margin-left:0.5em;
+	font-weight: bold;
+}
+
+.actions_heat_card {
+	position: absolute;
+	top: 0.7rem;
+	right: 0.5rem;
+	font-size: 0.9rem;
+	z-index: 100;
+}
+
+.actions_heat_card button {
 	margin-left:0.5em;
 	font-weight: bold;
 }
@@ -1824,6 +1867,19 @@ ol.heat-edit-list>li {
 	}
 }
 
+.card-container {
+	background-color: #f1f2f4;
+	border: solid 0.0625em #e6e6e6;
+	border-radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	.card-container {
+		border-color: #4c4c4c;
+		background-color: #1a1a1a;
+	}
+}
+
 .race_classes h3 {
 	/* position: sticky;
 	top: 0;
@@ -1831,7 +1887,12 @@ ol.heat-edit-list>li {
 }
 
 .heat-edit-selectors {
+	padding: 20px ;
 	display: flex;
+}
+
+.heat-edit-selectors > *:not(:last-child) {
+	margin-right: 0.5rem;
 }
 
 .race_classes h3>button,
