@@ -3660,14 +3660,14 @@
 					<label for="set_consecutives_count">{{ __('Consecutive Laps Base') }}</label>
 					<p class="desc">{{ __('Used in results calculations') }}</p>
 				</div>
-				<input type="number" id="set_consecutives_count" class="set-consecutive-count" min="2" max="999" value="{{ getOption('consecutivesCount') }}" placeholder="3">
+				<input type="number" id="set_consecutives_count" class="set-consecutive-count" min="2" max="999" value="{{ get_optionInt('consecutivesCount') }}" placeholder="3">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
 					<p class="desc">{{ __('In seconds') }}</p>
 				</div>
-				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ get_optionNumeric('MinLapSec') }}">
 			</li>
 			<li>
 				<div class="label-block">
@@ -3683,7 +3683,7 @@
 					<label for="set_min_first_crossing">{{ __('Ignore Crossings Before') }}</label>
 					<p class="desc">{{ __('Seconds') }}</p>
 				</div>
-				<input type="number" id="set_min_first_crossing" min="0" max="999" value="{{ getOption('MinFirstCrossingSec') }}">
+				<input type="number" id="set_min_first_crossing" min="0" max="999" value="{{ get_optionNumeric('MinFirstCrossingSec') }}">
 			</li>
 		</ol>
 
