@@ -89,6 +89,7 @@ class Flt:
     RACE_FORMAT_ALTER_ATTRIBUTE = 'raceFormatAlterAttribute'
     OPTION_GET = 'optionGet'
     OPTION_GET_INT = 'optionGetInt'
+    OPTION_GET_NUMERIC = 'optionGetNumeric'
     OPTION_SET = 'optionSet'
 
     RACE_STAGE = 'raceStage'

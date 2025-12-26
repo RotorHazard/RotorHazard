@@ -2727,13 +2727,13 @@
 				<div class="label-block">
 					<label for="set_start_thresh_lower_amount">{{ __('Start of race EnterAt/ExitAt lowering amount (percent)') }}</label>
 				</div>
-				<input type="number" id="set_start_thresh_lower_amount" min="0" max="200" value="{{ getOption('start_thresh_lower_amount') }}">
+				<input type="number" id="set_start_thresh_lower_amount" min="0" max="200" value="{{ get_optionNumeric('start_thresh_lower_amount') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_start_thresh_lower_duration">{{ __('Start of race EnterAt/ExitAt lowering duration (seconds)') }}</label>
 				</div>
-				<input type="number" id="set_start_thresh_lower_duration" min="0" max="999" value="{{ getOption('start_thresh_lower_duration') }}">
+				<input type="number" id="set_start_thresh_lower_duration" min="0" max="999" value="{{ get_optionNumeric('start_thresh_lower_duration') }}">
 			</li>
 		</ol>
 

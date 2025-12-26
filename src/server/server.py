@@ -427,6 +427,8 @@ def render_template(template_name_or_list, **context):
         context.update({
             'serverInfo': RaceContext.serverstate.template_info_dict,
             'getOption': RaceContext.rhdata.get_option,
+            'get_optionInt': RaceContext.rhdata.get_optionInt,
+            'get_optionNumeric': RaceContext.rhdata.get_optionNumeric,
             'getConfig': RaceContext.serverconfig.get_item,
             '__': __,
             'Debug': RaceContext.serverconfig.get_item('GENERAL', 'DEBUG'),

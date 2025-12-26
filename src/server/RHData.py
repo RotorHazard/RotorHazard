@@ -15,6 +15,7 @@ import traceback
 import shutil
 import json
 import glob
+import numbers
 import RHUtils
 import Database
 import Results
@@ -3611,6 +3612,21 @@ class RHData():
             output = default_value
 
         return self._filters.run_filters(Flt.OPTION_GET_INT, output, {
+            'option': option,
+            'default_value': default_value
+        })
+
+    def get_optionNumeric(self, option, default_value=0):
+        try:
+            val = self._OptionsCache[option]
+            if isinstance(val, numbers.Real):
+                output = val
+            else:
+                output = default_value
+        except:
+            output = default_value
+
+        return self._filters.run_filters(Flt.OPTION_GET_NUMERIC, output, {
             'option': option,
             'default_value': default_value
         })

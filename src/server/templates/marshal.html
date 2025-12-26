@@ -23,9 +23,9 @@
 
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
-	var min_lap_ms = {{ getOption('MinLapSec') }} * 1000;
+	var min_lap_ms = {{ get_optionNumeric('MinLapSec') }} * 1000;
 	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
-	var min_first_crossing_ms = {{ getOption('MinFirstCrossingSec') }} * 1000;
+	var min_first_crossing_ms = {{ get_optionNumeric('MinFirstCrossingSec') }} * 1000;
 
 	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
 		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
