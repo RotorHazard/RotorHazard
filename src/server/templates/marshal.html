@@ -23,8 +23,9 @@
 
 	var start_thresh_lower_amount = 0;
 	var start_thresh_lower_duration = 0;
-	var min_lap = {{ getOption('MinLapSec') }} * 1000;
+	var min_lap_ms = {{ getOption('MinLapSec') }} * 1000;
 	var min_lap_behavior = {{ getConfig('TIMING', 'MinLapBehavior') }};
+	var min_first_crossing_ms = {{ getOption('MinFirstCrossingSec') }} * 1000;
 
 	if ('{{ getConfig('TIMING', 'startThreshLowerAmount') }}' != 'False') {
 		start_thresh_lower_amount = {{ getConfig('TIMING', 'startThreshLowerAmount') }};
@@ -54,7 +55,7 @@
 
 			if (lap.deleted) {
 				lapData.addClass('lap-deleted');
-			} else if (lap_index && lap.lap_time < min_lap) {
+			} else if (lap_index && lap.lap_time < min_lap_ms) {
 				lapData.addClass('min-lap-warning');
 			}
 
@@ -160,8 +161,9 @@
 		time_format: {{ getConfig('UI', 'timeFormat')|tojson }},
 		start_thresh_lower_amount: start_thresh_lower_amount,
 		start_thresh_lower_duration: start_thresh_lower_duration,
-		min_lap: min_lap,
+		min_lap_ms: min_lap_ms,
 		min_lap_behavior: min_lap_behavior,
+		min_first_crossing_ms: min_first_crossing_ms,
 		callbacks: {
 			calcLaps: calcLaps,
 			clearMarkedLap: clearMarkedLap,
