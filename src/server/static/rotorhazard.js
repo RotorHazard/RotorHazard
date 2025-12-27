@@ -827,7 +827,7 @@ function timerModel() {
 
 		self.has_looped = true;
 
-		if (continue_timer) {
+		if (self.running && continue_timer) {
 			now = window.performance.now();
 			var drift = now - self.expected;
 			if (drift > self.interval) {
@@ -870,33 +870,33 @@ function timerModel() {
 
 	this.get_next_step = function(now){
 		// find current differential
-		var diff = this.local_zero_time - now;
+		var diff = self.local_zero_time - now;
 
 		if (diff >= 0) {
 			// waiting for zero
-			var to_next = diff % this.interval;
+			var to_next = diff % self.interval;
 		} else {
 			// timer past zero
-			var to_next = this.interval + (diff % this.interval);
+			var to_next = self.interval + (diff % self.interval);
 		}
 
-		this.expected = now + to_next;
-		this.next_interval = to_next;
+		self.expected = now + to_next;
+		self.next_interval = to_next;
 
-		if (to_next < this.min_interval) { // skip tic if too short (prevents extra tics from delay compensation)
-			this.expected += this.interval;
-			this.next_interval += this.interval;
+		if (to_next < self.min_interval) { // skip tic if too short (prevents extra tics from delay compensation)
+			self.expected += self.interval;
+			self.next_interval += self.interval;
 		}
 	}
 
 	this.start = function(server_start_time, server_staging_start_time=null){
 		// reset simplified time and staging callback
-		this.time_tenths = false;
-		this.staging_cb_tic = null;
+		self.time_tenths = false;
+		self.staging_cb_tic = null;
 
-		this.remote_zero_time = server_start_time;
-		this.remote_staging_start_time = server_staging_start_time;
-		this.sync(rotorhazard.server_time_differential);
+		self.remote_zero_time = server_start_time;
+		self.remote_staging_start_time = server_staging_start_time;
+		self.sync(rotorhazard.server_time_differential);
 
 		// begin timing once sync is established
 		run_after_sync();
@@ -905,14 +905,14 @@ function timerModel() {
 	this.continue = function(race_start_ms) {
 		// begin timing loop from unknown position
 		var now = window.performance.now();
-		if (this.running) {
-			clearTimeout(this.timeout);
+		if (self.running) {
+			clearTimeout(self.timeout);
 		}
 
-		this.get_next_step(now);
+		self.get_next_step(now);
 
-		this.timeout = setTimeout(step, this.next_interval);
-		this.running = true;
+		self.timeout = setTimeout(step, self.next_interval);
+		self.running = true;
 	}
 
 	this.sync = function() {
@@ -920,17 +920,17 @@ function timerModel() {
 		// only valid when both components provided
 		var local_remote_differential = rotorhazard.server_time_differential; // get diff from shared store
 
-		this.local_zero_time = null;
-		this.local_staging_start_time = null;
+		self.local_zero_time = null;
+		self.local_staging_start_time = null;
 		
 		if (local_remote_differential != null) {
-			if (this.remote_zero_time != null) {
-				this.local_zero_time = this.remote_zero_time - local_remote_differential;
+			if (self.remote_zero_time != null) {
+				self.local_zero_time = self.remote_zero_time - local_remote_differential;
 
-				if (this.remote_staging_start_time != null) {
-					this.local_staging_start_time = this.remote_staging_start_time - local_remote_differential;
+				if (self.remote_staging_start_time != null) {
+					self.local_staging_start_time = self.remote_staging_start_time - local_remote_differential;
 				} else {
-					this.local_staging_start_time = this.remote_zero_time - local_remote_differential;
+					self.local_staging_start_time = self.remote_zero_time - local_remote_differential;
 				}
 			}
 		}
@@ -938,43 +938,43 @@ function timerModel() {
 
 	this.stop = function(){
 		// stop timing
-		clearTimeout(this.timeout);
-		this.running = false;
+		clearTimeout(self.timeout);
+		self.running = false;
 		if (self.callbacks.stop instanceof Function) {
-			self.callbacks.stop(this);
+			self.callbacks.stop(self);
 		}
-		this.time = 0;  // clear to make sure sure 'Ready' message doesn't get stuck showing on timer
+		self.time = 0;  // clear to make sure sure 'Ready' message doesn't get stuck showing on timer
 	}
 
 	this.renderHTML = function() {
 		var active_time_tenths = 0;
-		if (this.local_zero_time == null || typeof this.time_tenths != 'number' || !this.running) {
-			if (this.initial_disp_tenths) {
-				active_time_tenths = this.initial_disp_tenths;
+		if (self.local_zero_time == null || typeof self.time_tenths != 'number' || !self.running) {
+			if (self.initial_disp_tenths) {
+				active_time_tenths = self.initial_disp_tenths;
 			} else {
 				return '--:--';
 			}
 		} else {
-			this.initial_disp_tenths = null;
+			self.initial_disp_tenths = null;
 		}
 
-		if (this.hidden_staging && this.time < 0) {
+		if (self.hidden_staging && self.time < 0) {
 			return __l('Ready');
 		}
 
 		if (!active_time_tenths) {
-			active_time_tenths = this.time_tenths;
+			active_time_tenths = self.time_tenths;
 
 			// hold timer during prestage
-			if (this.phased_staging && this.time_staging_tenths < 0) {
-				active_time_tenths = Math.trunc((this.local_staging_start_time - this.local_zero_time) / 100);
+			if (self.phased_staging && self.time_staging_tenths < 0) {
+				active_time_tenths = Math.trunc((self.local_staging_start_time - self.local_zero_time) / 100);
 			}
 		}
 
 		var active_time_s = Math.trunc(active_time_tenths / 10);
 		var display_time = Math.abs(active_time_s);
 
-		if (this.time < 0 && active_time_tenths < 0) {
+		if (self.time < 0 && active_time_tenths < 0) {
 			var sign = '';
 		} else {
 			var sign = active_time_tenths >= 0 ? '' : '-';
@@ -997,7 +997,7 @@ function timerModel() {
 	}
 
 	this.renderHTMLandUpdate = function() {
-		$('.time-display').html(this.renderHTML());
+		$('.time-display').html(self.renderHTML());
 	}
 }
 
@@ -1290,55 +1290,60 @@ var defaultAudioSettingsStr = rotorhazard.getAudioSettingsStr(null);
 
 // deferred timer callbacks (time until race)
 rotorhazard.timer.deferred.callbacks.start = function(timer){
-	if (rotorhazard.timer.race.running) {  // defer timing to staging/race timers
-		rotorhazard.timer.deferred.stop();
-	}
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
-	if (rotorhazard.has_server_sync && timer.warn_until < window.performance.now()) {
-		$('.timing-clock .warning').hide();
-	}
-	if (rotorhazard.voice_race_timer != 0) {
-		if (timer.time_tenths < -36000 && !(timer.time_tenths % -36000)) { // 2+ hour callout
-			var hours = timer.time_tenths / -36000;
-			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (timer.time_tenths == -36000) {
-			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
-		} else if (timer.time_tenths == -18000) {
-			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_tenths == -6000) {
-			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_tenths < -600 && timer.time_tenths >= -3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
-			var minutes = timer.time_tenths / -600;
-			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_tenths == -600) {
-			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
-		} else if (timer.time_tenths == -300) {
-			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_tenths == -100) {
-			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
-		}else if (timer.time_tenths == -50) {
-			speak('<div>' + __l('Next race begins in') + ' 5 ' + __l('Seconds') + '</div>', true);
+	if (!rotorhazard.timer.race.running){  // defer timing to staging/race timers
+		if (rotorhazard.has_server_sync && timer.warn_until < window.performance.now()) {
+			$('.timing-clock .warning').hide();
 		}
-	}
+		if (rotorhazard.voice_race_timer != 0) {
+			if (timer.time_tenths < -36000 && !(timer.time_tenths % -36000)) { // 2+ hour callout
+				var hours = timer.time_tenths / -36000;
+				speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
+			} else if (timer.time_tenths == -36000) {
+				speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
+			} else if (timer.time_tenths == -18000) {
+				speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
+			} else if (timer.time_tenths == -6000) {
+				speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Minutes') + '</div>', true);
+			} else if (timer.time_tenths < -600 && timer.time_tenths >= -3000 && !(timer.time_tenths % 600)) { // 2–5 min callout
+				var minutes = timer.time_tenths / -600;
+				speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
+			} else if (timer.time_tenths == -600) {
+				speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
+			} else if (timer.time_tenths == -300) {
+				speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
+			} else if (timer.time_tenths == -100) {
+				speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
+			}else if (timer.time_tenths == -50) {
+				speak('<div>' + __l('Next race begins in') + ' 5 ' + __l('Seconds') + '</div>', true);
+			}
+		}
 
-	$('.time-display').html(timer.renderHTML());
+		$('.time-display').html(timer.renderHTML());
+	}
 }
 rotorhazard.timer.deferred.callbacks.stop = function(timer){
-	$('.timing-clock .warning').hide();
-	$('.time-display').html(timer.renderHTML());
+	if (!rotorhazard.timer.race.running) {  // defer timing to staging/race timers
+		$('.timing-clock .warning').hide();
+		$('.time-display').html(timer.renderHTML());
+	}
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	rotorhazard.timer.deferred.stop();
-	$('.time-display').html(__('Wait'));
+	if (!rotorhazard.timer.race.running) {  // defer timing to staging/race timers
+	    $('.time-display').html(__('Wait'));
+	}
 }
 rotorhazard.timer.deferred.callbacks.self_resync = function(timer){
-	// display resync warning
-	if (rotorhazard.has_server_sync) {
-		$('.timing-clock .warning .value').text(__('recovery'));
+	if (!rotorhazard.timer.race.running) {  // defer timing to staging/race timers
+		// display resync warning
+		if (rotorhazard.has_server_sync) {
+			$('.timing-clock .warning .value').text(__('recovery'));
+		}
+		timer.warn_until = window.performance.now() + 3000;
+		$('.timing-clock .warning').show();
 	}
-	timer.warn_until = window.performance.now() + 3000;
-	$('.timing-clock .warning').show();
 }
 
 // race/staging timer callbacks

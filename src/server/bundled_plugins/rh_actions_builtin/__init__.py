@@ -54,8 +54,13 @@ class ActionsBuiltin():
         except:
             mins = 0
 
+        try:
+            force_save = int(action.get('force_save'))
+        except:
+            force_save = False
+
         if secs or mins:
-            self._rhapi.race.schedule(secs, mins)
+            self._rhapi.race.schedule(secs, mins, force_save)
 
     def register_handlers(self, args):
         for effect in [
@@ -97,6 +102,8 @@ class ActionsBuiltin():
                 [
                     UIField('sec', "Seconds", UIFieldType.BASIC_INT),
                     UIField('min', "Minutes", UIFieldType.BASIC_INT),
+                    UIField('force_save', "Save stopped race", UIFieldType.CHECKBOX,
+                            value=False),
                 ],
                 name='schedule',
             )
