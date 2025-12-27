@@ -179,15 +179,18 @@ class RHRace():
                                      self._racecontext.language.__('Current heat has saved race'))
                         return False
 
-                pilot_names_list = []
+                pilot_objs_list = []
                 for heatNode in heatNodes:
                     if heatNode.node_index is not None and heatNode.node_index < self.num_nodes:
                         if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
                             pilot_obj = self._racecontext.rhdata.get_pilot(heatNode.pilot_id)
                             if pilot_obj and pilot_obj.callsign:
-                                pilot_names_list.append(pilot_obj.callsign)
+                                if pilot_obj in pilot_objs_list:
+                                    logger.warning("Pilot '{}' is assigned to more than one node (this will likely yield unexpected results)".\
+                                                   format(pilot_obj.callsign))
+                                pilot_objs_list.append(pilot_obj)
 
-                if request and len(pilot_names_list) <= 0:
+                if request and len(pilot_objs_list) <= 0:
                     gevent.spawn(emit_alert_msg, self, \
                                  self._racecontext.language.__('No valid pilots in race'))
 
@@ -208,8 +211,8 @@ class RHRace():
                 max_round = self._racecontext.rhdata.get_max_round(self.current_heat)
                 if max_round is None:
                     max_round = 0
-                logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, (max_round+1),
-                                                                           ", ".join(pilot_names_list)))
+                logger.info("Racing heat '{}' round {}, pilots: {}".format(heat_data.display_name, (max_round+1), \
+                                            ", ".join(map(lambda pilot_obj: pilot_obj.callsign, pilot_objs_list))))
             else:
                 heatNodes = []
 
