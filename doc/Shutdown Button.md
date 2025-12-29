@@ -4,7 +4,7 @@
 
 When the RotorHazard S32_BPill hardware is used, the standard setup is to have a shutdown button and a status (AUX) LED wired to the PCB. See the [RotorHazard S32_BPill Case Build Guide &#10132;&#xFE0E;](https://github.com/RotorHazard/RotorHazard/tree/main/resources/S32_BPill_case/detailedCaseBuild.md) for details on the wiring. The S32_BPill PCB also supports a buzzer, which provides feedback sounds.
 
-For the shutdown features to operate correctly, the Raspberry Pi needs have its '/boot/config.txt' file configured as [described](Software%20Setup.md#s32btconfig) in the '[doc/Software Setup.md](Software%20Setup.md)' document.
+For the shutdown features to operate correctly, the Raspberry Pi needs have its 'boot' _config.txt_ file configured as [described](Software%20Setup.md#3-apply-changes-to-the-boot-configtxt-file) in the '[doc/Software Setup.md](Software%20Setup.md)' document.
 
 ### Shutdown Button
 
@@ -42,11 +42,11 @@ When the Raspberry Pi is detected (by the BPill processor on S32_BPill board) as
 
 ### Configuration Parameters
 
-The following parameters may be configured (in 'src/server/config.json') under "GENERAL":
+The following parameters may be configured on the _Advanced Settings_ page in the _Hardware_ panel:
 
-* SHUTDOWN_BUTTON_GPIOPIN : The GPIO pin number on the Raspberry Pi for the shutdown button (defaults to 18)
+* "Shutdown Button GPIO Number" : The GPIO pin number on the Raspberry Pi for the shutdown button (defaults to 18; for NuclearHazard hardware set it to 19)
 
-* SHUTDOWN_BUTTON_DELAYMS : The length of time (in milliseconds) that the button needs to be held to initiate a shutdown (defaults to 2500)
+* "Shutdown Button Delay (ms)" : The length of time (in milliseconds) that the button needs to be held to initiate a shutdown (defaults to 2500)
 
 <br/>
 
