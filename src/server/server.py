@@ -3337,7 +3337,7 @@ def _do_init_rh_interface():
                 RaceContext.race.num_nodes = 0
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
-            logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
+            logger.warning('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
 
         if RaceContext.serverconfig.get_item('GENERAL', 'SERIAL_PORTS'):
             try:

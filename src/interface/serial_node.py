@@ -242,114 +242,117 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     if config_ser_ports:
         node_serial_obj = None
         for index, comm in enumerate(config_ser_ports):
-            # if serial port is USB type then don't treat as S32_BPill (may need bootloader chill-time delay)
-            s32_port_flag = isS32BPillFlag if not (isinstance(comm, str) and "USB" in comm.upper()) else False
-            # if not S32_BPill then reverse list (try 115200 baud first as that is likely the baud rate to use)
-            baud_rates_list = SERIAL_BAUD_RATES if s32_port_flag else SERIAL_BAUD_RATES[::-1]
-            rev_val = None
-            baud_idx = 0
-            while (not rev_val) and baud_idx < len(baud_rates_list):
-                attempt_delay_secs = 0.0625
-                # if opening port fails then do retries; with exponential delay, but less than 1 second
-                while (not rev_val) and attempt_delay_secs < 0.9:
-                    attempt_delay_secs *= 2
-                    logger.debug("Attempting connection to serial node at {}, {} baud".\
-                                 format(comm, baud_rates_list[baud_idx]))
-                    node_serial_obj = serial.Serial(port=None, baudrate=baud_rates_list[baud_idx], timeout=0.25)
-                    node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
-                    node_serial_obj.setRTS(0)
-                    node_serial_obj.setPort(comm)
-                    node_serial_obj.open()  # open port (now that DTR is configured for no change)
-                    if (not s32_port_flag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
-                        logger.debug("Delaying {} secs before attempting connection to serial node (bootloader)".format(BOOTLOADER_CHILL_TIME))
-                        gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for ESP32/Arduino boot
-                    else:
-                        logger.debug("Delaying {} secs before attempting connection to serial node".format(attempt_delay_secs))
-                        gevent.sleep(attempt_delay_secs)
-                    node = SerialNode(index+idxOffset, node_serial_obj)
-                    node_serial_obj.flushInput()  # clear any messages that came in during delay
-                    multi_count = 1
-                    try:               # handle serial multi-node processor
-                        # read NODE_API_LEVEL and verification value:
-                        data = node.read_block(None, READ_REVISION_CODE, 2, 2, False)
-                        rev_val = unpack_16(data) if data != None else None
-                        if rev_val and (rev_val >> 8) == 0x25:
-                            if (rev_val & 0xFF) >= 32:  # check node API level
-                                data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False)
-                                multi_count = unpack_8(data) if data != None else None
-                            if multi_count is None or multi_count < 0 or multi_count > 32:
-                                logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
-                                multi_count = 1
-                            elif multi_count == 0:
-                                logger.debug('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
-                                multi_count = 0
-                    except Exception:
-                        multi_count = 1
-                        logger.exception('Error fetching READ_MULTINODE_COUNT for serial node')
-                    if (not rev_val) and node_serial_obj:
-                        node_serial_obj.close()
-                        node_serial_obj = None
-                if (not rev_val):  # if connection attempt failed then retry with alternate baud rate
-                    baud_idx += 1
-            if rev_val:
-                api_level = rev_val & 0xFF
-                node.api_level = api_level
-                node_version_str = None
-                node_timestamp_str = None
-                fver_log_str = ''
-                ftyp_log_str = ''
-                ftim_log_str = ''
-                if api_level >= 34:  # read firmware version and build timestamp strings
-                    node.read_firmware_version()
-                    if node.firmware_version_str:
-                        node_version_str = node.firmware_version_str
-                        fver_log_str = ", fw_version=" + node.firmware_version_str
-                        if node.api_level >= 35:
-                            node.read_firmware_proctype()
-                            if node.firmware_proctype_str:
-                                ftyp_log_str = ", fw_type=" + node.firmware_proctype_str
-                    node.read_firmware_timestamp()
-                    if node.firmware_timestamp_str:
-                        node_timestamp_str = node.firmware_timestamp_str
-                        ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
-                if multi_count <= 1:
-                    if multi_count > 0:
-                        logger.info("Serial node {} found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
-                                    index+idxOffset+1, node.serial.name, api_level, node.serial.baudrate, \
-                                    fver_log_str, ftyp_log_str, ftim_log_str))
-                        nodes.append(node)
-                    else:
-                        if 'set_info_node_obj_fn' in kwargs:
-                            kwargs['set_info_node_obj_fn'](node)  # set 'info_node_obj' in RHInterface
-                        logger.info("Serial node (with zero modules) found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
-                                    node.serial.name, api_level, node.serial.baudrate, \
-                                    fver_log_str, ftyp_log_str, ftim_log_str))
-                else:
-                    logger.info("Serial multi-node found at port '{}', count={}, API_level={}, baudrate={}{}{}{}".\
-                                format(node.serial.name, multi_count, api_level, node.serial.baudrate, \
-                                fver_log_str, ftyp_log_str, ftim_log_str))
-                    node.multi_node_index = 0
-                    curnode_index_holder = [-1]  # tracker for index of current node for processor
-                    node.multi_curnode_index_holder = curnode_index_holder
-                    node.read_node_slot_index()
-                    logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
-                                 index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
-                    nodes.append(node)
-                    slots_str = str(node.multi_node_slot_index+1)
-                    for nIdx in range(1, multi_count):
-                        idxOffset += 1
+            try:
+                # if serial port is USB type then don't treat as S32_BPill (may need bootloader chill-time delay)
+                s32_port_flag = isS32BPillFlag if not (isinstance(comm, str) and "USB" in comm.upper()) else False
+                # if not S32_BPill then reverse list (try 115200 baud first as that is likely the baud rate to use)
+                baud_rates_list = SERIAL_BAUD_RATES if s32_port_flag else SERIAL_BAUD_RATES[::-1]
+                rev_val = None
+                baud_idx = 0
+                while (not rev_val) and baud_idx < len(baud_rates_list):
+                    attempt_delay_secs = 0.0625
+                    # if opening port fails then do retries; with exponential delay, but less than 1 second
+                    while (not rev_val) and attempt_delay_secs < 0.9:
+                        attempt_delay_secs *= 2
+                        logger.debug("Attempting connection to serial node at {}, {} baud".\
+                                     format(comm, baud_rates_list[baud_idx]))
+                        node_serial_obj = serial.Serial(port=None, baudrate=baud_rates_list[baud_idx], timeout=0.25)
+                        node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
+                        node_serial_obj.setRTS(0)
+                        node_serial_obj.setPort(comm)
+                        node_serial_obj.open()  # open port (now that DTR is configured for no change)
+                        if (not s32_port_flag) and attempt_delay_secs < BOOTLOADER_CHILL_TIME:
+                            logger.debug("Delaying {} secs before attempting connection to serial node (bootloader)".format(BOOTLOADER_CHILL_TIME))
+                            gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for ESP32/Arduino boot
+                        else:
+                            logger.debug("Delaying {} secs before attempting connection to serial node".format(attempt_delay_secs))
+                            gevent.sleep(attempt_delay_secs)
                         node = SerialNode(index+idxOffset, node_serial_obj)
-                        node.multi_node_index = nIdx
+                        node_serial_obj.flushInput()  # clear any messages that came in during delay
+                        multi_count = 1
+                        try:               # handle serial multi-node processor
+                            # read NODE_API_LEVEL and verification value:
+                            data = node.read_block(None, READ_REVISION_CODE, 2, 2, False)
+                            rev_val = unpack_16(data) if data != None else None
+                            if rev_val and (rev_val >> 8) == 0x25:
+                                if (rev_val & 0xFF) >= 32:  # check node API level
+                                    data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False)
+                                    multi_count = unpack_8(data) if data != None else None
+                                if multi_count is None or multi_count < 0 or multi_count > 32:
+                                    logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
+                                    multi_count = 1
+                                elif multi_count == 0:
+                                    logger.debug('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
+                                    multi_count = 0
+                        except Exception:
+                            multi_count = 1
+                            logger.exception('Error fetching READ_MULTINODE_COUNT for serial node')
+                        if (not rev_val) and node_serial_obj:
+                            node_serial_obj.close()
+                            node_serial_obj = None
+                    if (not rev_val):  # if connection attempt failed then retry with alternate baud rate
+                        baud_idx += 1
+                if rev_val:
+                    api_level = rev_val & 0xFF
+                    node.api_level = api_level
+                    node_version_str = None
+                    node_timestamp_str = None
+                    fver_log_str = ''
+                    ftyp_log_str = ''
+                    ftim_log_str = ''
+                    if api_level >= 34:  # read firmware version and build timestamp strings
+                        node.read_firmware_version()
+                        if node.firmware_version_str:
+                            node_version_str = node.firmware_version_str
+                            fver_log_str = ", fw_version=" + node.firmware_version_str
+                            if node.api_level >= 35:
+                                node.read_firmware_proctype()
+                                if node.firmware_proctype_str:
+                                    ftyp_log_str = ", fw_type=" + node.firmware_proctype_str
+                        node.read_firmware_timestamp()
+                        if node.firmware_timestamp_str:
+                            node_timestamp_str = node.firmware_timestamp_str
+                            ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
+                    if multi_count <= 1:
+                        if multi_count > 0:
+                            logger.info("Serial node {} found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
+                                        index+idxOffset+1, node.serial.name, api_level, node.serial.baudrate, \
+                                        fver_log_str, ftyp_log_str, ftim_log_str))
+                            nodes.append(node)
+                        else:
+                            if 'set_info_node_obj_fn' in kwargs:
+                                kwargs['set_info_node_obj_fn'](node)  # set 'info_node_obj' in RHInterface
+                            logger.info("Serial node (with zero modules) found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
+                                        node.serial.name, api_level, node.serial.baudrate, \
+                                        fver_log_str, ftyp_log_str, ftim_log_str))
+                    else:
+                        logger.info("Serial multi-node found at port '{}', count={}, API_level={}, baudrate={}{}{}{}".\
+                                    format(node.serial.name, multi_count, api_level, node.serial.baudrate, \
+                                    fver_log_str, ftyp_log_str, ftim_log_str))
+                        node.multi_node_index = 0
+                        curnode_index_holder = [-1]  # tracker for index of current node for processor
                         node.multi_curnode_index_holder = curnode_index_holder
-                        node.api_level = api_level
-                        node.firmware_version_str = node_version_str
-                        node.firmware_timestamp_str = node_timestamp_str
                         node.read_node_slot_index()
                         logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
                                      index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
                         nodes.append(node)
-                        slots_str += ' ' + str(node.multi_node_slot_index+1)
-                    logger.info("Receiver modules found at slot positions: " + slots_str)
-            else:
-                logger.error('Unable to fetch revision code for serial node at "{0}"'.format(comm))
+                        slots_str = str(node.multi_node_slot_index+1)
+                        for nIdx in range(1, multi_count):
+                            idxOffset += 1
+                            node = SerialNode(index+idxOffset, node_serial_obj)
+                            node.multi_node_index = nIdx
+                            node.multi_curnode_index_holder = curnode_index_holder
+                            node.api_level = api_level
+                            node.firmware_version_str = node_version_str
+                            node.firmware_timestamp_str = node_timestamp_str
+                            node.read_node_slot_index()
+                            logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
+                                         index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
+                            nodes.append(node)
+                            slots_str += ' ' + str(node.multi_node_slot_index+1)
+                        logger.info("Receiver modules found at slot positions: " + slots_str)
+                else:
+                    logger.error('Unable to fetch revision code for serial node at "{0}"'.format(comm))
+            except IOError as ex:
+                logger.error("Error initializing configured serial node '{}':  {}".format(comm, ex))
     return nodes
