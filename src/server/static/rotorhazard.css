@@ -2855,6 +2855,10 @@ ul.plugin-list>li {
 	padding: 0.25rem;
 }
 
+.plugin-list .details .description p {
+	margin: 0;
+}
+
 .plugin-list .details .repository,
 .plugin-list .details .documentation,
 .plugin-list .details .website,
@@ -2868,6 +2872,15 @@ ul.plugin-list>li {
 	padding: 0.25rem;
 	font-size: 0.9rem;
 	border-radius: 0.25rem;
+}
+
+.plugin-list .status select {
+	width: 10em;
+	max-width: 100%;
+}
+
+.plugin-list .prerelease {
+	font-style: italic;
 }
 
 .plugin-list .load-fail .status {

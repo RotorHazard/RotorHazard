@@ -130,6 +130,7 @@ class Config:
         self.config['PLUGINS']['REMOTE_DATA_URI'] = None
         self.config['PLUGINS']['REMOTE_CATEGORIES_URI'] = None
         self.config['PLUGINS']['UPDATE_BEHAVIOR'] = 'check'
+        self.config['PLUGINS']['SHOW_RELEASES'] = False
 
         self.InitResultStr = None
         self.InitResultLogLevel = logging.INFO
