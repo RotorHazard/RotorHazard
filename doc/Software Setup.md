@@ -140,7 +140,7 @@ wget https://rotorhazard.com/install.sh
 sh install.sh
 ```
 
-To install another version, add the desired version code after `install.sh`; for example:
+To install another version, add the desired version code after `install.sh` - for example:
 ```bash
 sh install.sh v4.3.0-beta.1
 ```
@@ -410,7 +410,7 @@ wget https://rotorhazard.com/update.sh
 sh update.sh
 ```
 
-To upgrade to another version, add the desired version code after `install.sh`; for example:
+To upgrade to another version, add the desired version code after `update.sh` - for example:
 ```bash
 sh update.sh v4.3.0-beta.1
 ```
