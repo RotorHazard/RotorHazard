@@ -2041,7 +2041,7 @@ class RHData():
                     dest_settings = json.loads(dest_settings)
                 race_class.rank_settings = json.dumps({**src_settings, **dest_settings})
         if 'rounds' in data:
-            race_class.rounds = data['rounds']
+            race_class.rounds = int(data['rounds'] or 0)
         if 'heat_advance_type' in data:
             race_class.heat_advance_type = data['heat_advance_type']
         if 'round_type' in data:
