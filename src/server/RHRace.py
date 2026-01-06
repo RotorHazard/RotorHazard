@@ -677,24 +677,23 @@ class RHRace():
                     if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
                         pilot_id = self._racecontext.rhdata.get_pilot_from_heatNode(self.current_heat, node_index)
 
-                        if pilot_id is not None:
-                            race_data[node_index] = {
-                                'race_id': new_race.id,
-                                'pilot_id': pilot_id,
-                                'history_values': json.dumps(self._racecontext.interface.nodes[node_index].history_values),
-                                'history_times': json.dumps(self._racecontext.interface.nodes[node_index].history_times),
-                                'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
-                                'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
-                                'frequency': self._racecontext.interface.nodes[node_index].frequency,
-                                'laps': self.node_laps[node_index],
-                                'marshal_type': self._racecontext.interface.node_map[node_index].interface.marshal_type
-                                }
+                        race_data[node_index] = {
+                            'race_id': new_race.id,
+                            'pilot_id': pilot_id,
+                            'history_values': json.dumps(self._racecontext.interface.nodes[node_index].history_values),
+                            'history_times': json.dumps(self._racecontext.interface.nodes[node_index].history_times),
+                            'enter_at': self._racecontext.interface.nodes[node_index].enter_at_level,
+                            'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
+                            'frequency': self._racecontext.interface.nodes[node_index].frequency,
+                            'laps': self.node_laps[node_index],
+                            'marshal_type': self._racecontext.interface.node_map[node_index].interface.marshal_type
+                            }
 
-                            self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {
-                                'b': profile_freqs["b"][node_index],
-                                'c': profile_freqs["c"][node_index],
-                                'f': profile_freqs["f"][node_index]
-                                })
+                        self._racecontext.rhdata.set_pilot_used_frequency(pilot_id, {
+                            'b': profile_freqs["b"][node_index],
+                            'c': profile_freqs["c"][node_index],
+                            'f': profile_freqs["f"][node_index]
+                            })
 
                 self._racecontext.rhdata.add_race_data(race_data)
 
