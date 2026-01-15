@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  rotorhazard:
+    build:
+      context: ..
+      dockerfile: tools/Dockerfile
+    container_name: rotorhazard-server
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount data directory for persistent storage
+      - ../data:/app/data
+    environment:
+      - RH_DATA_DIR=/app/data
+    restart: unless-stopped
+    # USB/Serial device access options:
+    # Option 1: Privileged mode (recommended for USB access)
+    # This gives the container full access to all devices including USB
+    privileged: true
+    
+    # Option 2: Specific device access (alternative to privileged mode)
+    # Uncomment and modify device names as needed for your hardware:
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    #   - /dev/ttyACM0:/dev/ttyACM0
+    #   - /dev/ttyUSB1:/dev/ttyUSB1
+    
+    # Option 3: Mount entire /dev directory (alternative, less secure)
+    # volumes:
+    #   - ./data:/app/data
+    #   - /dev:/dev
