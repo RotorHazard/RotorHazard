@@ -1718,6 +1718,7 @@ class RHData():
             'data_ver': token,
             'build_ver': None
         })
+        heat.results = None
 
         self.commit()
         return heat
@@ -1731,7 +1732,8 @@ class RHData():
         })
 
         Database.Heat.query.update({
-            Database.Heat._cache_status: initStatus
+            Database.Heat._cache_status: initStatus,
+            Database.Heat.results: None
             })
         self.commit()
 
@@ -2272,6 +2274,7 @@ class RHData():
         jsonStatus = json.dumps(initStatus)
         race_class._cache_status = jsonStatus
         race_class._rank_status = jsonStatus
+        race_class.result = None
 
         self.commit()
         return race_class
@@ -2305,7 +2308,8 @@ class RHData():
 
         Database.RaceClass.query.update({
             Database.RaceClass._cache_status: jsonStatus,
-            Database.RaceClass._rank_status: jsonStatus
+            Database.RaceClass._rank_status: jsonStatus,
+            Database.RaceClass.results: None
             })
         self.commit()
 
@@ -3340,6 +3344,7 @@ class RHData():
             'data_ver': token,
             'build_ver': None
         })
+        race.results = None
 
         self.commit()
         return race
@@ -3353,7 +3358,8 @@ class RHData():
         })
 
         Database.SavedRaceMeta.query.update({
-            Database.SavedRaceMeta._cache_status: initStatus
+            Database.SavedRaceMeta._cache_status: initStatus,
+            Database.SavedRaceMeta.results: None
             })
         self.commit()
 
@@ -3714,6 +3720,7 @@ class RHData():
         })
 
         self.set_option("eventResults_cacheStatus", eventStatus)
+        self.set_option("eventResults", None)
         return True
 
     def clear_results_all(self):
