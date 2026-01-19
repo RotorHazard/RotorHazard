@@ -65,6 +65,27 @@ class RHData():
             if self.get_optionInt('server_api') > self._SERVER_API:
                 logger.warning('Database API version ({}) is newer than server version ({})'.\
                                format(self.get_optionInt('server_api'), self._SERVER_API))
+
+            found_binary_result = False
+            for heat in Database.Heat.query.all():
+                if not isinstance(heat.results, str):
+                    found_binary_result = True
+                    break
+            if not found_binary_result:
+                for race_class in Database.RaceClass.query.all():
+                    if not isinstance(race_class.results, str):
+                        found_binary_result = True
+                        break
+            if not found_binary_result:
+                for race in Database.SavedRaceMeta.query.all():
+                    if not isinstance(race.results, str):
+                        found_binary_result = True
+                        break
+
+            if found_binary_result:
+                logger.warning('Results are not a string; wiping all saved results')
+                self.clear_results_all()
+
             return True
         except Exception as ex:
             logger.error('Error checking database integrity; err: ' + str(ex))
