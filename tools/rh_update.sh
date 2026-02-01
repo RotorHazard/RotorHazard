@@ -12,6 +12,15 @@ if [ -z "$1" ]; then
     RH_VERSION=$(curl -s https://api.github.com/repos/rotorhazard/rotorhazard/releases/latest | sed -n -e 's/^.*"tag_name": "v\(.*\)".*$/\1/p');
 else
     RH_VERSION=$1;
+    # remove leading 'v'
+    case "$RH_VERSION" in
+        v*)
+            RH_VERSION="${RH_VERSION#?}"
+            ;;
+        V*)
+            RH_VERSION="${RH_VERSION#?}"
+            ;;
+    esac
 fi
 if [ -n "$RH_VERSION" ]; then
     echo 'Updating RotorHazard to version' $RH_VERSION
@@ -44,6 +53,6 @@ if [ -n "$RH_VERSION" ]; then
     else
         echo 'Unable to download RotorHazard archive from GitHub'
     fi
-else                                                                                                                                                                                                                                                         
+else
     echo 'Unable to fetch RotorHazard version code from GitHub'
 fi
