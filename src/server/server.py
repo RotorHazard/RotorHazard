@@ -493,7 +493,7 @@ def render_run():
 
     return render_template('run.html',
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
-        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+        vrx_enabled=RaceContext.vrx_manager.isEnabled() if RaceContext.vrx_manager else False,
         num_nodes=RaceContext.race.num_nodes,
         nodes=nodes,
         cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
@@ -536,7 +536,7 @@ def render_settings():
     return render_template('settings.html',
                            led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
                            led_events_enabled=RaceContext.led_manager.isEnabled(),
-                           vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+                           vrx_enabled=RaceContext.vrx_manager.isEnabled() if RaceContext.vrx_manager else False,
                            num_nodes=RaceContext.race.num_nodes,
                            server_messages=RaceContext.rhui.get_ui_server_messages_str(),
                            cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),
