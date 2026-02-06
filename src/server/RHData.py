@@ -603,7 +603,7 @@ class RHData():
                 # restore classes
                 self.restore_table(Database.RaceClass, raceClass_query_data, defaults={
                         'name': 'New class',
-                        'format_id': 0,
+                        'format_id': RHUtils.FORMAT_ID_NONE,
                         'results': None,
                         '_cache_status': json.dumps({
                             'data_ver': monotonic(),
