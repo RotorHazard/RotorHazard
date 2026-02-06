@@ -90,16 +90,16 @@ class RHData():
             return False
 
     def do_reset_all(self, nofill, migrateDbApi):
-        self.reset_pilots()
+        self.clear_race_data()
+        self.reset_raceClasses()
         if nofill:
             self.reset_heats(nofill=True)
         else:
             self.reset_heats()
-        self.clear_race_data()
+        self.reset_pilots()
         self.reset_profiles()
         # (if older DB then co-op race formats will be added after recovery)
         self.reset_raceFormats(migrateDbApi is None or migrateDbApi >= 46)
-        self.reset_raceClasses()
         self.reset_options()
 
     def reset_all(self, nofill=False, migrateDbApi=None):
@@ -518,7 +518,6 @@ class RHData():
             try:
                 # restore pilots
                 if pilot_query_data:
-                    Database.DB_session.query(Database.Pilot).delete()
                     self.restore_table(Database.Pilot, pilot_query_data, defaults={
                             'name': 'New Pilot',
                             'callsign': 'New Callsign',
@@ -668,7 +667,6 @@ class RHData():
                             heatnode_extracted_data.append(heatnode_row)
                             heatnode_dummy_id += 1
 
-                        Database.DB_session.query(Database.HeatNode).delete()
                         self.restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
                                 'color': None
