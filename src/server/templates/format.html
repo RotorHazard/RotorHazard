@@ -2624,8 +2624,9 @@
 			socket.emit('alter_pilot', data);
 			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
 			pilot.name = pilot_name;
-			display_classes();
-			display_unclassified_heats();
+
+			pilot_selector.seed();
+			display_pilot_selectors();
 		});
 
 		$(document).on("focus", '.set_pilot_callsign', function(){
@@ -2642,8 +2643,9 @@
 			socket.emit('alter_pilot', data);
 			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
 			pilot.callsign = pilot_callsign;
-			display_classes();
-			display_unclassified_heats();
+
+			pilot_selector.seed();
+			display_pilot_selectors();
 		});
 
 		$(document).on("click", '.set_pilot_color', function (event) {
