@@ -494,6 +494,8 @@ class RHData():
                 for raceMeta in raceMeta_query_data:
                     if raceMeta['class_id'] == 0:
                         raceMeta['class_id'] = None
+                    if raceMeta['format_id'] == 0:
+                        raceMeta['format_id'] = None
                 for racePilot in racePilot_query_data:
                     if racePilot['pilot_id'] == 0:
                         racePilot['pilot_id'] = None
