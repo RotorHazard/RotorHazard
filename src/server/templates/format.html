@@ -692,6 +692,7 @@
 
 						// Heat List
 						var field = $(document.createElement('div'))
+							.addClass('card-container')
 							.addClass('heat-edit-selectors');
 						var field_select = $(document.createElement('select'))
 							.prop('id', `heat-selector--race-class-${race_class.id}`)
@@ -1530,17 +1531,12 @@
 					.data('heat_id', heat.id)
 					.addClass('rh-heat')
 					.addClass('heat-edit')
+					.addClass('card-container')
 					.appendTo(parent_el);
 
-				var heat_header = $(document.createElement('h4'))
-					.text(`${__('Heat')} ${heat.id}`)
-				el.append(heat_header);
-
-				// Round
-				var heat_round = $(document.createElement('p'))
-					.addClass(`heat-ui--round--heat-${heat.id}`)
-					.addClass(`heat-round-group`)
-				el.append(heat_round);
+				// var heat_header = $(document.createElement('h4'))
+				// 	.text(`${__('Heat')} ${heat.id}`)
+				// el.append(heat_header);
 
 				// Name
 				var heat_name = $(document.createElement('input'))
@@ -1551,9 +1547,15 @@
 					.addClass('set_heat_name');
 				el.append(heat_name);
 
+				// Round
+				var heat_round = $(document.createElement('p'))
+					.addClass(`heat-ui--round--heat-${heat.id}`)
+					.addClass(`heat-round-group`)
+				el.append(heat_round);
+
 				// Actions
 				var heat_actions = $(document.createElement('div'))
-					.addClass('actions');
+					.addClass('actions_heat_card');
 				var heat_deactivate = $(document.createElement('button'))
 					.addClass(`heat-ui--deactivate--heat-${heat.id}`)
 					.addClass('deactivate_heat')
@@ -1598,10 +1600,15 @@
 					.addClass(`heat-ui--slot-list--heat-${heat.id}`);
 				el.append(heat_slots);
 
+				// New Control Div
+				var auto_frequency_control_container = $(document.createElement('div'))
+					.addClass('auto-frequency-control-container')
+					.appendTo(el);
+
 				// Auto-frequency
 				var heat_autofrequency_wrapper = $(document.createElement('div'))
-					.addClass('autofrequency-control')
-					.appendTo(el);
+					.addClass('autofrequency-control') //New Control Left
+					.appendTo(auto_frequency_control_container);
 				var label = $(document.createElement('label'))
 					.addClass('auto_frequency')
 					.text(__('Auto Frequency'))
@@ -1615,8 +1622,8 @@
 
 				// Dynamic Controls
 				var heat_controls = $(document.createElement('div'))
-					.addClass('dynamic-controls')
-					.appendTo(el);
+					.addClass('dynamic-controls') //New Control Right
+					.appendTo(auto_frequency_control_container);
 				var heat_plan_revert = $(document.createElement('button'))
 					.addClass(`heat-ui--plan-revert--heat-${heat.id}`)
 					.data('id', heat.id)
