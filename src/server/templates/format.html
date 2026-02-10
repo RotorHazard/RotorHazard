@@ -726,6 +726,7 @@
 							.prop('id', `recent-heats--race-class-${race_class.id}`)
 							.addClass('recents');
 						$(document.createElement('h4'))
+							.addClass('screen-reader-text')
 							.text(__('Recent Heats'))
 							.appendTo(field);
 						var field_data = $(document.createElement('div'))
@@ -1016,8 +1017,6 @@
 					var parent_el = $("#unclassified_heats");
 					parent_el.data('loaded', true);
 					$(document.createElement('h3'))
-						.addClass('heats')
-						.addClass('heat-edit-list')
 						.text(__('Unclassified Heats'))
 						.appendTo(parent_el);
 
@@ -1046,6 +1045,7 @@
 						.prop('id', 'recent-heats--race-class-0')
 						.addClass('recents');
 					$(document.createElement('h4'))
+						.addClass('screen-reader-text')
 						.text(__('Recent Heats'))
 						.appendTo(parent_el);
 					var field_data = $(document.createElement('div'))
@@ -1532,7 +1532,8 @@
 					.addClass('heat-edit')
 					.appendTo(parent_el);
 
-				var heat_header = $(document.createElement('h4'))
+				var heat_header = $(document.createElement('h5'))
+					.addClass('screen-reader-text')
 					.text(`${__('Heat')} ${heat.id}`)
 				el.append(heat_header);
 
@@ -1762,8 +1763,9 @@
 					// channel
 					var slot_channel = $(document.createElement('div'))
 						.addClass('channel-block')
+						.addClass('no-freq')
 						.append(
-							$(document.createElement('span')).addClass('ch')
+							$(document.createElement('span')).addClass('ch').html('—')
 						)
 						.append(
 							$(document.createElement('span')).addClass('fr')
