@@ -2302,10 +2302,12 @@ var freq = {
 		// populate channel block
 		var channelBlock = $('.channel-block[data-node="' + node_idx + '"]');
 		if (fObj === null || fObj.frequency == 0) {
+			channelBlock.addClass('no-freq');
 			channelBlock.children('.ch').html('—');
 			channelBlock.children('.fr').html('');
 			channelBlock.attr('title', '');
 		} else {
+			channelBlock.removeClass('no-freq');
 			channelBlock.children('.ch').html(fObj.key);
 			channelBlock.children('.fr').html(fObj.frequency);
 			channelBlock.attr('title', fObj.frequency);
