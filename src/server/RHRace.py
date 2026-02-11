@@ -239,7 +239,7 @@ class RHRace():
                         logger.info("Scheduled race prevented by unsaved active race")
                         self._racecontext.rhui.emit_priority_message(
                             self.__("Scheduled race not started: Active race results not finalized"), True)
-                        self.schedule(0)
+                        self.schedule(0, silent=True)
                         return
 
                 if race_format is self._racecontext.serverstate.secondary_race_format:  # if running as secondary timer
@@ -253,6 +253,9 @@ class RHRace():
 
             if self.race_status == RaceStatus.READY: # only initiate staging if ready
                 # common race start events (do early to prevent processing delay when start is called)
+
+                self.schedule(0, silent=True) # Cancel any scheduled races
+
                 self._racecontext.interface.enable_calibration_mode() # Nodes reset triggers on next pass
 
                 if race_format is not self._racecontext.serverstate.secondary_race_format: # don't enforce class format if running as secondary timer
@@ -1370,7 +1373,7 @@ class RHRace():
             node.first_cross_flag = False
             node.show_crossing_flag = False
 
-    def schedule(self, s, m=0, force_save=False):
+    def schedule(self, s, m=0, force_save=False, silent=False):
         with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
 
             if s or m:
@@ -1384,7 +1387,8 @@ class RHRace():
                     'forced_save': force_save
                     })
 
-                self._racecontext.rhui.emit_priority_message(self.__("Next race begins in") + " {0:01d}:{1:02d}".format(int(m), int(s)), True)
+                if not silent:
+                    self._racecontext.rhui.emit_priority_message(self.__("Next race begins in") + " {0:01d}:{1:02d}".format(int(m), int(s)), True)
 
                 logger.info("Scheduling race in {0:01d}:{1:02d}".format(int(m), int(s)))
             else:
@@ -1394,7 +1398,8 @@ class RHRace():
                     self._racecontext.events.trigger(Evt.RACE_SCHEDULE_CANCEL, {
                         'heat_id': self.current_heat,
                         })
-                    self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
+                    if not silent:
+                        self._racecontext.rhui.emit_priority_message(self.__("Scheduled race cancelled"), False)
 
             self._racecontext.rhui.emit_race_schedule()
             return True
