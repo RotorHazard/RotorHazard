@@ -44,7 +44,7 @@ The "68" represents the I2C address of the RTC module.  (After the Pi is configu
 
 Enter the following command to edit the "/boot/config.txt" file:
 ```
-sudo nano /boot/config.txt
+sudo nano /boot/firmware/config.txt
 ```
 If using the DS3231, add the following line to the end of the file:
 ```
@@ -79,6 +79,7 @@ Hit *Ctrl-O* and *Enter* to save the file and then *Ctrl-X* to exit the editor.
 
 To configure and enable this startup service, enter the following commands:
 ```
+sudo apt install util-linux-extra
 sudo chmod 644 /etc/systemd/system/hwclock-start.service
 sudo chown root:root /etc/systemd/system/hwclock-start.service
 sudo systemctl daemon-reload
@@ -117,7 +118,7 @@ Aug 29 19:01:49 pi3number98 systemd[1]: Starting hwclock-start to read rtc and w
 Aug 29 19:01:51 pi3number98 systemd[1]: Started hwclock-start to read rtc and write to system clock.
 ```
 
-The current time held by RTC module can be queried via the `sudo hwclock -r` command.  Adding the -D parameter will provide additional information:  `sudo hwclock -D -r`
+The current time held by RTC module can be queried via the `sudo hwclock -r` command.  Adding the -D parameter will provide additional information:  `sudo hwclock -r --verbose`
 
 <br />
 

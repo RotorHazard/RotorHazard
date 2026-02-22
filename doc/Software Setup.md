@@ -145,7 +145,9 @@ To install another version, add the desired version code after `install.sh` - fo
 sh install.sh v4.3.0-beta.1
 ```
 
-(Note that the updates for the RotorHazard server Python dependencies may take a few minutes.)
+Note:
+* The updates for the RotorHazard server Python dependencies may take a few minutes
+* Error messages about "pip's dependency resolver ... Flask-SQLAlchemy not installed" may be safely ignored
 
 ### 8. Configuration File
 When the RotorHazard server is run for the first time, it will create a `config.json` file in the data directory. **As of RotorHazard 4.3, it is not necessary to hand-edit this file.** All settings can be modified within the frontend user interface. The `config.json` file may still be directly edited to alter the configuration settings, but this must only be done while the RotorHazard server is not running, otherwise the changes will be overwritten. When the server starts up, if it detects that the `config.json` has been updated, it will load the settings and then create a backup copy of the file (with a filename in the form "config_bkp_YYYYMMDD_hhmmss.json").
@@ -417,6 +419,7 @@ sh update.sh v4.3.0-beta.1
 
 Note:
 * The updates for the RotorHazard server Python dependencies may take a few minutes
+* Error messages about "pip's dependency resolver ... Flask-SQLAlchemy not installed" may be safely ignored
 * The previous "RotorHazard" directory will be archived as: "old/RotorHazard_YYYYMMDD_HHMMSS" (with the current date/time)
 
 ----------------------------------------------------------------------------

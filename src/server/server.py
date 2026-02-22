@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.4.0-beta.3" # Public release version code
+RELEASE_VERSION = "4.4.0-dev.6" # Public release version code
 SERVER_API = 49 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 36 # Most recent node API
@@ -493,7 +493,7 @@ def render_run():
 
     return render_template('run.html',
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
-        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+        vrx_enabled=RaceContext.vrx_manager.isEnabled() if RaceContext.vrx_manager else False,
         num_nodes=RaceContext.race.num_nodes,
         nodes=nodes,
         cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
@@ -536,7 +536,7 @@ def render_settings():
     return render_template('settings.html',
                            led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
                            led_events_enabled=RaceContext.led_manager.isEnabled(),
-                           vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+                           vrx_enabled=RaceContext.vrx_manager.isEnabled() if RaceContext.vrx_manager else False,
                            num_nodes=RaceContext.race.num_nodes,
                            server_messages=RaceContext.rhui.get_ui_server_messages_str(),
                            cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()),

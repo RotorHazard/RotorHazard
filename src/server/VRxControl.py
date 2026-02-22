@@ -88,7 +88,7 @@ class VRxControlManager():
             self.Events.off(Evt.OPTION_SET, 'VRx')
             self.Events.off(Evt.SHUTDOWN, 'VRx')
         else:
-            logger.info('VRx Control already disabled')
+            logger.debug('VRx Control already disabled')
 
         return True
 
