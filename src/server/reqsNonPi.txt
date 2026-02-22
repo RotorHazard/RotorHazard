@@ -9,7 +9,7 @@ Werkzeug==3.1.*
 MarkupSafe==3.0.*
 
 # Socket
-Flask-SocketIO==5.5.*
+Flask-SocketIO==5.6.*
 python-socketio==5.14.*
 python-engineio==4.12.*
 websocket-client==1.9.*
