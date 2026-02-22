@@ -7,10 +7,10 @@ Default compose file: builds from source so devs don’t pull from Docker Hub.
 From **repo root**:
 
 ```bash
-docker-compose -f tools/docker-compose.yml up -d
+docker-compose -f docker/docker-compose.yml up -d
 ```
 
-Or from `tools/`:
+Or from `docker/`:
 
 ```bash
 docker-compose up -d
@@ -31,10 +31,10 @@ Run with the prod compose file (same ports/volumes, no build):
 From **repo root**:
 
 ```bash
-docker-compose -f tools/docker-compose.prod.yml up -d
+docker-compose -f docker/docker-compose.prod.yml up -d
 ```
 
-Or from `tools/`:
+Or from `docker/`:
 
 ```bash
 docker-compose -f docker-compose.prod.yml up -d
@@ -44,11 +44,11 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```bash
 # Script (default data dir: ./data)
-chmod +x tools/run-prod.sh
-./tools/run-prod.sh
+chmod +x docker/run-prod.sh
+./docker/run-prod.sh
 
 # Or custom data dir
-./tools/run-prod.sh /opt/rotorhazard/data
+./docker/run-prod.sh /opt/rotorhazard/data
 ```
 
 One-liner (set your own path for the volume):
@@ -70,8 +70,8 @@ docker run -d --name rotorhazard-server --restart unless-stopped -p 5000:5000 -v
 | `Dockerfile.pi` | Raspberry Pi (arm64) | `requirements.txt` (RPi.GPIO, rpi-ws281x, etc.) |
 
 Build from **repo root**:
-- Non-Pi: `docker build -f tools/Dockerfile -t rotorhazard .`
-- Pi: `docker build -f tools/Dockerfile.pi -t rotorhazard:pi .`
+- Non-Pi: `docker build -f docker/Dockerfile -t rotorhazard .`
+- Pi: `docker build -f docker/Dockerfile.pi -t rotorhazard:pi .`
 
 ## Multi-platform build (amd64 + arm64)
 
@@ -83,10 +83,10 @@ From the **repo root**:
 docker buildx create --use --name multi  # one-time
 
 # Non-Pi image for amd64
-docker buildx build --platform linux/amd64 -f tools/Dockerfile -t racefpv/rotorhazard:latest --push .
+docker buildx build --platform linux/amd64 -f docker/Dockerfile -t racefpv/rotorhazard:latest --push .
 
 # Pi image for arm64 (uses requirements.txt with RPi.GPIO, etc.)
-docker buildx build --platform linux/arm64 -f tools/Dockerfile.pi -t racefpv/rotorhazard:latest --push .
+docker buildx build --platform linux/arm64 -f docker/Dockerfile.pi -t racefpv/rotorhazard:latest --push .
 ```
 
 Result: `docker pull racefpv/rotorhazard:latest` gets the non-Pi image on amd64 and the Pi image on arm64.

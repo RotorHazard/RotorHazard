@@ -1,9 +1,9 @@
 # RotorHazard Server Dockerfile - non-Pi (x64/amd64)
 # Python 3.10+ is required (MIN_PYTHON_MAJOR_VERSION = 3, MIN_PYTHON_MINOR_VERSION = 10)
 #
-# Build context must be the repo root (parent of tools/), e.g.:
-#   docker build -f tools/Dockerfile .
-# Or use docker-compose from tools/: docker-compose build
+# Build context must be the repo root (parent of docker/), e.g.:
+#   docker build -f docker/Dockerfile .
+# Or use docker-compose from docker/: docker-compose build
 # For Pi image use: Dockerfile.pi
 FROM python:3.11-slim
 

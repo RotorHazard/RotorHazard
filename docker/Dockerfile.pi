@@ -1,9 +1,9 @@
 # RotorHazard Server Dockerfile - Raspberry Pi
 # Python 3.10+ is required (MIN_PYTHON_MAJOR_VERSION = 3, MIN_PYTHON_MINOR_VERSION = 10)
 #
-# Build context must be the repo root (parent of tools/). For arm64/Pi:
-#   docker build -f tools/Dockerfile.pi -t rotorhazard:pi .
-# Or with buildx: docker buildx build --platform linux/arm64 -f tools/Dockerfile.pi -t rotorhazard:pi .
+# Build context must be the repo root (parent of docker/). For arm64/Pi:
+#   docker build -f docker/Dockerfile.pi -t rotorhazard:pi .
+# Or with buildx: docker buildx build --platform linux/arm64 -f docker/Dockerfile.pi -t rotorhazard:pi .
 FROM python:3.11-slim
 
 # Set working directory

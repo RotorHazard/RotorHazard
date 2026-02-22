@@ -1,8 +1,8 @@
 version: '3.8'
 
 # Production / published: uses image from Docker Hub (no local build).
-# Run from repo root: docker-compose -f tools/docker-compose.prod.yml up
-# Or from tools/: docker-compose -f docker-compose.prod.yml up
+# Run from repo root: docker-compose -f docker/docker-compose.prod.yml up
+# Or from docker/: docker-compose -f docker-compose.prod.yml up
 services:
   rotorhazard:
     image: racefpv/rotorhazard:latest

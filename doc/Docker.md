@@ -6,7 +6,7 @@
 
 1. **Build and run the container:**
    ```bash
-   cd tools
+   cd docker
    docker-compose down  # Clean up any existing containers first
    docker-compose up -d
    ```
@@ -19,13 +19,13 @@
    docker-compose down
    ```
    
-   (Run from the `tools` directory)
+   (Run from the `docker` directory)
 
 ### Using Docker directly
 
 1. **Build the image:**
    ```bash
-   docker build -f tools/Dockerfile -t rotorhazard-server .
+   docker build -f docker/Dockerfile -t rotorhazard-server .
    ```
    
    (Run from the repository root directory)
@@ -58,7 +58,7 @@
 
 ### Change Port
 
-**Docker Compose:** Edit `tools/docker-compose.yml`:
+**Docker Compose:** Edit `docker/docker-compose.yml`:
 ```yaml
 ports:
   - "8080:5000"  # Change 8080 to your desired port
@@ -78,7 +78,7 @@ docker run -d \
 
 **Raspberry Pi GPIO/SPI/I2C:** `privileged: true` is enabled by default, which gives full access to hardware.
 
-**Alternative (specific devices only):** Edit `tools/docker-compose.yml`:
+**Alternative (specific devices only):** Edit `docker/docker-compose.yml`:
 
 ```yaml
 # Comment out: privileged: true
