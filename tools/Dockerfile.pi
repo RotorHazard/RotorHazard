@@ -1,16 +1,15 @@
-# RotorHazard Server Dockerfile - non-Pi (x64/amd64)
+# RotorHazard Server Dockerfile - Raspberry Pi
 # Python 3.10+ is required (MIN_PYTHON_MAJOR_VERSION = 3, MIN_PYTHON_MINOR_VERSION = 10)
 #
-# Build context must be the repo root (parent of tools/), e.g.:
-#   docker build -f tools/Dockerfile .
-# Or use docker-compose from tools/: docker-compose build
-# For Pi image use: Dockerfile.pi
+# Build context must be the repo root (parent of tools/). For arm64/Pi:
+#   docker build -f tools/Dockerfile.pi -t rotorhazard:pi .
+# Or with buildx: docker buildx build --platform linux/arm64 -f tools/Dockerfile.pi -t rotorhazard:pi .
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (Pi packages may need these)
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -18,8 +17,8 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file (using reqsNonPi.txt since we're not on a Raspberry Pi)
-COPY src/server/reqsNonPi.txt /app/requirements.txt
+# Copy requirements file (Pi version with RPi.GPIO, rpi-ws281x, etc.)
+COPY src/server/requirements.txt /app/requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

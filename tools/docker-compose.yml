@@ -1,10 +1,12 @@
 version: '3.8'
 
+# Local dev: builds from source. Run from repo root: docker-compose -f tools/docker-compose.yml up
+# For pre-built image from Docker Hub, use: docker-compose -f tools/docker-compose.prod.yml up
 services:
   rotorhazard:
     build:
       context: ..
-      dockerfile: tools/Dockerfile
+      dockerfile: Dockerfile
     container_name: rotorhazard-server
     ports:
       - "5000:5000"
@@ -14,19 +16,6 @@ services:
     environment:
       - RH_DATA_DIR=/app/data
     restart: unless-stopped
-    # USB/Serial device access options:
-    # Option 1: Privileged mode (recommended for USB access)
-    # This gives the container full access to all devices including USB
+    # Hardware access (USB, GPIO, SPI, I2C)
+    # Privileged mode gives full access to all devices (recommended for Pi)
     privileged: true
-    
-    # Option 2: Specific device access (alternative to privileged mode)
-    # Uncomment and modify device names as needed for your hardware:
-    # devices:
-    #   - /dev/ttyUSB0:/dev/ttyUSB0
-    #   - /dev/ttyACM0:/dev/ttyACM0
-    #   - /dev/ttyUSB1:/dev/ttyUSB1
-    
-    # Option 3: Mount entire /dev directory (alternative, less secure)
-    # volumes:
-    #   - ./data:/app/data
-    #   - /dev:/dev

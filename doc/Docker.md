@@ -74,14 +74,19 @@ docker run -d \
   rotorhazard-server
 ```
 
-### USB Device Access
+### Hardware Access (USB, GPIO, SPI, I2C)
 
-USB devices are accessible by default. To use specific devices only, edit `tools/docker-compose.yml`:
+**Raspberry Pi GPIO/SPI/I2C:** `privileged: true` is enabled by default, which gives full access to hardware.
+
+**Alternative (specific devices only):** Edit `tools/docker-compose.yml`:
 
 ```yaml
 # Comment out: privileged: true
 # Uncomment:
 devices:
-  - /dev/ttyUSB0:/dev/ttyUSB0
-  - /dev/ttyACM0:/dev/ttyACM0
+  - /dev/gpiomem:/dev/gpiomem       # GPIO
+  - /dev/spidev0.0:/dev/spidev0.0   # SPI bus 0, device 0
+  - /dev/i2c-1:/dev/i2c-1           # I2C bus 1 (typical on Pi)
+  - /dev/ttyUSB0:/dev/ttyUSB0       # USB serial
+  - /dev/ttyACM0:/dev/ttyACM0       # USB serial
 ```
