@@ -16,7 +16,7 @@ Or from `tools/`:
 docker-compose up -d
 ```
 
-Data is in `../data` (relative to the compose file).
+Dev uses a **named volume** (`rotorhazard-dev-data`) so the repo has no data directory and personal data isn’t committed. To wipe dev data: `docker volume rm rotorhazard-dev-data` (after stopping the container).
 
 ## Production / published image (Docker Hub)
 
