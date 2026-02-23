@@ -53,16 +53,18 @@ Images are layered so the main Dockerfile is the base and Pi/NuclearHazard varia
 - **Dockerfile.pi**: `FROM` the base image; adds Pi-specific apt/pip and same CMD.
 - **Dockerfile.nuclearpi**: `FROM` the Pi image; adds `nh_entrypoint.sh`, `NH_FIRST_RUN`, and ENTRYPOINT only.
 
-## Build and push (all images)
+## Build (and optionally push) images
 
 From **repo root**. The script builds the base image when building Pi or NuclearHazard, then builds in order: rotorhazard (default) → pi → nuclearpi.
 
+**Default: build only** (no push), so it works without registry access. Use `--push` to push after building; set `IMAGE_PREFIX` (e.g. your Docker Hub username) when pushing.
+
 ```bash
-./docker/scripts/build-and-push.sh              # build and push all
-./docker/scripts/build-and-push.sh --no-push    # build only
-./docker/scripts/build-and-push.sh --only=pi    # build/push one image
+./docker/scripts/build-and-push.sh              # build all, load locally
+./docker/scripts/build-and-push.sh --push       # build and push (set IMAGE_PREFIX for your registry)
+./docker/scripts/build-and-push.sh --only=pi
 ./docker/scripts/build-and-push.sh --only=nuclearpi
-./docker/scripts/build-and-push.sh --only=rotorhazard
+IMAGE_PREFIX=myuser ./docker/scripts/build-and-push.sh --push       # push to myuser/rotorhazard:*
 ```
 
 Resulting image tags (the build script pushes to the registry you configure; see script for `IMAGE` / tag variables):
