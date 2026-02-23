@@ -1,7 +1,6 @@
 version: '3.8'
 
-# Local dev: builds from source. Run from repo root: docker-compose -f docker/docker-compose.yml up
-# For pre-built image from Docker Hub, use: docker-compose -f docker/docker-compose.prod.yml up
+# Local dev: builds from source. Run this from repo root: docker-compose -f docker/docker-compose.yml up
 # Dev uses a named volume so repo stays clean and personal data isn't accidentally committed.
 services:
   rotorhazard:
@@ -16,8 +15,7 @@ services:
     environment:
       - RH_DATA_DIR=/app/data
     restart: unless-stopped
-    # Hardware access (USB, GPIO, SPI, I2C)
-    # Privileged mode gives full access to all devices (recommended for Pi)
+    # Hardware access (USB, GPIO, SPI, I2C) via privileged mode
     privileged: true
 
 volumes:
