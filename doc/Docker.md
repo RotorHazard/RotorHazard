@@ -1,82 +1,96 @@
 # Docker Setup for RotorHazard Server
 
-## Quick Start
+## Quick start
 
-### Using Docker Compose (Recommended)
+### Local development (build from source)
 
-1. **Build and run the container:**
-   ```bash
-   cd docker
-   docker-compose down  # Clean up any existing containers first
-   docker-compose up -d
-   ```
+From the **repository root**:
 
-2. **Access the web interface:**
-   Open your browser and navigate to `http://localhost:5000`
-
-3. **Stop the container:**
-   ```bash
-   docker-compose down
-   ```
-   
-   (Run from the `docker` directory)
-
-### Using Docker directly
-
-1. **Build the image:**
-   ```bash
-   docker build -f docker/Dockerfile -t rotorhazard-server .
-   ```
-   
-   (Run from the repository root directory)
-
-2. **Run the container:**
-   ```bash
-   docker run -d \
-     --name rotorhazard-server \
-     -p 5000:5000 \
-     -v $(pwd)/data:/app/data \
-     --privileged \
-     rotorhazard-server
-   ```
-
-3. **View logs:**
-   ```bash
-   docker logs -f rotorhazard-server
-   ```
-
-4. **Access the web interface:**
-   Open your browser and navigate to `http://localhost:5000`
-
-5. **Stop the container:**
-   ```bash
-   docker stop rotorhazard-server
-   docker rm rotorhazard-server
-   ```
-
-## Configuration
-
-### Change Port
-
-**Docker Compose:** Edit `docker/docker-compose.yml`:
-```yaml
-ports:
-  - "8080:5000"  # Change 8080 to your desired port
+```bash
+docker-compose -f docker/docker-compose.yml up -d
 ```
 
-**Docker run:** Change the `-p` flag:
+Or from the `docker/` directory:
+
 ```bash
+cd docker
+docker-compose down   # clean up any existing container first
+docker-compose up -d
+```
+
+Access the web interface at `http://localhost:5000`.
+
+To stop:
+
+```bash
+docker-compose -f docker/docker-compose.yml down   # from repo root
+# or from docker/:  docker-compose down
+```
+
+### Production (pre-built image)
+
+Pull the image from your registry and run it (e.g. on a server or Pi without the repo):
+
+```bash
+docker pull <your-registry>/rotorhazard:latest
 docker run -d \
   --name rotorhazard-server \
-  -p 8080:5000 \  # Change 8080 to your desired port
+  --restart unless-stopped \
+  -p 5000:5000 \
   -v $(pwd)/data:/app/data \
+  -e RH_DATA_DIR=/app/data \
+  --privileged \
+  <your-registry>/rotorhazard:latest
+```
+
+Or use the run script (recommended; image tag configurable via `IMAGE`):
+
+```bash
+./docker/scripts/run-prod.sh           # data dir: ./data
+./docker/scripts/run-prod.sh /path/to/data
+```
+
+### Building the image yourself
+
+From the repository root:
+
+```bash
+docker build -f docker/Dockerfile -t rotorhazard-server .
+docker run -d \
+  --name rotorhazard-server \
+  -p 5000:5000 \
+  -v $(pwd)/data:/app/data \
+  -e RH_DATA_DIR=/app/data \
   --privileged \
   rotorhazard-server
 ```
 
-### Hardware Access (USB, GPIO, SPI, I2C)
+## Configuration
 
-**Raspberry Pi GPIO/SPI/I2C:** `privileged: true` is enabled by default, which gives full access to hardware.
+### Change port
+
+**Docker Compose:** Edit `docker/docker-compose.yml`:
+
+```yaml
+ports:
+  - "8080:5000"  # change 8080 to your desired port
+```
+
+**Docker run:** Change the `-p` flag:
+
+```bash
+docker run -d \
+  --name rotorhazard-server \
+  -p 8080:5000 \
+  -v $(pwd)/data:/app/data \
+  -e RH_DATA_DIR=/app/data \
+  --privileged \
+  <your-image>
+```
+
+### Hardware access (USB, GPIO, SPI, I2C)
+
+**Raspberry Pi:** Use the Pi image and run script for full GPIO/SPI/I2C support. The default compose and run examples use `--privileged`, which gives the container full hardware access.
 
 **Alternative (specific devices only):** Edit `docker/docker-compose.yml`:
 
@@ -84,9 +98,17 @@ docker run -d \
 # Comment out: privileged: true
 # Uncomment:
 devices:
-  - /dev/gpiomem:/dev/gpiomem       # GPIO
-  - /dev/spidev0.0:/dev/spidev0.0   # SPI bus 0, device 0
-  - /dev/i2c-1:/dev/i2c-1           # I2C bus 1 (typical on Pi)
-  - /dev/ttyUSB0:/dev/ttyUSB0       # USB serial
-  - /dev/ttyACM0:/dev/ttyACM0       # USB serial
+  - /dev/gpiomem:/dev/gpiomem
+  - /dev/spidev0.0:/dev/spidev0.0
+  - /dev/i2c-1:/dev/i2c-1
+  - /dev/ttyUSB0:/dev/ttyUSB0
+  - /dev/ttyACM0:/dev/ttyACM0
 ```
+
+## Image variants and Pi / NuclearHazard
+
+- **Default (x64):** `Dockerfile` — for amd64/x64.
+- **Raspberry Pi (arm64):** `Dockerfile.pi` — extends the base image with Pi requirements and GPIO/LED support.
+- **NuclearHazard (arm64):** Uses the Pi image plus an entrypoint and defaults; recommended setup is the run script on the Pi.
+
+For build design, multi-platform builds, and NuclearHazard setup, see [docker/README.md](../docker/README.md) and [docker/README-NuclearHazard.md](../docker/README-NuclearHazard.md).

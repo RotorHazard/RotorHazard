@@ -2,91 +2,112 @@
 
 ## Local development (build from source)
 
-Default compose file: builds from source so devs don’t pull from Docker Hub.
+Builds from source so you don’t need to pull from a registry.
 
-From **repo root**:
-
-```bash
-docker-compose -f docker/docker-compose.yml up -d
-```
-
-Or from `docker/`:
+From `docker/`:
 
 ```bash
 docker-compose up -d
 ```
 
-Dev uses a **named volume** (`rotorhazard-dev-data`) so the repo has no data directory and personal data isn’t committed. To wipe dev data: `docker volume rm rotorhazard-dev-data` (after stopping the container).
+Uses a **named volume** (`rotorhazard-dev-data`) so the repo has no data directory and personal data isn’t committed. To wipe dev data: `docker volume rm rotorhazard-dev-data` (after stopping the container).
 
-## Production / published image (Docker Hub)
+## Production (pre-built image)
 
-Use the pre-built image (e.g. on a Pi or when you don’t have the repo):
-
-```bash
-docker pull racefpv/rotorhazard:latest
-```
-
-Run with the prod compose file (same ports/volumes, no build):
-
-From **repo root**:
+Pull and run the image from your registry (e.g. on a server or Pi without the repo):
 
 ```bash
-docker-compose -f docker/docker-compose.prod.yml up -d
+docker pull <your-registry>/rotorhazard:latest
 ```
 
-Or from `docker/`:
+**Using the run script** (recommended; set `IMAGE` if your tag differs):
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+chmod +x docker/scripts/run-prod.sh
+./docker/scripts/run-prod.sh              # data dir: ./data
+./docker/scripts/run-prod.sh /path/to/data # custom data dir
 ```
 
-**Without compose** (same behavior, one container):
+**Or run the container directly:**
 
 ```bash
-# Script (default data dir: ./data)
-chmod +x docker/run-prod.sh
-./docker/run-prod.sh
-
-# Or custom data dir
-./docker/run-prod.sh /opt/rotorhazard/data
+docker run -d --name rotorhazard-server --restart unless-stopped \
+  -p 5000:5000 -v ./data:/app/data -e RH_DATA_DIR=/app/data \
+  --privileged <your-registry>/rotorhazard:latest
 ```
 
-One-liner (set your own path for the volume):
+---
+
+## Image build design
+
+Images are layered so the main Dockerfile is the base and Pi/NuclearHazard variants extend it:
+
+| Layer | Image | Dockerfile | Description |
+|-------|--------|------------|-------------|
+| Base | (internal stage) | `Dockerfile` (target: `base`) | Common app layout + system deps, no Python deps |
+| Default | `rotorhazard:latest` | `Dockerfile` | x64/amd64, uses `reqsNonPi.txt` |
+| Pi | `rotorhazard-pi:latest` | `Dockerfile.pi` | arm64, FROM base + Pi requirements + GPIO/LED/VRxC |
+| NuclearHazard | `rotorhazard-nuclearpi:latest` | `Dockerfile.nuclearpi` | arm64, FROM Pi + entrypoint + NuclearHazard defaults |
+
+- **Dockerfile**: Defines the `base` stage (shared app copy, no pip) and the `default` stage (non-Pi server). Default build target is the final stage.
+- **Dockerfile.pi**: `FROM` the base image; adds Pi-specific apt/pip and same CMD.
+- **Dockerfile.nuclearpi**: `FROM` the Pi image; adds `nh_entrypoint.sh`, `NH_FIRST_RUN`, and ENTRYPOINT only.
+
+## Build and push (all images)
+
+From **repo root**. The script builds the base image when building Pi or NuclearHazard, then builds in order: rotorhazard (default) → pi → nuclearpi.
 
 ```bash
-docker run -d --name rotorhazard-server --restart unless-stopped -p 5000:5000 -v ./data:/app/data -e RH_DATA_DIR=/app/data --privileged racefpv/rotorhazard:latest
+./docker/scripts/build-and-push.sh              # build and push all
+./docker/scripts/build-and-push.sh --no-push    # build only
+./docker/scripts/build-and-push.sh --only=pi    # build/push one image
+./docker/scripts/build-and-push.sh --only=nuclearpi
+./docker/scripts/build-and-push.sh --only=rotorhazard
 ```
 
-| File                      | Use case        | Image source   |
-|---------------------------|-----------------|----------------|
-| `docker-compose.yml`      | Local dev       | Build from repo |
-| `docker-compose.prod.yml` | Production / Pi | Docker Hub     |
+Resulting image tags (the build script pushes to the registry you configure; see script for `IMAGE` / tag variables):
 
-## Dockerfiles
+| Image | Platform |
+|-------|----------|
+| `rotorhazard:base` | arm64 (intermediate, for pi/nuclearpi) |
+| `rotorhazard:latest` | amd64 |
+| `rotorhazard-pi:latest` | arm64 |
+| `rotorhazard-nuclearpi:latest` | arm64 |
 
-| File           | Use case   | Requirements        |
-|----------------|------------|---------------------|
-| `Dockerfile`   | Non-Pi (x64/amd64) | `reqsNonPi.txt`  |
-| `Dockerfile.pi` | Raspberry Pi (arm64) | `requirements.txt` (RPi.GPIO, rpi-ws281x, etc.) |
+## Manual builds
 
-Build from **repo root**:
-- Non-Pi: `docker build -f docker/Dockerfile -t rotorhazard .`
-- Pi: `docker build -f docker/Dockerfile.pi -t rotorhazard:pi .`
-
-## Multi-platform build (amd64 + arm64)
-
-To push one tag that works on both x64 and Raspberry Pi, build each platform with its Dockerfile and push to the same tag:
-
-From the **repo root**:
+Build from **repo root**. For Pi or NuclearHazard you must build (or pull) the base image first. Use your own registry/tag as needed.
 
 ```bash
-docker buildx create --use --name multi  # one-time
+# One-time: create buildx builder
+docker buildx create --use --name multi
 
-# Non-Pi image for amd64
-docker buildx build --platform linux/amd64 -f docker/Dockerfile -t racefpv/rotorhazard:latest --push .
+# Default (x64)
+docker build -f docker/Dockerfile -t rotorhazard:latest .
 
-# Pi image for arm64 (uses requirements.txt with RPi.GPIO, etc.)
-docker buildx build --platform linux/arm64 -f docker/Dockerfile.pi -t racefpv/rotorhazard:latest --push .
+# Pi (arm64) – base must exist (build or pull)
+docker buildx build --platform linux/arm64 -f docker/Dockerfile --target base -t rotorhazard:base --load .
+docker buildx build --platform linux/arm64 -f docker/Dockerfile.pi -t rotorhazard-pi:latest --load .
+
+# NuclearHazard (arm64) – Pi image must exist
+docker buildx build --platform linux/arm64 -f docker/Dockerfile.nuclearpi -t rotorhazard-nuclearpi:latest --load .
 ```
 
-Result: `docker pull racefpv/rotorhazard:latest` gets the non-Pi image on amd64 and the Pi image on arm64.
+---
+
+## NuclearHazard (Pi / arm64)
+
+NuclearHazard uses the Pi image plus an entrypoint and default config. **Recommended:** use the run script on the Pi; it does host setup, pulls the image, and configures auto-start.
+
+**Quick start on a Raspberry Pi:**
+
+```bash
+chmod +x docker/scripts/run-prod-nuclear-pi.sh
+./docker/scripts/run-prod-nuclear-pi.sh
+```
+
+The script configures the Pi, pulls the NuclearHazard image (tag is configurable via `IMAGE` in the script), and reboots. After reboot, the server runs at `http://localhost`. Default credentials: `NuclearHazard` / `nuclearhazard`.
+
+**Important:** The NuclearHazard board needs an external power supply; USB from the Pi alone is not sufficient.
+
+See [README-NuclearHazard.md](README-NuclearHazard.md) for access, troubleshooting, and optional WiFi hotspot setup.

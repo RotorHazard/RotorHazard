@@ -4,13 +4,17 @@
 # Build context must be the repo root (parent of docker/), e.g.:
 #   docker build -f docker/Dockerfile .
 # Or use docker-compose from docker/: docker-compose build
-# For Pi image use: Dockerfile.pi
-FROM python:3.11-slim
+#
+# Stages:
+#   base    - Common app layout and system deps (no Python deps). Used by Dockerfile.pi.
+#   default - x64 image with reqsNonPi.txt (default target).
+#
+# For Pi image use: Dockerfile.pi (FROM racefpv/rotorhazard:base)
+FROM python:3.11-slim AS base
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Common system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -18,30 +22,22 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file (using reqsNonPi.txt since we're not on a Raspberry Pi)
-COPY src/server/reqsNonPi.txt /app/requirements.txt
+# Copy application (Python deps installed by each variant)
+COPY src/server/ /app/src/server/
+COPY src/interface/ /app/src/interface/
+COPY firmware/ /app/firmware/
 
-# Install Python dependencies
+# -----------------------------------------------------------------------------
+# Default (x64) image: non-Pi requirements
+# -----------------------------------------------------------------------------
+FROM base AS default
+
+COPY src/server/reqsNonPi.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy server application files
-COPY src/server/ /app/src/server/
-
-# Copy interface directory (required by server)
-COPY src/interface/ /app/src/interface/
-
-# Set working directory to server directory
 WORKDIR /app/src/server
-
-# Create data directory for persistent storage
 RUN mkdir -p /app/data
 VOLUME /app/data
-
-# Expose the default HTTP port
 EXPOSE 5000
-
-# Set environment variable for data directory
 ENV RH_DATA_DIR=/app/data
-
-# Run the server with data directory flag
 CMD ["python", "server.py", "--data", "/app/data"]

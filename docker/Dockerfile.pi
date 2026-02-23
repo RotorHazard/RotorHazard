@@ -1,46 +1,31 @@
-# RotorHazard Server Dockerfile - Raspberry Pi
-# Python 3.10+ is required (MIN_PYTHON_MAJOR_VERSION = 3, MIN_PYTHON_MINOR_VERSION = 10)
+# RotorHazard Server - Raspberry Pi image (arm64)
+# Builds on the base image. Python 3.10+ required.
 #
-# Build context must be the repo root (parent of docker/). For arm64/Pi:
-#   docker build -f docker/Dockerfile.pi -t rotorhazard:pi .
-# Or with buildx: docker buildx build --platform linux/arm64 -f docker/Dockerfile.pi -t rotorhazard:pi .
-FROM python:3.11-slim
+# Build the base for arm64 first, then:
+#   docker buildx build --platform linux/arm64 -f docker/Dockerfile.pi -t rotorhazard:pi .
+# Or use build-and-push.sh which builds base then pi.
+#
+# Override base image for local builds: --build-arg BASE_IMAGE=rotorhazard:base
+ARG BASE_IMAGE=racefpv/rotorhazard:base
+FROM ${BASE_IMAGE}
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies (Pi packages may need these)
+# Pi-specific system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    libffi-dev \
-    libssl-dev \
+    procps \
+    python3-dev \
+    i2c-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file (Pi version with RPi.GPIO, rpi-ws281x, etc.)
+# Pi requirements (includes RPi.GPIO, rpi-ws281x, etc.)
 COPY src/server/requirements.txt /app/requirements.txt
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy server application files
-COPY src/server/ /app/src/server/
+# Extra Pi dependencies (LED support, VRxC flashing, etc.)
+RUN pip install --no-cache-dir rpi-lgpio gpiozero rpi5-ws2812 esptool pillow
 
-# Copy interface directory (required by server)
-COPY src/interface/ /app/src/interface/
-
-# Set working directory to server directory
 WORKDIR /app/src/server
-
-# Create data directory for persistent storage
 RUN mkdir -p /app/data
 VOLUME /app/data
-
-# Expose the default HTTP port
 EXPOSE 5000
-
-# Set environment variable for data directory
 ENV RH_DATA_DIR=/app/data
-
-# Run the server with data directory flag
 CMD ["python", "server.py", "--data", "/app/data"]
