@@ -81,6 +81,16 @@
 		});
 
 		$('button#download_logs').click(function (event) {
+			setTimeout(
+				function() {
+					$.magnificPopup.open({
+						items: {
+							src: '#download_logs_progress',
+							type: 'inline',
+						}
+					});
+				}, 100
+			);
 			var audioSettingsData = rotorhazard.getAudioSettingsStr(new Date());
 			var outData = { 'emit_fn_name': 'logpg_save_logs',
 							'audioSettingsData' : audioSettingsData,
@@ -97,6 +107,7 @@
 				byteNumbers[i] = msgArray.charCodeAt(i);
 			}
 			var byteArray = new Uint8Array(byteNumbers);
+			$.magnificPopup.close();
 			// construct blob from byte array and initiate browser save-as
 			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
@@ -134,5 +145,11 @@
 	<button id="download_logs">{{ __('Download Logs') }}</button>
 	&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
 </div>
+	<div id="download_logs_progress" class="priority-message-interrupt mfp-hide popup">
+		<h2>{{ __('Alert') }}</h2>
+		<div class="popup-content">
+			<p>{{ __('Download logs in progress...') }}</p>
+		</div>
+	</div>
 </main>
 {% endblock %}
