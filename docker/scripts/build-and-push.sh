@@ -93,8 +93,9 @@ fi
 echo ""
 
 # Image definitions: name:dockerfile:platforms:tag (base is built first when pi/nuclearpi needed)
+# rotorhazard: amd64 + arm64 so Mac (Apple Silicon) and PC users can both pull the right image
 IMAGES=(
-    "rotorhazard:Dockerfile:linux/amd64:${RH_TAG}"
+    "rotorhazard:Dockerfile:linux/amd64,linux/arm64:${RH_TAG}"
     "pi:Dockerfile.pi:linux/arm64:${PI_TAG}"
     "nuclearpi:Dockerfile.nuclearpi:linux/arm64:${NUCLEARPI_TAG}"
 )

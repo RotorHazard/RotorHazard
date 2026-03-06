@@ -3,6 +3,9 @@
 # Usage: ./run-prod.sh [DATA_DIR]
 #   DATA_DIR defaults to ./data (relative to current directory).
 #   Example: ./run-prod.sh /opt/rotorhazard/data
+#
+# USB/serial (timing Arduino): Works on Linux/WSL/Windows. On macOS, Docker Desktop
+# cannot pass host USB devices into the container; use a native install for timing hardware.
 
 set -e
 IMAGE="${IMAGE:-racefpv/rotorhazard:latest}"
