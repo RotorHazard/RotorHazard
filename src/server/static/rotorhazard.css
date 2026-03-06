@@ -1331,7 +1331,7 @@ main.page-home {
 .eye-icon {
 	background: none;
 	border: none;
-	color: var(--contrast_1_high);
+	color: inherit;
 }
 
 .eye-icon svg {
@@ -1392,14 +1392,14 @@ main.page-home {
 .heats {
 	padding: 0;
 	list-style: none;
-	display: flex;
-	flex-wrap: wrap;
-	margin: 0 -0.25em;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr));
+	margin: 0;
+	gap: 0.5em;
 }
 
 .heats>li {
-	width: calc(20% - 0.5em);
-	margin: 0 0.25em 0.5em;
+	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
 }
@@ -1408,37 +1408,25 @@ main.page-home {
 	position: relative;
 }
 
-@media (max-width: 68em){
-	.heats>li {
-		width: calc(25% - 0.5em);
-	}
-}
-
-@media (max-width: 48em){
-	.heats>li {
-		width: calc(33.3333% - 0.5em);
-	}
-}
-
-@media (max-width: 36em){
-	.heats>li {
-		width: calc(50% - 0.5em);
-	}
-}
-
-@media (max-width: 23em){
-	.heats>li {
-		width: 100%;
-	}
-}
-
 ol.heat-edit-list {
 	margin: 1rem 0;
 }
 
 ol.heat-edit-list>li {
 	position: relative;
-	width: calc(33.3333% - 0.5em);
+	background: #eee;
+	padding: 0.5rem;
+	border-radius: 0.5rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-content: flex-start;
+	gap: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	ol.heat-edit-list>li {
+		background: #222;
+	}
 }
 
 #heat_edit_form>li {
@@ -1449,37 +1437,39 @@ ol.heat-edit-list>li {
 	position: relative;
 }
 
-.heat-edit>h4,
-.heat-edit>ol {
-	flex-basis: 100%;
-}
-
 .heat-edit>.set_heat_name {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: calc(100% - 6.5rem);
+	order: -1;
+	flex: 1 1 0;
 	background: transparent;
 	border: transparent;
-	color: var(--contrast_1_high);
+	color: inherit;
 	font-weight: bold;
+	padding: 0;
 }
 
-.heat-edit>h4 {
-	color: transparent;
-	font-size: 1.17em;
+.heat-edit>.actions {
+	position: static;
+	order: -1;
+	flex: 0 0 auto;
 }
 
-@media (max-width: 54em){
-	ol.heat-edit-list>li {
-		width: calc(50% - 0.5em);
-	}
+.heat-round-group {
+	margin: 0;
+	font-size: 0.75em;
+	flex: 1 0 100%;
 }
 
-@media (max-width: 35em){
-	ol.heat-edit-list>li {
-		width: 100%;
-	}
+.heat-edit>ol {
+	flex: 1 0 100%;
+}
+
+.heat-edit>.autofrequency-control {
+	flex: 1 1 auto;
+}
+
+.heat-edit>.dynamic-controls {
+	flex: 0 1 auto;
+	margin-left: auto;
 }
 
 .pilots .new-pilot-container,
@@ -1518,9 +1508,16 @@ ol.heat-edit-list>li {
 .heats ol,
 .heats ul {
 	font-size: 1rem;
-	padding: 0.5rem 0.5rem 0;
+	padding: 0;
 	list-style: none;
 	border-top: none;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.heats ul {
+	padding: 0.5rem;
 }
 
 .heats ol li,
@@ -1528,13 +1525,19 @@ ol.heat-edit-list>li {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin: 0 0 0.5rem;
+	margin: 0;
+	gap:0.25rem;
 }
 
 .heats .channel-block {
 	width: 2.5em;
-	margin-right: 0.5rem;
 	position: relative;
+	height: 100%;
+	border-radius: 0.25em;
+}
+
+.heats .channel-block.no-freq {
+	background: #999;
 }
 
 .heats .channel-block .fr {
@@ -1717,7 +1720,7 @@ ol.heat-edit-list>li {
 
 #unclassified_heats>ol>li,
 .race_classes>ol>li {
-	margin: 1rem 0;
+	margin: 6rem 0;
 	position: relative;
 }
 
@@ -1732,6 +1735,10 @@ ol.heat-edit-list>li {
 .actions button {
 	margin-left:0.5em;
 	font-weight: bold;
+}
+
+.recents p {
+	text-align: center;
 }
 
 @media(min-width:30em) {
