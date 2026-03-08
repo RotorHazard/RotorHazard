@@ -40,7 +40,7 @@ docker run -d --name rotorhazard-server --restart unless-stopped \
 
 Docker Desktop on **macOS** runs containers inside a Linux VM, so the VM does **not** see the Mac’s USB devices directly. You have two options:
 
-- **Recommended (simplest):** Run RotorHazard **natively** on the Mac (no Docker) when you need the timing Arduino. Use Docker on Mac only for UI-only or testing without hardware.
+- **Recommended!! (simplest):** Run RotorHazard **natively** on the Mac (no Docker) when you need the timing Arduino. Use Docker on Mac only for UI-only or testing without hardware.
 - **Experimental (Docker + USB on Mac):** Docker Desktop **4.35.0+** supports **USB/IP**, so the container can use USB devices that are exported from the host over the network. This can work for the timing serial device on Mac if you run a USB/IP server on the Mac and attach the device inside Docker. See [Using the timing hardware with Docker on Mac (USB/IP)](#using-the-timing-hardware-with-docker-on-mac-usbip) below.
 
 On **Linux, WSL, or Windows**, the same container can access USB serial when run with `--privileged` or with explicit `--device` flags; no USB/IP is required.
