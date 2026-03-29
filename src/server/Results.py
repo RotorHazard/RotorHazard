@@ -538,6 +538,22 @@ def _do_calc_leaderboard(racecontext, **params):
             result_pilot['consecutives_base'] = all_consecutives[0]['laps']
             result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
 
+            if race_format and race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                best = all_consecutives[0]
+                pl = result_pilot['pilot_laps']
+                if best['lap_index'] is not None:
+                    i0 = best['lap_index'] - 1
+                    window_laps = pl[i0 : i0 + consecutivesCount]
+                else:
+                    window_laps = pl
+                result_pilot['fastest_consecutive_laps'] = [
+                    {
+                        'lap_number': getattr(lap, 'lap_number', None),
+                        'lap_time_raw': round(lap.lap_time, 3),
+                    }
+                    for lap in window_laps
+                ]
+
         else:
             result_pilot['last_lap'] = None
             result_pilot['average_lap'] = 0
@@ -547,6 +563,8 @@ def _do_calc_leaderboard(racecontext, **params):
             result_pilot['consecutives'] = None
             result_pilot['consecutives_base'] = 0
             result_pilot['consecutive_lap_start'] = None
+            if race_format and race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
+                result_pilot['fastest_consecutive_laps'] = None
 
         result_pilot['fastest_lap_source'] = source
         result_pilot['consecutives_source'] = source
@@ -621,6 +639,10 @@ def format_leaderboard_times(racecontext, all_leaderboards):
                 result_pilot['consecutives'] = RHUtils.format_time_to_str(result_pilot['consecutives_raw'], time_format)
                 if result_pilot.get('last_lap_raw'):
                     result_pilot['last_lap'] = RHUtils.format_time_to_str(result_pilot['last_lap_raw'], time_format)
+                fc_laps = result_pilot.get('fastest_consecutive_laps')
+                if fc_laps:
+                    for lap_entry in fc_laps:
+                        lap_entry['lap_time'] = RHUtils.format_time_to_str(lap_entry['lap_time_raw'], time_format)
 
     return all_leaderboards
 
@@ -864,6 +886,7 @@ def build_incremental(racecontext, merge_input, source_input, transient=False):
                             race_result_updates['consecutives_raw'] = lb_line['consecutives_raw']
                             race_result_updates['consecutive_lap_start'] = lb_line['consecutive_lap_start']
                             race_result_updates['consecutives_source'] = lb_line['consecutives_source']
+                            race_result_updates['fastest_consecutive_laps'] = lb_line.get('fastest_consecutive_laps')
 
                         output_result[key][idx].update(race_result_updates)
                         output_result[key][idx].pop('time_behind', None)
