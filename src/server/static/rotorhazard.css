@@ -968,8 +968,33 @@ main.page-home {
 	justify-content: center;
 }
 
+table.leaderboard {
+	table-layout: fixed;
+	width: 100%;
+}
+
+table.leaderboard th,
+table.leaderboard td {
+	text-align: center;
+	vertical-align: middle;
+}
+
 .leaderboard .pilot {
-	text-align: left;
+	text-align: center;
+}
+
+.leaderboard .consecutive-laps-detail {
+	white-space: normal;
+}
+
+.leaderboard .consecutive-lap-line {
+	font-variant-numeric: tabular-nums;
+	line-height: 1.35;
+	text-align: center;
+}
+
+.leaderboard .consecutive-lap-line + .consecutive-lap-line {
+	margin-top: 0.15em;
 }
 
 .node {

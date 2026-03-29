@@ -925,6 +925,8 @@ Alter race data. Supports only custom attributes. No return value.
 Calculated result set for saved race. Returns `dict`.
 - `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
 
+When `meta.win_condition` is `4` (Fastest Consecutive Laps), each pilot row in the leaderboards may include `fastest_consecutive_laps`: a list of `{ lap_number, lap_time_raw, lap_time }` objects describing the laps that form that pilot’s best consecutive streak (`lap_time` is the UI-formatted string from `format_time_to_str`; `lap_time_raw` is milliseconds, consistent with other lap times in the system). Absent on older cached results or other win conditions.
+
 #### db.races_clear()
 Delete all saved races. No return value.
 
