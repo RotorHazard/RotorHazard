@@ -4,6 +4,8 @@ import os
 import logging
 import gevent # For threads and timing
 from time import monotonic # to capture read timing
+from gevent.monkey import get_original as _gevent_get_original
+_blocking_sleep = _gevent_get_original('time', 'sleep')  # unpatched sleep: blocks ALL greenlets
 
 from Plugins import Plugins
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory, MarshalType
@@ -62,7 +64,7 @@ RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware support
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
-MAX_FREQUENCY_RETRY_COUNT = 4 # Limit of retries for frequency setting
+MAX_FREQUENCY_RETRY_COUNT = 10 # Limit of retries for frequency setting
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
 logger = logging.getLogger(__name__)
@@ -545,7 +547,11 @@ class RHInterface(BaseHardwareInterface):
 
             # run register test to see if RX has stored frequency value
             if frequency and node and node.api_level >= 36:
-                gevent.sleep(
+                # Use blocking time.sleep (not gevent.sleep) so no other greenlet
+                # can issue I2C reads to this node while its MCU is bit-banging
+                # the SPI transaction into the RX5808.  gevent.sleep is cooperative
+                # and allows the RSSI update loop to run and interrupt the SPI write.
+                _blocking_sleep(
                     0.03)  # IMPORTANT: Delay time for RX5808 VCOs and circuitry to settle after writing freq and before reading register 0x01 (20ms is optimal, 30ms is safer, can be longer but not shorter). Erroneous results will occur if delay is too short
                 test_result = self.get_value_8(node, TEST_RX_REGISTER)
                 if test_result:
@@ -554,6 +560,7 @@ class RHInterface(BaseHardwareInterface):
                     retry_count = retry_count + 1
                     self.log('Frequency not validated (try={0}): frequency={1}, node={2}'. \
                         format(retry_count, frequency, node_index + 1))
+                    _blocking_sleep(0.05)  # extra settle between retries for hardware recovery
             else:
                 # assume success on lower API levels where test does not exist
                 # assume success on disable (frequency=0)
