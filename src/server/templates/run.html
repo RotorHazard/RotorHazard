@@ -1090,12 +1090,10 @@
 					}
 	
 					if (msg.team_phonetic && rotorhazard.voice_team_lap_count != 0) {
-						if (ttstext.length > 0)
-							ttstext += ", ";
 						if (rotorhazard.voice_team_lap_count == 2 && msg.team_short_phonetic) {
 							ttstext += msg.team_short_phonetic;
 						} else {
-							ttstext += msg.team_phonetic;
+							ttstext += ", " + msg.team_phonetic;
 						}
 					}
 	
