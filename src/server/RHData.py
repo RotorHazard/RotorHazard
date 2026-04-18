@@ -2391,7 +2391,10 @@ class RHData():
                     group_heats.append([])
                 group_heats[heat.group_id].append(heat)
 
-            if len(group_heats) < race_class.rounds or 0:
+            target_rounds = race_class.rounds or 0
+            if not group_heats or not group_heats[-1]:
+                return
+            if len(group_heats) < target_rounds:
                 next_round = len(group_heats)
                 for heat in group_heats[-1]:
                     races = self.get_savedRaceMetas_by_heat(heat.id)
