@@ -486,6 +486,7 @@
 
 		$('#selected_round').change(function(){
 			var prev_pilot = $('#selected_pilot').data('pilot-id');
+			var prev_sel_pilot_idx = $('#selected_pilot').prop('selectedIndex');
 
 			$('#selected_pilot').empty();
 
@@ -516,12 +517,16 @@
 				        (pilotrace.node_index + 1) + ')' + pilotFreqInfo + '</option>');
 			}
 
-			$('#selected_pilot option').each(function(){
-				if ($(this).data('pilot-id') == prev_pilot) {
-					$('#selected_pilot').val($(this).val());
-					return false;
-				}
-			});
+			if (prev_pilot) {
+				$('#selected_pilot option').each(function(){
+					if ($(this).data('pilot-id') == prev_pilot) {
+						$('#selected_pilot').val($(this).val());
+						return false;
+					}
+				});
+			} else if (prev_sel_pilot_idx > 0) {
+				$('#selected_pilot').prop('selectedIndex', prev_sel_pilot_idx);
+			}
 
 			disableUI();
 
