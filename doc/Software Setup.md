@@ -478,7 +478,7 @@ Note: If the above command fails with a message like "error: Microsoft Visual C+
 
 1. The server may be stopped by hitting Ctrl-C
 
-If hardware nodes are connected via USB, they will need to be configured in the "SERIAL_PORTS" section in the "src/server/config.json" configuration file (see [doc/USB Nodes.md](USB%20Nodes.md) for details).
+If hardware nodes are connected via USB, they will need to be configured in the _Serial Ports_ section on the _Advanced Settings_ page in the _Hardware_ panel (see [doc/USB Nodes.md](USB%20Nodes.md) for details).
 
 If no hardware nodes are configured, the server will operate using simulated (mock) nodes. In this mode the web-GUI interface may be explored and tested.
 
