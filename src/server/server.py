@@ -29,22 +29,6 @@ from time import monotonic
 import RHTimeFns
 from typing import Any
 
-from sio_asyncapi import AsyncAPISocketIO, RequestValidationError
-from api_schema import (
-    AlterRaceRequest,
-    CalcPilotsRequest,
-    CalcResetRequest,
-    DictLoadType,
-    GetPilotRaceRequest,
-    HeatRequest,
-    LoadDataRequest,
-    ReplaceCurrentLapsRequest,
-    ResaveLapsRequest,
-    ScheduleRaceRequest,
-    ServerTimeResponse,
-    SetCurrentHeatRequest,
-)
-
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
 
@@ -70,6 +54,22 @@ from RHUtils import catchLogExceptionsWrapper
 import gevent.monkey
 gevent.monkey.patch_all()
 
+from sio_asyncapi import AsyncAPISocketIO, RequestValidationError
+from api_schema import (
+    AlterRaceRequest,
+    CalcPilotsRequest,
+    CalcResetRequest,
+    DictLoadType,
+    GetPilotRaceRequest,
+    HeatRequest,
+    LoadDataRequest,
+    ReplaceCurrentLapsRequest,
+    ResaveLapsRequest,
+    ScheduleRaceRequest,
+    ServerTimeResponse,
+    SetCurrentHeatRequest,
+)
+
 import io
 import os
 import sys
@@ -88,6 +88,7 @@ from flask.blueprints import Blueprint
 from flask_socketio import SocketIO, emit
 
 PROGRAM_DIR = os.path.dirname(os.path.realpath(__file__))
+GENERATE_ASYNCAPI_DOCS = os.environ.get('RH_GENERATE_ASYNCAPI') == '1'
 
 # determine data location
 DATA_DIR = None
@@ -296,15 +297,13 @@ if __name__ == '__main__' and len(sys.argv) > 1:
             sys.exit(1)
 
 # start SocketIO service
-# 2. Замени свою строку инициализации на эту:
 SOCKET_IO = AsyncAPISocketIO(
     APP, 
     async_mode='gevent', 
     cors_allowed_origins=RaceContext.serverconfig.get_item('GENERAL', 'CORS_ALLOWED_HOSTS'), 
     max_http_buffer_size=5e7,
-    # --- Новые параметры для sio-asyncapi ---
-    validate=True,        # Включаем строгую проверку типов по Pydantic
-    generate_docs=True,   # Включаем генерацию файла asyncapi.yaml
+    validate=True,
+    generate_docs=GENERATE_ASYNCAPI_DOCS,
     version="1.0.0",
     title="RotorHazard API",
     description="WebSocket API для управления гонкой"
@@ -4143,18 +4142,6 @@ RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management func
 
 # Start HTTP server
 if __name__ == '__main__':
-    # --- НАШ КОД ДЛЯ ГЕНЕРАЦИИ ASYNCAPI СХЕМЫ ---
-    import os
-    try:
-        yaml_doc = SOCKET_IO.asyncapi_doc.get_yaml()
-        schema_path = os.path.join(os.path.dirname(__file__), 'asyncapi.yaml')
-        with open(schema_path, "w", encoding='utf-8') as f:
-            f.write(yaml_doc)
-        print(f"✅ AsyncAPI схема успешно сгенерирована в: {schema_path}")
-    except Exception as e:
-        print(f"⚠️ Ошибка при генерации AsyncAPI схемы: {e}")
-    # ---------------------------------------------
-    
     rh_program_initialize()
     signal.signal(signal.SIGINT, kill_server_via_signal)   # handle Ctrl-C signal
     signal.signal(signal.SIGTERM, kill_server_via_signal)  # handle kill-process signal

@@ -1,3 +1,7 @@
+python src/server/generate_asyncapi.py
+
+
+
 load_data
 set_current_heat
 activate_heat
