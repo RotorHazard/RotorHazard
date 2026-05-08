@@ -29,8 +29,12 @@ requests==2.32.*
 packaging==24.*
 
 # Pi IO
-smbus2==0.4.*
-RPi.GPIO==0.7.*
-rpi-ws281x==4.3.*
-pi-ina219==1.4.*
-RPi.bme280==0.2.*
+# smbus2==0.4.*
+# RPi.GPIO==0.7.*
+# rpi-ws281x==4.3.*
+# pi-ina219==1.4.*
+# RPi.bme280==0.2.*
+
+# New
+pydantic>=2.5.0
+sio-asyncapi

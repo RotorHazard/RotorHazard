@@ -27,6 +27,23 @@ import log
 from datetime import datetime
 from time import monotonic
 import RHTimeFns
+from typing import Any
+
+from sio_asyncapi import AsyncAPISocketIO, RequestValidationError
+from api_schema import (
+    AlterRaceRequest,
+    CalcPilotsRequest,
+    CalcResetRequest,
+    DictLoadType,
+    GetPilotRaceRequest,
+    HeatRequest,
+    LoadDataRequest,
+    ReplaceCurrentLapsRequest,
+    ResaveLapsRequest,
+    ScheduleRaceRequest,
+    ServerTimeResponse,
+    SetCurrentHeatRequest,
+)
 
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
@@ -61,6 +78,7 @@ import subprocess
 import importlib
 # import copy
 import functools
+import inspect
 import signal
 import werkzeug
 import urllib3
@@ -278,7 +296,20 @@ if __name__ == '__main__' and len(sys.argv) > 1:
             sys.exit(1)
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=RaceContext.serverconfig.get_item('GENERAL', 'CORS_ALLOWED_HOSTS'), max_http_buffer_size=5e7)
+# 2. Замени свою строку инициализации на эту:
+SOCKET_IO = AsyncAPISocketIO(
+    APP, 
+    async_mode='gevent', 
+    cors_allowed_origins=RaceContext.serverconfig.get_item('GENERAL', 'CORS_ALLOWED_HOSTS'), 
+    max_http_buffer_size=5e7,
+    # --- Новые параметры для sio-asyncapi ---
+    validate=True,        # Включаем строгую проверку типов по Pydantic
+    generate_docs=True,   # Включаем генерацию файла asyncapi.yaml
+    version="1.0.0",
+    title="RotorHazard API",
+    description="WebSocket API для управления гонкой"
+)
+
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
@@ -323,6 +354,7 @@ def catchLogExcWithDBWrapper(func):
                 return func(*args, **kwargs)
         except:
             logger.exception("Exception via catchLogExcWithDBWrapper")
+    wrapper.__signature__ = inspect.signature(func)
     return wrapper
 
 # Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
@@ -744,9 +776,9 @@ def start_background_threads_delayed():
 # Socket IO Events
 #
 
-@SOCKET_IO.on('connect')
+@SOCKET_IO.on('connect', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def connect_handler(auth):
+def connect_handler(auth: Any | None) -> None:
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     if not RaceContext.serverstate.interface_started:
@@ -761,8 +793,8 @@ def connect_handler(auth):
     # pause and spawn to make sure connection to browser is established
     gevent.spawn_later(0.050, finish_connect_handler)
 
-@SOCKET_IO.on('disconnect')
-def disconnect_handler(*args):
+@SOCKET_IO.on('disconnect', get_from_typehint=True)
+def disconnect_handler(*args) -> None:
     '''Emit disconnect event.'''
     logger.debug('Client disconnected')
 
@@ -871,107 +903,108 @@ def dispatch_event(evtArgs):
     '''Dispatch generic event.'''
     Events.trigger(Evt.UI_DISPATCH, evtArgs)
 
-@SOCKET_IO.on('load_data')
+@SOCKET_IO.on('load_data', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_load_data(data):
+def on_load_data(data: LoadDataRequest) -> None:
     '''Allow pages to load needed data'''
-    load_types = data['load_types']
+    load_types = data.load_types
     for load_type in load_types:
-        if isinstance(load_type, dict):
-            if load_type['type'] == 'ui':
-                RaceContext.rhui.emit_ui(load_type['value'], nobroadcast=True)
-            if load_type['type'] == 'config':
-                RaceContext.rhui.emit_config_update(load_type['value'], nobroadcast=True)
-        elif load_type == 'node_data':
-            RaceContext.rhui.emit_node_data(nobroadcast=True)
-        elif load_type == 'environmental_data':
-            RaceContext.rhui.emit_environmental_data(nobroadcast=True)
-        elif load_type == 'frequency_data':
-            RaceContext.rhui.emit_frequency_data(nobroadcast=True)
+        if isinstance(load_type, DictLoadType):
+            if load_type.type == 'ui':
+                RaceContext.rhui.emit_ui(load_type.value, nobroadcast=True)
+            if load_type.type == 'config':
+                RaceContext.rhui.emit_config_update(load_type.value, nobroadcast=True)
+        elif isinstance(load_type, str):
+            if load_type == 'node_data':
+                RaceContext.rhui.emit_node_data(nobroadcast=True)
+            elif load_type == 'environmental_data':
+                RaceContext.rhui.emit_environmental_data(nobroadcast=True)
+            elif load_type == 'frequency_data':
+                RaceContext.rhui.emit_frequency_data(nobroadcast=True)
             if Use_imdtabler_jar_flag:
                 heartbeat_thread_function.imdtabler_flag = True
-        elif load_type == 'heat_list':
-            RaceContext.rhui.emit_heat_list(nobroadcast=True)
-        elif load_type == 'heat_data':
-            RaceContext.rhui.emit_heat_data(nobroadcast=True)
-        elif load_type == 'heat_attribute_types':
-            RaceContext.rhui.emit_heat_attribute_types(nobroadcast=True)
-        elif load_type == 'seat_data':
-            RaceContext.rhui.emit_seat_data(nobroadcast=True)
-        elif load_type == 'class_list':
-            RaceContext.rhui.emit_class_list(nobroadcast=True)
-        elif load_type == 'class_data':
-            RaceContext.rhui.emit_class_data(nobroadcast=True)
-        elif load_type == 'format_data':
-            RaceContext.rhui.emit_format_data(nobroadcast=True)
-        elif load_type == 'pilot_list':
-            RaceContext.rhui.emit_pilot_list(nobroadcast=True)
-        elif load_type == 'pilot_data':
-            RaceContext.rhui.emit_pilot_data(nobroadcast=True)
-        elif load_type == 'result_data':
-            RaceContext.rhui.emit_result_data(nobroadcast=True)
-        elif load_type == 'node_tuning':
-            RaceContext.rhui.emit_node_tuning(nobroadcast=True)
-        elif load_type == 'enter_and_exit_at_levels':
-            RaceContext.rhui.emit_enter_and_exit_at_levels(nobroadcast=True)
-        elif load_type == 'start_thresh_lower_amount':
-            RaceContext.rhui.emit_start_thresh_lower_amount(nobroadcast=True)
-        elif load_type == 'start_thresh_lower_duration':
-            RaceContext.rhui.emit_start_thresh_lower_duration(nobroadcast=True)
-        elif load_type == 'min_lap':
-            RaceContext.rhui.emit_min_lap(nobroadcast=True)
-        elif load_type == 'action_setup':
-            RaceContext.rhui.emit_action_setup(EventActionsObj, nobroadcast=True)
-        elif load_type == 'event_actions':
-            RaceContext.rhui.emit_event_actions(nobroadcast=True)
-        elif load_type == 'leaderboard':
-            RaceContext.rhui.emit_current_leaderboard(nobroadcast=True)
-        elif load_type == 'current_laps':
-            RaceContext.rhui.emit_current_laps(nobroadcast=True)
-        elif load_type == 'race_status':
-            RaceContext.rhui.emit_race_status(nobroadcast=True)
-        elif load_type == 'current_heat':
-            RaceContext.rhui.emit_current_heat(nobroadcast=True)
-        elif load_type == 'race_list':
-            RaceContext.rhui.emit_race_list(nobroadcast=True)
-        elif load_type == 'language':
-            RaceContext.rhui.emit_language(nobroadcast=True)
-        elif load_type == 'all_languages':
-            RaceContext.rhui.emit_all_languages(nobroadcast=True)
-        elif load_type == 'led_effect_setup':
-            emit_led_effect_setup()
-        elif load_type == 'led_effects':
-            emit_led_effects()
-        elif load_type == 'callouts':
-            RaceContext.rhui.emit_callouts()
-        elif load_type == 'imdtabler_page':
-            RaceContext.rhui.emit_imdtabler_page(IMDTABLER_JAR_NAME, Use_imdtabler_jar_flag, nobroadcast=True)
-        elif load_type == 'vrx_list':
-            RaceContext.rhui.emit_vrx_list(nobroadcast=True)
-        elif load_type == 'backups_list':
-            on_list_backups()
-        elif load_type == 'upd_cfg_files_list':
-            RaceContext.rhui.emit_upd_cfg_files_list()
-        elif load_type == 'exporter_list':
-            RaceContext.rhui.emit_exporter_list()
-        elif load_type == 'importer_list':
-            RaceContext.rhui.emit_importer_list()
-        elif load_type == 'heatgenerator_list':
-            RaceContext.rhui.emit_heatgenerator_list()
-        elif load_type == 'raceclass_rank_method_list':
-            RaceContext.rhui.emit_raceclass_rank_method_list()
-        elif load_type == 'race_points_method_list':
-            RaceContext.rhui.emit_race_points_method_list()
-        elif load_type == 'plugin_list':
-            RaceContext.rhui.emit_plugin_list(nobroadcast=True)
-        elif load_type == 'plugin_repo':
-            RaceContext.rhui.emit_plugin_repo(nobroadcast=True)
-        elif load_type == 'cluster_status':
-            RaceContext.rhui.emit_cluster_status()
-        elif load_type == 'hardware_log_init':
-            log.emit_current_log_file_to_socket(Current_log_path_name, SOCKET_IO)
-        else:
-            logger.warning('Called undefined load type: {}'.format(load_type))
+            elif load_type == 'heat_list':
+                RaceContext.rhui.emit_heat_list(nobroadcast=True)
+            elif load_type == 'heat_data':
+                RaceContext.rhui.emit_heat_data(nobroadcast=True)
+            elif load_type == 'heat_attribute_types':
+                RaceContext.rhui.emit_heat_attribute_types(nobroadcast=True)
+            elif load_type == 'seat_data':
+                RaceContext.rhui.emit_seat_data(nobroadcast=True)
+            elif load_type == 'class_list':
+                RaceContext.rhui.emit_class_list(nobroadcast=True)
+            elif load_type == 'class_data':
+                RaceContext.rhui.emit_class_data(nobroadcast=True)
+            elif load_type == 'format_data':
+                RaceContext.rhui.emit_format_data(nobroadcast=True)
+            elif load_type == 'pilot_list':
+                RaceContext.rhui.emit_pilot_list(nobroadcast=True)
+            elif load_type == 'pilot_data':
+                RaceContext.rhui.emit_pilot_data(nobroadcast=True)
+            elif load_type == 'result_data':
+                RaceContext.rhui.emit_result_data(nobroadcast=True)
+            elif load_type == 'node_tuning':
+                RaceContext.rhui.emit_node_tuning(nobroadcast=True)
+            elif load_type == 'enter_and_exit_at_levels':
+                RaceContext.rhui.emit_enter_and_exit_at_levels(nobroadcast=True)
+            elif load_type == 'start_thresh_lower_amount':
+                RaceContext.rhui.emit_start_thresh_lower_amount(nobroadcast=True)
+            elif load_type == 'start_thresh_lower_duration':
+                RaceContext.rhui.emit_start_thresh_lower_duration(nobroadcast=True)
+            elif load_type == 'min_lap':
+                RaceContext.rhui.emit_min_lap(nobroadcast=True)
+            elif load_type == 'action_setup':
+                RaceContext.rhui.emit_action_setup(EventActionsObj, nobroadcast=True)
+            elif load_type == 'event_actions':
+                RaceContext.rhui.emit_event_actions(nobroadcast=True)
+            elif load_type == 'leaderboard':
+                RaceContext.rhui.emit_current_leaderboard(nobroadcast=True)
+            elif load_type == 'current_laps':
+                RaceContext.rhui.emit_current_laps(nobroadcast=True)
+            elif load_type == 'race_status':
+                RaceContext.rhui.emit_race_status(nobroadcast=True)
+            elif load_type == 'current_heat':
+                RaceContext.rhui.emit_current_heat(nobroadcast=True)
+            elif load_type == 'race_list':
+                RaceContext.rhui.emit_race_list(nobroadcast=True)
+            elif load_type == 'language':
+                RaceContext.rhui.emit_language(nobroadcast=True)
+            elif load_type == 'all_languages':
+                RaceContext.rhui.emit_all_languages(nobroadcast=True)
+            elif load_type == 'led_effect_setup':
+                emit_led_effect_setup()
+            elif load_type == 'led_effects':
+                emit_led_effects()
+            elif load_type == 'callouts':
+                RaceContext.rhui.emit_callouts()
+            elif load_type == 'imdtabler_page':
+                RaceContext.rhui.emit_imdtabler_page(IMDTABLER_JAR_NAME, Use_imdtabler_jar_flag, nobroadcast=True)
+            elif load_type == 'vrx_list':
+                RaceContext.rhui.emit_vrx_list(nobroadcast=True)
+            elif load_type == 'backups_list':
+                on_list_backups()
+            elif load_type == 'upd_cfg_files_list':
+                RaceContext.rhui.emit_upd_cfg_files_list()
+            elif load_type == 'exporter_list':
+                RaceContext.rhui.emit_exporter_list()
+            elif load_type == 'importer_list':
+                RaceContext.rhui.emit_importer_list()
+            elif load_type == 'heatgenerator_list':
+                RaceContext.rhui.emit_heatgenerator_list()
+            elif load_type == 'raceclass_rank_method_list':
+                RaceContext.rhui.emit_raceclass_rank_method_list()
+            elif load_type == 'race_points_method_list':
+                RaceContext.rhui.emit_race_points_method_list()
+            elif load_type == 'plugin_list':
+                RaceContext.rhui.emit_plugin_list(nobroadcast=True)
+            elif load_type == 'plugin_repo':
+                RaceContext.rhui.emit_plugin_repo(nobroadcast=True)
+            elif load_type == 'cluster_status':
+                RaceContext.rhui.emit_cluster_status()
+            elif load_type == 'hardware_log_init':
+                log.emit_current_log_file_to_socket(Current_log_path_name, SOCKET_IO)
+            else:
+                logger.warning('Called undefined load type: {}'.format(load_type))
 
 @SOCKET_IO.on('broadcast_message')
 @catchLogExceptionsWrapper
@@ -1219,20 +1252,20 @@ def on_duplicate_heat(data):
     RaceContext.rhdata.duplicate_heat(data['heat'])
     RaceContext.rhui.emit_heat_data()
 
-@SOCKET_IO.on('deactivate_heat')
+@SOCKET_IO.on('deactivate_heat', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_deactivate_heat(data):
+def on_deactivate_heat(data: HeatRequest) -> None:
     RaceContext.rhdata.alter_heat({
-        'heat': data['heat'],
+        'heat': data.heat,
         'active': False
     })
     RaceContext.rhui.emit_heat_data()
 
-@SOCKET_IO.on('activate_heat')
+@SOCKET_IO.on('activate_heat', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_activate_heat(data):
+def on_activate_heat(data: HeatRequest) -> None:
     RaceContext.rhdata.alter_heat({
-        'heat': data['heat'],
+        'heat': data.heat,
         'active': True
     })
     RaceContext.rhui.emit_heat_data()
@@ -1500,12 +1533,12 @@ def on_set_profile(data, emit_vals=True):
     else:
         logger.warning('Invalid set_profile value: ' + str(profile_val))
 
-@SOCKET_IO.on('alter_race')
+@SOCKET_IO.on('alter_race', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_alter_race(data):
+def on_alter_race(data: AlterRaceRequest) -> None:
     '''Update race (retroactively via marshaling).'''
 
-    race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
+    race_meta, new_heat = RaceContext.rhdata.reassign_savedRaceMeta_heat(data.race_id, data.heat_id)
 
     if race_meta or new_heat:
         message = __('A race has been reassigned to {0}').format(new_heat.display_name)
@@ -2329,53 +2362,53 @@ def on_get_pi_time(*args):
         'pi_time_s': monotonic()
     })
 
-@SOCKET_IO.on('get_server_time')
+@SOCKET_IO.on('get_server_time', get_from_typehint=True)
 @catchLogExceptionsWrapper
-def on_get_server_time(*args):
+def on_get_server_time(*args) -> ServerTimeResponse:
     return {'server_time_s': monotonic()}
 
-@SOCKET_IO.on('schedule_race')
+@SOCKET_IO.on('schedule_race', get_from_typehint=True)
 @catchLogExceptionsWrapper
-def on_schedule_race(data):
-    RaceContext.race.schedule(data['s'], data['m'])
+def on_schedule_race(data: ScheduleRaceRequest) -> None:
+    RaceContext.race.schedule(data.s, data.m)
 
-@SOCKET_IO.on('cancel_schedule_race')
+@SOCKET_IO.on('cancel_schedule_race', get_from_typehint=True)
 @catchLogExceptionsWrapper
-def cancel_schedule_race(*args):
+def cancel_schedule_race(*args) -> None:
     RaceContext.race.schedule(None)
 
-@SOCKET_IO.on('stage_race')
-def on_stage_race(*args):
+@SOCKET_IO.on('stage_race', get_from_typehint=True)
+def on_stage_race(*args) -> None:
     result = RaceContext.race.stage(*args)
     if not result:
         RaceContext.rhui.emit_race_status()
 
-@SOCKET_IO.on('stop_race')
-def on_stop_race(*args):
+@SOCKET_IO.on('stop_race', get_from_typehint=True)
+def on_stop_race(*args) -> None:
     RaceContext.race.stop(*args)
 
-@SOCKET_IO.on('current_race_marshal')
-def on_current_race_marshal(*args):
+@SOCKET_IO.on('current_race_marshal', get_from_typehint=True)
+def on_current_race_marshal(*args) -> None:
     RaceContext.rhui.emit_race_marshal_data(nobroadcast=True)
 
-@SOCKET_IO.on('save_laps')
-def on_save_race(*args):
+@SOCKET_IO.on('save_laps', get_from_typehint=True)
+def on_save_race(*args) -> None:
     RaceContext.race.save(*args)
 
-@SOCKET_IO.on('resave_laps')
+@SOCKET_IO.on('resave_laps', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_resave_laps(data):
-    heat_id = data['heat_id']
-    round_id = data['round_id']
-    callsign = data['callsign']
+def on_resave_laps(data: ResaveLapsRequest) -> None:
+    heat_id = data.heat_id
+    round_id = data.round_id
+    callsign = data.callsign
 
-    race_id = data['race_id']
-    pilotrace_id = data['pilotrace_id']
-    seat = data['seat']
-    pilot_id = data['pilot_id']
-    laps = data['laps']
-    enter_at = data['enter_at']
-    exit_at = data['exit_at']
+    race_id = data.race_id
+    pilotrace_id = data.pilotrace_id
+    seat = data.seat
+    pilot_id = data.pilot_id
+    laps = data.laps
+    enter_at = data.enter_at
+    exit_at = data.exit_at
 
     pilotrace_data = {
         'pilotrace_id': pilotrace_id,
@@ -2400,17 +2433,17 @@ def on_resave_laps(data):
         }
 
     for lap in laps:
-        tmp_lap_time_formatted = lap['lap_time']
-        if isinstance(lap['lap_time'], float) or isinstance(lap['lap_time'], int):
-            tmp_lap_time_formatted = RHUtils.format_time_to_str(lap['lap_time'], RaceContext.serverconfig.get_item('UI', 'timeFormat'))
+        tmp_lap_time_formatted = lap.lap_time
+        if isinstance(lap.lap_time, float) or isinstance(lap.lap_time, int):
+            tmp_lap_time_formatted = RHUtils.format_time_to_str(lap.lap_time, RaceContext.serverconfig.get_item('UI', 'timeFormat'))
 
         new_racedata['laps'].append({
-            'lap_time_stamp': lap['lap_time_stamp'],
-            'lap_time': lap['lap_time'],
+            'lap_time_stamp': lap.lap_time_stamp,
+            'lap_time': lap.lap_time,
             'lap_time_formatted': tmp_lap_time_formatted,
-            'peak_rssi': lap.get('peak_rssi', None),
-            'source': lap['source'],
-            'deleted': lap['deleted']
+            'peak_rssi': lap.peak_rssi,
+            'source': lap.source,
+            'deleted': lap.deleted
             })
 
     RaceContext.rhdata.replace_savedRaceLaps(new_racedata)
@@ -2460,17 +2493,17 @@ def on_resave_laps(data):
         'pilot_id': pilot_id,
         })
 
-@SOCKET_IO.on('replace_current_laps')
-def replace_current_laps(data):
+@SOCKET_IO.on('replace_current_laps', get_from_typehint=True)
+def replace_current_laps(data: ReplaceCurrentLapsRequest) -> None:
     on_set_enter_at_level({
-        'node': data['seat'],
-        'enter_at_level': data['enter_at']
+        'node': data.seat,
+        'enter_at_level': data.enter_at
     })
     on_set_exit_at_level({
-        'node': data['seat'],
-        'exit_at_level': data['exit_at']
+        'node': data.seat,
+        'exit_at_level': data.exit_at
     })
-    RaceContext.race.replace_laps(data)
+    RaceContext.race.replace_laps(data.model_dump())
 
 @catchLogExcWithDBWrapper
 def build_atomic_result_caches(params):
@@ -2478,26 +2511,27 @@ def build_atomic_result_caches(params):
     Results.build_atomic_results(RaceContext.rhdata, params)
     RaceContext.rhui.emit_result_data()
 
-@SOCKET_IO.on('discard_laps')
+@SOCKET_IO.on('discard_laps', get_from_typehint=True)
 @catchLogExceptionsWrapper
-def on_discard_laps(**kwargs):
+def on_discard_laps(**kwargs) -> None:
     RaceContext.race.discard_laps(**kwargs)
 
-@SOCKET_IO.on('calc_pilots')
+@SOCKET_IO.on('calc_pilots', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_calc_pilots(data):
-    heat_id = data['heat']
+def on_calc_pilots(data: CalcPilotsRequest) -> None:
+    heat_id = data.heat
     assignments = {} # convert indexes to ints
-    if 'preassignments' in data:
-        for slot, seat in data['preassignments'].items():
+    if data.preassignments:
+        for slot, seat in data.preassignments.items():
             assignments[int(slot)] = seat
     RaceContext.heatautomator.calc_heat(heat_id, preassignments=assignments)
 
-@SOCKET_IO.on('calc_reset')
+@SOCKET_IO.on('calc_reset', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_calc_reset(data):
-    data['status'] = Database.HeatStatus.PLANNED
-    on_alter_heat(data)
+def on_calc_reset(data: CalcResetRequest) -> None:
+    heat_data = data.model_dump()
+    heat_data['status'] = Database.HeatStatus.PLANNED
+    on_alter_heat(heat_data)
 
 @SOCKET_IO.on('confirm_heat_plan')
 @catchLogExcWithDBWrapper
@@ -2514,11 +2548,11 @@ def on_confirm_heat(data):
         if data.get('source') == 'run' and RaceContext.race.race_status == RaceStatus.READY:
             RaceContext.race.set_heat(data['heat_id'], force=True)
 
-@SOCKET_IO.on('set_current_heat')
+@SOCKET_IO.on('set_current_heat', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def on_set_current_heat(data):
+def on_set_current_heat(data: SetCurrentHeatRequest) -> None:
     '''Update the current heat variable and data.'''
-    RaceContext.race.set_heat(data['heat'])
+    RaceContext.race.set_heat(data.heat)
     RaceContext.rhui.emit_race_status()
 
 @SOCKET_IO.on('delete_lap')
@@ -2622,9 +2656,9 @@ def on_set_consecutives_count(data):
         'value': data['count'],
         })
 
-@SOCKET_IO.on('get_race_scheduled')
+@SOCKET_IO.on('get_race_scheduled', get_from_typehint=True)
 @catchLogExceptionsWrapper
-def get_race_elapsed(*args):
+def get_race_elapsed(*args) -> None:
     # get current race status; never broadcasts to all
     emit('race_scheduled', {
         'scheduled': RaceContext.race.scheduled,
@@ -2680,44 +2714,43 @@ def on_retry_secondary(data):
     RaceContext.cluster.retrySecondary(data['secondary_id'])
     RaceContext.rhui.emit_cluster_status()
 
-@SOCKET_IO.on('get_pilotrace')
+@SOCKET_IO.on('get_pilotrace', get_from_typehint=True)
 @catchLogExcWithDBWrapper
-def get_pilotrace(data):
+def get_pilotrace(data: GetPilotRaceRequest) -> None:
     # get single race detail
-    if 'pilotrace_id' in data:
-        pilotrace = RaceContext.rhdata.get_savedPilotRace(data['pilotrace_id'])
+    pilotrace = RaceContext.rhdata.get_savedPilotRace(data.pilotrace_id)
 
-        if pilotrace:
-            laps = []
-            for lap in RaceContext.rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
-                laps.append({
-                        'id': lap.id,
-                        'lap_time_stamp': lap.lap_time_stamp,
-                        'lap_time': lap.lap_time,
-                        'lap_time_formatted': lap.lap_time_formatted,
-                        'source': lap.source,
-                        'deleted': lap.deleted,
-                        'peak_rssi': lap.peak_rssi
-                    })
+    if pilotrace:
+        laps = []
+        for lap in RaceContext.rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
+            laps.append({
+                    'id': lap.id,
+                    'lap_time_stamp': lap.lap_time_stamp,
+                    'lap_time': lap.lap_time,
+                    'lap_time_formatted': lap.lap_time_formatted,
+                    'source': lap.source,
+                    'deleted': lap.deleted,
+                    'peak_rssi': lap.peak_rssi
+                })
 
-            pilot_data = RaceContext.rhdata.get_pilot(pilotrace.pilot_id)
-            if pilot_data:
-                nodepilot = pilot_data.callsign
-            else:
-                nodepilot = None
+        pilot_data = RaceContext.rhdata.get_pilot(pilotrace.pilot_id)
+        if pilot_data:
+            nodepilot = pilot_data.callsign
+        else:
+            nodepilot = None
 
-            emit('race_details', {
-                'pilotrace_id': data['pilotrace_id'],
-                'callsign': nodepilot,
-                'pilot_id': pilotrace.pilot_id,
-                'node_index': pilotrace.node_index,
-                'history_values': json.loads(pilotrace.history_values),
-                'history_times': json.loads(pilotrace.history_times),
-                'laps': laps,
-                'enter_at': pilotrace.enter_at,
-                'exit_at': pilotrace.exit_at,
-                'marshal_type': pilotrace.marshal_type
-            })
+        emit('race_details', {
+            'pilotrace_id': data.pilotrace_id,
+            'callsign': nodepilot,
+            'pilot_id': pilotrace.pilot_id,
+            'node_index': pilotrace.node_index,
+            'history_values': json.loads(pilotrace.history_values),
+            'history_times': json.loads(pilotrace.history_times),
+            'laps': laps,
+            'enter_at': pilotrace.enter_at,
+            'exit_at': pilotrace.exit_at,
+            'marshal_type': pilotrace.marshal_type
+        })
 
 @SOCKET_IO.on('check_bpillfw_file')
 @catchLogExceptionsWrapper
@@ -4110,6 +4143,18 @@ RHAPI.race._raceformat_set = on_set_race_format # TODO: Refactor management func
 
 # Start HTTP server
 if __name__ == '__main__':
+    # --- НАШ КОД ДЛЯ ГЕНЕРАЦИИ ASYNCAPI СХЕМЫ ---
+    import os
+    try:
+        yaml_doc = SOCKET_IO.asyncapi_doc.get_yaml()
+        schema_path = os.path.join(os.path.dirname(__file__), 'asyncapi.yaml')
+        with open(schema_path, "w", encoding='utf-8') as f:
+            f.write(yaml_doc)
+        print(f"✅ AsyncAPI схема успешно сгенерирована в: {schema_path}")
+    except Exception as e:
+        print(f"⚠️ Ошибка при генерации AsyncAPI схемы: {e}")
+    # ---------------------------------------------
+    
     rh_program_initialize()
     signal.signal(signal.SIGINT, kill_server_via_signal)   # handle Ctrl-C signal
     signal.signal(signal.SIGTERM, kill_server_via_signal)  # handle kill-process signal

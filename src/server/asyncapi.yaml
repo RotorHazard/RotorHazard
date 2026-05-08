@@ -1,0 +1,1794 @@
+asyncapi: 3.1.0
+info:
+  title: RotorHazard API
+  version: 1.0.0
+  description: "WebSocket API \u0434\u043B\u044F \u0443\u043F\u0440\u0430\u0432\u043B\
+    \u0435\u043D\u0438\u044F \u0433\u043E\u043D\u043A\u043E\u0439\n<br/> This specification\
+    \ targets AsyncAPI 3.1 and keeps Socket.IO ACK values in the custom `x-ack` message\
+    \ extension.\nSocket.IO-specific transport details may still require application-level\
+    \ interpretation.\n"
+servers:
+  BACKEND:
+    host: localhost:5000
+    protocol: socketio
+channels:
+  root:
+    address: /
+    messages:
+      Connect:
+        $ref: '#/components/messages/Connect'
+      Disconnect:
+        $ref: '#/components/messages/Disconnect'
+      Join_Cluster:
+        $ref: '#/components/messages/Join_Cluster'
+      Join_Cluster_Ex:
+        $ref: '#/components/messages/Join_Cluster_Ex'
+      Check_Secondary_Query:
+        $ref: '#/components/messages/Check_Secondary_Query'
+      Cluster_Event_Trigger:
+        $ref: '#/components/messages/Cluster_Event_Trigger'
+      Cluster_Message_Ack:
+        $ref: '#/components/messages/Cluster_Message_Ack'
+      Dispatch_Event:
+        $ref: '#/components/messages/Dispatch_Event'
+      Load_Data:
+        $ref: '#/components/messages/Load_Data'
+      Broadcast_Message:
+        $ref: '#/components/messages/Broadcast_Message'
+      Set_Frequency:
+        $ref: '#/components/messages/Set_Frequency'
+      Set_Frequency_Preset:
+        $ref: '#/components/messages/Set_Frequency_Preset'
+      Set_Enter_At_Level:
+        $ref: '#/components/messages/Set_Enter_At_Level'
+      Set_Exit_At_Level:
+        $ref: '#/components/messages/Set_Exit_At_Level'
+      Set_Start_Thresh_Lower_Amount:
+        $ref: '#/components/messages/Set_Start_Thresh_Lower_Amount'
+      Set_Start_Thresh_Lower_Duration:
+        $ref: '#/components/messages/Set_Start_Thresh_Lower_Duration'
+      Set_Language:
+        $ref: '#/components/messages/Set_Language'
+      Cap_Enter_At_Btn:
+        $ref: '#/components/messages/Cap_Enter_At_Btn'
+      Cap_Exit_At_Btn:
+        $ref: '#/components/messages/Cap_Exit_At_Btn'
+      Set_Scan:
+        $ref: '#/components/messages/Set_Scan'
+      Expand_Heat:
+        $ref: '#/components/messages/Expand_Heat'
+      Get_Class_Recents:
+        $ref: '#/components/messages/Get_Class_Recents'
+      Add_Heat:
+        $ref: '#/components/messages/Add_Heat'
+      Duplicate_Heat:
+        $ref: '#/components/messages/Duplicate_Heat'
+      Deactivate_Heat:
+        $ref: '#/components/messages/Deactivate_Heat'
+      Activate_Heat:
+        $ref: '#/components/messages/Activate_Heat'
+      Alter_Heat:
+        $ref: '#/components/messages/Alter_Heat'
+      Delete_Heat:
+        $ref: '#/components/messages/Delete_Heat'
+      Add_Race_Class:
+        $ref: '#/components/messages/Add_Race_Class'
+      Duplicate_Race_Class:
+        $ref: '#/components/messages/Duplicate_Race_Class'
+      Alter_Race_Class:
+        $ref: '#/components/messages/Alter_Race_Class'
+      Delete_Class:
+        $ref: '#/components/messages/Delete_Class'
+      Add_Pilot:
+        $ref: '#/components/messages/Add_Pilot'
+      Alter_Pilot:
+        $ref: '#/components/messages/Alter_Pilot'
+      Delete_Pilot:
+        $ref: '#/components/messages/Delete_Pilot'
+      Set_Seat_Color:
+        $ref: '#/components/messages/Set_Seat_Color'
+      Reset_Seat_Color:
+        $ref: '#/components/messages/Reset_Seat_Color'
+      Add_Profile:
+        $ref: '#/components/messages/Add_Profile'
+      Alter_Profile:
+        $ref: '#/components/messages/Alter_Profile'
+      Delete_Profile:
+        $ref: '#/components/messages/Delete_Profile'
+      Set_Profile:
+        $ref: '#/components/messages/Set_Profile'
+      Alter_Race:
+        $ref: '#/components/messages/Alter_Race'
+      Backup_Database:
+        $ref: '#/components/messages/Backup_Database'
+      Download_Database:
+        $ref: '#/components/messages/Download_Database'
+      List_Backups:
+        $ref: '#/components/messages/List_Backups'
+      Restore_Database:
+        $ref: '#/components/messages/Restore_Database'
+      Delete_Database:
+        $ref: '#/components/messages/Delete_Database'
+      Reset_Database:
+        $ref: '#/components/messages/Reset_Database'
+      Export_Database:
+        $ref: '#/components/messages/Export_Database'
+      Import_Data:
+        $ref: '#/components/messages/Import_Data'
+      Generate_Heats_V2:
+        $ref: '#/components/messages/Generate_Heats_V2'
+      Shutdown_Pi:
+        $ref: '#/components/messages/Shutdown_Pi'
+      Reboot_Pi:
+        $ref: '#/components/messages/Reboot_Pi'
+      Restart_Server:
+        $ref: '#/components/messages/Restart_Server'
+      Kill_Server:
+        $ref: '#/components/messages/Kill_Server'
+      Set_Log_Level:
+        $ref: '#/components/messages/Set_Log_Level'
+      Download_Logs:
+        $ref: '#/components/messages/Download_Logs'
+      Backup_Settings:
+        $ref: '#/components/messages/Backup_Settings'
+      Download_Settings:
+        $ref: '#/components/messages/Download_Settings'
+      Reset_Settings_To_Defaults:
+        $ref: '#/components/messages/Reset_Settings_To_Defaults'
+      Restore_Cfg_File:
+        $ref: '#/components/messages/Restore_Cfg_File'
+      Rename_Cfg_File:
+        $ref: '#/components/messages/Rename_Cfg_File'
+      Delete_Cfg_File:
+        $ref: '#/components/messages/Delete_Cfg_File'
+      Load_Cfg_File:
+        $ref: '#/components/messages/Load_Cfg_File'
+      Set_Min_Lap:
+        $ref: '#/components/messages/Set_Min_Lap'
+      Set_Min_First_Crossing:
+        $ref: '#/components/messages/Set_Min_First_Crossing'
+      Set_Min_Lap_Behavior:
+        $ref: '#/components/messages/Set_Min_Lap_Behavior'
+      Set_Race_Format:
+        $ref: '#/components/messages/Set_Race_Format'
+      Add_Race_Format:
+        $ref: '#/components/messages/Add_Race_Format'
+      Alter_Race_Format:
+        $ref: '#/components/messages/Alter_Race_Format'
+      Delete_Race_Format:
+        $ref: '#/components/messages/Delete_Race_Format'
+      Set_Led_Event_Effect:
+        $ref: '#/components/messages/Set_Led_Event_Effect'
+      Use_Led_Effect:
+        $ref: '#/components/messages/Use_Led_Effect'
+      Get_Pi_Time:
+        $ref: '#/components/messages/Get_Pi_Time'
+      Get_Server_Time:
+        $ref: '#/components/messages/Get_Server_Time'
+      Schedule_Race:
+        $ref: '#/components/messages/Schedule_Race'
+      Cancel_Schedule_Race:
+        $ref: '#/components/messages/Cancel_Schedule_Race'
+      Stage_Race:
+        $ref: '#/components/messages/Stage_Race'
+      Stop_Race:
+        $ref: '#/components/messages/Stop_Race'
+      Current_Race_Marshal:
+        $ref: '#/components/messages/Current_Race_Marshal'
+      Save_Laps:
+        $ref: '#/components/messages/Save_Laps'
+      Resave_Laps:
+        $ref: '#/components/messages/Resave_Laps'
+      Replace_Current_Laps:
+        $ref: '#/components/messages/Replace_Current_Laps'
+      Discard_Laps:
+        $ref: '#/components/messages/Discard_Laps'
+      Calc_Pilots:
+        $ref: '#/components/messages/Calc_Pilots'
+      Calc_Reset:
+        $ref: '#/components/messages/Calc_Reset'
+      Confirm_Heat_Plan:
+        $ref: '#/components/messages/Confirm_Heat_Plan'
+      Set_Current_Heat:
+        $ref: '#/components/messages/Set_Current_Heat'
+      Delete_Lap:
+        $ref: '#/components/messages/Delete_Lap'
+      Restore_Deleted_Lap:
+        $ref: '#/components/messages/Restore_Deleted_Lap'
+      Simulate_Lap:
+        $ref: '#/components/messages/Simulate_Lap'
+      Led_Solid:
+        $ref: '#/components/messages/Led_Solid'
+      Led_Brightness:
+        $ref: '#/components/messages/Led_Brightness'
+      Set_Option:
+        $ref: '#/components/messages/Set_Option'
+      Set_Config:
+        $ref: '#/components/messages/Set_Config'
+      Set_Config_Section:
+        $ref: '#/components/messages/Set_Config_Section'
+      Set_Ui_Binding_Value:
+        $ref: '#/components/messages/Set_Ui_Binding_Value'
+      Set_Consecutives_Count:
+        $ref: '#/components/messages/Set_Consecutives_Count'
+      Get_Race_Scheduled:
+        $ref: '#/components/messages/Get_Race_Scheduled'
+      Save_Callouts:
+        $ref: '#/components/messages/Save_Callouts'
+      Reload_Callouts:
+        $ref: '#/components/messages/Reload_Callouts'
+      Play_Callout_Text:
+        $ref: '#/components/messages/Play_Callout_Text'
+      Imdtabler_Update_Freqs:
+        $ref: '#/components/messages/Imdtabler_Update_Freqs'
+      Clean_Cache:
+        $ref: '#/components/messages/Clean_Cache'
+      Retry_Secondary:
+        $ref: '#/components/messages/Retry_Secondary'
+      Get_Pilotrace:
+        $ref: '#/components/messages/Get_Pilotrace'
+      Check_Bpillfw_File:
+        $ref: '#/components/messages/Check_Bpillfw_File'
+      Do_Bpillfw_Update:
+        $ref: '#/components/messages/Do_Bpillfw_Update'
+      Set_Vrx_Node:
+        $ref: '#/components/messages/Set_Vrx_Node'
+      Plugin_Install:
+        $ref: '#/components/messages/Plugin_Install'
+      Plugin_Delete:
+        $ref: '#/components/messages/Plugin_Delete'
+      Datadir_Handler:
+        $ref: '#/components/messages/Datadir_Handler'
+operations:
+  receive_connect:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Connect'
+    description: Starts the interface and a heartbeat thread for rssi.
+  receive_disconnect:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Disconnect'
+    description: Emit disconnect event.
+  receive_join_cluster:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Join_Cluster'
+  receive_join_cluster_ex:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Join_Cluster_Ex'
+  receive_check_secondary_query:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Check_Secondary_Query'
+    description: 'Check-query received from primary; return response. '
+  receive_cluster_event_trigger:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Cluster_Event_Trigger'
+    description: 'Received event trigger from primary. '
+  receive_cluster_message_ack:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Cluster_Message_Ack'
+    description: 'Received message acknowledgement from primary. '
+  receive_dispatch_event:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Dispatch_Event'
+    description: Dispatch generic event.
+  receive_load_data:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Load_Data'
+    description: Allow pages to load needed data
+  receive_broadcast_message:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Broadcast_Message'
+  receive_set_frequency:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Frequency'
+    description: Set node frequency.
+  receive_set_frequency_preset:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Frequency_Preset'
+    description: 'Apply preset frequencies '
+  receive_set_enter_at_level:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Enter_At_Level'
+    description: Set node enter-at level.
+  receive_set_exit_at_level:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Exit_At_Level'
+    description: Set node exit-at level.
+  receive_set_start_thresh_lower_amount:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Start_Thresh_Lower_Amount'
+  receive_set_start_thresh_lower_duration:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Start_Thresh_Lower_Duration'
+  receive_set_language:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Language'
+    description: Set interface language.
+  receive_cap_enter_at_btn:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Cap_Enter_At_Btn'
+    description: Capture enter-at level.
+  receive_cap_exit_at_btn:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Cap_Exit_At_Btn'
+    description: Capture exit-at level.
+  receive_set_scan:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Scan'
+  receive_expand_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Expand_Heat'
+  receive_get_class_recents:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Get_Class_Recents'
+  receive_add_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Add_Heat'
+    description: Adds the next available heat number to the database.
+  receive_duplicate_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Duplicate_Heat'
+  receive_deactivate_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Deactivate_Heat'
+  receive_activate_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Activate_Heat'
+  receive_alter_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Alter_Heat'
+    description: Update heat.
+  receive_delete_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Heat'
+    description: Delete heat.
+  receive_add_race_class:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Add_Race_Class'
+    description: Adds the next available pilot id number in the database.
+  receive_duplicate_race_class:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Duplicate_Race_Class'
+    description: Adds new race class by duplicating an existing one.
+  receive_alter_race_class:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Alter_Race_Class'
+    description: Update race class.
+  receive_delete_class:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Class'
+    description: Delete class.
+  receive_add_pilot:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Add_Pilot'
+    description: Adds the next available pilot id number in the database.
+  receive_alter_pilot:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Alter_Pilot'
+    description: Update pilot.
+  receive_delete_pilot:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Pilot'
+    description: Delete pilot.
+  receive_set_seat_color:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Seat_Color'
+    description: Update seat color.
+  receive_reset_seat_color:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Reset_Seat_Color'
+    description: Update seat color.
+  receive_add_profile:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Add_Profile'
+    description: Adds new profile (frequency set) in the database.
+  receive_alter_profile:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Alter_Profile'
+    description: 'update profile '
+  receive_delete_profile:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Profile'
+    description: Delete profile
+  receive_set_profile:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Profile'
+    description: 'set current profile '
+  receive_alter_race:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Alter_Race'
+    description: Update race (retroactively via marshaling).
+  receive_backup_database:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Backup_Database'
+    description: Backup database.
+  receive_download_database:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Download_Database'
+    description: Download selected event database file.
+  receive_list_backups:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/List_Backups'
+    description: List database files in db_bkp
+  receive_restore_database:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Restore_Database'
+    description: Restore database.
+  receive_delete_database:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Database'
+    description: Restore database.
+  receive_reset_database:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Reset_Database'
+    description: Reset database.
+  receive_export_database:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Export_Database'
+    description: Run the selected Exporter
+  receive_import_data:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Import_Data'
+    description: Run the selected Importer
+  receive_generate_heats_v2:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Generate_Heats_V2'
+    description: Run the selected Generator
+  receive_shutdown_pi:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Shutdown_Pi'
+    description: Shutdown the raspberry pi.
+  receive_reboot_pi:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Reboot_Pi'
+    description: Reboot the raspberry pi.
+  receive_restart_server:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Restart_Server'
+    description: Re-execute the current process.
+  receive_kill_server:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Kill_Server'
+    description: Shutdown this server.
+  receive_set_log_level:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Log_Level'
+    description: Set minimum log level shown on Server Log page.
+  receive_download_logs:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Download_Logs'
+    description: Download logs (as .zip file).
+  receive_backup_settings:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Backup_Settings'
+    description: Make backup copy of config-settings file.
+  receive_download_settings:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Download_Settings'
+    description: Make backup copy of config-settings file and download it.
+  receive_reset_settings_to_defaults:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Reset_Settings_To_Defaults'
+    description: Reset settings to default values.
+  receive_restore_cfg_file:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Restore_Cfg_File'
+    description: Restore config-settings-backup file.
+  receive_rename_cfg_file:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Rename_Cfg_File'
+    description: Rename config-settings-backup file.
+  receive_delete_cfg_file:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Cfg_File'
+    description: Delete config-settings-backup file.
+  receive_load_cfg_file:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Load_Cfg_File'
+    description: Load config-settings-backup file.
+  receive_set_min_lap:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Min_Lap'
+  receive_set_min_first_crossing:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Min_First_Crossing'
+  receive_set_min_lap_behavior:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Min_Lap_Behavior'
+  receive_set_race_format:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Race_Format'
+    description: 'set current race_format '
+  receive_add_race_format:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Add_Race_Format'
+    description: Adds new format in the database by duplicating an existing one.
+  receive_alter_race_format:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Alter_Race_Format'
+    description: 'update race format '
+  receive_delete_race_format:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Race_Format'
+    description: Delete race format
+  receive_set_led_event_effect:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Led_Event_Effect'
+    description: Set effect for event.
+  receive_use_led_effect:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Use_Led_Effect'
+    description: Activate arbitrary LED Effect.
+  receive_get_pi_time:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Get_Pi_Time'
+  receive_get_server_time:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Get_Server_Time'
+  receive_schedule_race:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Schedule_Race'
+  receive_cancel_schedule_race:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Cancel_Schedule_Race'
+  receive_stage_race:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Stage_Race'
+  receive_stop_race:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Stop_Race'
+  receive_current_race_marshal:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Current_Race_Marshal'
+  receive_save_laps:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Save_Laps'
+  receive_resave_laps:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Resave_Laps'
+  receive_replace_current_laps:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Replace_Current_Laps'
+  receive_discard_laps:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Discard_Laps'
+  receive_calc_pilots:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Calc_Pilots'
+  receive_calc_reset:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Calc_Reset'
+  receive_confirm_heat_plan:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Confirm_Heat_Plan'
+  receive_set_current_heat:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Current_Heat'
+    description: Update the current heat variable and data.
+  receive_delete_lap:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Delete_Lap'
+  receive_restore_deleted_lap:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Restore_Deleted_Lap'
+  receive_simulate_lap:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Simulate_Lap'
+    description: Simulates a lap (for debug testing).
+  receive_led_solid:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Led_Solid'
+    description: LED Solid Color
+  receive_led_brightness:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Led_Brightness'
+    description: Change LED Brightness
+  receive_set_option:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Option'
+  receive_set_config:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Config'
+  receive_set_config_section:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Config_Section'
+  receive_set_ui_binding_value:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Ui_Binding_Value'
+  receive_set_consecutives_count:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Consecutives_Count'
+  receive_get_race_scheduled:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Get_Race_Scheduled'
+  receive_save_callouts:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Save_Callouts'
+  receive_reload_callouts:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Reload_Callouts'
+  receive_play_callout_text:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Play_Callout_Text'
+  receive_imdtabler_update_freqs:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Imdtabler_Update_Freqs'
+    description: 'Update IMDTabler page with new frequencies list '
+  receive_clean_cache:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Clean_Cache'
+    description: 'wipe all results caches '
+  receive_retry_secondary:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Retry_Secondary'
+    description: Retry connection to secondary timer.
+  receive_get_pilotrace:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Get_Pilotrace'
+  receive_check_bpillfw_file:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Check_Bpillfw_File'
+  receive_do_bpillfw_update:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Do_Bpillfw_Update'
+  receive_set_vrx_node:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Set_Vrx_Node'
+  receive_plugin_install:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Plugin_Install'
+  receive_plugin_delete:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Plugin_Delete'
+  receive_datadir_handler:
+    action: receive
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/Datadir_Handler'
+components:
+  messages:
+    Connect:
+      name: connect
+      description: Starts the interface and a heartbeat thread for rssi.
+    Disconnect:
+      name: disconnect
+      description: Emit disconnect event.
+    Join_Cluster:
+      name: join_cluster
+      description: ''
+    Join_Cluster_Ex:
+      name: join_cluster_ex
+      description: ''
+    Check_Secondary_Query:
+      name: check_secondary_query
+      description: 'Check-query received from primary; return response. '
+    Cluster_Event_Trigger:
+      name: cluster_event_trigger
+      description: 'Received event trigger from primary. '
+    Cluster_Message_Ack:
+      name: cluster_message_ack
+      description: 'Received message acknowledgement from primary. '
+    Dispatch_Event:
+      name: dispatch_event
+      description: Dispatch generic event.
+    Load_Data:
+      name: load_data
+      description: Allow pages to load needed data
+      payload:
+        $ref: '#/components/schemas/LoadDataRequest'
+    Broadcast_Message:
+      name: broadcast_message
+      description: ''
+    Set_Frequency:
+      name: set_frequency
+      description: Set node frequency.
+    Set_Frequency_Preset:
+      name: set_frequency_preset
+      description: 'Apply preset frequencies '
+    Set_Enter_At_Level:
+      name: set_enter_at_level
+      description: Set node enter-at level.
+    Set_Exit_At_Level:
+      name: set_exit_at_level
+      description: Set node exit-at level.
+    Set_Start_Thresh_Lower_Amount:
+      name: set_start_thresh_lower_amount
+      description: ''
+    Set_Start_Thresh_Lower_Duration:
+      name: set_start_thresh_lower_duration
+      description: ''
+    Set_Language:
+      name: set_language
+      description: Set interface language.
+    Cap_Enter_At_Btn:
+      name: cap_enter_at_btn
+      description: Capture enter-at level.
+    Cap_Exit_At_Btn:
+      name: cap_exit_at_btn
+      description: Capture exit-at level.
+    Set_Scan:
+      name: set_scan
+      description: ''
+    Expand_Heat:
+      name: expand_heat
+      description: ''
+    Get_Class_Recents:
+      name: get_class_recents
+      description: ''
+    Add_Heat:
+      name: add_heat
+      description: Adds the next available heat number to the database.
+    Duplicate_Heat:
+      name: duplicate_heat
+      description: ''
+    Deactivate_Heat:
+      name: deactivate_heat
+      description: ''
+      payload:
+        $ref: '#/components/schemas/HeatRequest'
+    Activate_Heat:
+      name: activate_heat
+      description: ''
+      payload:
+        $ref: '#/components/schemas/HeatRequest'
+    Alter_Heat:
+      name: alter_heat
+      description: Update heat.
+    Delete_Heat:
+      name: delete_heat
+      description: Delete heat.
+    Add_Race_Class:
+      name: add_race_class
+      description: Adds the next available pilot id number in the database.
+    Duplicate_Race_Class:
+      name: duplicate_race_class
+      description: Adds new race class by duplicating an existing one.
+    Alter_Race_Class:
+      name: alter_race_class
+      description: Update race class.
+    Delete_Class:
+      name: delete_class
+      description: Delete class.
+    Add_Pilot:
+      name: add_pilot
+      description: Adds the next available pilot id number in the database.
+    Alter_Pilot:
+      name: alter_pilot
+      description: Update pilot.
+    Delete_Pilot:
+      name: delete_pilot
+      description: Delete pilot.
+    Set_Seat_Color:
+      name: set_seat_color
+      description: Update seat color.
+    Reset_Seat_Color:
+      name: reset_seat_color
+      description: Update seat color.
+    Add_Profile:
+      name: add_profile
+      description: Adds new profile (frequency set) in the database.
+    Alter_Profile:
+      name: alter_profile
+      description: 'update profile '
+    Delete_Profile:
+      name: delete_profile
+      description: Delete profile
+    Set_Profile:
+      name: set_profile
+      description: 'set current profile '
+    Alter_Race:
+      name: alter_race
+      description: Update race (retroactively via marshaling).
+      payload:
+        $ref: '#/components/schemas/AlterRaceRequest'
+    Backup_Database:
+      name: backup_database
+      description: Backup database.
+    Download_Database:
+      name: download_database
+      description: Download selected event database file.
+    List_Backups:
+      name: list_backups
+      description: List database files in db_bkp
+    Restore_Database:
+      name: restore_database
+      description: Restore database.
+    Delete_Database:
+      name: delete_database
+      description: Restore database.
+    Reset_Database:
+      name: reset_database
+      description: Reset database.
+    Export_Database:
+      name: export_database
+      description: Run the selected Exporter
+    Import_Data:
+      name: import_data
+      description: Run the selected Importer
+    Generate_Heats_V2:
+      name: generate_heats_v2
+      description: Run the selected Generator
+    Shutdown_Pi:
+      name: shutdown_pi
+      description: Shutdown the raspberry pi.
+    Reboot_Pi:
+      name: reboot_pi
+      description: Reboot the raspberry pi.
+    Restart_Server:
+      name: restart_server
+      description: Re-execute the current process.
+    Kill_Server:
+      name: kill_server
+      description: Shutdown this server.
+    Set_Log_Level:
+      name: set_log_level
+      description: Set minimum log level shown on Server Log page.
+    Download_Logs:
+      name: download_logs
+      description: Download logs (as .zip file).
+    Backup_Settings:
+      name: backup_settings
+      description: Make backup copy of config-settings file.
+    Download_Settings:
+      name: download_settings
+      description: Make backup copy of config-settings file and download it.
+    Reset_Settings_To_Defaults:
+      name: reset_settings_to_defaults
+      description: Reset settings to default values.
+    Restore_Cfg_File:
+      name: restore_cfg_file
+      description: Restore config-settings-backup file.
+    Rename_Cfg_File:
+      name: rename_cfg_file
+      description: Rename config-settings-backup file.
+    Delete_Cfg_File:
+      name: delete_cfg_file
+      description: Delete config-settings-backup file.
+    Load_Cfg_File:
+      name: load_cfg_file
+      description: Load config-settings-backup file.
+    Set_Min_Lap:
+      name: set_min_lap
+      description: ''
+    Set_Min_First_Crossing:
+      name: set_min_first_crossing
+      description: ''
+    Set_Min_Lap_Behavior:
+      name: set_min_lap_behavior
+      description: ''
+    Set_Race_Format:
+      name: set_race_format
+      description: 'set current race_format '
+    Add_Race_Format:
+      name: add_race_format
+      description: Adds new format in the database by duplicating an existing one.
+    Alter_Race_Format:
+      name: alter_race_format
+      description: 'update race format '
+    Delete_Race_Format:
+      name: delete_race_format
+      description: Delete race format
+    Set_Led_Event_Effect:
+      name: set_led_event_effect
+      description: Set effect for event.
+    Use_Led_Effect:
+      name: use_led_effect
+      description: Activate arbitrary LED Effect.
+    Get_Pi_Time:
+      name: get_pi_time
+      description: ''
+    Get_Server_Time:
+      name: get_server_time
+      description: ''
+      x-ack:
+        $ref: '#/components/schemas/ServerTimeResponse'
+    Schedule_Race:
+      name: schedule_race
+      description: ''
+      payload:
+        $ref: '#/components/schemas/ScheduleRaceRequest'
+    Cancel_Schedule_Race:
+      name: cancel_schedule_race
+      description: ''
+    Stage_Race:
+      name: stage_race
+      description: ''
+    Stop_Race:
+      name: stop_race
+      description: ''
+    Current_Race_Marshal:
+      name: current_race_marshal
+      description: ''
+    Save_Laps:
+      name: save_laps
+      description: ''
+    Resave_Laps:
+      name: resave_laps
+      description: ''
+      payload:
+        $ref: '#/components/schemas/ResaveLapsRequest'
+    Replace_Current_Laps:
+      name: replace_current_laps
+      description: ''
+      payload:
+        $ref: '#/components/schemas/ReplaceCurrentLapsRequest'
+    Discard_Laps:
+      name: discard_laps
+      description: ''
+    Calc_Pilots:
+      name: calc_pilots
+      description: ''
+      payload:
+        $ref: '#/components/schemas/CalcPilotsRequest'
+    Calc_Reset:
+      name: calc_reset
+      description: ''
+      payload:
+        $ref: '#/components/schemas/CalcResetRequest'
+    Confirm_Heat_Plan:
+      name: confirm_heat_plan
+      description: ''
+    Set_Current_Heat:
+      name: set_current_heat
+      description: Update the current heat variable and data.
+      payload:
+        $ref: '#/components/schemas/SetCurrentHeatRequest'
+    Delete_Lap:
+      name: delete_lap
+      description: ''
+    Restore_Deleted_Lap:
+      name: restore_deleted_lap
+      description: ''
+    Simulate_Lap:
+      name: simulate_lap
+      description: Simulates a lap (for debug testing).
+    Led_Solid:
+      name: LED_solid
+      description: LED Solid Color
+    Led_Brightness:
+      name: LED_brightness
+      description: Change LED Brightness
+    Set_Option:
+      name: set_option
+      description: ''
+    Set_Config:
+      name: set_config
+      description: ''
+    Set_Config_Section:
+      name: set_config_section
+      description: ''
+    Set_Ui_Binding_Value:
+      name: set_ui_binding_value
+      description: ''
+    Set_Consecutives_Count:
+      name: set_consecutives_count
+      description: ''
+    Get_Race_Scheduled:
+      name: get_race_scheduled
+      description: ''
+    Save_Callouts:
+      name: save_callouts
+      description: ''
+    Reload_Callouts:
+      name: reload_callouts
+      description: ''
+    Play_Callout_Text:
+      name: play_callout_text
+      description: ''
+    Imdtabler_Update_Freqs:
+      name: imdtabler_update_freqs
+      description: 'Update IMDTabler page with new frequencies list '
+    Clean_Cache:
+      name: clean_cache
+      description: 'wipe all results caches '
+    Retry_Secondary:
+      name: retry_secondary
+      description: Retry connection to secondary timer.
+    Get_Pilotrace:
+      name: get_pilotrace
+      description: ''
+      payload:
+        $ref: '#/components/schemas/GetPilotRaceRequest'
+    Check_Bpillfw_File:
+      name: check_bpillfw_file
+      description: ''
+    Do_Bpillfw_Update:
+      name: do_bpillfw_update
+      description: ''
+    Set_Vrx_Node:
+      name: set_vrx_node
+      description: ''
+    Plugin_Install:
+      name: plugin_install
+      description: ''
+    Plugin_Delete:
+      name: plugin_delete
+      description: ''
+    Datadir_Handler:
+      name: datadir_handler
+      description: ''
+  schemas:
+    NoSpec:
+      description: Specification is not provided
+    LoadDataRequest:
+      $defs:
+        DictLoadType:
+          additionalProperties: true
+          properties:
+            type:
+              anyOf:
+              - enum:
+                - ui
+                - config
+                type: string
+              - type: string
+              description: 'Structured load request type. Known values: ''ui'' and
+                ''config''.'
+              examples:
+              - config
+              title: Type
+            value:
+              default: null
+              description: Payload passed to the corresponding RaceContext.rhui emitter.
+              examples:
+              - GENERAL:
+                - SECONDARIES
+              title: Value
+          required:
+          - type
+          title: DictLoadType
+          type: object
+      additionalProperties: false
+      examples:
+      - load_types:
+        - frequency_data
+        - heat_data
+        - pilot_data
+      - load_types:
+        - type: config
+          value:
+            GENERAL:
+            - SECONDARIES
+      properties:
+        load_types:
+          description: Data blocks requested by the UI. Items may be known string
+            load types or structured requests for targeted UI/config updates.
+          items:
+            anyOf:
+            - enum:
+              - node_data
+              - environmental_data
+              - frequency_data
+              - heat_list
+              - heat_data
+              - heat_attribute_types
+              - seat_data
+              - class_list
+              - class_data
+              - format_data
+              - pilot_list
+              - pilot_data
+              - result_data
+              - node_tuning
+              - enter_and_exit_at_levels
+              - start_thresh_lower_amount
+              - start_thresh_lower_duration
+              - min_lap
+              - action_setup
+              - event_actions
+              - leaderboard
+              - current_laps
+              - race_status
+              - current_heat
+              - race_list
+              - language
+              - all_languages
+              - led_effect_setup
+              - led_effects
+              - callouts
+              - imdtabler_page
+              - vrx_list
+              - backups_list
+              - upd_cfg_files_list
+              - exporter_list
+              - importer_list
+              - heatgenerator_list
+              - raceclass_rank_method_list
+              - race_points_method_list
+              - plugin_list
+              - plugin_repo
+              - cluster_status
+              - hardware_log_init
+              type: string
+            - type: string
+            - $ref: '#/components/schemas/LoadDataRequest/$defs/DictLoadType'
+          minItems: 1
+          title: Load Types
+          type: array
+      required:
+      - load_types
+      title: LoadDataRequest
+      type: object
+    HeatRequest:
+      additionalProperties: false
+      examples:
+      - heat: 3
+      properties:
+        heat:
+          description: Heat ID to activate or deactivate.
+          title: Heat
+          type: integer
+      required:
+      - heat
+      title: HeatRequest
+      type: object
+    AlterRaceRequest:
+      additionalProperties: false
+      examples:
+      - heat_id: 3
+        race_id: 12
+      properties:
+        race_id:
+          description: Saved race ID to reassign.
+          title: Race Id
+          type: integer
+        heat_id:
+          description: Destination heat ID.
+          title: Heat Id
+          type: integer
+      required:
+      - race_id
+      - heat_id
+      title: AlterRaceRequest
+      type: object
+    ServerTimeResponse:
+      additionalProperties: false
+      examples:
+      - server_time_s: 12345.678
+      properties:
+        server_time_s:
+          description: Server monotonic time in seconds.
+          title: Server Time S
+          type: number
+      required:
+      - server_time_s
+      title: ServerTimeResponse
+      type: object
+    ScheduleRaceRequest:
+      additionalProperties: false
+      examples:
+      - m: 1
+        s: 30
+      properties:
+        m:
+          description: Minutes until race start.
+          title: M
+          type: integer
+        s:
+          description: Seconds until race start.
+          title: S
+          type: integer
+      required:
+      - m
+      - s
+      title: ScheduleRaceRequest
+      type: object
+    ResaveLapsRequest:
+      $defs:
+        ResaveLapRequest:
+          additionalProperties: true
+          properties:
+            lap_time_stamp:
+              description: Lap timestamp in milliseconds from race start.
+              title: Lap Time Stamp
+              type: number
+            lap_time:
+              anyOf:
+              - type: number
+              - type: string
+              description: Incremental lap time in milliseconds, or legacy formatted
+                value.
+              title: Lap Time
+            source:
+              description: Lap source identifier.
+              title: Source
+              type: integer
+            deleted:
+              description: Whether this lap is marked deleted.
+              title: Deleted
+              type: boolean
+            peak_rssi:
+              anyOf:
+              - type: integer
+              - type: 'null'
+              default: null
+              description: Peak RSSI recorded for this lap.
+              title: Peak Rssi
+          required:
+          - lap_time_stamp
+          - lap_time
+          - source
+          - deleted
+          title: ResaveLapRequest
+          type: object
+      additionalProperties: false
+      examples:
+      - callsign: Pilot 1
+        enter_at: 210
+        exit_at: 190
+        heat_id: 3
+        laps:
+        - deleted: false
+          lap_time: 12500
+          lap_time_stamp: 12500
+          peak_rssi: 218
+          source: 2
+        pilot_id: 12
+        pilotrace_id: 7
+        race_id: 42
+        round_id: 1
+        seat: 0
+      properties:
+        heat_id:
+          description: Heat ID for the saved race.
+          title: Heat Id
+          type: integer
+        round_id:
+          description: Round number for display/logging.
+          title: Round Id
+          type: integer
+        callsign:
+          description: Pilot callsign for display/logging.
+          title: Callsign
+          type: string
+        race_id:
+          description: Saved race ID.
+          title: Race Id
+          type: integer
+        pilotrace_id:
+          description: Saved pilot-race row ID.
+          title: Pilotrace Id
+          type: integer
+        seat:
+          description: Node/seat index.
+          title: Seat
+          type: integer
+        pilot_id:
+          description: Pilot ID assigned to this seat.
+          title: Pilot Id
+          type: integer
+        laps:
+          description: Replacement lap list.
+          items:
+            $ref: '#/components/schemas/ResaveLapsRequest/$defs/ResaveLapRequest'
+          title: Laps
+          type: array
+        enter_at:
+          description: Enter-at threshold used for this pilot race.
+          title: Enter At
+          type: integer
+        exit_at:
+          description: Exit-at threshold used for this pilot race.
+          title: Exit At
+          type: integer
+      required:
+      - heat_id
+      - round_id
+      - callsign
+      - race_id
+      - pilotrace_id
+      - seat
+      - pilot_id
+      - laps
+      - enter_at
+      - exit_at
+      title: ResaveLapsRequest
+      type: object
+    ReplaceCurrentLapsRequest:
+      $defs:
+        ResaveLapRequest:
+          additionalProperties: true
+          properties:
+            lap_time_stamp:
+              description: Lap timestamp in milliseconds from race start.
+              title: Lap Time Stamp
+              type: number
+            lap_time:
+              anyOf:
+              - type: number
+              - type: string
+              description: Incremental lap time in milliseconds, or legacy formatted
+                value.
+              title: Lap Time
+            source:
+              description: Lap source identifier.
+              title: Source
+              type: integer
+            deleted:
+              description: Whether this lap is marked deleted.
+              title: Deleted
+              type: boolean
+            peak_rssi:
+              anyOf:
+              - type: integer
+              - type: 'null'
+              default: null
+              description: Peak RSSI recorded for this lap.
+              title: Peak Rssi
+          required:
+          - lap_time_stamp
+          - lap_time
+          - source
+          - deleted
+          title: ResaveLapRequest
+          type: object
+      additionalProperties: false
+      examples:
+      - callsign: Pilot 1
+        enter_at: 210
+        exit_at: 190
+        heat_id: 3
+        laps:
+        - deleted: false
+          lap_time: 12500
+          lap_time_stamp: 12500
+          peak_rssi: 218
+          source: 2
+        pilot_id: 12
+        pilotrace_id: 7
+        race_id: 42
+        round_id: 1
+        seat: 0
+      properties:
+        heat_id:
+          description: Heat ID for the saved race.
+          title: Heat Id
+          type: integer
+        round_id:
+          description: Round number for display/logging.
+          title: Round Id
+          type: integer
+        callsign:
+          description: Pilot callsign for display/logging.
+          title: Callsign
+          type: string
+        race_id:
+          description: Saved race ID.
+          title: Race Id
+          type: integer
+        pilotrace_id:
+          description: Saved pilot-race row ID.
+          title: Pilotrace Id
+          type: integer
+        seat:
+          description: Node/seat index.
+          title: Seat
+          type: integer
+        pilot_id:
+          description: Pilot ID assigned to this seat.
+          title: Pilot Id
+          type: integer
+        laps:
+          description: Replacement lap list.
+          items:
+            $ref: '#/components/schemas/ReplaceCurrentLapsRequest/$defs/ResaveLapRequest'
+          title: Laps
+          type: array
+        enter_at:
+          description: Enter-at threshold used for this pilot race.
+          title: Enter At
+          type: integer
+        exit_at:
+          description: Exit-at threshold used for this pilot race.
+          title: Exit At
+          type: integer
+      required:
+      - heat_id
+      - round_id
+      - callsign
+      - race_id
+      - pilotrace_id
+      - seat
+      - pilot_id
+      - laps
+      - enter_at
+      - exit_at
+      title: ReplaceCurrentLapsRequest
+      type: object
+    CalcPilotsRequest:
+      additionalProperties: false
+      examples:
+      - heat: 3
+      - heat: 3
+        preassignments:
+          '1': 0
+      properties:
+        heat:
+          description: Heat ID to calculate pilot assignments for.
+          title: Heat
+          type: integer
+        preassignments:
+          additionalProperties:
+            type: integer
+          description: Optional heat-slot to seat preassignments.
+          title: Preassignments
+          type: object
+      required:
+      - heat
+      title: CalcPilotsRequest
+      type: object
+    CalcResetRequest:
+      additionalProperties: false
+      examples:
+      - heat: 3
+      properties:
+        heat:
+          description: Heat ID whose generated plan should be reset.
+          title: Heat
+          type: integer
+      required:
+      - heat
+      title: CalcResetRequest
+      type: object
+    SetCurrentHeatRequest:
+      additionalProperties: false
+      examples:
+      - heat: 3
+      - heat: null
+      properties:
+        heat:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Heat ID to set as current. Null selects practice mode.
+          title: Heat
+      required:
+      - heat
+      title: SetCurrentHeatRequest
+      type: object
+    GetPilotRaceRequest:
+      additionalProperties: false
+      examples:
+      - pilotrace_id: 7
+      properties:
+        pilotrace_id:
+          description: Saved pilot-race row ID to load.
+          title: Pilotrace Id
+          type: integer
+      required:
+      - pilotrace_id
+      title: GetPilotRaceRequest
+      type: object

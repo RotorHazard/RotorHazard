@@ -12,6 +12,7 @@ import socket
 import random
 import numbers
 import functools
+import inspect
 import traceback
 import shutil
 import util.RH_GPIO as RH_GPIO
@@ -338,6 +339,7 @@ def catchLogExceptionsWrapper(func):
             return func(*args, **kwargs)
         except Exception:
             logger.exception("Exception via catchLogExceptionsWrapper")
+    wrapper.__signature__ = inspect.signature(func)
     return wrapper
 
 # Modifies a name with a human-readable suffix (name 2, name 3, etc.)
