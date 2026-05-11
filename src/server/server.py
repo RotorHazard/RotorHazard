@@ -913,97 +913,97 @@ def on_load_data(data: LoadDataRequest) -> None:
                 RaceContext.rhui.emit_ui(load_type.value, nobroadcast=True)
             if load_type.type == 'config':
                 RaceContext.rhui.emit_config_update(load_type.value, nobroadcast=True)
-        elif isinstance(load_type, str):
-            if load_type == 'node_data':
-                RaceContext.rhui.emit_node_data(nobroadcast=True)
-            elif load_type == 'environmental_data':
-                RaceContext.rhui.emit_environmental_data(nobroadcast=True)
-            elif load_type == 'frequency_data':
-                RaceContext.rhui.emit_frequency_data(nobroadcast=True)
-            if Use_imdtabler_jar_flag:
-                heartbeat_thread_function.imdtabler_flag = True
-            elif load_type == 'heat_list':
-                RaceContext.rhui.emit_heat_list(nobroadcast=True)
-            elif load_type == 'heat_data':
-                RaceContext.rhui.emit_heat_data(nobroadcast=True)
-            elif load_type == 'heat_attribute_types':
-                RaceContext.rhui.emit_heat_attribute_types(nobroadcast=True)
-            elif load_type == 'seat_data':
-                RaceContext.rhui.emit_seat_data(nobroadcast=True)
-            elif load_type == 'class_list':
-                RaceContext.rhui.emit_class_list(nobroadcast=True)
-            elif load_type == 'class_data':
-                RaceContext.rhui.emit_class_data(nobroadcast=True)
-            elif load_type == 'format_data':
-                RaceContext.rhui.emit_format_data(nobroadcast=True)
-            elif load_type == 'pilot_list':
-                RaceContext.rhui.emit_pilot_list(nobroadcast=True)
-            elif load_type == 'pilot_data':
-                RaceContext.rhui.emit_pilot_data(nobroadcast=True)
-            elif load_type == 'result_data':
-                RaceContext.rhui.emit_result_data(nobroadcast=True)
-            elif load_type == 'node_tuning':
-                RaceContext.rhui.emit_node_tuning(nobroadcast=True)
-            elif load_type == 'enter_and_exit_at_levels':
-                RaceContext.rhui.emit_enter_and_exit_at_levels(nobroadcast=True)
-            elif load_type == 'start_thresh_lower_amount':
-                RaceContext.rhui.emit_start_thresh_lower_amount(nobroadcast=True)
-            elif load_type == 'start_thresh_lower_duration':
-                RaceContext.rhui.emit_start_thresh_lower_duration(nobroadcast=True)
-            elif load_type == 'min_lap':
-                RaceContext.rhui.emit_min_lap(nobroadcast=True)
-            elif load_type == 'action_setup':
-                RaceContext.rhui.emit_action_setup(EventActionsObj, nobroadcast=True)
-            elif load_type == 'event_actions':
-                RaceContext.rhui.emit_event_actions(nobroadcast=True)
-            elif load_type == 'leaderboard':
-                RaceContext.rhui.emit_current_leaderboard(nobroadcast=True)
-            elif load_type == 'current_laps':
-                RaceContext.rhui.emit_current_laps(nobroadcast=True)
-            elif load_type == 'race_status':
-                RaceContext.rhui.emit_race_status(nobroadcast=True)
-            elif load_type == 'current_heat':
-                RaceContext.rhui.emit_current_heat(nobroadcast=True)
-            elif load_type == 'race_list':
-                RaceContext.rhui.emit_race_list(nobroadcast=True)
-            elif load_type == 'language':
-                RaceContext.rhui.emit_language(nobroadcast=True)
-            elif load_type == 'all_languages':
-                RaceContext.rhui.emit_all_languages(nobroadcast=True)
-            elif load_type == 'led_effect_setup':
-                emit_led_effect_setup()
-            elif load_type == 'led_effects':
-                emit_led_effects()
-            elif load_type == 'callouts':
-                RaceContext.rhui.emit_callouts()
-            elif load_type == 'imdtabler_page':
-                RaceContext.rhui.emit_imdtabler_page(IMDTABLER_JAR_NAME, Use_imdtabler_jar_flag, nobroadcast=True)
-            elif load_type == 'vrx_list':
-                RaceContext.rhui.emit_vrx_list(nobroadcast=True)
-            elif load_type == 'backups_list':
-                on_list_backups()
-            elif load_type == 'upd_cfg_files_list':
-                RaceContext.rhui.emit_upd_cfg_files_list()
-            elif load_type == 'exporter_list':
-                RaceContext.rhui.emit_exporter_list()
-            elif load_type == 'importer_list':
-                RaceContext.rhui.emit_importer_list()
-            elif load_type == 'heatgenerator_list':
-                RaceContext.rhui.emit_heatgenerator_list()
-            elif load_type == 'raceclass_rank_method_list':
-                RaceContext.rhui.emit_raceclass_rank_method_list()
-            elif load_type == 'race_points_method_list':
-                RaceContext.rhui.emit_race_points_method_list()
-            elif load_type == 'plugin_list':
-                RaceContext.rhui.emit_plugin_list(nobroadcast=True)
-            elif load_type == 'plugin_repo':
-                RaceContext.rhui.emit_plugin_repo(nobroadcast=True)
-            elif load_type == 'cluster_status':
-                RaceContext.rhui.emit_cluster_status()
-            elif load_type == 'hardware_log_init':
-                log.emit_current_log_file_to_socket(Current_log_path_name, SOCKET_IO)
-            else:
-                logger.warning('Called undefined load type: {}'.format(load_type))
+            continue
+        if Use_imdtabler_jar_flag:
+            heartbeat_thread_function.imdtabler_flag = True
+        if load_type == 'node_data':
+            RaceContext.rhui.emit_node_data(nobroadcast=True)
+        elif load_type == 'environmental_data':
+            RaceContext.rhui.emit_environmental_data(nobroadcast=True)
+        elif load_type == 'frequency_data':
+            RaceContext.rhui.emit_frequency_data(nobroadcast=True)
+        elif load_type == 'heat_list':
+            RaceContext.rhui.emit_heat_list(nobroadcast=True)
+        elif load_type == 'heat_data':
+            RaceContext.rhui.emit_heat_data(nobroadcast=True)
+        elif load_type == 'heat_attribute_types':
+            RaceContext.rhui.emit_heat_attribute_types(nobroadcast=True)
+        elif load_type == 'seat_data':
+            RaceContext.rhui.emit_seat_data(nobroadcast=True)
+        elif load_type == 'class_list':
+            RaceContext.rhui.emit_class_list(nobroadcast=True)
+        elif load_type == 'class_data':
+            RaceContext.rhui.emit_class_data(nobroadcast=True)
+        elif load_type == 'format_data':
+            RaceContext.rhui.emit_format_data(nobroadcast=True)
+        elif load_type == 'pilot_list':
+            RaceContext.rhui.emit_pilot_list(nobroadcast=True)
+        elif load_type == 'pilot_data':
+            RaceContext.rhui.emit_pilot_data(nobroadcast=True)
+        elif load_type == 'result_data':
+            RaceContext.rhui.emit_result_data(nobroadcast=True)
+        elif load_type == 'node_tuning':
+            RaceContext.rhui.emit_node_tuning(nobroadcast=True)
+        elif load_type == 'enter_and_exit_at_levels':
+            RaceContext.rhui.emit_enter_and_exit_at_levels(nobroadcast=True)
+        elif load_type == 'start_thresh_lower_amount':
+            RaceContext.rhui.emit_start_thresh_lower_amount(nobroadcast=True)
+        elif load_type == 'start_thresh_lower_duration':
+            RaceContext.rhui.emit_start_thresh_lower_duration(nobroadcast=True)
+        elif load_type == 'min_lap':
+            RaceContext.rhui.emit_min_lap(nobroadcast=True)
+        elif load_type == 'action_setup':
+            RaceContext.rhui.emit_action_setup(EventActionsObj, nobroadcast=True)
+        elif load_type == 'event_actions':
+            RaceContext.rhui.emit_event_actions(nobroadcast=True)
+        elif load_type == 'leaderboard':
+            RaceContext.rhui.emit_current_leaderboard(nobroadcast=True)
+        elif load_type == 'current_laps':
+            RaceContext.rhui.emit_current_laps(nobroadcast=True)
+        elif load_type == 'race_status':
+            RaceContext.rhui.emit_race_status(nobroadcast=True)
+        elif load_type == 'current_heat':
+            RaceContext.rhui.emit_current_heat(nobroadcast=True)
+        elif load_type == 'race_list':
+            RaceContext.rhui.emit_race_list(nobroadcast=True)
+        elif load_type == 'language':
+            RaceContext.rhui.emit_language(nobroadcast=True)
+        elif load_type == 'all_languages':
+            RaceContext.rhui.emit_all_languages(nobroadcast=True)
+        elif load_type == 'led_effect_setup':
+            emit_led_effect_setup()
+        elif load_type == 'led_effects':
+            emit_led_effects()
+        elif load_type == 'callouts':
+            RaceContext.rhui.emit_callouts()
+        elif load_type == 'imdtabler_page':
+            RaceContext.rhui.emit_imdtabler_page(IMDTABLER_JAR_NAME, Use_imdtabler_jar_flag, nobroadcast=True)
+        elif load_type == 'vrx_list':
+            RaceContext.rhui.emit_vrx_list(nobroadcast=True)
+        elif load_type == 'backups_list':
+            on_list_backups()
+        elif load_type == 'upd_cfg_files_list':
+            RaceContext.rhui.emit_upd_cfg_files_list()
+        elif load_type == 'exporter_list':
+            RaceContext.rhui.emit_exporter_list()
+        elif load_type == 'importer_list':
+            RaceContext.rhui.emit_importer_list()
+        elif load_type == 'heatgenerator_list':
+            RaceContext.rhui.emit_heatgenerator_list()
+        elif load_type == 'raceclass_rank_method_list':
+            RaceContext.rhui.emit_raceclass_rank_method_list()
+        elif load_type == 'race_points_method_list':
+            RaceContext.rhui.emit_race_points_method_list()
+        elif load_type == 'plugin_list':
+            RaceContext.rhui.emit_plugin_list(nobroadcast=True)
+        elif load_type == 'plugin_repo':
+            RaceContext.rhui.emit_plugin_repo(nobroadcast=True)
+        elif load_type == 'cluster_status':
+            RaceContext.rhui.emit_cluster_status()
+        elif load_type == 'hardware_log_init':
+            log.emit_current_log_file_to_socket(Current_log_path_name, SOCKET_IO)
+        else:
+            logger.warning('Called undefined load type: {}'.format(load_type))
 
 @SOCKET_IO.on('broadcast_message')
 @catchLogExceptionsWrapper

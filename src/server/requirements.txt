@@ -36,5 +36,5 @@ packaging==24.*
 # RPi.bme280==0.2.*
 
 # New
-pydantic>=2.5.0
-sio-asyncapi
+pydantic==2.13.4
+sio-asyncapi==1.0.0
