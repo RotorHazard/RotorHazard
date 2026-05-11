@@ -15,6 +15,14 @@ interface HeartbeatState {
   payload?: unknown;
 }
 
+type EndpointStatus = 'idle' | 'running' | 'ok' | 'sent' | 'missing' | 'blocked' | 'error';
+
+interface EndpointRunState {
+  status: EndpointStatus;
+  message: string;
+  ts: string;
+}
+
 function parsePayload(text: string): unknown {
   if (!text.trim()) {
     return undefined;
@@ -52,6 +60,7 @@ function App() {
   const [isCalling, setIsCalling] = useState(false);
   const [serverTime, setServerTime] = useState<number | null>(null);
   const [heartbeat, setHeartbeat] = useState<HeartbeatState>({ count: 0, lastAt: null });
+  const [endpointResults, setEndpointResults] = useState<Record<string, EndpointRunState>>({});
 
   const clientRef = useRef<RotorHazardClient | null>(null);
 
@@ -74,6 +83,47 @@ function App() {
         ...entry,
       },
     ]);
+  };
+
+  const setEndpointResult = (endpointId: string, status: EndpointStatus, message: string) => {
+    setEndpointResults((previous) => ({
+      ...previous,
+      [endpointId]: {
+        status,
+        message,
+        ts: new Date().toISOString(),
+      },
+    }));
+  };
+
+  const resultForEndpoint = (endpoint: EndpointDefinition) => endpointResults[endpoint.id];
+
+  const resultFromCall = (
+    endpoint: EndpointDefinition,
+    result: Awaited<ReturnType<RotorHazardClient['callEndpoint']>>,
+  ): Pick<EndpointRunState, 'status' | 'message'> => {
+    if (endpoint.expectsAck) {
+      if (result.ack === undefined) {
+        return { status: 'missing', message: 'ACK missing or timed out' };
+      }
+      return { status: 'ok', message: 'ACK received' };
+    }
+
+    if (result.wait) {
+      if (result.wait.missing.length) {
+        return {
+          status: 'missing',
+          message: `Missing: ${result.wait.missing.join(', ')}`,
+        };
+      }
+      return { status: 'ok', message: 'Expected events received' };
+    }
+
+    if (endpoint.action === 'connect' || endpoint.action === 'disconnect') {
+      return { status: 'ok', message: 'Lifecycle action completed' };
+    }
+
+    return { status: 'sent', message: 'Event sent; no ACK or expected event configured' };
   };
 
   useEffect(() => {
@@ -106,6 +156,7 @@ function App() {
 
     clientRef.current = client;
     setHeartbeat({ count: 0, lastAt: null });
+    setEndpointResults({});
 
     const unsubscribeLog = client.onLog((entry) => {
       if (entry.direction === 'ack' && entry.event === 'get_server_time') {
@@ -161,9 +212,11 @@ function App() {
         message: 'Mutation blocked by UI toggle',
         data: endpoint,
       });
+      setEndpointResult(endpoint.id, 'blocked', 'Mutation blocked');
       return;
     }
 
+    setEndpointResult(endpoint.id, 'running', 'Running');
     if (manageBusyState) {
       setIsCalling(true);
     }
@@ -171,7 +224,10 @@ function App() {
       const payload = endpoint.action === 'emit' ? parsePayload(overridePayloadText) : undefined;
       const result = await client.callEndpoint(endpoint, payload, 3500);
       setLastAck(result.ack ?? null);
+      const nextResult = resultFromCall(endpoint, result);
+      setEndpointResult(endpoint.id, nextResult.status, nextResult.message);
     } catch (error) {
+      setEndpointResult(endpoint.id, 'error', error instanceof Error ? error.message : 'Unknown endpoint call error');
       appendUiLog({
         level: 'error',
         direction: 'error',
@@ -247,6 +303,7 @@ function App() {
     setEvents([]);
     setLogs([]);
     setLastAck(null);
+    setEndpointResults({});
     setActiveUrl(url);
   };
 
@@ -361,7 +418,14 @@ function App() {
                 />
                 <button type="button" onClick={() => setSelectedId(endpoint.id)}>
                   <span>{endpoint.todoName}</span>
-                  <small>{endpoint.readOnly ? 'read' : 'mutates'}</small>
+                  <small>
+                    {endpoint.readOnly ? 'read' : 'mutates'}
+                    {resultForEndpoint(endpoint) && (
+                      <b className={`status ${resultForEndpoint(endpoint)?.status}`}>
+                        {resultForEndpoint(endpoint)?.status}
+                      </b>
+                    )}
+                  </small>
                 </button>
               </div>
             ))}
@@ -386,6 +450,11 @@ function App() {
             <span>TODO: {selectedEndpoint.todoName}</span>
             <span>Socket event: {selectedEndpoint.eventName ?? selectedEndpoint.action}</span>
             <span>{selectedEndpoint.expectsAck ? 'ACK expected' : 'no ACK'}</span>
+            {resultForEndpoint(selectedEndpoint) && (
+              <span className={`status ${resultForEndpoint(selectedEndpoint)?.status}`}>
+                {resultForEndpoint(selectedEndpoint)?.message}
+              </span>
+            )}
           </div>
 
           <label>

@@ -229,7 +229,43 @@ aside,
 }
 
 .endpoint-row small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: #667085;
+}
+
+.status {
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status.running {
+  background: #eef4ff;
+  color: #1d4ed8;
+}
+
+.status.ok {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.status.sent {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.status.missing {
+  background: #fff4ed;
+  color: #b54708;
+}
+
+.status.blocked,
+.status.error {
+  background: #fef3f2;
+  color: #b42318;
 }
 
 .endpoint-head,

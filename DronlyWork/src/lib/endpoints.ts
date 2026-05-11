@@ -234,7 +234,7 @@ export const TODO_ENDPOINTS: EndpointDefinition[] = [
     expectsAck: true,
     defaultPayload: null,
     expectedEvents: [],
-    notes: 'Returns Socket.IO ACK with server_time_s.',
+    notes: 'Returns Socket.IO ACK with server_time_s. This is Python monotonic() seconds, not wall-clock date/time.',
   },
   {
     id: 'schedule_race',
