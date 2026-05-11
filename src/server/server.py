@@ -59,10 +59,24 @@ from api_schema import (
     AlterRaceRequest,
     CalcPilotsRequest,
     CalcResetRequest,
+    CalloutsEvent,
+    CurrentHeatEvent,
+    CurrentLapsEvent,
     DictLoadType,
+    FirstPassRegisteredEvent,
     GetPilotRaceRequest,
+    HeatDataEvent,
     HeatRequest,
+    LeaderboardEvent,
     LoadDataRequest,
+    PhoneticDataEvent,
+    PhoneticLeaderEvent,
+    PhoneticSplitCallEvent,
+    PhoneticTextEvent,
+    PilotDataEvent,
+    RaceListEvent,
+    RaceScheduledEvent,
+    RaceStatusEvent,
     ReplaceCurrentLapsRequest,
     ResaveLapsRequest,
     ScheduleRaceRequest,
@@ -308,6 +322,25 @@ SOCKET_IO = AsyncAPISocketIO(
     title="RotorHazard API",
     description="WebSocket API для управления гонкой"
 )
+
+
+for event_name, event_model, event_description in [
+    ('leaderboard', LeaderboardEvent, 'Current and previous race standings.'),
+    ('current_laps', CurrentLapsEvent, 'Lap list and lap timing data for the current race.'),
+    ('race_status', RaceStatusEvent, 'Race state, timing, active heat/class, and next-round data.'),
+    ('current_heat', CurrentHeatEvent, 'Current heat assignment and node display data.'),
+    ('pilot_data', PilotDataEvent, 'Pilot list, sort mode, and pilot attribute metadata.'),
+    ('heat_data', HeatDataEvent, 'Heat list, slots, and heat attribute metadata.'),
+    ('race_list', RaceListEvent, 'Saved race history grouped by heat.'),
+    ('race_scheduled', RaceScheduledEvent, 'Scheduled race countdown state.'),
+    ('phonetic_data', PhoneticDataEvent, 'Lap-time callout data for race announcements.'),
+    ('phonetic_leader', PhoneticLeaderEvent, 'Current leader callout data.'),
+    ('phonetic_text', PhoneticTextEvent, 'Free-form phonetic announcement text.'),
+    ('phonetic_split_call', PhoneticSplitCallEvent, 'Split-pass callout data.'),
+    ('callouts', CalloutsEvent, 'Saved voice callout text snippets.'),
+    ('first_pass_registered', FirstPassRegisteredEvent, 'First-pass notification for a node.'),
+]:
+    SOCKET_IO.doc_emit(event_name, event_model, event_description)(lambda: None)
 
 
 # this is the moment where we can forward log-messages to the frontend, and

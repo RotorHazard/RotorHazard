@@ -316,6 +316,69 @@ pre {
   overflow: auto;
 }
 
+.live-race {
+  border-bottom: 1px solid #eef0f4;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.live-grid {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.live-grid article {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f8fafc;
+}
+
+.live-grid article.seen {
+  border-color: #b7e4c7;
+  background: #f6fef9;
+}
+
+.live-grid article div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.live-grid code {
+  color: #475467;
+  font-size: 11px;
+}
+
+.live-grid span {
+  width: fit-content;
+  border-radius: 999px;
+  background: #f2f4f7;
+  padding: 2px 6px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.live-grid article.seen span {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.live-grid small {
+  color: #667085;
+}
+
+.live-grid pre {
+  max-height: 160px;
+  margin: 0;
+}
+
 .stream article {
   border-top: 1px solid #eef0f4;
   padding-top: 8px;

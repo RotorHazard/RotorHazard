@@ -1,21 +1,122 @@
-// Generated from src/server/asyncapi.yaml
-// Do not edit by hand unless the API schema is intentionally being overridden.
+// Generated from DronlyWork/asyncapi.yaml
+// Do not edit by hand. Run `npm run generate:types` after changing api_schema.py.
 
-export type LoadDataRequestLoadTypesItem1 = 'node_data' | 'environmental_data' | 'frequency_data' | 'heat_list' | 'heat_data' | 'heat_attribute_types' | 'seat_data' | 'class_list' | 'class_data' | 'format_data' | 'pilot_list' | 'pilot_data' | 'result_data' | 'node_tuning' | 'enter_and_exit_at_levels' | 'start_thresh_lower_amount' | 'start_thresh_lower_duration' | 'min_lap' | 'action_setup' | 'event_actions' | 'leaderboard' | 'current_laps' | 'race_status' | 'current_heat' | 'race_list' | 'language' | 'all_languages' | 'led_effect_setup' | 'led_effects' | 'callouts' | 'imdtabler_page' | 'vrx_list' | 'backups_list' | 'upd_cfg_files_list' | 'exporter_list' | 'importer_list' | 'heatgenerator_list' | 'raceclass_rank_method_list' | 'race_points_method_list' | 'plugin_list' | 'plugin_repo' | 'cluster_status' | 'hardware_log_init';
-export type LoadDataRequestDictLoadTypeType1 = 'ui' | 'config';
+export type NoSpec = unknown;
 
-export interface NoSpec {
+export interface LeaderboardEvent {
   [key: string]: unknown;
+  current: Record<string, unknown>;
+  last_race?: Record<string, unknown> | null;
 }
 
-export interface LoadDataRequest {
-  load_types: (LoadDataRequestLoadTypesItem1 | string | LoadDataRequestDictLoadType)[];
+export interface CurrentLapsEvent {
+  [key: string]: unknown;
+  current: Record<string, unknown>;
+  last_race?: Record<string, unknown> | null;
+}
+
+export interface RaceStatusEvent {
+  [key: string]: unknown;
+  race_status: number;
+  race_format_id?: number | null;
+  race_heat_id?: number | null;
+  race_class_id?: number | null;
+  unlimited_time: boolean | number;
+  race_time_sec?: number | null;
+  staging_tones: number;
+  hide_stage_timer: boolean;
+  pi_starts_at_s?: number | null;
+  pi_staging_at_s?: number | null;
+  show_init_time_flag: boolean;
+  next_round?: number | null;
+}
+
+export interface CurrentHeatEvent {
+  [key: string]: unknown;
+  current_heat: number | null;
+  heatNodes: Record<string, unknown>;
+  heat_format?: number | null;
+  heat_class?: number | null;
+  coop_best_time?: string | null;
+  coop_num_laps?: number | null;
+  next_round?: number | null;
+}
+
+export interface PilotDataEvent {
+  [key: string]: unknown;
+  pilots: Record<string, unknown>[];
+  pilotSort?: string | null;
+  attributes?: Record<string, unknown>[] | null;
+}
+
+export interface HeatDataEvent {
+  [key: string]: unknown;
+  heats: Record<string, unknown>[];
+  attributes?: Record<string, unknown>[] | null;
+}
+
+export interface RaceListEvent {
+  [key: string]: unknown;
+  heats: Record<string, unknown>;
+}
+
+export interface RaceScheduledEvent {
+  [key: string]: unknown;
+  scheduled: boolean;
+  scheduled_at?: number | null;
+}
+
+export interface PhoneticDataEvent {
+  [key: string]: unknown;
+  lap: number;
+  raw_time?: number | null;
+  phonetic?: string | null;
+  team_phonetic?: string | null;
+  team_short_phonetic?: string | null;
+  leader_flag: boolean;
+  node_finished: boolean;
+  pilot?: string | null;
+  callsign?: string | null;
+  pilot_id?: number | null;
+}
+
+export interface PhoneticLeaderEvent {
+  [key: string]: unknown;
+  pilot?: string | null;
+  callsign?: string | null;
+  pilot_id?: number | null;
+}
+
+export interface PhoneticTextEvent {
+  [key: string]: unknown;
+  text: string;
+  domain?: string | boolean;
+  winner_flag?: boolean;
+}
+
+export interface PhoneticSplitCallEvent {
+  [key: string]: unknown;
+  pilot_name: string;
+  split_id: string;
+  split_time?: string | null;
+  split_speed?: string | null;
+}
+
+export type CalloutsEvent = string[];
+
+export interface FirstPassRegisteredEvent {
+  [key: string]: unknown;
+  node_index: number;
 }
 
 export interface LoadDataRequestDictLoadType {
   [key: string]: unknown;
-  type: LoadDataRequestDictLoadTypeType1 | string;
+  type: "ui" | "config" | string;
   value?: unknown;
+}
+
+export interface LoadDataRequest {
+  load_types: ("node_data" | "environmental_data" | "frequency_data" | "heat_list" | "heat_data" | "heat_attribute_types" | "seat_data" | "class_list" | "class_data" | "format_data" | "pilot_list" | "pilot_data" | "result_data" | "node_tuning" | "enter_and_exit_at_levels" | "start_thresh_lower_amount" | "start_thresh_lower_duration" | "min_lap" | "action_setup" | "event_actions" | "leaderboard" | "current_laps" | "race_status" | "current_heat" | "race_list" | "language" | "all_languages" | "led_effect_setup" | "led_effects" | "callouts" | "imdtabler_page" | "vrx_list" | "backups_list" | "upd_cfg_files_list" | "exporter_list" | "importer_list" | "heatgenerator_list" | "raceclass_rank_method_list" | "race_points_method_list" | "plugin_list" | "plugin_repo" | "cluster_status" | "hardware_log_init" | string | LoadDataRequestDictLoadType)[];
 }
 
 export interface HeatRequest {
@@ -36,6 +137,15 @@ export interface ScheduleRaceRequest {
   s: number;
 }
 
+export interface ResaveLapsRequestResaveLapRequest {
+  [key: string]: unknown;
+  lap_time_stamp: number;
+  lap_time: number | string;
+  source: number;
+  deleted: boolean;
+  peak_rssi?: number | null;
+}
+
 export interface ResaveLapsRequest {
   heat_id: number;
   round_id: number;
@@ -49,7 +159,7 @@ export interface ResaveLapsRequest {
   exit_at: number;
 }
 
-export interface ResaveLapsRequestResaveLapRequest {
+export interface ReplaceCurrentLapsRequestResaveLapRequest {
   [key: string]: unknown;
   lap_time_stamp: number;
   lap_time: number | string;
@@ -71,15 +181,6 @@ export interface ReplaceCurrentLapsRequest {
   exit_at: number;
 }
 
-export interface ReplaceCurrentLapsRequestResaveLapRequest {
-  [key: string]: unknown;
-  lap_time_stamp: number;
-  lap_time: number | string;
-  source: number;
-  deleted: boolean;
-  peak_rssi?: number | null;
-}
-
 export interface CalcPilotsRequest {
   heat: number;
   preassignments?: Record<string, number>;
@@ -97,7 +198,7 @@ export interface GetPilotRaceRequest {
   pilotrace_id: number;
 }
 
-export type SocketEventName = 'connect' | 'disconnect' | 'join_cluster' | 'join_cluster_ex' | 'check_secondary_query' | 'cluster_event_trigger' | 'cluster_message_ack' | 'dispatch_event' | 'load_data' | 'broadcast_message' | 'set_frequency' | 'set_frequency_preset' | 'set_enter_at_level' | 'set_exit_at_level' | 'set_start_thresh_lower_amount' | 'set_start_thresh_lower_duration' | 'set_language' | 'cap_enter_at_btn' | 'cap_exit_at_btn' | 'set_scan' | 'expand_heat' | 'get_class_recents' | 'add_heat' | 'duplicate_heat' | 'deactivate_heat' | 'activate_heat' | 'alter_heat' | 'delete_heat' | 'add_race_class' | 'duplicate_race_class' | 'alter_race_class' | 'delete_class' | 'add_pilot' | 'alter_pilot' | 'delete_pilot' | 'set_seat_color' | 'reset_seat_color' | 'add_profile' | 'alter_profile' | 'delete_profile' | 'set_profile' | 'alter_race' | 'backup_database' | 'download_database' | 'list_backups' | 'restore_database' | 'delete_database' | 'reset_database' | 'export_database' | 'import_data' | 'generate_heats_v2' | 'shutdown_pi' | 'reboot_pi' | 'restart_server' | 'kill_server' | 'set_log_level' | 'download_logs' | 'backup_settings' | 'download_settings' | 'reset_settings_to_defaults' | 'restore_cfg_file' | 'rename_cfg_file' | 'delete_cfg_file' | 'load_cfg_file' | 'set_min_lap' | 'set_min_first_crossing' | 'set_min_lap_behavior' | 'set_race_format' | 'add_race_format' | 'alter_race_format' | 'delete_race_format' | 'set_led_event_effect' | 'use_led_effect' | 'get_pi_time' | 'get_server_time' | 'schedule_race' | 'cancel_schedule_race' | 'stage_race' | 'stop_race' | 'current_race_marshal' | 'save_laps' | 'resave_laps' | 'replace_current_laps' | 'discard_laps' | 'calc_pilots' | 'calc_reset' | 'confirm_heat_plan' | 'set_current_heat' | 'delete_lap' | 'restore_deleted_lap' | 'simulate_lap' | 'LED_solid' | 'LED_brightness' | 'set_option' | 'set_config' | 'set_config_section' | 'set_ui_binding_value' | 'set_consecutives_count' | 'get_race_scheduled' | 'save_callouts' | 'reload_callouts' | 'play_callout_text' | 'imdtabler_update_freqs' | 'clean_cache' | 'retry_secondary' | 'get_pilotrace' | 'check_bpillfw_file' | 'do_bpillfw_update' | 'set_vrx_node' | 'plugin_install' | 'plugin_delete' | 'datadir_handler';
+export type SocketEventName = "connect" | "disconnect" | "join_cluster" | "join_cluster_ex" | "check_secondary_query" | "cluster_event_trigger" | "cluster_message_ack" | "dispatch_event" | "load_data" | "broadcast_message" | "set_frequency" | "set_frequency_preset" | "set_enter_at_level" | "set_exit_at_level" | "set_start_thresh_lower_amount" | "set_start_thresh_lower_duration" | "set_language" | "cap_enter_at_btn" | "cap_exit_at_btn" | "set_scan" | "expand_heat" | "get_class_recents" | "add_heat" | "duplicate_heat" | "deactivate_heat" | "activate_heat" | "alter_heat" | "delete_heat" | "add_race_class" | "duplicate_race_class" | "alter_race_class" | "delete_class" | "add_pilot" | "alter_pilot" | "delete_pilot" | "set_seat_color" | "reset_seat_color" | "add_profile" | "alter_profile" | "delete_profile" | "set_profile" | "alter_race" | "backup_database" | "download_database" | "list_backups" | "restore_database" | "delete_database" | "reset_database" | "export_database" | "import_data" | "generate_heats_v2" | "shutdown_pi" | "reboot_pi" | "restart_server" | "kill_server" | "set_log_level" | "download_logs" | "backup_settings" | "download_settings" | "reset_settings_to_defaults" | "restore_cfg_file" | "rename_cfg_file" | "delete_cfg_file" | "load_cfg_file" | "set_min_lap" | "set_min_first_crossing" | "set_min_lap_behavior" | "set_race_format" | "add_race_format" | "alter_race_format" | "delete_race_format" | "set_led_event_effect" | "use_led_effect" | "get_pi_time" | "get_server_time" | "schedule_race" | "cancel_schedule_race" | "stage_race" | "stop_race" | "current_race_marshal" | "save_laps" | "resave_laps" | "replace_current_laps" | "discard_laps" | "calc_pilots" | "calc_reset" | "confirm_heat_plan" | "set_current_heat" | "delete_lap" | "restore_deleted_lap" | "simulate_lap" | "LED_solid" | "LED_brightness" | "set_option" | "set_config" | "set_config_section" | "set_ui_binding_value" | "set_consecutives_count" | "get_race_scheduled" | "save_callouts" | "reload_callouts" | "play_callout_text" | "imdtabler_update_freqs" | "clean_cache" | "retry_secondary" | "get_pilotrace" | "check_bpillfw_file" | "do_bpillfw_update" | "set_vrx_node" | "plugin_install" | "plugin_delete" | "datadir_handler";
 
 export interface SocketEvents {
   connect: undefined;
@@ -329,13 +430,25 @@ export interface SocketEventAcks {
   datadir_handler: undefined;
 }
 
-export type SocketEvent = {
-  [Name in SocketEventName]: {
-    name: Name;
-    payload: SocketEvents[Name];
-    ack: SocketEventAcks[Name];
-  };
-}[SocketEventName];
+export type SocketServerEventName = "leaderboard" | "current_laps" | "race_status" | "current_heat" | "pilot_data" | "heat_data" | "race_list" | "race_scheduled" | "phonetic_data" | "phonetic_leader" | "phonetic_text" | "phonetic_split_call" | "callouts" | "first_pass_registered";
 
-export type SocketPayload<Name extends SocketEventName> = SocketEvents[Name];
-export type SocketAck<Name extends SocketEventName> = SocketEventAcks[Name];
+export interface SocketServerEvents {
+  leaderboard: LeaderboardEvent;
+  current_laps: CurrentLapsEvent;
+  race_status: RaceStatusEvent;
+  current_heat: CurrentHeatEvent;
+  pilot_data: PilotDataEvent;
+  heat_data: HeatDataEvent;
+  race_list: RaceListEvent;
+  race_scheduled: RaceScheduledEvent;
+  phonetic_data: PhoneticDataEvent;
+  phonetic_leader: PhoneticLeaderEvent;
+  phonetic_text: PhoneticTextEvent;
+  phonetic_split_call: PhoneticSplitCallEvent;
+  callouts: CalloutsEvent;
+  first_pass_registered: FirstPassRegisteredEvent;
+}
+
+export type SocketPayload<T extends SocketEventName> = SocketEvents[T];
+export type SocketAck<T extends SocketEventName> = SocketEventAcks[T];
+export type SocketServerPayload<T extends SocketServerEventName> = SocketServerEvents[T];

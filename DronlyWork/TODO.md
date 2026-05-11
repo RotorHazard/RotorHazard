@@ -3,6 +3,8 @@ source venv/bin/activate
 pip install -r src/server/requirements.txt
 python src/server/server.py
 python src/server/generate_asyncapi.py
+cd DronlyWork
+npm run generate:types
 
 
 

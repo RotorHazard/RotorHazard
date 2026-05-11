@@ -3,12 +3,12 @@ import type {
   CalcResetRequest,
   GetPilotRaceRequest,
   LoadDataRequest,
-  LoadDataRequestLoadTypesItem1,
   ReplaceCurrentLapsRequest,
   ResaveLapsRequest,
   ScheduleRaceRequest,
   SetCurrentHeatRequest,
   SocketEventName,
+  SocketServerEventName,
 } from '../../types';
 
 export type EndpointAction = 'connect' | 'disconnect' | 'emit';
@@ -25,6 +25,96 @@ export interface EndpointDefinition {
   expectedEvents: string[];
   notes: string;
 }
+
+export interface LiveRaceEventDefinition {
+  eventName: SocketServerEventName;
+  label: string;
+  notes: string;
+}
+
+export const LIVE_RACE_BOOTSTRAP_LOAD_TYPES = [
+  'leaderboard',
+  'current_laps',
+  'race_status',
+  'current_heat',
+  'pilot_data',
+  'heat_data',
+  'race_list',
+  'callouts',
+] as const;
+
+export const LIVE_RACE_EVENTS: LiveRaceEventDefinition[] = [
+  {
+    eventName: 'leaderboard',
+    label: 'Standings',
+    notes: 'Current and previous race leaderboard data.',
+  },
+  {
+    eventName: 'current_laps',
+    label: 'Lap timings',
+    notes: 'Per-node lap list, lap times, splits, and finished flags.',
+  },
+  {
+    eventName: 'race_status',
+    label: 'Race state',
+    notes: 'Race clock/state, active heat/class, staging, and next round.',
+  },
+  {
+    eventName: 'current_heat',
+    label: 'Current heat',
+    notes: 'Active heat assignment and node/pilot display data.',
+  },
+  {
+    eventName: 'pilot_data',
+    label: 'Pilots',
+    notes: 'Pilot callsigns, names, colors, teams, phonetics, and attributes.',
+  },
+  {
+    eventName: 'heat_data',
+    label: 'Heats',
+    notes: 'Heat definitions, slots, automation status, and attributes.',
+  },
+  {
+    eventName: 'race_list',
+    label: 'Race history',
+    notes: 'Saved races grouped by heat and round.',
+  },
+  {
+    eventName: 'race_scheduled',
+    label: 'Scheduled start',
+    notes: 'Pending scheduled race countdown state.',
+  },
+  {
+    eventName: 'phonetic_data',
+    label: 'Lap callout',
+    notes: 'Pilot lap announcement payloads emitted during a race.',
+  },
+  {
+    eventName: 'phonetic_leader',
+    label: 'Leader callout',
+    notes: 'Leader announcement payloads emitted during a race.',
+  },
+  {
+    eventName: 'phonetic_text',
+    label: 'Text callout',
+    notes: 'Free-form announcement text from callouts/race state.',
+  },
+  {
+    eventName: 'phonetic_split_call',
+    label: 'Split callout',
+    notes: 'Split timing and speed announcement payloads.',
+  },
+  {
+    eventName: 'callouts',
+    label: 'Callout config',
+    notes: 'Saved voice callout snippets loaded by the race UI.',
+  },
+  {
+    eventName: 'first_pass_registered',
+    label: 'First pass',
+    notes: 'First crossing notification for a node.',
+  },
+];
 
 export const BASELINE_LOAD_TYPES = [
   'node_data',
@@ -64,7 +154,7 @@ export const BASELINE_LOAD_TYPES = [
   'plugin_list',
   'plugin_repo',
   'cluster_status',
-] as const satisfies readonly LoadDataRequestLoadTypesItem1[];
+] as const;
 
 export const BASELINE_LOAD_EVENTS = [
   'node_data',

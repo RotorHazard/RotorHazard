@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BASELINE_LOAD_TYPES,
   DEFAULT_MARKED_ENDPOINT_IDS,
+  LIVE_RACE_EVENTS,
   TODO_ENDPOINTS,
   type EndpointDefinition,
 } from './lib/endpoints';
@@ -72,6 +73,19 @@ function App() {
   const markedEndpoints = useMemo(
     () => TODO_ENDPOINTS.filter((endpoint) => markedEndpointIds.has(endpoint.id)),
     [markedEndpointIds],
+  );
+
+  const liveRaceEventStats = useMemo(
+    () =>
+      LIVE_RACE_EVENTS.map((definition) => {
+        const matches = events.filter((event) => event.event === definition.eventName);
+        return {
+          ...definition,
+          count: matches.length,
+          last: matches[matches.length - 1] ?? null,
+        };
+      }),
+    [events],
   );
 
   const appendUiLog = (entry: Omit<LogEntry, 'id' | 'ts'>) => {
@@ -488,6 +502,27 @@ function App() {
           <div className="panel-head">
             <h2>Received events</h2>
             <button onClick={() => setEvents([])}>Clear</button>
+          </div>
+          <div className="live-race">
+            <h3>Live race server events</h3>
+            <div className="live-grid">
+              {liveRaceEventStats.map((item) => (
+                <article key={item.eventName} className={item.last ? 'seen' : ''}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <code>{item.eventName}</code>
+                  </div>
+                  <span>{item.count ? `${item.count} seen` : 'waiting'}</span>
+                  <small>{item.notes}</small>
+                  {item.last && (
+                    <>
+                      <time>{new Date(item.last.ts).toLocaleTimeString()}</time>
+                      <pre>{formatJson(item.last.args.length === 1 ? item.last.args[0] : item.last.args)}</pre>
+                    </>
+                  )}
+                </article>
+              ))}
+            </div>
           </div>
           <div className="stream">
             {latestEvents.map((event, idx) => (

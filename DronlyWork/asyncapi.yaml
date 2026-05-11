@@ -15,6 +15,34 @@ channels:
   root:
     address: /
     messages:
+      leaderboard:
+        $ref: '#/components/messages/leaderboard'
+      current_laps:
+        $ref: '#/components/messages/current_laps'
+      race_status:
+        $ref: '#/components/messages/race_status'
+      current_heat:
+        $ref: '#/components/messages/current_heat'
+      pilot_data:
+        $ref: '#/components/messages/pilot_data'
+      heat_data:
+        $ref: '#/components/messages/heat_data'
+      race_list:
+        $ref: '#/components/messages/race_list'
+      race_scheduled:
+        $ref: '#/components/messages/race_scheduled'
+      phonetic_data:
+        $ref: '#/components/messages/phonetic_data'
+      phonetic_leader:
+        $ref: '#/components/messages/phonetic_leader'
+      phonetic_text:
+        $ref: '#/components/messages/phonetic_text'
+      phonetic_split_call:
+        $ref: '#/components/messages/phonetic_split_call'
+      callouts:
+        $ref: '#/components/messages/callouts'
+      first_pass_registered:
+        $ref: '#/components/messages/first_pass_registered'
       Connect:
         $ref: '#/components/messages/Connect'
       Disconnect:
@@ -240,6 +268,104 @@ channels:
       Datadir_Handler:
         $ref: '#/components/messages/Datadir_Handler'
 operations:
+  send_leaderboard:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/leaderboard'
+    description: Current and previous race standings.
+  send_current_laps:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/current_laps'
+    description: Lap list and lap timing data for the current race.
+  send_race_status:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/race_status'
+    description: Race state, timing, active heat/class, and next-round data.
+  send_current_heat:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/current_heat'
+    description: Current heat assignment and node display data.
+  send_pilot_data:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/pilot_data'
+    description: Pilot list, sort mode, and pilot attribute metadata.
+  send_heat_data:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/heat_data'
+    description: Heat list, slots, and heat attribute metadata.
+  send_race_list:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/race_list'
+    description: Saved race history grouped by heat.
+  send_race_scheduled:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/race_scheduled'
+    description: Scheduled race countdown state.
+  send_phonetic_data:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/phonetic_data'
+    description: Lap-time callout data for race announcements.
+  send_phonetic_leader:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/phonetic_leader'
+    description: Current leader callout data.
+  send_phonetic_text:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/phonetic_text'
+    description: Free-form phonetic announcement text.
+  send_phonetic_split_call:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/phonetic_split_call'
+    description: Split-pass callout data.
+  send_callouts:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/callouts'
+    description: Saved voice callout text snippets.
+  send_first_pass_registered:
+    action: send
+    channel:
+      $ref: '#/channels/root'
+    messages:
+    - $ref: '#/channels/root/messages/first_pass_registered'
+    description: First-pass notification for a node.
   receive_connect:
     action: receive
     channel:
@@ -980,6 +1106,76 @@ operations:
     - $ref: '#/channels/root/messages/Datadir_Handler'
 components:
   messages:
+    leaderboard:
+      name: leaderboard
+      description: Current and previous race standings.
+      payload:
+        $ref: '#/components/schemas/LeaderboardEvent'
+    current_laps:
+      name: current_laps
+      description: Lap list and lap timing data for the current race.
+      payload:
+        $ref: '#/components/schemas/CurrentLapsEvent'
+    race_status:
+      name: race_status
+      description: Race state, timing, active heat/class, and next-round data.
+      payload:
+        $ref: '#/components/schemas/RaceStatusEvent'
+    current_heat:
+      name: current_heat
+      description: Current heat assignment and node display data.
+      payload:
+        $ref: '#/components/schemas/CurrentHeatEvent'
+    pilot_data:
+      name: pilot_data
+      description: Pilot list, sort mode, and pilot attribute metadata.
+      payload:
+        $ref: '#/components/schemas/PilotDataEvent'
+    heat_data:
+      name: heat_data
+      description: Heat list, slots, and heat attribute metadata.
+      payload:
+        $ref: '#/components/schemas/HeatDataEvent'
+    race_list:
+      name: race_list
+      description: Saved race history grouped by heat.
+      payload:
+        $ref: '#/components/schemas/RaceListEvent'
+    race_scheduled:
+      name: race_scheduled
+      description: Scheduled race countdown state.
+      payload:
+        $ref: '#/components/schemas/RaceScheduledEvent'
+    phonetic_data:
+      name: phonetic_data
+      description: Lap-time callout data for race announcements.
+      payload:
+        $ref: '#/components/schemas/PhoneticDataEvent'
+    phonetic_leader:
+      name: phonetic_leader
+      description: Current leader callout data.
+      payload:
+        $ref: '#/components/schemas/PhoneticLeaderEvent'
+    phonetic_text:
+      name: phonetic_text
+      description: Free-form phonetic announcement text.
+      payload:
+        $ref: '#/components/schemas/PhoneticTextEvent'
+    phonetic_split_call:
+      name: phonetic_split_call
+      description: Split-pass callout data.
+      payload:
+        $ref: '#/components/schemas/PhoneticSplitCallEvent'
+    callouts:
+      name: callouts
+      description: Saved voice callout text snippets.
+      payload:
+        $ref: '#/components/schemas/CalloutsEvent'
+    first_pass_registered:
+      name: first_pass_registered
+      description: First-pass notification for a node.
+      payload:
+        $ref: '#/components/schemas/FirstPassRegisteredEvent'
     Connect:
       name: connect
       description: Starts the interface and a heartbeat thread for rssi.
@@ -1343,6 +1539,439 @@ components:
   schemas:
     NoSpec:
       description: Specification is not provided
+    LeaderboardEvent:
+      additionalProperties: true
+      properties:
+        current:
+          additionalProperties: true
+          description: Leaderboard block for the current race.
+          title: Current
+          type: object
+        last_race:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          description: Leaderboard block for the previous race, when available.
+          title: Last Race
+      required:
+      - current
+      title: LeaderboardEvent
+      type: object
+    CurrentLapsEvent:
+      additionalProperties: true
+      properties:
+        current:
+          additionalProperties: true
+          description: Lap data for the current race.
+          title: Current
+          type: object
+        last_race:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          description: Lap data for the previous race, when available.
+          title: Last Race
+      required:
+      - current
+      title: CurrentLapsEvent
+      type: object
+    RaceStatusEvent:
+      additionalProperties: true
+      properties:
+        race_status:
+          description: Current race state enum value.
+          title: Race Status
+          type: integer
+        race_format_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Active race format ID.
+          title: Race Format Id
+        race_heat_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Active heat ID, or null in practice mode.
+          title: Race Heat Id
+        race_class_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Active class ID, or null in practice mode.
+          title: Race Class Id
+        unlimited_time:
+          anyOf:
+          - type: boolean
+          - type: integer
+          description: Whether this race runs with unlimited time, often emitted as
+            0/1.
+          title: Unlimited Time
+        race_time_sec:
+          anyOf:
+          - type: integer
+          - type: number
+          - type: 'null'
+          default: null
+          description: Configured race duration in seconds.
+          title: Race Time Sec
+        staging_tones:
+          description: Staging tone count/state.
+          title: Staging Tones
+          type: integer
+        hide_stage_timer:
+          description: Whether the stage timer should be hidden.
+          title: Hide Stage Timer
+          type: boolean
+        pi_starts_at_s:
+          anyOf:
+          - type: integer
+          - type: number
+          - type: 'null'
+          default: null
+          description: Monotonic timestamp when the race starts.
+          title: Pi Starts At S
+        pi_staging_at_s:
+          anyOf:
+          - type: integer
+          - type: number
+          - type: 'null'
+          default: null
+          description: Monotonic timestamp when staging starts.
+          title: Pi Staging At S
+        show_init_time_flag:
+          description: Whether initial time should be displayed.
+          title: Show Init Time Flag
+          type: boolean
+        next_round:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Next round number for the current heat.
+          title: Next Round
+      required:
+      - race_status
+      - unlimited_time
+      - staging_tones
+      - hide_stage_timer
+      - show_init_time_flag
+      title: RaceStatusEvent
+      type: object
+    CurrentHeatEvent:
+      additionalProperties: true
+      properties:
+        current_heat:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Active heat ID, or null/none-like value for practice.
+          title: Current Heat
+        heatNodes:
+          additionalProperties: true
+          description: Node assignment and display data keyed by node index.
+          title: Heatnodes
+          type: object
+        heat_format:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Race format ID inherited from the heat class.
+          title: Heat Format
+        heat_class:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Race class ID for the active heat.
+          title: Heat Class
+        coop_best_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Formatted coop best time, when applicable.
+          title: Coop Best Time
+        coop_num_laps:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Configured coop lap count, when applicable.
+          title: Coop Num Laps
+        next_round:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Next round number for this heat.
+          title: Next Round
+      required:
+      - current_heat
+      - heatNodes
+      title: CurrentHeatEvent
+      type: object
+    PilotDataEvent:
+      additionalProperties: true
+      properties:
+        pilots:
+          description: Known pilots and plugin-provided pilot fields.
+          items:
+            additionalProperties: true
+            type: object
+          title: Pilots
+          type: array
+        pilotSort:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Configured UI pilot sort mode.
+          title: Pilotsort
+        attributes:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          default: null
+          description: Pilot attribute metadata, when requested.
+          title: Attributes
+      required:
+      - pilots
+      title: PilotDataEvent
+      type: object
+    HeatDataEvent:
+      additionalProperties: true
+      properties:
+        heats:
+          description: Configured heats and their node slots.
+          items:
+            additionalProperties: true
+            type: object
+          title: Heats
+          type: array
+        attributes:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          default: null
+          description: Heat attribute metadata.
+          title: Attributes
+      required:
+      - heats
+      title: HeatDataEvent
+      type: object
+    RaceListEvent:
+      additionalProperties: true
+      properties:
+        heats:
+          additionalProperties: true
+          description: Saved race history grouped by heat ID.
+          title: Heats
+          type: object
+      required:
+      - heats
+      title: RaceListEvent
+      type: object
+    RaceScheduledEvent:
+      additionalProperties: true
+      properties:
+        scheduled:
+          description: Whether a scheduled race start is pending.
+          title: Scheduled
+          type: boolean
+        scheduled_at:
+          anyOf:
+          - type: integer
+          - type: number
+          - type: 'null'
+          default: null
+          description: Monotonic timestamp for the scheduled start.
+          title: Scheduled At
+      required:
+      - scheduled
+      title: RaceScheduledEvent
+      type: object
+    PhoneticDataEvent:
+      additionalProperties: true
+      properties:
+        lap:
+          description: Lap number being announced.
+          title: Lap
+          type: integer
+        raw_time:
+          anyOf:
+          - type: integer
+          - type: number
+          - type: 'null'
+          default: null
+          description: Raw lap time.
+          title: Raw Time
+        phonetic:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Human-readable lap time callout text.
+          title: Phonetic
+        team_phonetic:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Team callout text, when team racing.
+          title: Team Phonetic
+        team_short_phonetic:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Short team callout text, when available.
+          title: Team Short Phonetic
+        leader_flag:
+          description: Whether this lap made the pilot the leader.
+          title: Leader Flag
+          type: boolean
+        node_finished:
+          description: Whether the node/pilot has finished.
+          title: Node Finished
+          type: boolean
+        pilot:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Phonetic pilot name or fallback frequency label.
+          title: Pilot
+        callsign:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Pilot callsign or fallback frequency label.
+          title: Callsign
+        pilot_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Pilot ID, or null for unassigned nodes.
+          title: Pilot Id
+      required:
+      - lap
+      - leader_flag
+      - node_finished
+      title: PhoneticDataEvent
+      type: object
+    PhoneticLeaderEvent:
+      additionalProperties: true
+      properties:
+        pilot:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Phonetic name of the current leader.
+          title: Pilot
+        callsign:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Callsign of the current leader.
+          title: Callsign
+        pilot_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          description: Pilot ID of the current leader.
+          title: Pilot Id
+      title: PhoneticLeaderEvent
+      type: object
+    PhoneticTextEvent:
+      additionalProperties: true
+      properties:
+        text:
+          description: Text to announce.
+          title: Text
+          type: string
+        domain:
+          anyOf:
+          - type: string
+          - type: boolean
+          default: false
+          description: Announcement domain/category, or false for generic text.
+          title: Domain
+        winner_flag:
+          default: false
+          description: Whether this text announces a winner.
+          title: Winner Flag
+          type: boolean
+      required:
+      - text
+      title: PhoneticTextEvent
+      type: object
+    PhoneticSplitCallEvent:
+      additionalProperties: true
+      properties:
+        pilot_name:
+          description: Pilot phonetic name for the split callout.
+          title: Pilot Name
+          type: string
+        split_id:
+          description: One-based split identifier as displayed to users.
+          title: Split Id
+          type: string
+        split_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Formatted split time callout.
+          title: Split Time
+        split_speed:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Formatted split speed callout.
+          title: Split Speed
+      required:
+      - pilot_name
+      - split_id
+      title: PhoneticSplitCallEvent
+      type: object
+    CalloutsEvent:
+      description: Saved voice callout text snippets.
+      items:
+        type: string
+      title: CalloutsEvent
+      type: array
+    FirstPassRegisteredEvent:
+      additionalProperties: true
+      properties:
+        node_index:
+          description: Node index that registered the first pass.
+          title: Node Index
+          type: integer
+      required:
+      - node_index
+      title: FirstPassRegisteredEvent
+      type: object
     LoadDataRequest:
       $defs:
         DictLoadType:
