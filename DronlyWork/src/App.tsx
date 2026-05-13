@@ -364,6 +364,9 @@ function App() {
           </p>
         </div>
         <div className="server-time">
+          <a className="demo-link" href="/demo">
+            Open viewer demo
+          </a>
           <div>{serverTime ? `Server monotonic: ${serverTime.toFixed(3)}s` : 'Server monotonic: none'}</div>
           <div className="heartbeat-pulse">
             <span className={heartbeat.lastAt ? 'pulse-dot active' : 'pulse-dot'} />

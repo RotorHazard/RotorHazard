@@ -25,6 +25,10 @@ cd DronlyWork
 npm install
 ```
 
+```sh
+npm run dev
+```
+
 ## Recommended Run
 
 One terminal, start a temporary mock server, run the full race, then stop it:
