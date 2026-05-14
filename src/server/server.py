@@ -2624,7 +2624,7 @@ def on_set_consecutives_count(data):
 
 @SOCKET_IO.on('get_race_scheduled')
 @catchLogExceptionsWrapper
-def get_race_elapsed(*args):
+def get_race_scheduled(*args):
     # get current race status; never broadcasts to all
     emit('race_scheduled', {
         'scheduled': RaceContext.race.scheduled,
