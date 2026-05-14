@@ -147,7 +147,7 @@ _DB_URI = 'sqlite:///' + os.path.join(DATA_DIR, DB_FILE_NAME)
 
 sys.path.append(PROGRAM_DIR + '/util')
 
-APP = Flask(__name__, static_url_path='/static')
+APP = Flask(__name__, template_folder=PROGRAM_DIR+'/templates', static_folder=PROGRAM_DIR+'/static', static_url_path='/static')
 APP.app_context().push()
 
 import FlaskAppObj
