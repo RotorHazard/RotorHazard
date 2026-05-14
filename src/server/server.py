@@ -147,7 +147,7 @@ _DB_URI = 'sqlite:///' + os.path.join(DATA_DIR, DB_FILE_NAME)
 
 sys.path.append(PROGRAM_DIR + '/util')
 
-APP = Flask(__name__, static_url_path='/static')
+APP = Flask(__name__, template_folder=PROGRAM_DIR+'/templates', static_folder=PROGRAM_DIR+'/static', static_url_path='/static')
 APP.app_context().push()
 
 import FlaskAppObj
@@ -2624,7 +2624,7 @@ def on_set_consecutives_count(data):
 
 @SOCKET_IO.on('get_race_scheduled')
 @catchLogExceptionsWrapper
-def get_race_elapsed(*args):
+def get_race_scheduled(*args):
     # get current race status; never broadcasts to all
     emit('race_scheduled', {
         'scheduled': RaceContext.race.scheduled,
@@ -2967,8 +2967,8 @@ def heartbeat_thread_function():
             # check if race is to be started
             if RaceContext.race.scheduled:
                 if time_now > RaceContext.race.scheduled_time:
-                    RaceContext.race.stage(from_scheduler=True)
                     RaceContext.race.scheduled = False
+                    RaceContext.race.stage(from_scheduler=True)
 
             # if any comm errors then log them (at defined intervals; faster if debug mode)
             if time_now > heartbeat_thread_function.last_error_rep_time + \
