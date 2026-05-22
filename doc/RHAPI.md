@@ -84,6 +84,58 @@ Triggers an *event*, causing all registered *handlers* to run
 - `evtArgs` (dict): arguments to pass to the handler, overwriting matched keys in that handler's `default_args`
 
 
+### Race Sequence Event Payloads
+
+The events below are part of the race lifecycle and pass structured arguments to their handlers. All payloads are `dict`; only the keys documented here are guaranteed to be present.
+
+#### Evt.RACE_STAGE
+
+Fired when staging begins. The race has not started yet; the start time is in the future.
+
+- `heat_id` (int): ID of the current heat
+- `staging_tones` (int): Number of staging tones that will be fired before race start
+- `pi_staging_at_s` (float): Monotonic timestamp when staging began
+- `pi_starts_at_s` (float): Monotonic timestamp when the race will start
+- `server_staging_epoch_ms` (int): Epoch milliseconds of staging start
+- `server_start_epoch_ms` (int): Epoch milliseconds of race start
+- `hide_stage_timer` (bool): Whether the countdown timer should be hidden (random delay active)
+- `unlimited_time` (bool): Whether the race runs with no time limit
+- `race_time_sec` (int): Race duration in seconds (0 if unlimited)
+- `color` (str): RGB hex color associated with this event
+
+#### Evt.RACE_STAGE_TONE
+
+Fired once per second during the staging countdown, starting at the moment staging begins. Plugins can use this to produce server-side staging sounds or trigger hardware effects in sync with each staging beep.
+
+- `tone_index` (int): Zero-based index of this tone (0 = first tone, fired at staging start)
+- `tones_remaining` (int): Number of tones still to follow after this one (0 on the last tone)
+- `scheduled_at_monotonic` (float): Monotonic timestamp of when this tone is due to play; use this to schedule time-sensitive audio output
+
+#### Evt.RACE_START
+
+Fired at the exact moment the race begins.
+
+- `heat_id` (int): ID of the current heat
+- `color` (str): RGB hex color associated with this event
+
+#### Evt.RACE_FINISH
+
+Fired when the race timer expires (count-down formats only). The race is still in progress until `Evt.RACE_STOP`.
+
+- `heat_id` (int): ID of the current heat
+
+#### Evt.RACE_STOP
+
+Fired when the race is fully stopped and lap recording ends.
+
+#### Evt.RACE_WIN
+
+Fired when a win condition is met.
+
+- `win_condition` (int): Win condition identifier
+- `color` (str): RGB hex color associated with this event
+
+
 
 ## User Interface Helpers
 

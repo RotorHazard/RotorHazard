@@ -158,6 +158,7 @@ class Evt:
     RACE_SCHEDULE_CANCEL = 'raceScheduleCancel'
     RACE_STAGE = 'raceStage'
     RACE_ABORT = 'raceAbort' # race stopped during staging
+    RACE_STAGE_TONE = 'raceStageTone'
     RACE_START = 'raceStart'
     RACE_FINISH = 'raceFinish'
     RACE_STOP = 'raceStop'

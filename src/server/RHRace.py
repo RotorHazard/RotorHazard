@@ -60,6 +60,7 @@ class RHRace():
         self.scheduled_time = 0 # Start race when time reaches this value
         self.scheduler_forcing_save = False # Scheduler will force race status to ready by saving active race if needed
         self.start_token = False # Check start thread matches correct stage sequence
+        self.staging_tones = 0 # number of staging tones to play before race start
         # status
         self.race_status = RaceStatus.READY
         self.timer_running = False
@@ -330,6 +331,7 @@ class RHRace():
 
                 self.start_time_epoch_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.start_time_monotonic)
                 self.start_token = random.random()
+                self.staging_tones = int(staging_tones)
 
                 if immediate:
                     self.race_start_thread(self.start_token)
@@ -434,6 +436,20 @@ class RHRace():
                         else:
                             logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
                                     .format(node.index+1, node.current_rssi, node.enter_at_level))
+
+            # fire RACE_STAGE_TONE events during staging window, one per second
+            for i in range(self.staging_tones):
+                tone_time = self.stage_time_monotonic + i
+                delay = tone_time - monotonic()
+                if delay > 0:
+                    gevent.sleep(delay)
+                if self.race_status != RaceStatus.STAGING or self.start_token != start_token:
+                    return
+                self._racecontext.events.trigger(Evt.RACE_STAGE_TONE, {
+                    'tone_index': i,
+                    'tones_remaining': self.staging_tones - i - 1,
+                    'scheduled_at_monotonic': tone_time,
+                })
 
             # do non-blocking delay before time-critical code
             while (monotonic() < self.start_time_monotonic - 0.5):
