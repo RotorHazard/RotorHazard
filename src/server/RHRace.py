@@ -437,10 +437,11 @@ class RHRace():
                             logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
                                     .format(node.index+1, node.current_rssi, node.enter_at_level))
 
-            # fire RACE_STAGE_TONE events during staging window, one per second
+            # fire RACE_STAGE_TONE events 300ms before each tone so audio pipelines
+            # have enough lead time; scheduled_at_monotonic carries the exact tone time
             for i in range(self.staging_tones):
                 tone_time = self.stage_time_monotonic + i
-                delay = tone_time - monotonic()
+                delay = tone_time - 0.3 - monotonic()
                 if delay > 0:
                     gevent.sleep(delay)
                 if self.race_status != RaceStatus.STAGING or self.start_token != start_token:
