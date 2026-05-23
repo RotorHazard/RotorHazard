@@ -159,6 +159,7 @@ class Evt:
     RACE_STAGE = 'raceStage'
     RACE_ABORT = 'raceAbort' # race stopped during staging
     RACE_START = 'raceStart'
+    RACE_CLOCK_WARNING = 'raceClockWarning'
     RACE_FINISH = 'raceFinish'
     RACE_STOP = 'raceStop'
     RACE_WIN = 'raceWin'
