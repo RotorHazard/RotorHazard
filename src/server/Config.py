@@ -78,7 +78,7 @@ class Config:
         self.config['GENERAL']['SHUTDOWN_BUTTON_GPIOPIN'] = 18
         self.config['GENERAL']['SHUTDOWN_BUTTON_DELAYMS'] = 2500
         self.config['GENERAL']['DB_AUTOBKP_NUM_KEEP'] = 30
-        self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS'] = 0.9  # amount of extra time added to prestage time
+        self.config['GENERAL']['RACE_STAGE_SIGNAL_LEADTIME_SECS'] = 0.9  # lead time for race stage/start signals
         self.config['GENERAL']['LOG_SENSORS_DATA_RATE'] = 300  # rate at which to log sensor data
         self.config['GENERAL']['SERIAL_PORTS'] = []
         self.config['GENERAL']['MOCK_NODES'] = 0
@@ -239,6 +239,15 @@ class Config:
                     self.config['GENERAL']['SERIAL_PORTS'] = external_config[key]
                 del external_config[key]
 
+        general_config = external_config.get('GENERAL')
+        if isinstance(general_config, dict):
+            old_key = 'RACE_START_DELAY_EXTRA_SECS'
+            new_key = 'RACE_STAGE_SIGNAL_LEADTIME_SECS'
+            if old_key in general_config:
+                if new_key not in general_config:
+                    general_config[new_key] = general_config[old_key]
+                del general_config[old_key]
+
     def migrate_legacy_config(self):
         if 'SLAVES' in self.config['GENERAL']:
             if self.config['GENERAL']['SLAVES'] and not self.config['GENERAL'].get('SECONDARIES'):
@@ -267,6 +276,10 @@ class Config:
 
         if 'SECRET_KEY' in self.config['GENERAL']:
             del self.config['GENERAL']['SECRET_KEY']
+
+        if 'RACE_START_DELAY_EXTRA_SECS' in self.config['GENERAL']:
+            self.config['GENERAL']['RACE_STAGE_SIGNAL_LEADTIME_SECS'] = self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS']
+            del self.config['GENERAL']['RACE_START_DELAY_EXTRA_SECS']
 
     def migrate_legacy_db_keys(self):
         for item in self.migrations:

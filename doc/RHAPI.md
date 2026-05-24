@@ -105,7 +105,7 @@ Fired when staging begins. The race has not started yet; the start time is in th
 
 #### Evt.RACE_STAGE_TONE
 
-Fired once per second during the staging countdown, starting at the moment staging begins. Plugins can use this to produce server-side staging sounds or trigger hardware effects in sync with each staging beep.
+Emitted once for each staging tone in the countdown. Each event is sent before its tone by `GENERAL > RACE_STAGE_SIGNAL_LEADTIME_SECS`; plugins can use `scheduled_at_monotonic` to produce server-side staging sounds or trigger hardware effects in sync with each staging beep.
 
 - `tone_index` (int): Zero-based index of this tone (0 = first tone, fired at staging start)
 - `tones_remaining` (int): Number of tones still to follow after this one (0 on the last tone)

@@ -300,8 +300,9 @@ class RHRace():
 
                 assigned_start_ok_flag = False
                 hide_stage_timer = False
+                stage_signal_leadtime = float(self._racecontext.serverconfig.get_item('GENERAL', 'RACE_STAGE_SIGNAL_LEADTIME_SECS'))
                 if assigned_start:
-                    self.stage_time_monotonic = monotonic() + float(self._racecontext.serverconfig.get_item('GENERAL', 'RACE_START_DELAY_EXTRA_SECS'))
+                    self.stage_time_monotonic = monotonic() + stage_signal_leadtime
                     if assigned_start > self.stage_time_monotonic:
                         staging_tones = 0
                         hide_stage_timer = True
@@ -326,7 +327,7 @@ class RHRace():
                         if staging_random_ms % 1000:
                             staging_tones += 1
 
-                    self.stage_time_monotonic = monotonic() + float(self._racecontext.serverconfig.get_item('GENERAL', 'RACE_START_DELAY_EXTRA_SECS'))
+                    self.stage_time_monotonic = monotonic() + stage_signal_leadtime
                     self.start_time_monotonic = self.stage_time_monotonic + (staging_total_ms / 1000 )
 
                 self.start_time_epoch_ms = self._racecontext.serverstate.monotonic_to_epoch_millis(self.start_time_monotonic)
@@ -437,11 +438,11 @@ class RHRace():
                             logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
                                     .format(node.index+1, node.current_rssi, node.enter_at_level))
 
-            # fire RACE_STAGE_TONE events 300ms before each tone so audio pipelines
-            # have enough lead time; scheduled_at_monotonic carries the exact tone time
+            stage_signal_leadtime = float(self._racecontext.serverconfig.get_item('GENERAL', 'RACE_STAGE_SIGNAL_LEADTIME_SECS'))
+            # scheduled_at_monotonic carries the exact tone time for consumers that queue output
             for i in range(self.staging_tones):
                 tone_time = self.stage_time_monotonic + i
-                delay = tone_time - 0.3 - monotonic()
+                delay = tone_time - stage_signal_leadtime - monotonic()
                 if delay > 0:
                     gevent.sleep(delay)
                 if self.race_status != RaceStatus.STAGING or self.start_token != start_token:
@@ -2188,4 +2189,3 @@ class RaceStatus():
     STAGING = 3
     RACING = 1
     DONE = 2
-
