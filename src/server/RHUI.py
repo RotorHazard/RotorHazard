@@ -43,6 +43,7 @@ class UIFieldType(Enum):
     EMAIL = "email"
     TEL = "tel"
     URL = "url"
+    SECTION = "section"
 
 @dataclass
 class UIFieldSelectOption():
@@ -237,7 +238,9 @@ class RHUI():
             logger.error(f"UIField '{field.name}' ignored; may not start with '__'")
             return self._general_settings
 
-        if field.persistent_section:
+        if field.field_type is UIFieldType.SECTION:
+            field_internal_id = field.name
+        elif field.persistent_section:
             field_internal_id = f'__{field.persistent_section}_{field.name}'
             if not self._racecontext.serverconfig.item_exists(field.persistent_section, field.name):
                 self._racecontext.serverconfig.set_item(field.persistent_section, field.name, field.value)
@@ -259,6 +262,8 @@ class RHUI():
     def init_setting_defaults(self):
         for setting in self._general_settings:
             field = setting.field
+            if field.field_type is UIFieldType.SECTION:
+                continue
             if not self._racecontext.rhdata.option_exists(field.name):
                 self._racecontext.rhdata.set_option(field.name, field.value)
 
@@ -383,7 +388,9 @@ class RHUI():
                 for setting in panel_settings['settings']:
                     field = setting.field.frontend_repr()
 
-                    if setting.field.persistent_section:
+                    if setting.field.field_type is UIFieldType.SECTION:
+                        db_val = None
+                    elif setting.field.persistent_section:
                         db_val = self._racecontext.serverconfig.get_item(setting.field.persistent_section, setting.field.name)
                     else:
                         db_val = self._racecontext.rhdata.get_option(setting.field.name)

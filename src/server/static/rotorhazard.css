@@ -383,6 +383,31 @@ ol.form li+li {
 	margin-top: 0.5em;
 }
 
+ol.form>li.ui-field-section,
+.ui-field-section {
+	display: block;
+	padding-top: 0.75rem;
+	border-top: solid 1px #d1d3d4;
+	text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+	ol.form>li.ui-field-section,
+	.ui-field-section {
+		border-color: #4c4c4c;
+	}
+}
+
+.ui-field-section h3 {
+	margin: 0;
+	font-size: 1rem;
+	line-height: 1.2;
+}
+
+.ui-field-section .desc {
+	margin-top: 0.25rem;
+}
+
 @media (min-width: 40em) {
 	ol.form>li {
 		display: flex;
@@ -411,6 +436,10 @@ ol.form li+li {
 	ol.form > li > input[type="checkbox"] {
 		flex: 0 0 auto;
 		margin-right: auto;
+	}
+
+	ol.form>li.ui-field-section {
+		display: block;
 	}
 
 	ol.form > li > * + button {
