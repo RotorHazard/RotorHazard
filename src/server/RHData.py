@@ -112,11 +112,11 @@ class RHData():
 
     def do_reset_all(self, nofill, migrateDbApi):
         self.clear_race_data()
-        self.reset_raceClasses()
         if nofill:
             self.reset_heats(nofill=True)
         else:
             self.reset_heats()
+        self.reset_raceClasses()
         self.reset_pilots()
         self.reset_profiles()
         # (if older DB then co-op race formats will be added after recovery)
@@ -550,8 +550,6 @@ class RHData():
                     for pilot in Database.Pilot.query.all():
                         if not pilot.color:
                             pilot.color = RHUtils.hslToHex(False, 100, 50)
-                else:
-                    self.reset_pilots()
 
                 # restore formats
                 if raceFormat_query_data:
@@ -618,8 +616,6 @@ class RHData():
                     if migrate_db_api < 46:
                         self.add_coopRaceFormats()
                         logger.info("Added co-op race formats")
-                else:
-                    self.reset_raceFormats()
 
                 # restore classes
                 self.restore_table(Database.RaceClass, raceClass_query_data, defaults={
@@ -692,8 +688,6 @@ class RHData():
                                 'pilot_id': RHUtils.PILOT_ID_NONE,
                                 'color': None
                             })
-                    else:
-                        self.reset_heats()
                 else:
                     # current heat structure; use basic migration
 
@@ -719,8 +713,6 @@ class RHData():
                             })
 
                         self._racecontext.race.current_heat = self.get_first_heat().id
-                    else:
-                        self.reset_heats()
 
                 # restore profiles
                 if profiles_query_data:
@@ -731,11 +723,8 @@ class RHData():
                             'exit_ats': json.dumps({'v': [None for _i in range(max(self._racecontext.race.num_nodes,8))]}),
                             'f_ratio': None
                         })
-                else:
-                    self.reset_profiles()
 
                 # restore options
-                self.reset_options()
                 if options_query_data:
                     if migrate_db_api == self._SERVER_API:
                         for opt in options_query_data:
