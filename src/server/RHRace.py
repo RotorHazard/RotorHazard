@@ -777,15 +777,16 @@ class RHRace():
         # get list of possible laps to review, starting from most recent
         check_laps = list(reversed(self.node_laps[node_index]))
         for idx, lap in enumerate(check_laps):
-            if crossing_time > lap.lap_time_stamp + min_lap:
-                break
-        del check_laps[idx:] # remove other laps from consideration
+            if crossing_time < lap.lap_time_stamp + min_lap:
+                continue # keep lap, move to next item
+            del check_laps[idx:] # remove other laps from consideration and stop checking
+            break
 
-        if len(check_laps) < 1:
+        if len(check_laps) < 2: # self plus at least 1 lap to compare
             return # exit if no laps to check
 
-        # find prior active lap
-        any_prior_lap = None
+        # find any prior active lap
+        any_prior_lap = False
         for lap in check_laps[1:]:
             if not lap.deleted:
                 any_prior_lap = True
@@ -794,20 +795,20 @@ class RHRace():
         if not any_prior_lap:
             return # exit if no valid laps in comparison window
 
-        logger.debug('\033[33m*** Found multiple crossings within min_lap ***\033[0m')
+        logger.debug('Found multiple crossings within min_lap')
 
         # find highest peak
-        highest_peak = max(x.peak_rssi if x.deleted == False else 0 for x in check_laps)
+        highest_peak = max(x.peak_rssi if x.deleted == False and x.peak_rssi else 0 for x in check_laps)
         logger.debug('Highest Peak: {}'.format(highest_peak))
 
         # write lap data back to table
-        total_laps = len(self.node_laps[node_index])
+        index_offset = len(self.node_laps[node_index]) - len(check_laps)
         found_lap = False
-        for idx, check_lap in enumerate(check_laps):
-            race_lap_index = total_laps - idx - 1
+        for idx, check_lap in enumerate(list(reversed(check_laps))):
+            race_lap_index = index_offset + idx
             race_lap = self.node_laps[node_index][race_lap_index]
             if not check_lap.deleted:
-                if race_lap.peak_rssi == highest_peak and not found_lap:
+                if (race_lap.peak_rssi if race_lap.peak_rssi else 0) == highest_peak and not found_lap:
                     logger.debug('Marking as active: {}'.format(race_lap))
                     race_lap.deleted = False
                     found_lap = True
@@ -816,7 +817,7 @@ class RHRace():
                     race_lap.deleted = True
 
         # recalculate lap info
-        self.calc_lap_times(node_index, total_laps - len(check_laps))
+        self.calc_lap_times(node_index, index_offset)
 
     @catchLogExceptionsWrapper
     def add_lap(self, node, lap_timestamp_absolute, source, **kwargs):
