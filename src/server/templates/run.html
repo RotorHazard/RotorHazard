@@ -1262,8 +1262,9 @@
 			}
 		});
 
-		$('button#discard_laps').click(function (event) {
-			if(!$(this).prop('disabled')) {
+		$('button#confirm_discard_laps').click(function (event) {
+			if (!$('button#discard_laps').prop('disabled')) {
+				$.magnificPopup.close();
 				$('button#start_race').prop('disabled', true);
 				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
@@ -2888,7 +2889,7 @@
 			<button id="start_race"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
 			<button id="stop_race" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
 			<button id="save_laps" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save and Clear') }}</span></button>
-			<button id="discard_laps" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+			<button id="discard_laps" class="open-mfp-popup" data-mfp-src="#discard_laps_confirm" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 
 			<label for="set_race_format" class="screen-reader-text">{{ __('Race Format') }}</label>
 			<select id="set_race_format">
@@ -2896,6 +2897,15 @@
 			</select>
 
 			<span id="next-round"></span>
+		</div>
+
+		<div id="discard_laps_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Confirm') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Are you sure?') }}</p>
+				<p><button class="btn-danger" id="confirm_discard_laps">{{ __('Yes') }}</button>
+					<button class="cancel">{{ __('No') }}</button></p>
+			</div>
 		</div>
 
 		<div id="practice-warning" style="display:none">{{ __('Practice mode: Races will not be saved until a heat is selected') }}</div>
