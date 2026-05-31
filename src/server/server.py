@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "4.4.1-dev.1" # Public release version code
+RELEASE_VERSION = "4.4.0" # Public release version code
 SERVER_API = 49 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 36 # Most recent node API
@@ -147,7 +147,7 @@ _DB_URI = 'sqlite:///' + os.path.join(DATA_DIR, DB_FILE_NAME)
 
 sys.path.append(PROGRAM_DIR + '/util')
 
-APP = Flask(__name__, template_folder=PROGRAM_DIR+'/templates', static_folder=PROGRAM_DIR+'/static', static_url_path='/static')
+APP = Flask(__name__, static_url_path='/static')
 APP.app_context().push()
 
 import FlaskAppObj
@@ -826,6 +826,7 @@ def on_cluster_event_trigger(data):
     evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
 
     # set mirror timer state
+    mirror_evt_handled = False
     if Server_secondary_mode == SecondaryNode.MIRROR_MODE:
         if evtName == Evt.RACE_STAGE:
             RaceContext.race.results = None
@@ -841,17 +842,22 @@ def on_cluster_event_trigger(data):
                 'correction_ms': data['correction_ms'] if 'correction_ms' in data else 0,
             }
             RaceContext.race.stage(start_race_args)
+            mirror_evt_handled = True  # race.stage() already triggers events locally
 
         elif evtName == Evt.RACE_STOP:
             RaceContext.race.stop()
+            mirror_evt_handled = True  # race.stop() already triggers events locally
+
         elif evtName == Evt.LAPS_CLEAR:
             RaceContext.race.discard_laps()
+            mirror_evt_handled = True  # discard_laps() already triggers events locally
+
         elif evtName == Evt.RACE_LAP_RECORDED:
             RaceContext.race.results = evtArgs['results']
 
     evtArgs.pop('RACE', None) # remove race if exists
 
-    if evtName not in [Evt.STARTUP,  Evt.RACE_START, Evt.LED_SET_MANUAL]:
+    if evtName not in [Evt.STARTUP,  Evt.RACE_START, Evt.LED_SET_MANUAL] and not mirror_evt_handled:
         Events.trigger(evtName, evtArgs)
     # special handling for LED Control via primary timer
     elif 'effect' in evtArgs and RaceContext.led_manager.isEnabled():
@@ -2624,7 +2630,7 @@ def on_set_consecutives_count(data):
 
 @SOCKET_IO.on('get_race_scheduled')
 @catchLogExceptionsWrapper
-def get_race_scheduled(*args):
+def get_race_elapsed(*args):
     # get current race status; never broadcasts to all
     emit('race_scheduled', {
         'scheduled': RaceContext.race.scheduled,
@@ -2967,8 +2973,8 @@ def heartbeat_thread_function():
             # check if race is to be started
             if RaceContext.race.scheduled:
                 if time_now > RaceContext.race.scheduled_time:
-                    RaceContext.race.scheduled = False
                     RaceContext.race.stage(from_scheduler=True)
+                    RaceContext.race.scheduled = False
 
             # if any comm errors then log them (at defined intervals; faster if debug mode)
             if time_now > heartbeat_thread_function.last_error_rep_time + \

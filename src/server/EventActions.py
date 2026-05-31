@@ -16,6 +16,7 @@ class EventActions:
         self._racecontext = RaceContext
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
+        self._missing_effect_warned = set()
 
         self.Events.trigger(Evt.ACTIONS_INITIALIZE, {
             'register_fn': self.registerEffect
@@ -27,6 +28,7 @@ class EventActions:
 
     def registerEffect(self, effect):
         self.effects[effect.name] = effect
+        self._missing_effect_warned.discard(effect.name)
         return True
 
     def getRegisteredEffects(self):
@@ -63,9 +65,24 @@ class EventActions:
                 self.runEffect(action, args)
 
     def runEffect(self, action, args):
+        effect_name = action.get('effect')
+        if not effect_name or effect_name not in self.effects:
+            if effect_name:
+                if effect_name not in self._missing_effect_warned:
+                    self._missing_effect_warned.add(effect_name)
+                    self.logger.warning("Skipping unregistered event action effect '{}' for event '{}' "
+                                        "(plugin may not be installed on this timer)".format(
+                                            effect_name, action.get('event', '?')))
+                else:
+                    self.logger.debug("Skipping unregistered event action effect '{}' for event '{}'".format(
+                                        effect_name, action.get('event', '?')))
+            else:
+                self.logger.warning("Skipping event action with no effect for event '{}'".format(
+                                    action.get('event', '?')))
+            return
         self.logger.debug("Calling effect '{}', node {}".format(action, \
                             getNumericEntry(args, 'node_index', -1) + 1))
-        self.effects[action['effect']].runEffect(action, args)
+        self.effects[effect_name].runEffect(action, args)
 
 class ActionEffect():
     def __init__(self, label, effect_fn, fields:List[UIField], name=None):
