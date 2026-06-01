@@ -539,19 +539,19 @@ def _do_calc_leaderboard(racecontext, **params):
             result_pilot['consecutive_lap_start'] = all_consecutives[0]['lap_index']
 
             if race_format and race_format.win_condition == WinCondition.FASTEST_CONSECUTIVE:
-                best = all_consecutives[0]
                 pl = result_pilot['pilot_laps']
-                if best['lap_index'] is not None:
-                    i0 = best['lap_index'] - 1
+                lap_start = result_pilot['consecutive_lap_start']
+                if lap_start is not None:
+                    i0 = lap_start - 1
                     window_laps = pl[i0 : i0 + consecutivesCount]
                 else:
                     window_laps = pl
                 result_pilot['fastest_consecutive_laps'] = [
                     {
-                        'lap_number': getattr(lap, 'lap_number', None),
+                        'lap_number': (lap_start + j) if lap_start is not None else (j + 1),
                         'lap_time_raw': round(lap.lap_time, 3),
                     }
-                    for lap in window_laps
+                    for j, lap in enumerate(window_laps)
                 ]
 
         else:
