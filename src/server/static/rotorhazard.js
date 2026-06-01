@@ -1767,6 +1767,25 @@ jQuery(document).ready(function($){
 }
 
 /* Leaderboards */
+
+function build_fastest_consecutive_laps_cell(data) {
+	var td = $('<td class="consecutive-laps-detail">');
+	var laps = data.fastest_consecutive_laps;
+	if (!laps || !laps.length) {
+		td.text('\u2014');
+		return td;
+	}
+	for (var j = 0; j < laps.length; j++) {
+		var lap = laps[j];
+		var t = lap.lap_time;
+		var line = (lap.lap_number != null && lap.lap_number !== '')
+			? ('L' + lap.lap_number + ': ' + t)
+			: t;
+		td.append($('<div class="consecutive-lap-line">').text(line));
+	}
+	return td;
+}
+
 function build_leaderboard(leaderboard, display_type, meta, display_starts=false) {
 	if (typeof(display_type) === 'undefined')
 		var display_type = 'by_race_time';
@@ -1824,6 +1843,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="consecutive">' + __('Consecutive') + '</th>');
+		if (display_type == 'by_consecutives' && meta.win_condition == 4) {
+			header_row.append('<th class="consecutive-laps-detail">' + __('Lap Times') + '</th>');
+		}
 		if (display_type == 'by_consecutives') {
 			header_row.append('<th class="source">' + __('Source') + '</th>');
 		}
@@ -1941,6 +1963,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 
 			row.append(el);
 
+			if (display_type == 'by_consecutives' && meta.win_condition == 4) {
+				row.append(build_fastest_consecutive_laps_cell(leaderboard[i]));
+			}
 			if (display_type == 'by_consecutives') {
 				row.append('<td class="source">'+ source_text +'</td>');
 			}
