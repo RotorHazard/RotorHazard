@@ -254,6 +254,17 @@ if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_ZIP_LOGS_STR in sys.argv:
         log.create_log_files_zip(logger, RaceContext.serverconfig.config_file_name, DB_FILE_NAME, PROGRAM_DIR)
         sys.exit(0)
+    if CMDARG_MIN_MOCKS in sys.argv:
+        minMocksArgIdx = sys.argv.index(CMDARG_MIN_MOCKS) + 1
+        if minMocksArgIdx < len(sys.argv):
+            try:
+                minMocks = int(sys.argv[minMocksArgIdx])
+            except ValueError:
+                print("Invalid value for {} argument: {}".format(CMDARG_MIN_MOCKS, sys.argv[minMocksArgIdx]))
+                sys.exit(1)
+        else:
+            print("Usage: python server.py {} N".format(CMDARG_MIN_MOCKS))
+            sys.exit(1) 
     if CMDARG_VIEW_DB_STR in sys.argv:
         viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
         if viewdbArgIdx < len(sys.argv):
@@ -273,7 +284,7 @@ if __name__ == '__main__' and len(sys.argv) > 1:
                 flashPillSrcStr = None                       #  unless arg is switch param
             flashPillSuccessFlag = stm32loader.flash_file_to_stm32(flashPillPortStr, flashPillSrcStr)
             sys.exit(0 if flashPillSuccessFlag else 1)
-        elif CMDARG_LAUNCH_B_STR not in sys.argv and CMDARG_DATA_DIR not in sys.argv:
+        elif CMDARG_LAUNCH_B_STR not in sys.argv and CMDARG_DATA_DIR not in sys.argv and CMDARG_MIN_MOCKS not in sys.argv:
             print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
             sys.exit(1)
 
