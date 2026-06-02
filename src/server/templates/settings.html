@@ -3185,12 +3185,15 @@
 			<li>
 				<div class="label-block">
 					<label for="set_time_format">{{ __('Time Format') }}</label>
+					<p class="desc">{{ __('Format tokens: {m}=minutes, {s}=seconds (00-59), {d}=milliseconds (000-999), {t}=total seconds from start') }}</p>
+					<p class="desc">{{ __('Example: 1:10.691 with {t}.{d} displays 70.691') }}</p>
 				</div>
 				<input type="text" id="set_time_format" class="set-config" data-section="UI" data-key="timeFormat" value="{{ getConfig('UI', 'timeFormat') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_time_format_phonetic">{{ __('Phonetic Time Format') }}</label>
+					<p class="desc">{{ __('Phonetic {d} uses rounded tenths (0-9); 1:10.691 with {t}.{d} is read as 70.7') }}</p>
 				</div>
 				<input type="text" id="set_time_format_phonetic" class="set-config" data-section="UI" data-key="timeFormatPhonetic" value="{{ getConfig('UI', 'timeFormatPhonetic') }}">
 			</li>

@@ -73,6 +73,7 @@ function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
 	s = Math.round(s);
 	var ms = s % 1000;
 	s = (s - ms) / 1000;
+	var total_secs = s;
 	var secs = s % 60;
 	var mins = (s - secs) / 60;
 
@@ -82,6 +83,7 @@ function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
 	var formatted_time = timeformat.replace('{d}', pad(ms, 3));
 	formatted_time = formatted_time.replace('{s}', pad(secs));
 	formatted_time = formatted_time.replace('{m}', mins)
+	formatted_time = formatted_time.replace('{t}', total_secs)
 
 	return formatted_time;
 }

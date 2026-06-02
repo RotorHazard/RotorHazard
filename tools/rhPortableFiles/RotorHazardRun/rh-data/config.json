@@ -43,7 +43,7 @@
     "contrast_1_high": "#000000",
     "currentLanguage": "",
     "timeFormat": "{m}:{s}.{d}",
-    "timeFormatPhonetic": "{m} {s}.{d}",
+    "timeFormatPhonetic": "{m} {s} point {d}",
     "pilotSort": "name"
   },
   "USER": {
