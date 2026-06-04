@@ -356,6 +356,24 @@
 			return false;
 		}
 
+		function isDiscardConfirmPopupOpen() {
+			var el = document.getElementById('discard_laps_confirm');
+			return el && $(el).closest('.mfp-wrap').length > 0;
+		}
+
+		function notifyDiscardNoLongerAvailable() {
+			$('.race_status_message').html(__('Discard is no longer available'));
+			rotorhazard.discard_unavailable_notice = true;
+		}
+
+		function dismissDiscardConfirmIfNeeded() {
+			if (!isDiscardConfirmPopupOpen()) {
+				return;
+			}
+			$.magnificPopup.close();
+			notifyDiscardNoLongerAvailable();
+		}
+
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
@@ -478,6 +496,10 @@
 						socket.emit('get_race_scheduled');
 					}
 					break;
+			}
+
+			if ($('button#discard_laps').prop('disabled')) {
+				dismissDiscardConfirmIfNeeded();
 			}
 
 			resume_check = false;
@@ -1048,7 +1070,12 @@
 				$('#team_leaderboard').append(build_team_leaderboard(race.team_leaderboard[leaderboard_type], leaderboard_type, race.team_leaderboard.meta));
 			}
 
-			$('.race_status_message').html(race.status_msg);
+			if (rotorhazard.discard_unavailable_notice) {
+				$('.race_status_message').html(__('Discard is no longer available'));
+				rotorhazard.discard_unavailable_notice = false;
+			} else {
+				$('.race_status_message').html(race.status_msg);
+			}
 		});
 
 		function callout_current_leader(pilot_phonetic, separate_call_flag) {
@@ -1258,19 +1285,22 @@
 				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
+				dismissDiscardConfirmIfNeeded();
 				socket.emit('save_laps');
 			}
 		});
 
 		$('button#confirm_discard_laps').click(function (event) {
+			$.magnificPopup.close();
 			if (!$('button#discard_laps').prop('disabled')) {
-				$.magnificPopup.close();
 				$('button#start_race').prop('disabled', true);
 				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
 				$('.time-display').html('--:--');
 				socket.emit('discard_laps');
+			} else {
+				notifyDiscardNoLongerAvailable();
 			}
 		});
 
