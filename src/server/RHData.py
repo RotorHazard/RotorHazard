@@ -3869,7 +3869,11 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             format_obj = rhapi.race.raceformat
             fmt_str = getattr(format_obj, 'name', '') if format_obj else ''
             text = text.replace('%RACE_FORMAT%', fmt_str)
-            text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
+            # convert trailing text like "3:00" to "3 minutes" (and handle "1:00" to "1 minute")
+            if text.endswith(':00') and text[-4:-3].isdigit():
+                text = text[:-3] + ' ' + (rhapi.__('minute') if text[-4:-3] == '1' else rhapi.__('minutes'))
+            else:  # convert leading text like "3:00" to "3 minute"
+                text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
             text = text.replace('/', ' ')
 
         # %PILOTS% : List of pilot callsigns (read out slower)
