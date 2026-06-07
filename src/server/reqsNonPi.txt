@@ -25,5 +25,5 @@ cffi==1.17.*
 
 # Other
 pyserial==3.5.*
-requests==2.32.*
+requests==2.34.*
 packaging==24.*
