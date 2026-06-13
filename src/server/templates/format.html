@@ -2557,57 +2557,329 @@
 			}
 		}
 
-		function display_pilots() {
-			if (rotorhazard.event.pilots) {
-				$(".pilots").empty();
-				for (var i in rotorhazard.event.pilots) {
-					var pilot = rotorhazard.event.pilots[i];
-					if (pilot.pilot_id != 0) {
-						var el = $('<li data-id="' + pilot.pilot_id + '">');
-						el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-						var pilot_name = $('<div class="pilot-info-inline">');
-						pilot_name.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
-						if ('color' in pilot) {
-							pilot_name.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
-							pilot_name.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
-						}
-						el.append(pilot_name);
-						el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-						el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
-						el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
-						var phonetic = $('<div class="pilot-info-inline">');
-						phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
-						phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
-						el.append(phonetic);
-						el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+		/* ISO 3166-1 Alpha-2 country codes */
+		var ISO3166_ALPHA2 = ('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW').split(' ');
+		var ISO3166_ALPHA2_SET = {};
+		for (var i = 0; i < ISO3166_ALPHA2.length; i++) {
+			ISO3166_ALPHA2_SET[ISO3166_ALPHA2[i]] = true;
+		}
 
-						if (!pilot.locked) {
-							el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215; </button>');
-						}
+		function pilot_attr_is_alpha2_country(attr) {
+			var ha = attr.html_attributes || {};
+			if (ha['data-format'] === 'iso3166-alpha2') {
+				return true;
+			}
+			if (ha.maxlength === 2 || ha.maxlength === '2') {
+				return true;
+			}
+			var n = ((attr.name || '') + ' ' + (attr.label || '')).toLowerCase();
+			return /\bcountry\b/.test(n);
+		}
 
-						for (var attr_idx in rotorhazard.event.pilot_attributes) {
-							var pilot_attr = { ...rotorhazard.event.pilot_attributes[attr_idx]};
-							pilot_attr.fieldClass = 'set_pilot_attr';
-							pilot_attr.wrapperClass = 'custom_attr';
-							pilot_attr.id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
-							pilot_attr.data = {
-								'pilot_id': pilot.pilot_id,
-								'attr': pilot_attr.name,
-							}
+		function ensure_pilot_country_datalist() {
+			if ($('#pilot-country-codes-datalist').length) {
+				return;
+			}
+			var dl = $(document.createElement('datalist'))
+				.prop('id', 'pilot-country-codes-datalist');
+			for (var i = 0; i < ISO3166_ALPHA2.length; i++) {
+				$(document.createElement('option'))
+					.attr('value', ISO3166_ALPHA2[i])
+					.appendTo(dl);
+			}
+			$('.pilot-list').append(dl);
+		}
 
-							if (pilot_attr.name in pilot) {
-								pilot_attr.value = pilot[pilot_attr.name]
-							}
+		function normalize_pilot_country_code(value, allow_partial) {
+			var raw = String(value || '').trim().toUpperCase().replace(/[^A-Z]/g, '');
+			if (!raw) {
+				return '';
+			}
+			var code = raw.length >= 2 ? raw.slice(0, 2) : raw;
+			if (allow_partial && code.length < 2) {
+				return code;
+			}
+			if (ISO3166_ALPHA2_SET[code]) {
+				return code;
+			}
+			if (raw.length >= 3 && ISO3166_ALPHA2_SET[raw.slice(0, 2)]) {
+				return raw.slice(0, 2);
+			}
+			return '';
+		}
 
-							el.append(rhui.buildField(pilot_attr));
-						}
+		function build_pilot_attribute_field(pilot, pilot_attr) {
+			var wrapper = $(document.createElement('div'))
+				.addClass('custom_attr')
+				.addClass('pilot-col')
+				.addClass('pilot-col-attr')
+				.addClass('pilot-col-' + pilot_attr.name);
+			var value = pilot_attr.name in pilot ? pilot[pilot_attr.name] : '';
+			var field_id = 'pilotAttr_' + pilot_attr.name + '_' + pilot.pilot_id;
 
-						el.appendTo($('.pilots'));
+			if (pilot_attr_is_alpha2_country(pilot_attr)) {
+				ensure_pilot_country_datalist();
+				$(document.createElement('input'))
+					.prop('type', 'text')
+					.addClass('set_pilot_attr')
+					.addClass('pilot-country-code')
+					.prop('id', field_id)
+					.attr('maxlength', 2)
+					.attr('size', 3)
+					.attr('pattern', '[A-Za-z]{2}')
+					.attr('list', 'pilot-country-codes-datalist')
+					.prop('title', pilot_attr.desc ? __(pilot_attr.desc) : __('ISO 3166-1 Alpha-2 (2 letters, e.g. US, GB)'))
+					.prop('autocomplete', 'off')
+					.prop('spellcheck', false)
+					.data('pilot_id', pilot.pilot_id)
+					.data('attr', pilot_attr.name)
+					.val(normalize_pilot_country_code(value))
+					.appendTo(wrapper);
+				return wrapper;
+			}
+
+			var field_opts = { ...pilot_attr};
+			field_opts.fieldClass = 'set_pilot_attr';
+			field_opts.wrapperClass = wrapper.attr('class');
+			field_opts.id = field_id;
+			field_opts.data = {
+				'pilot_id': pilot.pilot_id,
+				'attr': pilot_attr.name,
+			};
+			if (pilot_attr.name in pilot) {
+				field_opts.value = pilot[pilot_attr.name];
+			}
+			return rhui.buildField(field_opts);
+		}
+
+		function pilots_for_display() {
+			var pilots = [];
+			for (var i in rotorhazard.event.pilots) {
+				if (rotorhazard.event.pilots[i].pilot_id != 0) {
+					pilots.push(rotorhazard.event.pilots[i]);
+				}
+			}
+			pilots.sort((a, b) => a.pilot_id - b.pilot_id);
+			return pilots;
+		}
+
+		function display_pilot_list_header() {
+			var header = $('.pilot-list-header');
+			header.empty();
+
+			$(document.createElement('span'))
+				.addClass('pilot-col')
+				.addClass('pilot-col-name')
+				.text(__('Name'))
+				.appendTo(header);
+			$(document.createElement('span'))
+				.addClass('pilot-col')
+				.addClass('pilot-col-callsign')
+				.text(__('Callsign'))
+				.appendTo(header);
+			$(document.createElement('span'))
+				.addClass('pilot-col')
+				.addClass('pilot-col-phonetic')
+				.text(__('Phonetic'))
+				.appendTo(header);
+			$(document.createElement('span'))
+				.addClass('pilot-col')
+				.addClass('pilot-col-team')
+				.text(__('Team'))
+				.appendTo(header);
+
+			if (rotorhazard.event.pilot_attributes) {
+				for (var attr_idx in rotorhazard.event.pilot_attributes) {
+					var pilot_attr = rotorhazard.event.pilot_attributes[attr_idx];
+					var header_col = $(document.createElement('span'))
+						.addClass('pilot-col')
+						.addClass('pilot-col-attr')
+						.addClass('pilot-col-' + pilot_attr.name)
+						.text(__(pilot_attr.label))
+						.appendTo(header);
+					if (pilot_attr.desc) {
+						header_col.prop('title', __(pilot_attr.desc));
 					}
 				}
+			}
 
-				$('.pilots').append('<li class="new-pilot-container"><button id="add_pilot">' + __('Add Pilot') + '</button></li>');
+			$(document.createElement('span'))
+				.addClass('pilot-col')
+				.addClass('pilot-col-actions')
+				.addClass('pilot-col-actions-spacer')
+				.appendTo(header);
 
+			header.prop('hidden', false);
+			update_pilot_list_scale();
+		}
+
+		function pilot_attr_grid_width(attr) {
+			if (pilot_attr_is_alpha2_country(attr)) {
+				return '3.5rem';
+			}
+			return 'minmax(4.25rem, 6rem)';
+		}
+
+		function update_pilot_list_scale() {
+			var attr_count = (rotorhazard.event.pilot_attributes && rotorhazard.event.pilot_attributes.length) || 0;
+			var col_count = 4 + attr_count + 1;
+			var font_rem = Math.max(0.8, 1.15 - (col_count - 6) * 0.07);
+			var grid_cols = ['1fr', '1fr', '1fr', 'minmax(3.5rem, 0.65fr)'];
+
+			if (rotorhazard.event.pilot_attributes) {
+				for (var attr_idx in rotorhazard.event.pilot_attributes) {
+					grid_cols.push(pilot_attr_grid_width(rotorhazard.event.pilot_attributes[attr_idx]));
+				}
+			}
+			grid_cols.push('1.35rem');
+
+			$('.pilot-list')
+				.css('--pilot-font-size', font_rem + 'rem')
+				.css('--pilot-grid-columns', grid_cols.join(' '))
+				.attr('data-field-count', col_count);
+		}
+
+		function display_pilots() {
+			if (rotorhazard.event.pilots) {
+				display_pilot_list_header();
+
+				var list = $('.pilots');
+				list.empty();
+
+				var pilots = pilots_for_display();
+				for (var i in pilots) {
+					var pilot = pilots[i];
+					var el = $(document.createElement('li'))
+						.addClass('pilot-row')
+						.data('id', pilot.pilot_id);
+
+					var pilot_name = $(document.createElement('div'))
+						.addClass('pilot-col')
+						.addClass('pilot-col-name')
+						.addClass('pilot-info-inline');
+					$(document.createElement('label'))
+						.prop('for', 'name_' + pilot.pilot_id)
+						.addClass('screen-reader-text')
+						.text(__('Name'))
+						.appendTo(pilot_name);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set_pilot_name')
+						.prop('id', 'name_' + pilot.pilot_id)
+						.data('pilot_id', pilot.pilot_id)
+						.val(pilot.name)
+						.prop('placeholder', __('Name'))
+						.appendTo(pilot_name);
+					if ('color' in pilot) {
+						$(document.createElement('label'))
+							.prop('for', 'color_' + pilot.pilot_id)
+							.addClass('screen-reader-text')
+							.text(__('Color'))
+							.appendTo(pilot_name);
+						$(document.createElement('button'))
+							.addClass('set_pilot_color')
+							.addClass('color-picker')
+							.prop('id', 'color_' + pilot.pilot_id)
+							.data('pilot_id', pilot.pilot_id)
+							.data('color', pilot.color)
+							.css('background-color', pilot.color)
+							.appendTo(pilot_name);
+					}
+					el.append(pilot_name);
+
+					var callsign_col = $(document.createElement('div'))
+						.addClass('pilot-col')
+						.addClass('pilot-col-callsign');
+					$(document.createElement('label'))
+						.prop('for', 'callsign_' + pilot.pilot_id)
+						.addClass('screen-reader-text')
+						.text(__('Callsign'))
+						.appendTo(callsign_col);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('callsign')
+						.addClass('set_pilot_callsign')
+						.prop('id', 'callsign_' + pilot.pilot_id)
+						.data('pilot_id', pilot.pilot_id)
+						.val(pilot.callsign)
+						.prop('placeholder', __('Callsign'))
+						.appendTo(callsign_col);
+					el.append(callsign_col);
+
+					var phonetic = $(document.createElement('div'))
+						.addClass('pilot-col')
+						.addClass('pilot-col-phonetic')
+						.addClass('pilot-info-inline');
+					$(document.createElement('label'))
+						.prop('for', 'phonetic_' + pilot.pilot_id)
+						.addClass('screen-reader-text')
+						.text(__('Phonetic'))
+						.appendTo(phonetic);
+					$(document.createElement('input'))
+						.prop('type', 'text')
+						.addClass('set_pilot_phonetic')
+						.prop('id', 'phonetic_' + pilot.pilot_id)
+						.data('pilot_id', pilot.pilot_id)
+						.val(pilot.phonetic)
+						.prop('placeholder', __('Phonetic'))
+						.appendTo(phonetic);
+					$(document.createElement('button'))
+						.addClass('speak_pilot')
+						.data('pilot_id', pilot.pilot_id)
+						.html('&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span>')
+						.appendTo(phonetic);
+					el.append(phonetic);
+
+					var team_col = $(document.createElement('div'))
+						.addClass('pilot-col')
+						.addClass('pilot-col-team');
+					$(document.createElement('label'))
+						.prop('for', 'set_pilot_team_' + pilot.pilot_id)
+						.addClass('screen-reader-text')
+						.text(__('Team'))
+						.appendTo(team_col);
+					$(document.createElement('select'))
+						.addClass('set_pilot_team')
+						.prop('id', 'set_pilot_team_' + pilot.pilot_id)
+						.data('pilot_id', pilot.pilot_id)
+						.html(pilot.team_options)
+						.appendTo(team_col);
+					el.append(team_col);
+
+					if (rotorhazard.event.pilot_attributes) {
+						for (var attr_idx in rotorhazard.event.pilot_attributes) {
+							var pilot_attr = rotorhazard.event.pilot_attributes[attr_idx];
+							el.append(build_pilot_attribute_field(pilot, pilot_attr));
+						}
+					}
+
+					var actions = $(document.createElement('div'))
+						.addClass('pilot-col')
+						.addClass('pilot-col-actions');
+					if (!pilot.locked) {
+						$(document.createElement('button'))
+							.addClass('delete_pilot')
+							.addClass('btn-danger')
+							.data('id', pilot.pilot_id)
+							.prop('title', __('Delete Pilot') + ' ' + pilot.callsign)
+							.html('&#215;')
+							.appendTo(actions);
+					}
+					el.append(actions);
+
+					list.append(el);
+				}
+
+				$(document.createElement('li'))
+					.addClass('new-pilot-container')
+					.append(
+						$(document.createElement('button'))
+							.prop('id', 'add_pilot')
+							.text(__('Add Pilot'))
+					)
+					.appendTo(list);
+
+				update_pilot_list_scale();
 				display_pilot_selectors();
 			}
 		}
@@ -2704,6 +2976,10 @@
 			var pilot_id = parseInt($(this).data('pilot_id'));
 			var pilot_attr = $(this).data('attr');
 			var value = rhui.getFieldVal(this);
+			if ($(this).hasClass('pilot-country-code')) {
+				value = normalize_pilot_country_code(value, false);
+				$(this).val(value);
+			}
 			var data = {
 				pilot_id: pilot_id,
 				pilot_attr: pilot_attr,
@@ -2713,6 +2989,13 @@
 			var pilot = rotorhazard.event.pilots.find(obj => {return obj.pilot_id == pilot_id});
 			pilot[pilot_attr] = value;
 		})
+
+		$(document).on("input", '.pilot-country-code', function (event) {
+			var raw = $(this).val().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+			if ($(this).val() !== raw) {
+				$(this).val(raw);
+			}
+		});
 
 		$(document).on('click', 'button#add_pilot', function (event) {
 			socket.emit('add_pilot');
@@ -3792,9 +4075,12 @@
 
 		<div class="control-set" id="seat-colors"></div>
 
-		<ul class="pilots">
-			<li>{{ __('Loading...') }}</li>
-		</ul>
+		<div class="pilot-list item-blocks">
+			<div class="pilot-list-header" hidden="hidden"></div>
+			<ol class="pilots">
+				<li>{{ __('Loading...') }}</li>
+			</ol>
+		</div>
 	</div>
 </div>
 
