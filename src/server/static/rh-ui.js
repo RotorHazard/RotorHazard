@@ -1,5 +1,14 @@
 
 var rhui = {
+	_formatRangeValue: function (settings, value) {
+		var prefix = settings.html_attributes.value_prefix || '';
+		var suffix = settings.html_attributes.value_suffix || '';
+		return prefix + value + suffix;
+	},
+	_updateRangeValue: function (settings, field) {
+		field.closest('.uifield-range').find('output.uifield-range-value')
+			.text(this._formatRangeValue(settings, field.val()));
+	},
 	_modelField: function (field_options) {
 		var settings = {
 			data: {},
@@ -114,6 +123,11 @@ var rhui = {
 			var field = $('<input>')
 				.attr('type', 'range')
 				.attr('placeholder', settings.placeholder);
+			var rangeWrap = $('<div>')
+				.addClass('uifield-range');
+			var valueEl = $('<output>')
+				.addClass('uifield-range-value')
+				.attr('for', settings.id);
 
 			if ('min' in settings.html_attributes) {
 				field.attr('min', settings.html_attributes.min)
@@ -125,7 +139,13 @@ var rhui = {
 				field.attr('step', settings.html_attributes.step)
 			}
 			wrapper.append(labelWrap);
-			wrapper.append(field);
+			rangeWrap.append(field);
+			rangeWrap.append(valueEl);
+			wrapper.append(rangeWrap);
+			var rhuiObj = this;
+			field.on('input change', function () {
+				rhuiObj._updateRangeValue(settings, $(this));
+			});
 		} else if (settings.field_type == 'select') {
 			var field = $('<select>')
 
@@ -266,6 +286,9 @@ var rhui = {
 			element.prop('checked', settings.value);
 		} else {
 			element.val(settings.value);
+		}
+		if (settings.field_type == 'range') {
+			this._updateRangeValue(settings, element);
 		}
 
 		for (var idx in settings.data) {
