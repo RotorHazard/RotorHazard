@@ -296,7 +296,7 @@ _Read only_
 Provide a list of options registered by plugins. Does not include built-in options or fields registered as persistent configuration.
 
 #### fields.register_option(field, panel=None, order=0)
-Register an option and optionally assign it to be displayed on a UI panel. By default, options registered this way are event-scoped. If `persistent_section` is true in the UIField, the option will be server-scoped. 
+Register an option and optionally assign it to be displayed on a UI panel. By default, options registered this way are event-scoped. If `persistent_section` is set in the UIField, the option will be server-scoped. `UIFieldType.SECTION` fields are display-only headings and do not store option values.
 
 - `field` (UIField): See [UI Fields](Plugins.md#ui-fields)
 - `panel` _optional_ (string): `name` of panel previously registered with `ui.register_panel`

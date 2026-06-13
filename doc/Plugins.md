@@ -485,6 +485,7 @@ Fields are defined in the following format:
     - `UIFieldType.EMAIL`
     - `UIFieldType.TEL`
     - `UIFieldType.URL`
+    - `UIFieldType.SECTION`
 - `value` _optional_ (any): Default value for field
 - `desc` _optional_ (string): additional user-facing text that appears in the RotorHazard frontend interface describing notes or special instructions for use
 - `private` _optional_ (boolean): Prevent automatically generated UI
@@ -510,6 +511,13 @@ If `field_type` is `SELECT`
     - `value` (string): internal identifier used when this option is selected
     - `label` (string): user-facing text that appears in the RotorHazard frontend interface
 - `value` is no longer optional and must match the `value` of an item in `options`.
+
+If `field_type` is `SECTION`
+
+- The field is rendered as a non-interactive section heading in generated UI.
+- `label` is displayed as the heading text.
+- `desc` may be provided as explanatory text below the heading.
+- The field does not store a value in event options or persistent configuration.
 
 Import UI Fields objects from RHUI.
 

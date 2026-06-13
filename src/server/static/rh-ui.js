@@ -42,6 +42,17 @@ var rhui = {
 			wrapper.addClass(settings.wrapperClass);
 		}
 
+		if (settings.field_type == 'section') {
+			wrapper.addClass('ui-field-section');
+			wrapper.append($('<h3>').text(__(settings.label)));
+
+			if (settings.desc) {
+				wrapper.append($('<p class="desc">').html(settings.desc));
+			}
+
+			return wrapper;
+		}
+
 		var labelWrap = $('<div class="label-block"></div>');
 
 		var label = $('<label>')
