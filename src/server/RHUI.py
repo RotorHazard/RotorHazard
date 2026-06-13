@@ -841,6 +841,7 @@ class RHUI():
                     Evt.RACE_STAGE: self.__('Race Stage'),
                     Evt.RACE_ABORT: self.__('Race Stage Abort'),
                     Evt.RACE_START: self.__('Race Start'),
+                    Evt.RACE_CLOCK_WARNING: self.__('Race Clock Warning'),
                     Evt.RACE_FINISH: self.__('Race Finish'),
                     Evt.RACE_STOP: self.__('Race Stop'),
                     Evt.RACE_WIN: self.__('Race Win'),
