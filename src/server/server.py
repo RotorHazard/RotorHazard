@@ -2534,12 +2534,26 @@ def on_set_current_heat(data):
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
-    RaceContext.race.delete_lap(data)
+    node_index = data['node']
+    lap_index = data['lap_index']
+
+    if node_index is None or lap_index is None:
+        logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
+        return
+
+    RaceContext.race.delete_lap(node_index, lap_index)
 
 @SOCKET_IO.on('restore_deleted_lap')
 def on_restore_deleted_lap(data):
-    RaceContext.race.restore_deleted_lap(data)
+    node_index = data['node']
+    lap_index = data['lap_index']
 
+    if node_index is None or lap_index is None:
+        logger.error(
+            "Bad parameter in 'on_restore_deleted_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
+        return
+
+    RaceContext.race.restore_deleted_lap(node_index, lap_index)
 
 @SOCKET_IO.on('simulate_lap')
 @catchLogExcWithDBWrapper

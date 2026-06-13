@@ -951,20 +951,22 @@
 						var local_colspan = 2;
 						if(rotorhazard.display_lap_id) {
 							local_colspan = 1;
-							if(lap_num < 0) {
+							if(lap_num < 0 || lap.deleted) {
 								lap_num = ' ';
 							}
 							tr.append(
 								$('<td class="display_lap_number">').text(lap_num)
 							);
 						}
-						time_td = $('<td colspan="'+local_colspan+'">').text(' ' + lap.lap_time_formatted + ' ').append(
-								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
-								);
-						if(lap.late_lap) {
+						time_td = $('<td colspan="'+local_colspan+'">').text(' ' + lap.lap_time_formatted + ' ');
+						if(lap.deleted) {
 							tr.addClass('late-lap');
 							time_td.prepend(
 									$('<button class="restore_deleted_lap" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">+</button>'));
+						} else {
+							time_td.append(
+									$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
+							);
 						}
 						local_prepend = $('<span class="from_start">');
 
@@ -993,7 +995,7 @@
 						time_td.prepend(local_prepend);
 						tr.append(time_td);
 
-						if (lap.lap_number && lap.lap_time < (rotorhazard.min_lap_s * 1000)) {
+						if (lap.lap_number && !lap.deleted && lap.lap_time < (rotorhazard.min_lap_s * 1000)) {
 							tr.addClass('min-lap-warning');
 						}
 						if (!rotorhazard.event.race_status.unlimited_time && lap.lap_time_stamp > (rotorhazard.event.race_status.race_time_sec * 1000)) {
@@ -3039,8 +3041,9 @@
 					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
 				</div>
 				<select id="set_min_lap_behavior">
-					<option value="0">{{ __('Highlight Short Laps') }}</option>
-					<option value="1">{{ __('Discard New Short Laps') }}</option>
+					<option value="0">{{ __('Highlight short laps') }}</option>
+					<option value="1">{{ __('Discard new short laps') }}</option>
+					<option value="2">{{ __('Ignore lower peaks') }}</option>
 				</select>
 			</li>
 			<li>

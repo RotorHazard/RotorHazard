@@ -791,6 +791,53 @@ class RHRace():
             self._racecontext.rhui.emit_result_data()
 
     @catchLogExceptionsWrapper
+    def filter_within_min_lap_by_peak(self, node_index, crossing_time, min_lap):
+        # get list of possible laps to review, starting from most recent
+        check_laps = list(reversed(self.node_laps[node_index]))
+        for idx, lap in enumerate(check_laps):
+            if crossing_time < lap.lap_time_stamp + min_lap:
+                continue # keep lap, move to next item
+            del check_laps[idx:] # remove other laps from consideration and stop checking
+            break
+
+        if len(check_laps) < 2: # self plus at least 1 lap to compare
+            return # exit if no laps to check
+
+        # find any prior active lap
+        any_prior_lap = False
+        for lap in check_laps[1:]:
+            if not lap.deleted:
+                any_prior_lap = True
+                break
+
+        if not any_prior_lap:
+            return # exit if no valid laps in comparison window
+
+        logger.debug('Found multiple crossings within min_lap')
+
+        # find highest peak
+        highest_peak = max(x.peak_rssi if x.deleted == False and x.peak_rssi else 0 for x in check_laps)
+        logger.debug('Highest Peak: {}'.format(highest_peak))
+
+        # write lap data back to table
+        index_offset = len(self.node_laps[node_index]) - len(check_laps)
+        found_lap = False
+        for idx, check_lap in enumerate(list(reversed(check_laps))):
+            race_lap_index = index_offset + idx
+            race_lap = self.node_laps[node_index][race_lap_index]
+            if not check_lap.deleted:
+                if (race_lap.peak_rssi if race_lap.peak_rssi else 0) == highest_peak and not found_lap:
+                    logger.debug('Marking as active: {}'.format(race_lap))
+                    race_lap.deleted = False
+                    found_lap = True
+                else:
+                    logger.debug('Marking as deleted: {}'.format(race_lap))
+                    race_lap.deleted = True
+
+        # recalculate lap info
+        self.calc_lap_times(node_index, index_offset)
+
+    @catchLogExceptionsWrapper
     def add_lap(self, node, lap_timestamp_absolute, source, **kwargs):
         '''Handles pass records from the nodes.'''
         APP.app_context().push()
@@ -890,7 +937,7 @@ class RHRace():
                                                        lap_time_fmtstr, lap_ts_fmtstr, \
                                                        node.under_min_lap_count, self._racecontext.interface.get_lap_source_str(source), \
                                                        pilot_namestr))
-                                    if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
+                                    if min_lap_behavior == 1:  # if behavior is 'Discard new short laps'
                                         lap_ok_flag = False
 
                                 if lap_ok_flag and race_format.unlimited_time == 0 and \
@@ -972,6 +1019,10 @@ class RHRace():
                                 lap_data.peak_rssi = kwargs.get('peak', None)
 
                                 self.node_laps[node.index].append(lap_data)
+
+                                if min_lap_behavior == 2:  # if behavior is 'Ignore lower peaks'
+                                    self.filter_within_min_lap_by_peak(node.index, lap_time_stamp, min_lap * 1000)
+                                    lap_data = self.node_laps[node.index][-1]
 
                                 self.clear_results()
 
@@ -1148,59 +1199,56 @@ class RHRace():
         self._racecontext.rhui.emit_current_leaderboard() # generate and update leaderboard
 
     @catchLogExceptionsWrapper
-    def delete_lap(self, data):
+    def delete_lap(self, node_index, lap_index, update_race_state=True):
         '''Delete a false lap.'''
 
         with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            # mark lap deleted
+            self.node_laps[node_index][lap_index].deleted = True
 
-            node_index = data['node']
-            lap_index = data['lap_index']
-
-            if node_index is None or lap_index is None:
-                logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
-                return
-
-            self.node_laps[node_index][lap_index].invalid = True
-
-            time = self.node_laps[node_index][lap_index].lap_time_stamp
+            deleted_crossing_time = self.node_laps[node_index][lap_index].lap_time_stamp
 
             race_format = self.format
             self.set_node_finished_flag(node_index, False)
             lap_number = 0
+            # Renumber laps
             for lap in self.node_laps[node_index]:
-                lap.deleted = False
-                if self.get_node_finished_flag(node_index):
-                    lap.late_lap = True
-                    lap.deleted = True
-                else:
-                    lap.late_lap = False
-
-                if lap.invalid:
+                if lap.deleted:
                     lap.lap_number = None
-                    lap.deleted = True
                 else:
                     lap.lap_number = lap_number
+
+                    if self.get_node_finished_flag(node_index):
+                        lap.late_lap = True
+                    else:
+                        lap.late_lap = False
+
+                    # recheck if pilot finished
                     if race_format.unlimited_time == 0 and lap.lap_time_stamp > (race_format.race_time_sec * 1000) or \
                         (race_format.win_condition == WinCondition.FIRST_TO_LAP_X and lap_number >= race_format.number_laps_win):
                         self.set_node_finished_flag(node_index)
-                    lap_number += 1
 
-            db_last = False
-            db_next = False
+                    lap_number += 1 # increment lap number for next loop
+
+            # find active laps preceding and following deleted lap
+            lap_preceding = False
+            lap_following = False
             for lap in self.node_laps[node_index]:
-                if not lap.invalid and ((not lap.deleted) or lap.late_lap):
-                    if lap.lap_time_stamp < time:
-                        db_last = lap
-                    if lap.lap_time_stamp > time:
-                        db_next = lap
+                if (not lap.deleted) or lap.late_lap:
+                    if lap.lap_time_stamp < deleted_crossing_time:
+                        lap_preceding = lap
+                    if lap.lap_time_stamp > deleted_crossing_time:
+                        lap_following = lap
                         break
 
-            if db_next and db_last:
-                db_next.lap_time = db_next.lap_time_stamp - db_last.lap_time_stamp
-                db_next.lap_time_formatted = RHUtils.format_time_to_str(db_next.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
-            elif db_next:
-                db_next.lap_time = db_next.lap_time_stamp
-                db_next.lap_time_formatted = RHUtils.format_time_to_str(db_next.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+            if lap_following and lap_preceding:
+                # lap is in between
+                lap_following.lap_time = lap_following.lap_time_stamp - lap_preceding.lap_time_stamp
+                lap_following.lap_time_formatted = RHUtils.format_time_to_str(lap_following.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+            elif lap_following:
+                # lap is before others
+                lap_following.lap_time = lap_following.lap_time_stamp
+                lap_following.lap_time_formatted = RHUtils.format_time_to_str(lap_following.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
 
             try:  # delete any split laps for deleted lap
                 lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_number)
@@ -1216,23 +1264,23 @@ class RHRace():
 
             logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-            self.clear_results()
-            self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
-            self.get_results()  # update leaderboard before checking possible updated winner/leader
-            self.check_win_condition(deletedLap=True)  # handle possible change in win status
+            if update_race_state:
+                self.clear_results()
+                self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+                self.get_results()  # update leaderboard before checking possible updated winner/leader
+                self.check_win_condition(deletedLap=True)  # handle possible change in win status
 
-            # handle possible change in race leader
-            if race_format.team_racing_mode == RacingMode.INDIVIDUAL:
-                leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
-                if leader_pilot_id != RHUtils.PILOT_ID_NONE:
-                    self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
-                    leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
-                    if leader_pilot_obj:
-                        logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
+                # handle possible change in race leader
+                if race_format.team_racing_mode == RacingMode.INDIVIDUAL:
+                    leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
+                    if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+                        self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
+                        leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
+                        if leader_pilot_obj:
+                            logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
 
-            self._racecontext.rhui.emit_current_laps() # Race page, update web client
-            self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
-
+                self._racecontext.rhui.emit_current_laps() # Race page, update web client
+                self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
 
     def replace_laps(self, data):
         node = data['seat']
@@ -1269,35 +1317,18 @@ class RHRace():
             'seat': node,
         })
 
-
     @catchLogExceptionsWrapper
-    def restore_deleted_lap(self, data):
+    def restore_deleted_lap(self, node_index, lap_index, update_race_state=True):
         '''Restore a deleted (or "late") lap.'''
 
         with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
-
-            node_index = data['node']
-            lap_index = data['lap_index']
-
-            if node_index is None or lap_index is None:
-                logger.error("Bad parameter in 'on_restore_deleted_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
-                return
-
             lap_obj = self.node_laps[node_index][lap_index]
 
+            # remove deleted flag
             lap_obj.deleted = False
             lap_obj.late_lap = False
 
-            lap_number = 0  # adjust lap numbers and times as needed
-            last_lap_ts = 0
-            for idx, lap in enumerate(self.node_laps[node_index]):
-                if not lap.deleted:
-                    if idx >= lap_index:
-                        lap.lap_number = lap_number
-                        lap.lap_time = lap.lap_time_stamp - last_lap_ts
-                        lap.lap_time_formatted = RHUtils.format_time_to_str(lap.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
-                    last_lap_ts = lap.lap_time_stamp
-                    lap_number += 1
+            self.calc_lap_times(node_index, lap_index)
 
             self._racecontext.events.trigger(Evt.LAP_RESTORE_DELETED, {
                 'node_index': node_index,
@@ -1305,22 +1336,36 @@ class RHRace():
 
             logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
-            self.clear_results()
-            self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
-            self.get_results()  # update leaderboard before checking possible updated winner/leader
-            self.check_win_condition(deletedLap=True)  # handle possible change in win status
+            if update_race_state:
+                self.clear_results()
+                self.pass_invoke_func_queue_obj.waitForQueueEmpty()  # wait until any active pass-record processing is finished
+                self.get_results()  # update leaderboard before checking possible updated winner/leader
+                self.check_win_condition(deletedLap=True)  # handle possible change in win status
 
-            # handle possible change in race leader
-            if self.format and self.format.team_racing_mode == RacingMode.INDIVIDUAL:
-                leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
-                if leader_pilot_id != RHUtils.PILOT_ID_NONE:
-                    self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
-                    leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
-                    if leader_pilot_obj:
-                        logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
+                # handle possible change in race leader
+                if self.format and self.format.team_racing_mode == RacingMode.INDIVIDUAL:
+                    leader_pilot_id = Results.get_leading_pilot_id(self, self._racecontext.interface, True)
+                    if leader_pilot_id != RHUtils.PILOT_ID_NONE:
+                        self._racecontext.rhui.emit_phonetic_leader(leader_pilot_id)
+                        leader_pilot_obj = self._racecontext.rhdata.get_pilot(leader_pilot_id)
+                        if leader_pilot_obj:
+                            logger.info('Pilot {} is leading (after deleted lap)'.format(leader_pilot_obj.callsign))
 
-            self._racecontext.rhui.emit_current_laps() # Race page, update web client
-            self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
+                self._racecontext.rhui.emit_current_laps() # Race page, update web client
+                self._racecontext.rhui.emit_current_leaderboard() # Race page, update web client
+
+    @catchLogExceptionsWrapper
+    def calc_lap_times(self, node_index, start_index=0):
+        lap_number = 0
+        last_lap_ts = 0
+        for idx, lap in enumerate(self.node_laps[node_index]):
+            if not lap.deleted:
+                if idx >= start_index:
+                    lap.lap_number = lap_number
+                    lap.lap_time = lap.lap_time_stamp - last_lap_ts
+                    lap.lap_time_formatted = RHUtils.format_time_to_str(lap.lap_time,self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+                last_lap_ts = lap.lap_time_stamp
+                lap_number += 1
 
     @catchLogExceptionsWrapper
     def discard_laps(self, **kwargs):
@@ -1662,9 +1707,8 @@ class RHRace():
             fastest_lap_index = None
             last_lap_id = -1
             for idx, lap in enumerate(self.node_laps[node_idx]):
-                if (not lap.invalid) and \
-                    ((not lap.deleted) or lap.late_lap):
-                    if not lap.late_lap:
+                if not lap.invalid:
+                    if (not lap.late_lap) or lap.deleted:
                         last_lap_id = lap_number = lap.lap_number
                         if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
                             lap_number += 1
