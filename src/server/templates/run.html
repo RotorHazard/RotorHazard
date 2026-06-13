@@ -356,6 +356,24 @@
 			return false;
 		}
 
+		function isDiscardConfirmPopupOpen() {
+			var el = document.getElementById('discard_laps_confirm');
+			return el && $(el).closest('.mfp-wrap').length > 0;
+		}
+
+		function notifyDiscardNoLongerAvailable() {
+			$('.race_status_message').html(__('Discard is no longer available'));
+			rotorhazard.discard_unavailable_notice = true;
+		}
+
+		function dismissDiscardConfirmIfNeeded() {
+			if (!isDiscardConfirmPopupOpen()) {
+				return;
+			}
+			$.magnificPopup.close();
+			notifyDiscardNoLongerAvailable();
+		}
+
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
@@ -478,6 +496,10 @@
 						socket.emit('get_race_scheduled');
 					}
 					break;
+			}
+
+			if ($('button#discard_laps').prop('disabled')) {
+				dismissDiscardConfirmIfNeeded();
 			}
 
 			resume_check = false;
@@ -1048,7 +1070,12 @@
 				$('#team_leaderboard').append(build_team_leaderboard(race.team_leaderboard[leaderboard_type], leaderboard_type, race.team_leaderboard.meta));
 			}
 
-			$('.race_status_message').html(race.status_msg);
+			if (rotorhazard.discard_unavailable_notice) {
+				$('.race_status_message').html(__('Discard is no longer available'));
+				rotorhazard.discard_unavailable_notice = false;
+			} else {
+				$('.race_status_message').html(race.status_msg);
+			}
 		});
 
 		function callout_current_leader(pilot_phonetic, separate_call_flag) {
@@ -1258,18 +1285,22 @@
 				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
+				dismissDiscardConfirmIfNeeded();
 				socket.emit('save_laps');
 			}
 		});
 
-		$('button#discard_laps').click(function (event) {
-			if(!$(this).prop('disabled')) {
+		$('button#confirm_discard_laps').click(function (event) {
+			$.magnificPopup.close();
+			if (!$('button#discard_laps').prop('disabled')) {
 				$('button#start_race').prop('disabled', true);
 				$('button#stop_race').prop('disabled', true);
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
 				$('.time-display').html('--:--');
 				socket.emit('discard_laps');
+			} else {
+				notifyDiscardNoLongerAvailable();
 			}
 		});
 
@@ -2888,7 +2919,7 @@
 			<button id="start_race"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
 			<button id="stop_race" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
 			<button id="save_laps" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save and Clear') }}</span></button>
-			<button id="discard_laps" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+			<button id="discard_laps" class="open-mfp-popup" data-mfp-src="#discard_laps_confirm" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 
 			<label for="set_race_format" class="screen-reader-text">{{ __('Race Format') }}</label>
 			<select id="set_race_format">
@@ -2896,6 +2927,15 @@
 			</select>
 
 			<span id="next-round"></span>
+		</div>
+
+		<div id="discard_laps_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Confirm') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Are you sure?') }}</p>
+				<p><button class="btn-danger" id="confirm_discard_laps">{{ __('Yes') }}</button>
+					<button class="cancel">{{ __('No') }}</button></p>
+			</div>
 		</div>
 
 		<div id="practice-warning" style="display:none">{{ __('Practice mode: Races will not be saved until a heat is selected') }}</div>
