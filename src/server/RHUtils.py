@@ -41,11 +41,12 @@ def format_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     seconds = over // 1000
     over = over % 1000
     milliseconds = over
+    total_seconds = millis // 1000
 
     if not timeformat:
         timeformat = '{m}:{s}.{d}'
 
-    return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
+    return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3), t=str(total_seconds))
 
 def format_split_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000 with leading zeros removed'''
@@ -57,25 +58,33 @@ def format_split_time_to_str(millis, timeformat='{m}:{s}.{d}'):
         s = s[p:]
     return s
 
-def format_phonetic_time_to_str(millis, timeformat='{m} {s}.{d}'):
+def format_phonetic_time_to_str(millis, timeformat='{m} {s} point {d}'):
     '''Convert milliseconds to phonetic callout string'''
     if not isinstance(millis, (int, float)):
         return ''
 
-    millis = int(millis) # strip fractional part
+    millis = int(round(millis, 0))  # round to nearest ms
     minutes = millis // 60000
     over = millis % 60000
     seconds = over // 1000
     over = over % 1000
-    tenths = over // 100 # floor at tenths
+    total_seconds = millis // 1000
+    tenths = int(round(over / 100.0))  # round to nearest tenth
+    if tenths > 9:
+        tenths = 0
+        total_seconds += 1
+        seconds += 1
+        if seconds > 59:
+            seconds = 0
+            minutes += 1
 
     if not timeformat:
-        timeformat = '{m} {s}.{d}'
+        timeformat = '{m} {s} point {d}'
 
     if minutes <= 0:
-        return timeformat.format(m='', s=str(seconds), d=str(tenths))
+        return timeformat.format(m='', s=str(seconds), d=str(tenths), t=str(total_seconds))
     else:
-        return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
+        return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths), t=str(total_seconds))
 
 # Formats the given seconds value to a time-duration string in the form MM:SS:mmm
 def format_secs_to_duration_str(secs_val):

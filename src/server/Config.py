@@ -105,7 +105,7 @@ class Config:
         self.config['UI']['contrast_1_high'] = '#000000'
         self.config['UI']['currentLanguage'] = ''
         self.config['UI']['timeFormat'] = '{m}:{s}.{d}'
-        self.config['UI']['timeFormatPhonetic'] = '{m} {s}.{d}'
+        self.config['UI']['timeFormatPhonetic'] = '{m} {s} point {d}'
         self.config['UI']['pilotSort'] = 'name'
 
         # timing
