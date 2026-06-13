@@ -21,6 +21,10 @@
 /src/server/cfg_bkp
 datapath.ini
 
+# Docker data directory (per-environment files)
+/data/config.json
+/data/cfg_bkp/
+
 # Run logs
 logs
 
