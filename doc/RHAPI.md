@@ -118,6 +118,13 @@ Fired at the exact moment the race begins.
 - `heat_id` (int): ID of the current heat
 - `color` (str): RGB hex color associated with this event
 
+#### Evt.RACE_CLOCK_CALLOUT
+
+Emitted at race clock callout milestones in count-down race formats. Each event is sent before the milestone by `GENERAL > SYNC_LEADTIME_SECS`, while `scheduled_at_monotonic` identifies the exact time the milestone occurs. Plugins can use that timestamp to schedule race clock audio, hardware effects, or other time-sensitive integrations in sync with the race clock.
+
+- `seconds_remaining` (int): Number of seconds remaining when this callout is due
+- `scheduled_at_monotonic` (float): Monotonic timestamp of when this callout is due; use this to schedule time-sensitive audio output
+
 #### Evt.RACE_FINISH
 
 Fired when the race timer expires (count-down formats only). The race is still in progress until `Evt.RACE_STOP`.

@@ -23,7 +23,7 @@ APP.app_context().push()
 
 logger = logging.getLogger(__name__)
 
-RACE_CLOCK_WARNING_THRESHOLDS = (60, 30, 10, 5, 4, 3, 2, 1, 0)
+RACE_CLOCK_CALLOUT_THRESHOLDS = (60, 30, 10, 5, 4, 3, 2, 1, 0)
 
 @dataclass
 class Crossing(dict):
@@ -512,19 +512,23 @@ class RHRace():
             if race_format and race_format.unlimited_time == 0: # count down
                 race_time = race_format.race_time_sec
                 race_end_monotonic = self.start_time_monotonic + race_time
-                for threshold in RACE_CLOCK_WARNING_THRESHOLDS:
+                sync_leadtime = float(self._racecontext.serverconfig.get_item('GENERAL', 'SYNC_LEADTIME_SECS'))
+                for threshold in RACE_CLOCK_CALLOUT_THRESHOLDS:
                     if threshold >= race_time:
                         continue
                     scheduled_at_monotonic = race_end_monotonic - threshold
-                    sleep_time = scheduled_at_monotonic - monotonic()
+                    sleep_time = scheduled_at_monotonic - sync_leadtime - monotonic()
                     if sleep_time > 0:
                         gevent.sleep(sleep_time)
                     if self.race_status != RaceStatus.RACING or self.start_token != start_token:
                         return
-                    self._racecontext.events.trigger(Evt.RACE_CLOCK_WARNING, {
+                    self._racecontext.events.trigger(Evt.RACE_CLOCK_CALLOUT, {
                         'seconds_remaining': threshold,
                         'scheduled_at_monotonic': scheduled_at_monotonic,
                     })
+                sleep_time = race_end_monotonic - monotonic()
+                if sleep_time > 0:
+                    gevent.sleep(sleep_time)
                 # if race still in progress and is still same race
                 if self.race_status == RaceStatus.RACING and self.start_token == start_token:
                     logger.info("Race count-down timer reached expiration")
