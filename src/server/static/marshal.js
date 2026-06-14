@@ -156,7 +156,6 @@ class RHMarshal {
 	graphSetup() {
 		self.context = self.elements.graph_canvas.getContext('2d');
 		self.graph = new SmoothieChart({
-			interpolation: 'step',
 			responsive: true,
 			grid:{
 				strokeStyle:'rgba(255,255,255,0.1)',
