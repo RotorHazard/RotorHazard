@@ -379,6 +379,24 @@ ol.form ul {
 	padding: 0;
 }
 
+.uifield-range {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+.uifield-range input[type="range"] {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.uifield-range-value {
+	display: inline-block;
+	min-width: 3em;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
 ol.form li+li {
 	margin-top: 0.5em;
 }
@@ -398,7 +416,8 @@ ol.form li+li {
 
 	ol.form input,
 	ol.form textarea,
-	ol.form select {
+	ol.form select,
+	ol.form .uifield-range {
 		flex: 1 1 0;
 		margin-left: 0.5em;
 	}
