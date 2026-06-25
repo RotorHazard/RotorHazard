@@ -3381,6 +3381,11 @@ class RHData():
 
     def get_round_num_for_heat(self, heat_id):
         if heat_id and heat_id is not RHUtils.HEAT_ID_NONE:
+            heat = self.get_heat(heat_id)
+            if heat and heat.class_id:
+                race_class = self.get_raceClass(heat.class_id)
+                if race_class and race_class.round_type == RoundType.GROUPED:
+                    return heat.group_id + 1
             round_idx = self.get_max_round(heat_id)
             if type(round_idx) is int:
                 return round_idx + 1
