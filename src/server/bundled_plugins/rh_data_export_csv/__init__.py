@@ -208,7 +208,7 @@ def assemble_results(rhapi):
 
         payload.append([''])
 
-    all_classes = sorted(list(results['heats_by_class'].keys()))
+    all_classes = sorted(list(results['heats_by_class'].keys()), key=lambda x: (x is None, x))
 
     if all_classes:
         payload.append([rhapi.__('Class Leaderboards')])
