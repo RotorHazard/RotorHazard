@@ -7,6 +7,7 @@
 /.pydevproject
 /RotorHazard.iml
 /.idea
+/.vscode
 /src/libraries
 
 # RH Database and backups
