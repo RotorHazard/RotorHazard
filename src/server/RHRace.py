@@ -521,6 +521,7 @@ class RHRace():
                     if sleep_time > 0:
                         gevent.sleep(sleep_time)
                     if self.race_status != RaceStatus.RACING or self.start_token != start_token:
+                        logger.debug("Ending race-time-expire thread {}".format(start_token))
                         return
                     self._racecontext.events.trigger(Evt.RACE_CLOCK_CALLOUT, {
                         'seconds_remaining': threshold,
