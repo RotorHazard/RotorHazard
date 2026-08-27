@@ -1008,6 +1008,7 @@ def on_load_data(data):
             logger.warning('Called undefined load type: {}'.format(load_type))
 
 @SOCKET_IO.on('broadcast_message')
+@requires_socketio_auth
 @catchLogExceptionsWrapper
 def on_broadcast_message(data):
     RaceContext.rhui.emit_priority_message(data['message'], data['interrupt'])
@@ -1989,6 +1990,7 @@ def on_restart_server():
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
 
 @SOCKET_IO.on('cancel_restart_required')
+@requires_socketio_auth
 def on_cancel_restart_required():
     '''Cancels the pending-restart-required condition.'''
     RaceContext.serverstate.clear_restart_required()
@@ -2729,6 +2731,7 @@ def on_set_config_section(data):
         })
 
 @SOCKET_IO.on('set_ui_binding_value')
+@requires_socketio_auth
 @catchLogExcWithDBWrapper
 def on_set_ui_binding_value(data):
     for var in RaceContext.rhui.ui_fn_bindings:
@@ -2773,6 +2776,7 @@ def reload_callouts(*args):
     RaceContext.rhui.emit_callouts()
 
 @SOCKET_IO.on('play_callout_text')
+@requires_socketio_auth
 @catchLogExcWithDBWrapper
 def play_callout_text(data):
     delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" or %PILOTS_INTERVAL_#_SECS% provided
@@ -2802,6 +2806,7 @@ def clean_results_cache(*args):
     RaceContext.pagecache.set_valid(False)
 
 @SOCKET_IO.on('retry_secondary')
+@requires_socketio_auth
 @catchLogExceptionsWrapper
 def on_retry_secondary(data):
     '''Retry connection to secondary timer.'''
