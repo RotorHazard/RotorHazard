@@ -4675,6 +4675,10 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             text = text.replace('%LEADER%', name_str)
             if len(name_str) > 0:
                 name_str = "{} {}".format(name_str, rhapi.__('is leading'))
+            elif rhapi.race.status in (RaceStatus.RACING, RaceStatus.DONE):
+                name_str = rhapi.__('No one is leading')
+            else:
+                name_str = rhapi.__('There is no race in progress')
             # %LEADER_CALL% : Callsign of pilot currently leading race, in the form "NAME is leading"
             text = text.replace('%LEADER_CALL%', name_str)
 
