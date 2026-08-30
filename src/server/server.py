@@ -255,6 +255,8 @@ HEARTBEAT_DATA_RATE_FACTOR = 5
 # cached copy of GENERAL/ADMIN_SOCKET_AUTH; kept in sync by 'on_set_config'
 AdminAuth.set_admin_socket_auth_enabled(RaceContext.serverconfig.get_item('GENERAL', 'ADMIN_SOCKET_AUTH'))
 
+SPEAK_QUEUE_PAUSE_TIMEOUT_SECS = 5  # auto-resume if no priority callout arrives while paused
+
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
 IMDTABLER_JAR_NAME =  PROGRAM_DIR + '/static/IMDTabler.jar'
@@ -2972,20 +2974,37 @@ def save_callouts(data):
 def reload_callouts(*args):
     RaceContext.rhui.emit_callouts()
 
+@SOCKET_IO.on('pause_speaking_queue')
+@requires_socketio_auth
+@catchLogExceptionsWrapper
+def on_pause_speaking_queue(*args):
+    '''Holds client speak-queue processing'''
+    RaceContext.rhui.emit_pause_speaking_queue(SPEAK_QUEUE_PAUSE_TIMEOUT_SECS)
+
+@SOCKET_IO.on('resume_speaking_queue')
+@requires_socketio_auth
+@catchLogExceptionsWrapper
+def on_resume_speaking_queue(*args):
+    '''Resumes client speak-queue processing paused by 'pause_speaking_queue'.'''
+    RaceContext.rhui.emit_resume_speaking_queue()
+
 @SOCKET_IO.on('play_callout_text')
 @requires_socketio_auth
 @catchLogExcWithDBWrapper
 def play_callout_text(data):
+    priority = data.get('priority', False)  # if set then put at front of client speak queue
     delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" or %PILOTS_INTERVAL_#_SECS% provided
     message = RHData.doReplace(RHAPI, data['callout'], {}, True, delay_sec_holder)
     if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
-        RaceContext.rhui.emit_phonetic_text(message)
+        RaceContext.rhui.emit_phonetic_text(message, priority=priority, resume_queue=priority)
     else:
         if not isinstance(message, list):
-            gevent.spawn_later(delay_sec_holder[0], RaceContext.rhui.emit_phonetic_text, message)
+            gevent.spawn_later(delay_sec_holder[0], RaceContext.rhui.emit_phonetic_text, message,
+                               priority=priority, resume_queue=priority)
         else:
             for i, piece in enumerate(message):
-                gevent.spawn_later(delay_sec_holder[0]*(i+1), RaceContext.rhui.emit_phonetic_text, piece)
+                gevent.spawn_later(delay_sec_holder[0]*(i+1), RaceContext.rhui.emit_phonetic_text, piece,
+                                   priority=priority, resume_queue=priority)
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
