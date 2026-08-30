@@ -4489,6 +4489,43 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                 text = text.replace(':00 ', (' ' + rhapi.__('minute') + ' '))
             text = text.replace('/', ' ')
 
+        if '%RACE_TIME' in text:
+            race_time_str = ''
+            call_time_str = ''
+            if rhapi.race.status in (RaceStatus.RACING, RaceStatus.DONE):
+                start_mtonic = rhapi.race.start_time_internal
+                if start_mtonic:  # zero if the race was staged but never started
+                    elapsed_secs = monotonic() - start_mtonic
+                    # race values, not format values; co-op mode overrides them
+                    if rhapi.race.unlimited_time or not rhapi.race.race_time_sec:
+                        show_secs = elapsed_secs
+                    else:  # counts on past zero into overtime, as the browser clock does
+                        show_secs = rhapi.race.race_time_sec - elapsed_secs
+                    if spoken_flag:
+                        tformat = rhapi.config.get_item('UI', 'timeFormatPhonetic')
+                        fmt_fn = RHUtils.format_phonetic_time_to_str
+                        neg_prefix = rhapi.__('minus') + ' '
+                    else:
+                        tformat = rhapi.config.get_item('UI', 'timeFormat')
+                        fmt_fn = RHUtils.format_time_to_str
+                        neg_prefix = '-'
+                    call_format = tformat.replace('.{d}', '').replace('{d}', '')
+                    # both formatters mis-handle negatives, so sign it separately
+                    show_ms = abs(show_secs) * 1000
+                    race_time_str = fmt_fn(show_ms, tformat)
+                    call_time_str = fmt_fn(show_ms, call_format)
+                    if show_secs < 0:
+                        race_time_str = neg_prefix + race_time_str
+                        call_time_str = neg_prefix + call_time_str
+            # %RACE_TIME% : Current race-clock time (empty if no race in progress)
+            text = text.replace('%RACE_TIME%', race_time_str)
+            # %RACE_TIME_CALL% : Current race-clock time, whole seconds (with prompt, or idle message)
+            if len(call_time_str) > 0:
+                call_time_str = "{} {}".format(rhapi.__('Race time is'), call_time_str)
+            else:
+                call_time_str = rhapi.__('There is no race in progress')
+            text = text.replace('%RACE_TIME_CALL%', call_time_str)
+
         # %PILOTS% : List of pilot callsigns (read out slower)
         if '%PILOTS%' in text:
             text = text.replace('%PILOTS%', getPilotsListStr(rhapi, ' . ', spoken_flag))
