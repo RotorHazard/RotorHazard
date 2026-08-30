@@ -296,6 +296,8 @@ The variables listed below may be used for the  effects.
 | %WINNER_CALL%             | Pilot callsign for winner of race (with prompt)                         |
 | %PREVIOUS_WINNER%         | Pilot callsign for winner of previous race                              |
 | %PREVIOUS_WINNER_CALL%    | Pilot callsign for winner of previous race (with prompt)                |
+| %RACE_TIME%               | Current race-clock time (empty if no race in progress)                  |
+| %RACE_TIME_CALL%          | Current race-clock time (with prompt, or idle message)                  |
 | %PILOTS%                  | List of pilot callsigns (read out slower)                               |
 | %LINEUP%                  | List of pilot callsigns (read out faster)                               |
 | %FREQS%                   | List of pilot callsigns and frequency assignments                       |
