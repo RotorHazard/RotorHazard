@@ -27,6 +27,8 @@ const RACING_MODE_COOP = 2;   // COOP_ENABLED
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
 var checkSpeakQueueCntr = 0;
+var speakQueuePausedFlag = false;
+var speakQueuePauseTimer = null;
 // cleared by layout-basic.html so stream-overlay pages stay silent
 var speakServerTextFlag = true;
 var reloading = false;
@@ -579,6 +581,23 @@ function doSpeak(obj) {
 		}
 	}
 	return false;
+};
+
+// Pauses speak-queue processing, resumed by resumeSpeakQueue(), by a priority callout arriving, or by the timeout
+function pauseSpeakQueue(timeout_secs) {
+	speakQueuePausedFlag = true;
+	if (speakQueuePauseTimer) {
+		clearTimeout(speakQueuePauseTimer);
+	}
+	speakQueuePauseTimer = setTimeout(resumeSpeakQueue, (timeout_secs || 5) * 1000);
+};
+
+function resumeSpeakQueue() {
+	speakQueuePausedFlag = false;
+	if (speakQueuePauseTimer) {
+		clearTimeout(speakQueuePauseTimer);
+		speakQueuePauseTimer = null;
+	}
 };
 
 function speak(obj, priority) {
@@ -1751,13 +1770,19 @@ jQuery(document).ready(function($){
 		}
 		if (msg.text) {
 			if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
-				speak('<div class="speech">' + __l(msg.text) + '</div>');
+				speak('<div class="speech">' + __l(msg.text) + '</div>', msg.priority);
 			}
+		}
+		if (msg.resume_queue) {  // the awaited reply arrived, so stop holding the queue
+			resumeSpeakQueue();
 		}
 	});
 
 	// process the speak queue
 	socket.on('heartbeat', function (msg) {
+		if (speakQueuePausedFlag) {
+			return;
+		}
 		if (speakObjsQueue.length > 0) {
 			var isSpeakingFlag = $().articulate('isSpeaking');
 			if (checkSpeakQueueFlag) {
@@ -1777,6 +1802,14 @@ jQuery(document).ready(function($){
 				checkSpeakQueueCntr = 0;
 			}
 		}
+	});
+
+	socket.on('pause_speaking_queue', function (msg) {
+		pauseSpeakQueue(msg ? msg.timeout : undefined);
+	});
+
+	socket.on('resume_speaking_queue', function () {
+		resumeSpeakQueue();
 	});
 
 	socket.on('clear_priority_messages', function () {
