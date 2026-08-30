@@ -251,27 +251,6 @@
 			show_current_laps();
 		});
 
-		socket.on('heartbeat', function (msg) {
-			if (speakObjsQueue.length > 0) {
-				var isSpeakingFlag = $().articulate('isSpeaking');
-				if (checkSpeakQueueFlag) {
-					if (!isSpeakingFlag) {
-						var obj = speakObjsQueue.shift();
-						if (speakObjsQueue.length > 0)    //if more items in queue then
-							checkSpeakQueueFlag = false;  //don't check again until speaking begins
-							checkSpeakQueueCntr = 10;     //set timeout counter to make sure the wait is not indefinite
-						if (!doSpeak(obj)) {                  //if speaking not triggered then
-							checkSpeakQueueFlag = true;       //don't wait for it
-						}
-					}
-				}  //make sure previous speak has started before checking queue again (up to timeout)
-				else if (isSpeakingFlag || --checkSpeakQueueCntr <= 0) {
-					checkSpeakQueueFlag = true;
-					checkSpeakQueueCntr = 0;
-				}
-			}
-		});
-
 		socket.on('frequency_data', function (msg) {
 			if (msg.fdata.length) {
 				for (var i in msg.fdata) {
@@ -552,20 +531,6 @@
 				}
 				if (ttstext.length > 0) {
 					speak('<div class="speech">' + ttstext + '</div>');
-				}
-			}
-		})
-
-		socket.on('phonetic_text', function (msg) {
-			if (msg.winner_flag) {
-				if (rotorhazard.beep_race_winner_declared) {
-					speak(WINNER_FLAG_CHAR);
-				}
-				rotorhazard.winner_declared_flag = true;
-			}
-			if (msg.text) {
-				if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
-					speak('<div class="speech">' + __l(msg.text) + '</div>');
 				}
 			}
 		})

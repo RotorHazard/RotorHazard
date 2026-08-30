@@ -27,6 +27,8 @@ const RACING_MODE_COOP = 2;   // COOP_ENABLED
 var speakObjsQueue = [];
 var checkSpeakQueueFlag = true;
 var checkSpeakQueueCntr = 0;
+// cleared by layout-basic.html so stream-overlay pages stay silent
+var speakServerTextFlag = true;
 var reloading = false;
 
 /* global functions */
@@ -1579,6 +1581,12 @@ function get_default_articulate_voice() {
 rotorhazard.voice_language = get_default_articulate_voice();  // set initial default voice
 rotorhazard.restoreData();
 
+// push settings into the speech plugin (so the audio-sliders settings are applied on all pages)
+if (typeof jQuery != 'undefined') {
+	$().articulate('volume', rotorhazard.voice_volume);
+	$().articulate('rate', rotorhazard.voice_rate);
+	$().articulate('pitch', rotorhazard.voice_pitch);
+}
 
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
@@ -1728,6 +1736,47 @@ jQuery(document).ready(function($){
 	$(document).on('click', 'a.restore-deleted-race-link', function (event) {
 		event.preventDefault();
 		confirm_restore_deleted_race($(this).data('id'), $(this).data('label'));
+	});
+
+	// speech pushed from the server
+	socket.on('phonetic_text', function (msg) {
+		if (!speakServerTextFlag) {
+			return;
+		}
+		if (msg.winner_flag) {
+			if (rotorhazard.beep_race_winner_declared) {
+				speak(WINNER_FLAG_CHAR);
+			}
+			rotorhazard.winner_declared_flag = true;
+		}
+		if (msg.text) {
+			if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
+				speak('<div class="speech">' + __l(msg.text) + '</div>');
+			}
+		}
+	});
+
+	// process the speak queue
+	socket.on('heartbeat', function (msg) {
+		if (speakObjsQueue.length > 0) {
+			var isSpeakingFlag = $().articulate('isSpeaking');
+			if (checkSpeakQueueFlag) {
+				if (!isSpeakingFlag) {
+					var obj = speakObjsQueue.shift();
+					if (speakObjsQueue.length > 0) {  //if more items in queue then
+						checkSpeakQueueFlag = false;  //don't check again until speaking begins
+						checkSpeakQueueCntr = 10;     //set timeout counter to make sure the wait is not indefinite
+					}
+					if (!doSpeak(obj)) {                  //if speaking not triggered then
+						checkSpeakQueueFlag = true;       //don't wait for it
+					}
+				}
+			}  //make sure previous speak has started before checking queue again (up to timeout)
+			else if (isSpeakingFlag || --checkSpeakQueueCntr <= 0) {
+				checkSpeakQueueFlag = true;
+				checkSpeakQueueCntr = 0;
+			}
+		}
 	});
 
 	socket.on('clear_priority_messages', function () {
