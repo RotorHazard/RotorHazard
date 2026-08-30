@@ -29,6 +29,8 @@
 	<script type="text/javascript" src="/static/svgasset.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 	<script type="text/javascript">if (typeof freq !== 'undefined') { {{ freq_table | tojson }}.forEach(function (pair) { freq.frequencies[pair[0]] = pair[1]; }); }</script>
+	<!-- stream-overlay pages are captured by OBS and must not speak -->
+	<script type="text/javascript">speakServerTextFlag = false;</script>
 
 	<!-- CSS -->
 	<link rel="stylesheet" href="/static/magnific-1.1.0/magnific-popup.css"></link>
