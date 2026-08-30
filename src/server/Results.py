@@ -1399,9 +1399,16 @@ def check_win_laps_and_time(raceObj, interfaceObj, **kwargs):
             if lead_lap > 0: # must have at least one lap
                 # if race stopped then don't wait for crossing to finish
                 if raceObj.race_status != RaceStatus.DONE:
+                    lead_time_raw = leaderboard[0].get('total_time_raw', 0)
+                    race_time_ms = 1000.0 * (monotonic() - raceObj.start_time_monotonic)
+                    past_lead_time_flag = bool(lead_time_raw) and race_time_ms >= lead_time_raw
                     # prevent win declaration if there are active crossings coming onto lead lap
                     for line in leaderboard[1:]:
                         if line['laps'] >= lead_lap - 1:
+                            # a pilot a lap down can at best tie the lead lap, so is only still
+                            #  in contention while able to finish inside the leader's total time
+                            if line['laps'] < lead_lap and past_lead_time_flag:
+                                break
                             node = interfaceObj.nodes[line['node']]
                             if node.pass_crossing_flag:
                                 logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
