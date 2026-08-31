@@ -3077,13 +3077,45 @@ def refresh_audio_owners():
     for addr in list(AudioClaimants.keys()):
         update_audio_owner(addr, notify_all=True)
 
+def get_callout_pilot_args(data):
+    '''Builds the doReplace args naming a pilot, from a client-supplied callout'''
+    try:
+        try:
+            node_index = data.get('node_index')
+            node_index = int(node_index) if node_index is not None else None
+        except Exception:
+            node_index = None
+        try:
+            pilot_id = data.get('pilot_id')
+            pilot_id = int(pilot_id) if pilot_id is not None else None
+        except Exception:
+            pilot_id = None
+        if node_index is None:
+            if pilot_id is None:
+                return {}
+            node_pilots = RaceContext.race.node_pilots or {}
+            node_index = next((idx for idx, pid in node_pilots.items() if pid == pilot_id), None)
+            if node_index is None:
+                return {'pilot_id': pilot_id}
+        elif pilot_id is None:
+            node_pilots = RaceContext.race.node_pilots or {}
+            pilot_id = node_pilots.get(node_index)
+            if pilot_id is None:
+                return {'node_index': node_index}
+        # we want to have both items specified, to help with 'doReplace' substitutions
+        return {'node_index': node_index, 'pilot_id': pilot_id}
+    except Exception as ex:
+        logger.warning("Error in 'get_callout_pilot_args': {}".format(ex))
+        return {}
+
 @SOCKET_IO.on('play_callout_text')
 @requires_socketio_auth
 @catchLogExcWithDBWrapper
 def play_callout_text(data):
     priority = data.get('priority', False)  # if set then put at front of client speak queue
+    args = get_callout_pilot_args(data)  # names a pilot, for the per-pilot substitutions
     delay_sec_holder = []  # will be filled if "%DELAY_#_SECS%" or %PILOTS_INTERVAL_#_SECS% provided
-    message = RHData.doReplace(RHAPI, data['callout'], {}, True, delay_sec_holder)
+    message = RHData.doReplace(RHAPI, data.get('callout'), args, True, delay_sec_holder)
     if len(delay_sec_holder) <= 0 or not isinstance(delay_sec_holder[0], float):
         RaceContext.rhui.emit_phonetic_text(message, priority=priority, resume_queue=priority)
     else:
