@@ -3950,11 +3950,12 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                                         rhapi.config.get_item('UI', 'timeFormatPhonetic')) if spoken_flag \
                                             else RHUtils.format_split_time_to_str(args.get('split_time'), \
                                                                    rhapi.config.get_item('UI', 'timeFormat')))
-            # %SPLIT_SPEED% : Split speed for pilot
+            # %SPLIT_SPEED% : Split speed for pilot (empty when no speed was recorded)
             if '%SPLIT_SPEED%' in text:
+                split_speed_val = args.get('split_speed')
                 text = text.replace('%SPLIT_SPEED%', \
-                                        "{:.1f}".format(args.get('split_speed', 0.0)) if spoken_flag \
-                                            else str(args.get('split_speed', '')))
+                                        ("{:.1f}".format(split_speed_val) if spoken_flag \
+                                            else str(split_speed_val)) if split_speed_val is not None else '')
 
         if '%CURRENT_TIME' in text:
             now_obj = datetime.now()
