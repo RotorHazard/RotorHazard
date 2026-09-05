@@ -4357,10 +4357,19 @@ def getPilotTimeStr(rhapi, result, key, spoken_flag):
 # per-pilot tokens that are filled only from a leaderboard row; a '_CALL' token is a whole
 #  spoken sentence so it gets an idle message, a value token is a fragment so it is cleared
 PILOT_CALL_TOKENS = ('%POSITION_CALL%', '%POSITION_PLACE_CALL%', '%TIME_BEHIND_CALL%',
-                     '%TIME_BEHIND_FINPLACE_CALL%', '%TIME_BEHIND_FINPOS_CALL%')
+                     '%TIME_BEHIND_FINPLACE_CALL%', '%TIME_BEHIND_FINPOS_CALL%',
+                     '%FASTEST_LAP_CALL%', '%LAST_LAP_CALL%', '%AVERAGE_LAP_CALL%',
+                     '%FASTEST_SPEED_CALL%', '%LAST_SPEED_CALL%')
 PILOT_VALUE_TOKENS = ('%LAP_COUNT%', '%TOTAL_TIME%', '%TOTAL_TIME_LAPS%', '%FASTEST_LAP%',
                       '%LAST_LAP%', '%AVERAGE_LAP%', '%FASTEST_SPEED%', '%LAST_SPEED%',
                       '%POSITION%', '%POSITION_PLACE%', '%TIME_BEHIND%', '%CONSECUTIVE%')
+
+def replaceValueAndCallTokens(text, value_token, value_str, prompt_str):
+    text = text.replace(value_token, value_str)
+    if value_str:
+        text = text.replace(value_token[:-1] + '_CALL%', "{} {}".format(prompt_str, value_str))
+    # an empty value leaves the '_CALL' token for 'clearPilotDataTokens' to fill
+    return text
 
 def clearPilotDataTokens(rhapi, text):
     for token in PILOT_CALL_TOKENS:
@@ -4598,13 +4607,22 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                     text = text.replace('%TOTAL_TIME_LAPS%', getPilotTimeStr(rhapi, result, 'total_time_laps', spoken_flag))
 
                     # %LAST_LAP% : Last lap time for pilot
-                    text = text.replace('%LAST_LAP%', getPilotTimeStr(rhapi, result, 'last_lap', spoken_flag))
+                    # %LAST_LAP_CALL% : Last lap time for pilot (with prompt)
+                    lap_time_str = getPilotTimeStr(rhapi, result, 'last_lap', spoken_flag)
+                    text = replaceValueAndCallTokens(text, '%LAST_LAP%', lap_time_str, \
+                                                     rhapi.__('Last lap time'))
 
                     # %AVERAGE_LAP% : Average lap time for pilot
-                    text = text.replace('%AVERAGE_LAP%', getPilotTimeStr(rhapi, result, 'average_lap', spoken_flag))
+                    # %AVERAGE_LAP_CALL% : Average lap time for pilot (with prompt)
+                    lap_time_str = getPilotTimeStr(rhapi, result, 'average_lap', spoken_flag)
+                    text = replaceValueAndCallTokens(text, '%AVERAGE_LAP%', lap_time_str, \
+                                                     rhapi.__('Average lap time'))
 
-                    # %FASTEST_LAP% : Fastest lap time
-                    text = text.replace('%FASTEST_LAP%', getPilotTimeStr(rhapi, result, 'fastest_lap', spoken_flag))
+                    # %FASTEST_LAP% : Fastest lap time for pilot
+                    # %FASTEST_LAP_CALL% : Fastest lap time for pilot (with prompt)
+                    lap_time_str = getPilotTimeStr(rhapi, result, 'fastest_lap', spoken_flag)
+                    text = replaceValueAndCallTokens(text, '%FASTEST_LAP%', lap_time_str, \
+                                                     rhapi.__('Fastest lap time'))
 
                     if '%TIME_BEHIND' in text:
                         behind_str = RHUtils.format_phonetic_time_to_str( \
@@ -4642,12 +4660,16 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                             text = text.replace('%TIME_BEHIND_FINPOS_CALL%', pos_bhind_str)
 
                     # %FASTEST_SPEED% : Fastest speed for pilot
-                    text = text.replace('%FASTEST_SPEED%', getFastestSpeedStr(rhapi, spoken_flag, \
-                                                                              result.get('pilot_id')))
+                    # %FASTEST_SPEED_CALL% : Fastest speed for pilot (with prompt)
+                    speed_str = getFastestSpeedStr(rhapi, spoken_flag, result.get('pilot_id'))
+                    text = replaceValueAndCallTokens(text, '%FASTEST_SPEED%', speed_str, \
+                                                     rhapi.__('Fastest speed'))
 
                     # %LAST_SPEED% : Last speed for pilot
-                    text = text.replace('%LAST_SPEED%', getLastSpeedStr(rhapi, spoken_flag, \
-                                                                        result.get('pilot_id')))
+                    # %LAST_SPEED_CALL% : Last speed for pilot (with prompt)
+                    speed_str = getLastSpeedStr(rhapi, spoken_flag, result.get('pilot_id'))
+                    text = replaceValueAndCallTokens(text, '%LAST_SPEED%', speed_str, \
+                                                     rhapi.__('Last speed'))
 
                     # %CONSECUTIVE% : Fastest consecutive laps for pilot
                     if result.get('consecutives_base') == int(rhapi.db.option('consecutivesCount', 3)):
