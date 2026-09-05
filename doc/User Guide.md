@@ -281,6 +281,7 @@ The variables listed below may be used for the  effects.
 | %TIME_BEHIND_FINPOS_CALL% | Pilot NAME finished at position X, MM:SS.SSS behind                     |
 | %TIME_BEHIND_FINPLACE_CALL% | Pilot NAME finished in X place, MM:SS.SSS behind                      |
 | %FASTEST_SPEED%           | Fastest speed for pilot                                                 |
+| %LAST_SPEED%              | Last speed for pilot                                                    |
 | %CONSECUTIVE%             | Fastest consecutive laps for pilot                                      |
 | %TOTAL_TIME%              | Total time since start of race for pilot                                |
 | %TOTAL_TIME_LAPS%         | Total time since start of first lap for pilot                           |
