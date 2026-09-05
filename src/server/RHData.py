@@ -4332,6 +4332,34 @@ def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
     fastest_split = max(lap_splits, default=None, key=lambda s: s.split_speed)
     return getSpeedSplitStr(rhapi, fastest_split, spoken_flag, sel_pilot_id)
 
+def getResultSourceStr(rhapi, source, spoken_flag):
+    if not source:
+        return ""
+    name_str = source.get('displayname') or ''
+    if not source.get('round'):
+        return name_str
+    # a slash reads badly aloud, so the spoken form uses a comma
+    joiner = ", " if spoken_flag else " / "
+    return "{}{}{} {}".format(name_str, joiner, rhapi.__('Round'), source['round'])
+
+def getFastestEventSpeedRow(rhapi):
+    event_results = rhapi.db.event_results()  # None until a race has been saved
+    lboard_name = (event_results or {}).get('meta', {}).get('primary_leaderboard', '')
+    rows = (event_results or {}).get(lboard_name) or []
+    return max((r for r in rows if r.get('top_speed') is not None),
+               default=None, key=lambda r: r['top_speed'])
+
+def getEventSpeedRowStr(rhapi, row, spoken_flag):
+    if not row:
+        return ""
+    pilot_obj = rhapi.db.pilot_by_id(row.get('pilot_id'))
+    if spoken_flag:
+        name_str = (pilot_obj.phonetic or pilot_obj.callsign) if pilot_obj \
+                       else row.get('callsign', '')
+        return "{}, {}".format(name_str, "{:.1f}".format(row['top_speed']))
+    name_str = pilot_obj.callsign if pilot_obj else row.get('callsign', '')
+    return "{} {}".format(name_str, row['top_speed'])
+
 def getLastSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
     lap_splits = getSpeedSplitsList(rhapi, sel_pilot_id)
     # most recent pass, by race-clock time rather than record id
@@ -4469,6 +4497,47 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             if len(fastest_str) > 0:
                 fastest_str = "{} {}".format(rhapi.__('Fastest speed'), fastest_str)
             text = text.replace('%FASTEST_RACE_SPEED_CALL%', fastest_str)
+
+        if '%FASTEST_EVENT_LAP' in text:
+            event_results = rhapi.db.event_results()  # None until a race has been saved
+            fastest_lap_data = (event_results or {}).get('meta', {}).get('fastest_race_lap_data')
+            if fastest_lap_data:
+                if spoken_flag:
+                    fastest_str = "{}, {}".format(fastest_lap_data['phonetic'][0],  # pilot name
+                                                  fastest_lap_data['phonetic'][1])  # lap time
+                else:
+                    fastest_str = "{} {}".format(fastest_lap_data['text'][0],  # pilot name
+                                                 fastest_lap_data['text'][1])  # lap time
+            else:
+                fastest_str = ""
+            # %FASTEST_EVENT_LAP% : Pilot/time for fastest lap of the event
+            text = text.replace('%FASTEST_EVENT_LAP%', fastest_str)
+            # %FASTEST_EVENT_LAP_CALL% : Pilot/time for fastest lap of the event (with prompt)
+            if len(fastest_str) > 0:
+                fastest_str = "{} {}".format(rhapi.__('Fastest event lap time'), fastest_str)
+                source_str = getResultSourceStr(rhapi, (fastest_lap_data or {}).get('source'),
+                                                spoken_flag)
+                if source_str:
+                    fastest_str = "{}, {}".format(fastest_str, source_str)
+            else:
+                fastest_str = rhapi.__('There is no data for the event')
+            text = text.replace('%FASTEST_EVENT_LAP_CALL%', fastest_str)
+
+        if '%FASTEST_EVENT_SPEED' in text:
+            speed_row = getFastestEventSpeedRow(rhapi)
+            fastest_str = getEventSpeedRowStr(rhapi, speed_row, spoken_flag)
+            # %FASTEST_EVENT_SPEED% : Pilot/speed for fastest speed of the event
+            text = text.replace('%FASTEST_EVENT_SPEED%', fastest_str)
+            # %FASTEST_EVENT_SPEED_CALL% : Pilot/speed for fastest speed of the event (with prompt)
+            if len(fastest_str) > 0:
+                fastest_str = "{} {}".format(rhapi.__('Fastest event speed'), fastest_str)
+                source_str = getResultSourceStr(rhapi, (speed_row or {}).get('top_speed_source'),
+                                                spoken_flag)
+                if source_str:
+                    fastest_str = "{}, {}".format(fastest_str, source_str)
+            else:
+                fastest_str = rhapi.__('There is no data for the event')
+            text = text.replace('%FASTEST_EVENT_SPEED_CALL%', fastest_str)
 
         if '%WINNER' in text:
             winner_str = rhapi.race.race_winner_phonetic if spoken_flag else rhapi.race.race_winner_name
