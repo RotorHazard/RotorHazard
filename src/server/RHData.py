@@ -4302,36 +4302,41 @@ class RHData():
         logger.debug('All Result caches invalidated')
 
 
-def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
-    fastest_str = ""
+def getSpeedSplitsList(rhapi, sel_pilot_id=None):
     lap_splits = rhapi.db.lap_splits()
-    if lap_splits and len(lap_splits) > 0:
-        pilot_obj = None
-        if sel_pilot_id:  # if 'sel_pilot_id' given then only use splits from that pilot
-            if rhapi.race.race_winner_lap_id > 0:  # filter out splits after race winner declared
-                lap_splits = [s for s in lap_splits if s.lap_id < rhapi.race.race_winner_lap_id and \
-                              s.pilot_id == sel_pilot_id]
-            else:
-                lap_splits = [s for s in lap_splits if s.pilot_id == sel_pilot_id]
-        else:
-            if rhapi.race.race_winner_lap_id > 0:  # filter out splits after race winner declared
-                lap_splits = [s for s in lap_splits if s.lap_id < rhapi.race.race_winner_lap_id]
-        fastest_split = max(lap_splits, default=None, key=lambda s: (s.split_speed if s.split_speed else 0.0))
-        if fastest_split and fastest_split.split_speed:
-            if sel_pilot_id:
-                if spoken_flag:
-                    fastest_str = "{:.1f}".format(fastest_split.split_speed)
-                else:
-                    fastest_str = "{}".format(fastest_split.split_speed)
-            else:
-                pilot_obj = rhapi.db.pilot_by_id(fastest_split.pilot_id)
-                if pilot_obj:
-                    if spoken_flag:
-                        fastest_str = "{}, {}".format((pilot_obj.phonetic or pilot_obj.callsign),
-                                                      "{:.1f}".format(fastest_split.split_speed))
-                    else:
-                        fastest_str = "{} {}".format(pilot_obj.callsign, fastest_split.split_speed)
-    return fastest_str
+    if not lap_splits:
+        return []
+    winner_lap_id = rhapi.race.race_winner_lap_id
+    # only splits with a speed; for the given pilot, and before any race winner was declared
+    return [s for s in lap_splits if s.split_speed and \
+            (not sel_pilot_id or s.pilot_id == sel_pilot_id) and \
+            (winner_lap_id <= 0 or s.lap_id < winner_lap_id)]
+
+def getSpeedSplitStr(rhapi, split_obj, spoken_flag, sel_pilot_id=None):
+    if not split_obj:
+        return ""
+    if sel_pilot_id:  # pilot given, so speed value only
+        if spoken_flag:
+            return "{:.1f}".format(split_obj.split_speed)
+        return "{}".format(split_obj.split_speed)
+    pilot_obj = rhapi.db.pilot_by_id(split_obj.pilot_id)
+    if not pilot_obj:
+        return ""
+    if spoken_flag:
+        return "{}, {}".format((pilot_obj.phonetic or pilot_obj.callsign),
+                               "{:.1f}".format(split_obj.split_speed))
+    return "{} {}".format(pilot_obj.callsign, split_obj.split_speed)
+
+def getFastestSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
+    lap_splits = getSpeedSplitsList(rhapi, sel_pilot_id)
+    fastest_split = max(lap_splits, default=None, key=lambda s: s.split_speed)
+    return getSpeedSplitStr(rhapi, fastest_split, spoken_flag, sel_pilot_id)
+
+def getLastSpeedStr(rhapi, spoken_flag, sel_pilot_id=None):
+    lap_splits = getSpeedSplitsList(rhapi, sel_pilot_id)
+    # most recent pass, by race-clock time rather than record id
+    last_split = max(lap_splits, default=None, key=lambda s: s.split_time_stamp)
+    return getSpeedSplitStr(rhapi, last_split, spoken_flag, sel_pilot_id)
 
 def hasRaceResultsData(race_results):
     if not race_results:
@@ -4626,6 +4631,10 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                     # %FASTEST_SPEED% : Fastest speed for pilot
                     text = text.replace('%FASTEST_SPEED%', getFastestSpeedStr(rhapi, spoken_flag, \
                                                                               result.get('pilot_id')))
+
+                    # %LAST_SPEED% : Last speed for pilot
+                    text = text.replace('%LAST_SPEED%', getLastSpeedStr(rhapi, spoken_flag, \
+                                                                        result.get('pilot_id')))
 
                     # %CONSECUTIVE% : Fastest consecutive laps for pilot
                     if result.get('consecutives_base') == int(rhapi.db.option('consecutivesCount', 3)):
