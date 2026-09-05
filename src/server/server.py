@@ -2722,15 +2722,27 @@ def on_resave_laps(data):
         'pilot_id': pilot_id,
         })
 
+def get_seat_index_from_data(data):
+    '''Returns the seat index given by 'node'/'seat', or resolved from 'pilot_id' '''
+    seat_index = data.get('node', data.get('seat'))
+    if seat_index is None:
+        pilot_id = data.get('pilot_id')
+        if pilot_id is not None:
+            node_pilots = RaceContext.race.node_pilots or {}
+            seat_index = next((idx for idx, pid in node_pilots.items()
+                               if pid == pilot_id), None)
+    return seat_index
+
 @SOCKET_IO.on('replace_current_laps')
 @requires_socketio_auth
 def replace_current_laps(data):
+    seat_index = get_seat_index_from_data(data)
     on_set_enter_at_level({
-        'node': data['seat'],
+        'node': seat_index,
         'enter_at_level': data['enter_at']
     })
     on_set_exit_at_level({
-        'node': data['seat'],
+        'node': seat_index,
         'exit_at_level': data['exit_at']
     })
     RaceContext.race.replace_laps(data)
@@ -2792,8 +2804,8 @@ def on_set_current_heat(data):
 @SOCKET_IO.on('delete_lap')
 @requires_socketio_auth
 def on_delete_lap(data):
-    node_index = data['node']
-    lap_index = data['lap_index']
+    node_index = get_seat_index_from_data(data)
+    lap_index = data.get('lap_index')
 
     if node_index is None or lap_index is None:
         logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
@@ -2804,8 +2816,8 @@ def on_delete_lap(data):
 @SOCKET_IO.on('restore_deleted_lap')
 @requires_socketio_auth
 def on_restore_deleted_lap(data):
-    node_index = data['node']
-    lap_index = data['lap_index']
+    node_index = get_seat_index_from_data(data)
+    lap_index = data.get('lap_index')
 
     if node_index is None or lap_index is None:
         logger.error(
