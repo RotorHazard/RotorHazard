@@ -298,6 +298,10 @@ The variables listed below may be used for the  effects.
 | %FASTEST_RACE_LAP_CALL%   | Pilot/time for fastest lap in race (with prompt)                        |
 | %FASTEST_RACE_SPEED%      | Pilot/speed for fastest speed in race                                   |
 | %FASTEST_RACE_SPEED_CALL% | Pilot/speed for fastest speed in race (with prompt)                     |
+| %FASTEST_EVENT_LAP%       | Pilot/time for fastest lap of the event (all saved races)               |
+| %FASTEST_EVENT_LAP_CALL%  | Pilot/time for fastest lap of the event (with prompt)                   |
+| %FASTEST_EVENT_SPEED%     | Pilot/speed for fastest speed of the event (all saved races)            |
+| %FASTEST_EVENT_SPEED_CALL% | Pilot/speed for fastest speed of the event (with prompt)               |
 | %WINNER%                  | Pilot callsign for winner of race                                       |
 | %WINNER_CALL%             | Pilot callsign for winner of race (with prompt)                         |
 | %PREVIOUS_WINNER%         | Pilot callsign for winner of previous race                              |

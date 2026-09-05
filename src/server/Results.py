@@ -774,6 +774,7 @@ def add_fastest_race_lap_meta(racecontext, all_leaderboards):
         fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
         fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
                                          leaderboard_by_fastest_lap[0]['fastest_lap']]
+        fastest_race_lap_data['source'] = leaderboard_by_fastest_lap[0].get('fastest_lap_source')
 
     all_leaderboards['meta']['fastest_race_lap_data'] = fastest_race_lap_data
 
