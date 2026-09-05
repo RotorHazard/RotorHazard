@@ -274,14 +274,19 @@ The variables listed below may be used for the  effects.
 | %RACE_FORMAT%             | Current race format                                                     |
 | %LAP_COUNT%               | Current lap number                                                      |
 | %LAST_LAP%                | Last lap time for pilot                                                 |
+| %LAST_LAP_CALL%           | Last lap time for pilot (with prompt)                                   |
 | %AVERAGE_LAP%             | Average lap time for pilot                                              |
-| %FASTEST_LAP%             | Fastest lap time                                                        |
+| %AVERAGE_LAP_CALL%        | Average lap time for pilot (with prompt)                                |
+| %FASTEST_LAP%             | Fastest lap time for pilot                                              |
+| %FASTEST_LAP_CALL%        | Fastest lap time for pilot (with prompt)                                |
 | %TIME_BEHIND%             | Amount of time behind race leader                                       |
 | %TIME_BEHIND_CALL%        | Amount of time behind race leader (with prompt)                         |
 | %TIME_BEHIND_FINPOS_CALL% | Pilot NAME finished at position X, MM:SS.SSS behind                     |
 | %TIME_BEHIND_FINPLACE_CALL% | Pilot NAME finished in X place, MM:SS.SSS behind                      |
 | %FASTEST_SPEED%           | Fastest speed for pilot                                                 |
+| %FASTEST_SPEED_CALL%      | Fastest speed for pilot (with prompt)                                   |
 | %LAST_SPEED%              | Last speed for pilot                                                    |
+| %LAST_SPEED_CALL%         | Last speed for pilot (with prompt)                                      |
 | %CONSECUTIVE%             | Fastest consecutive laps for pilot                                      |
 | %TOTAL_TIME%              | Total time since start of race for pilot                                |
 | %TOTAL_TIME_LAPS%         | Total time since start of first lap for pilot                           |
