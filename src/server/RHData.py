@@ -4429,11 +4429,12 @@ def getPilotTimeStr(rhapi, result, key, spoken_flag):
                                                   rhapi.config.get_item('UI', 'timeFormatPhonetic'))
     return str(result.get(key, ''))
 
-# per-pilot tokens that are filled only from a leaderboard row; a '_CALL' token is a whole
-#  spoken sentence so it gets an idle message, a value token is a fragment so it is cleared
-PILOT_CALL_TOKENS = ('%POSITION_CALL%', '%POSITION_PLACE_CALL%', '%TIME_BEHIND_CALL%',
-                     '%TIME_BEHIND_FINPLACE_CALL%', '%TIME_BEHIND_FINPOS_CALL%',
-                     '%FASTEST_LAP_CALL%', '%LAST_LAP_CALL%', '%AVERAGE_LAP_CALL%',
+# per-pilot tokens that are filled only from a leaderboard row, so any left over when the
+#  pilot has no row are cleared rather than being spoken as raw text
+PILOT_CALL_TOKENS = ('%LAP_COUNT_CALL%', '%POSITION_CALL%', '%POSITION_PLACE_CALL%',
+                     '%TIME_BEHIND_CALL%', '%TIME_BEHIND_FINPLACE_CALL%',
+                     '%TIME_BEHIND_FINPOS_CALL%', '%FASTEST_LAP_CALL%',
+                     '%LAST_LAP_CALL%', '%AVERAGE_LAP_CALL%',
                      '%FASTEST_SPEED_CALL%', '%LAST_SPEED_CALL%')
 PILOT_VALUE_TOKENS = ('%LAP_COUNT%', '%TOTAL_TIME%', '%TOTAL_TIME_LAPS%', '%FASTEST_LAP%',
                       '%LAST_LAP%', '%AVERAGE_LAP%', '%FASTEST_SPEED%', '%LAST_SPEED%',
@@ -4704,8 +4705,12 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
 
             for result in pilot_leaderboard:
                 if result.get('node') == node_idx_val:
-                    # %LAP_COUNT% : Current lap number
-                    text = text.replace('%LAP_COUNT%', str(result.get('laps')))
+                    # %LAP_COUNT% : Current lap number for pilot
+                    lap_count_str = str(result.get('laps'))
+                    text = text.replace('%LAP_COUNT%', lap_count_str)
+                    # %LAP_COUNT_CALL% : Current lap number for pilot, with 'lap' or 'laps'
+                    text = text.replace('%LAP_COUNT_CALL%', lap_count_str + ' ' + \
+                              (rhapi.__('laps') if lap_count_str != '1' else rhapi.__('lap')))
 
                     # %TOTAL_TIME% : Total time since start of race for pilot
                     text = text.replace('%TOTAL_TIME%', getPilotTimeStr(rhapi, result, 'total_time', spoken_flag))
