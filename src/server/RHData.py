@@ -4347,7 +4347,7 @@ def getRaceResultCallStr(rhapi, race_results, spoken_flag, race_obj=None):
     leaderboard = [e for e in (race_results.get(lboard_name) or []) if e.get('laps')]
     # no result without a declared winner
     if not leaderboard or not (rhapi.race.race_winner_name or (race_obj and race_obj.race_winner_name)):
-        return rhapi.__('There is no race data available')
+        return ''
     tformat = rhapi.config.get_item('UI', 'timeFormatPhonetic')
     parts = []
     for entry in leaderboard:
@@ -4448,11 +4448,8 @@ def replaceValueAndCallTokens(text, value_token, value_str, prompt_str):
     # an empty value leaves the '_CALL' token for 'clearPilotDataTokens' to fill
     return text
 
-def clearPilotDataTokens(rhapi, text):
-    for token in PILOT_CALL_TOKENS:
-        if token in text:
-            text = text.replace(token, rhapi.__('There is no data for that pilot'))
-    for token in PILOT_VALUE_TOKENS:
+def clearPilotDataTokens(_rhapi, text):
+    for token in PILOT_CALL_TOKENS + PILOT_VALUE_TOKENS:
         if token in text:
             text = text.replace(token, '')
     return text
@@ -4568,8 +4565,6 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                                                 spoken_flag)
                 if source_str:
                     fastest_str = "{}, {}".format(fastest_str, source_str)
-            else:
-                fastest_str = rhapi.__('There is no data for the event')
             text = text.replace('%FASTEST_EVENT_LAP_CALL%', fastest_str)
 
         if '%FASTEST_EVENT_SPEED' in text:
@@ -4584,8 +4579,6 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                                                 spoken_flag)
                 if source_str:
                     fastest_str = "{}, {}".format(fastest_str, source_str)
-            else:
-                fastest_str = rhapi.__('There is no data for the event')
             text = text.replace('%FASTEST_EVENT_SPEED_CALL%', fastest_str)
 
         if '%WINNER' in text:
@@ -4598,8 +4591,6 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             # %WINNER_CALL% : Pilot callsign for winner of race (with prompt)
             if len(winner_str) > 0:
                 winner_str = "{} {}".format(rhapi.__('Winner is'), winner_str)
-            else:
-                winner_str = rhapi.__('There is no race data available')
             text = text.replace('%WINNER_CALL%', winner_str)
 
         if '%PREVIOUS_WINNER' in text:
@@ -4609,8 +4600,6 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             # %PREVIOUS_WINNER_CALL% : Pilot callsign for winner of previous race (with prompt)
             if len(prev_winner_str) > 0:
                 prev_winner_str = "{} {}".format(rhapi.__('Previous race winner was'), prev_winner_str)
-            else:
-                prev_winner_str = rhapi.__('There is no race data available')
             text = text.replace('%PREVIOUS_WINNER_CALL%', prev_winner_str)
 
         if '%ROUND' in text:
@@ -4624,7 +4613,7 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                 text = text.replace('%ROUND_CALL%', round_str)
             else:
                 text = text.replace('%ROUND%', '')
-                text = text.replace('%ROUND_CALL%', rhapi.__('There is no race in progress'))
+                text = text.replace('%ROUND_CALL%', '')
 
         # %RACE_FORMAT% : Current race format
         if '%RACE_FORMAT%' in text:
@@ -4671,8 +4660,6 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             # %RACE_TIME_CALL% : Current race-clock time, whole seconds (with prompt, or idle message)
             if len(call_time_str) > 0:
                 call_time_str = "{} {}".format(rhapi.__('Race time is'), call_time_str)
-            else:
-                call_time_str = rhapi.__('There is no race in progress')
             text = text.replace('%RACE_TIME_CALL%', call_time_str)
 
         # %PILOTS% : List of pilot callsigns (read out slower)
@@ -4844,10 +4831,6 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             text = text.replace('%LEADER%', name_str)
             if len(name_str) > 0:
                 name_str = "{} {}".format(name_str, rhapi.__('is leading'))
-            elif rhapi.race.status in (RaceStatus.RACING, RaceStatus.DONE):
-                name_str = rhapi.__('No one is leading')
-            else:
-                name_str = rhapi.__('There is no race in progress')
             # %LEADER_CALL% : Callsign of pilot currently leading race, in the form "NAME is leading"
             text = text.replace('%LEADER_CALL%', name_str)
 
@@ -4912,13 +4895,12 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             if not result_str and last_race_obj:
                 result_str = last_race_obj.phonetic_status_msg if spoken_flag \
                                  else last_race_obj.status_message
-            text = text.replace('%RACE_RESULT%',
-                                result_str if result_str else rhapi.__('There is no race data available'))
+            text = text.replace('%RACE_RESULT%', result_str if result_str else '')
 
         # %RACE_RESULT_CALL% : Full race result, the winner then each finisher's place and gap
         if '%RACE_RESULT_CALL%' in text:
-            if rhapi.race.status == RaceStatus.RACING:
-                result_str = rhapi.__('The race is in progress')
+            if rhapi.race.status == RaceStatus.RACING:  # no final result while racing
+                result_str = ''
             else:
                 result_str = getRaceResultCallStr(rhapi, callout_results, spoken_flag,
                                                   last_race_obj)
