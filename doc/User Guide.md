@@ -272,7 +272,8 @@ The variables listed below may be used for the  effects.
 | %ROUND%                   | Current round number                                                    |
 | %ROUND_CALL%              | Current round number (with prompt)                                      |
 | %RACE_FORMAT%             | Current race format                                                     |
-| %LAP_COUNT%               | Current lap number                                                      |
+| %LAP_COUNT%               | Current lap number for pilot                                            |
+| %LAP_COUNT_CALL%          | Current lap number for pilot (with "lap" or "laps")                     |
 | %LAST_LAP%                | Last lap time for pilot                                                 |
 | %LAST_LAP_CALL%           | Last lap time for pilot (with prompt)                                   |
 | %AVERAGE_LAP%             | Average lap time for pilot                                              |
