@@ -12,7 +12,7 @@ class RHMarshal {
 	elements = {
 		graph_canvas_id: false,
 		graph_canvas: false,
-	}
+	};
 
 	time_format = null;
 	start_thresh_lower_amount = 0;
@@ -29,7 +29,7 @@ class RHMarshal {
 		graphInteractCancel: false,
 		graphInteractTap: false,
 		recalcRace: false,
-	}
+	};
 
 	race = {
 		history_times: null,
@@ -40,7 +40,7 @@ class RHMarshal {
 		exit_at: null,
 		start_time: null,
 		end_time: null,
-	}
+	};
 
 	// Internal
 	graph = false;
@@ -49,34 +49,35 @@ class RHMarshal {
 		lap_marker: false,
 		deleted_lap: false,
 		selection: false,
-	}
+	};
 	race_loaded = false;
 
 	seriesStyle = {
-		rssi: {lineWidth:1.7,
-			strokeStyle:'hsl(214, 53%, 60%)',
-			fillStyle:'hsla(214, 53%, 60%, 0.4)'
+		rssi: {
+			lineWidth: 1.7,
+			strokeStyle: "hsl(214, 53%, 60%)",
+			fillStyle: "hsla(214, 53%, 60%, 0.4)",
 		},
 		lap_marker: {
 			lineWidth: 1.7,
-			strokeStyle:'none',
-			fillStyle:'hsla(136, 71%, 70%, 0.3)'
+			strokeStyle: "none",
+			fillStyle: "hsla(136, 71%, 70%, 0.3)",
 		},
 		deleted_lap: {
 			lineWidth: 1.7,
-			strokeStyle:'none',
-			fillStyle:'hsla(8.2, 86.5%, 53.7%, 0.2)'
+			strokeStyle: "none",
+			fillStyle: "hsla(8.2, 86.5%, 53.7%, 0.2)",
 		},
 		selection: {
 			lineWidth: 1.7,
-			strokeStyle:'hsl(70, 60%, 60%)',
-			lineWidth: 3
+			strokeStyle: "hsl(70, 60%, 60%)",
+			lineWidth: 3,
 		},
 		race_bounds: {
-			strokeStyle:'none',
-			fillStyle:'hsla(0, 0%, 100%, 0.15)'
-		}
-	}
+			strokeStyle: "none",
+			fillStyle: "hsla(0, 0%, 100%, 0.15)",
+		},
+	};
 
 	// interactions
 	interact = {
@@ -88,17 +89,17 @@ class RHMarshal {
 		startingY: false,
 		adjustEnter: true,
 		isTouchEvent: false,
-	}
+	};
 
 	constructor(options) {
 		self = this;
 		self.elements.graph_canvas_id = options.elements.graph_canvas_id;
 		self.time_format = options.time_format;
-		self.start_thresh_lower_amount = options.start_thresh_lower_amount
+		self.start_thresh_lower_amount = options.start_thresh_lower_amount;
 		self.start_thresh_lower_duration = options.start_thresh_lower_duration;
-		self.min_lap_ms = options.min_lap_ms
-		self.min_lap_behavior = options.min_lap_behavior
-		self.min_first_crossing_ms = options.min_first_crossing_ms
+		self.min_lap_ms = options.min_lap_ms;
+		self.min_lap_behavior = options.min_lap_behavior;
+		self.min_first_crossing_ms = options.min_first_crossing_ms;
 		self.callbacks.calcLaps = options.callbacks.calcLaps;
 		self.callbacks.calibration = options.callbacks.calibration;
 		self.callbacks.clearMarkedLap = options.callbacks.clearMarkedLap;
@@ -107,19 +108,21 @@ class RHMarshal {
 		self.callbacks.graphInteractTap = options.callbacks.graphInteractTap;
 		self.callbacks.recalcRace = options.callbacks.recalcRace;
 
-		if (document.readyState !== 'loading') {
+		if (document.readyState !== "loading") {
 			self.atDOMReady();
 		} else {
-			document.addEventListener('DOMContentLoaded', self.atDOMReady);
+			document.addEventListener("DOMContentLoaded", self.atDOMReady);
 		}
 	}
 
 	atDOMReady() {
-		self.elements.graph_canvas = document.getElementById(self.elements.graph_canvas_id)
+		self.elements.graph_canvas = document.getElementById(
+			self.elements.graph_canvas_id,
+		);
 		self.graphSetup();
 
 		//mouse/touch check
-		$(document).on('mouseup', function(){
+		$(document).on("mouseup", function () {
 			if (!self.isTouchEvent) {
 				self.canDrag = false;
 				self.isDragging = false;
@@ -128,25 +131,31 @@ class RHMarshal {
 		});
 
 		// mouse handlers
-		$(self.elements.graph_canvas).on('mousedown', self.graphInteractMouseDown);
-		$(self.elements.graph_canvas).on('mousemove', self.graphInteractMouseMove);
-		$(self.elements.graph_canvas).on('mouseup', self.graphInteractMouseUp);
-		$(self.elements.graph_canvas).on('mouseout', self.graphInteractMouseOut);
-		$(document).on('mouseup', self.graphInteractCancel);
+		$(self.elements.graph_canvas).on("mousedown", self.graphInteractMouseDown);
+		$(self.elements.graph_canvas).on("mousemove", self.graphInteractMouseMove);
+		$(self.elements.graph_canvas).on("mouseup", self.graphInteractMouseUp);
+		$(self.elements.graph_canvas).on("mouseout", self.graphInteractMouseOut);
+		$(document).on("mouseup", self.graphInteractCancel);
 
 		// touch handlers
-		$(self.elements.graph_canvas).on('touchstart', self.graphInteractTouchStart);
-		$(self.elements.graph_canvas).on('touchmove', self.graphInteractTouchMove);
-		$(self.elements.graph_canvas).on('touchend', self.graphInteractTouchEnd);
-		$(self.elements.graph_canvas).on('touchCancel', self.graphInteractTouchCancel);
-		$(document).on('touchend', self.graphInteractCancel);
+		$(self.elements.graph_canvas).on(
+			"touchstart",
+			self.graphInteractTouchStart,
+		);
+		$(self.elements.graph_canvas).on("touchmove", self.graphInteractTouchMove);
+		$(self.elements.graph_canvas).on("touchend", self.graphInteractTouchEnd);
+		$(self.elements.graph_canvas).on(
+			"touchCancel",
+			self.graphInteractTouchCancel,
+		);
+		$(document).on("touchend", self.graphInteractCancel);
 
 		// graph resize catch
 		var resizeTimer;
-		$(window).on('resize', function(){
+		$(window).on("resize", function () {
 			if (self.race_loaded) {
 				clearTimeout(resizeTimer);
-				resizeTimer = setTimeout(function() {
+				resizeTimer = setTimeout(function () {
 					self.renderGraph();
 				}, 250);
 			}
@@ -154,18 +163,18 @@ class RHMarshal {
 	}
 
 	graphSetup() {
-		self.context = self.elements.graph_canvas.getContext('2d');
+		self.context = self.elements.graph_canvas.getContext("2d");
 		self.graph = new SmoothieChart({
 			responsive: true,
-			grid:{
-				strokeStyle:'rgba(255,255,255,0.1)',
-				millisPerLine:30, // Smoothie thinks the timestamps are in seconds
-				sharpLines:true,
-				verticalSections:0,
-				borderVisible:false
+			grid: {
+				strokeStyle: "rgba(255,255,255,0.1)",
+				millisPerLine: 30, // Smoothie thinks the timestamps are in seconds
+				sharpLines: true,
+				verticalSections: 0,
+				borderVisible: false,
 			},
-			labels:{
-				precision: 0
+			labels: {
+				precision: 0,
 			},
 			scaleSmoothing: 1,
 			nonRealtimeData: true,
@@ -173,13 +182,25 @@ class RHMarshal {
 		self.graph_series.rssi = new TimeSeries();
 		self.graph.addTimeSeries(self.graph_series.rssi, this.seriesStyle.rssi);
 		self.graph_series.lap_marker = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.lap_marker, this.seriesStyle.lap_marker);
+		self.graph.addTimeSeries(
+			self.graph_series.lap_marker,
+			this.seriesStyle.lap_marker,
+		);
 		self.graph_series.deleted_lap = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.deleted_lap, this.seriesStyle.deleted_lap);
+		self.graph.addTimeSeries(
+			self.graph_series.deleted_lap,
+			this.seriesStyle.deleted_lap,
+		);
 		self.graph_series.selection = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.selection, this.seriesStyle.selection);
+		self.graph.addTimeSeries(
+			self.graph_series.selection,
+			this.seriesStyle.selection,
+		);
 		self.graph_series.race_bounds = new TimeSeries();
-		self.graph.addTimeSeries(self.graph_series.race_bounds, this.seriesStyle.race_bounds);
+		self.graph.addTimeSeries(
+			self.graph_series.race_bounds,
+			this.seriesStyle.race_bounds,
+		);
 
 		self.graph.streamTo(self.elements.graph_canvas, 0);
 		self.graph.stop();
@@ -209,8 +230,8 @@ class RHMarshal {
 		self.race.callsign = args?.callsign;
 
 		self.setHistory({
-			'history_times': args.history_times,
-			'history_values': args.history_values
+			history_times: args.history_times,
+			history_values: args.history_values,
 		});
 	}
 
@@ -222,7 +243,7 @@ class RHMarshal {
 			values.push(0);
 			for (var i in self.race.laps) {
 				var lap = self.race.laps[i];
-				times.push(self.race.start_time + (lap.lap_time_stamp / 1000));
+				times.push(self.race.start_time + lap.lap_time_stamp / 1000);
 				values.push(lap.peak_rssi);
 				times.push(self.race.start_time + (lap.lap_time_stamp + 1) / 1000);
 				values.push(0);
@@ -242,11 +263,14 @@ class RHMarshal {
 		// set initial display of loaded data
 		self.race_loaded = true;
 		if (self.race.history_times.length) {
-			self.race.end_time = self.race.history_times[self.race.history_times.length - 1];
-			self.graph.options.minValue = Math.min.apply(null, self.race.history_values) - 2;
-			self.graph.options.maxValue = Math.max.apply(null, self.race.history_values) + 2;
+			self.race.end_time =
+				self.race.history_times[self.race.history_times.length - 1];
+			self.graph.options.minValue =
+				Math.min.apply(null, self.race.history_values) - 2;
+			self.graph.options.maxValue =
+				Math.max.apply(null, self.race.history_values) + 2;
 		} else {
-			self.race.end_time = self.race.start_time + 1
+			self.race.end_time = self.race.start_time + 1;
 			self.graph.options.minValue = self.race.exit_at;
 			self.graph.options.maxValue = self.race.enter_at;
 		}
@@ -257,7 +281,7 @@ class RHMarshal {
 			self.race.race_format = {
 				unlimited_time: true,
 				race_time_sec: null,
-				start_delay_max: 0
+				start_delay_max: 0,
 			};
 		}
 
@@ -266,9 +290,15 @@ class RHMarshal {
 		for (var idx in self.race.history_times) {
 			var value = self.race.history_times[idx];
 			if (value == lastValue) {
-				self.graph_series.rssi.append((self.race.history_times[idx] - self.race.start_time) + 0.001, self.race.history_values[idx]);
+				self.graph_series.rssi.append(
+					self.race.history_times[idx] - self.race.start_time + 0.001,
+					self.race.history_values[idx],
+				);
 			} else {
-				self.graph_series.rssi.append((self.race.history_times[idx] - self.race.start_time), self.race.history_values[idx]);
+				self.graph_series.rssi.append(
+					self.race.history_times[idx] - self.race.start_time,
+					self.race.history_values[idx],
+				);
 			}
 			var lastValue = value;
 		}
@@ -279,8 +309,14 @@ class RHMarshal {
 
 		if (self.min_first_crossing_ms) {
 			self.graph_series.race_bounds.append(0, self.graph.options.maxValue + 10);
-			self.graph_series.race_bounds.append(self.min_first_crossing_ms/1000 - .001, self.graph.options.maxValue + 10);
-			self.graph_series.race_bounds.append(self.min_first_crossing_ms/1000, self.graph.options.minValue - 10);
+			self.graph_series.race_bounds.append(
+				self.min_first_crossing_ms / 1000 - 0.001,
+				self.graph.options.maxValue + 10,
+			);
+			self.graph_series.race_bounds.append(
+				self.min_first_crossing_ms / 1000,
+				self.graph.options.minValue - 10,
+			);
 		} else {
 			self.graph_series.race_bounds.append(0, self.graph.options.minValue - 10);
 		}
@@ -289,9 +325,18 @@ class RHMarshal {
 			// convert lap time to history time
 			var finish_time = self.race.race_format.race_time_sec;
 			// highlight after finish
-			self.graph_series.race_bounds.append(finish_time - .001, self.graph.options.minValue - 10);
-			self.graph_series.race_bounds.append(finish_time, self.graph.options.maxValue + 10);
-			self.graph_series.race_bounds.append(self.race.history_duration + .001, self.graph.options.maxValue + 10);
+			self.graph_series.race_bounds.append(
+				finish_time - 0.001,
+				self.graph.options.minValue - 10,
+			);
+			self.graph_series.race_bounds.append(
+				finish_time,
+				self.graph.options.maxValue + 10,
+			);
+			self.graph_series.race_bounds.append(
+				self.race.history_duration + 0.001,
+				self.graph.options.maxValue + 10,
+			);
 		}
 
 		// Lap marker series lines drawn below the bottom of the graph
@@ -301,13 +346,15 @@ class RHMarshal {
 
 		// populate laps
 		self.displayLaps();
+
+		self.suggestCalibration();
 	}
 
 	setEnter(rssi) {
 		var chk_val = Math.min(rssi, self.graph.options.maxValue);
 		chk_val = Math.max(chk_val, self.graph.options.minValue);
 
-		if (chk_val < self.race.exit_at)  {
+		if (chk_val < self.race.exit_at) {
 			chk_val = self.race.exit_at;
 		}
 		self.race.enter_at = chk_val;
@@ -315,7 +362,7 @@ class RHMarshal {
 		if (rssi < self.race.exit_at) {
 			self.race.exit_at = rssi;
 		}
-		if (typeof self.callbacks.calibration === 'function') {
+		if (typeof self.callbacks.calibration === "function") {
 			self.callbacks.calibration({
 				enter: self.race.enter_at,
 				exit: self.race.exit_at,
@@ -329,7 +376,7 @@ class RHMarshal {
 		var chk_val = Math.min(rssi, self.graph.options.maxValue);
 		chk_val = Math.max(chk_val, self.graph.options.minValue);
 
-		if (chk_val > self.race.enter_at)  {
+		if (chk_val > self.race.enter_at) {
 			chk_val = self.race.enter_at;
 		}
 		self.race.exit_at = chk_val;
@@ -337,7 +384,7 @@ class RHMarshal {
 		if (rssi > self.race.enter_at) {
 			self.race.enter_at = rssi;
 		}
-		if (typeof self.callbacks.calibration === 'function') {
+		if (typeof self.callbacks.calibration === "function") {
 			self.callbacks.calibration({
 				enter: self.race.enter_at,
 				exit: self.race.exit_at,
@@ -361,17 +408,29 @@ class RHMarshal {
 		self.graph_series.deleted_lap.append(-10, self.graph.options.minValue - 10);
 	}
 
-	drawLap(lap, active=true) {
+	drawLap(lap, active = true) {
 		if (active) {
-			var series = self.graph_series.lap_marker
+			var series = self.graph_series.lap_marker;
 		} else {
-			var series = self.graph_series.deleted_lap
+			var series = self.graph_series.deleted_lap;
 		}
 
-		series.append(lap.crossingStart - self.race.start_time - 0.001, self.graph.options.minValue - 10);
-		series.append(lap.crossingStart - self.race.start_time, self.graph.options.maxValue + 10);
-		series.append(lap.crossingEnd - self.race.start_time, self.graph.options.maxValue + 10);
-		series.append(lap.crossingEnd - self.race.start_time + 0.001, self.graph.options.minValue - 10);
+		series.append(
+			lap.crossingStart - self.race.start_time - 0.001,
+			self.graph.options.minValue - 10,
+		);
+		series.append(
+			lap.crossingStart - self.race.start_time,
+			self.graph.options.maxValue + 10,
+		);
+		series.append(
+			lap.crossingEnd - self.race.start_time,
+			self.graph.options.maxValue + 10,
+		);
+		series.append(
+			lap.crossingEnd - self.race.start_time + 0.001,
+			self.graph.options.minValue - 10,
+		);
 	}
 
 	markLap(lap_time_stamp) {
@@ -380,16 +439,28 @@ class RHMarshal {
 		self.graph_series.selection.clear();
 		// highlight the lap
 		self.graph_series.selection.append(0, self.graph.options.minValue - 10);
-		self.graph_series.selection.append(history_time_stamp - .001, self.graph.options.minValue - 10);
-		self.graph_series.selection.append(history_time_stamp, self.graph.options.maxValue + 10);
-		self.graph_series.selection.append(history_time_stamp + .001, self.graph.options.maxValue + 10);
-		self.graph_series.selection.append(history_time_stamp + .002, self.graph.options.minValue - 10);
+		self.graph_series.selection.append(
+			history_time_stamp - 0.001,
+			self.graph.options.minValue - 10,
+		);
+		self.graph_series.selection.append(
+			history_time_stamp,
+			self.graph.options.maxValue + 10,
+		);
+		self.graph_series.selection.append(
+			history_time_stamp + 0.001,
+			self.graph.options.maxValue + 10,
+		);
+		self.graph_series.selection.append(
+			history_time_stamp + 0.002,
+			self.graph.options.minValue - 10,
+		);
 	}
 
 	clearMarkedLap() {
 		self.graph_series.selection.clear();
 		self.graph_series.selection.append(-10, self.graph.options.minValue - 10);
-		if (typeof self.callbacks.clearMarkedLap === 'function') {
+		if (typeof self.callbacks.clearMarkedLap === "function") {
 			self.callbacks.clearMarkedLap();
 		}
 	}
@@ -400,21 +471,205 @@ class RHMarshal {
 
 		self.graph.options.millisPerPixel = span;
 		self.graph.options.horizontalLines = [
-			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: self.race.enter_at}, // red
-			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: self.race.exit_at}, // orange
+			{
+				color: "hsl(8.2, 86.5%, 53.7%)",
+				lineWidth: 1.7,
+				value: self.race.enter_at,
+			}, // red
+			{ color: "hsl(25, 85%, 55%)", lineWidth: 1.7, value: self.race.exit_at }, // orange
 		];
 
 		self.graph.render(self.elements.graph_canvas, self.race.history_duration);
 	}
 
-	clearGraph(){
-		self.context.clearRect(0, 0, self.elements.graph_canvas.width, self.elements.graph_canvas.height);
+	clearGraph() {
+		self.context.clearRect(
+			0,
+			0,
+			self.elements.graph_canvas.width,
+			self.elements.graph_canvas.height,
+		);
 	}
 
-	processRXData() {
+	mean(arr) {
+		return (
+			arr.reduce((acc, curr) => {
+				return acc + curr;
+			}, 0) / arr.length
+		);
+	}
+	standardDeviation(arr, mean = null) {
+		// Creating the mean with Array.reduce
+		mean ? mean : self.mean(arr);
+
+		// Assigning (value - mean) ^ 2 to every array item
+		arr = arr.map((k) => {
+			return (k - mean) ** 2;
+		});
+
+		// Calculating the sum of updated array
+		let sum = arr.reduce((acc, curr) => acc + curr, 0);
+
+		// Calculating the variance
+		let variance = sum / arr.length;
+
+		// Returning the standard deviation
+		return Math.sqrt(sum / arr.length);
+	}
+
+	suggestCalibration(debug=false) {
+		var start = window.performance.now();
+		var history_value_counts = [];
+		var race_history_length = self.race.history_values.length;
+		var exit_minimum = null;
+
+		self.race.history_values.forEach((item) => {
+			if (history_value_counts[item]) {
+				history_value_counts[item].count++;
+			} else {
+				history_value_counts[item] = {
+					value: item,
+					count: 1,
+					count_higher: 0,
+				};
+			}
+		});
+
+		history_value_counts.sort((a, b) => b.value - a.value);
+		history_value_counts = history_value_counts.filter((x) => true);
+
+		if (debug) {
+			// find (fuzzy) modality
+			var distribution_peaks = [];
+			var direction = 0;
+			var rise = 0;
+			for (idx in history_value_counts) {
+				if (idx == 0) {
+					continue;
+				}
+				if (history_value_counts[idx].count < history_value_counts[idx - 1].count) {
+					if (direction == 1) {
+						distribution_peaks.push({
+							"peak": history_value_counts[idx - 1].value,
+							"peak_index": idx - 1,
+							"rise": rise
+						});
+					}
+					direction = -1;
+					rise = 0;
+				} else if (history_value_counts[idx].count > history_value_counts[idx - 1].count) {
+					direction = 1;
+					rise = rise + history_value_counts[idx - 1].count;
+				}
+			}
+			console.log(distribution_peaks);
+
+			/*
+			var history_minimum = history_value_counts[history_value_counts.length - 1].value;
+			while (history_value_counts[history_value_counts.length - 1].value <= history_minimum + 3) {
+				history_value_counts.pop();
+			}
+			*/
+		}
+
+		for (var idx in history_value_counts) {
+			if (idx > 0) {
+				history_value_counts[idx].count_higher =
+					history_value_counts[idx].count +
+					history_value_counts[idx - 1].count_higher;
+			}
+			// set exit at 4% data threshold
+			if (history_value_counts[idx].count_higher > race_history_length * 0.04) {
+				exit_minimum = history_value_counts[idx].value;
+				break;
+			}
+		}
+
+		// sort by enter
+		var values_sorted = [...self.race.history_values].sort((a, b) => a - b);
+		values_sorted = [...new Set(values_sorted)].reverse();
+
+		// quick suggest 33% between exit/max
+		var suggested_enter = Math.floor(((values_sorted[0] - exit_minimum) *.33) + exit_minimum);
+		var laps = self.processRXData(suggested_enter, exit_minimum);
+		laps = self.buildIncrementalLapTimes(laps);
+
+
+
+		/*
+		var max_distance = 0;
+		var last_lapcount = 0;
+		var last_lapcount_enter_idx = 0;
+		var last_lapdiff_distance = 0;
+		for (var enter_idx in values_sorted) {	
+			var enter = values_sorted[enter_idx];
+			if (enter <= exit_minimum) {
+				break;
+			}
+			var laps = self.processRXData(enter, exit_minimum);
+			laps = self.buildIncrementalLapTimes(laps);
+			if (laps.length > last_lapcount) {
+				last_lapdiff_distance = values_sorted[last_lapcount_enter_idx] - enter;
+				if (last_lapdiff_distance > max_distance) {
+					var suggested_cal_upper_idx = last_lapcount_enter_idx;
+					var suggested_cal_lower_idx = enter_idx;
+				}				
+				last_lapcount_enter_idx = enter_idx;
+				last_lapcount = laps.length;
+				max_distance = Math.max(last_lapdiff_distance, max_distance);
+			}
+			
+			var lap_times = laps.map((a) => a.lap_time);
+			lap_times.shift(); // drop holeshot from lap stats
+			var laps_mean = self.mean(lap_times);
+			var laps_std = self.standardDeviation(lap_times, laps_mean);
+			var consistency = laps_std / laps_mean;
+			
+			// console.log(" E:" + enter + " X:" + exit_minimum + " l:" + (laps.length -	1));
+		}
+
+		var suggested_enter = Math.floor((values_sorted[suggested_cal_upper_idx] + values_sorted[suggested_cal_lower_idx]) / 2);
+		var laps = self.processRXData(suggested_enter, exit_minimum);
+		laps = self.buildIncrementalLapTimes(laps);
+		*/
+
+		
+		if (laps.length == self.race.laps.length) {
+			var result = "*** pass";
+		} else {
+			var result = "!!! fail";
+		}
+		console.log(result + " E:" + suggested_enter + " X:" + exit_minimum + " l:" + (laps.length - 1) + " t: " + (window.performance.now() - start));
+		
+		if (debug) {
+			console.log(history_value_counts);
+		}
+
+		/*
+		var exits = [...values_sorted];
+
+		for (var enter_idx in values_sorted) {
+			exits.shift();
+			var enter = values_sorted[enter_idx];
+			for (var exit_idx in exits) {
+				var exit = exits[exit_idx];
+				var laps = self.processRXData(enter, exit);
+				console.log("E:" + enter + " X:" + exit + " l:" + laps.length);
+			}
+		}
+		*/
+		// console.log("done in " + (window.performance.now() - start));
+	}
+
+	processRXData(enter = null, exit = null) {
+		enter = enter ? enter : self.race.enter_at;
+		exit = exit ? exit : self.race.exit_at;
 		var last_lap_time_stamp = -Infinity;
 		var laps = [];
-		if (self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY || self.race.marshal_type == MARSHAL_TYPE.HYBRID_PASS_PEAK) {
+		if (
+			self.race.marshal_type == MARSHAL_TYPE.PASS_PEAK_ONLY ||
+			self.race.marshal_type == MARSHAL_TYPE.HYBRID_PASS_PEAK
+		) {
 			for (var lap_i in self.race.laps) {
 				var lap = self.race.laps[lap_i];
 				lap.source = 2;
@@ -423,13 +678,16 @@ class RHMarshal {
 
 				if (lap.lap_time_stamp < self.min_first_crossing_ms) {
 					lap.deleted = true;
-				} else if (lap.peak_rssi < self.race.enter_at) {
+				} else if (lap.peak_rssi < enter) {
 					lap.deleted = true;
 				} else {
 					lap.deleted = false;
 				}
 
-				if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap) {
+				if (
+					self.min_lap_behavior &&
+					lap_time_stamp < last_lap_time_stamp + self.min_lap
+				) {
 					lapdata.deleted = true;
 				} else {
 					last_lap_time_stamp = lap_time_stamp;
@@ -445,33 +703,42 @@ class RHMarshal {
 			var peakLast = 0;
 			var startThreshLowerFlag = false;
 
-			var localEnter = self.race.enter_at
-			var localExit = self.race.exit_at
+			var localEnter = enter;
+			var localExit = exit;
 
 			// set lower EnterAt/ExitAt values at race start if configured
-			if (self.start_thresh_lower_amount > 0 && self.start_thresh_lower_duration > 0) {
-				var diffVal = (self.race.enter_at - self.race.exit_at) * self.start_thresh_lower_amount / 100;
+			if (
+				self.start_thresh_lower_amount > 0 &&
+				self.start_thresh_lower_duration > 0
+			) {
+				var diffVal = ((enter - exit) * self.start_thresh_lower_amount) / 100;
 				if (diffVal > 0) {
-					localEnter = self.race.enter_at - diffVal;
-					localExit = self.race.exit_at - diffVal;
+					localEnter = enter - diffVal;
+					localExit = exit - diffVal;
 					startThreshLowerFlag = true;
 				}
 			}
 
-			for(var idx in self.race.history_values) {
+			for (var idx in self.race.history_values) {
 				var rssi = self.race.history_values[idx];
 				var time = self.race.history_times[idx];
 
 				if (startThreshLowerFlag) {
 					// if initial pass recorded or past duration then restore EnterAt/ExitAt values
-					if (laps.length > 0 || time >= self.race.start_time + self.start_thresh_lower_duration + self.race.race_format.start_delay_max) {
-						localEnter = self.race.enter_at;
-						localExit = self.race.exit_at;
+					if (
+						laps.length > 0 ||
+						time >=
+							self.race.start_time +
+								self.start_thresh_lower_duration +
+								self.race.race_format.start_delay_max
+					) {
+						localEnter = enter;
+						localExit = exit;
 						startThreshLowerFlag = false;
 					}
 				}
 
-				if (!crossing && (rssi > self.race.enter_at)) {
+				if (!crossing && rssi > enter) {
 					crossing = true;
 					crossingStart = time;
 				}
@@ -486,10 +753,12 @@ class RHMarshal {
 				}
 
 				if (crossing) {
-					if (rssi < self.race.exit_at) {
-						var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
+					if (rssi < exit) {
+						var lap_time_stamp =
+							((peakLast + peakFirst) / 2 - self.race.start_time) * 1000; // zero stamp within race
 
-						if (lap_time_stamp > 0) { // reject passes before race start
+						if (lap_time_stamp > 0) {
+							// reject passes before race start
 							var crossingEnd = time;
 							var lapdata = {
 								crossingStart: crossingStart,
@@ -497,11 +766,14 @@ class RHMarshal {
 								lap_time_stamp: lap_time_stamp, // zero stamp within race
 								source: 2, // recalc
 								peak_rssi: peakRssi,
-								deleted: false
+								deleted: false,
 							};
 							if (lap_time_stamp < self.min_first_crossing_ms) {
 								lapdata.deleted = true;
-							} else if (self.min_lap_behavior && lap_time_stamp < last_lap_time_stamp + self.min_lap_ms) {
+							} else if (
+								self.min_lap_behavior &&
+								lap_time_stamp < last_lap_time_stamp + self.min_lap_ms
+							) {
 								lapdata.deleted = true;
 							} else {
 								last_lap_time_stamp = lap_time_stamp;
@@ -514,8 +786,10 @@ class RHMarshal {
 				}
 			}
 
-			if (crossing) { // check for crossing at data end
-				var lap_time_stamp = (((peakLast + peakFirst) / 2) - self.race.start_time) * 1000; // zero stamp within race
+			if (crossing) {
+				// check for crossing at data end
+				var lap_time_stamp =
+					((peakLast + peakFirst) / 2 - self.race.start_time) * 1000; // zero stamp within race
 
 				var crossingEnd = time;
 				laps.push({
@@ -523,7 +797,7 @@ class RHMarshal {
 					crossingEnd: crossingEnd,
 					lap_time_stamp: lap_time_stamp, // zero stamp within race
 					source: 2, // recalc
-					deleted: false
+					deleted: false,
 				});
 			}
 		}
@@ -533,29 +807,44 @@ class RHMarshal {
 			var lap = laps[lap_i];
 			if (finished) {
 				lap.deleted = true;
-			} else if (!self.race.race_format.unlimited_time && lap.lap_time_stamp > (self.race.race_format.race_time_sec * 1000)) {
+			} else if (
+				!self.race.race_format.unlimited_time &&
+				lap.lap_time_stamp > self.race.race_format.race_time_sec * 1000
+			) {
 				finished = true;
 			}
 		}
 
-		self.race.calc_result = laps;
+		return laps;
 	}
 
 	calcLaps() {
-		self.processRXData();
+		self.race.calc_result = self.processRXData();
 
 		// redraw crossings
 		self.clearCrossings();
 		for (var lap_i in self.race.calc_result) {
 			var lap = self.race.calc_result[lap_i];
 
-			self.graph_series.lap_marker.append(lap.crossingStart - self.race.start_time - 0.001, self.graph.options.minValue - 10);
-			self.graph_series.lap_marker.append(lap.crossingStart - self.race.start_time, self.graph.options.maxValue + 10);
-			self.graph_series.lap_marker.append(lap.crossingEnd - self.race.start_time, self.graph.options.maxValue + 10);
-			self.graph_series.lap_marker.append(lap.crossingEnd - self.race.start_time + 0.001, self.graph.options.minValue - 10);
+			self.graph_series.lap_marker.append(
+				lap.crossingStart - self.race.start_time - 0.001,
+				self.graph.options.minValue - 10,
+			);
+			self.graph_series.lap_marker.append(
+				lap.crossingStart - self.race.start_time,
+				self.graph.options.maxValue + 10,
+			);
+			self.graph_series.lap_marker.append(
+				lap.crossingEnd - self.race.start_time,
+				self.graph.options.maxValue + 10,
+			);
+			self.graph_series.lap_marker.append(
+				lap.crossingEnd - self.race.start_time + 0.001,
+				self.graph.options.minValue - 10,
+			);
 		}
 
-		if (typeof self.callbacks.calcLaps === 'function') {
+		if (typeof self.callbacks.calcLaps === "function") {
 			self.callbacks.calcLaps();
 		}
 	}
@@ -563,11 +852,15 @@ class RHMarshal {
 	recalcRace() {
 		self.calcLaps();
 		if (self.race_loaded) {
-			if (!self.race.marshal_type || self.race.marshal_type == MARSHAL_TYPE.RSSI) {
+			if (
+				!self.race.marshal_type ||
+				self.race.marshal_type == MARSHAL_TYPE.RSSI
+			) {
 				var laps = self.race.calc_result;
 				for (var lap_i in self.race.laps) {
 					var lap = self.race.laps[lap_i];
-					if (lap.source == 1 || lap.source == 4) { // LapSource.MANUAL = 1, LapSource.API = 4
+					if (lap.source == 1 || lap.source == 4) {
+						// LapSource.MANUAL = 1, LapSource.API = 4
 						laps.push(lap);
 					}
 				}
@@ -577,20 +870,25 @@ class RHMarshal {
 			self.displayLaps();
 			self.renderGraph();
 		}
-		if (typeof self.callbacks.recalcRace === 'function') {
+		if (typeof self.callbacks.recalcRace === "function") {
 			self.callbacks.recalcRace(self.race_loaded);
 		}
 	}
 
 	updateIncrementalLapTimes() {
 		// sorts laps table and calculates/updates "lap time" values based on lap-to-lap comparison
-		self.race.laps.sort(function(a, b){
-			return a.lap_time_stamp - b.lap_time_stamp
-		})
+		self.race.laps = self.buildIncrementalLapTimes(self.race.laps);
+	}
+
+	buildIncrementalLapTimes(laps) {
+		// sorts laps table and calculates/updates "lap time" values based on lap-to-lap comparison
+		self.race.laps.sort(function (a, b) {
+			return a.lap_time_stamp - b.lap_time_stamp;
+		});
 
 		var lap_index = 0;
-		for (var lap_i in self.race.laps) {
-			var lap = self.race.laps[lap_i];
+		for (var lap_i in laps) {
+			var lap = laps[lap_i];
 			if (!lap.deleted) {
 				if (lap_index) {
 					lap.lap_time = lap.lap_time_stamp - lastLap.lap_time_stamp;
@@ -602,9 +900,11 @@ class RHMarshal {
 				var lastLap = lap;
 			} else {
 				lap.lap_time = 0;
-				lap.lap_time_formatted = '-';
+				lap.lap_time_formatted = "-";
 			}
 		}
+
+		return laps;
 	}
 
 	addManualLap(lap_time_s) {
@@ -617,7 +917,7 @@ class RHMarshal {
 			crossingEnd: 0,
 			lap_time_stamp: parseInt(lap_time_s * 1000),
 			source: 1,
-			deleted: false
+			deleted: false,
 		});
 		self.updateIncrementalLapTimes();
 		self.clearMarkedLap();
@@ -677,20 +977,20 @@ class RHMarshal {
 			laps: self.race.laps,
 			enter_at: self.race.enter_at,
 			exit_at: self.race.exit_at,
-		}
+		};
 
 		return data;
 	}
 
-	displayLaps(marked_lap=null) {
+	displayLaps(marked_lap = null) {
 		self.clearCrossings();
-		if (typeof self.callbacks.displayLaps === 'function') {
+		if (typeof self.callbacks.displayLaps === "function") {
 			self.callbacks.displayLaps(self.race.laps, marked_lap);
 		}
 	}
 
-	mapRange(val, start, end){
-		return val * (end - start) / 1 + start;
+	mapRange(val, start, end) {
+		return (val * (end - start)) / 1 + start;
 	}
 
 	handleGraphInteractionStart(evt) {
@@ -704,7 +1004,13 @@ class RHMarshal {
 			var y = (evt.clientY - rect.y) / evt.target.offsetHeight;
 		}
 
-		var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
+		var rssi = parseInt(
+			self.mapRange(
+				y,
+				self.graph.options.maxValue,
+				self.graph.options.minValue,
+			),
+		);
 
 		self.interact.startingEnter = self.race.enter_at;
 		self.interact.startingExit = self.race.exit_at;
@@ -716,10 +1022,9 @@ class RHMarshal {
 		} else if (self.interact.startingExit < self.graph.options.minValue) {
 			self.interact.adjustEnter = false;
 		} else {
-			var midPoint = (
-				self.interact.startingEnter
-				+ self.interact.startingExit) >> 1;
-			self.interact.adjustEnter = (rssi >= midPoint);
+			var midPoint =
+				(self.interact.startingEnter + self.interact.startingExit) >> 1;
+			self.interact.adjustEnter = rssi >= midPoint;
 		}
 	}
 
@@ -728,15 +1033,26 @@ class RHMarshal {
 		var rect = self.graph.canvas.getBoundingClientRect();
 
 		if (evt.targetTouches) {
-			var y = (evt.targetTouches[0].clientY - rect.top) / evt.target.offsetHeight;
+			var y =
+				(evt.targetTouches[0].clientY - rect.top) / evt.target.offsetHeight;
 		} else {
 			var y = (evt.clientY - rect.top) / evt.target.offsetHeight;
 		}
 
-		if (Math.abs(y - self.interact.startingY) > 0.01 || self.interact.isDragging) { // prevent accidental drag
+		if (
+			Math.abs(y - self.interact.startingY) > 0.01 ||
+			self.interact.isDragging
+		) {
+			// prevent accidental drag
 			self.interact.isDragging = true;
 
-			var rssi = parseInt(self.mapRange(y, self.graph.options.maxValue, self.graph.options.minValue));
+			var rssi = parseInt(
+				self.mapRange(
+					y,
+					self.graph.options.maxValue,
+					self.graph.options.minValue,
+				),
+			);
 
 			if (self.interact.adjustEnter) {
 				self.setEnter(rssi);
@@ -748,7 +1064,11 @@ class RHMarshal {
 
 	handleGraphInteractionTap(evt) {
 		// user taps but does not drag
-		var time = self.mapRange(self.interact.startingX, self.race.start_time, self.race.end_time);
+		var time = self.mapRange(
+			self.interact.startingX,
+			self.race.start_time,
+			self.race.end_time,
+		);
 
 		if (!$.isEmptyObject(self.calc_result)) {
 			// find closest start/end time to "time" point
@@ -760,8 +1080,7 @@ class RHMarshal {
 				if (time > lap.crossingEnd) {
 					selectedLap = i;
 					delta = Math.abs(time - lap.crossingEnd);
-				} else if (time >= lap.crossingStart
-					&& time <= lap.crossingEnd) {
+				} else if (time >= lap.crossingStart && time <= lap.crossingEnd) {
 					selectedLap = i;
 					break;
 				} else {
@@ -773,9 +1092,9 @@ class RHMarshal {
 				}
 			}
 
-			if (typeof self.callbacks.graphInteractTap === 'function') {
+			if (typeof self.callbacks.graphInteractTap === "function") {
 				self.callbacks.graphInteractTap({
-					'lapTimeStamp': self.calc_result[selectedLap].lap_time_stamp,
+					lapTimeStamp: self.calc_result[selectedLap].lap_time_stamp,
 				});
 			}
 		} else {
@@ -784,10 +1103,10 @@ class RHMarshal {
 	}
 
 	handleGraphInteractionCancel() {
-		if (typeof self.callbacks.graphInteractCancel === 'function') {
+		if (typeof self.callbacks.graphInteractCancel === "function") {
 			self.callbacks.graphInteractCancel({
-				'startingEnter': self.interact.startingEnter,
-				'startingExit': self.interact.startingExit,
+				startingEnter: self.interact.startingEnter,
+				startingExit: self.interact.startingExit,
 			});
 		}
 		self.race.enter_at = self.interact.startingEnter;
@@ -820,7 +1139,7 @@ class RHMarshal {
 		}
 	}
 
-	graphInteractMouseUp(evt){
+	graphInteractMouseUp(evt) {
 		if (!self.interact.isTouchEvent) {
 			if (self.interact.isDragging) {
 				self.recalcRace();
@@ -834,7 +1153,7 @@ class RHMarshal {
 		evt.stopPropagation();
 	}
 
-	graphInteractMouseOut(evt){
+	graphInteractMouseOut(evt) {
 		if (!self.interact.isTouchEvent) {
 			if (self.interact.isDragging) {
 				self.handleGraphInteractionCancel();
@@ -846,7 +1165,8 @@ class RHMarshal {
 	// touch handlers
 	graphInteractTouchStart(evt) {
 		evt.preventDefault();
-		if (evt.targetTouches.length == 1) { // pause if multi-touch detected
+		if (evt.targetTouches.length == 1) {
+			// pause if multi-touch detected
 			self.handleGraphInteractionStart(evt);
 		}
 		self.interact.isTouchEvent = true;
@@ -854,14 +1174,16 @@ class RHMarshal {
 
 	graphInteractTouchMove(evt) {
 		evt.preventDefault();
-		if (evt.targetTouches.length == 1) { // pause if multi-touch detected
+		if (evt.targetTouches.length == 1) {
+			// pause if multi-touch detected
 			self.handleGraphInteractionMove(evt);
 		}
 	}
 
-	graphInteractTouchEnd(evt){
+	graphInteractTouchEnd(evt) {
 		evt.preventDefault();
-		if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
+		if (evt.targetTouches && evt.targetTouches.length == 0) {
+			// end only when all touches end
 			if (self.interact.isDragging) {
 				self.recalcRace();
 			} else {
