@@ -3139,6 +3139,19 @@ def play_callout_text(data):
                 gevent.spawn_later(delay_sec_holder[0]*(i+1), RaceContext.rhui.emit_phonetic_text, piece,
                                    priority=priority, resume_queue=priority)
 
+@SOCKET_IO.on('get_callout_text')
+@requires_socketio_auth
+@catchLogExcWithDBWrapper
+def get_callout_text(data):
+    '''Expands a callout and returns it to the caller instead of speaking it.'''
+    callout_str = data.get('callout')
+    args = get_callout_pilot_args(data)  # names a pilot, for the per-pilot substitutions
+    # supplied so %DELAY_#_SECS% and %PILOTS_INTERVAL_#_SECS% behave; a fetch never delays
+    delay_sec_holder = []
+    message = RHData.doReplace(RHAPI, callout_str, args, True, delay_sec_holder)
+    # send to the requesting socket only; 'text' is a list for '%PILOTS_INTERVAL_#_SECS%'
+    emit('callout_text', {'callout': callout_str, 'text': message})
+
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
 def imdtabler_update_freqs(data):
