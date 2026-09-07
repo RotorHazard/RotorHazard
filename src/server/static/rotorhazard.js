@@ -31,6 +31,10 @@ var speakQueuePausedFlag = false;
 var speakQueuePauseTimer = null;
 // cleared by layout-basic.html so stream-overlay pages stay silent
 var speakServerTextFlag = true;
+// cleared by pages that must not sound the staging and race tones
+var playRaceTonesFlag = true;
+// true until the first 'race_status' after load, to resume a race already running
+var raceTimerResumeCheck = true;
 var reloading = false;
 
 /* global functions */
@@ -478,6 +482,25 @@ webAudioUnlock(globalAudioCtx);
 
 // test for Firefox (has broken RamptoValue audio function)
 var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+
+// starts the race clock from the server's staging/start times, so the tones follow the
+//  race rather than whichever page happens to be showing it
+function race_timer_kickoff(msg) {
+	rotorhazard.timer.stopAll();
+
+	var staging_start_pi = (msg.pi_staging_at_s * 1000); // convert seconds (pi) to millis (JS)
+	var race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
+
+	rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
+	rotorhazard.timer.race.count_up = Boolean(msg.unlimited_time);
+	rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
+
+	rotorhazard.timer.race.staging_tones = msg.staging_tones;
+
+	rotorhazard.timer.race.start(race_start_pi, staging_start_pi);
+
+	rotorhazard.winner_declared_flag = false;
+}
 
 //Generate tone. All arguments are optional:
 //duration of the tone in milliseconds. Default is 500
@@ -1393,32 +1416,38 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 			&& timer.time_staging_tenths % 10 == 0
 			&& timer.time_staging_tenths != timer.staging_cb_tic) {
 			timer.staging_cb_tic = timer.time_staging_tenths;
-			if (rotorhazard.use_mp3_tones) {
-				play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-			}
-			else {
-				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+			if (playRaceTonesFlag) {
+				if (rotorhazard.use_mp3_tones) {
+					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
+				}
+				else {
+					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+				}
 			}
 		}
 	} else if (timer.time_tenths == 0 ||
 		(!timer.count_up && timer.time_tenths == timer.duration_tenths)
 		) {
 		// play start tone
-		if (rotorhazard.use_mp3_tones) {
-			play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
-		}
-		else {
-			play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+		if (playRaceTonesFlag) {
+			if (rotorhazard.use_mp3_tones) {
+				play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
+			}
+			else {
+				play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+			}
 		}
 	} else {
 		if (!timer.count_up) {
 			if (timer.time_tenths <= 50 && timer.time_tenths > 0) { // Final seconds
 				if (timer.time_tenths % 10 == 0) {
-					if (rotorhazard.use_mp3_tones) {
-						play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-					}
-					else {
-						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+					if (playRaceTonesFlag) {
+						if (rotorhazard.use_mp3_tones) {
+							play_mp3_beep(sound_stage, rotorhazard.tone_volume);
+						}
+						else {
+							play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+						}
 					}
 				}
 			} else if (timer.time_tenths == 100) { // announce 10s only when counting down
@@ -1454,11 +1483,13 @@ rotorhazard.timer.race.callbacks.stop = function(timer){
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
-	if (rotorhazard.use_mp3_tones) {
-		play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
-	}
-	else {
-		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	if (playRaceTonesFlag) {
+		if (rotorhazard.use_mp3_tones) {
+			play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
+		}
+		else {
+			play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+		}
 	}
 	$('.time-display').html(timer.renderHTML());
 }
@@ -1814,6 +1845,99 @@ jQuery(document).ready(function($){
 
 	socket.on('clear_priority_messages', function () {
 		clear_system_messages();
+	});
+
+	// server time sync, needed before the race clock can run; every page does it so the
+	//  clock and its tones work wherever the browser is sitting
+	rotorhazard.pi_time_request = window.performance.now();
+	socket.emit('get_pi_time');
+
+	socket.on('pi_time', function (msg) {
+		var max_samples = 10;
+		var response_time = window.performance.now();
+		var server_delay = response_time - rotorhazard.pi_time_request;
+		var server_oneway = server_delay ? server_delay / 2 : server_delay;
+
+		var server_time_differential = {
+			'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
+			'response': parseFloat(server_delay)
+		}
+
+		// store sync sample
+		rotorhazard.server_time_differential_samples.push(server_time_differential);
+
+		// sort stored samples
+		rotorhazard.server_time_differential_samples.sort(function(a, b){
+			return a.response - b.response;
+		})
+
+		// remove unusable samples
+		var diff_min = rotorhazard.server_time_differential_samples[0].differential - rotorhazard.server_time_differential_samples[0].response
+		var diff_max = rotorhazard.server_time_differential_samples[0].differential + rotorhazard.server_time_differential_samples[0].response
+
+		rotorhazard.server_time_differential_samples = rotorhazard.server_time_differential_samples.filter(function(value, index, array) {
+			return value.differential >= diff_min && value.differential <= diff_max;
+		});
+
+		// get filtered value
+		var a = [];
+		for (var i in rotorhazard.server_time_differential_samples) {
+			a.push(rotorhazard.server_time_differential_samples[i].differential);
+		}
+		rotorhazard.server_time_differential = median(a);
+
+		// pass current sync to timers
+		rotorhazard.timer.race.sync();
+		rotorhazard.timer.deferred.sync();
+
+		// continue sampling for sync to improve accuracy
+		if (rotorhazard.server_time_differential_samples.length < max_samples) {
+			setTimeout(function(){
+				rotorhazard.pi_time_request = window.performance.now();
+				socket.emit('get_pi_time');
+			}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
+		}
+
+		// update server info
+		var a = Infinity;
+		for (var i in rotorhazard.server_time_differential_samples) {
+			a = Math.min(a, rotorhazard.server_time_differential_samples[i].response);
+		}
+		rotorhazard.sync_within = Math.ceil(a);
+
+		$('#server-lag').html('<p>Sync quality: within ' + rotorhazard.sync_within + 'ms (' + rotorhazard.server_time_differential_samples.length + '/' + max_samples + ' samples)</p>');
+
+		if (
+			(max_samples >= 10 && SYNC_WARNING_THRESHOLD_10 > rotorhazard.sync_within) ||
+			(max_samples >= 3 && SYNC_WARNING_THRESHOLD_3 > rotorhazard.sync_within) ||
+			SYNC_WARNING_THRESHOLD_1 > rotorhazard.sync_within) {
+			rotorhazard.has_server_sync = true;
+			if (!rotorhazard.timer.running()) {
+				$('.timing-clock .warning').hide();
+			}
+		} else {
+			$('.timing-clock .warning .value').text(rotorhazard.sync_within + 'ms');
+		}
+	});
+
+	// race clock, driven here so every page runs it and sounds the tones
+	socket.on('stage_ready', function (msg) {
+		race_timer_kickoff(msg);
+	});
+
+	socket.on('stop_timer', function () {
+		rotorhazard.timer.race.stop();
+	});
+
+	// picks up a race already under way when the page loads; later starts arrive
+	//  as 'stage_ready', so this fires once
+	socket.on('race_status', function (msg) {
+		if (raceTimerResumeCheck) {
+			raceTimerResumeCheck = false;
+			if (msg.race_status == 1 || msg.race_status == 3) {
+				race_timer_kickoff(msg);
+			}
+		}
 	});
 
 	$(document).on('click', '#message-dismiss-all', function(el){

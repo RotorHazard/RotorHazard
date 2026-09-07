@@ -18,97 +18,8 @@
 	var resume_check = true;
 	var leaderboard_current_flag = true;
 
-	function race_kickoff(msg) {
-		rotorhazard.timer.stopAll();
-
-		var staging_start_pi = (msg.pi_staging_at_s * 1000); // convert seconds (pi) to millis (JS)
-		var race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
-
-		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
-		rotorhazard.timer.race.count_up = Boolean(msg.unlimited_time);
-		rotorhazard.timer.race.duration_tenths = msg.race_time_sec * 10;
-
-		rotorhazard.timer.race.staging_tones = msg.staging_tones;
-
-		rotorhazard.timer.race.start(race_start_pi, staging_start_pi);
-
-		rotorhazard.winner_declared_flag = false;
-	}
-
 	$(document).ready(function () {
-		// get pi time
-		rotorhazard.pi_time_request = window.performance.now();
-		socket.emit('get_pi_time');
-
 		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
-
-		socket.on('pi_time', function (msg) {
-			var max_samples = 10;
-			var response_time = window.performance.now();
-			var server_delay = response_time - rotorhazard.pi_time_request;
-			var server_oneway = server_delay ? server_delay / 2 : server_delay;
-
-			var server_time_differential = {
-				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
-				'response': parseFloat(server_delay)
-			}
-
-			// store sync sample
-			rotorhazard.server_time_differential_samples.push(server_time_differential);
-
-			// sort stored samples
-			rotorhazard.server_time_differential_samples.sort(function(a, b){
-				return a.response - b.response;
-			})
-
-			// remove unusable samples
-			var diff_min = rotorhazard.server_time_differential_samples[0].differential - rotorhazard.server_time_differential_samples[0].response
-			var diff_max = rotorhazard.server_time_differential_samples[0].differential + rotorhazard.server_time_differential_samples[0].response
-
-			rotorhazard.server_time_differential_samples = rotorhazard.server_time_differential_samples.filter(function(value, index, array) {
-				return value.differential >= diff_min && value.differential <= diff_max;
-			});
-
-			// get filtered value
-			var a = [];
-			for (var i in rotorhazard.server_time_differential_samples) {
-				a.push(rotorhazard.server_time_differential_samples[i].differential);
-			}
-			rotorhazard.server_time_differential = median(a);
-
-			// pass current sync to timers
-			rotorhazard.timer.race.sync();
-			rotorhazard.timer.deferred.sync();
-
-			// continue sampling for sync to improve accuracy
-			if (rotorhazard.server_time_differential_samples.length < 10) {
-				setTimeout(function(){
-					rotorhazard.pi_time_request = window.performance.now();
-					socket.emit('get_pi_time');
-				}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
-			}
-
-			// update server info
-			var a = Infinity;
-			for (var i in rotorhazard.server_time_differential_samples) {
-				a = Math.min(a, rotorhazard.server_time_differential_samples[i].response);
-			}
-			rotorhazard.sync_within = Math.ceil(a);
-
-			$('#server-lag').html('<p>Sync quality: within ' + rotorhazard.sync_within + 'ms (' + rotorhazard.server_time_differential_samples.length + '/' + max_samples + ' samples)</p>');
-
-			if (
-				(max_samples >= 10 && SYNC_WARNING_THRESHOLD_10 > rotorhazard.sync_within) ||
-				(max_samples >= 3 && SYNC_WARNING_THRESHOLD_3 > rotorhazard.sync_within) ||
-				SYNC_WARNING_THRESHOLD_1 > rotorhazard.sync_within) {
-				rotorhazard.has_server_sync = true;
-				if (!rotorhazard.timer.running()) {
-					$('.timing-clock .warning').hide();
-				}
-			} else {
-				$('.timing-clock .warning .value').text(rotorhazard.sync_within + 'ms');
-			}
-		});
 
 		socket.on('language', function (msg) {
 			rotorhazard.interface_language = msg.language;
@@ -207,9 +118,6 @@
 						rotorhazard.timer.deferred.initial_disp_tenths = null;
 						rotorhazard.timer.race.initial_disp_tenths = null;
 					}
-					if (resume_check) {
-						race_kickoff(msg);
-					}
 					break;
 				case 2: // Race stopped, clear or save laps
 					$('body').removeClass('race-running');
@@ -222,9 +130,6 @@
 					$('body').addClass('race-running');
 					$('body').removeClass('race-new');
 					$('.timing-clock').addClass('staging');
-					if (resume_check) {
-						race_kickoff(msg);
-					}
 					break;
 				default: // Waiting to start new race
 					$('body').removeClass('race-running');
@@ -565,14 +470,6 @@
 
 		socket.on('prestage_ready', function (msg) {
 			request_time = new Date();
-		});
-
-		socket.on('stage_ready', function (msg) {
-			race_kickoff(msg);
-		});
-
-		socket.on('stop_timer', function (msg) {
-			rotorhazard.timer.race.stop();
 		});
 
 		socket.on('pilot_data', function (msg) {
