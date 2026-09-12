@@ -1797,10 +1797,12 @@ class RHRace():
                 if self._racecontext.cluster.isSplitSecondaryAvailable(secondary_index):
                     split = self._racecontext.rhdata.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
                     if split:
+                        # rebuild the formatted time
                         split_payload = {
                             'split_id': secondary_index,
                             'split_raw': split.split_time,
-                            'split_time': split.split_time_formatted,
+                            'split_time': RHUtils.format_split_time_to_str(split.split_time, \
+                                        self._racecontext.serverconfig.get_item('UI', 'timeFormat')),
                             'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
                         }
                     else:
