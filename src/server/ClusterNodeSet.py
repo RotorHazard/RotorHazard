@@ -420,6 +420,9 @@ class SecondaryNode:
                             # convert split timestamp (epoch ms since 1970-01-01) to equivalent local 'monotonic' time value
                             split_ts = split_ts_epoch_ms - self._racecontext.race.start_time_epoch_ms
 
+                            # a speed after the pilot is done is called out but not stored
+                            pilot_done_flag = bool(self._racecontext.race.get_node_finished_flag(node_index))
+
                             act_laps_list = self._racecontext.race.get_active_laps(late_lap_flag=True)[node_index]
                             lap_count = max(0, len(act_laps_list) - 1)
                             split_id = self.id
@@ -485,7 +488,8 @@ class SecondaryNode:
                                     'name_callout_flag': self.nameCalloutFlag
                                 }
 
-                                self._racecontext.rhdata.add_lapSplit(split_data)
+                                self._racecontext.rhdata.add_lapSplit(
+                                        dict(split_data, split_speed=None) if pilot_done_flag else split_data)
                                 self._racecontext.rhui.emit_split_pass_info(split_data)
                                 eventStr = self.info.get('event')
                                 if eventStr and len(eventStr) > 0:
@@ -525,6 +529,8 @@ class SecondaryNode:
                                         'speed_callout_flag': self.speedCalloutFlag,
                                         'name_callout_flag': self.nameCalloutFlag
                                     }
+                                    if not pilot_done_flag:
+                                        self._racecontext.race.add_split_speed_record(split_data)
                                     self._racecontext.rhui.emit_phonetic_split(split_data)
                                     eventStr = self.info.get('event')
                                     if eventStr and len(eventStr) > 0:

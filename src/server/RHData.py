@@ -433,6 +433,7 @@ class RHData():
             raceMeta_query_data = self.get_legacy_table_data(engine, metadata, 'saved_race_meta')
             racePilot_query_data = self.get_legacy_table_data(engine, metadata, 'saved_pilot_race')
             raceLap_query_data = self.get_legacy_table_data(engine, metadata, 'saved_race_lap')
+            raceLapSplit_query_data = self.get_legacy_table_data(engine, metadata, 'saved_race_lap_split')
             pilotAttribute_query_data = self.get_legacy_table_data(engine, metadata, 'pilot_attribute')
             heatAttribute_query_data = self.get_legacy_table_data(engine, metadata, 'heat_attribute')
             raceClassAttribute_query_data = self.get_legacy_table_data(engine, metadata, 'race_class_attribute')
@@ -806,6 +807,12 @@ class RHData():
                         self.restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
                             'source': None,
                             'deleted': False
+                        })
+
+                        self.restore_table(Database.SavedRaceLapSplit, raceLapSplit_query_data, defaults={
+                            'split_time_formatted': None,
+                            'split_speed': None,
+                            'speed_only': False
                         })
 
                         self.restore_table(Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
@@ -1414,6 +1421,9 @@ class RHData():
                     for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id):
                         if race_lap.node_index == slot.node_index:
                             race_lap.pilot_id = data['pilot']
+                    for lap_split in Database.SavedRaceLapSplit.query.filter_by(race_id=race_meta.id):
+                        if lap_split.node_index == slot.node_index:
+                            lap_split.pilot_id = data['pilot']
 
                     self.clear_results_savedRaceMeta(race_meta)
 
@@ -3252,6 +3262,8 @@ class RHData():
                     pilot_race.pilot_id = np.pilot_id
                     for lap in self.get_savedRaceLaps_by_savedPilotRace(pilot_race.id):
                         lap.pilot_id = np.pilot_id
+                    for lap_split in self.get_savedRaceLapSplits_by_savedPilotRace(pilot_race.id):
+                        lap_split.pilot_id = np.pilot_id
                     break
 
                 if pilot_race.node_index == np.node_index:
@@ -3503,6 +3515,19 @@ class RHData():
     def get_active_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
         return Database.SavedRaceLap.query.filter(Database.SavedRaceLap.deleted != 1, Database.SavedRaceLap.pilotrace_id == pilotrace_id).order_by(Database.SavedRaceLap.lap_time_stamp).all()
 
+    # Race Lap Splits
+    def get_savedRaceLapSplits(self):
+        return Database.SavedRaceLapSplit.query.all()
+
+    def get_savedRaceLapSplits_by_savedPilotRace(self, pilotrace_id):
+        return Database.SavedRaceLapSplit.query.filter_by(pilotrace_id=pilotrace_id) \
+            .order_by(Database.SavedRaceLapSplit.lap_id, Database.SavedRaceLapSplit.split_id).all()
+
+    def get_savedRaceLapSplits_by_savedRaceMeta(self, race_id):
+        return Database.SavedRaceLapSplit.query.filter_by(race_id=race_id) \
+            .order_by(Database.SavedRaceLapSplit.node_index, Database.SavedRaceLapSplit.lap_id, \
+                      Database.SavedRaceLapSplit.split_id).all()
+
     # Race general
     def replace_savedRaceLaps(self, data):
         Database.SavedRaceLap.query.filter_by(pilotrace_id=data['pilotrace_id']).delete()
@@ -3558,12 +3583,28 @@ class RHData():
                     peak_rssi=lap.peak_rssi
                 ))
 
+            for split in node_data.get('splits') or []:
+                Database.DB_session.add(Database.SavedRaceLapSplit(
+                    race_id=node_data['race_id'],
+                    pilotrace_id=new_pilotrace.id,
+                    node_index=node_index,
+                    pilot_id=node_data['pilot_id'],
+                    lap_id=split['lap_id'],
+                    split_id=split['split_id'],
+                    split_time_stamp=split['split_time_stamp'],
+                    split_time=split['split_time'],
+                    split_time_formatted=split.get('split_time_formatted'),
+                    split_speed=split.get('split_speed'),
+                    speed_only=split.get('speed_only', False)
+                ))
+
         self.commit()
         return True
 
     def clear_race_data(self):
         Database.DB_session.query(Database.SavedRaceMetaAttribute).delete()
         Database.DB_session.query(Database.LapSplit).delete()
+        Database.DB_session.query(Database.SavedRaceLapSplit).delete()
         Database.DB_session.query(Database.SavedRaceLap).delete()
         Database.DB_session.query(Database.SavedPilotRace).delete()
         Database.DB_session.query(Database.SavedRaceMeta).delete()
@@ -3584,6 +3625,11 @@ class RHData():
             node_index=node_index,
             lap_id=lap_id
             ).all()
+
+    def get_lapSplits_by_node(self, node_index):
+        return Database.LapSplit.query.filter_by(
+            node_index=node_index
+            ).order_by(Database.LapSplit.lap_id, Database.LapSplit.split_id).all()
 
     def get_lapSplit_by_params(self, node_index, lap_id, split_id):
         return Database.LapSplit.query.filter_by(
@@ -3629,6 +3675,21 @@ class RHData():
         Database.DB_session.delete(lapSplit)
         self.commit()
         return True
+
+    def shift_lapSplits(self, node_index, from_lap_id, delta):
+        '''Shifts split lap ids to track laps renumbered by a lap delete or restore.'''
+        lap_splits = Database.LapSplit.query.filter(
+            Database.LapSplit.node_index == node_index,
+            Database.LapSplit.lap_id >= from_lap_id
+            ).all()
+        # apply lowest first when shifting down, highest first when shifting up,
+        #  so no row ever lands on a lap id still held by another
+        lap_splits.sort(key=lambda lap_split: lap_split.lap_id, reverse=(delta > 0))
+        for lap_split in lap_splits:
+            lap_split.lap_id += delta
+            Database.DB_session.flush()
+        self.commit()
+        return len(lap_splits)
 
     def clear_lapSplits(self):
         Database.DB_session.query(Database.LapSplit).delete()

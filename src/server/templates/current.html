@@ -452,7 +452,7 @@
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta));
+			$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta, false, false, true));
 
 			$('#team_leaderboard').empty();
 			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {

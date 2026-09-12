@@ -123,12 +123,22 @@ class PageCache:
             ))
             for heat in all_heats:
                 if self._racecontext.rhdata.savedRaceMetas_has_heat(heat.id):
+                    # a class format overrides the format saved with the race
+                    race_class = self._racecontext.rhdata.get_raceClass(heat.class_id)
+                    class_format_id = race_class.format_id if race_class else None
                     rounds = []
                     for race in self._racecontext.rhdata.get_savedRaceMetas_by_heat(heat.id):    
                         pilotraces = []
                         for pilotrace in self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
                             gevent.sleep(0.001)
+                            # use first recorded speed for each lap, by index among the non-deleted laps
+                            lap_speeds = {}
+                            for lap_split in self._racecontext.rhdata.get_savedRaceLapSplits_by_savedPilotRace(pilotrace.id):
+                                if lap_split.split_speed is not None and lap_split.lap_id not in lap_speeds:
+                                    lap_speeds[lap_split.lap_id] = lap_split.split_speed
+
                             laps = []
+                            lap_index = 0
                             for lap in self._racecontext.rhdata.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
                                 laps.append({
                                     'id': lap.id,
@@ -136,8 +146,11 @@ class PageCache:
                                     'lap_time': lap.lap_time,
                                     'lap_time_formatted': lap.lap_time_formatted,
                                     'source': lap.source,
-                                    'deleted': lap.deleted
+                                    'deleted': lap.deleted,
+                                    'speed': None if lap.deleted else lap_speeds.get(lap_index)
                                 })
+                                if not lap.deleted:
+                                    lap_index += 1
 
                             pilot_data = self._racecontext.rhdata.get_pilot(pilotrace.pilot_id)
                             if pilot_data:
@@ -153,9 +166,12 @@ class PageCache:
                             })
 
                         results = self._racecontext.rhdata.get_results_savedRaceMeta(race)
+                        race_format = self._racecontext.rhdata.get_raceFormat(
+                                            class_format_id if class_format_id else race.format_id)
                         rounds.append({
                             'id': race.round_id,
                             'start_time_formatted': race.start_time_formatted,
+                            'format_name': race_format.name if race_format else None,
                             'nodes': pilotraces,
                             'leaderboard': results
                         })

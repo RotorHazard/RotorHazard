@@ -151,7 +151,46 @@
 		md_output = event_converter.makeHtml({{ getOption('eventDescription')|tojson }});
 		$('#description').html($(md_output));
 
+		// drop race format name from round header if too narrow to fit it
+		function fit_round_header(el) {
+			var format_el = $(el).children('.race-format');
+			if (!format_el.length || !el.clientWidth)
+				return;
+			format_el.hide();
+			var bare_height = el.offsetHeight;
+			format_el.show();
+			if (el.offsetHeight > bare_height)
+				format_el.hide();
+		}
+
+		function fit_round_headers() {
+			$('.round > .panel-header button').each(function() { fit_round_header(this); });
+		}
+
+		var fit_timer = null;
+		function fit_round_headers_soon(delay) {
+			clearTimeout(fit_timer);
+			fit_timer = setTimeout(fit_round_headers, delay);
+		}
+
+		$(window).on('resize', function() { fit_round_headers_soon(100); });
+
+		// a header is unmeasurable until its panel finishes opening
+		$(document).on('click', '.collapsing .panel-header', function() { fit_round_headers_soon(450); });
+
 		socket.on('result_data', function (msg) {
+			function lap_speed_text(lap) {
+				if (lap.speed === null || typeof(lap.speed) === 'undefined')
+					return '';
+				return ' (' + lap.speed.toFixed(2) + ')';
+			}
+
+			function lap_speed_span(lap) {
+				if (lap.speed === null || typeof(lap.speed) === 'undefined')
+					return '';
+				return '<span class="from_start">(' + lap.speed.toFixed(2) + ')</span>';
+			}
+
 			function order_boards(primary) {
 				var boards = ['by_race_time', 'by_fastest_lap', 'by_consecutives']
 				boards.sort(function(x,y){ return x == primary ? -1 : y == primary ? 1 : 0; });
@@ -283,7 +322,7 @@
 									var round = heat.rounds[round_i];
 									var round_div = $('<div id="class_' + class_id + '_heat_' + class_heat + '_round_' + round.id + '" class="round panel collapsing open">');
 
-									round_div.append('<div class="panel-header"><h4><button class="no-style">' + __('Round') + ' ' + round.id + ' (' + round.start_time_formatted + ')</button></h4></div>')
+									round_div.append('<div class="panel-header"><h4><button class="no-style">' + __('Round') + ' ' + round.id + ' (' + round.start_time_formatted + ')' + (round.format_name ? '<span class="race-format"> - ' + round.format_name + '</span>' : '') + '</button></h4></div>')
 
 									var round_content = $('<div class="panel-content">');
 									// race leaderboards
@@ -317,9 +356,9 @@
 														} else {
 															var timestamp = formatTimeMillis(lap.lap_time_stamp, {{ getConfig('UI', 'timeFormat')|tojson }})
 														}
-														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + lap_speed_text(lap) + '</span>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
 													} else {
-														tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
+														tbody.append('<tr class="lap_0"><td>0</td><td>' + lap_speed_span(lap) + formatTimeMillis(lap.lap_time, {{ getConfig('UI', 'timeFormat')|tojson }}) + '</td></tr>')
 													}
 													lap_index++;
 												}
@@ -357,11 +396,18 @@
 				var panel_content = $('<div class="panel-content" style="display: none">');
 				var event_leaderboard = $('<div class="event-leaderboards">');
 				event_leaderboard.append('<h3>' + __('Race Totals') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true));
+				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta, true, true));
 				event_leaderboard.append('<h3>' + __('Fastest Laps') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta));
 				event_leaderboard.append('<h3>' + __('Fastest Consecutive Laps') + '</h3>');
 				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta));
+				if (msg.event_leaderboard.meta.speed_data) {
+					var speed_board = sort_by_top_speed(msg.event_leaderboard.by_race_time);
+					if (speed_board.length) {
+						event_leaderboard.append('<h3>' + __('Fastest Speeds') + '</h3>');
+						event_leaderboard.append(build_leaderboard(speed_board, 'by_fastest_speed', msg.event_leaderboard.meta));
+					}
+				}
 				panel_content.append(event_leaderboard);
 				panel.append(panel_content);
 
@@ -380,6 +426,8 @@
 						panel_obj.children('.panel-content').stop().slideUp();
 					}
 				}
+
+				fit_round_headers_soon(450);
 			} else {
 				page.append('<p>' + __('There is no saved race data available to view.') + '</p>');
 			}

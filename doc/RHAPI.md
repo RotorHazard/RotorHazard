@@ -1059,6 +1059,37 @@ All lap records. Returns `list[SavedRaceLap]`.
 Lap records matching the provided pilot run ID. Returns `list[SavedRaceLap]`.
 - `run_id` (int): ID of pilot run used to retrieve laps
 
+### Saved Race &rarr; Pilot Run &rarr; Lap Splits
+Lap splits store data related to split-timer crossings reported by secondary timers running in `split` mode. Each pilot run may have zero or more lap splits associated with it. Splits are only recorded when split timers are in use, and `split_speed` is only populated when the secondary timer is configured with a `distance` value.
+
+Lap splits are represented with the `SavedRaceLapSplit` class, which has the following properties:
+- `id` (int): Internal identifier
+- `race_id` (int): ID of associated saved race
+- `pilotrace_id` (int): ID of associated pilot run
+- `node_index` (int): Seat number
+- `pilot_id` (int): ID of associated pilot
+- `lap_id` (int): Number of the lap during which the split was recorded
+- `split_id` (int): Index of the split timer that recorded the crossing
+- `split_time_stamp` (float): Milliseconds since race start time
+- `split_time` (float): Milliseconds since previous split (or since the start of the lap)
+- `split_time_formatted` (string): Formatted user-facing text
+- `split_speed` (float): Recorded speed, or `None` if not available
+- `speed_only` (boolean): True if the record was generated for a speed callout and is not part of the lap's split sequence
+
+Lap splits are stored against the pilot run and lap number rather than against an individual `SavedRaceLap` record, so they are not renumbered when a race is marshaled.
+
+#### db.saved_lap_splits
+_Read only_
+All saved lap split records. Returns `list[SavedRaceLapSplit]`.
+
+#### db.saved_lap_splits_by_pilotrun(run_id)
+Saved lap split records matching the provided pilot run ID. Returns `list[SavedRaceLapSplit]`.
+- `run_id` (int): ID of pilot run used to retrieve lap splits
+
+#### db.saved_lap_splits_by_race(race_id)
+Saved lap split records matching the provided saved race ID. Returns `list[SavedRaceLapSplit]`.
+- `race_id` (int): ID of saved race used to retrieve lap splits
+
 
 ### Options
 Options are settings that apply to a server globally.

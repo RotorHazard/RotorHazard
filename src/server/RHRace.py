@@ -77,6 +77,7 @@ class RHRace():
         self.coop_best_time = 0.0  # best time achieved in co-op racing mode (seconds)
         self.coop_num_laps = 0     # best # of laps in co-op racing mode
         self.node_laps = {} # current race lap objects, by node
+        self.node_split_speeds = {} # speed-only split records not tracked in the lap-splits table, by node
         self.node_has_finished = {}     # True if pilot for node has finished race
         self.node_finished_effect = {}  # True if effect for pilot-finished for node has been triggered
         self.node_fin_effect_wait_count = 0  # number of finished effects waiting for all crossings completed
@@ -728,6 +729,7 @@ class RHRace():
                             'exit_at': self._racecontext.interface.nodes[node_index].exit_at_level,
                             'frequency': self._racecontext.interface.nodes[node_index].frequency,
                             'laps': self.node_laps[node_index],
+                            'splits': self.build_splits_save_list(node_index),
                             'marshal_type': self._racecontext.interface.node_map[node_index].interface.marshal_type
                             }
 
@@ -1224,6 +1226,9 @@ class RHRace():
         '''Delete a false lap.'''
 
         with self._racecontext.rhdata.get_db_session_handle():  # make sure DB session/connection is cleaned up
+            # save lap number before it is cleared by the renumbering below
+            deleted_lap_number = self.node_laps[node_index][lap_index].lap_number
+
             # mark lap deleted
             self.node_laps[node_index][lap_index].deleted = True
 
@@ -1272,10 +1277,12 @@ class RHRace():
                 lap_following.lap_time_formatted = RHUtils.format_time_to_str(lap_following.lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
 
             try:  # delete any split laps for deleted lap
-                lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, lap_number)
+                lap_splits = self._racecontext.rhdata.get_lapSplits_by_lap(node_index, deleted_lap_number)
                 if lap_splits and len(lap_splits) > 0:
                     for lap_split in lap_splits:
                         self._racecontext.rhdata.clear_lapSplit(lap_split)
+                if deleted_lap_number is not None:  # move later splits down to match renumbered laps
+                    self._racecontext.rhdata.shift_lapSplits(node_index, deleted_lap_number + 1, -1)
             except:
                 logger.exception("Error deleting split laps")
 
@@ -1350,6 +1357,12 @@ class RHRace():
             lap_obj.late_lap = False
 
             self.calc_lap_times(node_index, lap_index)
+
+            try:  # move later splits up to match renumbered laps
+                if lap_obj.lap_number is not None:
+                    self._racecontext.rhdata.shift_lapSplits(node_index, lap_obj.lap_number, 1)
+            except:
+                logger.exception("Error shifting split laps")
 
             self._racecontext.events.trigger(Evt.LAP_RESTORE_DELETED, {
                 'node_index': node_index,
@@ -1436,8 +1449,10 @@ class RHRace():
     def reset_current_laps(self):
         '''Resets database current laps to default.'''
         self.node_laps = {}
+        self.node_split_speeds = {}
         for idx in range(self.num_nodes):
             self.node_laps[idx] = []
+            self.node_split_speeds[idx] = []
 
         self.clear_results()
         logger.debug('Database current laps reset')
@@ -1782,10 +1797,12 @@ class RHRace():
                 if self._racecontext.cluster.isSplitSecondaryAvailable(secondary_index):
                     split = self._racecontext.rhdata.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
                     if split:
+                        # rebuild the formatted time
                         split_payload = {
                             'split_id': secondary_index,
                             'split_raw': split.split_time,
-                            'split_time': split.split_time_formatted,
+                            'split_time': RHUtils.format_split_time_to_str(split.split_time, \
+                                        self._racecontext.serverconfig.get_item('UI', 'timeFormat')),
                             'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
                         }
                     else:
@@ -1794,6 +1811,40 @@ class RHRace():
                             'split_time': '-'
                         }
                     splits.append(split_payload)
+        return splits
+
+    def add_split_speed_record(self, split_data):
+        '''Stores a speed-only split record, which is not tracked in the lap-splits table.'''
+        node_index = split_data['node_index']
+        if node_index not in self.node_split_speeds:
+            self.node_split_speeds[node_index] = []
+        self.node_split_speeds[node_index].append(split_data)
+
+    def build_splits_save_list(self, node_index):
+        '''Builds the list of split records for a node to be stored with the saved race.'''
+        splits = []
+        for split in self._racecontext.rhdata.get_lapSplits_by_node(node_index):
+            # rebuild the formatted time
+            splits.append({
+                'lap_id': split.lap_id,
+                'split_id': split.split_id,
+                'split_time_stamp': split.split_time_stamp,
+                'split_time': split.split_time,
+                'split_time_formatted': RHUtils.format_split_time_to_str(split.split_time, \
+                                        self._racecontext.serverconfig.get_item('UI', 'timeFormat')),
+                'split_speed': split.split_speed,
+                'speed_only': False
+                })
+        for split in self.node_split_speeds.get(node_index) or []:
+            splits.append({
+                'lap_id': split['lap_id'],
+                'split_id': split['split_id'],
+                'split_time_stamp': split['split_time_stamp'],
+                'split_time': split['split_time'],
+                'split_time_formatted': split.get('split_time_formatted'),
+                'split_speed': split.get('split_speed'),
+                'speed_only': True
+                })
         return splits
 
     def get_lap_results(self):

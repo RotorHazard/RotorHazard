@@ -307,7 +307,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 5)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 6)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_ui_api(self):

@@ -1776,7 +1776,46 @@ jQuery(document).ready(function($){
 }
 
 /* Leaderboards */
-function build_leaderboard(leaderboard, display_type, meta, display_starts=false) {
+function format_top_speed(speed) {
+	if (speed === null || typeof(speed) === 'undefined')
+		return '&#8212;';
+	return speed.toFixed(2);
+}
+
+function format_avg_speed(row) {
+	if (!row.speed_count)
+		return '&#8212;';
+	return (row.speed_total / row.speed_count).toFixed(2);
+}
+
+function format_source_text(source) {
+	if (!source)
+		return 'None';
+	if (source.round)
+		return source.displayname + ' / ' + __('Round') + ' ' + source.round;
+	return source.displayname;
+}
+
+function sort_by_top_speed(leaderboard) {
+	// ranked copies for the "Fastest Speeds" board, pilots without a speed omitted
+	var rows = [];
+	for (var i in leaderboard) {
+		if (leaderboard[i].top_speed != null) {
+			rows.push(Object.assign({}, leaderboard[i]));
+		}
+	}
+	rows.sort(function(a, b){ return b.top_speed - a.top_speed; });
+	var last_speed = null;
+	var last_position = null;
+	for (var i = 0; i < rows.length; i++) {
+		rows[i].position = (rows[i].top_speed === last_speed) ? last_position : i + 1;
+		last_speed = rows[i].top_speed;
+		last_position = rows[i].position;
+	}
+	return rows;
+}
+
+function build_leaderboard(leaderboard, display_type, meta, display_starts=false, display_avg_speed=false, display_top_speed=false) {
 	if (typeof(display_type) === 'undefined')
 		var display_type = 'by_race_time';
 	if (typeof(meta) === 'undefined') {
@@ -1818,6 +1857,9 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		header_row.append('<th class="laps">' + __('Laps') + '</th>');
 		header_row.append('<th class="total">' + total_label + '</th>');
 		header_row.append('<th class="avg">' + __('Avg.') + '</th>');
+		if (display_avg_speed && meta.speed_data) {
+			header_row.append('<th class="avg-speed">' + __('Avg. Speed') + '</th>');
+		}
 	}
 	if (display_type == 'by_fastest_lap' ||
 		display_type == 'heat' ||
@@ -1828,6 +1870,10 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			header_row.append('<th class="source">' + __('Source') + '</th>');
 		}
 	}
+	if (display_type == 'by_fastest_speed') {
+		header_row.append('<th class="speed">' + __('Top Speed') + '</th>');
+		header_row.append('<th class="source">' + __('Source') + '</th>');
+	}
 	if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
@@ -1836,6 +1882,12 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 		if (display_type == 'by_consecutives') {
 			header_row.append('<th class="source">' + __('Source') + '</th>');
 		}
+	}
+	if (meta.speed_data &&
+		(display_type == 'heat' ||
+		display_type == 'round' ||
+		(display_type == 'current' && display_top_speed))) {
+		header_row.append('<th class="speed">' + __('Top Speed') + '</th>');
 	}
 	if (show_points && 'primary_points' in meta) {
 		header_row.append('<th class="points">' + __('Points') + '</th>');
@@ -1878,6 +1930,10 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="avg">'+ lap +'</td>');
+
+			if (display_avg_speed && meta.speed_data) {
+				row.append('<td class="avg-speed">'+ format_avg_speed(leaderboard[i]) +'</td>');
+			}
 		}
 		if (display_type == 'by_fastest_lap' ||
 		display_type == 'heat' ||
@@ -1919,6 +1975,10 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				row.append('<td class="source">'+ source_text +'</td>');
 			}
 		}
+		if (display_type == 'by_fastest_speed') {
+			row.append('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
+			row.append('<td class="source">'+ format_source_text(leaderboard[i].top_speed_source) +'</td>');
+		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
@@ -1953,6 +2013,12 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 			if (display_type == 'by_consecutives') {
 				row.append('<td class="source">'+ source_text +'</td>');
 			}
+		}
+		if (meta.speed_data &&
+			(display_type == 'heat' ||
+			display_type == 'round' ||
+			(display_type == 'current' && display_top_speed))) {
+			row.append('<td class="speed">'+ format_top_speed(leaderboard[i].top_speed) +'</td>');
 		}
 
 		if (show_points && 'primary_points' in meta) {

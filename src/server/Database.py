@@ -366,6 +366,24 @@ class SavedRaceLap(Base):
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id
 
+class SavedRaceLapSplit(Base):
+    __tablename__ = 'saved_race_lap_split'
+    id = DB.Column(DB.Integer, primary_key=True)
+    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
+    pilotrace_id = DB.Column(DB.Integer, DB.ForeignKey("saved_pilot_race.id"), nullable=False)
+    node_index = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=True)
+    lap_id = DB.Column(DB.Integer, nullable=False)
+    split_id = DB.Column(DB.Integer, nullable=False)
+    split_time_stamp = DB.Column(DB.Float, nullable=False)
+    split_time = DB.Column(DB.Float, nullable=False)
+    split_time_formatted = DB.Column(DB.String, nullable=True)
+    split_speed = DB.Column(DB.Float, nullable=True)
+    speed_only = DB.Column(DB.Boolean, nullable=False, default=False)
+
+    def __repr__(self):
+        return '<SavedRaceLapSplit %r>' % self.id
+
 class LapSource:
     REALTIME = 0
     MANUAL = 1

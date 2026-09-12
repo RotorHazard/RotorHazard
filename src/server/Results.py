@@ -449,6 +449,27 @@ def _do_calc_leaderboard(racecontext, **params):
                 })
 
     do_gevent_sleep()
+
+    # speeds for each pilot, from the saved split records
+    top_speeds = {}
+    speed_sums = {}
+    if not USE_CURRENT:
+        for lap_split in rhDataObj.get_savedRaceLapSplits_by_savedRaceMeta(raceObj.id):
+            if lap_split.split_speed is not None:
+                if lap_split.split_speed > top_speeds.get(lap_split.pilot_id, float('-inf')):
+                    top_speeds[lap_split.pilot_id] = lap_split.split_speed
+                # non-positive speeds come from a bad reference timestamp
+                if lap_split.split_speed > 0:
+                    speed_total, speed_count = speed_sums.get(lap_split.pilot_id, (0.0, 0))
+                    speed_sums[lap_split.pilot_id] = (speed_total + lap_split.split_speed, speed_count + 1)
+    else:
+        # live splits, which hold only the race in progress
+        for lap_split in rhDataObj.get_lapSplits():
+            if lap_split.split_speed is not None and \
+                    lap_split.split_speed > top_speeds.get(lap_split.pilot_id, float('-inf')):
+                top_speeds[lap_split.pilot_id] = lap_split.split_speed
+
+    do_gevent_sleep()
     # find leader for each lap in race
     if USE_CURRENT:
         leader_laps = {}
@@ -551,6 +572,15 @@ def _do_calc_leaderboard(racecontext, **params):
         result_pilot['fastest_lap_source'] = source
         result_pilot['consecutives_source'] = source
 
+        result_pilot['top_speed'] = top_speeds.get(result_pilot['pilot_id'])
+        result_pilot['speed_total'], result_pilot['speed_count'] = \
+            speed_sums.get(result_pilot['pilot_id'], (0.0, 0))
+        result_pilot['top_speed_source'] = {
+            'round': round_num,
+            'heat': current_heat_id,
+            'displayname': heat_displayname,
+        } if result_pilot['top_speed'] is not None else None
+
     do_gevent_sleep()
 
     # Combine leaderboard
@@ -597,6 +627,9 @@ def _do_calc_leaderboard(racecontext, **params):
 
     if meta_points_flag:
         leaderboard_output['meta']['primary_points'] = True
+
+    if top_speeds:
+        leaderboard_output['meta']['speed_data'] = True
 
     leaderboard_output = sort_and_rank_leaderboards(racecontext, leaderboard_output)
     leaderboard_output = format_leaderboard_times(racecontext, leaderboard_output)
@@ -832,6 +865,9 @@ def build_incremental(racecontext, merge_input, source_input, transient=False):
                     elif meta_key == 'primary_points':
                         output_result['meta']['primary_points'] = False
 
+            if merge_result['meta'].get('speed_data'):
+                output_result['meta']['speed_data'] = True
+
         else:
             for lb_line in merge_result[key]:
                 for idx, item in enumerate(source_result[key]):
@@ -842,7 +878,9 @@ def build_incremental(racecontext, merge_input, source_input, transient=False):
                             'starts': item['starts'] + lb_line['starts'],
                             'total_time_raw': item['total_time_raw'] + lb_line['total_time_raw'],
                             'total_time_laps_raw': item['total_time_laps_raw'] + lb_line['total_time_laps_raw'],
-                            'points': (item['points'] if 'points' in item else 0) + (lb_line['points'] if 'points' in lb_line else 0)
+                            'points': (item['points'] if 'points' in item else 0) + (lb_line['points'] if 'points' in lb_line else 0),
+                            'speed_total': item.get('speed_total', 0.0) + lb_line.get('speed_total', 0.0),
+                            'speed_count': item.get('speed_count', 0) + lb_line.get('speed_count', 0)
                         }
 
                         # average lap
@@ -864,6 +902,12 @@ def build_incremental(racecontext, merge_input, source_input, transient=False):
                             race_result_updates['consecutives_raw'] = lb_line['consecutives_raw']
                             race_result_updates['consecutive_lap_start'] = lb_line['consecutive_lap_start']
                             race_result_updates['consecutives_source'] = lb_line['consecutives_source']
+
+                        # top speed & source
+                        if lb_line.get('top_speed') is not None and \
+                            (item.get('top_speed') is None or lb_line['top_speed'] > item['top_speed']):
+                            race_result_updates['top_speed'] = lb_line['top_speed']
+                            race_result_updates['top_speed_source'] = lb_line['top_speed_source']
 
                         output_result[key][idx].update(race_result_updates)
                         output_result[key][idx].pop('time_behind', None)
