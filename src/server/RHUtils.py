@@ -36,6 +36,8 @@ def format_time_to_str(millis, timeformat='{m}:{s}.{d}'):
         return ''
 
     millis = int(round(millis, 0)) # round to nearest ms
+    sign = '-' if millis < 0 else ''
+    millis = abs(millis)
     minutes = millis // 60000
     over = millis % 60000
     seconds = over // 1000
@@ -45,7 +47,7 @@ def format_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     if not timeformat:
         timeformat = '{m}:{s}.{d}'
 
-    return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
+    return sign + timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
 
 def format_split_time_to_str(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000 with leading zeros removed'''
@@ -63,6 +65,8 @@ def format_phonetic_time_to_str(millis, timeformat='{m} {s}.{d}'):
         return ''
 
     millis = int(millis) # strip fractional part
+    sign = '-' if millis < 0 else ''
+    millis = abs(millis)
     minutes = millis // 60000
     over = millis % 60000
     seconds = over // 1000
@@ -73,9 +77,9 @@ def format_phonetic_time_to_str(millis, timeformat='{m} {s}.{d}'):
         timeformat = '{m} {s}.{d}'
 
     if minutes <= 0:
-        return timeformat.format(m='', s=str(seconds), d=str(tenths))
+        return sign + timeformat.format(m='', s=str(seconds), d=str(tenths))
     else:
-        return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
+        return sign + timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
 # Formats the given seconds value to a time-duration string in the form MM:SS:mmm
 def format_secs_to_duration_str(secs_val):
