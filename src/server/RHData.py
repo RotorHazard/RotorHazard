@@ -26,7 +26,7 @@ import frequencies
 from time import monotonic
 from eventmanager import Evt
 from filtermanager import Flt
-from RHRace import RaceStatus, WinCondition, RacingMode, StagingTones, Crossing
+from RHRace import RaceStatus, WinStatus, WinCondition, RacingMode, StagingTones, Crossing
 from Database import ProgramMethod, HeatAdvanceType, RoundType, HeatStatus
 
 from FlaskAppObj import APP
@@ -4456,6 +4456,7 @@ OTHER_TOKENS = ('%HEAT%', '%PILOT%', '%PILOTS%', '%LINEUP%', '%FREQS%',
                 '%ROUND%', '%ROUND_CALL%', '%RACE_FORMAT%',
                 '%RACE_TIME%', '%RACE_TIME_CALL%',
                 '%RACE_RESULT%', '%RACE_RESULT_CALL%',
+                '%RACE_STATUS%', '%RACE_STATUS_CALL%',
                 '%WINNER%', '%WINNER_CALL%',
                 '%PREVIOUS_WINNER%', '%PREVIOUS_WINNER_CALL%',
                 '%LEADER%', '%LEADER_CALL%',
@@ -4488,6 +4489,134 @@ def clearPilotDataTokens(_rhapi, text):
         if token in text:
             text = text.replace(token, '')
     return text
+
+def getRaceClockStrs(rhapi, spoken_flag):
+    # the race clock as the browser shows it: counting down for a timed race, up otherwise,
+    #  and on past zero into overtime; returns (with tenths, whole seconds, signed seconds)
+    if rhapi.race.status not in (RaceStatus.RACING, RaceStatus.DONE):
+        return '', '', None
+    start_mtonic = rhapi.race.start_time_internal
+    if not start_mtonic:  # zero if the race was staged but never started
+        return '', '', None
+    elapsed_secs = monotonic() - start_mtonic
+    # race values, not format values; co-op mode overrides them
+    if rhapi.race.unlimited_time or not rhapi.race.race_time_sec:
+        show_secs = elapsed_secs
+    else:
+        show_secs = rhapi.race.race_time_sec - elapsed_secs
+    if spoken_flag:
+        tformat = rhapi.config.get_item('UI', 'timeFormatPhonetic')
+        fmt_fn = RHUtils.format_phonetic_time_to_str
+        neg_prefix = rhapi.__('minus') + ' '
+    else:
+        tformat = rhapi.config.get_item('UI', 'timeFormat')
+        fmt_fn = RHUtils.format_time_to_str
+        neg_prefix = '-'
+    call_format = tformat.replace('.{d}', '').replace('{d}', '')
+    # both formatters mis-handle negatives, so sign it separately
+    show_ms = abs(show_secs) * 1000
+    race_time_str = fmt_fn(show_ms, tformat)
+    call_time_str = fmt_fn(show_ms, call_format)
+    if show_secs < 0:
+        race_time_str = neg_prefix + race_time_str
+        call_time_str = neg_prefix + call_time_str
+    return race_time_str, call_time_str, show_secs
+
+def getRaceLeader(rhapi, race_results, spoken_flag):
+    # (name, laps) of the leader, or ('', 0); only with more than one pilot and a lap in
+    lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
+    leaderboard = race_results.get(lboard_name, [])
+    if len(leaderboard) > 1:
+        result = leaderboard[0]
+        if 'pilot_id' in result and result.get('laps', 0) > 0:
+            pilot = rhapi.db.pilot_by_id(result['pilot_id'])
+            name_str = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
+            return name_str, result.get('laps', 0)
+    return '', 0
+
+def getCoopRaceInfoStr(rhapi, spoken_flag, heat_data):
+    # the co-op target: 'target time is X', 'target laps is N', or 'benchmark race'
+    race_format = rhapi.race.raceformat
+    if not heat_data:
+        return ''
+    if race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
+        if heat_data.coop_best_time and heat_data.coop_best_time > 0.001:
+            c_time_ms = int(round(heat_data.coop_best_time,1)*1000)
+            c_time_str = RHUtils.format_phonetic_time_to_str(c_time_ms, \
+                        rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
+                        if spoken_flag else RHUtils.format_time_to_str(c_time_ms, \
+                                            rhapi.config.get_item('UI', 'timeFormat'))
+            return rhapi.__('target time is') + ' ' + c_time_str
+        return rhapi.__('benchmark race')
+    if heat_data.coop_num_laps and heat_data.coop_num_laps > 0:
+        return rhapi.__('target laps is') + ' ' + str(heat_data.coop_num_laps)
+    return rhapi.__('benchmark race')
+
+def getRaceResultCallFullStr(rhapi, race_results, spoken_flag, race_obj=None):
+    # the '%RACE_RESULT_CALL%' expansion: co-op gives the result message then the lap totals
+    race_format = race_obj.format if race_obj else rhapi.race.raceformat
+    if race_format and race_format.team_racing_mode == RacingMode.COOP_ENABLED:
+        result_str = getRaceResultStr(rhapi, spoken_flag, race_obj)
+        totals_str = getCoopLapTotalsStr(rhapi, race_results, spoken_flag)
+        if totals_str:
+            result_str = "{}, {}".format(result_str, totals_str) if result_str else totals_str
+        return result_str
+    return getRaceResultCallStr(rhapi, race_results, spoken_flag, race_obj)
+
+def getRaceStatusStrs(rhapi, spoken_flag, race_results, last_race_obj, heat_data):
+    # (state word, spoken sentence) for the race as it stands now
+    status = rhapi.race.status
+    if status == RaceStatus.STAGING:
+        return rhapi.__('staging'), rhapi.__('Race is staging')
+    if status == RaceStatus.RACING and rhapi.race.win_status != WinStatus.DECLARED:
+        race_format = rhapi.race.raceformat
+        _, clock_str, show_secs = getRaceClockStrs(rhapi, spoken_flag)
+        timed = bool(not rhapi.race.unlimited_time and rhapi.race.race_time_sec)
+        overtime = timed and show_secs is not None and show_secs < 0
+        clock_part = ''
+        if clock_str and not overtime:
+            clock_part = clock_str + ' ' + rhapi.__('remaining' if timed else 'elapsed')
+        if race_format and race_format.team_racing_mode == RacingMode.COOP_ENABLED:
+            coop_lb = (rhapi.race.coop_results or {}).get('by_race_time') or []
+            team_laps = coop_lb[0].get('laps', 0) if coop_lb else 0
+            target_str = getCoopRaceInfoStr(rhapi, spoken_flag, heat_data)
+            benchmark = (target_str == rhapi.__('benchmark race'))
+            parts = [rhapi.__('Co-op benchmark race' if benchmark else 'Co-op race')]
+            if race_format.win_condition == WinCondition.FIRST_TO_LAP_X and race_format.number_laps_win:
+                parts.append("{} {} {} {}".format(team_laps, rhapi.__('of'),
+                                                  race_format.number_laps_win, rhapi.__('laps')))
+            else:
+                parts.append("{} {}".format(team_laps, rhapi.__('laps' if team_laps != 1 else 'lap')))
+            if clock_part:
+                parts.append(clock_part)
+            if target_str and not benchmark:
+                parts.append(target_str)
+            return rhapi.__('racing'), ', '.join(parts)
+        head = rhapi.__('Race in overtime' if overtime else 'Race in progress')
+        name_str, lead_laps = getRaceLeader(rhapi, race_results, spoken_flag)
+        lap_race = race_format and race_format.win_condition == WinCondition.FIRST_TO_LAP_X \
+                   and race_format.number_laps_win
+        if not name_str:
+            leader_part = rhapi.__('no laps yet')
+        elif lap_race:
+            leader_part = "{} {} {} {} {}".format(name_str, rhapi.__('is leading on lap'),
+                                                  lead_laps, rhapi.__('of'), race_format.number_laps_win)
+        elif timed:
+            leader_part = "{} {}".format(name_str, rhapi.__('is leading'))
+        else:
+            leader_part = "{} {} {} {}".format(name_str, rhapi.__('is leading with'), lead_laps,
+                                               rhapi.__('laps' if lead_laps != 1 else 'lap'))
+        # a lap race leads with laps; the others lead with the clock
+        parts = [head, leader_part, clock_part] if lap_race else [head, clock_part, leader_part]
+        return rhapi.__('overtime' if overtime else 'racing'), ', '.join(p for p in parts if p)
+    if status == RaceStatus.RACING:  # decided, but the clock is still running
+        head, state = rhapi.__('Race finished'), rhapi.__('finished')
+    elif status == RaceStatus.DONE or last_race_obj:
+        head, state = rhapi.__('Race stopped'), rhapi.__('stopped')
+    else:
+        return '', rhapi.__('There is no race in progress')
+    result_str = getRaceResultCallFullStr(rhapi, race_results, spoken_flag, last_race_obj)
+    return state, "{}, {}".format(head, result_str) if result_str else head
 
 # Text replacer
 def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
@@ -4641,33 +4770,7 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             text = text.replace('/', ' ')
 
         if '%RACE_TIME' in text:
-            race_time_str = ''
-            call_time_str = ''
-            if rhapi.race.status in (RaceStatus.RACING, RaceStatus.DONE):
-                start_mtonic = rhapi.race.start_time_internal
-                if start_mtonic:  # zero if the race was staged but never started
-                    elapsed_secs = monotonic() - start_mtonic
-                    # race values, not format values; co-op mode overrides them
-                    if rhapi.race.unlimited_time or not rhapi.race.race_time_sec:
-                        show_secs = elapsed_secs
-                    else:  # counts on past zero into overtime, as the browser clock does
-                        show_secs = rhapi.race.race_time_sec - elapsed_secs
-                    if spoken_flag:
-                        tformat = rhapi.config.get_item('UI', 'timeFormatPhonetic')
-                        fmt_fn = RHUtils.format_phonetic_time_to_str
-                        neg_prefix = rhapi.__('minus') + ' '
-                    else:
-                        tformat = rhapi.config.get_item('UI', 'timeFormat')
-                        fmt_fn = RHUtils.format_time_to_str
-                        neg_prefix = '-'
-                    call_format = tformat.replace('.{d}', '').replace('{d}', '')
-                    # both formatters mis-handle negatives, so sign it separately
-                    show_ms = abs(show_secs) * 1000
-                    race_time_str = fmt_fn(show_ms, tformat)
-                    call_time_str = fmt_fn(show_ms, call_format)
-                    if show_secs < 0:
-                        race_time_str = neg_prefix + race_time_str
-                        call_time_str = neg_prefix + call_time_str
+            race_time_str, call_time_str, _ = getRaceClockStrs(rhapi, spoken_flag)
             # %RACE_TIME% : Current race-clock time (empty if no race in progress)
             text = text.replace('%RACE_TIME%', race_time_str)
             # %RACE_TIME_CALL% : Current race-clock time, whole seconds (with prompt, or idle message)
@@ -4835,15 +4938,7 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             text = clearPilotDataTokens(rhapi, text)
 
         if '%LEADER' in text:
-            if not leaderboard:
-                lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
-                leaderboard = race_results.get(lboard_name, [])
-            name_str = ""
-            if len(leaderboard) > 1:
-                result = leaderboard[0]
-                if 'pilot_id' in result and result.get('laps', 0) > 0:
-                    pilot = rhapi.db.pilot_by_id(result['pilot_id'])
-                    name_str = pilot.spoken_callsign if spoken_flag else pilot.display_callsign
+            name_str, _ = getRaceLeader(rhapi, race_results, spoken_flag)  # the current race only
             # %LEADER% : Callsign of pilot currently leading race
             text = text.replace('%LEADER%', name_str)
             if len(name_str) > 0:
@@ -4877,22 +4972,7 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                         heat_data = rhapi.db.heat_by_id(args['heat_id'])
                     else:
                         heat_data = rhapi.db.heat_by_id(rhapi.race.heat)
-                if heat_data:
-                    if format_obj.win_condition == WinCondition.FIRST_TO_LAP_X:
-                        if heat_data.coop_best_time and heat_data.coop_best_time > 0.001:
-                            c_time_ms = int(round(heat_data.coop_best_time,1)*1000)
-                            c_time_str = RHUtils.format_phonetic_time_to_str(c_time_ms, \
-                                        rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
-                                        if spoken_flag else RHUtils.format_time_to_str(c_time_ms, \
-                                                            rhapi.config.get_item('UI', 'timeFormat'))
-                            info_str = rhapi.__('target time is') + ' ' + c_time_str
-                        else:
-                            info_str = rhapi.__('benchmark race')
-                    else:
-                        if heat_data.coop_num_laps and heat_data.coop_num_laps > 0:
-                            info_str = rhapi.__('target laps is') + ' ' + str(heat_data.coop_num_laps)
-                        else:
-                            info_str = rhapi.__('benchmark race')
+                info_str = getCoopRaceInfoStr(rhapi, spoken_flag, heat_data)
             text = text.replace('%COOP_RACE_INFO%', info_str)
 
         # %COOP_RACE_LAP_TOTALS% : Pilot lap counts for race in co-op mode
@@ -4913,16 +4993,18 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             if rhapi.race.status == RaceStatus.RACING:  # no final result while racing
                 result_str = ''
             else:
-                race_format = last_race_obj.format if last_race_obj else rhapi.race.raceformat
-                if race_format and race_format.team_racing_mode == RacingMode.COOP_ENABLED:
-                    result_str = getRaceResultStr(rhapi, spoken_flag, last_race_obj)
-                    totals_str = getCoopLapTotalsStr(rhapi, callout_results, spoken_flag)
-                    if totals_str:
-                        result_str = "{}, {}".format(result_str, totals_str) if result_str else totals_str
-                else:
-                    result_str = getRaceResultCallStr(rhapi, callout_results, spoken_flag,
-                                                      last_race_obj)
+                result_str = getRaceResultCallFullStr(rhapi, callout_results, spoken_flag, last_race_obj)
             text = text.replace('%RACE_RESULT_CALL%', result_str)
+
+        # %RACE_STATUS% : Race state as one word (staging, racing, overtime, finished, stopped)
+        # %RACE_STATUS_CALL% : Race state and progress, shaped for timed, lap and co-op races
+        if '%RACE_STATUS' in text:
+            if not heat_data:
+                heat_data = rhapi.db.heat_by_id(rhapi.race.heat)
+            state_str, status_str = getRaceStatusStrs(rhapi, spoken_flag, callout_results,
+                                                     last_race_obj, heat_data)
+            text = text.replace('%RACE_STATUS%', state_str)
+            text = text.replace('%RACE_STATUS_CALL%', status_str)
 
         # %PILOTS_INTERVAL_#_SECS% : List of pilot callsigns separated by an interval of given number of seconds
         # cannot be used with other string formats
