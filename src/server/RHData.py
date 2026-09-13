@@ -4490,9 +4490,20 @@ def clearPilotDataTokens(_rhapi, text):
             text = text.replace(token, '')
     return text
 
+def getSpokenTimeStr(rhapi, time_ms, tformat):
+    # phonetic time, with an exact number of minutes said as '2 minutes' rather than '2 00'
+    tenths = int(time_ms) // 100
+    if '{d}' not in tformat:  # whole seconds shown, so the tenths do not count
+        tenths -= tenths % 10
+    mins, rem = divmod(tenths, 600)
+    if mins >= 1 and rem == 0:
+        return "{} {}".format(mins, rhapi.__('minute') if mins == 1 else rhapi.__('minutes'))
+    return RHUtils.format_phonetic_time_to_str(time_ms, tformat)
+
 def getRaceClockStrs(rhapi, spoken_flag):
     # the race clock as the browser shows it: counting down for a timed race, up otherwise,
-    #  and on past zero into overtime; returns (with tenths, whole seconds, signed seconds)
+    #  and on past zero into overtime; returns (with tenths, spoken form, signed seconds), the
+    #  spoken form dropping the tenths once the clock is past a minute
     if rhapi.race.status not in (RaceStatus.RACING, RaceStatus.DONE):
         return '', '', None
     start_mtonic = rhapi.race.start_time_internal
@@ -4506,7 +4517,7 @@ def getRaceClockStrs(rhapi, spoken_flag):
         show_secs = rhapi.race.race_time_sec - elapsed_secs
     if spoken_flag:
         tformat = rhapi.config.get_item('UI', 'timeFormatPhonetic')
-        fmt_fn = RHUtils.format_phonetic_time_to_str
+        fmt_fn = lambda ms, fmt: getSpokenTimeStr(rhapi, ms, fmt)
         neg_prefix = rhapi.__('minus') + ' '
     else:
         tformat = rhapi.config.get_item('UI', 'timeFormat')
@@ -4516,7 +4527,11 @@ def getRaceClockStrs(rhapi, spoken_flag):
     # both formatters mis-handle negatives, so sign it separately
     show_ms = abs(show_secs) * 1000
     race_time_str = fmt_fn(show_ms, tformat)
-    call_time_str = fmt_fn(show_ms, call_format)
+    # spoken, the tenths matter under a minute and clutter above it; text stays whole
+    if spoken_flag and show_ms < 60000:
+        call_time_str = race_time_str
+    else:
+        call_time_str = fmt_fn(show_ms, call_format)
     if show_secs < 0:
         race_time_str = neg_prefix + race_time_str
         call_time_str = neg_prefix + call_time_str
@@ -4542,7 +4557,7 @@ def getCoopRaceInfoStr(rhapi, spoken_flag, heat_data):
     if race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
         if heat_data.coop_best_time and heat_data.coop_best_time > 0.001:
             c_time_ms = int(round(heat_data.coop_best_time,1)*1000)
-            c_time_str = RHUtils.format_phonetic_time_to_str(c_time_ms, \
+            c_time_str = getSpokenTimeStr(rhapi, c_time_ms, \
                         rhapi.config.get_item('UI', 'timeFormatPhonetic')) \
                         if spoken_flag else RHUtils.format_time_to_str(c_time_ms, \
                                             rhapi.config.get_item('UI', 'timeFormat'))
@@ -4773,7 +4788,7 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             race_time_str, call_time_str, _ = getRaceClockStrs(rhapi, spoken_flag)
             # %RACE_TIME% : Current race-clock time (empty if no race in progress)
             text = text.replace('%RACE_TIME%', race_time_str)
-            # %RACE_TIME_CALL% : Current race-clock time, whole seconds (with prompt, or idle message)
+            # %RACE_TIME_CALL% : Current race-clock time, tenths only under a minute (with prompt)
             if len(call_time_str) > 0:
                 call_time_str = "{} {}".format(rhapi.__('Race time is'), call_time_str)
             text = text.replace('%RACE_TIME_CALL%', call_time_str)
