@@ -465,9 +465,14 @@ class SecondaryNode:
                                 if frequency > 0 and volume > 0:
                                     self._racecontext.rhui.emit_play_beep_tone(duration, frequency, volume, toneType)
 
-                            if last_split_ts is not None:
+                            split_time = round(split_ts - last_split_ts, 3) if last_split_ts is not None else None
 
-                                split_time = round(split_ts - last_split_ts, 3)
+                            if split_time is not None and split_time <= 0.0:
+                                logger.info('Ignoring split {} with non-positive time {} for node {}, time {}, pilot {}'.\
+                                             format(split_id+1, split_time, node_index+1, split_ts_epoch_str, callsign))
+
+                            elif split_time is not None:
+
                                 split_speed = round(self.distance / float(split_time), 2) if self.distance > 0.0 else None
                                 split_time_str = RHUtils.format_split_time_to_str(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                                 logger.info('Split pass record: Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
@@ -502,8 +507,11 @@ class SecondaryNode:
                             #  previous split timer (to allow for speed callouts on practice runs between the split timers)
                             elif self.distance > 0.0 and isinstance(self.prevSecPassTStamps, dict) and len(self.prevSecPassTStamps) > 0:
                                 last_split_ts = self.prevSecPassTStamps.get(node_index)  # timestamp from previous split timer
-                                if last_split_ts and last_split_ts > 0.0:
-                                    split_time = round(split_ts - last_split_ts, 3)
+                                split_time = round(split_ts - last_split_ts, 3) if last_split_ts and last_split_ts > 0.0 else None
+                                if split_time is not None and split_time <= 0.0:
+                                    logger.info('Ignoring split {} (for speed) with non-positive time {} for node {}, time {}, pilot {}'.\
+                                                 format(split_id+1, split_time, node_index+1, split_ts_epoch_str, callsign))
+                                elif split_time is not None:
                                     split_speed = round(self.distance / float(split_time), 2)
                                     split_time_str = RHUtils.format_split_time_to_str(split_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
                                     logger.info('Split pass record (for speed): Node {}, pilot {}, lap {}, split {}, time={} {}, speed={}' \
@@ -835,6 +843,7 @@ class ClusterNodeSet:
     def doClusterRaceStart(self):
         for secondary in self.secondaries:
             secondary.numDisconnsDuringRace = 0
+            secondary.prevSecPassTStamps = {}  # clear split timestamps from previous race
             if secondary.lastContactTime > 0:
                 logger.info("Connected at race start to " + secondary.get_log_str())
                 if abs(secondary.timeDiffMedianMs) > SecondaryNode.TIMEDIFF_WARNING_THRESH_MS:
