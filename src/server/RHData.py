@@ -4340,6 +4340,16 @@ def raceWentToOvertime(rhapi, lead_entry, race_obj=None):
     # 'total_time_raw' is the race time of the winner's last valid lap
     return (lead_entry.get('total_time_raw') or 0) >= race_format.race_time_sec * 1000
 
+def getRaceResultStr(rhapi, spoken_flag, race_obj=None):
+    result_str = rhapi.race.phonetic_status_msg if spoken_flag else rhapi.race.status_message
+    if not result_str and race_obj:
+        result_str = race_obj.phonetic_status_msg if spoken_flag else race_obj.status_message
+    return result_str or ''
+
+def getCoopLapTotalsStr(rhapi, race_results, spoken_flag):
+    lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
+    return getPilotLapsStr(rhapi, ' , ', spoken_flag, race_results.get(lboard_name, []))
+
 def getRaceResultCallStr(rhapi, race_results, spoken_flag, race_obj=None):
     lboard_name = race_results.get('meta', {}).get('primary_leaderboard', '')
     leaderboard = [e for e in (race_results.get(lboard_name) or []) if e.get('laps')]
@@ -4890,27 +4900,28 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
             format_obj = rhapi.race.raceformat
             totals_str = ''
             if format_obj and format_obj.team_racing_mode == RacingMode.COOP_ENABLED:
-                # not the shared 'leaderboard', which '%LEADER%' keeps on the current race
-                lboard_name = callout_results.get('meta', {}).get('primary_leaderboard', '')
-                totals_str = getPilotLapsStr(rhapi, ' , ', spoken_flag,
-                                             callout_results.get(lboard_name, []))
+                totals_str = getCoopLapTotalsStr(rhapi, callout_results, spoken_flag)
             text = text.replace('%COOP_RACE_LAP_TOTALS%', totals_str)
 
         # %RACE_RESULT% : Race result status message (race winner or co-op result)
         if '%RACE_RESULT%' in text:
-            result_str = rhapi.race.phonetic_status_msg if spoken_flag else rhapi.race.status_message
-            if not result_str and last_race_obj:
-                result_str = last_race_obj.phonetic_status_msg if spoken_flag \
-                                 else last_race_obj.status_message
-            text = text.replace('%RACE_RESULT%', result_str if result_str else '')
+            text = text.replace('%RACE_RESULT%', getRaceResultStr(rhapi, spoken_flag, last_race_obj))
 
-        # %RACE_RESULT_CALL% : Full race result, the winner then each finisher's place and gap
+        # %RACE_RESULT_CALL% : Full race result, the winner then each finisher's place and gap;
+        #  for a co-op race, the result message then the pilot lap totals
         if '%RACE_RESULT_CALL%' in text:
             if rhapi.race.status == RaceStatus.RACING:  # no final result while racing
                 result_str = ''
             else:
-                result_str = getRaceResultCallStr(rhapi, callout_results, spoken_flag,
-                                                  last_race_obj)
+                race_format = last_race_obj.format if last_race_obj else rhapi.race.raceformat
+                if race_format and race_format.team_racing_mode == RacingMode.COOP_ENABLED:
+                    result_str = getRaceResultStr(rhapi, spoken_flag, last_race_obj)
+                    totals_str = getCoopLapTotalsStr(rhapi, callout_results, spoken_flag)
+                    if totals_str:
+                        result_str = "{}, {}".format(result_str, totals_str) if result_str else totals_str
+                else:
+                    result_str = getRaceResultCallStr(rhapi, callout_results, spoken_flag,
+                                                      last_race_obj)
             text = text.replace('%RACE_RESULT_CALL%', result_str)
 
         # %PILOTS_INTERVAL_#_SECS% : List of pilot callsigns separated by an interval of given number of seconds
