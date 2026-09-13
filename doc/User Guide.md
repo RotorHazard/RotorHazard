@@ -318,6 +318,8 @@ The variables listed below may be used for the  effects.
 | %SPLIT_SPEED%             | Split speed for pilot (see [Secondary / Split Timers](../doc/Cluster.md) doc)         |
 | %RACE_RESULT%             | Race result status message (race winner or co-op result)                |
 | %RACE_RESULT_CALL%        | Full race result: winner, then each finisher with place and gap         |
+| %RACE_STATUS%             | Race state as one word (staging, racing, overtime, finished, stopped)   |
+| %RACE_STATUS_CALL%        | Race state and progress, shaped for timed, lap and co-op races          |
 | %COOP_RACE_INFO%          | Co-op race mode information (target time or laps)                       |
 | %COOP_RACE_LAP_TOTALS%    | Pilot lap counts for race in co-op mode                                 |
 | %CURRENT_TIME_AP%         | Current time (12-hour clock)                                            |
