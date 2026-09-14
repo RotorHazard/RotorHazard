@@ -1731,8 +1731,9 @@ class RHRace():
                 if not lap.invalid:
                     if (not lap.late_lap) or lap.deleted:
                         last_lap_id = lap_number = lap.lap_number
-                        if self.format and self.format.start_behavior == StartBehavior.FIRST_LAP:
-                            lap_number += 1
+                        if lap_number is not None and self.format and (
+                                self.format.start_behavior == StartBehavior.FIRST_LAP):
+                            lap_number += 1  # deleted laps have no number
                         splits = self.get_splits(node_idx, last_lap_id)
                         if lap.lap_time > 0 and idx > 0 and lap.lap_time < fastest_lap_time:
                             fastest_lap_time = lap.lap_time
