@@ -2826,6 +2826,52 @@ def on_restore_deleted_lap(data):
 
     RaceContext.race.restore_deleted_lap(node_index, lap_index)
 
+@SOCKET_IO.on('delete_last_lap')
+@requires_socketio_auth
+def on_delete_last_lap(data):
+    '''Deletes the seat's most recent lap, resolved here so a crossing cannot slip in between.'''
+    node_index = get_seat_index_from_data(data)
+    lap_number = None
+    if node_index is None:
+        logger.warning("Bad parameter in 'on_delete_last_lap()':  node_index={0}".format(node_index))
+    else:
+        lap_index = RaceContext.race.get_last_lap_index(node_index)
+        if lap_index is None:
+            logger.info("No lap to delete in 'on_delete_last_lap()':  node_index={0}".format(node_index))
+        else:
+            # read before the delete renumbers the laps
+            lap_number = RaceContext.race.get_displayed_lap_number(
+                RaceContext.race.node_laps[node_index][lap_index].lap_number)
+            RaceContext.race.delete_lap(node_index, lap_index)
+    emit_lap_edited('deleted', data, node_index, lap_number)
+
+@SOCKET_IO.on('restore_last_deleted_lap')
+@requires_socketio_auth
+def on_restore_last_deleted_lap(data):
+    '''Restores the seat's most recently deleted lap; the undo for 'delete_last_lap'.'''
+    node_index = get_seat_index_from_data(data)
+    lap_number = None
+    if node_index is None:
+        logger.warning("Bad parameter in 'on_restore_last_deleted_lap()':  node_index={0}".format(node_index))
+    else:
+        lap_index = RaceContext.race.get_last_deleted_lap_index(node_index)
+        if lap_index is None:
+            logger.info("No lap to restore in 'on_restore_last_deleted_lap()':  node_index={0}".format(node_index))
+        else:
+            RaceContext.race.restore_deleted_lap(node_index, lap_index)
+            # read after the restore renumbers the laps
+            lap_number = RaceContext.race.get_displayed_lap_number(
+                RaceContext.race.node_laps[node_index][lap_index].lap_number)
+    emit_lap_edited('restored', data, node_index, lap_number)
+
+def emit_lap_edited(action, data, node_index, lap_number):
+    '''Replies to the requesting client only; 'lap_number' is None when nothing was done.'''
+    pilot_id = data.get('pilot_id')
+    if pilot_id is None and node_index is not None:
+        pilot_id = (RaceContext.race.node_pilots or {}).get(node_index)
+    emit('lap_edited', {'action': action, 'pilot_id': pilot_id,
+                        'node_index': node_index, 'lap_number': lap_number})
+
 @SOCKET_IO.on('simulate_lap')
 @requires_socketio_auth
 @catchLogExcWithDBWrapper
