@@ -1228,6 +1228,47 @@ class RHRace():
         self._racecontext.rhui.emit_current_laps() # update all laps on the race page
         self._racecontext.rhui.emit_current_leaderboard() # generate and update leaderboard
 
+    def get_displayed_lap_number(self, lap_number):
+        '''Lap number as the Run page shows it; the first crossing is lap 1 with a first-lap start.'''
+        if lap_number is not None and self.format and (
+                self.format.start_behavior == StartBehavior.FIRST_LAP):
+            return lap_number + 1
+        return lap_number
+
+    def get_last_lap_index(self, node_index):
+        '''Index of the seat's most recent live lap, or None.'''
+        laps = self.node_laps.get(node_index) or []
+        for idx in range(len(laps) - 1, -1, -1):
+            lap = laps[idx]
+            if lap.deleted or lap.invalid:
+                continue
+            # lap 0 is the start crossing unless the format counts the first crossing as lap 1
+            if lap.lap_number == 0 and \
+                    (not self.format or self.format.start_behavior != StartBehavior.FIRST_LAP):
+                return None
+            return idx
+        return None
+
+    def get_last_deleted_lap_index(self, node_index):
+        '''Index of the seat's most recently deleted lap, or None.'''
+        laps = self.node_laps.get(node_index) or []
+        # low end of a trailing run of deleted laps (most recently deleted), else the highest
+        found = None
+        in_run = True
+        for idx in range(len(laps) - 1, -1, -1):
+            lap = laps[idx]
+            if lap.invalid:
+                continue
+            if lap.deleted:
+                found = idx
+                if not in_run:
+                    break
+            elif found is not None:
+                break
+            else:
+                in_run = False
+        return found
+
     @catchLogExceptionsWrapper
     def delete_lap(self, node_index, lap_index, update_race_state=True):
         '''Delete a false lap.'''
@@ -1813,10 +1854,8 @@ class RHRace():
             for idx, lap in enumerate(self.node_laps[node_idx]):
                 if not lap.invalid:
                     if (not lap.late_lap) or lap.deleted:
-                        last_lap_id = lap_number = lap.lap_number
-                        if lap_number is not None and self.format and (
-                                self.format.start_behavior == StartBehavior.FIRST_LAP):
-                            lap_number += 1  # deleted laps have no number
+                        last_lap_id = lap.lap_number
+                        lap_number = self.get_displayed_lap_number(last_lap_id)
                         splits = self.get_splits(node_idx, last_lap_id)
                         if lap.lap_time > 0 and idx > 0 and lap.lap_time < fastest_lap_time:
                             fastest_lap_time = lap.lap_time
