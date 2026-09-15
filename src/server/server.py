@@ -3707,6 +3707,10 @@ def load_plugin(plugin):
         plugin.load_issue = "disabled"
         return False
 
+    if plugin.name.startswith('_'):
+        plugin.load_issue = "deactivated by leading underscore"
+        return False
+
     if plugin.is_bundled:
         plugin_base = 'bundled_plugins'
     else:
