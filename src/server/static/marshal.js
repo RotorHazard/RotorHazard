@@ -347,6 +347,27 @@ class RHMarshal {
 		self.refreshDisplay();
 	}
 
+	setEnterExit(enter, exit) {
+		enter = Math.min(Math.max(enter, self.graph.options.minValue), self.graph.options.maxValue);
+		exit = Math.min(Math.max(exit, self.graph.options.minValue), self.graph.options.maxValue);
+		if (exit > enter) {
+			exit = enter;
+		}
+		if (enter == self.race.enter_at && exit == self.race.exit_at) {
+			return;
+		}
+		self.race.enter_at = enter;
+		self.race.exit_at = exit;
+		if (typeof self.callbacks.calibration === 'function') {
+			self.callbacks.calibration({
+				enter: self.race.enter_at,
+				exit: self.race.exit_at,
+				seat: self.race.seat,
+			});
+		}
+		self.refreshDisplay();
+	}
+
 	refreshDisplay() {
 		self.clearMarkedLap();
 		self.graph_series.lap_marker.clear();
@@ -404,6 +425,7 @@ class RHMarshal {
 			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: self.race.exit_at}, // orange
 		];
 
+		self.graph.lastChartTimestamp = 0;  // page renders on demand, so never let smoothie skip a paint as "same frame"
 		self.graph.render(self.elements.graph_canvas, self.race.history_duration);
 	}
 

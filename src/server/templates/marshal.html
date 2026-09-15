@@ -651,9 +651,7 @@
 		$('#load-transitions').click(function(){
 			if (race_loaded) {
 				var node = current_race_data.node_index;
-				$('#enterat').val(rotorhazard.nodes[node].enter_at_level);
-				$('#exitat').val(rotorhazard.nodes[node].exit_at_level);
-				marshal.recalcRace();
+				marshal.setEnterExit(rotorhazard.nodes[node].enter_at_level, rotorhazard.nodes[node].exit_at_level);
 			} else {
 				push_message(__('No race loaded'));
 			}
