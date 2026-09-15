@@ -15,6 +15,7 @@ import traceback
 import shutil
 import json
 import glob
+import bisect
 import numbers
 import RHUtils
 import Database
@@ -3546,6 +3547,12 @@ class RHData():
                 deleted = lap['deleted']
             ))
 
+        # re-pair the split records with the new laps; as when recorded live, a split's
+        #  'lap_id' is the index of the last active crossing before it
+        active_stamps = sorted(lap['lap_time_stamp'] for lap in data['laps'] if not lap['deleted'])
+        for split in Database.SavedRaceLapSplit.query.filter_by(pilotrace_id=data['pilotrace_id']):
+            split.lap_id = bisect.bisect_right(active_stamps, split.split_time_stamp) - 1
+
         self.commit()
         return True
 
@@ -3690,6 +3697,28 @@ class RHData():
             Database.DB_session.flush()
         self.commit()
         return len(lap_splits)
+
+    def repair_lapSplits(self, node_index, active_stamps):
+        '''Re-pairs a seat's splits with a replaced lap list; a split's lap id is the index
+           of the last active crossing before it, as when recorded live.'''
+        lap_splits = Database.LapSplit.query.filter_by(node_index=node_index) \
+            .order_by(Database.LapSplit.split_time_stamp).all()
+        new_ids = []
+        seen = set()
+        for lap_split in lap_splits:
+            lap_id = bisect.bisect_right(active_stamps, lap_split.split_time_stamp) - 1
+            if (lap_id, lap_split.split_id) in seen:
+                # a later split displaced onto a lap that already has one; dropped, as 'delete_lap' does
+                Database.DB_session.delete(lap_split)
+            else:
+                seen.add((lap_id, lap_split.split_id))
+                new_ids.append((lap_split, lap_id))
+                lap_split.lap_id = -1000 - lap_split.id  # park clear of the unique constraint
+        Database.DB_session.flush()
+        for lap_split, lap_id in new_ids:
+            lap_split.lap_id = lap_id
+        self.commit()
+        return len(new_ids)
 
     def clear_lapSplits(self):
         Database.DB_session.query(Database.LapSplit).delete()

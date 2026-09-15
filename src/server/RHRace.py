@@ -1335,6 +1335,9 @@ class RHRace():
 
         self.node_laps[node] = lap_objs
 
+        with self._racecontext.rhdata.get_db_session_handle():
+            self._racecontext.rhdata.repair_lapSplits(node, [lap.lap_time_stamp for lap in lap_objs if not lap.deleted])
+
         self.clear_lap_results()
         self.clear_results()
 
