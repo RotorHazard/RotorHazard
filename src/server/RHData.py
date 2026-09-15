@@ -22,7 +22,7 @@ import Results
 from time import monotonic
 from eventmanager import Evt
 from filtermanager import Flt
-from RHRace import RaceStatus, WinCondition, RacingMode, StagingTones
+from RHRace import RaceStatus, WinCondition, RacingMode, StagingTones, Crossing
 from Database import ProgramMethod, HeatAdvanceType, RoundType, HeatStatus
 
 from FlaskAppObj import APP
@@ -3599,6 +3599,30 @@ class RHData():
                 })
 
             self.replace_savedRaceLaps(new_racedata)
+
+            last_race = self._racecontext.last_race
+            if last_race and last_race.db_id == pilotrace.race_id:
+                last_race.results = self.get_results_savedRaceMeta(pilotrace.race_id)
+
+                last_race.clear_lap_results()
+                lap_objs = []
+                lap_number = 0
+                for lap in new_racedata['laps']:
+                    lap_data = Crossing()
+                    lap_data.lap_number = lap_number
+                    lap_data.lap_time_stamp = lap['lap_time_stamp']
+                    lap_data.lap_time = lap['lap_time']
+                    lap_data.lap_time_formatted = lap['lap_time_formatted']
+                    lap_data.source = lap['source']
+                    lap_data.deleted = lap['deleted']
+                    if not lap_data.deleted:
+                        lap_number += 1
+                    lap_objs.append(lap_data)
+
+                last_race.node_laps[pilotrace.node_index] = lap_objs
+
+                self._racecontext.rhui.emit_current_leaderboard()
+                self._racecontext.rhui.emit_current_laps()
 
         return pilotrace
 

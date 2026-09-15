@@ -815,11 +815,6 @@ class DatabaseAPI():
 
     @callWithDatabaseWrapper
     def pilotrun_alter(self, pilotrace_id, enter_at=None, exit_at=None, laps=None):
-        ''' Apply marshalled corrections to a saved pilot run: enter/exit calibration
-            and/or a replacement lap list. Mirrors the built-in Marshal page's own
-            resave behavior, including result-cache invalidation. Pass only the
-            fields that changed; omitted fields (None) are left untouched. Returns
-            True on success, False if pilotrace_id (or its saved race) does not exist. '''
         pilotrace = self._racecontext.rhdata.resave_pilotrun(pilotrace_id, enter_at, exit_at, laps)
         if not pilotrace:
             return False

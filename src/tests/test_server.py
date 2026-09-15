@@ -607,6 +607,15 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(new_laps[1].lap_time, 1500)
         self.assertTrue(new_laps[0].lap_time_formatted)  # auto-computed since omitted from input
 
+        # in-memory last_race copy must reflect the correction, not just the DB
+        last_race = server.RaceContext.last_race
+        self.assertIsNotNone(last_race)
+        self.assertEqual(last_race.db_id, race.id)
+        last_race_laps = last_race.node_laps[run.node_index]
+        self.assertEqual(len(last_race_laps), 2)
+        self.assertEqual(last_race_laps[0].lap_time, 1000)
+        self.assertEqual(last_race_laps[1].lap_time, 1500)
+
         gevent.sleep(0.1)  # LAPS_RESAVE listeners run async (priority >= 100)
         self.assertEqual(len(events_seen), 1)
         self.assertEqual(events_seen[0]['race_id'], race.id)
