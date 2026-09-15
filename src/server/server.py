@@ -2496,20 +2496,6 @@ def on_resave_laps(data):
     enter_at = data['enter_at']
     exit_at = data['exit_at']
 
-    pilotrace_data = {
-        'pilotrace_id': pilotrace_id,
-        'enter_at': enter_at,
-        'exit_at': exit_at
-        }
-
-    # Clear caches
-    heat = RaceContext.rhdata.get_heat(heat_id)
-    RaceContext.rhdata.clear_results_heat(heat)
-    RaceContext.rhdata.clear_results_raceClass(heat.class_id)
-    RaceContext.rhdata.clear_results_savedRaceMeta(race_id)
-
-    RaceContext.rhdata.alter_savedPilotRace(pilotrace_data)
-
     new_racedata = {
             'race_id': race_id,
             'pilotrace_id': pilotrace_id,
@@ -2532,7 +2518,7 @@ def on_resave_laps(data):
             'deleted': lap['deleted']
             })
 
-    RaceContext.rhdata.replace_savedRaceLaps(new_racedata)
+    RaceContext.rhdata.resave_pilotrun(pilotrace_id, enter_at, exit_at, new_racedata['laps'])
 
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
     RaceContext.rhui.emit_priority_message(message, False)

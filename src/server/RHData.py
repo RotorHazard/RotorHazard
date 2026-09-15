@@ -3550,6 +3550,58 @@ class RHData():
         return True
 
     # Race general
+    def resave_pilotrun(self, pilotrace_id, enter_at=None, exit_at=None, laps=None):
+        ''' Apply marshalled corrections (enter/exit calibration and/or laps) to a saved
+            pilot run, clearing the result caches that depend on it. Single source of
+            truth shared by the built-in Marshal page and RHAPI.db.pilotrun_alter(). '''
+        pilotrace = self.get_savedPilotRace(pilotrace_id)
+        if not pilotrace:
+            return None
+
+        race_meta = self.get_savedRaceMeta(pilotrace.race_id)
+        if not race_meta:
+            return None
+
+        self.clear_results_heat(race_meta.heat_id)
+        self.clear_results_raceClass(race_meta.class_id)
+        self.clear_results_savedRaceMeta(pilotrace.race_id)
+
+        if enter_at is not None or exit_at is not None:
+            alter_data = {'pilotrace_id': pilotrace_id}
+            if enter_at is not None:
+                alter_data['enter_at'] = enter_at
+            if exit_at is not None:
+                alter_data['exit_at'] = exit_at
+            self.alter_savedPilotRace(alter_data)
+
+        if laps is not None:
+            new_racedata = {
+                'race_id': pilotrace.race_id,
+                'pilotrace_id': pilotrace_id,
+                'node_index': pilotrace.node_index,
+                'pilot_id': pilotrace.pilot_id,
+                'laps': []
+            }
+
+            for lap in laps:
+                lap_time = lap['lap_time']
+                lap_time_formatted = lap.get('lap_time_formatted')
+                if lap_time_formatted is None and isinstance(lap_time, numbers.Real):
+                    lap_time_formatted = RHUtils.format_time_to_str(lap_time, self._racecontext.serverconfig.get_item('UI', 'timeFormat'))
+
+                new_racedata['laps'].append({
+                    'lap_time_stamp': lap['lap_time_stamp'],
+                    'lap_time': lap_time,
+                    'lap_time_formatted': lap_time_formatted,
+                    'peak_rssi': lap.get('peak_rssi', None),
+                    'source': lap.get('source', Database.LapSource.API),
+                    'deleted': lap.get('deleted', False)
+                })
+
+            self.replace_savedRaceLaps(new_racedata)
+
+        return pilotrace
+
     def add_race_data(self, data):
         for node_index, node_data in data.items():
             new_pilotrace = Database.SavedPilotRace(

@@ -34,6 +34,8 @@ server.RaceContext.serverconfig.config['GENERAL']['DEBUG'] = True
 
 from Node import Node
 from RHUI import UIField, UIFieldType
+from eventmanager import Evt
+from Database import LapSource
 
 class ServerTest(unittest.TestCase):
     def setUp(self):
@@ -307,7 +309,7 @@ class ServerTest(unittest.TestCase):
 
     def test_api_root(self):
         self.assertEqual(server.RHAPI.API_VERSION_MAJOR, 1)
-        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 6)
+        self.assertEqual(server.RHAPI.API_VERSION_MINOR, 7)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_ui_api(self):
@@ -570,6 +572,95 @@ class ServerTest(unittest.TestCase):
         #self.assertEqual(attributes_by_obj, attributes_by_id)
         attr_by_obj = server.RHAPI.db.raceformat_attribute_value(format, 'test_attribute')
         self.assertEqual(attr_by_obj, 'test-format-attr')
+
+    def test_pilotrun_alter(self):
+        pilot = server.RHAPI.db.pilot_add()
+        heat = server.RHAPI.db.heat_add()
+        slots = server.RHAPI.db.slots_by_heat(heat.id)
+        server.RHAPI.db.slot_alter(slots[0].id, pilot=pilot.id)
+        server.RHAPI.race.heat = heat.id
+        server.RaceContext.race.stage(immediate=True)
+        server.RHAPI.race.stop()
+        server.RHAPI.race.save()
+
+        race = server.RHAPI.db.races[-1]
+        runs = server.RHAPI.db.pilotruns_by_race(race.id)
+        self.assertGreater(len(runs), 0)
+        run = runs[0]
+
+        events_seen = []
+        server.RHAPI.events.on(Evt.LAPS_RESAVE, lambda args: events_seen.append(args), name='test_pilotrun_alter_listener')
+
+        result = server.RHAPI.db.pilotrun_alter(run.id, enter_at=111, exit_at=77, laps=[
+            {'lap_time_stamp': 1000, 'lap_time': 1000, 'source': LapSource.MANUAL, 'deleted': False},
+            {'lap_time_stamp': 2500, 'lap_time': 1500, 'source': LapSource.MANUAL, 'deleted': False},
+        ])
+        self.assertTrue(result)
+
+        altered = server.RHAPI.db.pilotrun_by_id(run.id)
+        self.assertEqual(altered.enter_at, 111)
+        self.assertEqual(altered.exit_at, 77)
+
+        new_laps = server.RHAPI.db.laps_by_pilotrun(run.id)
+        self.assertEqual(len(new_laps), 2)
+        self.assertEqual(new_laps[0].lap_time, 1000)
+        self.assertEqual(new_laps[1].lap_time, 1500)
+        self.assertTrue(new_laps[0].lap_time_formatted)  # auto-computed since omitted from input
+
+        gevent.sleep(0.1)  # LAPS_RESAVE listeners run async (priority >= 100)
+        self.assertEqual(len(events_seen), 1)
+        self.assertEqual(events_seen[0]['race_id'], race.id)
+        self.assertEqual(events_seen[0]['pilot_id'], run.pilot_id)
+
+        # only enter/exit, no laps touched
+        result = server.RHAPI.db.pilotrun_alter(run.id, enter_at=50)
+        self.assertTrue(result)
+        altered = server.RHAPI.db.pilotrun_by_id(run.id)
+        self.assertEqual(altered.enter_at, 50)
+        self.assertEqual(altered.exit_at, 77)
+        self.assertEqual(len(server.RHAPI.db.laps_by_pilotrun(run.id)), 2)
+
+        # nonexistent pilotrace_id
+        self.assertFalse(server.RHAPI.db.pilotrun_alter(999999999))
+
+        server.RHAPI.events.off(Evt.LAPS_RESAVE, 'test_pilotrun_alter_listener')
+
+    def test_resave_laps_socket(self):
+        pilot = server.RHAPI.db.pilot_add()
+        heat = server.RHAPI.db.heat_add()
+        slots = server.RHAPI.db.slots_by_heat(heat.id)
+        server.RHAPI.db.slot_alter(slots[0].id, pilot=pilot.id)
+        server.RHAPI.race.heat = heat.id
+        server.RaceContext.race.stage(immediate=True)
+        server.RHAPI.race.stop()
+        server.RHAPI.race.save()
+
+        race = server.RHAPI.db.races[-1]
+        run = server.RHAPI.db.pilotruns_by_race(race.id)[0]
+
+        self.client.emit('resave_laps', {
+            'heat_id': race.heat_id,
+            'round_id': race.round_id,
+            'callsign': 'Test Pilot',
+            'race_id': race.id,
+            'pilotrace_id': run.id,
+            'seat': run.node_index,
+            'pilot_id': run.pilot_id,
+            'laps': [
+                {'lap_time_stamp': 3000, 'lap_time': 3000, 'source': LapSource.MANUAL, 'deleted': False},
+            ],
+            'enter_at': 123,
+            'exit_at': 45,
+        })
+
+        altered = server.RHAPI.db.pilotrun_by_id(run.id)
+        self.assertEqual(altered.enter_at, 123)
+        self.assertEqual(altered.exit_at, 45)
+
+        new_laps = server.RHAPI.db.laps_by_pilotrun(run.id)
+        self.assertEqual(len(new_laps), 1)
+        self.assertEqual(new_laps[0].lap_time, 3000)
+        self.assertTrue(new_laps[0].lap_time_formatted)
 
     def test_rhapi_frequencyset(self):
         original_set = server.RHAPI.race.frequencyset

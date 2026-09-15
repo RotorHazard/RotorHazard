@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 6
+API_VERSION_MINOR = 7
 
 import dataclasses
 import json
@@ -813,6 +813,23 @@ class DatabaseAPI():
         if data:
             return self._racecontext.rhdata.add_race_data({node_index: data})
 
+    @callWithDatabaseWrapper
+    def pilotrun_alter(self, pilotrace_id, enter_at=None, exit_at=None, laps=None):
+        ''' Apply marshalled corrections to a saved pilot run: enter/exit calibration
+            and/or a replacement lap list. Mirrors the built-in Marshal page's own
+            resave behavior, including result-cache invalidation. Pass only the
+            fields that changed; omitted fields (None) are left untouched. Returns
+            True on success, False if pilotrace_id (or its saved race) does not exist. '''
+        pilotrace = self._racecontext.rhdata.resave_pilotrun(pilotrace_id, enter_at, exit_at, laps)
+        if not pilotrace:
+            return False
+
+        self._racecontext.events.trigger(Evt.LAPS_RESAVE, {
+            'race_id': pilotrace.race_id,
+            'pilot_id': pilotrace.pilot_id,
+            })
+
+        return True
 
     # Race -> Pilot Run -> Laps
 
