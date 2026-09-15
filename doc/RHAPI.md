@@ -1034,7 +1034,7 @@ Apply a marshalled correction to an existing `SavedPilotRace`: enter/exit calibr
 - `pilotrace_id` (int): ID of pilot run record to alter
 - `enter_at` (int): Gate enter calibration point
 - `exit_at` (int): Gate exit calibration point
-- `laps` (list[dict]): Replacement lap list; each item may include `lap_time_stamp`, `lap_time`, `lap_time_formatted` (computed automatically if omitted), `peak_rssi`, `source`, `deleted`
+- `laps` (list[dict]): Replacement lap list; each item requires `lap_time_stamp` and `lap_time`, and may also include `lap_time_formatted` (computed automatically if omitted), `peak_rssi`, `source`, `deleted`
 
 ### Saved Race &rarr; Pilot Run &rarr; Laps
 Laps store data related to start gate crossings. Each pilot run may have one or more laps associated with it. When displaying laps, be sure to reference the associated race format.
