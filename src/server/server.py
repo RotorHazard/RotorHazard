@@ -3170,8 +3170,6 @@ def heartbeat_thread_function():
         except KeyboardInterrupt:
             logger.info("Heartbeat thread terminated by keyboard interrupt")
             raise
-        except gevent.GreenletExit:
-            raise
         except SystemExit:
             raise
         except Exception:

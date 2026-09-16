@@ -80,8 +80,6 @@ class MockInterface(BaseHardwareInterface):
                 gevent.sleep(UPDATE_SLEEP)
         except KeyboardInterrupt:
             logger.info("Update thread terminated by keyboard interrupt")
-        except gevent.GreenletExit:
-            raise            
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
