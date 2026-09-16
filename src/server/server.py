@@ -2496,20 +2496,6 @@ def on_resave_laps(data):
     enter_at = data['enter_at']
     exit_at = data['exit_at']
 
-    pilotrace_data = {
-        'pilotrace_id': pilotrace_id,
-        'enter_at': enter_at,
-        'exit_at': exit_at
-        }
-
-    # Clear caches
-    heat = RaceContext.rhdata.get_heat(heat_id)
-    RaceContext.rhdata.clear_results_heat(heat)
-    RaceContext.rhdata.clear_results_raceClass(heat.class_id)
-    RaceContext.rhdata.clear_results_savedRaceMeta(race_id)
-
-    RaceContext.rhdata.alter_savedPilotRace(pilotrace_data)
-
     new_racedata = {
             'race_id': race_id,
             'pilotrace_id': pilotrace_id,
@@ -2532,7 +2518,9 @@ def on_resave_laps(data):
             'deleted': lap['deleted']
             })
 
-    RaceContext.rhdata.replace_savedRaceLaps(new_racedata)
+    if not RaceContext.rhdata.resave_pilotrun(pilotrace_id, enter_at, exit_at, new_racedata['laps']):
+        logger.warning('resave_laps: unable to resave pilotrace_id={0} (not found)'.format(pilotrace_id))
+        return
 
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
     RaceContext.rhui.emit_priority_message(message, False)
@@ -2541,30 +2529,6 @@ def on_resave_laps(data):
     # run adaptive calibration
     if RaceContext.serverconfig.get_item_int('TIMING', 'calibrationMode'):
         RaceContext.calibration.auto_calibrate()
-
-    if RaceContext.last_race and RaceContext.last_race.db_id == race_id:
-        RaceContext.last_race.results = RaceContext.rhdata.get_results_savedRaceMeta(race_id)
-
-        RaceContext.last_race.clear_lap_results()
-        lap_objs = []
-        lap_number = 0
-        for lap in new_racedata['laps']:
-            lap_data = RHRace.Crossing()
-            lap_data.lap_number = lap_number
-            lap_data.lap_time_stamp = lap['lap_time_stamp']
-            lap_data.lap_time = lap['lap_time']
-            lap_data.lap_time_formatted = lap['lap_time_formatted']
-            lap_data.source = lap['source']
-            lap_data.deleted = lap['deleted']
-            if not lap_data.deleted:
-                lap_number += 1
-            lap_objs.append(lap_data)
-
-        RaceContext.last_race.node_laps[seat] = lap_objs
-
-        RaceContext.rhui.emit_current_leaderboard()
-        RaceContext.rhui.emit_current_laps()
-
 
     # spawn thread for updating results caches
     params = {
