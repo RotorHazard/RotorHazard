@@ -108,12 +108,20 @@ class BaseHardwareInterface(object):
     def process_history(self, node, readtime, pn_history):
         # prune history data if race is not running (keep last 60s)
         if self.race_status is BaseHardwareInterface.RACE_STATUS_READY:
-            if len(node.history_times):
-                while node.history_times[0] < (monotonic() - 60):
-                    node.history_values.pop(0)
-                    node.history_times.pop(0)
-                    if not len(node.history_times): #prevent while from destroying itself
-                        break
+            hist_len = len(node.history_times)
+            if hist_len:
+                # cutoff is fixed before the loop; recomputing it each iteration lets it
+                # advance as the loop runs, which can keep the loop alive indefinitely
+                cutoff = monotonic() - 60
+                prune_count = 0
+                # entry times are derived from node-reported offsets and are not
+                # guaranteed to be ordered, so stop at the first entry within the
+                # window rather than assuming everything after it is newer
+                while prune_count < hist_len and node.history_times[prune_count] < cutoff:
+                    prune_count += 1
+                if prune_count:
+                    del node.history_values[:prune_count]
+                    del node.history_times[:prune_count]
 
         if pn_history and self.race_status != BaseHardwareInterface.RACE_STATUS_DONE:
             # get and process history data (except when race is over)
