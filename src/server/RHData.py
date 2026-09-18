@@ -4406,6 +4406,12 @@ def getFastestEventSpeedRow(rhapi):
     return max((r for r in rows if r.get('top_speed') is not None),
                default=None, key=lambda r: r['top_speed'])
 
+def getPilotEventRow(rhapi, pilot_id):
+    event_results = rhapi.db.event_results()  # None until a race has been saved
+    lboard_name = (event_results or {}).get('meta', {}).get('primary_leaderboard', '')
+    rows = (event_results or {}).get(lboard_name) or []
+    return next((r for r in rows if r.get('pilot_id') == pilot_id), None)
+
 def getEventSpeedRowStr(rhapi, row, spoken_flag):
     if not row:
         return ""
@@ -4464,6 +4470,8 @@ OTHER_TOKENS = ('%HEAT%', '%PILOT%', '%PILOTS%', '%LINEUP%', '%FREQS%',
                 '%FASTEST_RACE_SPEED%', '%FASTEST_RACE_SPEED_CALL%',
                 '%FASTEST_EVENT_LAP%', '%FASTEST_EVENT_LAP_CALL%',
                 '%FASTEST_EVENT_SPEED%', '%FASTEST_EVENT_SPEED_CALL%',
+                '%FASTEST_EVENT_LAP_PILOT%', '%FASTEST_EVENT_LAP_PILOT_CALL%',
+                '%FASTEST_EVENT_SPEED_PILOT%', '%FASTEST_EVENT_SPEED_PILOT_CALL%',
                 '%SPLIT_TIME%', '%SPLIT_SPEED%',
                 '%COOP_RACE_INFO%', '%COOP_RACE_LAP_TOTALS%',
                 '%CURRENT_TIME_AP%', '%CURRENT_TIME_24%',
@@ -4482,6 +4490,17 @@ def replaceValueAndCallTokens(text, value_token, value_str, prompt_str):
     if value_str:
         text = text.replace(value_token[:-1] + '_CALL%', "{} {}".format(prompt_str, value_str))
     # an empty value leaves the '_CALL' token for 'clearPilotDataTokens' to fill
+    return text
+
+def replaceEventPilotTokens(rhapi, text, value_token, value_str, prompt_str, name_str, source, spoken_flag):
+    text = text.replace(value_token, value_str)
+    if value_str:
+        call_str = "{} {} {} {} {}".format(prompt_str, rhapi.__('for'), name_str, rhapi.__('was'), value_str)
+        source_str = getResultSourceStr(rhapi, source, spoken_flag)
+        if source_str:
+            call_str = "{}, {}".format(call_str, source_str)
+        text = text.replace(value_token[:-1] + '_CALL%', call_str)
+    # an empty value leaves the '_CALL' token for the final 'clearUnfilledTokens' sweep
     return text
 
 def clearPilotDataTokens(_rhapi, text):
@@ -4737,6 +4756,34 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                 if source_str:
                     fastest_str = "{}, {}".format(fastest_str, source_str)
             text = text.replace('%FASTEST_EVENT_SPEED_CALL%', fastest_str)
+
+        if '%FASTEST_EVENT_LAP_PILOT' in text or '%FASTEST_EVENT_SPEED_PILOT' in text:
+            # keyed on the pilot rather than the seat, so a pilot not in the current heat still answers
+            pilot_row = getPilotEventRow(rhapi, RHUtils.getNumericEntry(args, 'pilot_id', -1)) or {}
+            pilot_obj = rhapi.db.pilot_by_id(pilot_row.get('pilot_id'))
+            if pilot_obj:
+                name_str = (pilot_obj.phonetic or pilot_obj.callsign) if spoken_flag else pilot_obj.callsign
+            else:
+                name_str = pilot_row.get('callsign', '')
+            # %FASTEST_EVENT_LAP_PILOT% : Fastest lap time of the event for pilot
+            # %FASTEST_EVENT_LAP_PILOT_CALL% : Pilot/time for fastest lap of the event for pilot, with heat and round (with prompt)
+            if pilot_row.get('fastest_lap_raw'):
+                lap_time_str = RHUtils.format_phonetic_time_to_str(pilot_row['fastest_lap_raw'],
+                        rhapi.config.get_item('UI', 'timeFormatPhonetic')) if spoken_flag \
+                    else str(pilot_row.get('fastest_lap', ''))
+            else:
+                lap_time_str = ''
+            text = replaceEventPilotTokens(rhapi, text, '%FASTEST_EVENT_LAP_PILOT%', lap_time_str,
+                    rhapi.__('Fastest event lap time'), name_str, pilot_row.get('fastest_lap_source'), spoken_flag)
+            # %FASTEST_EVENT_SPEED_PILOT% : Fastest speed of the event for pilot
+            # %FASTEST_EVENT_SPEED_PILOT_CALL% : Pilot/speed for fastest speed of the event for pilot, with heat and round (with prompt)
+            top_speed = pilot_row.get('top_speed')
+            if top_speed is not None:
+                speed_str = "{:.1f}".format(top_speed) if spoken_flag else str(top_speed)
+            else:
+                speed_str = ''
+            text = replaceEventPilotTokens(rhapi, text, '%FASTEST_EVENT_SPEED_PILOT%', speed_str,
+                    rhapi.__('Fastest event speed'), name_str, pilot_row.get('top_speed_source'), spoken_flag)
 
         if '%WINNER' in text:
             winner_str = rhapi.race.race_winner_phonetic if spoken_flag else rhapi.race.race_winner_name
