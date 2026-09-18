@@ -14,7 +14,7 @@ class Calibration:
         self._racecontext = racecontext
 
     @catchLogExceptionsWrapper
-    def set_enter_at_level(self, seat_index, enter_at_level_input):
+    def set_enter_at_level(self, seat_index, enter_at_level_input, emit_levels=True):
         '''Set node enter-at level.'''
         enter_at_level = int(enter_at_level_input or 0)
 
@@ -49,9 +49,11 @@ class Calibration:
             })
 
         logger.info('Node enter-at set: Node {0} Level {1}'.format(seat_index+1, enter_at_level))
+        if emit_levels:
+            self._racecontext.rhui.emit_enter_and_exit_at_levels()
 
     @catchLogExceptionsWrapper
-    def set_exit_at_level(self, seat_index, exit_at_level_input):
+    def set_exit_at_level(self, seat_index, exit_at_level_input, emit_levels=True):
         '''Set node exit-at level.'''
         exit_at_level = int(exit_at_level_input or 0)
 
@@ -86,6 +88,8 @@ class Calibration:
             })
 
         logger.info('Node exit-at set: Node {0} Level {1}'.format(seat_index+1, exit_at_level))
+        if emit_levels:
+            self._racecontext.rhui.emit_enter_and_exit_at_levels()
 
     def hardware_set_all_enter_ats(self, enter_at_levels):
         '''send update to nodes'''
@@ -115,13 +119,13 @@ class Calibration:
             calibration = self.find_best_calibration_values(node, seat_index)
 
             if node.enter_at_level is not calibration['enter_at_level']:
-                self.set_enter_at_level(seat_index, calibration['enter_at_level'])
+                self.set_enter_at_level(seat_index, calibration['enter_at_level'], emit_levels=False)
 
             if node.exit_at_level is not calibration['exit_at_level']:
-                self.set_exit_at_level(seat_index, calibration['exit_at_level'])
+                self.set_exit_at_level(seat_index, calibration['exit_at_level'], emit_levels=False)
 
         logger.info('Updated calibration with best discovered values')
-        self._racecontext.rhui.emit_enter_and_exit_at_levels()
+        self._racecontext.rhui.emit_enter_and_exit_at_levels()  # one broadcast for all nodes
 
     def find_best_calibration_values(self, node, seat_index):
         ''' Search race history for best tuning values '''
