@@ -212,6 +212,7 @@
 	var race_list = {};
 	var race_list_loaded = false;
 	var race_loaded = false;
+	var load_node_pending = false;
 	var current_race_data = {};
 
 	$(document).ready(function () {
@@ -309,6 +310,13 @@
 			for (var i = 0; i < msg.enter_at_levels.length; i++) {
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
+			}
+			if (load_node_pending) {
+				load_node_pending = false;
+				if (race_loaded) {
+					var node = current_race_data.node_index;
+					marshal.setEnterExit(rotorhazard.nodes[node].enter_at_level, rotorhazard.nodes[node].exit_at_level);
+				}
 			}
 		});
 
@@ -650,10 +658,8 @@
 
 		$('#load-transitions').click(function(){
 			if (race_loaded) {
-				var node = current_race_data.node_index;
-				$('#enterat').val(rotorhazard.nodes[node].enter_at_level);
-				$('#exitat').val(rotorhazard.nodes[node].exit_at_level);
-				marshal.recalcRace();
+				load_node_pending = true;  // applied when the server's enter_and_exit_at_levels reply arrives
+				socket.emit('load_data', {'load_types': ['enter_and_exit_at_levels']});
 			} else {
 				push_message(__('No race loaded'));
 			}
