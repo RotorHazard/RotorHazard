@@ -311,7 +311,7 @@ def _do_calc_leaderboard(racecontext, **params):
                     race_format = rhDataObj.get_raceFormat(current_class.format_id)
 
                 if current_class.round_type == RoundType.GROUPED:
-                    round_num = 0
+                    round_num = 0  # heat display_name already carries "Round N" for grouped classes
                 else:
                     round_num = racecontext.rhdata.get_round_num_for_heat(current_heat.id)
             else:

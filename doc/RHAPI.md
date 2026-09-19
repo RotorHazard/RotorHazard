@@ -1300,6 +1300,10 @@ _Read/write_
 ID of assigned heat (`int` or `None`). `None` is practice mode.
 To change active heat options, adjust the assigned heat.
 
+#### race.round
+_Read only_
+Round number the next race of the current heat will be saved as (`int`). For a class with round type Heat Groups this is the heat's group number; `0` when no heat is assigned.
+
 #### race.frequencyset
 _Read/write_
 ID of current frequency set (`int`).

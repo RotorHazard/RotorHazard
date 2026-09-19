@@ -3449,8 +3449,15 @@ class RHData():
                 Database.SavedRaceMeta.round_id
             )).filter_by(heat_id=heat_id).scalar() or 0)
 
-    def get_round_num_for_heat(self, heat_id):
+    def get_round_num_for_heat(self, heat_id, heat=None, race_class=None):
         if heat_id and heat_id is not RHUtils.HEAT_ID_NONE:
+            if heat is None:
+                heat = self.get_heat(heat_id)
+            if heat and heat.class_id:
+                if race_class is None:
+                    race_class = self.get_raceClass(heat.class_id)
+                if race_class and race_class.round_type == RoundType.GROUPED:
+                    return heat.group_id + 1
             round_idx = self.get_max_round(heat_id)
             if type(round_idx) is int:
                 return round_idx + 1
