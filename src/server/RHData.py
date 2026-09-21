@@ -4412,6 +4412,30 @@ def getPilotEventRow(rhapi, pilot_id):
     rows = (event_results or {}).get(lboard_name) or []
     return next((r for r in rows if r.get('pilot_id') == pilot_id), None)
 
+def raceFormatHasIndividualWinner(race_format):
+    # team and co-op formats have no individual winner; a no-win-condition format has none at all
+    return bool(race_format) and race_format.team_racing_mode == RacingMode.INDIVIDUAL \
+           and race_format.win_condition != WinCondition.NONE
+
+def countPilotRaceWins(rhapi, pilot_id):
+    # wins across every saved race, plus a decided race not yet saved; not for a per-lap path
+    wins = 0
+    for race in rhapi.db.races:
+        if not raceFormatHasIndividualWinner(rhapi.db.raceformat_by_id(race.format_id)):
+            continue
+        results = rhapi.db.race_results(race) or {}
+        rows = results.get(results.get('meta', {}).get('primary_leaderboard', '')) or []
+        leaders = [r for r in rows if r.get('position') == 1]
+        # tied rows share position 1, and a tie is no win for anyone
+        if len(leaders) == 1 and leaders[0].get('pilot_id') == pilot_id:
+            wins += 1
+    if rhapi.race.status in (RaceStatus.RACING, RaceStatus.DONE) \
+            and rhapi.race.win_status == WinStatus.DECLARED \
+            and rhapi.race.race_winner_pilot_id == pilot_id \
+            and raceFormatHasIndividualWinner(rhapi.race.raceformat):
+        wins += 1
+    return wins
+
 def getEventSpeedRowStr(rhapi, row, spoken_flag):
     if not row:
         return ""
@@ -4472,6 +4496,7 @@ OTHER_TOKENS = ('%HEAT%', '%PILOT%', '%PILOTS%', '%LINEUP%', '%FREQS%',
                 '%FASTEST_EVENT_SPEED%', '%FASTEST_EVENT_SPEED_CALL%',
                 '%FASTEST_EVENT_LAP_PILOT%', '%FASTEST_EVENT_LAP_PILOT_CALL%',
                 '%FASTEST_EVENT_SPEED_PILOT%', '%FASTEST_EVENT_SPEED_PILOT_CALL%',
+                '%RACES_WON_PILOT%', '%RACES_WON_PILOT_CALL%',
                 '%SPLIT_TIME%', '%SPLIT_SPEED%',
                 '%COOP_RACE_INFO%', '%COOP_RACE_LAP_TOTALS%',
                 '%CURRENT_TIME_AP%', '%CURRENT_TIME_24%',
@@ -4784,6 +4809,18 @@ def doReplace(rhapi, text, args, spoken_flag=False, delay_sec_holder=None):
                 speed_str = ''
             text = replaceEventPilotTokens(rhapi, text, '%FASTEST_EVENT_SPEED_PILOT%', speed_str,
                     rhapi.__('Fastest event speed'), name_str, pilot_row.get('top_speed_source'), spoken_flag)
+
+        if '%RACES_WON_PILOT' in text:
+            # keyed on the pilot rather than the seat; empty only when the id is not a pilot
+            pilot_obj = rhapi.db.pilot_by_id(RHUtils.getNumericEntry(args, 'pilot_id', -1))
+            wins_str = str(countPilotRaceWins(rhapi, pilot_obj.id)) if pilot_obj else ''
+            # %RACES_WON_PILOT% : Number of races won by pilot (all saved races)
+            text = text.replace('%RACES_WON_PILOT%', wins_str)
+            # %RACES_WON_PILOT_CALL% : Pilot NAME has won N races
+            if wins_str:
+                name_str = (pilot_obj.phonetic or pilot_obj.callsign) if spoken_flag else pilot_obj.callsign
+                text = text.replace('%RACES_WON_PILOT_CALL%', "{} {} {} {}".format(name_str,
+                        rhapi.__('has won'), wins_str, rhapi.__('race' if wins_str == '1' else 'races')))
 
         if '%WINNER' in text:
             winner_str = rhapi.race.race_winner_phonetic if spoken_flag else rhapi.race.race_winner_name
