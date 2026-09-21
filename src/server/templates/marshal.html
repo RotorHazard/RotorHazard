@@ -344,7 +344,7 @@
 				load_node_pending = false;
 				if (race_loaded) {
 					var node = current_race_data.node_index;
-					marshal.setEnterExit(rotorhazard.nodes[node].enter_at_level, rotorhazard.nodes[node].exit_at_level);
+					marshal.loadEnterExit(rotorhazard.nodes[node].enter_at_level, rotorhazard.nodes[node].exit_at_level);
 				}
 			}
 		});
