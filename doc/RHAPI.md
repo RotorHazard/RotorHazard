@@ -1036,6 +1036,10 @@ Apply a marshalled correction to an existing `SavedPilotRace`: enter/exit calibr
 - `exit_at` (int): Gate exit calibration point
 - `laps` (list[dict]): Replacement lap list; each item requires `lap_time_stamp` and `lap_time`, and may also include `lap_time_formatted` (computed automatically if omitted), `peak_rssi`, `source`, `deleted`
 
+#### db.pilotrun_suggest_calibration(pilotrace_id)
+Suggest EnterAt/ExitAt values for a saved pilot run from its stored RSSI history, as the Marshal page's "Auto Adjust" does: the widest range of EnterAt over which the crossing count holds steady is taken as the gate band, and ExitAt is placed where the recalculated laps are cleanest. Nothing is changed; pass the values to `pilotrun_alter` to apply them. Returns `dict` with `enter_at`, `exit_at` and `lap_count` (the laps a recalculation with those values gives), or `None` if the run has no usable RSSI history or no gate passes stand out.
+- `pilotrace_id` (int): ID of pilot run record
+
 ### Saved Race &rarr; Pilot Run &rarr; Laps
 Laps store data related to start gate crossings. Each pilot run may have one or more laps associated with it. When displaying laps, be sure to reference the associated race format.
 

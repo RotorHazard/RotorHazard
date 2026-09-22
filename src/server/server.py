@@ -2824,6 +2824,24 @@ def on_retry_secondary(data):
     RaceContext.cluster.retrySecondary(data['secondary_id'])
     RaceContext.rhui.emit_cluster_status()
 
+@SOCKET_IO.on('suggest_calibration')
+@catchLogExcWithDBWrapper
+def on_suggest_calibration(data):
+    '''Replies to the requester with suggested EnterAt/ExitAt for a saved pilot run, or a seat of the current race.'''
+    pilotrace_id = data.get('pilotrace_id')
+    if pilotrace_id is not None:
+        result, reason = RaceContext.calibration.suggest_for_pilotrun(pilotrace_id)
+    else:
+        result, reason = RaceContext.calibration.suggest_for_seat(RHUtils.getNumericEntry(data, 'node', -1))
+    emit('calibration_suggestion', {
+        'pilotrace_id': pilotrace_id,
+        'node': data.get('node'),
+        'enter_at': result['enter_at'] if result else None,
+        'exit_at': result['exit_at'] if result else None,
+        'lap_count': result['lap_count'] if result else None,
+        'reason': reason,
+    })
+
 @SOCKET_IO.on('get_pilotrace')
 @catchLogExcWithDBWrapper
 def get_pilotrace(data):
