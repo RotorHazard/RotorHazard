@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 8
+API_VERSION_MINOR = 9
 
 import dataclasses
 import json
@@ -825,6 +825,13 @@ class DatabaseAPI():
             })
 
         return True
+
+    @callWithDatabaseWrapper
+    def pilotrun_suggest_calibration(self, pilotrace_id):
+        result = self._racecontext.calibration.suggest_for_pilotrun(pilotrace_id)[0]
+        if not result:
+            return None
+        return {'enter_at': result['enter_at'], 'exit_at': result['exit_at'], 'lap_count': result['lap_count']}
 
     # Race -> Pilot Run -> Laps
 
