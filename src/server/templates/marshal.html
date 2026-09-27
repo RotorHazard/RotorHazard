@@ -211,6 +211,33 @@
 
 	var race_list = {};
 	var race_list_loaded = false;
+	// the selection is restored on a browser refresh; navigating to the page picks the latest race;
+	//  taken now, since selecting a heat overwrites the stored round and pilot
+	var pending_selection = {};
+	try {
+		var nav_entry = performance.getEntriesByType('navigation')[0];
+		if (nav_entry && nav_entry.type == 'reload') {
+			pending_selection = {
+				heat: sessionStorage.getItem('marshal_heat'),
+				round: sessionStorage.getItem('marshal_round'),
+				pilot: sessionStorage.getItem('marshal_pilot'),
+			};
+		}
+	} catch (ex) {  // storage unavailable in a private window
+	}
+
+	function pop_selection(key) {
+		var value = pending_selection[key];
+		pending_selection[key] = null;  // applies to the first selection only
+		return value;
+	}
+
+	function store_selection(key, value) {
+		try {
+			sessionStorage.setItem('marshal_' + key, value);
+		} catch (ex) {
+		}
+	}
 	var race_loaded = false;
 	var load_node_pending = false;
 	var current_race_data = {};
@@ -338,10 +365,8 @@
 				}
 
 				// find most recent race
-				var prev_heat = null;
-				if (race_list_loaded) {
-					prev_heat = $('#selected_heat').val();
-				} else {
+				var prev_heat = race_list_loaded ? $('#selected_heat').val() : pop_selection('heat');
+				if (!(prev_heat in race_list.heats)) {  // the stored heat may have been deleted
 					var newest_race = 0;
 					for (var heat in race_list.heats) {
 						for (var round in race_list.heats[heat].rounds) {
@@ -462,7 +487,9 @@
 
 		$('#selected_heat').change(function(){
 			$('#reassign-heat-selector').val($(this).val());
-			var prev_round = $('#selected_round').val();
+			// the select holds a placeholder until a heat is chosen, so it is not a previous round
+			var prev_round = race_list_loaded && !$('#selected_round option[value="--"]').length ?
+				$('#selected_round').val() : pop_selection('round');
 
 			$('#selected_round').empty();
 
@@ -487,13 +514,14 @@
 				}
 			});
 
+			store_selection('heat', $(this).val());
 			disableUI();
 
 			$('#selected_round').trigger('change');
 		});
 
 		$('#selected_round').change(function(){
-			var prev_pilot = $('#selected_pilot').data('pilot-id');
+			var prev_pilot = $('#selected_pilot').data('pilot-id') || pop_selection('pilot');
 			var prev_sel_pilot_idx = $('#selected_pilot').prop('selectedIndex');
 
 			$('#selected_pilot').empty();
@@ -536,6 +564,7 @@
 				$('#selected_pilot').prop('selectedIndex', prev_sel_pilot_idx);
 			}
 
+			store_selection('round', $(this).val());
 			disableUI();
 
 			$('#selected_pilot').trigger('change');
@@ -548,6 +577,7 @@
 			var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot];
 
 			$(this).data('pilot-id', pilotrace.pilot_id);
+			store_selection('pilot', pilotrace.pilot_id);
 
 			load_race();
 		});
