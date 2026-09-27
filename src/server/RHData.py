@@ -3241,7 +3241,7 @@ class RHData():
         heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.round_id).all()
 
         # abort if assigning to a grouped heat with existing race
-        if heat_races and new_class.round_type == RoundType.GROUPED:
+        if heat_races and new_class and new_class.round_type == RoundType.GROUPED:
             return False, False
 
         race_meta.round_id = 0
