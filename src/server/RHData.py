@@ -3188,14 +3188,14 @@ class RHData():
         self.commit()
 
     def add_savedRaceMeta(self, data):
-        if int(data['class_id'] or 0) == 0:
+        if int(data.get('class_id') or 0) == 0:
             data['class_id'] = RHUtils.CLASS_ID_NONE
 
         new_race = Database.SavedRaceMeta(
             round_id=data['round_id'],
             heat_id=data['heat_id'],
             class_id=data['class_id'],
-            format_id=data['format_id'],
+            format_id=data.get('format_id'),
             start_time=data['start_time'],
             start_time_formatted=data['start_time_formatted'],
             _cache_status=json.dumps({
