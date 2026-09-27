@@ -3530,13 +3530,13 @@ class RHData():
             new_pilotrace = Database.SavedPilotRace(
                 race_id=node_data['race_id'],
                 node_index=node_index,
-                pilot_id=node_data['pilot_id'],
-                history_values=node_data['history_values'],
-                history_times=node_data['history_times'],
+                pilot_id=node_data.get('pilot_id'),
+                history_values=node_data.get('history_values'),
+                history_times=node_data.get('history_times'),
                 penalty_time=0,
                 enter_at=node_data['enter_at'],
                 exit_at=node_data['exit_at'],
-                frequency=node_data['frequency'],
+                frequency=node_data.get('frequency'),
                 marshal_type=node_data.get('marshal_type', None)
             )
 
@@ -3544,12 +3544,12 @@ class RHData():
             Database.DB_session.flush()
             Database.DB_session.refresh(new_pilotrace)
 
-            for lap in node_data['laps']:
+            for lap in node_data.get('laps') or []:
                 Database.DB_session.add(Database.SavedRaceLap(
                     race_id=node_data['race_id'],
                     pilotrace_id=new_pilotrace.id,
                     node_index=node_index,
-                    pilot_id=node_data['pilot_id'],
+                    pilot_id=node_data.get('pilot_id'),
                     lap_time_stamp=lap.lap_time_stamp,
                     lap_time=lap.lap_time,
                     lap_time_formatted=lap.lap_time_formatted,
