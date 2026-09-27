@@ -400,6 +400,25 @@
 			}
 		}
 
+		// drop race format name from the title if too narrow to fit it
+		function fit_race_title() {
+			var title_el = $('#race-title')[0];
+			var format_el = $(title_el).children('.race-format');
+			if (!format_el.length || !title_el.clientWidth)
+				return;
+			format_el.hide();
+			var bare_height = title_el.offsetHeight;
+			format_el.show();
+			if (title_el.offsetHeight > bare_height)
+				format_el.hide();
+		}
+
+		var fit_timer = null;
+		$(window).on('resize', function() {
+			clearTimeout(fit_timer);
+			fit_timer = setTimeout(fit_race_title, 100);
+		});
+
 		socket.on('race_details', function (msg) {
 			race_args = {
 				round: current_race_data.round_id,
@@ -438,6 +457,11 @@
 			$( "#selected_round option:selected" ).text() + ' / ' +
 			$( "#selected_pilot option:selected" ).text();
 			$('#race-title').html(header);
+			var format_name = race_args.race_format && race_args.race_format.name ? race_args.race_format.name.trim() : '';
+			if (format_name) {
+				$('#race-title').append($('<span class="race-format"></span>').text(' - ' + format_name));
+			}
+			fit_race_title();
 
 			// fill enter/exit values
 			$('#enterat').val(msg.enter_at);
