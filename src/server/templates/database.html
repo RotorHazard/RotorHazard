@@ -98,7 +98,7 @@
             <th>{{ __('Class ID') }}</th>
             <th>{{ __('Node Index') }}</th>
             <th>{{ __('Pilot ID') }}</th>
-            <th>{{ __('Lap ID') }}</th>
+            <th>{{ __('Race ID') }}</th>
             <th>{{ __('Lap Time Stamp') }}</th>
             <th>{{ __('Lap Time') }}</th>
             <th>{{ __('Lap Time Formatted') }}</th>
@@ -106,14 +106,15 @@
     </thead>
     <tbody>
         {% for savedracelap in savedraceLap %}
+        {% set race = savedraceMeta | selectattr('id', 'equalto', savedracelap.race_id) | first %}
         <tr>
             <td>{{ savedracelap.id }}</td>
-            <td>{{ savedracelap.round_id }}</td>
-            <td>{{ savedracelap.heat_id }}</td>
-            <td>{{ savedracelap.class_id }}</td>
+            <td>{{ race.round_id if race }}</td>
+            <td>{{ race.heat_id if race }}</td>
+            <td>{{ race.class_id if race }}</td>
             <td>{{ savedracelap.node_index }}</td>
             <td>{{ savedracelap.pilot_id }}</td>
-            <td>{{ savedracelap.lap_id }}</td>
+            <td>{{ savedracelap.race_id }}</td>
             <td>{{ savedracelap.lap_time_stamp }}</td>
             <td>{{ savedracelap.lap_time }}</td>
             <td>{{ savedracelap.lap_time_formatted }}</td>
