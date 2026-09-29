@@ -440,6 +440,7 @@ class RHData():
             raceClassAttribute_query_data = self.get_legacy_table_data(engine, metadata, 'race_class_attribute')
             savedRaceAttribute_query_data = self.get_legacy_table_data(engine, metadata, 'saved_race_meta_attribute')
             raceFormatAttribute_query_data = self.get_legacy_table_data(engine, metadata, 'race_format_attribute')
+            deletedRace_query_data = self.get_legacy_table_data(engine, metadata, 'deleted_race')
 
             engine.dispose() # close connection after loading
 
@@ -819,6 +820,12 @@ class RHData():
                         self.restore_table(Database.SavedRaceMetaAttribute, savedRaceAttribute_query_data, defaults={
                             'name': '',
                             'value': None
+                        })
+
+                        self.restore_table(Database.DeletedRace, deletedRace_query_data, defaults={
+                            'class_id': None,
+                            'format_id': None,
+                            'start_time_formatted': None
                         })
 
                     recover_status['stage_2'] = True
