@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 7
+API_VERSION_MINOR = 8
 
 import dataclasses
 import json
@@ -1304,6 +1304,15 @@ class HardwareInterfaceAPI():
 
     def add(self, interface):
         return self._racecontext.interface.add_interface(interface, InterfaceType.RHAPI)
+
+    def seat_enter_at_set(self, seat_index, level):
+        return self._racecontext.calibration.set_enter_at_level(seat_index, level)
+
+    def seat_exit_at_set(self, seat_index, level):
+        return self._racecontext.calibration.set_exit_at_level(seat_index, level)
+
+    def seat_crossing_end(self, seat_index):
+        return self._racecontext.interface.force_end_crossing(seat_index)
 
 #
 # Server Config

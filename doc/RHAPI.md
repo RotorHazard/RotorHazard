@@ -1484,6 +1484,20 @@ These methods are accessed via `RHAPI.interface`
 _Read only_
 Hardware interface information. Returns `list[Node]`.
 
+#### interface.seat_enter_at_set(seat_index, level)
+Set the EnterAt level of a seat on the live node, as the Settings page does: the level is stored in the current profile and broadcast to all clients. No return value.
+- `seat_index` (int): seat to change
+- `level` (int): new EnterAt level
+
+#### interface.seat_exit_at_set(seat_index, level)
+Set the ExitAt level of a seat on the live node, as the Settings page does: the level is stored in the current profile and broadcast to all clients. No return value.
+- `seat_index` (int): seat to change
+- `level` (int): new ExitAt level
+
+#### interface.seat_crossing_end(seat_index)
+End a crossing in progress on a seat, as the server does at race start and stop, so the node reports the pass. Has no effect on nodes whose firmware does not support it. No return value.
+- `seat_index` (int): seat whose crossing to end
+
 
 
 ## Persistent Configuration
