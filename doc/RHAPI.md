@@ -1366,6 +1366,11 @@ Add a lap record to the current race. Laps must be entered sequentially. No retu
 - `timestamp` (int): timestamp of lap to add, in server monotonic time
 - `peak` _(optional)_ (int): peak RSSI of the pass, stored with the lap
 
+#### race.laps_replace(seat_index, laps)
+Replace all laps of a seat in the current race, as the Marshal page does for the current race: laps are renumbered, results recalculated and the lap list broadcast to all clients, and `Evt.RACE_LAPS_REPLACE` is triggered. No return value.
+- `seat_index` (int): seat whose laps to replace
+- `laps` (list[dict]): replacement lap list, in order; each item requires `lap_time_stamp` and `lap_time` (both in milliseconds), and may also include `source` (default `LapSource.API`) and `deleted` (default `False`)
+
 #### race.results
 _Read only_
 Calculated race results. Returns `dict`.

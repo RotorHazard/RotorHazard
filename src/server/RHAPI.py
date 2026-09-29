@@ -1194,6 +1194,17 @@ class RaceAPI():
         seat = self._racecontext.interface.nodes[seat_index]
         return self._racecontext.race.add_lap(seat, timestamp, LapSource.API, peak=peak)
 
+    def laps_replace(self, seat_index, laps):
+        self._racecontext.race.replace_laps({
+            'seat': seat_index,
+            'laps': [{
+                'lap_time_stamp': lap['lap_time_stamp'],
+                'lap_time': lap['lap_time'],
+                'source': lap.get('source', LapSource.API),
+                'deleted': lap.get('deleted', False),
+            } for lap in laps],
+        })
+
     @property
     @callWithDatabaseWrapper
     def results(self):
