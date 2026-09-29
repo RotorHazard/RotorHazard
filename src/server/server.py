@@ -1600,6 +1600,45 @@ def on_alter_race(data):
         message = __('No reassignment made: destination heat same as source')
         RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
 
+def get_race_round_label(heat_id, round_id):
+    '''Heat and round of a race for messages; heat names in grouped classes already include the round.'''
+    heat = RaceContext.rhdata.get_heat(heat_id)
+    if not heat:
+        return '{0} {1}, {2} {3}'.format(__('Heat'), heat_id, __('Round'), round_id)
+    race_class = RaceContext.rhdata.get_raceClass(heat.class_id)
+    if race_class and race_class.round_type == Database.RoundType.GROUPED:
+        return heat.display_name
+    return '{0}, {1} {2}'.format(heat.display_name, __('Round'), round_id)
+
+@SOCKET_IO.on('delete_race_round')
+@requires_socketio_auth
+@catchLogExcWithDBWrapper
+def on_delete_race_round(data):
+    '''Delete a saved race round, keeping a copy that can be restored.'''
+    race_id = data.get('race_id')
+    race = RaceContext.rhdata.get_savedRaceMeta(race_id) if race_id is not None else None
+
+    if not race:
+        message = __('That round no longer exists; it may already have been deleted')
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+        emit('race_round_deleted', {'ok': False, 'race_id': race_id})
+        return
+
+    label = get_race_round_label(race.heat_id, race.round_id)
+
+    if RaceContext.rhdata.delete_savedRaceMeta(race):
+        message = __('Deleted {0}; a copy is listed under Deleted Races on the View Database page').format(label)
+        RaceContext.rhui.emit_priority_message(message, False)
+
+        RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_list()
+        RaceContext.rhui.emit_result_data()
+        emit('race_round_deleted', {'ok': True, 'race_id': race_id})
+    else:
+        message = __('Unable to delete {0}').format(label)
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+        emit('race_round_deleted', {'ok': False, 'race_id': race_id})
+
 
 @SOCKET_IO.on('backup_database')
 @requires_socketio_auth

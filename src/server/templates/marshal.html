@@ -192,6 +192,7 @@
 		$('#manual-lap-time').prop('disabled', true);
 		$('#add-lap').prop('disabled', true);
 		$('#clean-laps').prop('disabled', true);
+		$('#delete-round').prop('disabled', true);
 		$('#reassign-heat').prop('disabled', true);
 		$('#save-laps').prop('disabled', true);
 	}
@@ -206,6 +207,7 @@
 		$('#manual-lap-time').prop('disabled', false);
 		$('#add-lap').prop('disabled', false);
 		$('#clean-laps').prop('disabled', false);
+		$('#delete-round').prop('disabled', false);
 		$('#save-laps').prop('disabled', false);
 		$('#reassign-heat').prop('disabled', false);
 		$('#discard-laps').prop('disabled', false);
@@ -695,6 +697,68 @@
 			}
 		});
 
+		// next higher round in the heat, else the next lower one, else null
+		function round_after_delete(deleted_round) {
+			var rounds = $('#selected_round option').map(function() {
+				return parseInt(this.value);
+			}).get().filter(function(value) {
+				return !isNaN(value) && value != deleted_round;
+			}).sort(function(a, b) {
+				return a - b;
+			});
+			var later = rounds.filter(function(value) { return value > deleted_round; });
+			if (later.length) {
+				return later[0];
+			}
+			return rounds.length ? rounds[rounds.length - 1] : null;
+		}
+
+		var round_before_delete = null;
+
+		$('#delete-round').click(function(){
+			if (race_loaded) {
+				var round_label = $('#selected_heat option:selected').text();
+				if (!$('#selected_round').prop('hidden')) {
+					round_label += ', ' + $('#selected_round option:selected').text();
+				}
+				$('#delete-round-text').text(__('Delete {0} for all pilots?').replace('{0}', round_label));
+				$('#delete-round-confirm-btn').data('race-id', current_race_data.race_id);
+				$.magnificPopup.open({
+					items: {
+						src: '#delete-round-confirm'
+					},
+					type: 'inline'
+				});
+			} else {
+				push_message(__('No race loaded'));
+			}
+		});
+
+		$('#delete-round-confirm-btn').click(function(){
+			var race_id = $(this).data('race-id');
+			$.magnificPopup.close();
+			if (race_id) {
+				$('#delete-round').prop('disabled', true);
+				// preselect the round to show; kept when the updated race list arrives
+				round_before_delete = $('#selected_round').val();
+				var next_round = round_after_delete(parseInt(round_before_delete));
+				if (next_round !== null) {
+					$('#selected_round').val(String(next_round));
+				}
+				socket.emit('delete_race_round', {'race_id': race_id});
+			}
+		});
+
+		socket.on('race_round_deleted', function (msg) {
+			if (!msg.ok) {
+				if (round_before_delete !== null) {
+					$('#selected_round').val(round_before_delete);
+				}
+				$('#delete-round').prop('disabled', !race_loaded);
+			}
+			round_before_delete = null;
+		});
+
 		$(document).on('click', '.delete_lap', function(){
 			marshal.markLapDeleted($(this).data('lapid'));
 		});
@@ -849,6 +913,7 @@
 					<input type="number" id="manual-lap-time" step="0.001" placeholder="{{ __('Manual Lap Time') }}" disabled />
 					<button id="add-lap" disabled>{{ __('Add Lap') }}</button>
 					<button id="clean-laps" disabled>{{ __('Clean Deleted Laps') }}</button>
+					<button id="delete-round" class="btn-danger" disabled>{{ __('Delete This Round') }}</button>
 				</div>
 				<div class="control-block">
 					<h3>{{ __('Reassign Heat') }}</h3>
@@ -869,6 +934,15 @@
 
 <!-- Custom UI -->
 <div id="custom-ui"></div>
+
+<div id="delete-round-confirm" class="priority-message-interrupt mfp-hide popup">
+	<h2>{{ __('Delete This Round') }}</h2>
+	<div class="popup-content">
+		<p id="delete-round-text"></p>
+		<p><button class="btn-danger" id="delete-round-confirm-btn">{{ __('Delete') }}</button>
+		<button class="cancel">{{ __('Cancel') }}</button></p>
+	</div>
+</div>
 
 </main>
 {% endblock %}
