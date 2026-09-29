@@ -1,4 +1,37 @@
-{% extends "layout.html" %} {% block title %}{{ __('Database') }}{% endblock %} {% block content %}
+{% extends "layout.html" %} {% block title %}{{ __('Database') }}{% endblock %}{% block head %}
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		$('#deleted-races').on('click', 'button.restore-deleted-race', function () {
+			$('#restore-race-text').text(__('Restore {0}?').replace('{0}', $(this).data('label')));
+			$('#restore-race-confirm-btn').data('id', $(this).data('id'));
+			$.magnificPopup.open({
+				items: {
+					src: '#restore-race-confirm'
+				},
+				type: 'inline'
+			});
+		});
+
+		$('#restore-race-confirm-btn').click(function () {
+			var deleted_race_id = $(this).data('id');
+			$.magnificPopup.close();
+			if (deleted_race_id) {
+				$('#deleted-races button[data-id="' + deleted_race_id + '"]').prop('disabled', true);
+				socket.emit('restore_deleted_race', {'id': deleted_race_id});
+			}
+		});
+
+		socket.on('deleted_race_restored', function (msg) {
+			var button = $('#deleted-races button[data-id="' + msg.id + '"]');
+			if (msg.ok) {
+				button.closest('tr').remove();
+			} else {
+				button.prop('disabled', false);
+			}
+		});
+	});
+</script>
+{% endblock %} {% block content %}
 <main class="page-database">
 <h2>{{ __('Pilots') }}</h2>
 <table class="table">
@@ -123,6 +156,38 @@
     </tbody>
 </table>
 
+<h2>{{ __('Deleted Races') }}</h2>
+<table class="table" id="deleted-races">
+    <thead>
+        <tr>
+            <th>{{ __('Deleted') }}</th>
+            <th>{{ __('Race ID') }}</th>
+            <th>{{ __('Heat') }}</th>
+            <th>{{ __('Round') }}</th>
+            <th>{{ __('Class') }}</th>
+            <th>{{ __('Format') }}</th>
+            <th>{{ __('Started') }}</th>
+            <th>{{ __('Pilots') }}</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for deleted_race in deletedRaces %}
+        <tr>
+            <td>{{ deleted_race.deleted }}</td>
+            <td>{{ deleted_race.race_id }}</td>
+            <td>{{ deleted_race.heat }}</td>
+            <td>{{ deleted_race.round }}</td>
+            <td>{{ deleted_race.class }}</td>
+            <td>{{ deleted_race.format }}</td>
+            <td>{{ deleted_race.started }}</td>
+            <td>{{ deleted_race.pilots }}</td>
+            <td><button class="restore-deleted-race" data-id="{{ deleted_race.id }}" data-label="{{ deleted_race.label }}">{{ __('Restore') }}</button></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 <h2>{{ __('Profiles') }}</h2>
 <table class="table">
     <thead>
@@ -203,6 +268,15 @@
         {% endfor %}
     </tbody>
 </table>
+
+<div id="restore-race-confirm" class="priority-message-interrupt mfp-hide popup">
+    <h2>{{ __('Restore Race') }}</h2>
+    <div class="popup-content">
+        <p id="restore-race-text"></p>
+        <p><button id="restore-race-confirm-btn">{{ __('Restore') }}</button>
+        <button class="cancel">{{ __('Cancel') }}</button></p>
+    </div>
+</div>
 
 </main>
 {% endblock %}
