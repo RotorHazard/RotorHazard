@@ -3,7 +3,7 @@ import functools
 from Database import LapSource
 
 API_VERSION_MAJOR = 1
-API_VERSION_MINOR = 9
+API_VERSION_MINOR = 10
 
 import dataclasses
 import json
@@ -775,8 +775,56 @@ class DatabaseAPI():
         return self._racecontext.rhdata.get_results_savedRaceMeta(race_or_id)
 
     @callWithDatabaseWrapper
+    def race_results_rebuild(self, race_or_id):
+        race = self._racecontext.rhdata.resolve_savedRaceMeta_from_savedRaceMeta_or_id(race_or_id)
+        if not race:
+            return False
+        self._racecontext.rhdata.clear_results_for_race(race.heat_id, race.class_id, race.id)
+        self._emit_race_data_changed()
+        return True
+
+    @callWithDatabaseWrapper
+    def race_delete(self, race_or_id, keep_copy=True):
+        if not self._racecontext.rhdata.delete_savedRaceMeta(race_or_id, keep_copy):
+            return False
+        self._emit_race_data_changed()
+        return True
+
+    @callWithDatabaseWrapper
     def races_clear(self):
         return self._racecontext.rhdata.clear_race_data()
+
+    def _emit_race_data_changed(self):
+        self._racecontext.rhui.emit_heat_data()
+        self._racecontext.rhui.emit_race_list()
+        self._racecontext.rhui.emit_result_data()
+
+    # Deleted Races
+
+    @property
+    @callWithDatabaseWrapper
+    def deleted_races(self):
+        return self._racecontext.rhdata.get_deletedRaces()
+
+    @callWithDatabaseWrapper
+    def deleted_race_by_id(self, deleted_race_id):
+        return self._racecontext.rhdata.get_deletedRace(deleted_race_id)
+
+    @callWithDatabaseWrapper
+    def deleted_race_data(self, deleted_race_or_id):
+        return self._racecontext.rhdata.get_deletedRace_snapshot(deleted_race_or_id)
+
+    @callWithDatabaseWrapper
+    def deleted_race_conflicts(self, deleted_race_or_id):
+        return self._racecontext.rhdata.get_deletedRace_conflicts(deleted_race_or_id)
+
+    @callWithDatabaseWrapper
+    def race_restore(self, deleted_race_or_id):
+        race = self._racecontext.rhdata.restore_deletedRace(deleted_race_or_id)
+        if not race:
+            return False
+        self._emit_race_data_changed()
+        return race
 
     # Race -> Pilot Run
 
@@ -793,7 +841,7 @@ class DatabaseAPI():
     def pilotruns_by_race(self, race_id):
         return self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race_id)
 
-    def pilotrun_add(self, race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps, marshal_type=None):
+    def pilotrun_add(self, race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps, marshal_type=None, splits=None):
         data = {}
 
         for name, value in [
@@ -806,6 +854,7 @@ class DatabaseAPI():
             ('frequency', frequency),
             ('laps', laps),
             ('marshal_type', marshal_type),
+            ('splits', splits),
             ]:
             if value is not None:
                 data[name] = value

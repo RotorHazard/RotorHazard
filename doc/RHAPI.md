@@ -985,8 +985,52 @@ Alter race data. Supports only custom attributes. No return value.
 Calculated result set for saved race. Returns `dict`.
 - `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
 
+#### db.race_results_rebuild(race_or_id)
+Rebuild the result caches that include a saved race (the race, its heat and class, and the event) and update connected clients. Call this after adding or changing race data with `db.race_add` and `db.pilotrun_add`, which do not update results themselves. Returns `True`, or `False` if the race was not found.
+- `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
+
+#### db.race_delete(race_or_id, keep_copy=True)
+Delete a saved race with its pilot runs, laps, splits and attributes. Other rounds of the heat are not renumbered or altered. Unless `keep_copy` is `False`, a copy of the race is kept as a deleted race (see below) so it can be restored. Result caches are rebuilt, connected clients are updated and `Evt.RACE_DELETE` is triggered. Returns `True` if the race was deleted, `False` if it was not found or could not be deleted.
+- `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
+- `keep_copy` _(optional)_ (boolean): Keep a copy of the race that can be restored
+
 #### db.races_clear()
-Delete all saved races. No return value.
+Delete all saved races and deleted races. No return value.
+
+
+### Deleted Races
+Copies of saved races deleted with `db.race_delete` or the Marshal page. A deleted race can be restored if its heat, round, class, format and pilots still fit.
+
+Deleted races are represented with the `DeletedRace` class, which has the following properties:
+- `id` (int): Internal identifier
+- `race_id` (int): ID the saved race had
+- `round_id` (int): round number
+- `heat_id` (int): ID of associated heat
+- `class_id` (int): ID of associated race class, or `CLASS_ID_NONE`
+- `format_id` (int): ID of associated race format
+- `start_time_formatted` (string): Human-readable time of race start
+- `deleted_time_formatted` (string): Human-readable time the race was deleted
+- `data` (string): Internal use only; use `db.deleted_race_data`
+
+#### db.deleted_races
+_Read only_
+All deleted race records, newest first. Returns `list[DeletedRace]`.
+
+#### db.deleted_race_by_id(deleted_race_id)
+A single deleted race record, retrieved by ID. Returns `DeletedRace`.
+- `deleted_race_id` (int): ID of deleted race record to retrieve
+
+#### db.deleted_race_data(deleted_race_or_id)
+The stored copy of a deleted race. Returns `dict` with keys `race` (the saved race fields), `attributes` (dict of custom attributes) and `pilotruns` (list of pilot run fields, each with `laps` and `splits` lists), or `None` if not found.
+- `deleted_race_or_id` (int|DeletedRace): Either the deleted race object or the ID of deleted race
+
+#### db.deleted_race_conflicts(deleted_race_or_id)
+Reasons the deleted race cannot be restored as it was, such as its heat no longer existing or its round of the heat already having a race. Returns `list[string]`, empty if the race can be restored, or `None` if not found.
+- `deleted_race_or_id` (int|DeletedRace): Either the deleted race object or the ID of deleted race
+
+#### db.race_restore(deleted_race_or_id)
+Restore a deleted race with its pilot runs, laps, splits and attributes, and remove the deleted race record. The race keeps its former ID if no other race has taken it. Nothing is restored if `db.deleted_race_conflicts` reports any conflict or a step fails. Result caches are rebuilt, connected clients are updated and `Evt.RACE_RESTORE` is triggered. Returns `SavedRaceMeta`, or `False` if the race was not restored.
+- `deleted_race_or_id` (int|DeletedRace): Either the deleted race object or the ID of deleted race
 
 
 ### Saved Race &rarr; Pilot Runs
@@ -1017,8 +1061,8 @@ A single pilot run record, retrieved by ID. Returns `SavedPilotRace`.
 Pilot run records matching the provided saved race ID. Returns `list[SavedPilotRace]`.
 - `race_id` (int): ID of saved race used to retrieve pilot runs
 
-#### db.pilotrun_add(race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps)
-Add a `SavedPilotRace` directly in the database. Laps must be added during creation. Returns `SavedPilotRace`.
+#### db.pilotrun_add(race_id, node_index, pilot_id, history_values, history_times, enter_at, exit_at, frequency, laps, marshal_type=None, splits=None)
+Add a `SavedPilotRace` directly in the database. Laps and splits must be added during creation. Returns `True`.
 - `race_id` (int): ID of associated saved race
 - `node_index` (int): Seat number
 - `pilot_id` (int): ID of associated pilot
@@ -1028,6 +1072,8 @@ Add a `SavedPilotRace` directly in the database. Laps must be added during creat
 - `exit_at` (int): Gate exit calibration point
 - `frequency` (int): Active frequency for this seat at race time
 - `laps` (list[Crossing]): List of `Crossing` objects to add to this run
+- `marshal_type` _(optional)_ (int): Marshal type of the seat's timing interface
+- `splits` _(optional)_ (list[dict]): Splits to add to this run; each item requires `lap_id`, `split_id`, `split_time_stamp` and `split_time`, and may also include `split_time_formatted`, `split_speed`, `speed_only`
 
 #### db.pilotrun_alter(pilotrace_id, enter_at=None, exit_at=None, laps=None)
 Apply a marshalled correction to an existing `SavedPilotRace`: enter/exit calibration and/or a replacement lap list. Mirrors the behavior of the built-in Marshal page, including clearing dependent result caches and firing `Evt.LAPS_RESAVE`. Fields left as `None` are unchanged. Returns `True` on success, `False` if `pilotrace_id` (or its saved race) does not exist.
