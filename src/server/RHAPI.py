@@ -1190,9 +1190,9 @@ class RaceAPI():
                 payload.append([])
         return payload
 
-    def lap_add(self, seat_index, timestamp):
+    def lap_add(self, seat_index, timestamp, peak=None):
         seat = self._racecontext.interface.nodes[seat_index]
-        return self._racecontext.race.add_lap(seat, timestamp, LapSource.API)
+        return self._racecontext.race.add_lap(seat, timestamp, LapSource.API, peak=peak)
 
     @property
     @callWithDatabaseWrapper
