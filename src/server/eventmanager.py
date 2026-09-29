@@ -149,6 +149,8 @@ class Evt:
     MIN_FIRST_CROSSING_SET = 'minFirstCrossingSet'
     MIN_LAP_BEHAVIOR_SET = 'minLapBehaviorSet'
     RACE_ALTER = 'raceAlter'
+    RACE_DELETE = 'raceDelete'
+    RACE_RESTORE = 'raceRestore'
     RACE_FORMAT_SET = 'raceFormatSet'
     RACE_FORMAT_ADD = 'raceFormatAdd'
     RACE_FORMAT_ALTER = 'raceFormatAlter'

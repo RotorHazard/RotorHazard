@@ -18,6 +18,7 @@ import glob
 import bisect
 import numbers
 import RHUtils
+import RHTimeFns
 import Database
 import Results
 from time import monotonic
@@ -3347,6 +3348,245 @@ class RHData():
 
         return race_meta, new_heat
 
+    def clear_results_for_race(self, heat_id, class_id, race_id=None):
+        # Invalidates the page cache and the race, heat, class and event result caches
+        self._racecontext.pagecache.set_valid(False)
+        if race_id is not None:
+            self.clear_results_savedRaceMeta(race_id)
+        self.clear_results_heat(heat_id)
+        self.clear_results_raceClass(class_id)
+        self.clear_results_event()
+
+    def get_savedRaceMeta_snapshot(self, savedRaceMeta_or_id):
+        # Plain-data copy of a saved race with its attributes, pilot runs, laps and splits
+        race_meta = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
+        if not race_meta:
+            return None
+
+        def columns(obj):
+            return {attr.key: getattr(obj, attr.key) for attr in inspect(obj).mapper.column_attrs
+                    if attr.key not in ('results', '_cache_status')}
+
+        pilotruns = []
+        for pilotrace in self.get_savedPilotRaces_by_savedRaceMeta(race_meta.id):
+            run_data = columns(pilotrace)
+            run_data['laps'] = [columns(lap) for lap in self.get_savedRaceLaps_by_savedPilotRace(pilotrace.id)]
+            run_data['splits'] = [columns(split) for split in self.get_savedRaceLapSplits_by_savedPilotRace(pilotrace.id)]
+            pilotruns.append(run_data)
+
+        return {
+            'race': columns(race_meta),
+            'attributes': {attr.name: attr.value for attr in
+                           Database.SavedRaceMetaAttribute.query.filter_by(id=race_meta.id).all()},
+            'pilotruns': pilotruns,
+            }
+
+    def begin_transaction(self):
+        # Starts an explicit transaction so the next commit or rollback covers every statement until then;
+        #  the SQLite connection otherwise commits each statement as it runs
+        dbapi_connection = Database.DB_session.connection().connection.dbapi_connection
+        if not dbapi_connection.in_transaction:
+            dbapi_connection.execute('BEGIN IMMEDIATE')
+
+    def set_grouped_heat_active(self, heat_id, active):
+        # Sets the active flag of a heat in a grouped (heat groups) class; other heats are unchanged
+        heat = self.get_heat(heat_id)
+        if heat and heat.class_id:
+            race_class = self.get_raceClass(heat.class_id)
+            if race_class and race_class.round_type == RoundType.GROUPED:
+                heat.active = active
+
+    def delete_savedRaceMeta(self, savedRaceMeta_or_id, keep_copy=True):
+        # Deletes a saved race with its pilot runs, laps, splits and attributes; other rounds are left as-is
+        race_meta = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
+        if not race_meta:
+            return False
+
+        race_id = race_meta.id
+        heat_id = race_meta.heat_id
+        round_id = race_meta.round_id
+        class_id = race_meta.class_id
+        snapshot = self.get_savedRaceMeta_snapshot(race_meta)
+        deleted_race = None
+
+        try:
+            self.begin_transaction()
+            if keep_copy:
+                deleted_race = Database.DeletedRace(
+                    race_id=race_id,
+                    round_id=round_id,
+                    heat_id=heat_id,
+                    class_id=class_id,
+                    format_id=race_meta.format_id,
+                    start_time_formatted=race_meta.start_time_formatted,
+                    deleted_time_formatted=RHTimeFns.datetimeToFormattedStr(datetime.now()),
+                    data=json.dumps(snapshot, default=str)
+                )
+                Database.DB_session.add(deleted_race)
+
+            heat_has_other_races = bool(Database.SavedRaceMeta.query.filter(
+                Database.SavedRaceMeta.heat_id == heat_id, Database.SavedRaceMeta.id != race_id).count())
+
+            Database.SavedRaceMetaAttribute.query.filter_by(id=race_id).delete()
+            Database.SavedRaceLapSplit.query.filter_by(race_id=race_id).delete()
+            Database.SavedRaceLap.query.filter_by(race_id=race_id).delete()
+            Database.SavedPilotRace.query.filter_by(race_id=race_id).delete()
+            Database.DB_session.delete(race_meta)
+
+            if not heat_has_other_races:
+                self.set_grouped_heat_active(heat_id, True)
+
+            Database.DB_session.commit()
+        except Exception:
+            logger.exception('Unable to delete race {0}'.format(race_id))
+            self.rollback()
+            return False
+
+        self.clear_results_for_race(heat_id, class_id)
+
+        if self._racecontext.race.prev_race_winner_race_id == race_id:
+            self._racecontext.race.clear_prev_race_winner()
+
+        last_race = self._racecontext.last_race
+        if last_race and last_race.db_id == race_id:
+            self._racecontext.last_race = None
+            self._racecontext.rhui.emit_current_laps()
+            self._racecontext.rhui.emit_current_leaderboard()
+
+        logger.info('Race {0} deleted (heat {1} round {2})'.format(race_id, heat_id, round_id))
+
+        self._Events.trigger(Evt.RACE_DELETE, {
+            'race_id': race_id,
+            'heat_id': heat_id,
+            'round_id': round_id,
+            'class_id': class_id,
+            'deleted_race_id': deleted_race.id if deleted_race else None,
+            'race': snapshot,
+            })
+
+        return True
+
+    # Deleted races
+
+    def resolve_deletedRace_from_deletedRace_or_id(self, deletedRace_or_id):
+        if isinstance(deletedRace_or_id, Database.DeletedRace):
+            return deletedRace_or_id
+        else:
+            return Database.DeletedRace.query.get(deletedRace_or_id)
+
+    def get_deletedRace(self, deletedRace_id):
+        return Database.DeletedRace.query.get(deletedRace_id)
+
+    def get_deletedRaces(self):
+        return Database.DeletedRace.query.order_by(Database.DeletedRace.id.desc()).all()
+
+    def get_deletedRace_snapshot(self, deletedRace_or_id):
+        deleted_race = self.resolve_deletedRace_from_deletedRace_or_id(deletedRace_or_id)
+        if not deleted_race:
+            return None
+        return json.loads(deleted_race.data)
+
+    def get_deletedRace_conflicts(self, deletedRace_or_id):
+        # Returns the reasons a deleted race cannot be restored as it was; empty when it can be
+        deleted_race = self.resolve_deletedRace_from_deletedRace_or_id(deletedRace_or_id)
+        if not deleted_race:
+            return None
+
+        snapshot = json.loads(deleted_race.data)
+        reasons = []
+
+        heat = self.get_heat(deleted_race.heat_id)
+        if not heat:
+            reasons.append(self.__('its heat no longer exists'))
+        else:
+            if Database.SavedRaceMeta.query.filter_by(heat_id=heat.id, round_id=deleted_race.round_id).count():
+                reasons.append(self.__('round {0} of that heat already has a race').format(deleted_race.round_id))
+            if (heat.class_id or None) != (deleted_race.class_id or None):
+                reasons.append(self.__('its heat is now in a different class'))
+
+        if deleted_race.class_id and not self.get_raceClass(deleted_race.class_id):
+            reasons.append(self.__('its class no longer exists'))
+        if deleted_race.format_id and not self.get_raceFormat(deleted_race.format_id):
+            reasons.append(self.__('its race format no longer exists'))
+
+        pilot_ids = {run.get('pilot_id') for run in snapshot.get('pilotruns') or [] if run.get('pilot_id')}
+        missing_pilots = [pilot_id for pilot_id in pilot_ids if not self.get_pilot(pilot_id)]
+        if missing_pilots:
+            reasons.append(self.__('{0} of its pilots no longer exist').format(len(missing_pilots)))
+
+        return reasons
+
+    def restore_deletedRace(self, deletedRace_or_id):
+        # Recreates a deleted race from its copy and removes the copy; returns the race, or False if it cannot be restored
+        deleted_race = self.resolve_deletedRace_from_deletedRace_or_id(deletedRace_or_id)
+        if not deleted_race or self.get_deletedRace_conflicts(deleted_race):
+            return False
+
+        deleted_race_id = deleted_race.id
+        snapshot = json.loads(deleted_race.data)
+
+        def columns(model, values, exclude):
+            keys = {attr.key for attr in inspect(model).column_attrs}
+            return {key: value for key, value in values.items() if key in keys and key not in exclude}
+
+        try:
+            self.begin_transaction()
+            race_values = columns(Database.SavedRaceMeta, snapshot['race'], ('results', '_cache_status'))
+            if race_values.get('id') is None or Database.SavedRaceMeta.query.get(race_values['id']):
+                race_values.pop('id', None)  # original id taken by a newer race
+            race_meta = Database.SavedRaceMeta(**race_values)
+            race_meta.results = None
+            race_meta._cache_status = json.dumps({
+                'data_ver': monotonic(),
+                'build_ver': None
+            })
+            Database.DB_session.add(race_meta)
+            Database.DB_session.flush()
+
+            for name, value in (snapshot.get('attributes') or {}).items():
+                Database.DB_session.add(Database.SavedRaceMetaAttribute(id=race_meta.id, name=name, value=value))
+
+            for run in snapshot.get('pilotruns') or []:
+                pilotrace = Database.SavedPilotRace(**columns(Database.SavedPilotRace, run, ('id', 'race_id')))
+                pilotrace.race_id = race_meta.id
+                Database.DB_session.add(pilotrace)
+                Database.DB_session.flush()
+
+                for lap in run.get('laps') or []:
+                    lap_row = Database.SavedRaceLap(**columns(Database.SavedRaceLap, lap, ('id', 'race_id', 'pilotrace_id')))
+                    lap_row.race_id = race_meta.id
+                    lap_row.pilotrace_id = pilotrace.id
+                    Database.DB_session.add(lap_row)
+
+                for split in run.get('splits') or []:
+                    split_row = Database.SavedRaceLapSplit(**columns(Database.SavedRaceLapSplit, split, ('id', 'race_id', 'pilotrace_id')))
+                    split_row.race_id = race_meta.id
+                    split_row.pilotrace_id = pilotrace.id
+                    Database.DB_session.add(split_row)
+
+            self.set_grouped_heat_active(race_meta.heat_id, False)
+            Database.DB_session.delete(deleted_race)
+            Database.DB_session.commit()
+        except Exception:
+            logger.exception('Unable to restore deleted race {0}'.format(deleted_race_id))
+            self.rollback()
+            return False
+
+        self.clear_results_for_race(race_meta.heat_id, race_meta.class_id, race_meta.id)
+
+        logger.info('Deleted race {0} restored as race {1} (heat {2} round {3})'.format(
+            deleted_race_id, race_meta.id, race_meta.heat_id, race_meta.round_id))
+
+        self._Events.trigger(Evt.RACE_RESTORE, {
+            'race_id': race_meta.id,
+            'heat_id': race_meta.heat_id,
+            'round_id': race_meta.round_id,
+            'class_id': race_meta.class_id,
+            'deleted_race_id': deleted_race_id,
+            })
+
+        return race_meta
+
     def get_results_savedRaceMeta(self, savedRaceMeta_or_id, no_rebuild_flag=False):
         race = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
 
@@ -3711,6 +3951,7 @@ class RHData():
         Database.DB_session.query(Database.SavedRaceLap).delete()
         Database.DB_session.query(Database.SavedPilotRace).delete()
         Database.DB_session.query(Database.SavedRaceMeta).delete()
+        Database.DB_session.query(Database.DeletedRace).delete()
         for heat in self.get_heats():
             heat.active = True
         self.commit()
