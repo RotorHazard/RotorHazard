@@ -689,7 +689,37 @@ def render_database():
         savedraceLap=RaceContext.rhdata.get_savedRaceLaps(),
         profiles=RaceContext.rhdata.get_profiles(),
         race_format=RaceContext.rhdata.get_raceFormats(),
-        globalSettings=RaceContext.rhdata.get_options())
+        globalSettings=RaceContext.rhdata.get_options(),
+        deletedRaces=get_deleted_race_rows())
+
+def get_deleted_race_rows():
+    '''Rows for the Deleted Races table on the database page.'''
+    rows = []
+    for deleted_race in RaceContext.rhdata.get_deletedRaces():
+        snapshot = RaceContext.rhdata.get_deletedRace_snapshot(deleted_race) or {}
+        heat = RaceContext.rhdata.get_heat(deleted_race.heat_id)
+        race_class = RaceContext.rhdata.get_raceClass(deleted_race.class_id)
+        race_format = RaceContext.rhdata.get_raceFormat(deleted_race.format_id) if deleted_race.format_id else None
+
+        pilots = []
+        for run in sorted(snapshot.get('pilotruns') or [], key=lambda run: run.get('node_index') or 0):
+            if run.get('pilot_id'):
+                pilot = RaceContext.rhdata.get_pilot(run['pilot_id'])
+                pilots.append(pilot.callsign if pilot else '{0} {1}'.format(__('Pilot'), run['pilot_id']))
+
+        rows.append({
+            'id': deleted_race.id,
+            'deleted': deleted_race.deleted_time_formatted,
+            'race_id': deleted_race.race_id,
+            'heat': heat.display_name if heat else '{0} {1}'.format(__('Heat'), deleted_race.heat_id),
+            'round': deleted_race.round_id,
+            'class': race_class.name if race_class else (deleted_race.class_id or ''),
+            'format': race_format.name if race_format else (deleted_race.format_id or ''),
+            'started': deleted_race.start_time_formatted,
+            'pilots': ', '.join(pilots),
+            'label': get_race_round_label(deleted_race.heat_id, deleted_race.round_id),
+        })
+    return rows
 
 @APP.route('/vrxstatus')
 @requires_auth
@@ -1638,6 +1668,42 @@ def on_delete_race_round(data):
         message = __('Unable to delete {0}').format(label)
         RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
         emit('race_round_deleted', {'ok': False, 'race_id': race_id})
+
+@SOCKET_IO.on('restore_deleted_race')
+@requires_socketio_auth
+@catchLogExcWithDBWrapper
+def on_restore_deleted_race(data):
+    '''Restore a deleted race, unless anything conflicts with it.'''
+    deleted_race_id = data.get('id')
+    deleted_race = RaceContext.rhdata.get_deletedRace(deleted_race_id) if deleted_race_id is not None else None
+
+    if not deleted_race:
+        message = __('That deleted race is no longer available to restore')
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+        emit('deleted_race_restored', {'ok': False, 'id': deleted_race_id})
+        return
+
+    label = get_race_round_label(deleted_race.heat_id, deleted_race.round_id)
+
+    conflicts = RaceContext.rhdata.get_deletedRace_conflicts(deleted_race)
+    if conflicts:
+        message = __('Cannot restore {0}: {1}').format(label, '; '.join(conflicts))
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+        emit('deleted_race_restored', {'ok': False, 'id': deleted_race_id})
+        return
+
+    if RaceContext.rhdata.restore_deletedRace(deleted_race):
+        message = __('Restored {0}').format(label)
+        RaceContext.rhui.emit_priority_message(message, False)
+
+        RaceContext.rhui.emit_heat_data()
+        RaceContext.rhui.emit_race_list()
+        RaceContext.rhui.emit_result_data()
+        emit('deleted_race_restored', {'ok': True, 'id': deleted_race_id})
+    else:
+        message = __('Unable to restore {0}; see the server log').format(label)
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+        emit('deleted_race_restored', {'ok': False, 'id': deleted_race_id})
 
 
 @SOCKET_IO.on('backup_database')
