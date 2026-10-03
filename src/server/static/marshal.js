@@ -347,6 +347,17 @@ class RHMarshal {
 		self.refreshDisplay();
 	}
 
+	loadEnterExit(enter, exit) {
+		// applies a loaded pair only if it is usable as it stands: whole numbers within the graph
+		//  (so nothing is clamped) and EnterAt above ExitAt; returns whether it was applied
+		if (!Number.isInteger(enter) || !Number.isInteger(exit) || enter <= exit ||
+				enter > self.graph.options.maxValue || exit < self.graph.options.minValue) {
+			return false;
+		}
+		self.setEnterExit(enter, exit);
+		return true;
+	}
+
 	setEnterExit(enter, exit) {
 		enter = Math.min(Math.max(enter, self.graph.options.minValue), self.graph.options.maxValue);
 		exit = Math.min(Math.max(exit, self.graph.options.minValue), self.graph.options.maxValue);
