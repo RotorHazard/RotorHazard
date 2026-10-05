@@ -186,7 +186,7 @@ import AdminAuth
 import calibration
 import heat_automation
 import RHAPI
-from ClusterNodeSet import SecondaryNode, ClusterNodeSet
+from ClusterNodeSet import SecondaryNode, ClusterNodeSet, restore_secondary_passwords, mask_secondary_passwords
 import PageCache
 from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
@@ -851,7 +851,13 @@ def on_join_cluster_ex(data=None):
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
                 })
-    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, RaceContext.serverstate.info_dict)
+    auth_ok = AdminAuth.socketio_auth_ok(RaceContext)
+    if not auth_ok:
+        if request.authorization:
+            logger.warning("Primary timer at {} supplied admin credentials that do not match this timer's; its race commands will be rejected".format(request.remote_addr))
+        else:
+            logger.info("Primary timer at {} joined without admin credentials, which this timer requires".format(request.remote_addr))
+    RaceContext.cluster.emit_join_cluster_response(SOCKET_IO, RaceContext.serverstate.info_dict, auth_ok)
 
 @SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
@@ -2697,6 +2703,8 @@ def on_set_option(data):
 @requires_socketio_auth
 @catchLogExceptionsWrapper
 def on_set_config(data):
+    if data['section'] == 'GENERAL' and data['key'] == 'SECONDARIES' and isinstance(data['value'], list):
+        restore_secondary_passwords(data['value'], RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES'))
     RaceContext.serverconfig.set_item(data['section'], data['key'], data['value'])
     if data['section'] == 'GENERAL' and data['key'] == 'ADMIN_SOCKET_AUTH':
         AdminAuth.set_admin_socket_auth_enabled(data['value'])
@@ -2706,10 +2714,13 @@ def on_set_config(data):
         apply_default_admin_creds_if_blank()
     if data['section'] in ('SECRETS', 'GENERAL'):
         check_default_admin_creds_warning()
+    event_value = data['value']
+    if data['section'] == 'GENERAL' and data['key'] == 'SECONDARIES' and isinstance(event_value, list):
+        event_value = mask_secondary_passwords(event_value)
     Events.trigger(Evt.CONFIG_SET, {
         'section': data['section'],
         'key': data['key'],
-        'value': data['value'],
+        'value': event_value,
         })
 
 @SOCKET_IO.on('get_admin_password')
@@ -2725,6 +2736,16 @@ def on_get_admin_password():
     emit('admin_password',
          {'password': RaceContext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD')})
 
+@SOCKET_IO.on('get_secondary_password')
+@requires_socketio_credential_auth
+@catchLogExceptionsWrapper
+def on_get_secondary_password(data):
+    '''Sends a secondary timer's stored password to the requesting client only, as for 'get_admin_password'.'''
+    secondaries = RaceContext.serverconfig.get_item('GENERAL', 'SECONDARIES') or []
+    index = RHUtils.getNumericEntry(data, 'index', -1)
+    info = secondaries[index] if 0 <= index < len(secondaries) and isinstance(secondaries[index], dict) else {}
+    emit('secondary_password', {'index': index, 'password': info.get('password') or ''})
+
 @SOCKET_IO.on('set_config_section')
 @requires_socketio_auth
 @catchLogExceptionsWrapper
@@ -2736,9 +2757,12 @@ def on_set_config_section(data):
         apply_default_admin_creds_if_blank()
     if data['section'] in ('SECRETS', 'GENERAL'):
         check_default_admin_creds_warning()
+    event_value = data['value']
+    if data['section'] == 'GENERAL' and isinstance(event_value, dict) and isinstance(event_value.get('SECONDARIES'), list):
+        event_value = dict(event_value, SECONDARIES=mask_secondary_passwords(event_value['SECONDARIES']))
     Events.trigger(Evt.CONFIG_SET, {
         'section': data['section'],
-        'value': data['value'],
+        'value': event_value,
         })
 
 @SOCKET_IO.on('set_ui_binding_value')
