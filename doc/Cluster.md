@@ -27,6 +27,9 @@ Clearing the `Address` field will remove the configuration for this Secondary co
 * `Query Interval`: Number of seconds between heartbeat/query messages (default 10)
 * `Receives Events`: Set 'true' to propagate timer events from primary (default 'false' for "split" timer, 'true' for "mirror" timer)
 * `Timeout (seconds)`: Maximum number of seconds to wait for connection to be established (default 300)
+* `Username` / `Password`: The admin credentials of the secondary timer, needed only if they differ from those of the primary timer (see below); the password is shown masked unless revealed with the eye icon
+
+The primary timer logs in to each secondary timer that requires it using its own admin username and password, so if all timers are set to the same credentials then no further configuration is needed. (Credentials are sent only to a secondary timer that reports needing them, or to one running an older version that does not report it, so configure only the addresses of timers you trust.) If a secondary timer has different credentials, set its `Username` and `Password` items to match them. If the credentials do not match, the secondary timer will ignore race commands from the primary (and a warning will be logged on both timers).
 
 To enable the announcement of split times, see the "*Secondary/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a secondary timer connects and disconnects, select the "*Secondary Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
 
