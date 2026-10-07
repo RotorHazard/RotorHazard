@@ -4,6 +4,7 @@ import logging
 import copy
 import gevent
 import json
+import base64
 import socketio
 from time import monotonic
 from dataclasses import asdict
@@ -16,6 +17,37 @@ from util.SendAckQueue import SendAckQueue
 import RHTimeFns
 
 logger = logging.getLogger(__name__)
+
+class _WebSocketClosedFilter(logging.Filter):
+    '''Logs engineio.client's 'WebSocket connection was closed' at INFO; SecondaryNode reports an unexpected disconnect itself.'''
+    def filter(self, record):
+        if record.levelno == logging.WARNING and str(record.msg).startswith('WebSocket connection was closed'):
+            record.levelno = logging.INFO
+            record.levelname = logging.getLevelName(logging.INFO)
+        return True
+
+logging.getLogger('engineio.client').addFilter(_WebSocketClosedFilter())
+
+SECONDARY_PASSWORD_MASK = '**********'
+
+def mask_secondary_passwords(secondaries):
+    '''Copy of the SECONDARIES config with each non-empty 'password' replaced by the mask.'''
+    masked = copy.deepcopy(secondaries)
+    for info in masked:
+        if isinstance(info, dict) and info.get('password'):
+            info['password'] = SECONDARY_PASSWORD_MASK
+    return masked
+
+def restore_secondary_passwords(secondaries, stored):
+    '''Puts the stored password back in each entry whose 'password' is still the mask, matching by address, then by position.'''
+    stored = [info if isinstance(info, dict) else {} for info in (stored or [])]
+    for idx, info in enumerate(secondaries):
+        if isinstance(info, dict) and info.get('password') == SECONDARY_PASSWORD_MASK:
+            match = next((s for s in stored if s.get('address') == info.get('address')), None)
+            if match is None and idx < len(stored):
+                match = stored[idx]
+            info['password'] = (match or {}).get('password') or ''
+    return secondaries
 
 
 class SecondaryNode:
@@ -33,6 +65,7 @@ class SecondaryNode:
     LATENCY_AVG_SIZE = 30
     TIMEDIFF_MEDIAN_SIZE = 30
     TIMEDIFF_WARNING_THRESH_MS = 250  # log warning if secondary clock more off than this
+    JOIN_SETTLE_SECS = 3  # send frequencies/stage anyway if the secondary has not answered the join by then
 
     def __init__(self, idVal, info, RaceContext, monotonic_to_epoch_millis, server_release_version, prev_sec_obj=None):
         self.id = idVal
@@ -127,6 +160,11 @@ class SecondaryNode:
         self.parentNodeSet = None
         self.actionPassTimes = {}
         self.prevSecPassTStamps = {}
+        self.useAuthHeader = False  # credentials are sent only once the secondary shows it needs them
+        self.authReconnectFlag = False
+        self.authFailedFlag = False  # secondary refused this timer's credentials; not retried until asked
+        self.joinSettled = False
+        self.joinConnectTime = 0
         self.sio = socketio.Client(reconnection=False, request_timeout=1)
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
@@ -137,6 +175,7 @@ class SecondaryNode:
 
     def start_connection(self):
         logger.debug("Starting connection for secondary timer {}".format(self.id+1))
+        self.authFailedFlag = False
         self.startConnectTime = 0
         self.lastContactTime = -1
         self.firstContactTime = 0
@@ -164,6 +203,8 @@ class SecondaryNode:
         while self.runningFlag:
             try:
                 gevent.sleep(1)
+                if not self.runningFlag:  # stopped during the sleep (as after refused credentials)
+                    break
                 if self.lastContactTime <= 0:  # if current status is not connected
                     oldSecsSinceDis = self.secsSinceDisconnect
                     self.secsSinceDisconnect = monotonic() - self.startConnectTime
@@ -176,7 +217,7 @@ class SecondaryNode:
                                 logger.log((logging.INFO if self.secsSinceDisconnect <= self.queryTimeout else logging.DEBUG), \
                                            "Attempting to connect to secondary {0} at {1}...".format(self.id+1, self.address))
                             try:
-                                self.sio.connect(self.address)
+                                self.sio.connect(self.address, headers=(self.get_auth_headers() if self.useAuthHeader else {}))
                             except socketio.exceptions.ConnectionError as ex:
                                 if self.lastContactTime > 0:  # if current status is connected
                                     logger.info("Error connecting to secondary {0} at {1}: {2}".format(self.id+1, self.address, ex))
@@ -204,6 +245,11 @@ class SecondaryNode:
                                             return  # exit worker thread
                 else:  # if current status is connected
                     now_time = monotonic()
+                    if not self.joinSettled:
+                        if now_time - self.joinConnectTime < self.JOIN_SETTLE_SECS:
+                            continue
+                        logger.debug("No join response from secondary {0} at {1}; proceeding".format(self.id+1, self.address))
+                        self.settle_join()
                     if not self.freqsSentFlag:
                         try:
                             self.freqsSentFlag = True
@@ -289,7 +335,7 @@ class SecondaryNode:
                 self.sio.emit(event, data)
                 self.lastContactTime = monotonic()
                 self.numContacts += 1
-            elif self.numDisconnects > 0:  # only warn if previously connected
+            elif self.numDisconnects > 0 and not self.authFailedFlag:  # only warn if previously connected
                 logger.warning("Unable to emit to disconnected secondary {0} at {1}, event='{2}'".\
                             format(self.id+1, self.address, event))
         except Exception:
@@ -300,12 +346,36 @@ class SecondaryNode:
                             format(self.id+1, self.address))
                 self.sio.disconnect()
 
+    def settle_join(self):
+        '''Join done (authenticated as needed): frequencies may be sent, and a race in progress is staged.'''
+        self.joinSettled = True
+        if (not self.isMirrorMode) and \
+                (self._racecontext.race.race_status == RaceStatus.STAGING or self._racecontext.race.race_status == RaceStatus.RACING):
+            self.emit('stage_race')  # if race in progress then make sure running on secondary
+
+    def get_auth_headers(self):
+        '''Basic-auth header for the secondary: the entry's 'username'/'password' if given, else this timer's admin credentials.'''
+        if 'username' in self.info or 'password' in self.info:
+            username = self.info.get('username') or ''
+            password = self.info.get('password') or ''
+        else:
+            username = self._racecontext.serverconfig.get_item('SECRETS', 'ADMIN_USERNAME') or ''
+            password = self._racecontext.serverconfig.get_item('SECRETS', 'ADMIN_PASSWORD') or ''
+        if not username and not password:
+            return {}
+        token = base64.b64encode('{}:{}'.format(username, password).encode('utf-8')).decode('ascii')
+        return {'Authorization': 'Basic ' + token}
+
     def on_connect(self):
         try:
             if self.lastContactTime <= 0:
                 self.lastContactTime = monotonic()
                 self.firstContactTime = self.lastContactTime
-                if self.numDisconnects <= 0:
+                self.joinSettled = False
+                self.joinConnectTime = self.lastContactTime
+                if self.authReconnectFlag:
+                    logger.info("Reconnected to secondary {0} at {1} with admin credentials".format(self.id+1, self.address))
+                elif self.numDisconnects <= 0:
                     logger.info("Connected to secondary {0} at {1} (mode: {2})".format(\
                                         self.id+1, self.address, self.secondaryModeStr))
                 else:
@@ -316,10 +386,9 @@ class SecondaryNode:
                     'mode': self.secondaryModeStr
                 }
                 self.emit('join_cluster_ex', payload)
-                if (not self.isMirrorMode) and \
-                        (self._racecontext.race.race_status == RaceStatus.STAGING or self._racecontext.race.race_status == RaceStatus.RACING):
-                    self.emit('stage_race')  # if race in progress then make sure running on secondary
-                if self.runningFlag and self._racecontext.rhui.emit_cluster_connect_change:
+                if self.authReconnectFlag:
+                    self.authReconnectFlag = False
+                elif self.runningFlag and self._racecontext.rhui.emit_cluster_connect_change:
                     self._racecontext.rhui.emit_cluster_connect_change(True)
             else:
                 self.lastContactTime = monotonic()
@@ -334,10 +403,18 @@ class SecondaryNode:
                 self.startConnectTime = monotonic()
                 self.lastContactTime = -1
                 self.numDisconnects += 1
-                self.numDisconnsDuringRace += 1
                 upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
-                logger.warning("Disconnected from " + self.get_log_str(upSecs))
                 self.totalUpTimeSecs += upSecs
+                if self.authReconnectFlag:  # disconnected on purpose, to reconnect with credentials
+                    logger.debug("Disconnected from secondary {0} at {1} to reconnect with admin credentials".\
+                                 format(self.id+1, self.address))
+                    return
+                if self.authFailedFlag:  # disconnected on purpose, after the credentials were refused
+                    logger.debug("Disconnected from secondary {0} at {1} after its admin credentials were refused".\
+                                 format(self.id+1, self.address))
+                    return
+                self.numDisconnsDuringRace += 1
+                logger.warning("Disconnected from " + self.get_log_str(upSecs))
                 if self.runningFlag and self._racecontext.rhui.emit_cluster_connect_change:
                     self._racecontext.rhui.emit_cluster_connect_change(False)
             else:
@@ -630,6 +707,30 @@ class SecondaryNode:
 
     def join_cluster_response(self, data):
         try:
+            # 'auth_ok' is missing from secondaries without this check, so whether they need credentials is unknown
+            auth_ok = data.get('auth_ok')
+            if auth_ok is not True and not self.useAuthHeader and self.get_auth_headers():
+                logger.info("Secondary {0} at {1} {2}; reconnecting with admin credentials".format(self.id+1, self.address, \
+                            "requires admin credentials" if auth_ok is False else "does not report whether it needs admin credentials"))
+                self.useAuthHeader = True
+                self.authReconnectFlag = True
+                gevent.spawn(self.do_sio_disconnect)
+                return
+            if auth_ok is False:
+                if self.useAuthHeader:
+                    logger.warning("Secondary {0} at {1} did not accept this timer's admin credentials; disconnecting (set 'username'/'password' for it in the secondary-timer config, then retry)".\
+                                   format(self.id+1, self.address))
+                else:
+                    logger.warning("Secondary {0} at {1} requires admin credentials, but none are set for it; disconnecting (set 'username'/'password' for it in the secondary-timer config, then retry)".\
+                                   format(self.id+1, self.address))
+                self.authFailedFlag = True
+                self.runningFlag = False  # worker thread exits, so no automatic retries
+                if self._racecontext.rhui.emit_cluster_connect_change:
+                    self._racecontext.rhui.emit_cluster_connect_change(False)
+                gevent.spawn(self.do_sio_disconnect)
+                return
+            if not self.joinSettled:
+                self.settle_join()
             infoStr = data.get('server_info')
             logger.debug("Server info from secondary {0} at {1}:  {2}".\
                          format(self.id+1, self.address, infoStr))
@@ -711,11 +812,13 @@ class ClusterNodeSet:
         else:
             logger.warning("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
 
-    def emit_join_cluster_response(self, SOCKET_IO, serverInfoItems):
+    def emit_join_cluster_response(self, SOCKET_IO, serverInfoItems, authOk=None):
         '''Emits 'join_cluster_response' message to primary timer.'''
         payload = {
             'server_info': json.dumps(serverInfoItems)
         }
+        if authOk is not None:
+            payload['auth_ok'] = authOk
         self.emit_cluster_msg_to_primary(SOCKET_IO, 'join_cluster_response', payload, False)
 
     def has_joined_cluster(self):
@@ -814,7 +917,10 @@ class ClusterNodeSet:
             if secondary.lastContactTime >= 0:
                 lastContactStr = str(int(nowTime-secondary.lastContactTime)) + "s"
             else:
-                if secondary.numDisconnects > 0:
+                if secondary.authFailedFlag:
+                    lastContactStr = "<button class=\"retry_secondary\" data-secondary_id=\"" + \
+                            str(secondary.id) + "\">" + self.__("Auth failed - click to retry") + "</button>"
+                elif secondary.numDisconnects > 0:
                     lastContactStr = self.__("connection lost")
                 else:
                     if secondary.runningFlag:

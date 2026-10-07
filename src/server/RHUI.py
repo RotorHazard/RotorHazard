@@ -23,6 +23,7 @@ from Database import ProgramMethod, RoundType
 from RHRace import RacingMode, RaceStatus
 from filtermanager import Flt
 import AdminAuth
+from ClusterNodeSet import mask_secondary_passwords
 import logging
 
 logger = logging.getLogger(__name__)
@@ -584,6 +585,8 @@ class RHUI():
                         config_vals[section] = {}
 
                     config_vals[section][item] = self._racecontext.serverconfig.get_item(section, item)
+                    if section == 'GENERAL' and item == 'SECONDARIES' and config_vals[section][item]:
+                        config_vals[section][item] = mask_secondary_passwords(config_vals[section][item])
 
         emit_payload = {
             'config': config_vals

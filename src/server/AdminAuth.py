@@ -44,6 +44,15 @@ def check_auth(racecontext, auth):
         return True
     return False
 
+def socketio_auth_ok(racecontext):
+    '''True if the current SocketIO connection passes the admin-auth check that guarded handlers apply.'''
+    if not _admin_socket_auth_enabled or session.get('socketio_admin_auth'):
+        return True
+    if not check_auth(racecontext, request.authorization):
+        return False
+    session['socketio_admin_auth'] = True
+    return True
+
 def make_socketio_auth_guard(racecontext):
     '''Returns a decorator that guards a SocketIO handler with the shared admin-auth check.
 

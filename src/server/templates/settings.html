@@ -2052,7 +2052,9 @@
 				['sawtooth', __('Sawtooth')],
 				['triangle', __('Triangle')]
 			], 'square'],
-			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 10]
+			['minRepeatSecs', __('Minimum Repeat (secs)'), 'numeric', 10],
+			['username', __('Username'), 'text', ''],
+			['password', __('Password'), 'password', '']
 		]
 		secondary_options.sort((a, b) => a[1].localeCompare(b[1]));
 
@@ -2202,7 +2204,8 @@
 					if (els.length > index) {
 						var field_el = $(els[index]);
 						var key_el = field_el.children('.set-secondary-dynamic-key');
-						var value_el = field_el.children('.set-secondary-dynamic-input');
+						var value_el = field_el.find('.set-secondary-dynamic-input');
+						var eye_el = field_el.find('.show-secondary-password');
 						var value_select_el = field_el.children('.set-secondary-dynamic-select');
 					} else {
 						var field_el = $(document.createElement('li'))
@@ -2218,13 +2221,22 @@
 							.addClass('btn-danger')
 							.html('&#215;')
 							.appendTo(field_el);
+						var input_wrap_el = $(document.createElement('div'))
+							.addClass('input-with-icon')
+							.appendTo(field_el);
 						var value_el = $(document.createElement('input'))
 							.prop('type', 'number')
 							.prop('step', 'any')
 							.addClass('set-secondary-config')
 							.addClass('set-secondary-dynamic-value')
 							.addClass('set-secondary-dynamic-input')
-							.appendTo(field_el);
+							.appendTo(input_wrap_el);
+						var eye_el = $(document.createElement('button'))
+							.prop('type', 'button')
+							.addClass('no-style')
+							.addClass('eye-icon')
+							.addClass('show-secondary-password')
+							.appendTo(input_wrap_el);
 						var value_select_el = $(document.createElement('select'))
 							.addClass('set-secondary-config')
 							.addClass('set-secondary-dynamic-value')
@@ -2233,6 +2245,9 @@
 					}
 
 					field_el.removeClass('flagged');
+					// a revealed password stays revealed, with its value, across a redraw
+					var was_shown = eye_el.attr('aria-pressed') == 'true' && value_el.data('key') == i;
+					var shown_value = value_el.val();
 
 					opt = secondary_options.find(obj => {return obj[0] == i});
 					if (opt) {
@@ -2291,7 +2306,7 @@
 							// text
 							value_el
 								.prop('hidden', false)
-								.prop('type', 'text')
+								.prop('type', opt[2] == 'password' ? 'password' : 'text')
 								.data('key', i)
 								.val(field);
 							value_select_el
@@ -2312,6 +2327,16 @@
 							.data('key', null)
 							.val(null);
 					}
+					value_el.parent().css('display', value_el.prop('hidden') ? 'none' : '');
+					var is_password = opt && opt[2] == 'password';
+					eye_el.prop('hidden', !is_password);
+					if (is_password) {
+						if (was_shown) {
+							set_secondary_password_shown(eye_el, true, shown_value);
+						} else {
+							set_secondary_password_shown(eye_el, false);
+						}
+					}
 					index++;
 				}
 			}
@@ -2322,8 +2347,46 @@
 			set_secondary_config();
 		});
 
+		// The stored secondary password arrives masked; it is fetched on demand when reveal is used.
+		function set_secondary_password_shown(eye_el, shown, password) {
+			var label = shown ? __('Hide password') : __('Show password');
+			var input_el = eye_el.siblings('.set-secondary-dynamic-input');
+			input_el.attr('type', shown ? 'text' : 'password');
+			if (password !== undefined) {
+				input_el.val(password);
+			}
+			eye_el
+				.html(shown ? svg_asset.eye_invisible : svg_asset.eye_visible)
+				.attr('aria-pressed', shown ? 'true' : 'false')
+				.attr('aria-label', label)
+				.attr('title', label);
+		}
+
+		// keeps focus in the input, so pressing the eye does not first save and redraw the field
+		$(document).on('mousedown', '.show-secondary-password', function (event) {
+			event.preventDefault();
+		});
+
+		$(document).on('click', '.show-secondary-password', function (event) {
+			var input_el = $(this).siblings('.set-secondary-dynamic-input');
+			if ($(this).attr('aria-pressed') == 'true') {
+				set_secondary_password_shown($(this), false);
+			} else if (input_el.val() && input_el.val() != '**********') {
+				// a value just typed is shown as is; the stored one may not be saved yet
+				set_secondary_password_shown($(this), true);
+			} else {
+				var index = $(this).closest('li[id^="secondary--"]').prop('id').split('--')[1];
+				socket.emit('get_secondary_password', {index: parseInt(index)});
+			}
+		});
+
+		socket.on('secondary_password', function (msg) {
+			var eye_el = $(`#secondary--${msg.index}`).find('.show-secondary-password').filter(function () { return !this.hidden; });
+			set_secondary_password_shown(eye_el, true, msg.password);
+		});
+
 		$(document).on('click', '.delete-secondary-dynamic-key', function (event) {
-			$(this).siblings('.set-secondary-dynamic-value').data('key', null);
+			$(this).closest('li').find('.set-secondary-dynamic-value').data('key', null);
 			set_secondary_config();
 		});
 
