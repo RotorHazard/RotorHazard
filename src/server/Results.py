@@ -761,20 +761,19 @@ def add_fastest_race_lap_meta(racecontext, all_leaderboards):
     leaderboard_by_fastest_lap = all_leaderboards['by_fastest_lap']
     fastest_race_lap_data = None
     if len(leaderboard_by_fastest_lap) > 0 and leaderboard_by_fastest_lap[0]['laps'] > 0:
-        if all_leaderboards['meta'].get('fastest_race_lap_data'):
-            if all_leaderboards['meta']['fastest_race_lap_data']['text'][1] == [leaderboard_by_fastest_lap[0]['callsign'],
-                                                                                leaderboard_by_fastest_lap[0]['fastest_lap']]:
-                return all_leaderboards # no change
-        else:
-            pilot = racecontext.rhdata.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
-            pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
-            phonetic_time = RHUtils.format_phonetic_time_to_str(
-                leaderboard_by_fastest_lap[0]['fastest_lap_raw'],
-                racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
-            fastest_race_lap_data = {}
-            fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
-            fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
-                                             leaderboard_by_fastest_lap[0]['fastest_lap']]
+        existing = all_leaderboards['meta'].get('fastest_race_lap_data')
+        if existing and existing.get('text') == [leaderboard_by_fastest_lap[0]['callsign'],
+                                                 leaderboard_by_fastest_lap[0]['fastest_lap']]:
+            return all_leaderboards # no change
+        pilot = racecontext.rhdata.get_pilot(leaderboard_by_fastest_lap[0]['pilot_id'])
+        pilot_str = pilot.spoken_callsign if pilot else leaderboard_by_fastest_lap[0]['callsign']
+        phonetic_time = RHUtils.format_phonetic_time_to_str(
+            leaderboard_by_fastest_lap[0]['fastest_lap_raw'],
+            racecontext.serverconfig.get_item('UI', 'timeFormatPhonetic'))
+        fastest_race_lap_data = {}
+        fastest_race_lap_data['phonetic'] = [pilot_str, phonetic_time]
+        fastest_race_lap_data['text'] = [leaderboard_by_fastest_lap[0]['callsign'],
+                                         leaderboard_by_fastest_lap[0]['fastest_lap']]
 
     all_leaderboards['meta']['fastest_race_lap_data'] = fastest_race_lap_data
 
