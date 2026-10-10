@@ -990,7 +990,7 @@ Rebuild the result caches that include a saved race (the race, its heat and clas
 - `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
 
 #### db.race_delete(race_or_id, keep_copy=True)
-Delete a saved race with its pilot runs, laps, splits and attributes. Other rounds of the heat are not renumbered or altered. Unless `keep_copy` is `False`, a copy of the race is kept as a deleted race (see below) so it can be restored. Result caches are rebuilt, connected clients are updated and `Evt.RACE_DELETE` is triggered. Returns `True` if the race was deleted, `False` if it was not found or could not be deleted.
+Delete a saved race with its pilot runs, laps, splits and attributes. Other rounds of the heat are not renumbered or altered. Unless `keep_copy` is `False`, a copy of the race is kept as a deleted race (see below) so it can be restored. Result caches are rebuilt, connected clients are updated and `Evt.RACE_DELETE` is triggered with `race_id`, `heat_id`, `round_id`, `class_id`, `deleted_race_id` (`None` without a copy), `race` (the race data, as from `db.deleted_race_data`) and `next_round` (the heat's next round number after the delete). Returns `True` if the race was deleted, `False` if it was not found or could not be deleted.
 - `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
 - `keep_copy` _(optional)_ (boolean): Keep a copy of the race that can be restored
 
@@ -1029,7 +1029,7 @@ Reasons the deleted race cannot be restored as it was, such as its heat no longe
 - `deleted_race_or_id` (int|DeletedRace): Either the deleted race object or the ID of deleted race
 
 #### db.race_restore(deleted_race_or_id)
-Restore a deleted race with its pilot runs, laps, splits and attributes, and remove the deleted race record. The race keeps its former ID if no other race has taken it. Nothing is restored if `db.deleted_race_conflicts` reports any conflict or a step fails. Result caches are rebuilt, connected clients are updated and `Evt.RACE_RESTORE` is triggered. Returns `SavedRaceMeta`, or `False` if the race was not restored.
+Restore a deleted race with its pilot runs, laps, splits and attributes, and remove the deleted race record. The race keeps its former ID if no other race has taken it. Nothing is restored if `db.deleted_race_conflicts` reports any conflict or a step fails. Result caches are rebuilt, connected clients are updated and `Evt.RACE_RESTORE` is triggered with `race_id`, `heat_id`, `round_id`, `class_id`, `deleted_race_id` and `next_round` (the heat's next round number after the restore). Returns `SavedRaceMeta`, or `False` if the race was not restored.
 - `deleted_race_or_id` (int|DeletedRace): Either the deleted race object or the ID of deleted race
 
 
