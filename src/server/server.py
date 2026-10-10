@@ -1656,6 +1656,12 @@ def on_delete_race_round(data):
 
     label = get_race_round_label(race.heat_id, race.round_id)
 
+    if RaceContext.rhdata.heat_race_in_progress(race.heat_id):
+        message = __('Cannot delete {0} while a race in that heat is in progress').format(label)
+        RaceContext.rhui.emit_priority_message(message, False, nobroadcast=True)
+        emit('race_round_deleted', {'ok': False, 'race_id': race_id})
+        return
+
     if RaceContext.rhdata.delete_savedRaceMeta(race):
         message = __('Deleted {0}; a copy is listed under Deleted Races on the View Database page').format(label)
         RaceContext.rhui.emit_priority_message(message, False)

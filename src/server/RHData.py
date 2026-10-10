@@ -3396,6 +3396,11 @@ class RHData():
             if race_class and race_class.round_type == RoundType.GROUPED:
                 heat.active = active
 
+    def heat_race_in_progress(self, heat_id):
+        # True when the current race is in the heat and is staging, running or not yet saved or discarded
+        return heat_id == self._racecontext.race.current_heat and \
+            self._racecontext.race.race_status != RaceStatus.READY
+
     def emit_next_round_if_changed(self, heat_id, prev_next_round):
         # Sends the current heat and race status to clients when the next round of the current heat has changed
         next_round = self.get_round_num_for_heat(heat_id)
@@ -3408,6 +3413,10 @@ class RHData():
         # Deletes a saved race with its pilot runs, laps, splits and attributes; other rounds are left as-is
         race_meta = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
         if not race_meta:
+            return False
+
+        if self.heat_race_in_progress(race_meta.heat_id):
+            logger.info('Race {0} not deleted; a race in its heat is in progress'.format(race_meta.id))
             return False
 
         race_id = race_meta.id
@@ -3515,6 +3524,8 @@ class RHData():
                 reasons.append(self.__('round {0} of that heat already has a race').format(deleted_race.round_id))
             if (heat.class_id or None) != (deleted_race.class_id or None):
                 reasons.append(self.__('its heat is now in a different class'))
+            if self.heat_race_in_progress(heat.id):
+                reasons.append(self.__('a race in that heat is in progress'))
 
         if deleted_race.class_id and not self.get_raceClass(deleted_race.class_id):
             reasons.append(self.__('its class no longer exists'))
