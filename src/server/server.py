@@ -3567,6 +3567,7 @@ def _do_init_rh_interface():
         logger.exception("Error initializing RH interface")
         return False
 
+# expects the interfaces already cleared, as done at the start of 'rh_program_initialize()'
 def initialize_rh_interface():
     if not _do_init_rh_interface():
         return False
@@ -3860,8 +3861,7 @@ def rh_program_initialize(reg_endpoints_flag=True):
         # RotorHazard events dispatch
         Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
 
-        # start from no interfaces; plugins may add theirs as they load, ahead of
-        #  the server's own in 'initialize_rh_interface()'
+        # start from no interfaces, so plugins can add theirs as they load
         RaceContext.interface.clear_interfaces()
 
         # Plugin handling

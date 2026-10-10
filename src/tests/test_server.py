@@ -313,10 +313,10 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
     def test_interface_api_add_kept(self):
-        # an interface a plugin adds while loading must still be mapped, with
-        #  its nodes counted, after the server sets up its own interfaces
+        # an interface a plugin adds while loading must survive the server's interface setup
         import MockInterface
         plugin_interface = MockInterface.MockInterface(config=server.RaceContext.serverconfig, num_nodes=2)
+        server.RaceContext.interface.clear_interfaces()  # as at the start of 'rh_program_initialize()'
         server.RHAPI.interface.add(plugin_interface)
         server.initialize_rh_interface()
         mapped = [ifmeta.interface for ifmeta in server.RaceContext.interface.mapped_interfaces]
