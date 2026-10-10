@@ -2,7 +2,9 @@
 
 # Invokes a function sequentially, via a GEvent queue.
 
+import collections
 import gevent
+import gevent.queue
 
 class InvokeFuncQueue:
     """ Invokes a function sequentially, via a GEvent queue. """
@@ -11,18 +13,39 @@ class InvokeFuncQueue:
         self.logger = logger
         self.invokeFuncQueue = gevent.queue.Queue(maxsize=maxQueueSize)
         self.invokeInProgressFlag = False
-        gevent.spawn(self.queueWorkerFn)
+        # items put by the worker while the queue is full, each with the queue-get count at which it runs
+        self.workerOverflow = collections.deque()
+        self.queueGetCount = 0
+        self.workerGreenlet = gevent.spawn(self.queueWorkerFn)
 
     def put(self, funct, *args, **kwargs):
         try:
-            self.invokeFuncQueue.put((funct, args, kwargs))
+            if gevent.getcurrent() is self.workerGreenlet:
+                # a put from the worker never blocks, since only the worker can free a slot
+                try:
+                    if not self.workerOverflow:
+                        self.invokeFuncQueue.put_nowait((funct, args, kwargs))
+                        return
+                except gevent.queue.Full:
+                    pass
+                self.workerOverflow.append((self.queueGetCount + self.invokeFuncQueue.qsize(), (funct, args, kwargs)))
+            else:
+                self.invokeFuncQueue.put((funct, args, kwargs))
         except:
             self.logger.exception("InvokeFuncQueue 'put' error")
+
+    def getNextItem(self):
+        # runs an overflow item once the queue items that were ahead of it have been taken
+        if self.workerOverflow and self.queueGetCount >= self.workerOverflow[0][0]:
+            return self.workerOverflow.popleft()[1]
+        item = self.invokeFuncQueue.get()  # wait for next item in queue
+        self.queueGetCount += 1
+        return item
 
     def queueWorkerFn(self):
         while True:
             try:
-                (funct, args, kwargs) = self.invokeFuncQueue.get()  # wait for next item in queue
+                (funct, args, kwargs) = self.getNextItem()
                 try:
                     self.invokeInProgressFlag = True
                     funct(*args, **kwargs)
@@ -51,7 +74,7 @@ class InvokeFuncQueue:
     def waitForQueueEmpty(self):
         try:
             count = 0
-            while self.invokeInProgressFlag or (not self.invokeFuncQueue.empty()):
+            while self.invokeInProgressFlag or self.workerOverflow or (not self.invokeFuncQueue.empty()):
                 count += 1
                 if count > 300:
                     self.logger.error("Timeout waiting for InvokeFuncQueue empty")
