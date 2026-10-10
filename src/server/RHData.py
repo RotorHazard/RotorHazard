@@ -3396,6 +3396,14 @@ class RHData():
             if race_class and race_class.round_type == RoundType.GROUPED:
                 heat.active = active
 
+    def emit_next_round_if_changed(self, heat_id, prev_next_round):
+        # Sends the current heat and race status to clients when the next round of the current heat has changed
+        next_round = self.get_round_num_for_heat(heat_id)
+        if heat_id == self._racecontext.race.current_heat and next_round != prev_next_round:
+            self._racecontext.rhui.emit_current_heat()
+            self._racecontext.rhui.emit_race_status()
+        return next_round
+
     def delete_savedRaceMeta(self, savedRaceMeta_or_id, keep_copy=True):
         # Deletes a saved race with its pilot runs, laps, splits and attributes; other rounds are left as-is
         race_meta = self.resolve_savedRaceMeta_from_savedRaceMeta_or_id(savedRaceMeta_or_id)
@@ -3408,6 +3416,7 @@ class RHData():
         class_id = race_meta.class_id
         snapshot = self.get_savedRaceMeta_snapshot(race_meta)
         deleted_race = None
+        prev_next_round = self.get_round_num_for_heat(heat_id)
 
         try:
             self.begin_transaction()
@@ -3453,6 +3462,8 @@ class RHData():
             self._racecontext.rhui.emit_current_laps()
             self._racecontext.rhui.emit_current_leaderboard()
 
+        next_round = self.emit_next_round_if_changed(heat_id, prev_next_round)
+
         logger.info('Race {0} deleted (heat {1} round {2})'.format(race_id, heat_id, round_id))
 
         self._Events.trigger(Evt.RACE_DELETE, {
@@ -3462,6 +3473,7 @@ class RHData():
             'class_id': class_id,
             'deleted_race_id': deleted_race.id if deleted_race else None,
             'race': snapshot,
+            'next_round': next_round,
             })
 
         return True
@@ -3524,6 +3536,7 @@ class RHData():
 
         deleted_race_id = deleted_race.id
         snapshot = json.loads(deleted_race.data)
+        prev_next_round = self.get_round_num_for_heat(deleted_race.heat_id)
 
         def columns(model, values, exclude):
             keys = {attr.key for attr in inspect(model).column_attrs}
@@ -3574,6 +3587,8 @@ class RHData():
 
         self.clear_results_for_race(race_meta.heat_id, race_meta.class_id, race_meta.id)
 
+        next_round = self.emit_next_round_if_changed(race_meta.heat_id, prev_next_round)
+
         logger.info('Deleted race {0} restored as race {1} (heat {2} round {3})'.format(
             deleted_race_id, race_meta.id, race_meta.heat_id, race_meta.round_id))
 
@@ -3583,6 +3598,7 @@ class RHData():
             'round_id': race_meta.round_id,
             'class_id': race_meta.class_id,
             'deleted_race_id': deleted_race_id,
+            'next_round': next_round,
             })
 
         return race_meta
