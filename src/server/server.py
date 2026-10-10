@@ -3568,7 +3568,6 @@ def _do_init_rh_interface():
         return False
 
 def initialize_rh_interface():
-    RaceContext.interface.clear_interfaces()
     if not _do_init_rh_interface():
         return False
     if RaceContext.race.num_nodes == 0:
@@ -3860,6 +3859,10 @@ def rh_program_initialize(reg_endpoints_flag=True):
 
         # RotorHazard events dispatch
         Events.on(Evt.UI_DISPATCH, 'ui_dispatch_event', RaceContext.rhui.dispatch_quickbuttons, {}, 50)
+
+        # start from no interfaces; plugins may add theirs as they load, ahead of
+        #  the server's own in 'initialize_rh_interface()'
+        RaceContext.interface.clear_interfaces()
 
         # Plugin handling
         plugin_modules = []

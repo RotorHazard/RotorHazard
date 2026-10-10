@@ -312,6 +312,26 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(server.RHAPI.API_VERSION_MINOR, 8)
         self.assertEqual(server.RHAPI.__, server.RHAPI.language.__)
 
+    def test_interface_api_add_kept(self):
+        # an interface a plugin adds while loading must still be mapped, with
+        #  its nodes counted, after the server sets up its own interfaces
+        import MockInterface
+        plugin_interface = MockInterface.MockInterface(config=server.RaceContext.serverconfig, num_nodes=2)
+        server.RHAPI.interface.add(plugin_interface)
+        server.initialize_rh_interface()
+        mapped = [ifmeta.interface for ifmeta in server.RaceContext.interface.mapped_interfaces]
+        self.assertIn(plugin_interface, mapped)
+        for node in plugin_interface.nodes:
+            self.assertIn(node, server.RaceContext.interface.nodes)
+        self.assertEqual(server.RaceContext.race.num_nodes, len(server.RaceContext.interface.nodes))
+
+    def test_interfaces_not_accumulated(self):
+        num_interfaces = len(server.RaceContext.interface.mapped_interfaces)
+        num_nodes = len(server.RaceContext.interface.nodes)
+        server.rh_program_initialize(reg_endpoints_flag=False)
+        self.assertEqual(len(server.RaceContext.interface.mapped_interfaces), num_interfaces)
+        self.assertEqual(len(server.RaceContext.interface.nodes), num_nodes)
+
     def test_ui_api(self):
         panels = server.RHAPI.ui.register_panel('test_panel', "Test Panel", 'test_page', 1)
         self.assertEqual(panels, server.RHAPI.ui.panels)
