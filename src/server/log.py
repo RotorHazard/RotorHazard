@@ -166,6 +166,8 @@ class StreamToLogger:
         if buf.lstrip().startswith("PYDEV DEBUGGER WARNING"):
             lvl = logging.DEBUG  # don't treat expected debugger warning as error
             buf = buf.lstrip()
+        elif 'Invalid HTTP method:' in buf:
+            lvl = logging.WARNING  # don't treat a non-HTTP request (such as an HTTPS attempt) as error
         for line in buf.rstrip().splitlines():
             self.logger.log(lvl, line.rstrip())
 
