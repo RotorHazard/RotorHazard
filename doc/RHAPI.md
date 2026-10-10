@@ -990,7 +990,7 @@ Rebuild the result caches that include a saved race (the race, its heat and clas
 - `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
 
 #### db.race_delete(race_or_id, keep_copy=True)
-Delete a saved race with its pilot runs, laps, splits and attributes. Other rounds of the heat are not renumbered or altered. Unless `keep_copy` is `False`, a copy of the race is kept as a deleted race (see below) so it can be restored. Result caches are rebuilt, connected clients are updated and `Evt.RACE_DELETE` is triggered with `race_id`, `heat_id`, `round_id`, `class_id`, `deleted_race_id` (`None` without a copy), `race` (the race data, as from `db.deleted_race_data`) and `next_round` (the heat's next round number after the delete). Returns `True` if the race was deleted, `False` if it was not found or could not be deleted.
+Delete a saved race with its pilot runs, laps, splits and attributes. Other rounds of the heat are not renumbered or altered. Unless `keep_copy` is `False`, a copy of the race is kept as a deleted race (see below) so it can be restored. Result caches are rebuilt, connected clients are updated and `Evt.RACE_DELETE` is triggered with `race_id`, `heat_id`, `round_id`, `class_id`, `deleted_race_id` (`None` without a copy), `race` (the race data, as from `db.deleted_race_data`) and `next_round` (the heat's next round number after the delete). Returns `True` if the race was deleted, `False` if it was not found or could not be deleted. A race is not deleted while the current race is in its heat and is staging, running or not yet saved or discarded.
 - `race_or_id` (int|SavedRaceMeta): Either the saved race object or the ID of saved race
 - `keep_copy` _(optional)_ (boolean): Keep a copy of the race that can be restored
 
@@ -1025,7 +1025,7 @@ The stored copy of a deleted race. Returns `dict` with keys `race` (the saved ra
 - `deleted_race_or_id` (int|DeletedRace): Either the deleted race object or the ID of deleted race
 
 #### db.deleted_race_conflicts(deleted_race_or_id)
-Reasons the deleted race cannot be restored as it was, such as its heat no longer existing or its round of the heat already having a race. Returns `list[string]`, empty if the race can be restored, or `None` if not found.
+Reasons the deleted race cannot be restored as it was, such as its heat no longer existing, its round of the heat already having a race, or a race in its heat being in progress. Returns `list[string]`, empty if the race can be restored, or `None` if not found.
 - `deleted_race_or_id` (int|DeletedRace): Either the deleted race object or the ID of deleted race
 
 #### db.race_restore(deleted_race_or_id)
